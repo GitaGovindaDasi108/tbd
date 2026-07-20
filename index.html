@@ -221,6 +221,7 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
   <button class="btn-city" onclick="openWarehouseModal()">&#x1F3E0; Warehouse</button>
   <button class="btn-city" onclick="openTransferModal()">&#x2192; Transfer to City</button>
   <button class="btn-city" onclick="openReturnModal()">&#x2190; Return to Warehouse</button>
+  <button class="btn-city" onclick="copyCityUrl()" title="Copy permanent link for this city" id="btn-copy-link" style="display:none">&#x1F517; City Link</button>
 </div>
 
 <div class="totals-bar">
@@ -578,8 +579,12 @@ function renderInventory() {
   const hasCategories = inventory.some(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory);
   if (!hasCategories) {
     el.innerHTML = `<div style="padding:1.5rem;text-align:center;">
-      <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--rust);margin-bottom:0.75rem;">No inventory set yet.</div>
-      <button class="btn-confirm" onclick="openSetup()">Set Opening Inventory</button>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--rust);margin-bottom:0.75rem;">
+        No inventory for <strong>${activeCity||'this city'}</strong> yet.
+      </div>
+      <div style="font-size:0.75rem;opacity:0.65;margin-top:0.5rem;">
+        Use <strong>&#x2192; Transfer to City</strong> to move books from the warehouse.
+      </div>
     </div>`;
     return;
   }
@@ -1329,7 +1334,12 @@ function loadFromSheet() {
       document.getElementById('btn-reload').style.display = 'inline-block';
       updateCitySelector();
       render();
-      // If no city selected, prompt to set up warehouse first
+      // Auto-select city from URL parameter
+      const urlCity = new URLSearchParams(window.location.search).get('city');
+      if (urlCity && activeCities.includes(urlCity)) {
+        setActiveCity(urlCity);
+        updateCitySelector();
+      }
       if (!activeCity) showNoCityMessage();
     })
     .catch(() => {
@@ -1337,6 +1347,8 @@ function loadFromSheet() {
       loadCache();
       document.getElementById('btn-reload').style.display = 'inline-block';
       updateCitySelector();
+      const urlCity = new URLSearchParams(window.location.search).get('city');
+      if (urlCity && activeCities.includes(urlCity)) setActiveCity(urlCity);
       render();
     });
 }
@@ -1345,10 +1357,13 @@ function showNoCityMessage() {
   const el = document.getElementById('inventory-list');
   if (el) el.innerHTML = `<div style="padding:1.5rem;text-align:center;">
     <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--rust);margin-bottom:0.75rem;">
-      No city selected. Use <strong>+ New City</strong> to create one,<br>
-      then <strong>&#x2192; Transfer</strong> books from the warehouse.
+      No city selected.
     </div>
-    <div style="font-size:0.7rem;opacity:0.5;margin-top:0.5rem;">Set up your warehouse inventory first using &#x1F3E0; Warehouse</div>
+    <div style="font-size:0.75rem;opacity:0.65;margin-top:0.5rem;line-height:1.7;">
+      1. Use <strong>&#x1F3E0; Warehouse</strong> to set your master stock<br>
+      2. Use <strong>+ New City</strong> to create an event<br>
+      3. Transfer books via the transfer prompt that appears
+    </div>
   </div>`;
 }
 
@@ -1541,7 +1556,19 @@ function updateCitySelector() {
 function onCityChange(name) {
   if (!name) return;
   setActiveCity(name);
+  const linkBtn = document.getElementById('btn-copy-link');
+  if (linkBtn) linkBtn.style.display = name ? 'inline-block' : 'none';
   render();
+}
+
+function copyCityUrl() {
+  const url = getCityUrl(activeCity);
+  navigator.clipboard.writeText(url).then(() => {
+    setSyncStatus('ok', 'City link copied!');
+    setTimeout(() => setSyncStatus('ok', 'Connected'), 2000);
+  }).catch(() => {
+    prompt('Copy this city link:', url);
+  });
 }
 
 function openNewCityModal() {
@@ -1566,21 +1593,32 @@ function confirmNewCity() {
   setTimeout(() => openTransferModal(), 200);
 }
 
+function getCityUrl(cityName) {
+  const base = window.location.origin + window.location.pathname;
+  return base + '?city=' + encodeURIComponent(cityName || activeCity);
+}
+
 // ── Warehouse modal ──
 function openWarehouseModal() {
+  // Ensure all BASE books exist in warehouse
+  BASE_BOOK_IDS.forEach(id => {
+    if (!warehouse.inventory.find(b => b.id===id)) {
+      const meta = INITIAL_BOOKS.find(b => b.id===id) || { id, name:id };
+      warehouse.inventory.push({ ...meta, stock:0 });
+    }
+  });
   const fields = document.getElementById('warehouse-fields');
-  const books = warehouse.inventory.filter(b => BASE_BOOK_IDS.includes(b.id));
+  const books = BASE_BOOK_IDS.map(id => warehouse.inventory.find(b => b.id===id)).filter(Boolean);
   fields.innerHTML = books.map(b => `
-    <div class="transfer-row">
-      <span class="transfer-row-label">${b.name}</span>
-      <input type="number" min="0" step="1" id="wh-${b.id}" value="${b.stock}" class="transfer-row-input">
+    <div class="setup-row">
+      <label>${b.name}</label>
+      <input type="number" min="0" step="1" id="wh-${b.id}" value="${b.stock||0}" class="setup-row-input">
     </div>
   `).join('');
   document.getElementById('warehouse-modal').classList.add('active');
 }
 
 function confirmWarehouseEdit() {
-  // Ensure all BASE books exist in warehouse inventory
   BASE_BOOK_IDS.forEach(id => {
     if (!warehouse.inventory.find(b => b.id===id)) {
       const meta = INITIAL_BOOKS.find(b => b.id===id) || { id, name:id, stock:0 };
@@ -1598,13 +1636,20 @@ function confirmWarehouseEdit() {
 // ── Transfer modal ──
 function openTransferModal() {
   if (!activeCity) { alert('Please select or create a city first.'); return; }
+  // Ensure all BASE books exist in warehouse
+  BASE_BOOK_IDS.forEach(id => {
+    if (!warehouse.inventory.find(b => b.id===id)) {
+      const meta = INITIAL_BOOKS.find(b => b.id===id) || { id, name:id };
+      warehouse.inventory.push({ ...meta, stock:0 });
+    }
+  });
   document.getElementById('transfer-modal-title').textContent = 'Transfer to ' + activeCity;
   const fields = document.getElementById('transfer-fields');
-  const books = warehouse.inventory.filter(b => BASE_BOOK_IDS.includes(b.id));
+  const books = BASE_BOOK_IDS.map(id => warehouse.inventory.find(b => b.id===id)).filter(Boolean);
   fields.innerHTML = books.map(b => `
-    <div class="transfer-row">
-      <span class="transfer-row-label">${b.name} <span class="warehouse-stock-badge">&#x1F3E0; ${b.stock}</span></span>
-      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" max="${b.stock}" class="transfer-row-input">
+    <div class="setup-row">
+      <label>${b.name} <span class="warehouse-stock-badge" style="font-family:'DM Mono',monospace;font-size:0.65rem;opacity:0.6;font-weight:400;">&#x1F3E0; ${b.stock} avail.</span></label>
+      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" max="${b.stock}" class="setup-row-input">
     </div>
   `).join('');
   document.getElementById('transfer-modal').classList.add('active');
@@ -1650,12 +1695,14 @@ function confirmTransfer() {
 function openReturnModal() {
   if (!activeCity) { alert('Please select a city first.'); return; }
   const fields = document.getElementById('return-fields');
-  const baseBooks = inventory.filter(b => BASE_BOOK_IDS.includes(b.id));
+  const baseBooks = BASE_BOOK_IDS
+    .map(id => inventory.find(b => b.id===id))
+    .filter(b => b && b.stock >= 0);
   if (!baseBooks.length) { alert('No books in city inventory to return.'); return; }
   fields.innerHTML = baseBooks.map(b => `
-    <div class="transfer-row">
-      <span class="transfer-row-label">${b.name} <span class="warehouse-stock-badge">city: ${b.stock}</span></span>
-      <input type="number" min="0" step="1" id="ret-${b.id}" value="${b.stock}" max="${b.stock}" class="transfer-row-input">
+    <div class="setup-row">
+      <label>${b.name} <span class="warehouse-stock-badge" style="font-family:'DM Mono',monospace;font-size:0.65rem;opacity:0.6;font-weight:400;">city: ${b.stock} remaining</span></label>
+      <input type="number" min="0" step="1" id="ret-${b.id}" value="${b.stock}" max="${b.stock}" class="setup-row-input">
     </div>
   `).join('');
   document.getElementById('return-modal').classList.add('active');
@@ -1664,10 +1711,10 @@ function openReturnModal() {
 function confirmReturn() {
   if (!activeCity) return;
   const returns = [];
-  inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory).forEach(b => {
-    const inp = document.getElementById('ret-'+b.id);
+  BASE_BOOK_IDS.forEach(id => {
+    const inp = document.getElementById('ret-'+id);
     const qty = Math.max(0, parseInt(inp?.value)||0);
-    if (qty > 0) returns.push({ id:b.id, qty });
+    if (qty > 0) returns.push({ id, qty });
   });
   if (!returns.length) { closeModal('return-modal'); return; }
   returns.forEach(r => {
