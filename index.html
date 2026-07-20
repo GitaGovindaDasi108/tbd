@@ -478,10 +478,15 @@ const INITIAL_BOOKS = [
   { id:'western-ru',    name:'Western (Russian)',    priceUSD:40, priceEUR:35, pricePLN:150 },
   { id:'eastern-ru',    name:'Eastern (Russian)',    priceUSD:40, priceEUR:35, pricePLN:150 },
   { id:'govardhana-ru', name:'Govardhana (Russian)', priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'adventures',    name:'Adventures',           priceUSD:15, priceEUR:13, pricePLN:60  },
+  { id:'adventures',    name:'Adventures',           priceUSD:15, priceEUR:13, pricePLN:55  },
   { id:'donation',      name:'Donation', lockStock:true, isDonation:true, priceUSD:0, priceEUR:0, pricePLN:0 },
 ];
 const DEFAULT_PRICES  = { USD:40, EUR:35, PLN:150 };
+// Only these titles appear in warehouse and transfer modals (never preorder cats)
+const BASE_BOOK_IDS = [
+  'sri-radha-en','western-en','eastern-en','govardhana-en',
+  'sri-radha-ru','western-ru','eastern-ru','govardhana-ru','adventures'
+];
 const PAYMENT_METHODS = ['zelle','paypal','wise','cash','gift'];
 const CURRENCIES      = ['USD','EUR','PLN'];
 
@@ -1073,13 +1078,48 @@ function confirmClosingCount() {
 //  SETUP SCREEN
 // ═══════════════════════════════════════════════════════
 function openSetup() {
-  const books = inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory);
+  const source = activeCity ? inventory : warehouse.inventory;
+  const books  = activeCity
+    ? source.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory)
+    : source.filter(b => BASE_BOOK_IDS.includes(b.id));
   document.getElementById('setup-fields').innerHTML = books.map(b =>
     `<div class="setup-row"><label>${b.name}</label>
      <input type="number" min="0" step="1" id="setup-${b.id}" value="${b.stock||0}"></div>`
   ).join('');
   document.getElementById('setup-screen').classList.add('active');
 }
+function fulfillPreorder(saleId) {
+  const s = sales.find(x => x.id===saleId);
+  if (!s || !s.isPreorder) return;
+  const bookName = s.bookName;
+
+  const choice = confirm(
+    'How was this pre-order fulfilled?\n\n' +
+    'OK = Fulfilled from Warehouse (reduces warehouse stock)\n' +
+    'Cancel = Fulfilled Outside Warehouse (marks as fulfilled only)'
+  );
+
+  if (choice) {
+    // Fulfilled from warehouse — deduct one from warehouse
+    const wBook = warehouse.inventory.find(b => b.name === bookName || s.bookId.replace('-preorder','') === b.id);
+    if (wBook && wBook.stock > 0) {
+      wBook.stock--;
+    } else {
+      if (!confirm('No warehouse stock found for "' + bookName + '". Mark as fulfilled anyway?')) return;
+    }
+    s.fulfilled = true;
+    s.fulfilledFrom = 'warehouse';
+  } else {
+    // Fulfilled outside warehouse
+    s.fulfilled = true;
+    s.fulfilledFrom = 'external';
+  }
+
+  save(); render();
+  syncInventoryToSheet();
+  syncWarehouseToSheet();
+}
+
 function markPaid(saleId) {
   const s = sales.find(x => x.id===saleId);
   if (!s) return;
@@ -1099,13 +1139,34 @@ function markPaid(saleId) {
 
 function closeSetup() { document.getElementById('setup-screen').classList.remove('active'); }
 function confirmSetup() {
-  inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory).forEach(b => {
-    const inp = document.getElementById('setup-'+b.id);
-    const val = inp ? Math.max(0,parseInt(inp.value)||0) : 0;
-    b.stock=val; b.initialStock=val;
-  });
-  save(); closeSetup(); render();
-  syncInventoryToSheet();
+  if (activeCity) {
+    // Write to city inventory
+    inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory).forEach(b => {
+      const inp = document.getElementById('setup-'+b.id);
+      const val = inp ? Math.max(0,parseInt(inp.value)||0) : 0;
+      b.stock=val; b.initialStock=val;
+    });
+    cities[activeCity] = { ...cities[activeCity], inventory, sales, closingCounts };
+    save(); closeSetup(); render();
+    syncInventoryToSheet();
+  } else {
+    // No city yet — write to warehouse instead
+    BASE_BOOK_IDS.forEach(id => {
+      const inp = document.getElementById('setup-'+id);
+      if (!inp) return;
+      const val = Math.max(0,parseInt(inp.value)||0);
+      let wBook = warehouse.inventory.find(b => b.id===id);
+      if (!wBook) {
+        const meta = INITIAL_BOOKS.find(b => b.id===id) || { id, name:id };
+        wBook = { ...meta, stock:0 };
+        warehouse.inventory.push(wBook);
+      }
+      wBook.stock = val;
+    });
+    save(); closeSetup(); render();
+    syncWarehouseToSheet();
+    alert('Opening inventory saved to warehouse. Now create a city and transfer books to begin selling.');
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1508,17 +1569,25 @@ function confirmNewCity() {
 // ── Warehouse modal ──
 function openWarehouseModal() {
   const fields = document.getElementById('warehouse-fields');
-  fields.innerHTML = warehouse.inventory
-    .filter(b => !b.isDonation && !b.lockStock)
-    .map(b => `
-      <label>${b.name} <span>stock: ${b.stock}</span></label>
-      <input type="number" min="0" step="1" id="wh-${b.id}" value="${b.stock}">
-    `).join('');
+  const books = warehouse.inventory.filter(b => BASE_BOOK_IDS.includes(b.id));
+  fields.innerHTML = books.map(b => `
+    <div class="transfer-row">
+      <span class="transfer-row-label">${b.name}</span>
+      <input type="number" min="0" step="1" id="wh-${b.id}" value="${b.stock}" class="transfer-row-input">
+    </div>
+  `).join('');
   document.getElementById('warehouse-modal').classList.add('active');
 }
 
 function confirmWarehouseEdit() {
-  warehouse.inventory.filter(b => !b.isDonation && !b.lockStock).forEach(b => {
+  // Ensure all BASE books exist in warehouse inventory
+  BASE_BOOK_IDS.forEach(id => {
+    if (!warehouse.inventory.find(b => b.id===id)) {
+      const meta = INITIAL_BOOKS.find(b => b.id===id) || { id, name:id, stock:0 };
+      warehouse.inventory.push({ ...meta, stock:0 });
+    }
+  });
+  warehouse.inventory.filter(b => BASE_BOOK_IDS.includes(b.id)).forEach(b => {
     const inp = document.getElementById('wh-'+b.id);
     if (inp) b.stock = Math.max(0, parseInt(inp.value)||0);
   });
@@ -1531,12 +1600,13 @@ function openTransferModal() {
   if (!activeCity) { alert('Please select or create a city first.'); return; }
   document.getElementById('transfer-modal-title').textContent = 'Transfer to ' + activeCity;
   const fields = document.getElementById('transfer-fields');
-  fields.innerHTML = warehouse.inventory
-    .filter(b => !b.isDonation && !b.lockStock)
-    .map(b => `
-      <label>${b.name} <span class="warehouse-stock-badge">&#x1F3E0; ${b.stock} available</span></label>
-      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" max="${b.stock}">
-    `).join('');
+  const books = warehouse.inventory.filter(b => BASE_BOOK_IDS.includes(b.id));
+  fields.innerHTML = books.map(b => `
+    <div class="transfer-row">
+      <span class="transfer-row-label">${b.name} <span class="warehouse-stock-badge">&#x1F3E0; ${b.stock}</span></span>
+      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" max="${b.stock}" class="transfer-row-input">
+    </div>
+  `).join('');
   document.getElementById('transfer-modal').classList.add('active');
 }
 
@@ -1580,11 +1650,13 @@ function confirmTransfer() {
 function openReturnModal() {
   if (!activeCity) { alert('Please select a city first.'); return; }
   const fields = document.getElementById('return-fields');
-  const baseBooks = inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory);
+  const baseBooks = inventory.filter(b => BASE_BOOK_IDS.includes(b.id));
   if (!baseBooks.length) { alert('No books in city inventory to return.'); return; }
   fields.innerHTML = baseBooks.map(b => `
-    <label>${b.name} <span class="warehouse-stock-badge">city: ${b.stock} remaining</span></label>
-    <input type="number" min="0" step="1" id="ret-${b.id}" value="${b.stock}" max="${b.stock}">
+    <div class="transfer-row">
+      <span class="transfer-row-label">${b.name} <span class="warehouse-stock-badge">city: ${b.stock}</span></span>
+      <input type="number" min="0" step="1" id="ret-${b.id}" value="${b.stock}" max="${b.stock}" class="transfer-row-input">
+    </div>
   `).join('');
   document.getElementById('return-modal').classList.add('active');
 }
@@ -1652,7 +1724,7 @@ setTimeout(syncHeights, 150);
     </div>
     <div class="modal-body">
       <p style="font-size:0.72rem;opacity:0.65;margin-bottom:1rem;line-height:1.5;">This is the permanent master inventory. Edit quantities to reflect current warehouse stock. Changes sync to Google Sheets.</p>
-      <div class="transfer-grid" id="warehouse-fields"></div>
+      <div id="warehouse-fields" style="max-height:340px;overflow-y:auto;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('warehouse-modal')">Cancel</button>
@@ -1670,7 +1742,7 @@ setTimeout(syncHeights, 150);
     </div>
     <div class="modal-body">
       <p style="font-size:0.72rem;opacity:0.65;margin-bottom:1rem;line-height:1.5;">These quantities will be deducted from the warehouse and added to the city's starting inventory.</p>
-      <div class="transfer-grid" id="transfer-fields"></div>
+      <div id="transfer-fields" style="max-height:340px;overflow-y:auto;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('transfer-modal')">Cancel</button>
@@ -1688,7 +1760,7 @@ setTimeout(syncHeights, 150);
     </div>
     <div class="modal-body">
       <p style="font-size:0.72rem;opacity:0.65;margin-bottom:1rem;line-height:1.5;">Enter quantities to return. City inventory will decrease, warehouse will increase.</p>
-      <div class="transfer-grid" id="return-fields"></div>
+      <div id="return-fields" style="max-height:340px;overflow-y:auto;"></div>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeModal('return-modal')">Cancel</button>
