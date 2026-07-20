@@ -1358,7 +1358,8 @@ function loadFromSheet() {
     .catch(err2 => {
       console.error('Both GET and POST failed:', err2.message);
       setSyncStatus('err', 'Offline — ' + err2.message.slice(0,40));
-      loadCache();
+      const _c = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+      if (_c) applySheetState(_c);
       document.getElementById('btn-reload').style.display = 'inline-block';
       updateCitySelector();
       render();
@@ -1372,11 +1373,13 @@ function handleStateResponse(data) {
     applySheetState(data.state);
     setSyncStatus('ok', 'Connected ✓');
   } else if (data && data.ok && !data.state) {
-    // Sheet is empty — fresh start, just load local cache if any
-    loadCache();
+    // Sheet is empty — fresh start. Try local cache but don't overwrite status.
+    const _cached = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+    if (_cached) applySheetState(_cached);
     setSyncStatus('ok', 'Connected ✓');
   } else {
-    loadCache();
+    const _cached2 = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+    if (_cached2) applySheetState(_cached2);
     setSyncStatus('err', data && data.error ? data.error.slice(0,50) : 'Unknown error');
   }
   document.getElementById('btn-reload').style.display = 'inline-block';
@@ -1628,11 +1631,8 @@ function confirmNewCity() {
   updateCitySelector();
   closeModal('new-city-modal');
   pushFullState();
-  // Create sheets on backend
   sheetGet({ action:'createCity', city:name }).catch(()=>{});
   render();
-  // Show transfer modal so they can immediately transfer books
-  setTimeout(() => openTransferModal(), 200);
 }
 
 function getCityUrl(cityName) {
@@ -1725,11 +1725,16 @@ function confirmTransfer() {
       cityInv.push({ ...meta, ...t, stock:t.qty, initialStock:t.qty });
     }
   });
-  // Refresh active city view
-  setActiveCity(activeCity);
+  // Sync cities map back to the live inventory variable
+  cities[activeCity].inventory = cities[activeCity].inventory;
+  // Re-run setActiveCity to pull the updated inventory into the live variable
+  const _city = activeCity;
+  activeCity = null;           // force setActiveCity to reload
+  setActiveCity(_city);
   closeModal('transfer-modal');
+  save();
   pushFullState();
-  sheetPost({ action:'transferToCity', city:activeCity, transfers }).catch(()=>{});
+  sheetPost({ action:'transferToCity', city:_city, transfers }).catch(()=>{});
   render();
 }
 
