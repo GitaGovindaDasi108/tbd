@@ -548,6 +548,11 @@ function save() {
   localStorage.setItem('bsl_fullstate', JSON.stringify(fullState));
 }
 
+function loadCache() {
+  const cached = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+  if (cached) applySheetState(cached);
+}
+
 function pushFullState() {
   save();
   const fullState = { warehouse, cities, activeCities, activeCity };
@@ -1314,44 +1319,76 @@ function setSyncStatus(type, msg) {
 // ── Load full state from Google Sheets on startup ──────────
 function loadFromSheet() {
   if (!sheetUrl || sheetUrl === 'YOUR_APPS_SCRIPT_URL_HERE') {
-    console.warn('No sheet URL configured — using local cache.');
-    loadCache();
-    render();
-    return;
+    console.warn('No sheet URL configured.');
+    const _cached = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+    if (_cached) applySheetState(_cached);
+    render(); return;
   }
-  setSyncStatus('pending', 'Loading…');
+  setSyncStatus('pending', 'Connecting…');
   document.getElementById('btn-reload').style.display = 'none';
-  sheetGetWithResponse({ action: 'getState' })
-    .then(data => {
-      if (data && data.ok && data.state) {
-        applySheetState(data.state);
-        setSyncStatus('ok', 'Loaded ✓');
-      } else {
-        // Sheet has no state yet — load local cache if any
-        loadCache();
-        setSyncStatus('ok', 'Ready');
-      }
-      document.getElementById('btn-reload').style.display = 'inline-block';
-      updateCitySelector();
-      render();
-      // Auto-select city from URL parameter
-      const urlCity = new URLSearchParams(window.location.search).get('city');
-      if (urlCity && activeCities.includes(urlCity)) {
-        setActiveCity(urlCity);
-        updateCitySelector();
-      }
-      if (!activeCity) showNoCityMessage();
+
+  // Try POST first (avoids CORS redirect issue)
+  fetch(sheetUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'getState' })
+  })
+  .then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  })
+  .then(data => {
+    console.log('POST getState response:', JSON.stringify(data).slice(0,200));
+    handleStateResponse(data);
+  })
+  .catch(err => {
+    console.warn('POST failed:', err.message, '— trying GET…');
+    // Fallback: try GET with no-cors (fires but can't read response)
+    // Instead try fetch with mode omitted on the redirect URL
+    return fetch(sheetUrl + '?payload=' + encodeURIComponent(JSON.stringify({action:'getState'})), {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'omit'
     })
-    .catch(() => {
-      setSyncStatus('err', 'Offline — using local cache');
+    .then(r => r.json())
+    .then(data => {
+      console.log('GET getState response:', JSON.stringify(data).slice(0,200));
+      handleStateResponse(data);
+    })
+    .catch(err2 => {
+      console.error('Both GET and POST failed:', err2.message);
+      setSyncStatus('err', 'Offline — ' + err2.message.slice(0,40));
       loadCache();
       document.getElementById('btn-reload').style.display = 'inline-block';
       updateCitySelector();
-      const urlCity = new URLSearchParams(window.location.search).get('city');
-      if (urlCity && activeCities.includes(urlCity)) setActiveCity(urlCity);
       render();
+      if (!activeCity) showNoCityMessage();
     });
+  });
 }
+
+function handleStateResponse(data) {
+  if (data && data.ok && data.state) {
+    applySheetState(data.state);
+    setSyncStatus('ok', 'Connected ✓');
+  } else if (data && data.ok && !data.state) {
+    // Sheet is empty — fresh start, just load local cache if any
+    loadCache();
+    setSyncStatus('ok', 'Connected ✓');
+  } else {
+    loadCache();
+    setSyncStatus('err', data && data.error ? data.error.slice(0,50) : 'Unknown error');
+  }
+  document.getElementById('btn-reload').style.display = 'inline-block';
+  const urlCity = new URLSearchParams(window.location.search).get('city');
+  if (urlCity && activeCities.includes(urlCity)) {
+    setActiveCity(urlCity);
+  }
+  updateCitySelector();
+  render();
+  if (!activeCity) showNoCityMessage();
+}
+
 
 function showNoCityMessage() {
   const el = document.getElementById('inventory-list');
