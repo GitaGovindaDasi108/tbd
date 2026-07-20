@@ -1385,8 +1385,13 @@ function applySheetState(state) {
 // Fetch that actually reads the response (uses CORS-friendly GET, reads JSON)
 function sheetGetWithResponse(data) {
   if (!sheetUrl) return Promise.reject('No sheet URL');
-  return fetch(sheetUrl + '?payload=' + encodeURIComponent(JSON.stringify(data)))
-    .then(r => r.json());
+  // Apps Script GET redirects break CORS. Use POST with text/plain (no preflight).
+  // Apps Script doPost handles this and responds directly without redirect.
+  return fetch(sheetUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(data)
+  }).then(r => r.json());
 }
 
 // GET for small payloads (sale, delete, edit, ping)
