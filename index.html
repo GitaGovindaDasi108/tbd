@@ -212,6 +212,17 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
   <button class="btn-sync" id="btn-reload" onclick="loadFromSheet()" style="display:none">↺ Reload</button>
 </div>
 
+<div class="city-bar">
+  <span class="city-label">City / Event:</span>
+  <select class="city-select" id="city-select" onchange="onCityChange(this.value)">
+    <option value="">— Select or create city —</option>
+  </select>
+  <button class="btn-city" onclick="openNewCityModal()">+ New City</button>
+  <button class="btn-city" onclick="openWarehouseModal()">&#x1F3E0; Warehouse</button>
+  <button class="btn-city" onclick="openTransferModal()">&#x2192; Transfer to City</button>
+  <button class="btn-city" onclick="openReturnModal()">&#x2190; Return to Warehouse</button>
+</div>
+
 <div class="totals-bar">
   <div class="total-item"><span class="label">Books Sold</span><span class="value" id="total-sold">0</span></div>
   <div class="total-item"><span class="label">Pre-Orders</span><span class="value" id="total-preorders">0</span></div>
@@ -277,18 +288,55 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
           <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;text-transform:none;letter-spacing:0;"><input type="radio" name="sale-currency" value="PLN" onchange="setCurrency(this.value)"> PLN (zł)</label>
         </div>
       </div>
-      <div class="form-group"><label>Payment Method</label>
+      <div class="form-group"><label>Payment Type</label>
+        <select id="field-payment-type" onchange="onPaymentTypeChange(this.value)">
+          <option value="simple">Simple (single payment)</option>
+          <option value="pending">Pending (payment not yet received)</option>
+          <option value="partial">Partial (part paid, part pending)</option>
+          <option value="mixed">Mixed (multiple payment methods)</option>
+        </select>
+      </div>
+      <!-- Simple payment -->
+      <div id="simple-payment-block" class="form-group">
+        <label>Payment Method</label>
         <select id="field-payment" onchange="toggleOtherPayment('field-payment','field-payment-other')">
           <option value="">— Select —</option>
           <option value="zelle">Zelle</option><option value="paypal">PayPal</option>
           <option value="wise">Wise</option><option value="cash">Cash</option>
-          <option value="gift">Gift</option>
-          <option value="other">Other...</option>
+          <option value="gift">Gift</option><option value="other">Other...</option>
         </select>
         <input type="text" id="field-payment-other" placeholder="Describe payment method…" style="display:none;margin-top:0.4rem;width:100%;padding:0.6rem 0.75rem;border:1px solid var(--border);background:var(--paper);font-family:'DM Mono',monospace;font-size:0.85rem;border-radius:2px;outline:none;">
+        <div class="form-group" style="margin-top:0.5rem;margin-bottom:0"><label id="amount-label">Amount Paid (USD $)</label>
+          <input type="number" id="field-amount" placeholder="0.00" min="0" step="0.01" value="40">
+        </div>
       </div>
-      <div class="form-group"><label id="amount-label">Amount Paid (USD $)</label>
-        <input type="number" id="field-amount" placeholder="0.00" min="0" step="0.01" value="40">
+      <!-- Pending payment -->
+      <div id="pending-payment-block" style="display:none" class="form-group">
+        <label>Amount Owed</label>
+        <input type="number" id="field-pending-total" placeholder="0.00" min="0" step="0.01" value="40">
+        <div class="form-group" style="margin-top:0.5rem;margin-bottom:0"><label>Customer Name (for follow-up)</label>
+          <input type="text" id="field-pending-name" placeholder="Name for follow-up">
+        </div>
+      </div>
+      <!-- Partial payment -->
+      <div id="partial-payment-block" style="display:none" class="form-group">
+        <label>Amount Paid Now</label>
+        <select id="field-partial-method" onchange="toggleOtherPayment('field-partial-method','field-partial-other')" style="margin-bottom:0.35rem">
+          <option value="">— Method —</option>
+          <option value="zelle">Zelle</option><option value="paypal">PayPal</option>
+          <option value="wise">Wise</option><option value="cash">Cash</option>
+          <option value="gift">Gift</option><option value="other">Other...</option>
+        </select>
+        <input type="text" id="field-partial-other" placeholder="Describe…" style="display:none;margin-bottom:0.35rem;width:100%;padding:0.5rem 0.6rem;border:1px solid var(--border);background:var(--paper);font-family:'DM Mono',monospace;font-size:0.85rem;border-radius:2px;outline:none;">
+        <input type="number" id="field-partial-paid" placeholder="Amount paid" min="0" step="0.01" style="margin-bottom:0.5rem">
+        <label>Amount Still Pending</label>
+        <input type="number" id="field-partial-pending" placeholder="Amount pending" min="0" step="0.01">
+      </div>
+      <!-- Mixed payment -->
+      <div id="mixed-payment-block" style="display:none" class="form-group">
+        <label>Payment Lines</label>
+        <div id="mixed-payment-lines"></div>
+        <button class="btn-add-payment" onclick="addMixedPaymentLine()">+ Add payment line</button>
       </div>
     </div>
     <div class="modal-footer">
@@ -416,10 +464,9 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
 //  DATA
 // ═══════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════
-//  CONFIGURATION — set your Apps Script Web App URL here
+//  CONFIGURATION
 // ═══════════════════════════════════════════════════════
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwKWT2joG8VTuAUPuKDtzh-_ojly5b1ft5fRACaAkCToSSbPw_F7iYFvMJVmwkfKnpS/exec';
-// ───────────────────────────────────────────────────────
 
 const INITIAL_BOOKS = [
   { id:'sri-radha-en',    name:'Sri Radha (English)',   priceUSD:40, priceEUR:35, pricePLN:150 },
@@ -432,40 +479,71 @@ const INITIAL_BOOKS = [
   { id:'govardhana-ru',   name:'Govardhana (Russian)',   priceUSD:40, priceEUR:35, pricePLN:150 },
   { id:'donation',        name:'Donation', lockStock:true, isDonation:true, priceUSD:0, priceEUR:0, pricePLN:0 },
 ];
-const DEFAULT_PRICES = { USD:40, EUR:35, PLN:150 };
+const DEFAULT_PRICES  = { USD:40, EUR:35, PLN:150 };
 const PAYMENT_METHODS = ['zelle','paypal','wise','cash','gift'];
-const CURRENCIES = ['USD','EUR','PLN'];
+const CURRENCIES      = ['USD','EUR','PLN'];
 
-// Load saved inventory, merging any new INITIAL_BOOKS entries
-// Sheet URL is embedded above as SHEET_URL constant
 let sheetUrl = SHEET_URL;
 
-// In-memory state — loaded from Google Sheets on startup
-let inventory    = INITIAL_BOOKS.map(b => ({ ...b, stock:0, initialStock:0 }));
-let sales        = [];
-let closingCounts= {};
+// ── Multi-city state ──
+// warehouse:  { inventory: [{...book, stock}] }
+// cities:     { CityName: { inventory, sales, closingCounts } }
+// activeCities: ['Warsaw', 'Gdansk', ...]
+// activeCity: currently selected city name
 
-// localStorage is used ONLY as a fallback cache when offline
-function loadCache() {
-  const cachedInv  = JSON.parse(localStorage.getItem('bsl_inventory') || 'null');
-  const cachedSales= JSON.parse(localStorage.getItem('bsl_sales')     || 'null');
-  const cachedClose= JSON.parse(localStorage.getItem('bsl_closing')   || 'null');
-  if (cachedInv) {
-    const savedIds  = new Set(cachedInv.map(b => b.id));
-    const newEntries= INITIAL_BOOKS.filter(b => !savedIds.has(b.id)).map(b => ({ ...b, stock:0, initialStock:0 }));
-    inventory = [...cachedInv, ...newEntries];
+let warehouse    = { inventory: INITIAL_BOOKS.map(b => ({ ...b, stock:0 })) };
+let cities       = {};
+let activeCities = [];
+let activeCity   = null;
+
+// Derived: current city's working state (mirrors cities[activeCity])
+let inventory     = [];
+let sales         = [];
+let closingCounts = {};
+
+function currentCityData() {
+  if (!activeCity || !cities[activeCity]) return null;
+  return cities[activeCity];
+}
+
+function setActiveCity(name) {
+  // Save current city state back before switching
+  if (activeCity && cities[activeCity]) {
+    cities[activeCity].inventory    = inventory;
+    cities[activeCity].sales        = sales;
+    cities[activeCity].closingCounts= closingCounts;
   }
-  if (cachedSales) sales         = cachedSales;
-  if (cachedClose) closingCounts = cachedClose;
+  activeCity = name;
+  if (name && cities[name]) {
+    const cd   = cities[name];
+    inventory     = cd.inventory    || [];
+    sales         = cd.sales        || [];
+    closingCounts = cd.closingCounts|| {};
+    // Merge INITIAL_BOOKS metadata (prices) into inventory
+    inventory = inventory.map(b => {
+      const meta = INITIAL_BOOKS.find(m => m.id === b.id) || {};
+      return { ...meta, ...b };
+    });
+  } else {
+    inventory = []; sales = []; closingCounts = {};
+  }
 }
 
 let activeBookId=null, editStockBookId=null, editSaleId=null, dragSrcId=null;
 
 function save() {
-  // Keep localStorage as an offline cache
-  localStorage.setItem('bsl_inventory', JSON.stringify(inventory));
-  localStorage.setItem('bsl_sales',     JSON.stringify(sales));
-  localStorage.setItem('bsl_closing',   JSON.stringify(closingCounts));
+  // Sync active city state back into cities map
+  if (activeCity) {
+    cities[activeCity] = { inventory, sales, closingCounts };
+  }
+  const fullState = { warehouse, cities, activeCities, activeCity };
+  localStorage.setItem('bsl_fullstate', JSON.stringify(fullState));
+}
+
+function pushFullState() {
+  save();
+  const fullState = { warehouse, cities, activeCities, activeCity };
+  sheetPost({ action:'setState', state: fullState }).catch(()=>{});
 }
 const getBook = id => inventory.find(b => b.id === id);
 const uid = () => Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -507,11 +585,12 @@ function renderInventory() {
                          && !!inventory.find(b => b.id === book.id+'-preorder');
     const isDisplayBook  = hasPreorderCat && book.stock === 1 && !book.soldOut;
     let badge = '';
-    if (book.isDonation)      badge = `<span class="low-badge" style="background:var(--gold);color:var(--ink)">open</span>`;
-    else if (isPreCat)        badge = `<span class="low-badge" style="background:var(--gold);color:var(--ink)">pre-order open</span>`;
-    else if (soldOut)         badge = `<span class="low-badge" style="background:#999">sold out</span>`;
-    else if (isDisplayBook)   badge = `<span class="low-badge" style="background:var(--sage);color:white">display book only</span>`;
-    else if (book.stock===1)  badge = `<span class="low-badge">1 left</span>`;
+    if (book.isDonation)       badge = `<span class="low-badge" style="background:var(--gold);color:var(--ink)">open</span>`;
+    else if (isPreCat)         badge = `<span class="low-badge" style="background:var(--gold);color:var(--ink)">pre-order open</span>`;
+    else if (soldOut)          badge = `<span class="low-badge" style="background:#999">sold out</span>`;
+    else if (isDisplayBook)    badge = `<span class="low-badge" style="background:var(--sage);color:white">display book only</span>`;
+    else if (book.stock===1)   badge = `<span class="low-badge">1 left</span>`;
+    else if (canStartPreorder) badge = `<button class="btn-start-preorder" onclick="startPreorderCategory('${book.id}')">+ Start Pre-Orders</button>`;
     const rowClass  = soldOut && !locked ? 'book-row sold-out-row' : isPreCat ? 'book-row preorder-row' : 'book-row';
     const nameClass = soldOut && !locked ? 'book-name sold-out' : 'book-name';
     const stockDisp = soldOut && !locked ? '&mdash;' : (book.isPreorderCategory ? (book.preorderCount||0) : book.stock);
@@ -561,15 +640,24 @@ function renderSales() {
 
   let html = '';
 
-  if (regularSales.length) {
-    html += `<div style="padding:0.4rem 1.25rem;background:var(--parchment);font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;opacity:0.65;border-bottom:1px solid var(--border);">Sales (${regularSales.length})</div>`;
-    html += [...regularSales].reverse().map(renderSaleEntry).join('');
+  const pendingSales  = regularSales.filter(s => s.pendingAmount > 0 || s.paymentType === 'pending');
+  const clearedSales  = regularSales.filter(s => !s.pendingAmount || s.pendingAmount <= 0);
+
+  if (clearedSales.length) {
+    html += `<div style="padding:0.4rem 1.25rem;background:var(--parchment);font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;opacity:0.65;border-bottom:1px solid var(--border);">Sales (${clearedSales.length})</div>`;
+    html += [...clearedSales].reverse().map(renderSaleEntry).join('');
+  }
+
+  if (pendingSales.length) {
+    html += `<div class="pending-section-header">&#9201; Pending Payments (${pendingSales.length})</div>`;
+    html += [...pendingSales].reverse().map(renderSaleEntry).join('');
   }
 
   if (preorderSales.length) {
     html += `<div style="padding:0.4rem 1.25rem;background:var(--ink);color:var(--gold-light);font-size:0.6rem;letter-spacing:0.15em;text-transform:uppercase;border-bottom:1px solid var(--border);">Pre-Orders (${preorderSales.length})</div>`;
     html += [...preorderSales].reverse().map(s => {
       const sym = s.currency==='EUR' ? '€' : s.currency==='PLN' ? 'zł' : '$';
+    const pendingTag = s.pendingAmount > 0 ? `<span class="pending-badge">&#9201; ${sym}${parseFloat(s.pendingAmount).toFixed(2)} pending</span>` : '';
       const name = s.customerName ? `<div class="sale-preorder-name">&#128100; ${s.customerName} &middot; ${s.customerPhone||'no phone'}</div>` : '';
       return `<div class="sale-entry" style="background:linear-gradient(90deg,rgba(184,134,11,0.05) 0%,transparent 100%);">
         <div><div class="sale-book">${s.bookName}</div>${name}</div>
@@ -709,6 +797,11 @@ function openSaleModal(bookId) {
   document.querySelector('input[name="sale-currency"][value="USD"]').checked = true;
   document.getElementById('amount-label').textContent = 'Amount Paid (USD $)';
   document.getElementById('field-amount').value = book.priceUSD !== undefined ? book.priceUSD : DEFAULT_PRICES.USD;
+  // Reset payment type to simple
+  document.getElementById('field-payment-type').value = 'simple';
+  onPaymentTypeChange('simple');
+  document.getElementById('mixed-payment-lines').innerHTML = '';
+  mixedLineCount = 0;
   document.getElementById('sale-modal').classList.add('active');
 }
 
@@ -725,15 +818,14 @@ function confirmSale() {
   if (!book) return;
   const isPreorder = !!book.isPreorderCategory;
   const isDonation = !!book.isDonation;
-  let payment = document.getElementById('field-payment').value;
-  if (payment==='other') {
-    const ov = document.getElementById('field-payment-other').value.trim();
-    if (!ov) { alert('Please describe the payment method.'); return; }
-    payment = ov;
-  }
-  const amount   = document.getElementById('field-amount').value;
-  const currency = document.querySelector('input[name="sale-currency"]:checked').value;
-  if (!payment || !amount) { alert('Please fill in payment method and amount.'); return; }
+  const payData = collectPaymentData();
+  if (!payData) return;
+  const payment  = payData.method;
+  const amount   = payData.amount;
+  const currency = payData.currency;
+  const pendingAmount = payData.pendingAmount || 0;
+  const paymentType   = payData.type;
+  const paymentLines  = payData.paymentLines || [];
   if (isPreorder || isDonation) {
     const name  = document.getElementById('field-name').value.trim();
     const phone = document.getElementById('field-phone').value.trim();
@@ -758,6 +850,24 @@ function confirmSale() {
   }
   save(); render(); closeModal('sale-modal');
   syncInventoryToSheet();
+}
+
+function startPreorderCategory(bookId) {
+  const book = getBook(bookId);
+  if (!book || book.stock !== 0) return;
+  if (inventory.find(b => b.id === book.id+'-preorder')) return;
+  // Manually create a pre-order category for a zero-stock book
+  book.soldOut = true;
+  const idx = inventory.indexOf(book);
+  inventory.splice(idx+1, 0, {
+    id: book.id+'-preorder', name: book.name+' — Pre-order',
+    stock:0, preorderCount:0, isPreorderCategory:true, isDonation:false,
+    parentId:book.id, initialStock:0,
+    priceUSD: book.priceUSD||DEFAULT_PRICES.USD,
+    priceEUR: book.priceEUR||DEFAULT_PRICES.EUR,
+    pricePLN: book.pricePLN||DEFAULT_PRICES.PLN,
+  });
+  save(); render(); syncInventoryToSheet();
 }
 
 function checkAndGeneratePreorder(book) {
@@ -968,6 +1078,23 @@ function openSetup() {
   ).join('');
   document.getElementById('setup-screen').classList.add('active');
 }
+function markPaid(saleId) {
+  const s = sales.find(x => x.id===saleId);
+  if (!s) return;
+  const cur = s.currency || 'USD';
+  const sym = cur==='EUR'?'€':cur==='PLN'?'zł':'$';
+  const pending = parseFloat(s.pendingAmount)||0;
+  const method = prompt(`Mark ${sym}${pending.toFixed(2)} as paid. Payment method received:`);
+  if (!method) return;
+  // Add remaining amount to paid total, clear pending
+  s.amount = (parseFloat(s.amount)||0) + pending;
+  s.pendingAmount = 0;
+  s.paymentType = 'simple';
+  s.payment = method.trim() || s.payment;
+  save(); render();
+  syncEditToSheet(s);
+}
+
 function closeSetup() { document.getElementById('setup-screen').classList.remove('active'); }
 function confirmSetup() {
   inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory).forEach(b => {
@@ -998,6 +1125,88 @@ function onDragEnd(e) { e.currentTarget.classList.remove('dragging'); document.q
 // ═══════════════════════════════════════════════════════
 //  HELPERS
 // ═══════════════════════════════════════════════════════
+// ── Payment type switching ──
+function onPaymentTypeChange(type) {
+  document.getElementById('simple-payment-block').style.display  = type==='simple'  ? 'block' : 'none';
+  document.getElementById('pending-payment-block').style.display = type==='pending' ? 'block' : 'none';
+  document.getElementById('partial-payment-block').style.display = type==='partial' ? 'block' : 'none';
+  document.getElementById('mixed-payment-block').style.display   = type==='mixed'   ? 'block' : 'none';
+}
+
+let mixedLineCount = 0;
+function addMixedPaymentLine() {
+  mixedLineCount++;
+  const n = mixedLineCount;
+  const div = document.createElement('div');
+  div.className = 'payment-type-row';
+  div.id = 'mixed-line-'+n;
+  div.innerHTML = `
+    <select id="mixed-method-${n}" style="padding:0.4rem;border:1px solid var(--border);background:var(--paper);font-family:'DM Mono',monospace;font-size:0.8rem;border-radius:2px;outline:none;">
+      <option value="zelle">Zelle</option><option value="paypal">PayPal</option>
+      <option value="wise">Wise</option><option value="cash">Cash</option>
+      <option value="gift">Gift</option><option value="other">Other</option>
+    </select>
+    <input type="number" id="mixed-amount-${n}" placeholder="0.00" min="0" step="0.01"
+      style="padding:0.4rem;border:1px solid var(--border);background:var(--paper);font-family:'DM Mono',monospace;font-size:0.85rem;border-radius:2px;outline:none;">
+    <button onclick="document.getElementById('mixed-line-${n}').remove()" style="background:none;border:none;cursor:pointer;color:var(--low-stock);font-size:0.9rem;">&#x2715;</button>`;
+  document.getElementById('mixed-payment-lines').appendChild(div);
+}
+
+// Collect payment data from the sale form
+function collectPaymentData() {
+  const type = document.getElementById('field-payment-type').value;
+  const cur  = document.querySelector('input[name="sale-currency"]:checked')?.value || 'USD';
+
+  if (type === 'simple') {
+    let method = document.getElementById('field-payment').value;
+    if (method === 'other') {
+      const ov = document.getElementById('field-payment-other').value.trim();
+      if (!ov) { alert('Please describe the payment method.'); return null; }
+      method = ov;
+    }
+    if (!method) { alert('Please select a payment method.'); return null; }
+    const amount = parseFloat(document.getElementById('field-amount').value);
+    if (isNaN(amount)) { alert('Please enter an amount.'); return null; }
+    return { type:'simple', method, amount, currency:cur, pendingAmount:0, paymentLines:[] };
+  }
+
+  if (type === 'pending') {
+    const total = parseFloat(document.getElementById('field-pending-total').value);
+    if (isNaN(total)) { alert('Please enter the amount owed.'); return null; }
+    const name = document.getElementById('field-pending-name').value.trim();
+    return { type:'pending', method:'Pending', amount:0, pendingAmount:total, currency:cur, paymentLines:[], pendingName:name };
+  }
+
+  if (type === 'partial') {
+    let method = document.getElementById('field-partial-method').value;
+    if (method === 'other') {
+      const ov = document.getElementById('field-partial-other').value.trim();
+      if (!ov) { alert('Please describe the payment method.'); return null; }
+      method = ov;
+    }
+    if (!method) { alert('Please select a payment method for the paid portion.'); return null; }
+    const paid    = parseFloat(document.getElementById('field-partial-paid').value)    || 0;
+    const pending = parseFloat(document.getElementById('field-partial-pending').value) || 0;
+    if (paid <= 0 && pending <= 0) { alert('Please enter paid and/or pending amounts.'); return null; }
+    return { type:'partial', method, amount:paid, pendingAmount:pending, currency:cur, paymentLines:[] };
+  }
+
+  if (type === 'mixed') {
+    const lines = [];
+    const lineEls = document.getElementById('mixed-payment-lines').querySelectorAll('[id^="mixed-line-"]');
+    let total = 0;
+    lineEls.forEach(el => {
+      const n = el.id.replace('mixed-line-','');
+      const method = document.getElementById('mixed-method-'+n)?.value;
+      const amount = parseFloat(document.getElementById('mixed-amount-'+n)?.value) || 0;
+      if (method && amount > 0) { lines.push({method, amount}); total+=amount; }
+    });
+    if (!lines.length) { alert('Please add at least one payment line.'); return null; }
+    return { type:'mixed', method:'Mixed', amount:total, pendingAmount:0, currency:cur, paymentLines:lines };
+  }
+  return null;
+}
+
 function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 function toggleOtherPayment(selId,inpId) {
   const sel=document.getElementById(selId), inp=document.getElementById(inpId);
@@ -1050,44 +1259,49 @@ function loadFromSheet() {
         applySheetState(data.state);
         setSyncStatus('ok', 'Loaded ✓');
       } else {
-        // Sheet has no state yet — show setup screen
+        // Sheet has no state yet — load local cache if any
+        loadCache();
         setSyncStatus('ok', 'Ready');
-        const hasAny = inventory.some(b => !b.isDonation && !b.lockStock && b.stock > 0);
-        if (!hasAny) openSetup();
       }
       document.getElementById('btn-reload').style.display = 'inline-block';
+      updateCitySelector();
       render();
+      // If no city selected, prompt to set up warehouse first
+      if (!activeCity) showNoCityMessage();
     })
     .catch(() => {
       setSyncStatus('err', 'Offline — using local cache');
       loadCache();
       document.getElementById('btn-reload').style.display = 'inline-block';
+      updateCitySelector();
       render();
     });
 }
 
+function showNoCityMessage() {
+  const el = document.getElementById('inventory-list');
+  if (el) el.innerHTML = `<div style="padding:1.5rem;text-align:center;">
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--rust);margin-bottom:0.75rem;">
+      No city selected. Use <strong>+ New City</strong> to create one,<br>
+      then <strong>&#x2192; Transfer</strong> books from the warehouse.
+    </div>
+    <div style="font-size:0.7rem;opacity:0.5;margin-top:0.5rem;">Set up your warehouse inventory first using &#x1F3E0; Warehouse</div>
+  </div>`;
+}
+
 function applySheetState(state) {
-  // Merge sheet inventory with INITIAL_BOOKS (preserve prices/metadata from code)
-  if (state.inventory && state.inventory.length) {
-    const sheetIds = new Set(state.inventory.map(b => b.id));
-    const newEntries = INITIAL_BOOKS
-      .filter(b => !sheetIds.has(b.id))
-      .map(b => ({ ...b, stock:0, initialStock:0 }));
-    // Merge code-side metadata (prices) with sheet-side state (stock, sales)
-    inventory = [
-      ...state.inventory.map(sheetBook => {
-        const codeMeta = INITIAL_BOOKS.find(b => b.id === sheetBook.id) || {};
-        return { ...codeMeta, ...sheetBook };
-      }),
-      ...newEntries
-    ];
+  if (!state) return;
+  // Handle both old single-city state and new multi-city state
+  if (state.cities !== undefined) {
+    // New multi-city format
+    applyFullState(state);
+  } else if (state.inventory !== undefined) {
+    // Legacy single-city state — migrate to warehouse
+    warehouse = { inventory: state.inventory.map(b => ({ ...b })) };
+    cities    = {};
+    activeCities = [];
   }
-  if (state.sales)         sales         = state.sales;
-  if (state.closingCounts) closingCounts = state.closingCounts;
-  // Update local cache
-  localStorage.setItem('bsl_inventory', JSON.stringify(inventory));
-  localStorage.setItem('bsl_sales',     JSON.stringify(sales));
-  localStorage.setItem('bsl_closing',   JSON.stringify(closingCounts));
+  localStorage.setItem('bsl_fullstate', JSON.stringify({ warehouse, cities, activeCities, activeCity }));
 }
 
 // Fetch that actually reads the response (uses CORS-friendly GET, reads JSON)
@@ -1116,41 +1330,44 @@ function sheetPost(data) {
 function syncSaleToSheet(sale) {
   if (!sheetUrl) return;
   setSyncStatus('pending','Syncing…');
-  sheetGet({action:'sale',...sale}).then(()=>setSyncStatus('ok','Synced ✓')).catch(()=>setSyncStatus('err','Sync failed'));
+  sheetGet({action:'sale', city:activeCity, ...sale})
+    .then(()=>setSyncStatus('ok','Synced ✓'))
+    .catch(()=>setSyncStatus('err','Sync failed'));
 }
 function syncDeleteToSheet(id) {
   if (!sheetUrl) return;
   setSyncStatus('pending','Deleting…');
-  sheetGet({action:'delete',id}).then(()=>setSyncStatus('ok','Deleted ✓')).catch(()=>setSyncStatus('err','Delete sync failed'));
+  sheetGet({action:'delete', id, city:activeCity})
+    .then(()=>setSyncStatus('ok','Deleted ✓'))
+    .catch(()=>setSyncStatus('err','Delete sync failed'));
 }
 function syncEditToSheet(sale) {
   if (!sheetUrl) return;
-  sheetGet({action:'edit',...sale}).then(()=>setSyncStatus('ok','Synced ✓')).catch(()=>{});
+  sheetGet({action:'edit', city:activeCity, ...sale})
+    .then(()=>setSyncStatus('ok','Synced ✓'))
+    .catch(()=>{});
 }
 function syncInventoryToSheet() {
-  if (!sheetUrl) return;
-  const inv = inventory.map(b => {
-    if (b.isPreorderCategory) {
-      const cnt = b.preorderCount||0;
-      return [b.name, 0, cnt, cnt, 0, 1];
-    }
-    const pc      = inventory.find(c => c.parentId===b.id);
-    const sold    = sales.filter(s => (s.bookId===b.id||(pc&&s.bookId===pc.id))&&!s.isPreorder).length;
-    const isDisp  = !!pc && b.stock===1 && !b.soldOut;
-    const soVal   = isDisp ? 2 : b.soldOut ? 1 : 0;
-    return [b.name, b.initialStock||0, b.stock, sold, soVal, 0];
-  });
-  // Push compact display inventory
-  sheetPost({action:'inventory', inv}).catch(()=>{});
-  // Also push full state so other browsers can sync
+  if (!sheetUrl || !activeCity) return;
+  // Save current city into cities map
+  cities[activeCity] = { inventory, sales, closingCounts };
+  // Push city state to sheet
   sheetPost({
-    action: 'setState',
-    state: {
-      inventory: inventory,
-      sales:     sales,
-      closingCounts: closingCounts
-    }
+    action: 'syncCity',
+    city: activeCity,
+    cityState: cities[activeCity]
   }).catch(()=>{});
+  // Push full state for cross-browser sync
+  pushFullState();
+}
+
+function syncWarehouseToSheet() {
+  if (!sheetUrl) return;
+  sheetPost({
+    action: 'syncWarehouse',
+    warehouseInventory: warehouse.inventory
+  }).catch(()=>{});
+  pushFullState();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1247,10 +1464,236 @@ function downloadCSV() {
 // ═══════════════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+//  CITY MANAGEMENT UI
+// ═══════════════════════════════════════════════════════
+
+function updateCitySelector() {
+  const sel = document.getElementById('city-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— Select or create city —</option>' +
+    activeCities.map(c => `<option value="${c}" ${c===activeCity?'selected':''}>${c}</option>`).join('');
+}
+
+function onCityChange(name) {
+  if (!name) return;
+  setActiveCity(name);
+  render();
+}
+
+function openNewCityModal() {
+  document.getElementById('new-city-name').value = '';
+  document.getElementById('new-city-modal').classList.add('active');
+}
+
+function confirmNewCity() {
+  const name = document.getElementById('new-city-name').value.trim();
+  if (!name) { alert('Please enter a city or event name.'); return; }
+  if (cities[name]) { alert('A city with that name already exists.'); return; }
+  cities[name]   = { inventory:[], sales:[], closingCounts:{} };
+  activeCities.push(name);
+  setActiveCity(name);
+  updateCitySelector();
+  closeModal('new-city-modal');
+  pushFullState();
+  // Create sheets on backend
+  sheetGet({ action:'createCity', city:name }).catch(()=>{});
+  render();
+  // Show transfer modal so they can immediately transfer books
+  setTimeout(() => openTransferModal(), 200);
+}
+
+// ── Warehouse modal ──
+function openWarehouseModal() {
+  const fields = document.getElementById('warehouse-fields');
+  fields.innerHTML = warehouse.inventory
+    .filter(b => !b.isDonation && !b.lockStock)
+    .map(b => `
+      <label>${b.name} <span>stock: ${b.stock}</span></label>
+      <input type="number" min="0" step="1" id="wh-${b.id}" value="${b.stock}">
+    `).join('');
+  document.getElementById('warehouse-modal').classList.add('active');
+}
+
+function confirmWarehouseEdit() {
+  warehouse.inventory.filter(b => !b.isDonation && !b.lockStock).forEach(b => {
+    const inp = document.getElementById('wh-'+b.id);
+    if (inp) b.stock = Math.max(0, parseInt(inp.value)||0);
+  });
+  closeModal('warehouse-modal');
+  syncWarehouseToSheet();
+}
+
+// ── Transfer modal ──
+function openTransferModal() {
+  if (!activeCity) { alert('Please select or create a city first.'); return; }
+  document.getElementById('transfer-modal-title').textContent = 'Transfer to ' + activeCity;
+  const fields = document.getElementById('transfer-fields');
+  fields.innerHTML = warehouse.inventory
+    .filter(b => !b.isDonation && !b.lockStock)
+    .map(b => `
+      <label>${b.name} <span class="warehouse-stock-badge">&#x1F3E0; ${b.stock} available</span></label>
+      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" max="${b.stock}">
+    `).join('');
+  document.getElementById('transfer-modal').classList.add('active');
+}
+
+function confirmTransfer() {
+  if (!activeCity) return;
+  const transfers = [];
+  warehouse.inventory.filter(b => !b.isDonation && !b.lockStock).forEach(b => {
+    const inp = document.getElementById('tr-'+b.id);
+    const qty = Math.max(0, parseInt(inp?.value)||0);
+    if (qty > 0) transfers.push({ ...b, qty });
+  });
+  if (!transfers.length) { alert('Please enter at least one quantity to transfer.'); return; }
+  // Apply locally
+  transfers.forEach(t => {
+    const wBook = warehouse.inventory.find(b => b.id===t.id);
+    if (wBook) {
+      if (wBook.stock < t.qty) { alert('Not enough warehouse stock for: '+t.name); return; }
+      wBook.stock -= t.qty;
+    }
+    // Add to city
+    if (!cities[activeCity]) cities[activeCity] = { inventory:[], sales:[], closingCounts:{} };
+    const cityInv = cities[activeCity].inventory;
+    let cBook = cityInv.find(b => b.id===t.id);
+    if (cBook) {
+      cBook.stock += t.qty;
+      cBook.initialStock = (cBook.initialStock||0) + t.qty;
+    } else {
+      const meta = INITIAL_BOOKS.find(m => m.id===t.id) || {};
+      cityInv.push({ ...meta, ...t, stock:t.qty, initialStock:t.qty });
+    }
+  });
+  // Refresh active city view
+  setActiveCity(activeCity);
+  closeModal('transfer-modal');
+  pushFullState();
+  sheetPost({ action:'transferToCity', city:activeCity, transfers }).catch(()=>{});
+  render();
+}
+
+// ── Return to warehouse modal ──
+function openReturnModal() {
+  if (!activeCity) { alert('Please select a city first.'); return; }
+  const fields = document.getElementById('return-fields');
+  const baseBooks = inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory);
+  if (!baseBooks.length) { alert('No books in city inventory to return.'); return; }
+  fields.innerHTML = baseBooks.map(b => `
+    <label>${b.name} <span class="warehouse-stock-badge">city: ${b.stock} remaining</span></label>
+    <input type="number" min="0" step="1" id="ret-${b.id}" value="${b.stock}" max="${b.stock}">
+  `).join('');
+  document.getElementById('return-modal').classList.add('active');
+}
+
+function confirmReturn() {
+  if (!activeCity) return;
+  const returns = [];
+  inventory.filter(b => !b.isDonation && !b.lockStock && !b.isPreorderCategory).forEach(b => {
+    const inp = document.getElementById('ret-'+b.id);
+    const qty = Math.max(0, parseInt(inp?.value)||0);
+    if (qty > 0) returns.push({ id:b.id, qty });
+  });
+  if (!returns.length) { closeModal('return-modal'); return; }
+  returns.forEach(r => {
+    const cBook = inventory.find(b => b.id===r.id);
+    if (cBook) {
+      const qty = Math.min(r.qty, cBook.stock);
+      cBook.stock -= qty;
+      const wBook = warehouse.inventory.find(b => b.id===r.id);
+      if (wBook) wBook.stock += qty;
+    }
+  });
+  cities[activeCity].inventory = inventory;
+  closeModal('return-modal');
+  pushFullState();
+  sheetPost({ action:'returnToWarehouse', city:activeCity, returns }).catch(()=>{});
+  render();
+}
+
+// ── Guard: no city selected ──
+// Wrap existing openSaleModal to check for active city
+const _origOpenSaleModal = openSaleModal;
+// (openSaleModal is already defined above — we patch save/render to check city)
+
 // Load state from Google Sheets on startup
-// Falls back to localStorage cache if offline or no URL configured
 loadFromSheet();
 setTimeout(syncHeights, 150);
 </script>
+
+<!-- New City Modal -->
+<div class="modal-overlay" id="new-city-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div><div>Create New City / Event</div><div class="modal-subtitle">Name this location or festival</div></div>
+      <button class="close-btn" onclick="closeModal('new-city-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label>City / Event Name</label>
+        <input type="text" id="new-city-name" placeholder="e.g. Warsaw, Gdansk Festival…">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('new-city-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmNewCity()">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Warehouse Modal -->
+<div class="modal-overlay" id="warehouse-modal">
+  <div class="modal" style="width:min(560px,95vw)">
+    <div class="modal-header">
+      <div><div>&#x1F3E0; Warehouse Inventory</div><div class="modal-subtitle">Master stock for this region</div></div>
+      <button class="close-btn" onclick="closeModal('warehouse-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.72rem;opacity:0.65;margin-bottom:1rem;line-height:1.5;">This is the permanent master inventory. Edit quantities to reflect current warehouse stock. Changes sync to Google Sheets.</p>
+      <div class="transfer-grid" id="warehouse-fields"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('warehouse-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmWarehouseEdit()">Save Warehouse</button>
+    </div>
+  </div>
+</div>
+
+<!-- Transfer to City Modal -->
+<div class="modal-overlay" id="transfer-modal">
+  <div class="modal" style="width:min(560px,95vw)">
+    <div class="modal-header">
+      <div><div id="transfer-modal-title">Transfer to City</div><div class="modal-subtitle">Enter quantities to move from warehouse</div></div>
+      <button class="close-btn" onclick="closeModal('transfer-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.72rem;opacity:0.65;margin-bottom:1rem;line-height:1.5;">These quantities will be deducted from the warehouse and added to the city's starting inventory.</p>
+      <div class="transfer-grid" id="transfer-fields"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('transfer-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmTransfer()">Transfer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Return to Warehouse Modal -->
+<div class="modal-overlay" id="return-modal">
+  <div class="modal" style="width:min(560px,95vw)">
+    <div class="modal-header">
+      <div><div>Return to Warehouse</div><div class="modal-subtitle">Move unsold books back to warehouse</div></div>
+      <button class="close-btn" onclick="closeModal('return-modal')">&#x2715;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:0.72rem;opacity:0.65;margin-bottom:1rem;line-height:1.5;">Enter quantities to return. City inventory will decrease, warehouse will increase.</p>
+      <div class="transfer-grid" id="return-fields"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeModal('return-modal')">Cancel</button>
+      <button class="btn-confirm" onclick="confirmReturn()">Return to Warehouse</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
