@@ -226,6 +226,7 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
 <div class="totals-bar">
   <div class="total-item"><span class="label">Books Sold</span><span class="value" id="total-sold">0</span></div>
   <div class="total-item"><span class="label">Pre-Orders</span><span class="value" id="total-preorders">0</span></div>
+  <div class="total-item"><span class="label">Grand Total</span><span class="value" id="total-grand">0</span></div>
   <div class="total-item">
     <span class="label">Total (USD equiv.)</span>
     <span class="value" id="total-funds">$0.00</span>
@@ -282,10 +283,10 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
         <div class="form-group"><label>Phone Number</label><input type="tel" id="field-phone" placeholder="555-123-4567"></div>
       </div>
       <div class="form-group"><label>Currency</label>
-        <div style="display:flex;gap:0.75rem;">
-          <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;text-transform:none;letter-spacing:0;"><input type="radio" name="sale-currency" value="USD" checked onchange="setCurrency(this.value)"> USD ($)</label>
-          <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;text-transform:none;letter-spacing:0;"><input type="radio" name="sale-currency" value="EUR" onchange="setCurrency(this.value)"> EUR (€)</label>
-          <label style="display:flex;align-items:center;gap:0.35rem;cursor:pointer;font-size:0.85rem;text-transform:none;letter-spacing:0;"><input type="radio" name="sale-currency" value="PLN" onchange="setCurrency(this.value)"> PLN (zł)</label>
+        <div class="radio-currency-group">
+          <label class="radio-currency-opt"><input type="radio" name="sale-currency" value="USD" checked onchange="setCurrency(this.value)"> USD ($)</label>
+          <label class="radio-currency-opt"><input type="radio" name="sale-currency" value="EUR" onchange="setCurrency(this.value)"> EUR (€)</label>
+          <label class="radio-currency-opt"><input type="radio" name="sale-currency" value="PLN" onchange="setCurrency(this.value)"> PLN (zł)</label>
         </div>
       </div>
       <div class="form-group"><label>Payment Type</label>
@@ -469,15 +470,16 @@ header p { font-size: 0.7rem; letter-spacing: 0.18em; opacity: 0.55; margin-top:
 const SHEET_URL = 'https://script.google.com/macros/s/AKfycbwKWT2joG8VTuAUPuKDtzh-_ojly5b1ft5fRACaAkCToSSbPw_F7iYFvMJVmwkfKnpS/exec';
 
 const INITIAL_BOOKS = [
-  { id:'sri-radha-en',    name:'Sri Radha (English)',   priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'western-en',      name:'Western (English)',      priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'eastern-en',      name:'Eastern (English)',      priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'govardhana-en',   name:'Govardhana (English)',   priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'sri-radha-ru',    name:'Sri Radha (Russian)',    priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'western-ru',      name:'Western (Russian)',      priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'eastern-ru',      name:'Eastern (Russian)',      priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'govardhana-ru',   name:'Govardhana (Russian)',   priceUSD:40, priceEUR:35, pricePLN:150 },
-  { id:'donation',        name:'Donation', lockStock:true, isDonation:true, priceUSD:0, priceEUR:0, pricePLN:0 },
+  { id:'sri-radha-en',  name:'Sri Radha (English)',  priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'western-en',    name:'Western (English)',    priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'eastern-en',    name:'Eastern (English)',    priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'govardhana-en', name:'Govardhana (English)', priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'sri-radha-ru',  name:'Sri Radha (Russian)',  priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'western-ru',    name:'Western (Russian)',    priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'eastern-ru',    name:'Eastern (Russian)',    priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'govardhana-ru', name:'Govardhana (Russian)', priceUSD:40, priceEUR:35, pricePLN:150 },
+  { id:'adventures',    name:'Adventures',           priceUSD:15, priceEUR:13, pricePLN:60  },
+  { id:'donation',      name:'Donation', lockStock:true, isDonation:true, priceUSD:0, priceEUR:0, pricePLN:0 },
 ];
 const DEFAULT_PRICES  = { USD:40, EUR:35, PLN:150 };
 const PAYMENT_METHODS = ['zelle','paypal','wise','cash','gift'];
@@ -602,11 +604,12 @@ function renderInventory() {
     return `<div class="${rowClass}" draggable="true" data-id="${book.id}"
         ondragstart="onDragStart(event,'${book.id}')" ondragover="onDragOver(event)"
         ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${book.id}')" ondragend="onDragEnd(event)">
-      <div style="display:flex;align-items:center;gap:0.4rem;min-width:0;">
+      <div style="display:flex;align-items:center;gap:0.4rem;min-width:0;flex:1;overflow:hidden;">
         <span class="drag-handle" title="Drag to reorder">&#9776;</span>
-        <div><span class="${nameClass}" ${clickable ? `onclick="openSaleModal('${book.id}')"` : ''}>${book.name}</span> ${badge}</div>
+        <span class="${nameClass}" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" ${clickable ? `onclick="openSaleModal('${book.id}')"` : ''}>${book.name}</span>
+        <span style="flex-shrink:0;">${badge}</span>
       </div>
-      <div class="stock-display">
+      <div class="stock-display" style="flex-shrink:0;">
         <span class="stock-num ${stockCls}">${stockDisp}</span>${editBtns}
       </div>
     </div>`;
@@ -693,6 +696,7 @@ function renderTotals() {
     .join(' · ');
   document.getElementById('total-sold').textContent      = sold;
   document.getElementById('total-preorders').textContent = preorders;
+  document.getElementById('total-grand').textContent     = sold + preorders;
   document.getElementById('total-funds').textContent     = '$' + totalUSD.toFixed(2);
   document.getElementById('total-currency-breakdown').textContent = breakdown;
   document.getElementById('total-remaining').textContent = remaining;
@@ -856,7 +860,6 @@ function startPreorderCategory(bookId) {
   const book = getBook(bookId);
   if (!book || book.stock !== 0) return;
   if (inventory.find(b => b.id === book.id+'-preorder')) return;
-  // Manually create a pre-order category for a zero-stock book
   book.soldOut = true;
   const idx = inventory.indexOf(book);
   inventory.splice(idx+1, 0, {
@@ -874,7 +877,6 @@ function checkAndGeneratePreorder(book) {
   if (book.lockStock || book.isDonation || book.isPreorderCategory || book.soldOut) return;
   if (inventory.find(b => b.id === book.id+'-preorder')) return;
   // Keep book at stock=1 (display book). Don't mark soldOut yet.
-  // soldOut is set only when the last copy is actually sold.
   const idx = inventory.indexOf(book);
   inventory.splice(idx+1, 0, {
     id: book.id+'-preorder', name: book.name+' — Pre-order',
