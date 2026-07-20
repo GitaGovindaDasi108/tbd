@@ -1319,93 +1319,47 @@ function setSyncStatus(type, msg) {
 // ── Load full state from Google Sheets on startup ──────────
 function loadFromSheet() {
   if (!sheetUrl || sheetUrl === 'YOUR_APPS_SCRIPT_URL_HERE') {
-    console.warn('No sheet URL configured.');
-    const _cached = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
-    if (_cached) applySheetState(_cached);
+    const _c = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+    if (_c) applySheetState(_c);
     render(); return;
   }
   setSyncStatus('pending', 'Connecting…');
   document.getElementById('btn-reload').style.display = 'none';
 
-  // Try POST first (avoids CORS redirect issue)
   fetch(sheetUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify({ action: 'getState' })
   })
-  .then(r => {
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    return r.json();
-  })
+  .then(r => r.json())
   .then(data => {
-    console.log('POST getState response:', JSON.stringify(data).slice(0,200));
-    handleStateResponse(data);
-  })
-  .catch(err => {
-    console.warn('POST failed:', err.message, '— trying GET…');
-    // Fallback: try GET with no-cors (fires but can't read response)
-    // Instead try fetch with mode omitted on the redirect URL
-    return fetch(sheetUrl + '?payload=' + encodeURIComponent(JSON.stringify({action:'getState'})), {
-      method: 'GET',
-      mode: 'cors',
-      credentials: 'omit'
-    })
-    .then(r => r.json())
-    .then(data => {
-      console.log('GET getState response:', JSON.stringify(data).slice(0,200));
-      handleStateResponse(data);
-    })
-    .catch(err2 => {
-      console.error('Both GET and POST failed:', err2.message);
-      setSyncStatus('err', 'Offline — ' + err2.message.slice(0,40));
+    if (data && data.ok && data.state) {
+      applySheetState(data.state);
+    } else {
+      // Sheet empty — use local cache
       const _c = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
       if (_c) applySheetState(_c);
-      document.getElementById('btn-reload').style.display = 'inline-block';
-      updateCitySelector();
-      render();
-      if (!activeCity) showNoCityMessage();
-    });
+    }
+    setSyncStatus('ok', 'Connected ✓');
+    document.getElementById('btn-reload').style.display = 'inline-block';
+    const urlCity = new URLSearchParams(window.location.search).get('city');
+    if (urlCity && activeCities.includes(urlCity)) setActiveCity(urlCity);
+    updateCitySelector();
+    render();
+    if (!activeCity) showNoCityMessage();
+  })
+  .catch(err => {
+    setSyncStatus('err', 'Offline — check connection');
+    const _c = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
+    if (_c) applySheetState(_c);
+    document.getElementById('btn-reload').style.display = 'inline-block';
+    updateCitySelector();
+    render();
+    if (!activeCity) showNoCityMessage();
   });
 }
 
-function handleStateResponse(data) {
-  if (data && data.ok && data.state) {
-    applySheetState(data.state);
-    setSyncStatus('ok', 'Connected ✓');
-  } else if (data && data.ok && !data.state) {
-    // Sheet is empty — fresh start. Try local cache but don't overwrite status.
-    const _cached = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
-    if (_cached) applySheetState(_cached);
-    setSyncStatus('ok', 'Connected ✓');
-  } else {
-    const _cached2 = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
-    if (_cached2) applySheetState(_cached2);
-    setSyncStatus('err', data && data.error ? data.error.slice(0,50) : 'Unknown error');
-  }
-  document.getElementById('btn-reload').style.display = 'inline-block';
-  const urlCity = new URLSearchParams(window.location.search).get('city');
-  if (urlCity && activeCities.includes(urlCity)) {
-    setActiveCity(urlCity);
-  }
-  updateCitySelector();
-  render();
-  if (!activeCity) showNoCityMessage();
-}
 
-
-function showNoCityMessage() {
-  const el = document.getElementById('inventory-list');
-  if (el) el.innerHTML = `<div style="padding:1.5rem;text-align:center;">
-    <div style="font-family:'Cormorant Garamond',serif;font-size:1.1rem;color:var(--rust);margin-bottom:0.75rem;">
-      No city selected.
-    </div>
-    <div style="font-size:0.75rem;opacity:0.65;margin-top:0.5rem;line-height:1.7;">
-      1. Use <strong>&#x1F3E0; Warehouse</strong> to set your master stock<br>
-      2. Use <strong>+ New City</strong> to create an event<br>
-      3. Transfer books via the transfer prompt that appears
-    </div>
-  </div>`;
-}
 
 function applySheetState(state) {
   if (!state) return;
@@ -1625,14 +1579,20 @@ function confirmNewCity() {
   const name = document.getElementById('new-city-name').value.trim();
   if (!name) { alert('Please enter a city or event name.'); return; }
   if (cities[name]) { alert('A city with that name already exists.'); return; }
-  cities[name]   = { inventory:[], sales:[], closingCounts:{} };
+  // Create the city
+  cities[name]     = { inventory:[], sales:[], closingCounts:{} };
   activeCities.push(name);
-  setActiveCity(name);
+  activeCity = name;         // set directly — no save-back of empty state
+  inventory     = [];
+  sales         = [];
+  closingCounts = {};
   updateCitySelector();
   closeModal('new-city-modal');
   pushFullState();
   sheetGet({ action:'createCity', city:name }).catch(()=>{});
   render();
+  // Show the transfer modal immediately so user can add books
+  setTimeout(() => openTransferModal(), 300);
 }
 
 function getCityUrl(cityName) {
@@ -1699,42 +1659,54 @@ function openTransferModal() {
 
 function confirmTransfer() {
   if (!activeCity) return;
+  const city = activeCity;
+
+  // Collect quantities from form
   const transfers = [];
-  warehouse.inventory.filter(b => !b.isDonation && !b.lockStock).forEach(b => {
-    const inp = document.getElementById('tr-'+b.id);
+  BASE_BOOK_IDS.forEach(id => {
+    const inp = document.getElementById('tr-'+id);
     const qty = Math.max(0, parseInt(inp?.value)||0);
-    if (qty > 0) transfers.push({ ...b, qty });
+    if (qty > 0) {
+      const wBook = warehouse.inventory.find(b => b.id===id);
+      if (!wBook) return;
+      if (wBook.stock < qty) { alert('Not enough warehouse stock for: '+wBook.name); return; }
+      transfers.push({ id, qty, wBook });
+    }
   });
+
   if (!transfers.length) { alert('Please enter at least one quantity to transfer.'); return; }
-  // Apply locally
-  transfers.forEach(t => {
-    const wBook = warehouse.inventory.find(b => b.id===t.id);
-    if (wBook) {
-      if (wBook.stock < t.qty) { alert('Not enough warehouse stock for: '+t.name); return; }
-      wBook.stock -= t.qty;
-    }
+
+  // Apply to warehouse and city inventory
+  if (!cities[city]) cities[city] = { inventory:[], sales:[], closingCounts:{} };
+
+  transfers.forEach(({ id, qty, wBook }) => {
+    // Deduct from warehouse
+    wBook.stock -= qty;
+
     // Add to city
-    if (!cities[activeCity]) cities[activeCity] = { inventory:[], sales:[], closingCounts:{} };
-    const cityInv = cities[activeCity].inventory;
-    let cBook = cityInv.find(b => b.id===t.id);
+    const cityInv = cities[city].inventory;
+    const meta    = INITIAL_BOOKS.find(m => m.id===id) || {};
+    let cBook     = cityInv.find(b => b.id===id);
     if (cBook) {
-      cBook.stock += t.qty;
-      cBook.initialStock = (cBook.initialStock||0) + t.qty;
+      cBook.stock        += qty;
+      cBook.initialStock  = (cBook.initialStock||0) + qty;
     } else {
-      const meta = INITIAL_BOOKS.find(m => m.id===t.id) || {};
-      cityInv.push({ ...meta, ...t, stock:t.qty, initialStock:t.qty });
+      cityInv.push({ ...meta, id, stock:qty, initialStock:qty });
     }
   });
-  // Sync cities map back to the live inventory variable
-  cities[activeCity].inventory = cities[activeCity].inventory;
-  // Re-run setActiveCity to pull the updated inventory into the live variable
-  const _city = activeCity;
-  activeCity = null;           // force setActiveCity to reload
-  setActiveCity(_city);
+
+  // Refresh the live inventory variable from the updated city
+  inventory     = cities[city].inventory.map(b => {
+    const meta = INITIAL_BOOKS.find(m => m.id===b.id) || {};
+    return { ...meta, ...b };
+  });
+  sales         = cities[city].sales         || [];
+  closingCounts = cities[city].closingCounts || {};
+
   closeModal('transfer-modal');
   save();
   pushFullState();
-  sheetPost({ action:'transferToCity', city:_city, transfers }).catch(()=>{});
+  sheetPost({ action:'transferToCity', city, transfers: transfers.map(t=>({id:t.id,qty:t.qty})) }).catch(()=>{});
   render();
 }
 
