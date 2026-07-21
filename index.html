@@ -1658,72 +1658,71 @@ function openTransferModal() {
   fields.innerHTML = books.map(b => `
     <div class="setup-row">
       <label>${b.name} <span class="warehouse-stock-badge" style="font-family:'DM Mono',monospace;font-size:0.65rem;opacity:0.6;font-weight:400;">&#x1F3E0; ${b.stock} avail.</span></label>
-      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" max="${b.stock}" class="setup-row-input">
+      <input type="number" min="0" step="1" id="tr-${b.id}" value="0" class="setup-row-input">
     </div>
   `).join('');
   document.getElementById('transfer-modal').classList.add('active');
 }
 
 function confirmTransfer() {
-  if (!activeCity) return;
+  if (!activeCity) { alert('Please select a city first.'); return; }
   const city = activeCity;
 
-  // 1. Validate — collect all transfers first, check for errors
+  // Collect what the user entered
   const transfers = [];
-  let error = null;
   for (const id of BASE_BOOK_IDS) {
     const inp = document.getElementById('tr-' + id);
-    const qty = Math.max(0, parseInt(inp ? inp.value : '0') || 0);
-    if (qty === 0) continue;
-    const wBook = warehouse.inventory.find(b => b.id === id);
-    if (!wBook) continue;
-    if (wBook.stock < qty) {
-      error = 'Not enough warehouse stock for: ' + wBook.name +
-              ' (have ' + wBook.stock + ', requested ' + qty + ')';
-      break;
-    }
-    transfers.push({ id, qty, name: wBook.name });
+    if (!inp) continue;
+    const qty = Math.max(0, parseInt(inp.value) || 0);
+    if (qty > 0) transfers.push({ id, qty });
   }
 
-  if (error) { alert(error); return; }
-  if (!transfers.length) { alert('Please enter at least one quantity to transfer.'); return; }
+  if (!transfers.length) {
+    alert('Please enter at least one quantity to transfer.');
+    return;
+  }
 
-  // 2. Apply: deduct from warehouse, add to city
-  if (!cities[city]) cities[city] = { inventory:[], sales:[], closingCounts:{} };
-  const cityInv = cities[city].inventory;
+  // Make sure city exists
+  if (!cities[city]) {
+    cities[city] = { inventory: [], sales: [], closingCounts: {} };
+  }
 
+  // Apply each transfer
   transfers.forEach(({ id, qty }) => {
-    // Deduct from warehouse
-    const wBook = warehouse.inventory.find(b => b.id === id);
-    if (wBook) wBook.stock -= qty;
+    const meta = INITIAL_BOOKS.find(m => m.id === id) || {};
 
-    // Add to city inventory
-    const meta  = INITIAL_BOOKS.find(m => m.id === id) || {};
-    let cBook   = cityInv.find(b => b.id === id);
-    if (cBook) {
-      cBook.stock       += qty;
-      cBook.initialStock = (cBook.initialStock || 0) + qty;
+    // Deduct from warehouse (don't go below 0)
+    const wBook = warehouse.inventory.find(b => b.id === id);
+    if (wBook) wBook.stock = Math.max(0, wBook.stock - qty);
+
+    // Add to city
+    const cityInv = cities[city].inventory;
+    const existing = cityInv.find(b => b.id === id);
+    if (existing) {
+      existing.stock += qty;
+      existing.initialStock = (existing.initialStock || 0) + qty;
     } else {
       cityInv.push({ ...meta, stock: qty, initialStock: qty });
     }
   });
 
-  // 3. Always ensure Donation exists in city inventory
-  const donMeta = INITIAL_BOOKS.find(b => b.id === 'donation');
-  if (donMeta && !cityInv.find(b => b.id === 'donation')) {
-    cityInv.push({ ...donMeta, stock: 1, initialStock: 0 });
+  // Always ensure Donation is in city inventory
+  const don = INITIAL_BOOKS.find(b => b.id === 'donation');
+  if (don && !cities[city].inventory.find(b => b.id === 'donation')) {
+    cities[city].inventory.push({ ...don, stock: 1, initialStock: 0 });
   }
 
-  // 4. Set the live working variables so render() sees them immediately
-  inventory     = cityInv.map(b => ({ ...(INITIAL_BOOKS.find(m => m.id === b.id) || {}), ...b }));
-  sales         = cities[city].sales         || [];
+  // Set the live working variables directly from updated city
+  inventory     = cities[city].inventory.map(b => ({
+    ...(INITIAL_BOOKS.find(m => m.id === b.id) || {}),
+    ...b
+  }));
+  sales         = cities[city].sales || [];
   closingCounts = cities[city].closingCounts || {};
 
-  // 5. Save, sync, render
   closeModal('transfer-modal');
   save();
   pushFullState();
-  sheetPost({ action: 'transferToCity', city, transfers }).catch(() => {});
   render();
 }
 
