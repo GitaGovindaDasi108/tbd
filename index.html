@@ -1332,7 +1332,7 @@ function toggleOtherPay(selId,inpId) {
   inp.style.display=sel.value==='other'?'block':'none';
   if(sel.value==='other') inp.focus(); else inp.value='';
 }
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('active');}}));
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('active');}));
 
 // ═══════════════════════════════════
 // CSV EXPORT
