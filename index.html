@@ -1,255 +1,865 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Transcendental Book Sales: Poland</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+<title>Transcendental Book Sales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-:root {
-  --ink:#1a1209; --paper:#f5f0e8; --parchment:#ede5d0; --gold:#b8860b;
-  --gold-light:#d4a017; --rust:#8b3a1a; --sage:#4a5e4a; --cream:#faf6ed;
-  --border:#c8b89a; --low-stock:#c0392b;
+/* ============================================================
+   CONFIG-DRIVEN THEME — Transcendental Book Sales
+   ============================================================ */
+:root{
+  --cream:#FBF6EC; --paper:#FFFDF8; --paper2:#FFF8EC;
+  --saffron:#E07B26; --saffron-d:#C4661A; --marigold:#F2A93B;
+  --gold:#B8862F; --gold-l:#E9CE86;
+  --plum:#3B2A46; --ink:#2A2230; --muted:#7A6E63;
+  --green:#2E7D4F; --green-l:#E3F1E8;
+  --clay:#C0392B; --clay-l:#FBE7E4;
+  --blue:#2F5D8A;
+  --line:#EBDFC8; --line-d:#DCCBA8;
+  --shadow:0 1px 2px rgba(59,42,70,.06), 0 8px 24px rgba(59,42,70,.08);
+  --radius:14px;
 }
-*{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'DM Mono',monospace;background:var(--paper);color:var(--ink);min-height:100vh;
-  background-image:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(184,134,11,.06) 27px,rgba(184,134,11,.06) 28px);}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  color:var(--ink); background:
+    radial-gradient(1200px 500px at 50% -200px, #FDEFD6 0%, transparent 70%),
+    var(--cream);
+  min-height:100vh; -webkit-text-size-adjust:100%;
+}
+h1,h2,h3{margin:0}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px}
 
-/* HEADER */
-header{background:var(--ink);border-bottom:3px solid var(--gold);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;}
-.header-img{height:90px;width:auto;object-fit:contain;border-radius:2px;box-shadow:2px 2px 8px rgba(0,0,0,.4);flex-shrink:0;}
-.header-center{text-align:center;flex:1;}
-header h1{font-family:'Cormorant Garamond',serif;font-size:2rem;font-weight:300;letter-spacing:.08em;color:var(--gold-light);}
-header p{font-size:.7rem;letter-spacing:.18em;opacity:.55;margin-top:.3rem;color:var(--paper);}
+/* ---------- Header ---------- */
+header.masthead{
+  background:linear-gradient(180deg,#E88A32 0%, var(--saffron) 55%, var(--saffron-d) 100%);
+  color:#FFF7EA; border-bottom:3px solid var(--gold);
+  position:relative;
+}
+.masthead-inner{max-width:1280px;margin:0 auto;padding:14px 18px;
+  display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px}
+.deity{width:74px;height:74px;border-radius:50%;overflow:hidden;flex:none;
+  border:3px solid var(--gold-l);background:#7A3E12;box-shadow:0 2px 10px rgba(0,0,0,.25);
+  display:flex;align-items:center;justify-content:center;text-align:center}
+.deity img{width:100%;height:100%;object-fit:cover;display:block}
+.deity span{font-family:'Marcellus',serif;font-size:11px;line-height:1.15;color:#FCE9C6;padding:4px}
+.title-block{text-align:center;min-width:0}
+.title-block h1{font-family:'Marcellus',serif;font-weight:400;letter-spacing:.5px;
+  font-size:clamp(20px,3.4vw,34px);line-height:1.1;text-shadow:0 1px 0 rgba(0,0,0,.15)}
+.title-block .warehouse{color:#FFE7B8}
+.mantra{font-family:'Marcellus',serif;font-style:italic;font-size:clamp(11px,1.6vw,15px);
+  color:#FFEFD2;margin-top:5px;letter-spacing:.3px}
+.conn-wrap{position:absolute;top:10px;right:14px;display:flex;align-items:center;gap:8px}
+.status{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.18);
+  padding:5px 10px;border-radius:999px;font-size:12px;color:#FFF3DE}
+.dot{width:9px;height:9px;border-radius:50%;background:#bbb;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+.dot.ok{background:#8FE3A6} .dot.bad{background:#FF9B8A} .dot.load{background:#FFD98A;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.btn-refresh{background:rgba(255,255,255,.16);color:#FFF7EA;border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
+.btn-refresh:active{transform:scale(.97)}
 
-/* CITY BAR */
-.city-bar{background:var(--ink);padding:.6rem 1.5rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;border-bottom:2px solid var(--gold);}
-.city-label{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.5);white-space:nowrap;}
-.city-select{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:var(--gold-light);font-family:'DM Mono',monospace;font-size:.75rem;padding:.3rem .6rem;border-radius:2px;cursor:pointer;outline:none;}
-.city-select option{background:var(--ink);color:var(--paper);}
-.btn-city{padding:.3rem .75rem;background:none;border:1px solid rgba(255,255,255,.2);color:var(--gold-light);font-family:'DM Mono',monospace;font-size:.62rem;letter-spacing:.1em;cursor:pointer;border-radius:2px;text-transform:uppercase;white-space:nowrap;transition:all .15s;}
-.btn-city:hover, .btn-city.active{background:rgba(255,255,255,.2);border-color:var(--gold-light);color:#fff;}
+/* ---------- Layout ---------- */
+main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 14px}
+.loc-tabs{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.loc-tab{border:1.5px solid var(--line-d);background:var(--paper);color:var(--plum);
+  padding:7px 14px;border-radius:999px;font-weight:600;font-size:14px;white-space:nowrap}
+.loc-tab.active{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
+.loc-tab.master{border-style:dashed}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:none;border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--saffron);color:#fff}
+.btn-plum{background:var(--plum);color:#FFF3DE}
+.btn-gold{background:var(--gold);color:#fff}
+.btn-ghost{background:var(--paper);color:var(--plum);border:1.5px solid var(--line-d);box-shadow:none}
+.btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.btn-danger{background:var(--clay-l);color:var(--clay);border:1px solid #EEC4bd;box-shadow:none}
 
-/* SYNC BAR */
-.sync-bar{background:var(--parchment);border-bottom:1px solid var(--border);padding:.4rem 1.5rem;display:flex;align-items:center;gap:.75rem;font-size:.65rem;}
-.sync-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px;background:#ccc;}
-.sync-dot.ok{background:#43a047;} .sync-dot.err{background:#e53935;} .sync-dot.pending{background:#ffa000;animation:pulse 1s infinite;}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.sync-status{display:none;align-items:center;font-size:.62rem;padding:.2rem .5rem;border-radius:2px;}
-.sync-status.ok{display:inline-flex;background:#e8f5e9;color:#2e7d32;}
-.btn-sync{padding:.3rem .7rem;background:var(--ink);color:var(--gold-light);border:none;font-family:'DM Mono',monospace;font-size:.6rem;letter-spacing:.1em;cursor:pointer;border-radius:2px;text-transform:uppercase;}
+/* ---------- Grand total bar ---------- */
+.totals{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
+.tcard{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--marigold)}
+.tcard.usd::before{background:var(--green)} .tcard.pend::before{background:var(--clay)}
+.tcard .label{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
+.tcard .value{font-family:'Marcellus',serif;font-size:clamp(20px,2.6vw,30px);color:var(--plum);margin-top:3px}
+.tcard.usd .value{color:var(--green)} .tcard.pend .value{color:var(--clay)}
 
-/* TOTALS BAR */
-.totals-bar{background:var(--parchment);border-bottom:2px solid var(--border);padding:.75rem 2rem;display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;}
-.total-item{text-align:center;}
-.total-item .label{font-size:.6rem;letter-spacing:.2em;text-transform:uppercase;opacity:.6;display:block;}
-.total-item .value{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:600;color:var(--gold);}
+/* ---------- Panels ---------- */
+.cols{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
+.cols-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);overflow:hidden}
+.panel > h2{font-family:'Marcellus',serif;font-weight:400;font-size:18px;color:var(--plum);
+  padding:12px 16px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.panel .body{padding:12px 14px}
 
-/* MAIN GRID */
-.main-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;max-width:1400px;margin:0 auto;padding:1.5rem;}
-@media(max-width:800px){.main-grid{grid-template-columns:1fr;}}
+/* ---------- Inventory cards ---------- */
+.inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.book{border:1.5px solid var(--line-d);border-radius:12px;padding:11px 12px;background:var(--paper2);
+  text-align:left;position:relative;transition:transform .06s,box-shadow .12s;min-height:104px;
+  display:flex;flex-direction:column;justify-content:space-between}
+.book:hover{box-shadow:var(--shadow)}
+.book.sellable{cursor:pointer}
+.book.sellable:active{transform:scale(.98)}
+.book .bname{font-weight:700;font-size:14.5px;color:var(--plum);line-height:1.2}
+.book .price{font-size:11.5px;color:var(--muted);margin-top:2px}
+.book .qtyrow{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:6px}
+.qty-chip{font-family:'Marcellus',serif;font-size:22px;color:var(--green);line-height:1}
+.qty-chip.low{color:var(--gold)} .qty-chip.zero{color:var(--clay)}
+.qty-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
+.flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
+.sold-tag{position:absolute;top:8px;right:8px}
+.pre-btn{margin-top:8px;width:100%;background:var(--plum);color:#FFF3DE;border:none;border-radius:8px;
+  padding:6px;font-size:12px;font-weight:600}
+.tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
 
-/* PANELS */
-.panel{background:var(--cream);border:1px solid var(--border);border-radius:2px;overflow:hidden;box-shadow:4px 4px 0 rgba(184,134,11,.12);display:flex;flex-direction:column;}
-.panel-header{background:var(--ink);color:var(--paper);padding:.75rem 1.25rem;font-size:.65rem;letter-spacing:.25em;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
-.panel-header span{color:var(--gold-light);}
+/* ---------- Sales-by-title ---------- */
+.title-list{display:flex;flex-direction:column;gap:2px}
+.title-row{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:14px}
+.title-row:last-child{border-bottom:none}
+.title-row .name{color:var(--ink)}
+.title-row .count{font-family:'Marcellus',serif;color:var(--plum);font-size:16px}
+.title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
-/* BOOK ROWS */
-.book-row{display:flex;align-items:center;padding:.6rem 1.25rem;border-bottom:1px solid var(--border);gap:.5rem;justify-content:space-between;}
-.book-name{font-family:'Cormorant Garamond',serif;font-size:1.05rem;font-weight:600;color:var(--rust);cursor:pointer;}
-.stock-display{display:flex;align-items:center;gap:.4rem;}
-.stock-num{font-size:1.4rem;font-family:'Cormorant Garamond',serif;font-weight:600;}
+/* ---------- Payments by type ---------- */
+.pay-table{width:100%;border-collapse:collapse;font-size:13.5px}
+.pay-table th,.pay-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.pay-table th:first-child,.pay-table td:first-child{text-align:left}
+.pay-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
+.pay-table tfoot td{font-weight:700;color:var(--plum);border-top:2px solid var(--line-d);border-bottom:none}
+.pay-table .usd{color:var(--green);font-weight:600}
+.cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
+.cur-pill b{color:var(--plum)}
 
-/* DISPLAY TOAST */
-#display-toast{position:fixed;top:1.5rem;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--gold-light);border:1px solid var(--gold);border-radius:3px;padding:.75rem 1.5rem;font-family:'DM Mono',monospace;font-size:.75rem;letter-spacing:.1em;z-index:500;box-shadow:4px 4px 0 rgba(0,0,0,.25);display:none;text-align:center;max-width:90vw;}
+/* ---------- Sales log ---------- */
+.log{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
+.log-item{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--paper2)}
+.log-item.pending{border-color:#EBC9A0;background:#FFF6E7}
+.log-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.log-title{font-weight:700;color:var(--plum);font-size:14px}
+.badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase}
+.badge.sale{background:var(--green-l);color:var(--green)}
+.badge.pre{background:#E4ECF7;color:var(--blue)}
+.badge.don{background:#F3E8F7;color:#8A4FA0}
+.badge.pend{background:var(--clay-l);color:var(--clay)}
+.log-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.log-pay{font-size:12.5px;color:var(--ink);margin-top:3px}
+.log-usd{font-family:'Marcellus',serif;color:var(--plum);font-size:15px}
+.log-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:22px 8px;font-style:italic}
+
+/* ---------- Pending panel ---------- */
+.pending-panel{margin-top:16px;border-color:#EBC9A0}
+.pending-panel > h2{background:linear-gradient(180deg,#FFF1DA,transparent);color:var(--clay)}
+
+/* ---------- Modal ---------- */
+.overlay{position:fixed;inset:0;background:rgba(43,34,48,.55);backdrop-filter:blur(2px);
+  display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
+.overlay.show{display:flex}
+.modal{background:var(--paper);border-radius:16px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
+  border:1px solid var(--line);margin:auto;animation:pop .12s ease}
+@keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
+.modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--plum);
+  padding:16px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--paper2),transparent)}
+.modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.modal .m-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.field input,.field select,.field textarea{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink)}
+.field textarea{resize:vertical;min-height:52px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row3{display:grid;grid-template-columns:1.1fr .9fr 1fr;gap:8px}
+.checkline{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
+.checkline input{width:18px;height:18px}
+.warn{background:var(--clay-l);border:1px solid #EEC0b8;color:var(--clay);border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600}
+.leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
+.leg-box .lg-title{font-size:11px;font-weight:700;color:var(--saffron-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.hint{font-size:12px;color:var(--muted)}
+.err{color:var(--clay);font-size:13px;font-weight:600;min-height:0}
+
+.stock-grid{display:flex;flex-direction:column;gap:8px}
+.stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stock-row .sn{font-weight:600;color:var(--plum);font-size:14px}
+.stock-row input{width:86px;text-align:center}
+
+/* toast */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  background:var(--plum);color:#FFF3DE;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--clay)}
+
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
+  .totals{grid-template-columns:repeat(2,1fr)}
+  .deity{width:56px;height:56px}
+  .masthead-inner{grid-template-columns:auto 1fr auto;gap:10px;padding:12px 12px}
+  .conn-wrap{position:static;justify-content:center;margin-top:8px}
+  header.masthead .conn-row{display:flex;justify-content:center;padding-bottom:10px}
+}
+@media (max-width:560px){
+  .totals{grid-template-columns:1fr 1fr}
+  .row3{grid-template-columns:1fr 1fr}
+  .inv-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  main{padding:12px 12px 60px}
+}
 </style>
 </head>
 <body>
 
-<div id="display-toast"></div>
-
-<header>
-  <div class="header-center">
-    <h1>TRANSCENDENTAL BOOK SALES</h1>
-    <p>POLAND TOUR</p>
+<header class="masthead">
+  <div class="masthead-inner">
+    <div class="deity" id="imgLeft"><span>Śrīla<br>Prabhupāda</span></div>
+    <div class="title-block">
+      <h1>Transcendental Book Sales<span class="warehouse" id="whTitle"></span></h1>
+      <div class="mantra">gopī-bhartuḥ pada-kamalayor dāsa-dāsānudāsaḥ</div>
+    </div>
+    <div class="deity" id="imgRight"><span>Śrīla<br>Gurudeva</span></div>
+  </div>
+  <div class="conn-row" style="display:none"></div>
+  <div class="conn-wrap">
+    <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Connecting…</span></div>
+    <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
   </div>
 </header>
 
-<!-- CITY BAR WITH WORKING BUTTONS -->
-<div class="city-bar">
-  <span class="city-label">City / Event:</span>
-  <select class="city-select" id="city-select">
-    <option value="Warsaw">Warsaw</option>
-    <option value="Kraków">Kraków</option>
-    <option value="Gdańsk">Gdańsk</option>
-    <option value="Wrocław">Wrocław</option>
-    <option value="Poznań">Poznań</option>
-  </select>
-
-  <button class="btn-city active" data-city="Warsaw">Warsaw</button>
-  <button class="btn-city" data-city="Kraków">Kraków</button>
-  <button class="btn-city" data-city="Gdańsk">Gdańsk</button>
-  <button class="btn-city" data-city="Wrocław">Wrocław</button>
-  <button class="btn-city" data-city="Poznań">Poznań</button>
-</div>
-
-<!-- SYNC BAR -->
-<div class="sync-bar">
-  <div><span class="sync-dot ok"></span> Status: Ready</div>
-  <div class="sync-status ok">Connected</div>
-  <button class="btn-sync" id="btn-sync">Sync Data</button>
-</div>
-
-<!-- TOTALS BAR -->
-<div class="totals-bar">
-  <div class="total-item">
-    <span class="label">Current City</span>
-    <span class="value" id="disp-current-city">Warsaw</span>
-  </div>
-  <div class="total-item">
-    <span class="label">Total Books Sold</span>
-    <span class="value" id="disp-total-books">0</span>
-  </div>
-  <div class="total-item">
-    <span class="label">Total Revenue</span>
-    <span class="value" id="disp-total-revenue">0 PLN</span>
-  </div>
-</div>
-
-<!-- MAIN GRID -->
-<div class="main-grid">
-  <div class="panel">
-    <div class="panel-header">
-      Available Inventory <span>(Click book to sell)</span>
-    </div>
-    <div id="book-list">
-      <!-- Generated via JS -->
-    </div>
+<main>
+  <div class="toolbar">
+    <div class="loc-tabs" id="locTabs"></div>
+    <div class="actions" id="ctxActions"></div>
   </div>
 
-  <div class="panel">
-    <div class="panel-header">
-      Recent Sales Log
-    </div>
-    <div id="sales-list" style="padding: 1rem;">
-      <p style="opacity: 0.6; font-size: 0.75rem;">No sales logged for this city yet.</p>
-    </div>
+  <div class="totals" id="totals"></div>
+
+  <div class="cols">
+    <section class="panel">
+      <h2 id="invHeading">Inventory <span class="hint" id="invHint"></span></h2>
+      <div class="body"><div class="inv-grid" id="invGrid"></div></div>
+    </section>
+    <section class="panel">
+      <h2>Active Sales Log</h2>
+      <div class="body"><div class="log" id="log"></div></div>
+    </section>
   </div>
-</div>
+
+  <div class="cols-2">
+    <section class="panel">
+      <h2>Sales by Title <span class="hint">sold / pre-ordered</span></h2>
+      <div class="body"><div class="title-list" id="titleList"></div></div>
+    </section>
+    <section class="panel">
+      <h2>Totals by Payment Type</h2>
+      <div class="body" id="payBody"></div>
+    </section>
+  </div>
+
+  <section class="panel pending-panel" id="pendingPanel" style="display:none">
+    <h2>Pending Payments</h2>
+    <div class="body"><div class="log" id="pendingList"></div></div>
+  </section>
+</main>
+
+<div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
+<div id="toast"></div>
 
 <script>
-// Data structure for cities
-const cityData = {
-  "Warsaw": { sold: 0, revenue: 0, inventory: { "Bhagavad-gita": 45, "Srimad-Bhagavatam": 20, "Krsna Book": 15 } },
-  "Kraków": { sold: 0, revenue: 0, inventory: { "Bhagavad-gita": 30, "Srimad-Bhagavatam": 12, "Krsna Book": 10 } },
-  "Gdańsk": { sold: 0, revenue: 0, inventory: { "Bhagavad-gita": 25, "Srimad-Bhagavatam": 15, "Krsna Book": 8 } },
-  "Wrocław": { sold: 0, revenue: 0, inventory: { "Bhagavad-gita": 35, "Srimad-Bhagavatam": 18, "Krsna Book": 12 } },
-  "Poznań": { sold: 0, revenue: 0, inventory: { "Bhagavad-gita": 20, "Srimad-Bhagavatam": 10, "Krsna Book": 5 } }
+/* ============================================================
+   CONFIG — edit these to point at your Sheet / warehouse
+   ============================================================ */
+const CONFIG = {
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwKWT2joG8VTuAUPuKDtzh-_ojly5b1ft5fRACaAkCToSSbPw_F7iYFvMJVmwkfKnpS/exec',
+  PRABHUPADA_IMG: '',   // optional: paste an image URL
+  GURUDEVA_IMG:   '',   // optional: paste an image URL
+  AUTO_REFRESH_SECONDS: 15
 };
 
-let currentCity = "Warsaw";
+const WAREHOUSE = 'WAREHOUSE';
+const CUR_LABEL = { PLN:'PLN', EUR:'Euros', USD:'USD' };
+const CUR_SYM   = { PLN:'zł',  EUR:'€',     USD:'$'   };
 
-// Toast display helper
-function showToast(message) {
-  const toast = document.getElementById('display-toast');
-  toast.innerText = message;
-  toast.style.display = 'block';
-  setTimeout(() => { toast.style.display = 'none'; }, 2000);
+let STATE = null;
+let CUR_LOC = WAREHOUSE;
+let busy = false;
+
+/* ---------- tiny helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const round2 = n => Math.round((Number(n)||0)*100)/100;
+const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';setTimeout(()=>t.className='',2600);}
+function setStatus(kind,text){$('#dot').className='dot '+kind;$('#statusText').textContent=text;}
+
+function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,usd:0,pln:0,eur:0};}
+function priceFor(book,cur){return cur==='PLN'?book.pln:cur==='EUR'?book.eur:book.usd;}
+function toUSD(amt,cur){amt=Number(amt)||0;if(!amt)return 0;const r=STATE.rates||{plnPerUsd:3.79,eurPerUsd:.87};
+  if(cur==='USD')return amt;if(cur==='PLN')return amt/r.plnPerUsd;if(cur==='EUR')return amt/r.eurPerUsd;return 0;}
+function isPaid(s){return !s.pending || s.paid;}
+function legs(s){const a=[];if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Number(s.p1amt)||0});
+  if(s.p2type)a.push({type:s.p2type,cur:s.p2cur,amt:Number(s.p2amt)||0});return a;}
+function legsUSD(s){return legs(s).reduce((t,l)=>t+toUSD(l.amt,l.cur),0);}
+function payLabel(s){const L=legs(s);if(!L.length)return '—';
+  return L.map(l=>`${l.type} ${fmt(l.amt)} ${CUR_SYM[l.cur]||l.cur}`).join(' + ');}
+
+function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — Warehouse';
+  const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
+function scopedSales(){const s=STATE.sales||[];return CUR_LOC===WAREHOUSE?s:s.filter(x=>x.location===CUR_LOC);}
+function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location===loc&&i.bookId===bookId);return rec?rec.qty:0;}
+// Warehouse view shows warehouse on-hand; event view shows that event's on-hand.
+function shownQty(bookId){return CUR_LOC===WAREHOUSE?invQty(WAREHOUSE,bookId):invQty(CUR_LOC,bookId);}
+
+/* ============================================================
+   API
+   ============================================================ */
+async function api(payload){
+  const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+  const txt = await res.text();
+  let data; try{data=JSON.parse(txt);}catch(e){throw new Error('Bad response from server. Check the deployment URL / access settings.');}
+  if(!data.ok) throw new Error(data.error||'Request failed');
+  return data;
 }
 
-// Function to switch active city
-function setCity(cityName) {
-  if (!cityData[cityName]) return;
-  currentCity = cityName;
-
-  // Update Select Dropdown
-  document.getElementById('city-select').value = cityName;
-
-  // Update Button States
-  document.querySelectorAll('.btn-city').forEach(btn => {
-    if (btn.getAttribute('data-city') === cityName) {
-      btn.classList.add('active');
-    } else {
-      btn.classList.remove('active');
-    }
-  });
-
-  // Render UI for selected city
-  renderDashboard();
-  showToast(`Switched to ${cityName}`);
-}
-
-// Render inventory and metrics
-function renderDashboard() {
-  document.getElementById('disp-current-city').innerText = currentCity;
-  const data = cityData[currentCity];
-
-  document.getElementById('disp-total-books').innerText = data.sold;
-  document.getElementById('disp-total-revenue').innerText = `${data.revenue} PLN`;
-
-  const bookList = document.getElementById('book-list');
-  bookList.innerHTML = '';
-
-  Object.keys(data.inventory).forEach(book => {
-    const row = document.createElement('div');
-    row.className = 'book-row';
-    row.innerHTML = `
-      <span class="book-name" onclick="recordSale('${book}')">${book}</span>
-      <div class="stock-display">
-        <span class="stock-num">${data.inventory[book]}</span>
-      </div>
-    `;
-    bookList.appendChild(row);
-  });
-}
-
-// Function to record a quick sale
-function recordSale(bookName) {
-  const data = cityData[currentCity];
-  if (data.inventory[bookName] > 0) {
-    data.inventory[bookName]--;
-    data.sold++;
-    data.revenue += 40; // Default price 40 PLN per book
-    
-    const salesList = document.getElementById('sales-list');
-    if (data.sold === 1) salesList.innerHTML = '';
-    
-    const entry = document.createElement('div');
-    entry.style.fontSize = '0.75rem';
-    entry.style.marginBottom = '0.4rem';
-    entry.innerText = `• Sold 1x ${bookName} (40 PLN)`;
-    salesList.prepend(entry);
-
-    renderDashboard();
-    showToast(`Sold 1x ${bookName}`);
-  } else {
-    showToast(`Out of stock for ${bookName}!`);
+async function refresh(silent){
+  if(!silent) setStatus('load','Syncing…');
+  try{
+    const d = await api({action:'getState'});
+    STATE = d.state;
+    if(!(STATE.events||[]).some(e=>e.eventId===CUR_LOC) && CUR_LOC!==WAREHOUSE) CUR_LOC=WAREHOUSE;
+    renderAll();
+    setStatus('ok','Connected · '+new Date().toLocaleTimeString());
+  }catch(err){
+    setStatus('bad', 'Offline — '+err.message.slice(0,40));
+    if(!silent) toast(err.message,true);
   }
 }
 
-// Attach Event Listeners to City Buttons & Select Dropdown
-document.addEventListener('DOMContentLoaded', () => {
-  // Button click handlers
-  document.querySelectorAll('.btn-city').forEach(button => {
-    button.addEventListener('click', (e) => {
-      const selectedCity = e.target.getAttribute('data-city');
-      setCity(selectedCity);
+async function act(payload,okMsg){
+  if(busy) return;
+  busy=true; setStatus('load','Saving…');
+  try{
+    const d = await api(payload);
+    STATE = d.state;
+    if(!(STATE.events||[]).some(e=>e.eventId===CUR_LOC) && CUR_LOC!==WAREHOUSE) CUR_LOC=WAREHOUSE;
+    closeModal();
+    renderAll();
+    setStatus('ok','Connected · '+new Date().toLocaleTimeString());
+    if(okMsg) toast(okMsg);
+  }catch(err){
+    toast(err.message,true); setStatus('bad','Error');
+    const e=$('#modalErr'); if(e) e.textContent=err.message;
+  }finally{ busy=false; }
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function renderAll(){
+  $('#whTitle').textContent = STATE.warehouseName ? (': '+STATE.warehouseName) : '';
+  document.title = 'Book Sales — '+(STATE.warehouseName||'');
+  renderTabs(); renderContextActions(); renderTotals();
+  renderInventory(); renderTitleList(); renderPayments(); renderLog(); renderPending();
+}
+
+function renderTabs(){
+  const t=$('#locTabs'); let h='';
+  h+=`<button class="loc-tab master ${CUR_LOC===WAREHOUSE?'active':''}" data-act="loc" data-loc="${WAREHOUSE}">🏠 ${esc(STATE.warehouseName||'Warehouse')} (All)</button>`;
+  (STATE.events||[]).forEach(e=>{
+    h+=`<button class="loc-tab ${CUR_LOC===e.eventId?'active':''}" data-act="loc" data-loc="${esc(e.eventId)}">${esc(e.name)}</button>`;
+  });
+  h+=`<button class="loc-tab" data-act="newevent" style="border-style:dashed;color:var(--saffron-d)">＋ New event</button>`;
+  t.innerHTML=h;
+}
+
+function renderContextActions(){
+  const a=$('#ctxActions');
+  let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
+  if(CUR_LOC===WAREHOUSE){
+    h+=`<button class="btn btn-plum" data-act="setstock">Set warehouse stock</button>`;
+    h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
+  }else{
+    h+=`<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
+    h+=`<button class="btn btn-ghost" data-act="transfer" data-mode="return">Return to warehouse</button>`;
+    h+=`<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
+    h+=`<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
+  }
+  a.innerHTML=h;
+}
+
+function renderTotals(){
+  const s=scopedSales();
+  const booksSold=s.filter(x=>x.type==='SALE').length;
+  const pre=s.filter(x=>x.type==='PREORDER').length;
+  let totUsd=0,pendUsd=0;
+  s.forEach(x=>{const u=legsUSD(x); if(isPaid(x))totUsd+=u; else pendUsd+=u;});
+  $('#totals').innerHTML=`
+    <div class="tcard"><div class="label">Books sold</div><div class="value">${booksSold}</div></div>
+    <div class="tcard"><div class="label">Pre-sales</div><div class="value">${pre}</div></div>
+    <div class="tcard"><div class="label">Total items</div><div class="value">${booksSold+pre}</div></div>
+    <div class="tcard usd"><div class="label">Total collected (USD)</div><div class="value">$${fmt(totUsd)}</div></div>
+    <div class="tcard pend"><div class="label">Pending (USD)</div><div class="value">$${fmt(pendUsd)}</div></div>`;
+}
+
+function renderInventory(){
+  $('#invHeading').firstChild.textContent = (CUR_LOC===WAREHOUSE?'Warehouse Inventory ':'Event Inventory ');
+  $('#invHint').textContent = CUR_LOC===WAREHOUSE?'(stock on hand at the warehouse)':'(stock available at this event)';
+  const s=scopedSales();
+  const grid=$('#invGrid'); let h='';
+  (STATE.books||[]).forEach(b=>{
+    const q=shownQty(b.id);
+    const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
+    const sellable=q>0;
+    const cls=q<=0?'zero':q===1?'low':'';
+    let flag='';
+    if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
+    else if(q===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
+    h+=`<div class="book ${sellable?'sellable':''}" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
+      ${q<=0?flag:''}
+      <div>
+        <div class="bname">${esc(b.name)}</div>
+        <div class="price">${b.pln} zł · ${b.eur} € · $${b.usd}</div>
+      </div>
+      <div class="qtyrow">
+        <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">on hand</span></div>
+        <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
+      </div>
+      ${q===1?`<div>${flag}</div>`:''}
+      ${q<=1?`<button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order ${esc(b.name)}</button>`:''}
+    </div>`;
+  });
+  grid.innerHTML=h;
+}
+
+function renderTitleList(){
+  const s=scopedSales(); const list=$('#titleList'); let h='';
+  (STATE.books||[]).forEach(b=>{
+    const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
+    const pre=s.filter(x=>x.type==='PREORDER'&&x.bookId===b.id).length;
+    h+=`<div class="title-row"><span class="name">${esc(b.name)}</span>
+      <span class="count"><b>${sold}</b> / <i>${pre}</i></span></div>`;
+  });
+  list.innerHTML=h;
+}
+
+function renderPayments(){
+  const s=scopedSales();
+  const TYPES=STATE.payTypes||['Cash','Zelle','PayPal','Wise','Gift'];
+  const table={}; TYPES.forEach(t=>table[t]={PLN:0,EUR:0,USD:0});
+  const curTot={PLN:0,EUR:0,USD:0}; let donUsd=0;
+  s.forEach(x=>{
+    if(!isPaid(x))return;
+    legs(x).forEach(l=>{
+      if(table[l.type]&&table[l.type][l.cur]!==undefined) table[l.type][l.cur]+=l.amt;
+      if(curTot[l.cur]!==undefined) curTot[l.cur]+=l.amt;
+      if(x.type==='DONATION') donUsd+=toUSD(l.amt,l.cur);
     });
   });
-
-  // Dropdown change handler
-  document.getElementById('city-select').addEventListener('change', (e) => {
-    setCity(e.target.value);
+  let rows='';
+  TYPES.forEach(t=>{
+    const r=table[t]; const usd=toUSD(r.PLN,'PLN')+toUSD(r.EUR,'EUR')+toUSD(r.USD,'USD');
+    rows+=`<tr><td>${t}</td><td>${fmt(r.PLN)}</td><td>${fmt(r.EUR)}</td><td>${fmt(r.USD)}</td><td class="usd">$${fmt(usd)}</td></tr>`;
   });
+  const grandUsd=toUSD(curTot.PLN,'PLN')+toUSD(curTot.EUR,'EUR')+toUSD(curTot.USD,'USD');
+  $('#payBody').innerHTML=`
+    <table class="pay-table">
+      <thead><tr><th>Type</th><th>zł PLN</th><th>€ EUR</th><th>$ USD</th><th>USD eq.</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><td>All</td><td>${fmt(curTot.PLN)}</td><td>${fmt(curTot.EUR)}</td><td>${fmt(curTot.USD)}</td><td class="usd">$${fmt(grandUsd)}</td></tr></tfoot>
+    </table>
+    <div class="cur-strip">
+      <span class="cur-pill">By currency &nbsp;·&nbsp; <b>${fmt(curTot.PLN)} zł</b></span>
+      <span class="cur-pill"><b>${fmt(curTot.EUR)} €</b></span>
+      <span class="cur-pill"><b>$${fmt(curTot.USD)}</b></span>
+      <span class="cur-pill">Donations: <b>$${fmt(donUsd)}</b></span>
+    </div>`;
+}
 
-  // Manual sync button
-  document.getElementById('btn-sync').addEventListener('click', () => {
-    showToast("Data Synced Successfully!");
+function logItemHTML(x){
+  const pending=!isPaid(x);
+  const book=x.type==='DONATION'?'Donation':bookById(x.bookId).name;
+  const badge = x.type==='SALE'?'<span class="badge sale">Sale</span>'
+    : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
+    : '<span class="badge don">Donation</span>';
+  const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  const meta=[x.name?esc(x.name):'', x.phone?esc(x.phone):'', x.comments?('“'+esc(x.comments)+'”'):'']
+    .filter(Boolean).join(' · ');
+  const locTag = CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE ? ` · <b>${esc(locName(x.location))}</b>`:'';
+  return `<div class="log-item ${pending?'pending':''}">
+    <div class="log-top">
+      <div>
+        <span class="log-title">${esc(book)}</span> ${badge} ${pending?'<span class="badge pend">Pending</span>':''}
+      </div>
+      <div class="log-usd">$${fmt(legsUSD(x))}</div>
+    </div>
+    <div class="log-pay">${payLabel(x)}</div>
+    ${meta?`<div class="log-meta">${meta}</div>`:''}
+    <div class="log-meta">${when}${locTag}</div>
+    <div class="log-actions">
+      ${pending?`<button class="btn btn-primary btn-sm" data-act="markpaid" data-id="${x.saleId}">Mark paid</button>`:''}
+      <button class="btn btn-ghost btn-sm" data-act="editsale" data-id="${x.saleId}">Edit</button>
+      <button class="btn btn-danger btn-sm" data-act="delsale" data-id="${x.saleId}">Delete</button>
+    </div>
+  </div>`;
+}
+
+function renderLog(){
+  const s=scopedSales().slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  $('#log').innerHTML = s.length? s.map(logItemHTML).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
+}
+
+function renderPending(){
+  const s=scopedSales().filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const panel=$('#pendingPanel');
+  if(!s.length){panel.style.display='none';return;}
+  panel.style.display='';
+  $('#pendingList').innerHTML=s.map(logItemHTML).join('');
+}
+
+/* ============================================================
+   MODALS
+   ============================================================ */
+function openModal(html){$('#modal').innerHTML=html;$('#overlay').classList.add('show');}
+function closeModal(){$('#overlay').classList.remove('show');}
+$('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+function payTypeOptions(includeMixed,includeGift){
+  const base=(STATE.payTypes||['Cash','Zelle','PayPal','Wise','Gift']).filter(t=>includeGift||t!=='Gift');
+  let opts=base.map(t=>`<option value="${t}">${t}</option>`).join('');
+  if(includeMixed) opts+=`<option value="Mixed">Mixed (two payments)</option>`;
+  return opts;
+}
+function curOptions(sel){return ['PLN','EUR','USD'].map(c=>`<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]}</option>`).join('');}
+
+/* ---- Sale / Pre-order / Edit modal ---- */
+function saleModal(opts){
+  // opts: {bookId, isPreorder, edit(saleObj), loc}
+  const book=bookById(opts.bookId);
+  const loc=opts.loc||CUR_LOC;
+  const isPre=!!opts.isPreorder;
+  const edit=opts.edit||null;
+  const lastCopy = !isPre && !edit && shownQty(opts.bookId)===1;
+  const needName = isPre; // pre-orders always collect name/phone
+  const title = edit?'Edit sale':(isPre?'Pre-order':'Record sale');
+
+  openModal(`
+    <h3>${title} — ${esc(book.name)}</h3>
+    <div class="m-body">
+      ${lastCopy?`<div class="warn">⚠ This is the last copy of this book at ${esc(locName(loc))}. Selling it will mark the title SOLD OUT.</div>`:''}
+      ${isPre?`<div class="hint">Pre-order: no stock is removed. The book is recorded as pre-ordered and appears in pre-order totals.</div>`:''}
+      <div class="field">
+        <label>Payment type</label>
+        <select id="ptype">${payTypeOptions(true,true)}</select>
+      </div>
+
+      <div id="singlePay">
+        <div class="row2">
+          <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
+          <div class="field"><label>Amount</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
+        </div>
+      </div>
+
+      <div id="mixedPay" style="display:none">
+        <div class="leg-box"><div class="lg-title">Payment 1</div>
+          <div class="row3">
+            <div class="field"><label>Type</label><select id="m1type">${payTypeOptions(false,true)}</select></div>
+            <div class="field"><label>Curr.</label><select id="m1cur">${curOptions('PLN')}</select></div>
+            <div class="field"><label>Amount</label><input id="m1amt" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+        </div>
+        <div class="leg-box" style="margin-top:8px"><div class="lg-title">Payment 2</div>
+          <div class="row3">
+            <div class="field"><label>Type</label><select id="m2type">${payTypeOptions(false,true)}</select></div>
+            <div class="field"><label>Curr.</label><select id="m2cur">${curOptions('USD')}</select></div>
+            <div class="field"><label>Amount</label><input id="m2amt" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+        </div>
+      </div>
+
+      <label class="checkline"><input type="checkbox" id="pending"> Payment pending (book given now, paid later)</label>
+      <div id="nameBox" style="display:${needName?'block':'none'}">
+        <div class="row2">
+          <div class="field"><label>Name</label><input id="cname" type="text"></div>
+          <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel"></div>
+        </div>
+      </div>
+      <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveSale">${edit?'Save changes':(isPre?'Record pre-order':'Record sale')}</button>
+    </div>
+  `);
+
+  const basePrice = c => priceFor(book,c);
+  const ptype=$('#ptype'), pcur=$('#pcur'), pamt=$('#pamt');
+
+  function syncSingleAmount(){
+    if(ptype.value==='Gift'){pamt.value=0;pamt.disabled=true;}
+    else{pamt.disabled=false; if(!pamt.dataset.touched) pamt.value=basePrice(pcur.value);}
+  }
+  function togglePay(){
+    const mixed=ptype.value==='Mixed';
+    $('#singlePay').style.display=mixed?'none':'block';
+    $('#mixedPay').style.display=mixed?'block':'none';
+    if(!mixed) syncSingleAmount();
+  }
+  ptype.addEventListener('change',togglePay);
+  pcur.addEventListener('change',()=>{pamt.dataset.touched='';syncSingleAmount();});
+  pamt.addEventListener('input',()=>{pamt.dataset.touched='1';});
+  $('#pending').addEventListener('change',e=>{ if(!needName) $('#nameBox').style.display=e.target.checked?'block':'none'; });
+
+  // Prefill for edit
+  if(edit){
+    const L=legs(edit);
+    if(L.length>1){ ptype.value='Mixed'; togglePay();
+      $('#m1type').value=L[0].type;$('#m1cur').value=L[0].cur;$('#m1amt').value=L[0].amt;
+      $('#m2type').value=L[1].type;$('#m2cur').value=L[1].cur;$('#m2amt').value=L[1].amt;
+    }else if(L.length===1){ ptype.value=L[0].type; togglePay(); pcur.value=L[0].cur; pamt.value=L[0].amt; pamt.dataset.touched='1';
+      if(L[0].type==='Gift'){pamt.disabled=true;}
+    }
+    $('#pending').checked=!!edit.pending;
+    $('#nameBox').style.display=(needName||edit.pending)?'block':'none';
+    if($('#cname')) $('#cname').value=edit.name||'';
+    if($('#cphone')) $('#cphone').value=edit.phone||'';
+    $('#ccomments').value=edit.comments||'';
+  }else{
+    togglePay();
+  }
+
+  $('#saveSale').addEventListener('click',()=>{
+    let L=[];
+    if(ptype.value==='Mixed'){
+      L=[{type:$('#m1type').value,cur:$('#m1cur').value,amt:Number($('#m1amt').value)||0},
+         {type:$('#m2type').value,cur:$('#m2cur').value,amt:Number($('#m2amt').value)||0}];
+    }else if(ptype.value==='Gift'){
+      L=[{type:'Gift',cur:pcur.value,amt:0}];
+    }else{
+      L=[{type:ptype.value,cur:pcur.value,amt:Number(pamt.value)||0}];
+    }
+    const pending=$('#pending').checked;
+    const name=$('#cname')?$('#cname').value.trim():'';
+    const phone=$('#cphone')?$('#cphone').value.trim():'';
+    const comments=$('#ccomments').value.trim();
+    if(pending && !name){$('#modalErr').textContent='Please add a name for the pending payment.';return;}
+
+    if(edit){
+      act({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
+        legs:L,pending,name,phone,comments}, 'Sale updated');
+    }else{
+      act({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,pending,name,phone,comments},
+        isPre?'Pre-order recorded':'Sale recorded');
+    }
   });
+}
 
-  // Initial display setup
-  renderDashboard();
+/* ---- Donation modal ---- */
+function donationModal(){
+  openModal(`
+    <h3>♥ Record donation</h3>
+    <div class="m-body">
+      <div class="hint">Donations add to the grand total but are not counted as book inventory.</div>
+      <div class="field"><label>Payment type</label><select id="ptype">${payTypeOptions(true,false)}</select></div>
+      <div id="singlePay"><div class="row2">
+        <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
+        <div class="field"><label>Amount</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
+      </div></div>
+      <div id="mixedPay" style="display:none">
+        <div class="leg-box"><div class="lg-title">Payment 1</div><div class="row3">
+          <div class="field"><label>Type</label><select id="m1type">${payTypeOptions(false,false)}</select></div>
+          <div class="field"><label>Curr.</label><select id="m1cur">${curOptions('PLN')}</select></div>
+          <div class="field"><label>Amount</label><input id="m1amt" type="number" step="0.01"></div>
+        </div></div>
+        <div class="leg-box" style="margin-top:8px"><div class="lg-title">Payment 2</div><div class="row3">
+          <div class="field"><label>Type</label><select id="m2type">${payTypeOptions(false,false)}</select></div>
+          <div class="field"><label>Curr.</label><select id="m2cur">${curOptions('USD')}</select></div>
+          <div class="field"><label>Amount</label><input id="m2amt" type="number" step="0.01"></div>
+        </div></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Name (optional)</label><input id="cname" type="text"></div>
+        <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel"></div>
+      </div>
+      <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="saveDon">Record donation</button>
+    </div>
+  `);
+  const ptype=$('#ptype');
+  ptype.addEventListener('change',()=>{const m=ptype.value==='Mixed';
+    $('#singlePay').style.display=m?'none':'block';$('#mixedPay').style.display=m?'block':'none';});
+  $('#saveDon').addEventListener('click',()=>{
+    let L=[];
+    if(ptype.value==='Mixed'){
+      L=[{type:$('#m1type').value,cur:$('#m1cur').value,amt:Number($('#m1amt').value)||0},
+         {type:$('#m2type').value,cur:$('#m2cur').value,amt:Number($('#m2amt').value)||0}];
+    }else{
+      L=[{type:ptype.value,cur:$('#pcur').value,amt:Number($('#pamt').value)||0}];
+    }
+    if(!L.some(l=>l.amt>0)){$('#modalErr').textContent='Enter a donation amount.';return;}
+    act({action:'donate',location:CUR_LOC,legs:L,
+      name:$('#cname').value.trim(),phone:$('#cphone').value.trim(),comments:$('#ccomments').value.trim()},
+      'Donation recorded');
+  });
+}
+
+/* ---- Event modal ---- */
+function eventModal(edit){
+  openModal(`
+    <h3>${edit?'Rename event':'New event'}</h3>
+    <div class="m-body">
+      <div class="field"><label>Event name</label><input id="evname" type="text" placeholder="e.g. Gurudeva's Welcome" value="${edit?esc(locName(edit)):''}"></div>
+      <div class="hint">Books reach an event by transferring limited stock from the warehouse.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveEv">${edit?'Rename':'Create event'}</button>
+    </div>`);
+  setTimeout(()=>$('#evname').focus(),50);
+  $('#saveEv').addEventListener('click',()=>{
+    const name=$('#evname').value.trim();
+    if(!name){$('#modalErr').textContent='Enter a name.';return;}
+    if(edit) act({action:'renameEvent',eventId:edit,name},'Event renamed');
+    else act({action:'createEvent',name},'Event created');
+  });
+}
+
+/* ---- Set warehouse stock ---- */
+function stockModal(){
+  let rows='';
+  (STATE.books||[]).forEach(b=>{
+    rows+=`<div class="stock-row"><span class="sn">${esc(b.name)}</span>
+      <input type="number" min="0" step="1" data-book="${b.id}" value="${invQty(WAREHOUSE,b.id)}"></div>`;
+  });
+  openModal(`
+    <h3>Set warehouse stock</h3>
+    <div class="m-body">
+      <div class="hint">These are the totals physically in the ${esc(STATE.warehouseName||'')} warehouse.</div>
+      <div class="stock-grid">${rows}</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-plum" id="saveStock">Save stock</button>
+    </div>`);
+  $('#saveStock').addEventListener('click',()=>{
+    const items=[...document.querySelectorAll('#modal input[data-book]')]
+      .map(i=>({bookId:i.dataset.book,qty:Number(i.value)||0}));
+    act({action:'setStockBulk',location:WAREHOUSE,items},'Warehouse stock updated');
+  });
+}
+
+/* ---- Transfer modal ---- */
+function transferModal(mode){
+  // mode: 'toevent' (warehouse->event), 'in' (warehouse->current event), 'return' (current event->warehouse)
+  const events=STATE.events||[];
+  let fromDefault=WAREHOUSE, toDefault='', lockFrom=false, lockTo=false, heading='Transfer stock';
+  if(mode==='toevent'){ heading='Transfer to event'; fromDefault=WAREHOUSE; toDefault=events[0]?events[0].eventId:''; lockFrom=true; }
+  if(mode==='in'){ heading='Transfer into '+locName(CUR_LOC); fromDefault=WAREHOUSE; toDefault=CUR_LOC; lockFrom=true; lockTo=true; }
+  if(mode==='return'){ heading='Return to warehouse'; fromDefault=CUR_LOC; toDefault=WAREHOUSE; lockFrom=true; lockTo=true; }
+  if(mode==='toevent' && !events.length){ toast('Create an event first.',true); return; }
+
+  const locOpts=(sel)=>{
+    let o=`<option value="${WAREHOUSE}" ${sel===WAREHOUSE?'selected':''}>${esc(STATE.warehouseName||'')} (Warehouse)</option>`;
+    events.forEach(e=>o+=`<option value="${e.eventId}" ${sel===e.eventId?'selected':''}>${esc(e.name)}</option>`);
+    return o;
+  };
+  const bookOpts=(STATE.books||[]).map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+
+  openModal(`
+    <h3>${esc(heading)}</h3>
+    <div class="m-body">
+      <div class="row2">
+        <div class="field"><label>From</label><select id="tfrom" ${lockFrom?'disabled':''}>${locOpts(fromDefault)}</select></div>
+        <div class="field"><label>To</label><select id="tto" ${lockTo?'disabled':''}>${locOpts(toDefault)}</select></div>
+      </div>
+      <div class="field"><label>Book</label><select id="tbook">${bookOpts}</select></div>
+      <div class="field"><label>Quantity</label><input id="tqty" type="number" min="1" step="1" value="1"></div>
+      <div class="hint" id="availHint"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveTransfer">Transfer</button>
+    </div>`);
+
+  function upd(){
+    const from=$('#tfrom').value, book=$('#tbook').value;
+    $('#availHint').textContent=`Available in ${from===WAREHOUSE?(STATE.warehouseName||'')+' warehouse':locName(from)}: ${invQty(from,book)}`;
+  }
+  $('#tfrom').addEventListener('change',upd); $('#tbook').addEventListener('change',upd); upd();
+
+  $('#saveTransfer').addEventListener('click',()=>{
+    const from=$('#tfrom').value, to=$('#tto').value, bookId=$('#tbook').value, qty=Number($('#tqty').value)||0;
+    if(from===to){$('#modalErr').textContent='Choose two different locations.';return;}
+    if(qty<1){$('#modalErr').textContent='Quantity must be at least 1.';return;}
+    act({action:'transfer',from,to,bookId,qty},'Stock transferred');
+  });
+}
+
+/* ============================================================
+   EVENT DELEGATION
+   ============================================================ */
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-act]'); if(!t) return;
+  const a=t.dataset.act;
+  if(a==='loc'){ CUR_LOC=t.dataset.loc; renderAll(); return; }
+  if(a==='refresh'){ refresh(); return; }
+  if(a==='newevent'){ eventModal(); return; }
+  if(a==='renameevent'){ eventModal(CUR_LOC); return; }
+  if(a==='deleteevent'){
+    if(confirm('Delete "'+locName(CUR_LOC)+'"? Any remaining event stock returns to the warehouse and this event\'s sales are removed.'))
+      act({action:'deleteEvent',eventId:CUR_LOC},'Event deleted');
+    return;
+  }
+  if(a==='donation'){ donationModal(); return; }
+  if(a==='setstock'){ stockModal(); return; }
+  if(a==='transfer'){ transferModal(t.dataset.mode); return; }
+  if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
+  if(a==='preorder'){ saleModal({bookId:t.dataset.book,isPreorder:true,loc:CUR_LOC}); return; }
+  if(a==='markpaid'){ act({action:'markPaid',saleId:t.dataset.id},'Marked paid'); return; }
+  if(a==='delsale'){
+    const s=(STATE.sales||[]).find(x=>x.saleId===t.dataset.id);
+    const label=s?(s.type==='DONATION'?'this donation':bookById(s.bookId).name):'this record';
+    if(confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':'')))
+      act({action:'deleteSale',saleId:t.dataset.id},'Deleted');
+    return;
+  }
+  if(a==='editsale'){
+    const s=(STATE.sales||[]).find(x=>x.saleId===t.dataset.id); if(!s)return;
+    if(s.type==='DONATION'){ toast('Editing donations: delete and re-add.',false); return; }
+    saleModal({bookId:s.bookId,isPreorder:s.type==='PREORDER',loc:s.location,edit:s});
+    return;
+  }
 });
+
+/* ============================================================
+   INIT
+   ============================================================ */
+(function init(){
+  if(CONFIG.PRABHUPADA_IMG){ $('#imgLeft').innerHTML=`<img src="${CONFIG.PRABHUPADA_IMG}" alt="Srila Prabhupada">`; }
+  if(CONFIG.GURUDEVA_IMG){ $('#imgRight').innerHTML=`<img src="${CONFIG.GURUDEVA_IMG}" alt="Srila Gurudeva">`; }
+  refresh();
+  setInterval(()=>{ if(!$('#overlay').classList.contains('show')) refresh(true); },
+    Math.max(5,CONFIG.AUTO_REFRESH_SECONDS)*1000);
+})();
 </script>
 </body>
 </html>
