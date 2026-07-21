@@ -1326,17 +1326,13 @@ function loadFromSheet() {
   setSyncStatus('pending', 'Connecting…');
   document.getElementById('btn-reload').style.display = 'none';
 
-  fetch(sheetUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'getState' })
-  })
-  .then(r => r.json())
-  .then(data => {
+  fetch(sheetUrl + '?payload=' + encodeURIComponent(JSON.stringify({ action: 'getState' })))
+  .then(r => r.text())
+  .then(text => {
+    const data = JSON.parse(text);
     if (data && data.ok && data.state) {
       applySheetState(data.state);
     } else {
-      // Sheet empty — use local cache
       const _c = JSON.parse(localStorage.getItem('bsl_fullstate') || 'null');
       if (_c) applySheetState(_c);
     }
@@ -1591,8 +1587,7 @@ function confirmNewCity() {
   pushFullState();
   sheetGet({ action:'createCity', city:name }).catch(()=>{});
   render();
-  // Show the transfer modal immediately so user can add books
-  setTimeout(() => openTransferModal(), 300);
+  // City created. User now clicks "Transfer to City" button to add inventory.
 }
 
 function getCityUrl(cityName) {
@@ -1695,7 +1690,13 @@ function confirmTransfer() {
     }
   });
 
-  // Refresh the live inventory variable from the updated city
+  // Add Donation to city inventory if not present (always needed for sales)
+  const donMeta = INITIAL_BOOKS.find(b => b.id==='donation');
+  if (donMeta && !cities[city].inventory.find(b => b.id==='donation')) {
+    cities[city].inventory.push({ ...donMeta, stock:1, initialStock:0 });
+  }
+
+  // Refresh the live working variables from the updated city
   inventory     = cities[city].inventory.map(b => {
     const meta = INITIAL_BOOKS.find(m => m.id===b.id) || {};
     return { ...meta, ...b };
