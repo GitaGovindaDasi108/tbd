@@ -1359,14 +1359,26 @@ function loadFromSheet() {
 
 function applySheetState(state) {
   if (!state) return;
-  // Handle both old single-city state and new multi-city state
   if (state.cities !== undefined) {
-    // New multi-city format
-    applyFullState(state);
+    // Multi-city format — restore everything
+    if (state.warehouse)     warehouse    = state.warehouse;
+    if (state.cities)        cities       = state.cities;
+    if (state.activeCities)  activeCities = state.activeCities;
+    // Restore active city working variables
+    const city = state.activeCity || (activeCities.length ? activeCities[0] : null);
+    if (city && cities[city]) {
+      activeCity    = city;
+      inventory     = (cities[city].inventory || []).map(b => {
+        const meta = INITIAL_BOOKS.find(m => m.id === b.id) || {};
+        return { ...meta, ...b };
+      });
+      sales         = cities[city].sales         || [];
+      closingCounts = cities[city].closingCounts || {};
+    }
   } else if (state.inventory !== undefined) {
-    // Legacy single-city state — migrate to warehouse
-    warehouse = { inventory: state.inventory.map(b => ({ ...b })) };
-    cities    = {};
+    // Legacy single-city — migrate to warehouse
+    warehouse    = { inventory: state.inventory.map(b => ({ ...b })) };
+    cities       = {};
     activeCities = [];
   }
   localStorage.setItem('bsl_fullstate', JSON.stringify({ warehouse, cities, activeCities, activeCity }));
@@ -1656,58 +1668,62 @@ function confirmTransfer() {
   if (!activeCity) return;
   const city = activeCity;
 
-  // Collect quantities from form
+  // 1. Validate — collect all transfers first, check for errors
   const transfers = [];
-  BASE_BOOK_IDS.forEach(id => {
-    const inp = document.getElementById('tr-'+id);
-    const qty = Math.max(0, parseInt(inp?.value)||0);
-    if (qty > 0) {
-      const wBook = warehouse.inventory.find(b => b.id===id);
-      if (!wBook) return;
-      if (wBook.stock < qty) { alert('Not enough warehouse stock for: '+wBook.name); return; }
-      transfers.push({ id, qty, wBook });
+  let error = null;
+  for (const id of BASE_BOOK_IDS) {
+    const inp = document.getElementById('tr-' + id);
+    const qty = Math.max(0, parseInt(inp ? inp.value : '0') || 0);
+    if (qty === 0) continue;
+    const wBook = warehouse.inventory.find(b => b.id === id);
+    if (!wBook) continue;
+    if (wBook.stock < qty) {
+      error = 'Not enough warehouse stock for: ' + wBook.name +
+              ' (have ' + wBook.stock + ', requested ' + qty + ')';
+      break;
     }
-  });
-
-  if (!transfers.length) { alert('Please enter at least one quantity to transfer.'); return; }
-
-  // Apply to warehouse and city inventory
-  if (!cities[city]) cities[city] = { inventory:[], sales:[], closingCounts:{} };
-
-  transfers.forEach(({ id, qty, wBook }) => {
-    // Deduct from warehouse
-    wBook.stock -= qty;
-
-    // Add to city
-    const cityInv = cities[city].inventory;
-    const meta    = INITIAL_BOOKS.find(m => m.id===id) || {};
-    let cBook     = cityInv.find(b => b.id===id);
-    if (cBook) {
-      cBook.stock        += qty;
-      cBook.initialStock  = (cBook.initialStock||0) + qty;
-    } else {
-      cityInv.push({ ...meta, id, stock:qty, initialStock:qty });
-    }
-  });
-
-  // Add Donation to city inventory if not present (always needed for sales)
-  const donMeta = INITIAL_BOOKS.find(b => b.id==='donation');
-  if (donMeta && !cities[city].inventory.find(b => b.id==='donation')) {
-    cities[city].inventory.push({ ...donMeta, stock:1, initialStock:0 });
+    transfers.push({ id, qty, name: wBook.name });
   }
 
-  // Refresh the live working variables from the updated city
-  inventory     = cities[city].inventory.map(b => {
-    const meta = INITIAL_BOOKS.find(m => m.id===b.id) || {};
-    return { ...meta, ...b };
+  if (error) { alert(error); return; }
+  if (!transfers.length) { alert('Please enter at least one quantity to transfer.'); return; }
+
+  // 2. Apply: deduct from warehouse, add to city
+  if (!cities[city]) cities[city] = { inventory:[], sales:[], closingCounts:{} };
+  const cityInv = cities[city].inventory;
+
+  transfers.forEach(({ id, qty }) => {
+    // Deduct from warehouse
+    const wBook = warehouse.inventory.find(b => b.id === id);
+    if (wBook) wBook.stock -= qty;
+
+    // Add to city inventory
+    const meta  = INITIAL_BOOKS.find(m => m.id === id) || {};
+    let cBook   = cityInv.find(b => b.id === id);
+    if (cBook) {
+      cBook.stock       += qty;
+      cBook.initialStock = (cBook.initialStock || 0) + qty;
+    } else {
+      cityInv.push({ ...meta, stock: qty, initialStock: qty });
+    }
   });
+
+  // 3. Always ensure Donation exists in city inventory
+  const donMeta = INITIAL_BOOKS.find(b => b.id === 'donation');
+  if (donMeta && !cityInv.find(b => b.id === 'donation')) {
+    cityInv.push({ ...donMeta, stock: 1, initialStock: 0 });
+  }
+
+  // 4. Set the live working variables so render() sees them immediately
+  inventory     = cityInv.map(b => ({ ...(INITIAL_BOOKS.find(m => m.id === b.id) || {}), ...b }));
   sales         = cities[city].sales         || [];
   closingCounts = cities[city].closingCounts || {};
 
+  // 5. Save, sync, render
   closeModal('transfer-modal');
   save();
   pushFullState();
-  sheetPost({ action:'transferToCity', city, transfers: transfers.map(t=>({id:t.id,qty:t.qty})) }).catch(()=>{});
+  sheetPost({ action: 'transferToCity', city, transfers }).catch(() => {});
   render();
 }
 
