@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 /* ============================================================
-   CONFIG-DRIVEN THEME — Transcendental Book Sales
+   THEME — Transcendental Book Sales
    ============================================================ */
 :root{
   --cream:#FBF6EC; --paper:#FFFDF8; --paper2:#FFF8EC;
@@ -35,6 +35,7 @@ body{
 h1,h2,h3{margin:0}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:15px}
+:focus-visible{outline:2px solid var(--saffron-d);outline-offset:2px}
 
 /* ---------- Header ---------- */
 header.masthead{
@@ -42,32 +43,33 @@ header.masthead{
   color:#FFF7EA; border-bottom:3px solid var(--gold);
   position:relative;
 }
-.masthead-inner{max-width:1280px;margin:0 auto;padding:14px 18px;
+.masthead-inner{max-width:1280px;margin:0 auto;padding:12px 18px;
   display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px}
-.deity{width:74px;height:74px;border-radius:50%;overflow:hidden;flex:none;
-  border:3px solid var(--gold-l);background:#7A3E12;box-shadow:0 2px 10px rgba(0,0,0,.25);
-  display:flex;align-items:center;justify-content:center;text-align:center}
-.deity img{width:100%;height:100%;object-fit:cover;display:block}
-.deity span{font-family:'Marcellus',serif;font-size:11px;line-height:1.15;color:#FCE9C6;padding:4px}
+/* Photographs are shown whole — height is matched, width follows the picture. */
+.deity{height:84px;flex:none;border-radius:10px;overflow:hidden;
+  border:2px solid var(--gold-l);background:#7A3E12;
+  box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center}
+.deity img{height:84px;width:auto;display:block}
+.deity span{font-family:'Marcellus',serif;font-size:11px;line-height:1.15;color:#FCE9C6;padding:6px 10px}
 .title-block{text-align:center;min-width:0}
 .title-block h1{font-family:'Marcellus',serif;font-weight:400;letter-spacing:.5px;
-  font-size:clamp(20px,3.4vw,34px);line-height:1.1;text-shadow:0 1px 0 rgba(0,0,0,.15)}
+  font-size:clamp(19px,3.2vw,32px);line-height:1.1;text-shadow:0 1px 0 rgba(0,0,0,.15)}
 .title-block .warehouse{color:#FFE7B8}
-.mantra{font-family:'Marcellus',serif;font-style:italic;font-size:clamp(11px,1.6vw,15px);
-  color:#FFEFD2;margin-top:5px;letter-spacing:.3px}
-.conn-wrap{position:absolute;top:10px;right:14px;display:flex;align-items:center;gap:8px}
+.mantra{font-family:'Marcellus',serif;font-style:italic;font-size:clamp(11px,1.6vw,14px);
+  color:#FFEFD2;margin-top:4px;letter-spacing:.3px}
+.conn-wrap{position:absolute;top:9px;right:14px;display:flex;align-items:center;gap:7px}
 .status{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.18);
-  padding:5px 10px;border-radius:999px;font-size:12px;color:#FFF3DE}
-.dot{width:9px;height:9px;border-radius:50%;background:#bbb;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
+  padding:4px 10px;border-radius:999px;font-size:11.5px;color:#FFF3DE}
+.dot{width:8px;height:8px;border-radius:50%;background:#bbb;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
 .dot.ok{background:#8FE3A6} .dot.bad{background:#FF9B8A} .dot.load{background:#FFD98A;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
 .btn-refresh{background:rgba(255,255,255,.16);color:#FFF7EA;border:1px solid rgba(255,255,255,.35);
-  border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600}
+  border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:600}
 .btn-refresh:active{transform:scale(.97)}
 
 /* ---------- Layout ---------- */
-main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
-.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0 14px}
+main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0 12px}
 .loc-tabs{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
 .loc-tab{border:1.5px solid var(--line-d);background:var(--paper);color:var(--plum);
   padding:7px 14px;border-radius:999px;font-weight:600;font-size:14px;white-space:nowrap}
@@ -81,17 +83,26 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
 .btn-gold{background:var(--gold);color:#fff}
 .btn-ghost{background:var(--paper);color:var(--plum);border:1.5px solid var(--line-d);box-shadow:none}
 .btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
+.btn-xs{padding:3px 9px;font-size:11px;border-radius:7px;box-shadow:none;font-weight:600}
 .btn-danger{background:var(--clay-l);color:var(--clay);border:1px solid #EEC4bd;box-shadow:none}
 
-/* ---------- Grand total bar ---------- */
-.totals{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px}
-.tcard{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
-  padding:12px 14px;box-shadow:var(--shadow);position:relative;overflow:hidden}
-.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--marigold)}
-.tcard.usd::before{background:var(--green)} .tcard.pend::before{background:var(--clay)}
-.tcard .label{font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:600}
-.tcard .value{font-family:'Marcellus',serif;font-size:clamp(20px,2.6vw,30px);color:var(--plum);margin-top:3px}
+/* ---------- Grand total bar (compact, six measures) ---------- */
+.totals{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:13px}
+.tcard{background:var(--paper);border:1px solid var(--line);border-radius:11px;
+  padding:7px 10px 8px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
+.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--marigold)}
+.tcard.total::before{background:var(--saffron-d)}
+.tcard.aotm::before{background:var(--blue)}
+.tcard.usd::before{background:var(--green)}
+.tcard.pend::before{background:var(--clay)}
+.tcard .label{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+  font-weight:700;line-height:1.3}
+.tcard .value{font-family:'Marcellus',serif;font-size:clamp(17px,2.1vw,25px);color:var(--plum);
+  margin-top:1px;line-height:1.12}
 .tcard.usd .value{color:var(--green)} .tcard.pend .value{color:var(--clay)}
+.tcard .sub{font-size:10px;color:var(--muted);line-height:1.35;margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis}
+.tcard .sub b{color:var(--plum);font-weight:600}
 
 /* ---------- Panels ---------- */
 .cols{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
@@ -103,7 +114,7 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
   background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .panel .body{padding:12px 14px}
 
-/* ---------- Inventory cards ---------- */
+/* ---------- Inventory cards (unchanged) ---------- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .book{border:1.5px solid var(--line-d);border-radius:12px;padding:11px 12px;background:var(--paper2);
   text-align:left;position:relative;transition:transform .06s,box-shadow .12s;min-height:104px;
@@ -124,7 +135,7 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
   padding:6px;font-size:12px;font-weight:600}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
 
-/* ---------- Sales-by-title ---------- */
+/* ---------- Sales-by-title (unchanged) ---------- */
 .title-list{display:flex;flex-direction:column;gap:2px}
 .title-row{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:14px}
 .title-row:last-child{border-bottom:none}
@@ -132,7 +143,7 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
 .title-row .count{font-family:'Marcellus',serif;color:var(--plum);font-size:16px}
 .title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
-/* ---------- Payments by type ---------- */
+/* ---------- Payments by type (unchanged) ---------- */
 .pay-table{width:100%;border-collapse:collapse;font-size:13.5px}
 .pay-table th,.pay-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
 .pay-table th:first-child,.pay-table td:first-child{text-align:left}
@@ -143,38 +154,46 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
 .cur-pill b{color:var(--plum)}
 
-/* ---------- Sales log ---------- */
-.log{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow:auto}
-.log-item{border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:var(--paper2)}
+/* ---------- Sales log (compact) ---------- */
+.log{display:flex;flex-direction:column;gap:6px;max-height:540px;overflow:auto}
+.log-item{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--paper2)}
 .log-item.pending{border-color:#EBC9A0;background:#FFF6E7}
-.log-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
-.log-title{font-weight:700;color:var(--plum);font-size:14px}
-.badge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase}
+.log-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.log-title{font-weight:700;color:var(--plum);font-size:13px}
+.badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;
+  vertical-align:1px}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
 .badge.don{background:#F3E8F7;color:#8A4FA0}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
-.log-meta{font-size:12px;color:var(--muted);margin-top:3px}
-.log-pay{font-size:12.5px;color:var(--ink);margin-top:3px}
-.log-usd{font-family:'Marcellus',serif;color:var(--plum);font-size:15px}
-.log-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
-.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:22px 8px;font-style:italic}
+.badge.aotm{background:#EAF0F7;color:var(--blue)}
+.log-meta{font-size:10.5px;color:var(--muted);margin-top:1px;line-height:1.35}
+.log-pay{font-size:11.5px;color:var(--ink);margin-top:1px}
+.log-usd{font-family:'Marcellus',serif;color:var(--plum);font-size:14px;white-space:nowrap}
+.log-actions{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
+.empty{color:var(--muted);font-size:13.5px;text-align:center;padding:20px 8px;font-style:italic}
 
 /* ---------- Pending panel ---------- */
 .pending-panel{margin-top:16px;border-color:#EBC9A0}
-.pending-panel > h2{background:linear-gradient(180deg,#FFF1DA,transparent);color:var(--clay)}
+.pending-panel > h2{background:linear-gradient(180deg,#FFF1DA,transparent);color:var(--clay);
+  font-size:16px;padding:9px 14px}
+.pending-panel .body{padding:10px 12px}
+.pending-panel .log{max-height:340px;gap:5px}
 
 /* ---------- Modal ---------- */
 .overlay{position:fixed;inset:0;background:rgba(43,34,48,.55);backdrop-filter:blur(2px);
   display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .overlay.show{display:flex}
-.modal{background:var(--paper);border-radius:16px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
-  border:1px solid var(--line);margin:auto;animation:pop .12s ease}
+.modal{background:var(--paper);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
+  border:1px solid var(--line);margin:auto;animation:pop .12s ease;overflow:hidden}
+.modal.wide{max-width:620px}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
-.modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--plum);
-  padding:16px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--paper2),transparent)}
-.modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
-.modal .m-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end}
+.modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--gold-l);
+  padding:14px 18px;background:var(--plum);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal h3 .x{background:none;border:none;color:var(--gold-l);font-size:22px;line-height:1;padding:0 2px}
+.modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow:auto}
+.modal .m-foot{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;
+  background:var(--paper2)}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .field input,.field select,.field textarea{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink)}
@@ -189,10 +208,31 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
 .hint{font-size:12px;color:var(--muted)}
 .err{color:var(--clay);font-size:13px;font-weight:600;min-height:0}
 
-.stock-grid{display:flex;flex-direction:column;gap:8px}
-.stock-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.stock-row .sn{font-weight:600;color:var(--plum);font-size:14px}
-.stock-row input{width:86px;text-align:center}
+/* ---------- Bulk grid (stock + transfers) ---------- */
+.seg{display:flex;gap:0;border:1.5px solid var(--line-d);border-radius:10px;overflow:hidden}
+.seg button{flex:1;background:var(--paper);color:var(--muted);border:none;padding:9px 8px;
+  font-size:12.5px;font-weight:700;letter-spacing:.3px}
+.seg button.on{background:var(--plum);color:var(--gold-l)}
+.bulk{display:flex;flex-direction:column}
+.bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 62px 92px 62px;gap:10px;align-items:center}
+.bulk-head{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;
+  padding:0 2px 6px;border-bottom:1px solid var(--line)}
+.bulk-head span:not(:first-child),.bulk-row .num{text-align:center}
+.bulk-row{padding:7px 2px;border-bottom:1px solid var(--line)}
+.bulk-row:last-child{border-bottom:none}
+.bulk-row .bn{font-family:'Marcellus',serif;font-size:15px;color:var(--saffron-d);line-height:1.2}
+.bulk-row .bn.aotm{color:var(--blue)}
+.bulk-row .num{font-size:13px;color:var(--muted);font-weight:600}
+.bulk-row .num.next{color:var(--plum);font-weight:700}
+.bulk-row .num.zero{color:var(--clay)}
+.bulk-row input{width:100%;text-align:center;padding:8px 4px;border:1.5px solid var(--line-d);
+  border-radius:8px;background:#fff;font-size:15px;font-weight:600;color:var(--ink)}
+.bulk-sec{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);
+  padding:10px 2px 4px;border-bottom:1px solid var(--line)}
+.bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;
+  padding:10px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;
+  font-size:13px;color:var(--muted)}
+.bulk-foot b{font-family:'Marcellus',serif;font-size:18px;color:var(--plum)}
 
 /* toast */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
@@ -202,19 +242,25 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
 #toast.err{background:var(--clay)}
 
 /* ---------- Responsive ---------- */
+@media (max-width:1080px){
+  .totals{grid-template-columns:repeat(3,1fr)}
+}
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
-  .totals{grid-template-columns:repeat(2,1fr)}
-  .deity{width:56px;height:56px}
-  .masthead-inner{grid-template-columns:auto 1fr auto;gap:10px;padding:12px 12px}
-  .conn-wrap{position:static;justify-content:center;margin-top:8px}
-  header.masthead .conn-row{display:flex;justify-content:center;padding-bottom:10px}
+  .deity{height:62px} .deity img{height:62px}
+  .masthead-inner{grid-template-columns:auto 1fr auto;gap:10px;padding:11px 12px}
+  .conn-wrap{position:static;justify-content:center;margin:0 auto 9px}
 }
 @media (max-width:560px){
-  .totals{grid-template-columns:1fr 1fr}
+  .totals{grid-template-columns:repeat(2,1fr);gap:7px}
   .row3{grid-template-columns:1fr 1fr}
   .inv-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   main{padding:12px 12px 60px}
+  .bulk-head,.bulk-row{grid-template-columns:1fr 50px 80px 50px;gap:7px}
+  .bulk-row .bn{font-size:13.5px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
 }
 </style>
 </head>
@@ -229,10 +275,10 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
     </div>
     <div class="deity" id="imgRight"><span>Śrīla<br>Gurudeva</span></div>
   </div>
-  <div class="conn-row" style="display:none"></div>
   <div class="conn-wrap">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Connecting…</span></div>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
+    <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
 </header>
 
@@ -275,16 +321,18 @@ main{max-width:1280px;margin:0 auto;padding:16px 18px 60px}
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 <div id="toast"></div>
 
+<script src="config.js"></script>
 <script>
 /* ============================================================
-   CONFIG — edit these to point at your Sheet / warehouse
+   CONFIG — real values live in config.js so that replacing this
+   file from GitHub never disconnects you from your Sheet.
    ============================================================ */
-const CONFIG = {
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwKWT2joG8VTuAUPuKDtzh-_ojly5b1ft5fRACaAkCToSSbPw_F7iYFvMJVmwkfKnpS/exec',
-  PRABHUPADA_IMG: '',   // optional: paste an image URL
-  GURUDEVA_IMG:   '',   // optional: paste an image URL
+const CONFIG = Object.assign({
+  APPS_SCRIPT_URL: '',
+  PRABHUPADA_IMG: 'Srila_Prabhupada.jpeg',
+  GURUDEVA_IMG:   'Gurudeva.jpeg',
   AUTO_REFRESH_SECONDS: 15
-};
+}, window.TBS_CONFIG || {});
 
 const WAREHOUSE = 'WAREHOUSE';
 const CUR_LABEL = { PLN:'PLN', EUR:'Euros', USD:'USD' };
@@ -297,13 +345,14 @@ let busy = false;
 /* ---------- tiny helpers ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const round2 = n => Math.round((Number(n)||0)*100)/100;
 const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 
-function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';setTimeout(()=>t.className='',2600);}
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';setTimeout(()=>t.className='',3200);}
 function setStatus(kind,text){$('#dot').className='dot '+kind;$('#statusText').textContent=text;}
 
-function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,usd:0,pln:0,eur:0};}
+function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,cat:'big',usd:0,pln:0,eur:0};}
+function catOf(id){return bookById(id).cat==='aotm'?'aotm':'big';}
+function isAotm(b){return b.cat==='aotm';}
 function priceFor(book,cur){return cur==='PLN'?book.pln:cur==='EUR'?book.eur:book.usd;}
 function toUSD(amt,cur){amt=Number(amt)||0;if(!amt)return 0;const r=STATE.rates||{plnPerUsd:3.79,eurPerUsd:.87};
   if(cur==='USD')return amt;if(cur==='PLN')return amt/r.plnPerUsd;if(cur==='EUR')return amt/r.eurPerUsd;return 0;}
@@ -318,30 +367,33 @@ function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — 
   const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
 function scopedSales(){const s=STATE.sales||[];return CUR_LOC===WAREHOUSE?s:s.filter(x=>x.location===CUR_LOC);}
 function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location===loc&&i.bookId===bookId);return rec?rec.qty:0;}
-// Warehouse view shows warehouse on-hand; event view shows that event's on-hand.
 function shownQty(bookId){return CUR_LOC===WAREHOUSE?invQty(WAREHOUSE,bookId):invQty(CUR_LOC,bookId);}
 
 /* ============================================================
    API
    ============================================================ */
 async function api(payload){
+  if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
   const txt = await res.text();
-  let data; try{data=JSON.parse(txt);}catch(e){throw new Error('Bad response from server. Check the deployment URL / access settings.');}
-  if(!data.ok) throw new Error(data.error||'Request failed');
+  let data; try{data=JSON.parse(txt);}catch(e){throw new Error('The server sent something unreadable. Check the deployment address and access settings.');}
+  if(!data.ok) throw new Error(data.error||'That did not go through.');
   return data;
 }
 
+function adoptState(d){
+  STATE = d.state;
+  if(CUR_LOC!==WAREHOUSE && !(STATE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
+  renderAll();
+  setStatus('ok','Connected · '+new Date().toLocaleTimeString());
+}
+
 async function refresh(silent){
+  if(busy) return;
   if(!silent) setStatus('load','Syncing…');
-  try{
-    const d = await api({action:'getState'});
-    STATE = d.state;
-    if(!(STATE.events||[]).some(e=>e.eventId===CUR_LOC) && CUR_LOC!==WAREHOUSE) CUR_LOC=WAREHOUSE;
-    renderAll();
-    setStatus('ok','Connected · '+new Date().toLocaleTimeString());
-  }catch(err){
-    setStatus('bad', 'Offline — '+err.message.slice(0,40));
+  try{ adoptState(await api({action:'getState'})); }
+  catch(err){
+    setStatus('bad','Offline — '+err.message.slice(0,40));
     if(!silent) toast(err.message,true);
   }
 }
@@ -351,16 +403,19 @@ async function act(payload,okMsg){
   busy=true; setStatus('load','Saving…');
   try{
     const d = await api(payload);
-    STATE = d.state;
-    if(!(STATE.events||[]).some(e=>e.eventId===CUR_LOC) && CUR_LOC!==WAREHOUSE) CUR_LOC=WAREHOUSE;
     closeModal();
-    renderAll();
-    setStatus('ok','Connected · '+new Date().toLocaleTimeString());
+    adoptState(d);
     if(okMsg) toast(okMsg);
   }catch(err){
     toast(err.message,true); setStatus('bad','Error');
     const e=$('#modalErr'); if(e) e.textContent=err.message;
   }finally{ busy=false; }
+}
+
+async function syncSheet(){
+  setStatus('load','Rebuilding sheet…');
+  try{ adoptState(await api({action:'syncSheets'})); toast('Google Sheet rebuilt'); }
+  catch(err){ toast(err.message,true); setStatus('bad','Error'); }
 }
 
 /* ============================================================
@@ -387,29 +442,48 @@ function renderContextActions(){
   const a=$('#ctxActions');
   let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
   if(CUR_LOC===WAREHOUSE){
-    h+=`<button class="btn btn-plum" data-act="setstock">Set warehouse stock</button>`;
+    h+=`<button class="btn btn-plum" data-act="stock">Adjust stock</button>`;
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
   }else{
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
     h+=`<button class="btn btn-ghost" data-act="transfer" data-mode="return">Return to warehouse</button>`;
+    h+=`<button class="btn btn-ghost btn-sm" data-act="stock">Adjust stock</button>`;
     h+=`<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
     h+=`<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
   }
   a.innerHTML=h;
 }
 
+/* Six measures: big books split from Adventures, then money. */
 function renderTotals(){
   const s=scopedSales();
-  const booksSold=s.filter(x=>x.type==='SALE').length;
-  const pre=s.filter(x=>x.type==='PREORDER').length;
-  let totUsd=0,pendUsd=0;
-  s.forEach(x=>{const u=legsUSD(x); if(isPaid(x))totUsd+=u; else pendUsd+=u;});
+  const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat).length;
+  const bigSold=n('SALE','big'), bigPre=n('PREORDER','big');
+  const aotmSold=n('SALE','aotm'), aotmPre=n('PREORDER','aotm');
+
+  let totUsd=0, pendUsd=0;
+  const cur={PLN:0,EUR:0,USD:0};
+  s.forEach(x=>{
+    const u=legsUSD(x);
+    if(isPaid(x)){ totUsd+=u; legs(x).forEach(l=>{ if(cur[l.cur]!==undefined) cur[l.cur]+=l.amt; }); }
+    else pendUsd+=u;
+  });
+
+  const curLine=[
+    cur.PLN?`<b>${fmt(cur.PLN)}</b> zł`:'',
+    cur.EUR?`<b>${fmt(cur.EUR)}</b> €`:'',
+    cur.USD?`$<b>${fmt(cur.USD)}</b>`:''
+  ].filter(Boolean).join(' · ') || 'nothing collected yet';
+
   $('#totals').innerHTML=`
-    <div class="tcard"><div class="label">Books sold</div><div class="value">${booksSold}</div></div>
-    <div class="tcard"><div class="label">Pre-sales</div><div class="value">${pre}</div></div>
-    <div class="tcard"><div class="label">Total items</div><div class="value">${booksSold+pre}</div></div>
-    <div class="tcard usd"><div class="label">Total collected (USD)</div><div class="value">$${fmt(totUsd)}</div></div>
-    <div class="tcard pend"><div class="label">Pending (USD)</div><div class="value">$${fmt(pendUsd)}</div></div>`;
+    <div class="tcard"><div class="label">Big Books Sold</div><div class="value">${bigSold}</div></div>
+    <div class="tcard"><div class="label">Big Books Pre-Ordered</div><div class="value">${bigPre}</div></div>
+    <div class="tcard total"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre}</div></div>
+    <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre}</div>
+      <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered</div></div>
+    <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
+      <div class="sub">${curLine}</div></div>
+    <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div></div>`;
 }
 
 function renderInventory(){
@@ -488,28 +562,27 @@ function renderPayments(){
 
 function logItemHTML(x){
   const pending=!isPaid(x);
-  const book=x.type==='DONATION'?'Donation':bookById(x.bookId).name;
+  const isDon=x.type==='DONATION';
+  const book=isDon?'Donation':bookById(x.bookId).name;
   const badge = x.type==='SALE'?'<span class="badge sale">Sale</span>'
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
     : '<span class="badge don">Donation</span>';
+  const cat = (!isDon && catOf(x.bookId)==='aotm') ? '<span class="badge aotm">AoTM</span>' : '';
   const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-  const meta=[x.name?esc(x.name):'', x.phone?esc(x.phone):'', x.comments?('“'+esc(x.comments)+'”'):'']
+  const who=[x.name?esc(x.name):'', x.phone?esc(x.phone):'', x.comments?('“'+esc(x.comments)+'”'):'']
     .filter(Boolean).join(' · ');
   const locTag = CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE ? ` · <b>${esc(locName(x.location))}</b>`:'';
   return `<div class="log-item ${pending?'pending':''}">
     <div class="log-top">
-      <div>
-        <span class="log-title">${esc(book)}</span> ${badge} ${pending?'<span class="badge pend">Pending</span>':''}
-      </div>
+      <div><span class="log-title">${esc(book)}</span> ${badge}${cat}${pending?'<span class="badge pend">Pending</span>':''}</div>
       <div class="log-usd">$${fmt(legsUSD(x))}</div>
     </div>
     <div class="log-pay">${payLabel(x)}</div>
-    ${meta?`<div class="log-meta">${meta}</div>`:''}
-    <div class="log-meta">${when}${locTag}</div>
+    <div class="log-meta">${who?who+' · ':''}${when}${locTag}</div>
     <div class="log-actions">
-      ${pending?`<button class="btn btn-primary btn-sm" data-act="markpaid" data-id="${x.saleId}">Mark paid</button>`:''}
-      <button class="btn btn-ghost btn-sm" data-act="editsale" data-id="${x.saleId}">Edit</button>
-      <button class="btn btn-danger btn-sm" data-act="delsale" data-id="${x.saleId}">Delete</button>
+      ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">Mark paid</button>`:''}
+      <button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>
+      <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
     </div>
   </div>`;
 }
@@ -530,10 +603,17 @@ function renderPending(){
 /* ============================================================
    MODALS
    ============================================================ */
-function openModal(html){$('#modal').innerHTML=html;$('#overlay').classList.add('show');}
+function openModal(html,wide){
+  const m=$('#modal');
+  m.className='modal'+(wide?' wide':'');
+  m.innerHTML=html;
+  $('#overlay').classList.add('show');
+}
 function closeModal(){$('#overlay').classList.remove('show');}
 $('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+const mHead = t => `<h3>${esc(t)}<button class="x" onclick="closeModal()" aria-label="Close">×</button></h3>`;
 
 function payTypeOptions(includeMixed,includeGift){
   const base=(STATE.payTypes||['Cash','Zelle','PayPal','Wise','Gift']).filter(t=>includeGift||t!=='Gift');
@@ -543,22 +623,24 @@ function payTypeOptions(includeMixed,includeGift){
 }
 function curOptions(sel){return ['PLN','EUR','USD'].map(c=>`<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]}</option>`).join('');}
 
-/* ---- Sale / Pre-order / Edit modal ---- */
+/* ---- Sale / Pre-order / Edit ---- */
 function saleModal(opts){
-  // opts: {bookId, isPreorder, edit(saleObj), loc}
   const book=bookById(opts.bookId);
   const loc=opts.loc||CUR_LOC;
   const isPre=!!opts.isPreorder;
   const edit=opts.edit||null;
   const lastCopy = !isPre && !edit && shownQty(opts.bookId)===1;
-  const needName = isPre; // pre-orders always collect name/phone
+  const needName = isPre;
   const title = edit?'Edit sale':(isPre?'Pre-order':'Record sale');
+  // A pre-order hands over nothing today, so "book given now" would be wrong.
+  const pendingLabel = isPre ? 'Payment pending (payment not yet delivered)'
+                             : 'Payment pending (book given now, paid later)';
 
   openModal(`
-    <h3>${title} — ${esc(book.name)}</h3>
+    ${mHead(title+' — '+book.name)}
     <div class="m-body">
-      ${lastCopy?`<div class="warn">⚠ This is the last copy of this book at ${esc(locName(loc))}. Selling it will mark the title SOLD OUT.</div>`:''}
-      ${isPre?`<div class="hint">Pre-order: no stock is removed. The book is recorded as pre-ordered and appears in pre-order totals.</div>`:''}
+      ${lastCopy?`<div class="warn">⚠ This is the last copy at ${esc(locName(loc))}. Selling it marks the title SOLD OUT.</div>`:''}
+      ${isPre?`<div class="hint">A pre-order removes no stock. It is counted in the pre-order totals.</div>`:''}
       <div class="field">
         <label>Payment type</label>
         <select id="ptype">${payTypeOptions(true,true)}</select>
@@ -588,7 +670,7 @@ function saleModal(opts){
         </div>
       </div>
 
-      <label class="checkline"><input type="checkbox" id="pending"> Payment pending (book given now, paid later)</label>
+      <label class="checkline"><input type="checkbox" id="pending"> ${pendingLabel}</label>
       <div id="nameBox" style="display:${needName?'block':'none'}">
         <div class="row2">
           <div class="field"><label>Name</label><input id="cname" type="text"></div>
@@ -622,7 +704,6 @@ function saleModal(opts){
   pamt.addEventListener('input',()=>{pamt.dataset.touched='1';});
   $('#pending').addEventListener('change',e=>{ if(!needName) $('#nameBox').style.display=e.target.checked?'block':'none'; });
 
-  // Prefill for edit
   if(edit){
     const L=legs(edit);
     if(L.length>1){ ptype.value='Mixed'; togglePay();
@@ -654,7 +735,7 @@ function saleModal(opts){
     const name=$('#cname')?$('#cname').value.trim():'';
     const phone=$('#cphone')?$('#cphone').value.trim():'';
     const comments=$('#ccomments').value.trim();
-    if(pending && !name){$('#modalErr').textContent='Please add a name for the pending payment.';return;}
+    if(pending && !name){$('#modalErr').textContent='Add a name so the pending payment can be traced.';return;}
 
     if(edit){
       act({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
@@ -666,12 +747,12 @@ function saleModal(opts){
   });
 }
 
-/* ---- Donation modal ---- */
+/* ---- Donation ---- */
 function donationModal(){
   openModal(`
-    <h3>♥ Record donation</h3>
+    ${mHead('Record donation')}
     <div class="m-body">
-      <div class="hint">Donations add to the grand total but are not counted as book inventory.</div>
+      <div class="hint">Donations add to collections but are not book inventory.</div>
       <div class="field"><label>Payment type</label><select id="ptype">${payTypeOptions(true,false)}</select></div>
       <div id="singlePay"><div class="row2">
         <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
@@ -719,13 +800,13 @@ function donationModal(){
   });
 }
 
-/* ---- Event modal ---- */
+/* ---- Event ---- */
 function eventModal(edit){
   openModal(`
-    <h3>${edit?'Rename event':'New event'}</h3>
+    ${mHead(edit?'Rename event':'New event')}
     <div class="m-body">
       <div class="field"><label>Event name</label><input id="evname" type="text" placeholder="e.g. Gurudeva's Welcome" value="${edit?esc(locName(edit)):''}"></div>
-      <div class="hint">Books reach an event by transferring limited stock from the warehouse.</div>
+      <div class="hint">Books reach an event by transferring stock from the warehouse.</div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -741,76 +822,180 @@ function eventModal(edit){
   });
 }
 
-/* ---- Set warehouse stock ---- */
+/* ---- Shared builder: one row per title, filled in once ---- */
+function bulkRows(cols){
+  // cols(book) -> {left, input, right}
+  const big=(STATE.books||[]).filter(b=>!isAotm(b));
+  const aotm=(STATE.books||[]).filter(isAotm);
+  const row=b=>{
+    const c=cols(b);
+    return `<div class="bulk-row">
+      <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      <div class="num">${c.left}</div>
+      <div>${c.input}</div>
+      <div class="num next" data-next="${b.id}">${c.right}</div>
+    </div>`;
+  };
+  let h='<div class="bulk">';
+  h+=`<div class="bulk-sec">Big Books</div>`;
+  h+=big.map(row).join('');
+  if(aotm.length){ h+=`<div class="bulk-sec">AoTM — Adventures</div>`; h+=aotm.map(row).join(''); }
+  h+='</div>';
+  return h;
+}
+
+/* ---- Adjust stock: add, remove, or set outright ---- */
 function stockModal(){
-  let rows='';
-  (STATE.books||[]).forEach(b=>{
-    rows+=`<div class="stock-row"><span class="sn">${esc(b.name)}</span>
-      <input type="number" min="0" step="1" data-book="${b.id}" value="${invQty(WAREHOUSE,b.id)}"></div>`;
-  });
+  const loc=CUR_LOC;
+  const where=loc===WAREHOUSE?(STATE.warehouseName||'')+' warehouse':locName(loc);
+
+  const body = bulkRows(b=>({
+    left: invQty(loc,b.id),
+    input:`<input type="number" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
+    right: invQty(loc,b.id)
+  }));
+
   openModal(`
-    <h3>Set warehouse stock</h3>
+    ${mHead('Adjust stock — '+where)}
     <div class="m-body">
-      <div class="hint">These are the totals physically in the ${esc(STATE.warehouseName||'')} warehouse.</div>
-      <div class="stock-grid">${rows}</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="add" class="on">Add / remove</button>
+        <button data-mode="set">Set exact count</button>
+      </div>
+      <div class="hint" id="modeHint">Enter how many arrived. Use a minus sign to take stock out — 25 on hand plus 12 becomes 37.</div>
+      <div class="bulk-head"><span>Title</span><span>Now</span><span id="colLabel">Change</span><span>After</span></div>
+      ${body}
+      <div class="bulk-foot"><span id="footLabel">New total on hand</span><b id="footValue">0</b></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-plum" id="saveStock">Save stock</button>
-    </div>`);
+    </div>`, true);
+
+  let mode='add';
+  const inputs=[...document.querySelectorAll('#modal input[data-book]')];
+
+  function recalc(){
+    let total=0;
+    inputs.forEach(i=>{
+      const id=i.dataset.book;
+      const now=invQty(loc,id);
+      const v=i.value===''?null:Number(i.value);
+      let next;
+      if(mode==='add') next = now + (v||0);
+      else next = (v===null? now : v);
+      if(next<0) next=0;
+      total+=next;
+      const cell=document.querySelector(`#modal [data-next="${id}"]`);
+      cell.textContent=next;
+      cell.classList.toggle('zero', next===0);
+    });
+    $('#footValue').textContent=total;
+  }
+  inputs.forEach(i=>i.addEventListener('input',recalc));
+
+  $('#modeSeg').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-mode]'); if(!b) return;
+    mode=b.dataset.mode;
+    [...$('#modeSeg').children].forEach(x=>x.classList.toggle('on',x===b));
+    $('#colLabel').textContent = mode==='add'?'Change':'Set to';
+    $('#modeHint').textContent = mode==='add'
+      ? 'Enter how many arrived. Use a minus sign to take stock out — 25 on hand plus 12 becomes 37.'
+      : 'Enter the exact count now on the shelf. Leave a title blank to keep it as it is.';
+    inputs.forEach(i=>{i.value='';});
+    recalc();
+  });
+  recalc();
+
   $('#saveStock').addEventListener('click',()=>{
-    const items=[...document.querySelectorAll('#modal input[data-book]')]
-      .map(i=>({bookId:i.dataset.book,qty:Number(i.value)||0}));
-    act({action:'setStockBulk',location:WAREHOUSE,items},'Warehouse stock updated');
+    if(mode==='add'){
+      const items=inputs.filter(i=>i.value!=='' && Number(i.value)!==0)
+        .map(i=>({bookId:i.dataset.book,delta:Math.round(Number(i.value))}));
+      if(!items.length){$('#modalErr').textContent='Enter an amount for at least one title.';return;}
+      act({action:'adjustStockBulk',location:loc,items},'Stock updated');
+    }else{
+      const items=inputs.filter(i=>i.value!=='')
+        .map(i=>({bookId:i.dataset.book,qty:Math.max(0,Math.round(Number(i.value)))}));
+      if(!items.length){$('#modalErr').textContent='Enter a count for at least one title.';return;}
+      act({action:'setStockBulk',location:loc,items},'Stock set');
+    }
   });
 }
 
-/* ---- Transfer modal ---- */
+/* ---- Transfer: whole load in one pass ---- */
 function transferModal(mode){
-  // mode: 'toevent' (warehouse->event), 'in' (warehouse->current event), 'return' (current event->warehouse)
   const events=STATE.events||[];
-  let fromDefault=WAREHOUSE, toDefault='', lockFrom=false, lockTo=false, heading='Transfer stock';
-  if(mode==='toevent'){ heading='Transfer to event'; fromDefault=WAREHOUSE; toDefault=events[0]?events[0].eventId:''; lockFrom=true; }
-  if(mode==='in'){ heading='Transfer into '+locName(CUR_LOC); fromDefault=WAREHOUSE; toDefault=CUR_LOC; lockFrom=true; lockTo=true; }
-  if(mode==='return'){ heading='Return to warehouse'; fromDefault=CUR_LOC; toDefault=WAREHOUSE; lockFrom=true; lockTo=true; }
   if(mode==='toevent' && !events.length){ toast('Create an event first.',true); return; }
+
+  let fromDefault=WAREHOUSE, toDefault='', lockFrom=false, lockTo=false, heading='Transfer stock';
+  if(mode==='toevent'){ heading='Transfer to event'; toDefault=events[0].eventId; lockFrom=true; }
+  if(mode==='in'){ heading='Transfer into '+locName(CUR_LOC); toDefault=CUR_LOC; lockFrom=true; lockTo=true; }
+  if(mode==='return'){ heading='Return to warehouse'; fromDefault=CUR_LOC; toDefault=WAREHOUSE; lockFrom=true; lockTo=true; }
 
   const locOpts=(sel)=>{
     let o=`<option value="${WAREHOUSE}" ${sel===WAREHOUSE?'selected':''}>${esc(STATE.warehouseName||'')} (Warehouse)</option>`;
     events.forEach(e=>o+=`<option value="${e.eventId}" ${sel===e.eventId?'selected':''}>${esc(e.name)}</option>`);
     return o;
   };
-  const bookOpts=(STATE.books||[]).map(b=>`<option value="${b.id}">${esc(b.name)}</option>`).join('');
+
+  const body = bulkRows(b=>({
+    left:`<span data-avail="${b.id}">${invQty(fromDefault,b.id)}</span>`,
+    input:`<input type="number" min="0" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
+    right:'0'
+  }));
 
   openModal(`
-    <h3>${esc(heading)}</h3>
+    ${mHead(heading)}
     <div class="m-body">
       <div class="row2">
         <div class="field"><label>From</label><select id="tfrom" ${lockFrom?'disabled':''}>${locOpts(fromDefault)}</select></div>
         <div class="field"><label>To</label><select id="tto" ${lockTo?'disabled':''}>${locOpts(toDefault)}</select></div>
       </div>
-      <div class="field"><label>Book</label><select id="tbook">${bookOpts}</select></div>
-      <div class="field"><label>Quantity</label><input id="tqty" type="number" min="1" step="1" value="1"></div>
-      <div class="hint" id="availHint"></div>
+      <div class="hint">Fill in every title you are carrying, then send the whole load at once. Transfers add to what is already there.</div>
+      <div class="bulk-head"><span>Title</span><span>Avail.</span><span>Move</span><span>Left</span></div>
+      ${body}
+      <div class="bulk-foot"><span>Books in this load</span><b id="footValue">0</b></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="saveTransfer">Transfer</button>
-    </div>`);
+    </div>`, true);
 
-  function upd(){
-    const from=$('#tfrom').value, book=$('#tbook').value;
-    $('#availHint').textContent=`Available in ${from===WAREHOUSE?(STATE.warehouseName||'')+' warehouse':locName(from)}: ${invQty(from,book)}`;
+  const inputs=[...document.querySelectorAll('#modal input[data-book]')];
+
+  function recalc(){
+    const from=$('#tfrom').value;
+    let load=0, over=false;
+    inputs.forEach(i=>{
+      const id=i.dataset.book;
+      const avail=invQty(from,id);
+      document.querySelector(`#modal [data-avail="${id}"]`).textContent=avail;
+      const q=Math.max(0,Math.round(Number(i.value)||0));
+      const left=avail-q;
+      if(left<0) over=true;
+      load+=q;
+      const cell=document.querySelector(`#modal [data-next="${id}"]`);
+      cell.textContent=left<0?left:left;
+      cell.classList.toggle('zero', left<=0);
+    });
+    $('#footValue').textContent=load;
+    $('#modalErr').textContent = over ? 'One or more titles exceed what is on hand.' : '';
   }
-  $('#tfrom').addEventListener('change',upd); $('#tbook').addEventListener('change',upd); upd();
+  inputs.forEach(i=>i.addEventListener('input',recalc));
+  $('#tfrom').addEventListener('change',recalc);
+  recalc();
 
   $('#saveTransfer').addEventListener('click',()=>{
-    const from=$('#tfrom').value, to=$('#tto').value, bookId=$('#tbook').value, qty=Number($('#tqty').value)||0;
-    if(from===to){$('#modalErr').textContent='Choose two different locations.';return;}
-    if(qty<1){$('#modalErr').textContent='Quantity must be at least 1.';return;}
-    act({action:'transfer',from,to,bookId,qty},'Stock transferred');
+    const from=$('#tfrom').value, to=$('#tto').value;
+    if(from===to){$('#modalErr').textContent='Pick two different locations.';return;}
+    const items=inputs.filter(i=>Number(i.value)>0)
+      .map(i=>({bookId:i.dataset.book,qty:Math.round(Number(i.value))}));
+    if(!items.length){$('#modalErr').textContent='Enter a quantity for at least one title.';return;}
+    const bad=items.find(it=>it.qty>invQty(from,it.bookId));
+    if(bad){$('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(from)+'.';return;}
+    act({action:'transferBulk',from,to,items},'Stock transferred');
   });
 }
 
@@ -822,6 +1007,7 @@ document.addEventListener('click',e=>{
   const a=t.dataset.act;
   if(a==='loc'){ CUR_LOC=t.dataset.loc; renderAll(); return; }
   if(a==='refresh'){ refresh(); return; }
+  if(a==='syncsheet'){ syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
   if(a==='deleteevent'){
@@ -830,7 +1016,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='donation'){ donationModal(); return; }
-  if(a==='setstock'){ stockModal(); return; }
+  if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
   if(a==='preorder'){ saleModal({bookId:t.dataset.book,isPreorder:true,loc:CUR_LOC}); return; }
@@ -844,7 +1030,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='editsale'){
     const s=(STATE.sales||[]).find(x=>x.saleId===t.dataset.id); if(!s)return;
-    if(s.type==='DONATION'){ toast('Editing donations: delete and re-add.',false); return; }
+    if(s.type==='DONATION'){ toast('To change a donation, delete it and add it again.',false); return; }
     saleModal({bookId:s.bookId,isPreorder:s.type==='PREORDER',loc:s.location,edit:s});
     return;
   }
@@ -854,11 +1040,16 @@ document.addEventListener('click',e=>{
    INIT
    ============================================================ */
 (function init(){
-  if(CONFIG.PRABHUPADA_IMG){ $('#imgLeft').innerHTML=`<img src="${CONFIG.PRABHUPADA_IMG}" alt="Srila Prabhupada">`; }
-  if(CONFIG.GURUDEVA_IMG){ $('#imgRight').innerHTML=`<img src="${CONFIG.GURUDEVA_IMG}" alt="Srila Gurudeva">`; }
+  if(CONFIG.PRABHUPADA_IMG) $('#imgLeft').innerHTML=`<img src="${CONFIG.PRABHUPADA_IMG}" alt="Śrīla Prabhupāda">`;
+  if(CONFIG.GURUDEVA_IMG)   $('#imgRight').innerHTML=`<img src="${CONFIG.GURUDEVA_IMG}" alt="Śrīla Gurudeva">`;
   refresh();
-  setInterval(()=>{ if(!$('#overlay').classList.contains('show')) refresh(true); },
-    Math.max(5,CONFIG.AUTO_REFRESH_SECONDS)*1000);
+  setInterval(()=>{
+    // A phone in someone's pocket does not need to poll.
+    if(document.hidden) return;
+    if($('#overlay').classList.contains('show')) return;
+    refresh(true);
+  }, Math.max(5,CONFIG.AUTO_REFRESH_SECONDS)*1000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refresh(true); });
 })();
 </script>
 </body>
