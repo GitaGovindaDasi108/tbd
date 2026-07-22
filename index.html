@@ -41,9 +41,20 @@ input,select,textarea{font-family:inherit;font-size:15px}
 header.masthead{
   background:linear-gradient(180deg,#E88A32 0%, var(--saffron) 55%, var(--saffron-d) 100%);
   color:#FFF7EA; border-bottom:3px solid var(--gold);
-  position:relative;
 }
-.masthead-inner{max-width:1280px;margin:0 auto;padding:12px 18px;
+/* Kept in normal flow so it stays put at any window width, full screen included. */
+.util-bar{max-width:1280px;margin:0 auto;padding:7px 18px 0;
+  display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+.status{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.18);
+  padding:4px 10px;border-radius:999px;font-size:11.5px;color:#FFF3DE;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:#bbb;box-shadow:0 0 0 3px rgba(255,255,255,.15);flex:none}
+.dot.ok{background:#8FE3A6} .dot.bad{background:#FF9B8A} .dot.load{background:#FFD98A;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.btn-refresh{background:rgba(255,255,255,.16);color:#FFF7EA;border:1px solid rgba(255,255,255,.35);
+  border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.btn-refresh:active{transform:scale(.97)}
+
+.masthead-inner{max-width:1280px;margin:0 auto;padding:6px 18px 12px;
   display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px}
 /* Photographs are shown whole — height is matched, width follows the picture. */
 .deity{height:84px;flex:none;border-radius:10px;overflow:hidden;
@@ -57,15 +68,6 @@ header.masthead{
 .title-block .warehouse{color:#FFE7B8}
 .mantra{font-family:'Marcellus',serif;font-style:italic;font-size:clamp(11px,1.6vw,14px);
   color:#FFEFD2;margin-top:4px;letter-spacing:.3px}
-.conn-wrap{position:absolute;top:9px;right:14px;display:flex;align-items:center;gap:7px}
-.status{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.18);
-  padding:4px 10px;border-radius:999px;font-size:11.5px;color:#FFF3DE}
-.dot{width:8px;height:8px;border-radius:50%;background:#bbb;box-shadow:0 0 0 3px rgba(255,255,255,.15)}
-.dot.ok{background:#8FE3A6} .dot.bad{background:#FF9B8A} .dot.load{background:#FFD98A;animation:pulse 1s infinite}
-@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
-.btn-refresh{background:rgba(255,255,255,.16);color:#FFF7EA;border:1px solid rgba(255,255,255,.35);
-  border-radius:999px;padding:4px 11px;font-size:11.5px;font-weight:600}
-.btn-refresh:active{transform:scale(.97)}
 
 /* ---------- Layout ---------- */
 main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
@@ -78,64 +80,68 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:none;border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
 .btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.55;pointer-events:none}
 .btn-primary{background:var(--saffron);color:#fff}
 .btn-plum{background:var(--plum);color:#FFF3DE}
 .btn-gold{background:var(--gold);color:#fff}
+.btn-green{background:var(--green);color:#fff}
 .btn-ghost{background:var(--paper);color:var(--plum);border:1.5px solid var(--line-d);box-shadow:none}
 .btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
 .btn-xs{padding:3px 9px;font-size:11px;border-radius:7px;box-shadow:none;font-weight:600}
 .btn-danger{background:var(--clay-l);color:var(--clay);border:1px solid #EEC4bd;box-shadow:none}
 
-/* ---------- Grand total bar (compact, six measures) ---------- */
-.totals{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:13px}
+/* ---------- Grand total bar ---------- */
+.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:13px}
 .tcard{background:var(--paper);border:1px solid var(--line);border-radius:11px;
-  padding:7px 10px 8px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
-.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--marigold)}
-.tcard.total::before{background:var(--saffron-d)}
+  padding:8px 12px 9px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
+.tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--saffron-d)}
 .tcard.aotm::before{background:var(--blue)}
 .tcard.usd::before{background:var(--green)}
 .tcard.pend::before{background:var(--clay)}
-.tcard .label{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+.tcard .label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
   font-weight:700;line-height:1.3}
-.tcard .value{font-family:'Marcellus',serif;font-size:clamp(17px,2.1vw,25px);color:var(--plum);
-  margin-top:1px;line-height:1.12}
+.tcard .value{font-family:'Marcellus',serif;font-size:clamp(20px,2.4vw,30px);color:var(--plum);
+  margin-top:1px;line-height:1.1}
 .tcard.usd .value{color:var(--green)} .tcard.pend .value{color:var(--clay)}
-.tcard .sub{font-size:10px;color:var(--muted);line-height:1.35;margin-top:2px;
-  overflow:hidden;text-overflow:ellipsis}
-.tcard .sub b{color:var(--plum);font-weight:600}
+.tcard .sub{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px}
+.tcard .sub b{color:var(--plum);font-weight:700}
 
 /* ---------- Panels ---------- */
-.cols{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
+.cols{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:stretch}
 .cols-2{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:16px}
+.cols-2.single{grid-template-columns:1fr}
 .panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);
-  box-shadow:var(--shadow);overflow:hidden}
+  box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:0}
 .panel > h2{font-family:'Marcellus',serif;font-weight:400;font-size:18px;color:var(--plum);
-  padding:12px 16px;border-bottom:1px solid var(--line);
+  padding:12px 16px;border-bottom:1px solid var(--line);flex:none;
   background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px}
-.panel .body{padding:12px 14px}
+.panel .body{padding:12px 14px;flex:1;min-height:0;display:flex;flex-direction:column}
 
-/* ---------- Inventory cards (unchanged) ---------- */
+/* ---------- Inventory cards ---------- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
 .book{border:1.5px solid var(--line-d);border-radius:12px;padding:11px 12px;background:var(--paper2);
-  text-align:left;position:relative;transition:transform .06s,box-shadow .12s;min-height:104px;
-  display:flex;flex-direction:column;justify-content:space-between}
-.book:hover{box-shadow:var(--shadow)}
-.book.sellable{cursor:pointer}
-.book.sellable:active{transform:scale(.98)}
+  text-align:left;position:relative;min-height:104px;display:flex;flex-direction:column;justify-content:space-between}
+.book .top:hover{box-shadow:none}
+.book .top{cursor:default}
+.book.sellable .top{cursor:pointer}
+.book.sellable .top:active{transform:scale(.985)}
 .book .bname{font-weight:700;font-size:14.5px;color:var(--plum);line-height:1.2}
 .book .price{font-size:11.5px;color:var(--muted);margin-top:2px}
 .book .qtyrow{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:6px}
 .qty-chip{font-family:'Marcellus',serif;font-size:22px;color:var(--green);line-height:1}
 .qty-chip.low{color:var(--gold)} .qty-chip.zero{color:var(--clay)}
 .qty-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.resv{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.3px;margin-top:2px}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
+.flag.held{background:#FCEFD0;color:var(--gold)}
 .sold-tag{position:absolute;top:8px;right:8px}
-.pre-btn{margin-top:8px;width:100%;background:var(--plum);color:#FFF3DE;border:none;border-radius:8px;
-  padding:6px;font-size:12px;font-weight:600}
+.pre-btn{margin-top:8px;width:100%;background:transparent;color:var(--plum);border:1.5px solid var(--line-d);
+  border-radius:8px;padding:5px;font-size:11.5px;font-weight:700;letter-spacing:.3px}
+.pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
 
-/* ---------- Sales-by-title (unchanged) ---------- */
+/* ---------- Sales-by-title ---------- */
 .title-list{display:flex;flex-direction:column;gap:2px}
 .title-row{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:14px}
 .title-row:last-child{border-bottom:none}
@@ -143,7 +149,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .title-row .count{font-family:'Marcellus',serif;color:var(--plum);font-size:16px}
 .title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
-/* ---------- Payments by type (unchanged) ---------- */
+/* ---------- Payments by type ---------- */
 .pay-table{width:100%;border-collapse:collapse;font-size:13.5px}
 .pay-table th,.pay-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
 .pay-table th:first-child,.pay-table td:first-child{text-align:left}
@@ -154,31 +160,32 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
 .cur-pill b{color:var(--plum)}
 
-/* ---------- Sales log (compact) ---------- */
-.log{display:flex;flex-direction:column;gap:6px;max-height:540px;overflow:auto}
-.log-item{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--paper2)}
+/* ---------- Logs ---------- */
+.log{display:flex;flex-direction:column;gap:6px;flex:1;min-height:0;overflow:auto}
+.log-item{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--paper2);flex:none}
 .log-item.pending{border-color:#EBC9A0;background:#FFF6E7}
+.log-item.awaiting{border-color:#C7D6E8;background:#F4F8FC}
 .log-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .log-title{font-weight:700;color:var(--plum);font-size:13px}
-.badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;
-  vertical-align:1px}
+.badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;vertical-align:1px}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
 .badge.don{background:#F3E8F7;color:#8A4FA0}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.aotm{background:#EAF0F7;color:var(--blue)}
+.badge.paid{background:var(--green-l);color:var(--green)}
 .log-meta{font-size:10.5px;color:var(--muted);margin-top:1px;line-height:1.35}
 .log-pay{font-size:11.5px;color:var(--ink);margin-top:1px}
 .log-usd{font-family:'Marcellus',serif;color:var(--plum);font-size:14px;white-space:nowrap}
 .log-actions{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
 .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:20px 8px;font-style:italic}
 
-/* ---------- Pending panel ---------- */
-.pending-panel{margin-top:16px;border-color:#EBC9A0}
-.pending-panel > h2{background:linear-gradient(180deg,#FFF1DA,transparent);color:var(--clay);
-  font-size:16px;padding:9px 14px}
-.pending-panel .body{padding:10px 12px}
-.pending-panel .log{max-height:340px;gap:5px}
+.bottom-panels .panel{max-height:420px}
+.pre-panel > h2{background:linear-gradient(180deg,#EAF1F9,transparent);color:var(--blue);font-size:16px;padding:9px 14px}
+.pend-panel{border-color:#EBC9A0}
+.pend-panel > h2{background:linear-gradient(180deg,#FFF1DA,transparent);color:var(--clay);font-size:16px;padding:9px 14px}
+.bottom-panels .body{padding:10px 12px}
+.bottom-panels .log{gap:5px}
 
 /* ---------- Modal ---------- */
 .overlay{position:fixed;inset:0;background:rgba(43,34,48,.55);backdrop-filter:blur(2px);
@@ -192,8 +199,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   padding:14px 18px;background:var(--plum);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .modal h3 .x{background:none;border:none;color:var(--gold-l);font-size:22px;line-height:1;padding:0 2px}
 .modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow:auto}
-.modal .m-foot{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;
-  background:var(--paper2)}
+.modal .m-foot{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--paper2)}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .field input,.field select,.field textarea{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink)}
@@ -203,15 +209,15 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .checkline{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
 .checkline input{width:18px;height:18px}
 .warn{background:var(--clay-l);border:1px solid #EEC0b8;color:var(--clay);border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600}
+.note{background:#EAF1F9;border:1px solid #C7D6E8;color:var(--blue);border-radius:9px;padding:10px 12px;font-size:13px}
 .leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
 .leg-box .lg-title{font-size:11px;font-weight:700;color:var(--saffron-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .hint{font-size:12px;color:var(--muted)}
-.err{color:var(--clay);font-size:13px;font-weight:600;min-height:0}
+.err{color:var(--clay);font-size:13px;font-weight:600}
 
-/* ---------- Bulk grid (stock + transfers) ---------- */
-.seg{display:flex;gap:0;border:1.5px solid var(--line-d);border-radius:10px;overflow:hidden}
-.seg button{flex:1;background:var(--paper);color:var(--muted);border:none;padding:9px 8px;
-  font-size:12.5px;font-weight:700;letter-spacing:.3px}
+/* ---------- Bulk grid ---------- */
+.seg{display:flex;border:1.5px solid var(--line-d);border-radius:10px;overflow:hidden}
+.seg button{flex:1;background:var(--paper);color:var(--muted);border:none;padding:9px 8px;font-size:12.5px;font-weight:700;letter-spacing:.3px}
 .seg button.on{background:var(--plum);color:var(--gold-l)}
 .bulk{display:flex;flex-direction:column}
 .bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 62px 92px 62px;gap:10px;align-items:center}
@@ -230,8 +236,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .bulk-sec{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);
   padding:10px 2px 4px;border-bottom:1px solid var(--line)}
 .bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;
-  padding:10px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;
-  font-size:13px;color:var(--muted)}
+  padding:10px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted)}
 .bulk-foot b{font-family:'Marcellus',serif;font-size:18px;color:var(--plum)}
 
 /* toast */
@@ -242,31 +247,33 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 #toast.err{background:var(--clay)}
 
 /* ---------- Responsive ---------- */
-@media (max-width:1080px){
-  .totals{grid-template-columns:repeat(3,1fr)}
-}
+@media (max-width:1080px){ .totals{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
+  .log{max-height:420px}
   .deity{height:62px} .deity img{height:62px}
-  .masthead-inner{grid-template-columns:auto 1fr auto;gap:10px;padding:11px 12px}
-  .conn-wrap{position:static;justify-content:center;margin:0 auto 9px}
+  .masthead-inner{gap:10px;padding:4px 12px 11px}
+  .util-bar{justify-content:center;padding:8px 12px 0}
 }
 @media (max-width:560px){
-  .totals{grid-template-columns:repeat(2,1fr);gap:7px}
+  .totals{gap:7px}
   .row3{grid-template-columns:1fr 1fr}
   .inv-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   main{padding:12px 12px 60px}
   .bulk-head,.bulk-row{grid-template-columns:1fr 50px 80px 50px;gap:7px}
   .bulk-row .bn{font-size:13.5px}
 }
-@media (prefers-reduced-motion:reduce){
-  *{animation:none!important;transition:none!important}
-}
+@media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
 </head>
 <body>
 
 <header class="masthead">
+  <div class="util-bar">
+    <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
+    <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
+    <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
+  </div>
   <div class="masthead-inner">
     <div class="deity" id="imgLeft"><span>Śrīla<br>Prabhupāda</span></div>
     <div class="title-block">
@@ -274,11 +281,6 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
       <div class="mantra">gopī-bhartuḥ pada-kamalayor dāsa-dāsānudāsaḥ</div>
     </div>
     <div class="deity" id="imgRight"><span>Śrīla<br>Gurudeva</span></div>
-  </div>
-  <div class="conn-wrap">
-    <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Connecting…</span></div>
-    <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
-    <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
 </header>
 
@@ -301,6 +303,17 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
     </section>
   </div>
 
+  <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
+    <section class="panel pre-panel" id="prePanel" style="display:none">
+      <h2>Pre-Orders Awaiting Delivery</h2>
+      <div class="body"><div class="log" id="preList"></div></div>
+    </section>
+    <section class="panel pend-panel" id="pendingPanel" style="display:none">
+      <h2>Pending Payments</h2>
+      <div class="body"><div class="log" id="pendingList"></div></div>
+    </section>
+  </div>
+
   <div class="cols-2">
     <section class="panel">
       <h2>Sales by Title <span class="hint">sold / pre-ordered</span></h2>
@@ -311,11 +324,6 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
       <div class="body" id="payBody"></div>
     </section>
   </div>
-
-  <section class="panel pending-panel" id="pendingPanel" style="display:none">
-    <h2>Pending Payments</h2>
-    <div class="body"><div class="log" id="pendingList"></div></div>
-  </section>
 </main>
 
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
@@ -331,24 +339,41 @@ const CONFIG = Object.assign({
   APPS_SCRIPT_URL: '',
   PRABHUPADA_IMG: 'Srila_Prabhupada.jpeg',
   GURUDEVA_IMG:   'Gurudeva.jpeg',
-  AUTO_REFRESH_SECONDS: 15
+  POLL_SECONDS: 8
 }, window.TBS_CONFIG || {});
 
 const WAREHOUSE = 'WAREHOUSE';
 const CUR_LABEL = { PLN:'PLN', EUR:'Euros', USD:'USD' };
 const CUR_SYM   = { PLN:'zł',  EUR:'€',     USD:'$'   };
 
-let STATE = null;
+/* ------------------------------------------------------------
+   HOW THIS STAYS FAST
+   A round trip to Apps Script takes seconds and nothing can make
+   it instant. So nobody waits for it. Every action is applied to
+   a local copy at once and drawn immediately; the write goes out
+   in the background. BASE is the last thing the server confirmed,
+   OPS are our changes it has not confirmed yet, and STATE is the
+   two combined. If a write is refused, its change is peeled back
+   off and the reason is shown.
+   ------------------------------------------------------------ */
+let BASE = null;      // last confirmed server state
+let REV  = -1;        // server revision that BASE corresponds to
+let OPS  = [];        // optimistic changes awaiting confirmation
+let STATE = null;     // BASE + OPS, what the screen shows
 let CUR_LOC = WAREHOUSE;
-let busy = false;
+let inflight = 0;
+let syncTimer = null;
 
-/* ---------- tiny helpers ---------- */
+/* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 
-function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';setTimeout(()=>t.className='',3200);}
+function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',isErr?5000:2600);}
 function setStatus(kind,text){$('#dot').className='dot '+kind;$('#statusText').textContent=text;}
+const clock = () => new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
 function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,cat:'big',usd:0,pln:0,eur:0};}
 function catOf(id){return bookById(id).cat==='aotm'?'aotm':'big';}
@@ -367,79 +392,147 @@ function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — 
   const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
 function scopedSales(){const s=STATE.sales||[];return CUR_LOC===WAREHOUSE?s:s.filter(x=>x.location===CUR_LOC);}
 function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location===loc&&i.bookId===bookId);return rec?rec.qty:0;}
-function shownQty(bookId){return CUR_LOC===WAREHOUSE?invQty(WAREHOUSE,bookId):invQty(CUR_LOC,bookId);}
+function shownQty(bookId){return invQty(CUR_LOC,bookId);}
+/* A pre-order not yet handed over holds a copy back from general sale. */
+function reservedQty(loc,bookId){
+  return (STATE.sales||[]).filter(x=>x.type==='PREORDER'&&!x.delivered&&x.location===loc&&x.bookId===bookId).length;
+}
+function availQty(loc,bookId){return Math.max(0,invQty(loc,bookId)-reservedQty(loc,bookId));}
 
 /* ============================================================
-   API
+   TRANSPORT
    ============================================================ */
-async function api(payload){
+async function post(payload){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
   const txt = await res.text();
-  let data; try{data=JSON.parse(txt);}catch(e){throw new Error('The server sent something unreadable. Check the deployment address and access settings.');}
-  if(!data.ok) throw new Error(data.error||'That did not go through.');
-  return data;
+  let d; try{d=JSON.parse(txt);}catch(e){throw new Error('The server sent something unreadable. Check the deployment address and access settings.');}
+  if(!d.ok) throw new Error(d.error||'That did not go through.');
+  return d;
 }
 
-function adoptState(d){
-  STATE = d.state;
-  if(CUR_LOC!==WAREHOUSE && !(STATE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
-  renderAll();
-  setStatus('ok','Connected · '+new Date().toLocaleTimeString());
+function derive(){
+  if(!BASE) return null;
+  const st = JSON.parse(JSON.stringify(BASE));
+  OPS.forEach(op=>{ try{ op.apply(st); }catch(e){} });
+  return st;
 }
 
-async function refresh(silent){
-  if(busy) return;
-  if(!silent) setStatus('load','Syncing…');
-  try{ adoptState(await api({action:'getState'})); }
-  catch(err){
-    setStatus('bad','Offline — '+err.message.slice(0,40));
-    if(!silent) toast(err.message,true);
+function cacheSave(){
+  try{ localStorage.setItem('tbs_cache', JSON.stringify({rev:REV,state:BASE})); }catch(e){}
+}
+function cacheLoad(){
+  try{
+    const c=JSON.parse(localStorage.getItem('tbs_cache')||'null');
+    if(c&&c.state&&c.state.books){ BASE=c.state; REV=c.rev; STATE=derive(); renderAll(); return true; }
+  }catch(e){}
+  return false;
+}
+
+async function pull(){
+  const d = await post({action:'getState'});
+  BASE = d.state; REV = d.rev;
+  OPS = OPS.filter(o=>o.rev===undefined || o.rev>REV);   // drop what the server now includes
+  if(CUR_LOC!==WAREHOUSE && !(BASE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
+  STATE = derive(); cacheSave(); renderAll();
+  setStatus(OPS.length?'load':'ok', OPS.length?('Saving '+OPS.length+'…'):('Up to date · '+clock()));
+}
+
+function scheduleSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>pull().catch(()=>{}), 900); }
+
+/* Apply now, send in the background. */
+function commit(payload, apply, okMsg){
+  const op = { apply };
+  OPS.push(op);
+  STATE = derive(); renderAll(); closeModal();
+  if(okMsg) toast(okMsg);
+
+  inflight++; setStatus('load','Saving…');
+  post(payload).then(d=>{
+    op.rev = d.rev;
+    scheduleSync();
+  }).catch(err=>{
+    OPS = OPS.filter(o=>o!==op);
+    STATE = derive(); renderAll();
+    toast('Not saved — '+err.message, true);
+  }).finally(()=>{
+    inflight--;
+    if(!inflight) setStatus('ok','Saved · '+clock());
+  });
+}
+
+/* Structural changes need an id from the server, so these do wait. */
+async function commitSync(payload, okMsg){
+  const btns=[...document.querySelectorAll('#modal .btn')]; btns.forEach(b=>b.disabled=true);
+  setStatus('load','Saving…');
+  try{
+    await post(payload);
+    await pull();
+    closeModal();
+    if(okMsg) toast(okMsg);
+  }catch(err){
+    btns.forEach(b=>b.disabled=false);
+    const e=$('#modalErr'); if(e) e.textContent=err.message; else toast(err.message,true);
+    setStatus('bad','Error');
   }
 }
 
-async function act(payload,okMsg){
-  if(busy) return;
-  busy=true; setStatus('load','Saving…');
+/* Cheap poll: one number. Only pulls the whole state when it changes. */
+async function poll(){
+  if(document.hidden || inflight) return;
   try{
-    const d = await api(payload);
-    closeModal();
-    adoptState(d);
-    if(okMsg) toast(okMsg);
-  }catch(err){
-    toast(err.message,true); setStatus('bad','Error');
-    const e=$('#modalErr'); if(e) e.textContent=err.message;
-  }finally{ busy=false; }
+    const d = await post({action:'ping'});
+    if(d.rev !== REV) await pull();
+    else if(!OPS.length) setStatus('ok','Up to date · '+clock());
+  }catch(err){ setStatus('bad','Offline — retrying'); }
 }
 
 async function syncSheet(){
   setStatus('load','Rebuilding sheet…');
-  try{ adoptState(await api({action:'syncSheets'})); toast('Google Sheet rebuilt'); }
-  catch(err){ toast(err.message,true); setStatus('bad','Error'); }
+  try{ const d=await post({action:'syncSheets'}); BASE=d.state; REV=d.rev;
+    OPS=OPS.filter(o=>o.rev===undefined||o.rev>REV); STATE=derive(); cacheSave(); renderAll();
+    toast('Google Sheet rebuilt'); setStatus('ok','Up to date · '+clock());
+  }catch(err){ toast(err.message,true); setStatus('bad','Error'); }
+}
+
+/* ---------- local mutators used by optimistic ops ---------- */
+function invAdd(st,loc,bookId,delta){
+  let r=st.inventory.find(i=>i.location===loc&&i.bookId===bookId);
+  if(!r){r={location:loc,bookId,qty:0};st.inventory.push(r);}
+  r.qty=Math.max(0,r.qty+delta);
+}
+function invSet(st,loc,bookId,qty){
+  let r=st.inventory.find(i=>i.location===loc&&i.bookId===bookId);
+  if(!r){r={location:loc,bookId,qty:0};st.inventory.push(r);}
+  r.qty=Math.max(0,qty);
+}
+const findSale=(st,id)=>st.sales.find(x=>x.saleId===id);
+function legFields(L){
+  return {p1type:L[0]?L[0].type:'',p1cur:L[0]?L[0].cur:'',p1amt:L[0]?L[0].amt:0,
+          p2type:L[1]?L[1].type:'',p2cur:L[1]?L[1].cur:'',p2amt:L[1]?L[1].amt:0};
 }
 
 /* ============================================================
    RENDER
    ============================================================ */
 function renderAll(){
+  if(!STATE) return;
   $('#whTitle').textContent = STATE.warehouseName ? (': '+STATE.warehouseName) : '';
   document.title = 'Book Sales — '+(STATE.warehouseName||'');
   renderTabs(); renderContextActions(); renderTotals();
-  renderInventory(); renderTitleList(); renderPayments(); renderLog(); renderPending();
+  renderInventory(); renderTitleList(); renderPayments(); renderLog(); renderBottom();
 }
 
 function renderTabs(){
-  const t=$('#locTabs'); let h='';
-  h+=`<button class="loc-tab master ${CUR_LOC===WAREHOUSE?'active':''}" data-act="loc" data-loc="${WAREHOUSE}">🏠 ${esc(STATE.warehouseName||'Warehouse')} (All)</button>`;
+  let h=`<button class="loc-tab master ${CUR_LOC===WAREHOUSE?'active':''}" data-act="loc" data-loc="${WAREHOUSE}">🏠 ${esc(STATE.warehouseName||'Warehouse')} (All)</button>`;
   (STATE.events||[]).forEach(e=>{
     h+=`<button class="loc-tab ${CUR_LOC===e.eventId?'active':''}" data-act="loc" data-loc="${esc(e.eventId)}">${esc(e.name)}</button>`;
   });
   h+=`<button class="loc-tab" data-act="newevent" style="border-style:dashed;color:var(--saffron-d)">＋ New event</button>`;
-  t.innerHTML=h;
+  $('#locTabs').innerHTML=h;
 }
 
 function renderContextActions(){
-  const a=$('#ctxActions');
   let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
   if(CUR_LOC===WAREHOUSE){
     h+=`<button class="btn btn-plum" data-act="stock">Adjust stock</button>`;
@@ -451,10 +544,9 @@ function renderContextActions(){
     h+=`<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
     h+=`<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
   }
-  a.innerHTML=h;
+  $('#ctxActions').innerHTML=h;
 }
 
-/* Six measures: big books split from Adventures, then money. */
 function renderTotals(){
   const s=scopedSales();
   const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat).length;
@@ -462,69 +554,70 @@ function renderTotals(){
   const aotmSold=n('SALE','aotm'), aotmPre=n('PREORDER','aotm');
 
   let totUsd=0, pendUsd=0;
-  const cur={PLN:0,EUR:0,USD:0};
+  const got={PLN:0,EUR:0,USD:0}, due={PLN:0,EUR:0,USD:0};
   s.forEach(x=>{
     const u=legsUSD(x);
-    if(isPaid(x)){ totUsd+=u; legs(x).forEach(l=>{ if(cur[l.cur]!==undefined) cur[l.cur]+=l.amt; }); }
-    else pendUsd+=u;
+    if(isPaid(x)){ totUsd+=u; legs(x).forEach(l=>{ if(got[l.cur]!==undefined) got[l.cur]+=l.amt; }); }
+    else{ pendUsd+=u; legs(x).forEach(l=>{ if(due[l.cur]!==undefined) due[l.cur]+=l.amt; }); }
   });
-
-  const curLine=[
-    cur.PLN?`<b>${fmt(cur.PLN)}</b> zł`:'',
-    cur.EUR?`<b>${fmt(cur.EUR)}</b> €`:'',
-    cur.USD?`$<b>${fmt(cur.USD)}</b>`:''
-  ].filter(Boolean).join(' · ') || 'nothing collected yet';
+  const money=o=>[
+    o.PLN?`<b>${fmt(o.PLN)}</b> zł`:'', o.EUR?`<b>${fmt(o.EUR)}</b> €`:'', o.USD?`$<b>${fmt(o.USD)}</b>`:''
+  ].filter(Boolean).join(' · ');
 
   $('#totals').innerHTML=`
-    <div class="tcard"><div class="label">Big Books Sold</div><div class="value">${bigSold}</div></div>
-    <div class="tcard"><div class="label">Big Books Pre-Ordered</div><div class="value">${bigPre}</div></div>
-    <div class="tcard total"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre}</div></div>
+    <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre}</div>
+      <div class="sub"><b>${bigSold}</b> sold · <b>${bigPre}</b> pre-ordered</div></div>
     <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre}</div>
       <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered</div></div>
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
-      <div class="sub">${curLine}</div></div>
-    <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div></div>`;
+      <div class="sub">${money(got)||'nothing collected yet'}</div></div>
+    <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
+      <div class="sub">${money(due)||'nothing outstanding'}</div></div>`;
 }
 
 function renderInventory(){
   $('#invHeading').firstChild.textContent = (CUR_LOC===WAREHOUSE?'Warehouse Inventory ':'Event Inventory ');
   $('#invHint').textContent = CUR_LOC===WAREHOUSE?'(stock on hand at the warehouse)':'(stock available at this event)';
   const s=scopedSales();
-  const grid=$('#invGrid'); let h='';
+  let h='';
   (STATE.books||[]).forEach(b=>{
-    const q=shownQty(b.id);
+    const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
-    const sellable=q>0;
-    const cls=q<=0?'zero':q===1?'low':'';
+    const sellable=avail>0;
+    const cls=q<=0?'zero':avail<=1?'low':'';
     let flag='';
     if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
-    else if(q===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
-    h+=`<div class="book ${sellable?'sellable':''}" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
-      ${q<=0?flag:''}
-      <div>
-        <div class="bname">${esc(b.name)}</div>
-        <div class="price">${b.pln} zł · ${b.eur} € · $${b.usd}</div>
+    else if(avail<=0) flag=`<span class="flag held sold-tag">ALL RESERVED</span>`;
+    else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
+    h+=`<div class="book ${sellable?'sellable':''}">
+      ${(q<=0||avail<=0)?flag:''}
+      <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
+        <div>
+          <div class="bname">${esc(b.name)}</div>
+          <div class="price">${b.pln} zł · ${b.eur} € · $${b.usd}</div>
+        </div>
+        <div class="qtyrow">
+          <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">on hand</span>
+            ${held?`<div class="resv">${held} reserved · ${avail} free</div>`:''}</div>
+          <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
+        </div>
+        ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
       </div>
-      <div class="qtyrow">
-        <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">on hand</span></div>
-        <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
-      </div>
-      ${q===1?`<div>${flag}</div>`:''}
-      ${q<=1?`<button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order ${esc(b.name)}</button>`:''}
+      <button class="pre-btn" data-act="preorder" data-book="${b.id}">Reserve / pre-order</button>
     </div>`;
   });
-  grid.innerHTML=h;
+  $('#invGrid').innerHTML=h;
 }
 
 function renderTitleList(){
-  const s=scopedSales(); const list=$('#titleList'); let h='';
+  const s=scopedSales(); let h='';
   (STATE.books||[]).forEach(b=>{
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
     const pre=s.filter(x=>x.type==='PREORDER'&&x.bookId===b.id).length;
     h+=`<div class="title-row"><span class="name">${esc(b.name)}</span>
       <span class="count"><b>${sold}</b> / <i>${pre}</i></span></div>`;
   });
-  list.innerHTML=h;
+  $('#titleList').innerHTML=h;
 }
 
 function renderPayments(){
@@ -563,24 +656,29 @@ function renderPayments(){
 function logItemHTML(x){
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
+  const awaiting = x.type==='PREORDER' && !x.delivered;
   const book=isDon?'Donation':bookById(x.bookId).name;
   const badge = x.type==='SALE'?'<span class="badge sale">Sale</span>'
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
     : '<span class="badge don">Donation</span>';
   const cat = (!isDon && catOf(x.bookId)==='aotm') ? '<span class="badge aotm">AoTM</span>' : '';
+  const state = pending?'<span class="badge pend">Awaiting payment</span>'
+              : (awaiting?'<span class="badge paid">Paid</span>':'');
   const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
   const who=[x.name?esc(x.name):'', x.phone?esc(x.phone):'', x.comments?('“'+esc(x.comments)+'”'):'']
     .filter(Boolean).join(' · ');
   const locTag = CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE ? ` · <b>${esc(locName(x.location))}</b>`:'';
-  return `<div class="log-item ${pending?'pending':''}">
+  const onHand = awaiting ? invQty(x.location,x.bookId) : 0;
+  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''}">
     <div class="log-top">
-      <div><span class="log-title">${esc(book)}</span> ${badge}${cat}${pending?'<span class="badge pend">Pending</span>':''}</div>
+      <div><span class="log-title">${esc(book)}</span> ${badge}${cat}${state}</div>
       <div class="log-usd">$${fmt(legsUSD(x))}</div>
     </div>
     <div class="log-pay">${payLabel(x)}</div>
-    <div class="log-meta">${who?who+' · ':''}${when}${locTag}</div>
+    <div class="log-meta">${who?who+' · ':''}${when}${locTag}${awaiting?` · <b>${onHand} on hand</b>`:''}</div>
     <div class="log-actions">
       ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">Mark paid</button>`:''}
+      ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" data-id="${x.saleId}">Delivered</button>`:''}
       <button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>
       <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
     </div>
@@ -592,21 +690,24 @@ function renderLog(){
   $('#log').innerHTML = s.length? s.map(logItemHTML).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
 }
 
-function renderPending(){
-  const s=scopedSales().filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  const panel=$('#pendingPanel');
-  if(!s.length){panel.style.display='none';return;}
-  panel.style.display='';
-  $('#pendingList').innerHTML=s.map(logItemHTML).join('');
+function renderBottom(){
+  const s=scopedSales();
+  const owed=s.filter(x=>x.type==='PREORDER'&&!x.delivered).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const unpaid=s.filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow');
+  pre.style.display = owed.length?'':'none';
+  pend.style.display = unpaid.length?'':'none';
+  row.style.display = (owed.length||unpaid.length)?'':'none';
+  row.classList.toggle('single', !(owed.length&&unpaid.length));
+  if(owed.length) $('#preList').innerHTML=owed.map(logItemHTML).join('');
+  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(logItemHTML).join('');
 }
 
 /* ============================================================
    MODALS
    ============================================================ */
 function openModal(html,wide){
-  const m=$('#modal');
-  m.className='modal'+(wide?' wide':'');
-  m.innerHTML=html;
+  const m=$('#modal'); m.className='modal'+(wide?' wide':''); m.innerHTML=html;
   $('#overlay').classList.add('show');
 }
 function closeModal(){$('#overlay').classList.remove('show');}
@@ -629,9 +730,9 @@ function saleModal(opts){
   const loc=opts.loc||CUR_LOC;
   const isPre=!!opts.isPreorder;
   const edit=opts.edit||null;
-  const lastCopy = !isPre && !edit && shownQty(opts.bookId)===1;
-  const needName = isPre;
-  const title = edit?'Edit sale':(isPre?'Pre-order':'Record sale');
+  const onHand=invQty(loc,opts.bookId), held=reservedQty(loc,opts.bookId), avail=Math.max(0,onHand-held);
+  const lastCopy = !isPre && !edit && avail===1;
+  const title = edit?'Edit sale':(isPre?'Reserve / pre-order':'Record sale');
   // A pre-order hands over nothing today, so "book given now" would be wrong.
   const pendingLabel = isPre ? 'Payment pending (payment not yet delivered)'
                              : 'Payment pending (book given now, paid later)';
@@ -639,8 +740,8 @@ function saleModal(opts){
   openModal(`
     ${mHead(title+' — '+book.name)}
     <div class="m-body">
-      ${lastCopy?`<div class="warn">⚠ This is the last copy at ${esc(locName(loc))}. Selling it marks the title SOLD OUT.</div>`:''}
-      ${isPre?`<div class="hint">A pre-order removes no stock. It is counted in the pre-order totals.</div>`:''}
+      ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
+      ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} on hand here, ${held} already reserved. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
       <div class="field">
         <label>Payment type</label>
         <select id="ptype">${payTypeOptions(true,true)}</select>
@@ -671,7 +772,7 @@ function saleModal(opts){
       </div>
 
       <label class="checkline"><input type="checkbox" id="pending"> ${pendingLabel}</label>
-      <div id="nameBox" style="display:${needName?'block':'none'}">
+      <div id="nameBox" style="display:${isPre?'block':'none'}">
         <div class="row2">
           <div class="field"><label>Name</label><input id="cname" type="text"></div>
           <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel"></div>
@@ -682,12 +783,12 @@ function saleModal(opts){
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="saveSale">${edit?'Save changes':(isPre?'Record pre-order':'Record sale')}</button>
+      <button class="btn btn-primary" id="saveSale">${edit?'Save changes':(isPre?'Reserve it':'Record sale')}</button>
     </div>
   `);
 
-  const basePrice = c => priceFor(book,c);
   const ptype=$('#ptype'), pcur=$('#pcur'), pamt=$('#pamt');
+  const basePrice = c => priceFor(book,c);
 
   function syncSingleAmount(){
     if(ptype.value==='Gift'){pamt.value=0;pamt.disabled=true;}
@@ -702,7 +803,7 @@ function saleModal(opts){
   ptype.addEventListener('change',togglePay);
   pcur.addEventListener('change',()=>{pamt.dataset.touched='';syncSingleAmount();});
   pamt.addEventListener('input',()=>{pamt.dataset.touched='1';});
-  $('#pending').addEventListener('change',e=>{ if(!needName) $('#nameBox').style.display=e.target.checked?'block':'none'; });
+  $('#pending').addEventListener('change',e=>{ if(!isPre) $('#nameBox').style.display=e.target.checked?'block':'none'; });
 
   if(edit){
     const L=legs(edit);
@@ -710,12 +811,11 @@ function saleModal(opts){
       $('#m1type').value=L[0].type;$('#m1cur').value=L[0].cur;$('#m1amt').value=L[0].amt;
       $('#m2type').value=L[1].type;$('#m2cur').value=L[1].cur;$('#m2amt').value=L[1].amt;
     }else if(L.length===1){ ptype.value=L[0].type; togglePay(); pcur.value=L[0].cur; pamt.value=L[0].amt; pamt.dataset.touched='1';
-      if(L[0].type==='Gift'){pamt.disabled=true;}
+      if(L[0].type==='Gift') pamt.disabled=true;
     }
     $('#pending').checked=!!edit.pending;
-    $('#nameBox').style.display=(needName||edit.pending)?'block':'none';
-    if($('#cname')) $('#cname').value=edit.name||'';
-    if($('#cphone')) $('#cphone').value=edit.phone||'';
+    $('#nameBox').style.display=(isPre||edit.pending)?'block':'none';
+    $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
   }else{
     togglePay();
@@ -732,17 +832,26 @@ function saleModal(opts){
       L=[{type:ptype.value,cur:pcur.value,amt:Number(pamt.value)||0}];
     }
     const pending=$('#pending').checked;
-    const name=$('#cname')?$('#cname').value.trim():'';
-    const phone=$('#cphone')?$('#cphone').value.trim():'';
-    const comments=$('#ccomments').value.trim();
+    const name=$('#cname').value.trim(), phone=$('#cphone').value.trim(), comments=$('#ccomments').value.trim();
     if(pending && !name){$('#modalErr').textContent='Add a name so the pending payment can be traced.';return;}
+    if(isPre && !name){$('#modalErr').textContent='Add a name so the reserved copy can be matched to a person.';return;}
 
     if(edit){
-      act({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
-        legs:L,pending,name,phone,comments}, 'Sale updated');
+      commit({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
+              legs:L,pending,name,phone,comments},
+        st=>{ const s=findSale(st,edit.saleId); if(!s)return;
+              Object.assign(s, legFields(L), {pending,paid:!pending,name,phone,comments}); },
+        'Sale updated');
     }else{
-      act({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,pending,name,phone,comments},
-        isPre?'Pre-order recorded':'Sale recorded');
+      const id=tmpId();
+      commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,pending,name,phone,comments},
+        st=>{
+          st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,
+            type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,pending,paid:!pending,
+            delivered:!isPre,name,phone,comments}, legFields(L)));
+          if(!isPre) invAdd(st,loc,opts.bookId,-1);
+        },
+        isPre?'Copy reserved':'Sale recorded');
     }
   });
 }
@@ -794,8 +903,11 @@ function donationModal(){
       L=[{type:ptype.value,cur:$('#pcur').value,amt:Number($('#pamt').value)||0}];
     }
     if(!L.some(l=>l.amt>0)){$('#modalErr').textContent='Enter a donation amount.';return;}
-    act({action:'donate',location:CUR_LOC,legs:L,
-      name:$('#cname').value.trim(),phone:$('#cphone').value.trim(),comments:$('#ccomments').value.trim()},
+    const name=$('#cname').value.trim(), phone=$('#cphone').value.trim(), comments=$('#ccomments').value.trim();
+    const id=tmpId(), loc=CUR_LOC;
+    commit({action:'donate',location:loc,legs:L,name,phone,comments},
+      st=>{ st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,type:'DONATION',
+              bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
       'Donation recorded');
   });
 }
@@ -817,14 +929,13 @@ function eventModal(edit){
   $('#saveEv').addEventListener('click',()=>{
     const name=$('#evname').value.trim();
     if(!name){$('#modalErr').textContent='Enter a name.';return;}
-    if(edit) act({action:'renameEvent',eventId:edit,name},'Event renamed');
-    else act({action:'createEvent',name},'Event created');
+    if(edit) commitSync({action:'renameEvent',eventId:edit,name},'Event renamed');
+    else commitSync({action:'createEvent',name},'Event created');
   });
 }
 
-/* ---- Shared builder: one row per title, filled in once ---- */
+/* ---- Shared builder: one row per title ---- */
 function bulkRows(cols){
-  // cols(book) -> {left, input, right}
   const big=(STATE.books||[]).filter(b=>!isAotm(b));
   const aotm=(STATE.books||[]).filter(isAotm);
   const row=b=>{
@@ -836,19 +947,15 @@ function bulkRows(cols){
       <div class="num next" data-next="${b.id}">${c.right}</div>
     </div>`;
   };
-  let h='<div class="bulk">';
-  h+=`<div class="bulk-sec">Big Books</div>`;
-  h+=big.map(row).join('');
-  if(aotm.length){ h+=`<div class="bulk-sec">AoTM — Adventures</div>`; h+=aotm.map(row).join(''); }
-  h+='</div>';
-  return h;
+  let h='<div class="bulk"><div class="bulk-sec">Big Books</div>'+big.map(row).join('');
+  if(aotm.length) h+=`<div class="bulk-sec">AoTM — Adventures</div>`+aotm.map(row).join('');
+  return h+'</div>';
 }
 
-/* ---- Adjust stock: add, remove, or set outright ---- */
+/* ---- Adjust stock ---- */
 function stockModal(){
   const loc=CUR_LOC;
   const where=loc===WAREHOUSE?(STATE.warehouseName||'')+' warehouse':locName(loc);
-
   const body = bulkRows(b=>({
     left: invQty(loc,b.id),
     input:`<input type="number" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
@@ -865,7 +972,7 @@ function stockModal(){
       <div class="hint" id="modeHint">Enter how many arrived. Use a minus sign to take stock out — 25 on hand plus 12 becomes 37.</div>
       <div class="bulk-head"><span>Title</span><span>Now</span><span id="colLabel">Change</span><span>After</span></div>
       ${body}
-      <div class="bulk-foot"><span id="footLabel">New total on hand</span><b id="footValue">0</b></div>
+      <div class="bulk-foot"><span>New total on hand</span><b id="footValue">0</b></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -875,26 +982,20 @@ function stockModal(){
 
   let mode='add';
   const inputs=[...document.querySelectorAll('#modal input[data-book]')];
-
   function recalc(){
     let total=0;
     inputs.forEach(i=>{
-      const id=i.dataset.book;
-      const now=invQty(loc,id);
+      const id=i.dataset.book, now=invQty(loc,id);
       const v=i.value===''?null:Number(i.value);
-      let next;
-      if(mode==='add') next = now + (v||0);
-      else next = (v===null? now : v);
+      let next = mode==='add' ? now+(v||0) : (v===null?now:v);
       if(next<0) next=0;
       total+=next;
       const cell=document.querySelector(`#modal [data-next="${id}"]`);
-      cell.textContent=next;
-      cell.classList.toggle('zero', next===0);
+      cell.textContent=next; cell.classList.toggle('zero', next===0);
     });
     $('#footValue').textContent=total;
   }
   inputs.forEach(i=>i.addEventListener('input',recalc));
-
   $('#modeSeg').addEventListener('click',e=>{
     const b=e.target.closest('button[data-mode]'); if(!b) return;
     mode=b.dataset.mode;
@@ -913,17 +1014,21 @@ function stockModal(){
       const items=inputs.filter(i=>i.value!=='' && Number(i.value)!==0)
         .map(i=>({bookId:i.dataset.book,delta:Math.round(Number(i.value))}));
       if(!items.length){$('#modalErr').textContent='Enter an amount for at least one title.';return;}
-      act({action:'adjustStockBulk',location:loc,items},'Stock updated');
+      const short=items.find(it=>it.delta<0 && invQty(loc,it.bookId)+it.delta<0);
+      if(short){$('#modalErr').textContent='Cannot remove more '+bookById(short.bookId).name+' than are on hand.';return;}
+      commit({action:'adjustStockBulk',location:loc,items},
+        st=>items.forEach(it=>invAdd(st,loc,it.bookId,it.delta)), 'Stock updated');
     }else{
       const items=inputs.filter(i=>i.value!=='')
         .map(i=>({bookId:i.dataset.book,qty:Math.max(0,Math.round(Number(i.value)))}));
       if(!items.length){$('#modalErr').textContent='Enter a count for at least one title.';return;}
-      act({action:'setStockBulk',location:loc,items},'Stock set');
+      commit({action:'setStockBulk',location:loc,items},
+        st=>items.forEach(it=>invSet(st,loc,it.bookId,it.qty)), 'Stock set');
     }
   });
 }
 
-/* ---- Transfer: whole load in one pass ---- */
+/* ---- Transfer ---- */
 function transferModal(mode){
   const events=STATE.events||[];
   if(mode==='toevent' && !events.length){ toast('Create an event first.',true); return; }
@@ -938,7 +1043,6 @@ function transferModal(mode){
     events.forEach(e=>o+=`<option value="${e.eventId}" ${sel===e.eventId?'selected':''}>${esc(e.name)}</option>`);
     return o;
   };
-
   const body = bulkRows(b=>({
     left:`<span data-avail="${b.id}">${invQty(fromDefault,b.id)}</span>`,
     input:`<input type="number" min="0" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
@@ -964,21 +1068,16 @@ function transferModal(mode){
     </div>`, true);
 
   const inputs=[...document.querySelectorAll('#modal input[data-book]')];
-
   function recalc(){
     const from=$('#tfrom').value;
     let load=0, over=false;
     inputs.forEach(i=>{
-      const id=i.dataset.book;
-      const avail=invQty(from,id);
+      const id=i.dataset.book, avail=invQty(from,id);
       document.querySelector(`#modal [data-avail="${id}"]`).textContent=avail;
       const q=Math.max(0,Math.round(Number(i.value)||0));
-      const left=avail-q;
-      if(left<0) over=true;
-      load+=q;
+      const left=avail-q; if(left<0) over=true; load+=q;
       const cell=document.querySelector(`#modal [data-next="${id}"]`);
-      cell.textContent=left<0?left:left;
-      cell.classList.toggle('zero', left<=0);
+      cell.textContent=left; cell.classList.toggle('zero', left<=0);
     });
     $('#footValue').textContent=load;
     $('#modalErr').textContent = over ? 'One or more titles exceed what is on hand.' : '';
@@ -995,7 +1094,9 @@ function transferModal(mode){
     if(!items.length){$('#modalErr').textContent='Enter a quantity for at least one title.';return;}
     const bad=items.find(it=>it.qty>invQty(from,it.bookId));
     if(bad){$('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(from)+'.';return;}
-    act({action:'transferBulk',from,to,items},'Stock transferred');
+    commit({action:'transferBulk',from,to,items},
+      st=>items.forEach(it=>{invAdd(st,from,it.bookId,-it.qty);invAdd(st,to,it.bookId,it.qty);}),
+      'Stock transferred');
   });
 }
 
@@ -1006,13 +1107,13 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='loc'){ CUR_LOC=t.dataset.loc; renderAll(); return; }
-  if(a==='refresh'){ refresh(); return; }
+  if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
   if(a==='syncsheet'){ syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
   if(a==='deleteevent'){
     if(confirm('Delete "'+locName(CUR_LOC)+'"? Any remaining event stock returns to the warehouse and this event\'s sales are removed.'))
-      act({action:'deleteEvent',eventId:CUR_LOC},'Event deleted');
+      commitSync({action:'deleteEvent',eventId:CUR_LOC},'Event deleted');
     return;
   }
   if(a==='donation'){ donationModal(); return; }
@@ -1020,12 +1121,33 @@ document.addEventListener('click',e=>{
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
   if(a==='preorder'){ saleModal({bookId:t.dataset.book,isPreorder:true,loc:CUR_LOC}); return; }
-  if(a==='markpaid'){ act({action:'markPaid',saleId:t.dataset.id},'Marked paid'); return; }
+
+  if(a==='markpaid'){
+    const id=t.dataset.id;
+    commit({action:'markPaid',saleId:id},
+      st=>{const s=findSale(st,id); if(s){s.pending=false;s.paid=true;}}, 'Marked paid');
+    return;
+  }
+  if(a==='deliver'){
+    const id=t.dataset.id;
+    const s=(STATE.sales||[]).find(x=>x.saleId===id); if(!s) return;
+    if(invQty(s.location,s.bookId)<=0){
+      toast('No copy of '+bookById(s.bookId).name+' on hand at '+locName(s.location)+' to hand over.',true); return;
+    }
+    commit({action:'markDelivered',saleId:id},
+      st=>{const x=findSale(st,id); if(x){x.type='SALE';x.delivered=true;invAdd(st,x.location,x.bookId,-1);}},
+      'Delivered — now counted as sold');
+    return;
+  }
   if(a==='delsale'){
-    const s=(STATE.sales||[]).find(x=>x.saleId===t.dataset.id);
+    const id=t.dataset.id;
+    const s=(STATE.sales||[]).find(x=>x.saleId===id);
     const label=s?(s.type==='DONATION'?'this donation':bookById(s.bookId).name):'this record';
-    if(confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':'')))
-      act({action:'deleteSale',saleId:t.dataset.id},'Deleted');
+    if(!confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':''))) return;
+    commit({action:'deleteSale',saleId:id},
+      st=>{const i=st.sales.findIndex(x=>x.saleId===id); if(i<0)return;
+           const x=st.sales[i]; if(x.type==='SALE'&&x.bookId) invAdd(st,x.location,x.bookId,1);
+           st.sales.splice(i,1);}, 'Deleted');
     return;
   }
   if(a==='editsale'){
@@ -1042,14 +1164,14 @@ document.addEventListener('click',e=>{
 (function init(){
   if(CONFIG.PRABHUPADA_IMG) $('#imgLeft').innerHTML=`<img src="${CONFIG.PRABHUPADA_IMG}" alt="Śrīla Prabhupāda">`;
   if(CONFIG.GURUDEVA_IMG)   $('#imgRight').innerHTML=`<img src="${CONFIG.GURUDEVA_IMG}" alt="Śrīla Gurudeva">`;
-  refresh();
-  setInterval(()=>{
-    // A phone in someone's pocket does not need to poll.
-    if(document.hidden) return;
-    if($('#overlay').classList.contains('show')) return;
-    refresh(true);
-  }, Math.max(5,CONFIG.AUTO_REFRESH_SECONDS)*1000);
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) refresh(true); });
+
+  // Draw last session's data straight away so the page is usable on open.
+  if(cacheLoad()) setStatus('load','Checking for changes…');
+  pull().catch(err=>{ setStatus('bad','Offline — '+err.message.slice(0,40)); if(!BASE) toast(err.message,true); });
+
+  setInterval(()=>{ if(!$('#overlay').classList.contains('show')) poll(); },
+              Math.max(4,CONFIG.POLL_SECONDS)*1000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) poll(); });
 })();
 </script>
 </body>
