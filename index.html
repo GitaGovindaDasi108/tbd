@@ -174,23 +174,27 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .log::-webkit-scrollbar-track{background:var(--paper2);border-radius:99px}
 .log::-webkit-scrollbar-thumb{background:var(--line-d);border-radius:99px;border:2px solid var(--paper2)}
 .log::-webkit-scrollbar-thumb:hover{background:var(--gold)}
-.log-item{border:1px solid var(--line);border-radius:9px;padding:7px 9px;background:var(--paper2);flex:none}
+.log-item{border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--paper2);flex:none}
 .log-item.pending{border-color:#EBC9A0;background:#FFF6E7}
 .log-item.awaiting{border-color:#C7D6E8;background:#F4F8FC}
-.log-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
-.log-title{font-weight:700;color:var(--plum);font-size:13px}
+/* Everything for one sale on a single row. The middle section is the part that
+   gives way when space runs out, so the book, the money and the buttons always
+   stay legible. */
+.li-row{display:flex;align-items:center;gap:6px;min-width:0}
+.li-book{font-weight:700;color:var(--plum);font-size:13px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;flex-shrink:1}
+.li-who{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;flex:0 1 auto;flex-shrink:6;min-width:0}
+.li-amt{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;flex:none}
+.log-item.pending .li-amt{color:var(--clay)}
+.li-btns{display:flex;gap:4px;flex:none}
+.li-row .badge{flex:none}
 .badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;vertical-align:1px}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
 .badge.don{background:#F3E8F7;color:#8A4FA0}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.aotm{background:#EAF0F7;color:var(--blue)}
-.badge.paid{background:var(--green-l);color:var(--green)}
-.badge.elsewhere{background:#F1EDE3;color:var(--gold)}
-.log-meta{font-size:10.5px;color:var(--muted);margin-top:1px;line-height:1.35}
-.log-pay{font-size:11.5px;color:var(--ink);margin-top:1px}
-.log-usd{font-family:'Marcellus',serif;color:var(--plum);font-size:14px;white-space:nowrap}
-.log-actions{display:flex;gap:5px;margin-top:5px;flex-wrap:wrap}
 .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:20px 8px;font-style:italic}
 
 .bottom-panels .panel{max-height:420px}
@@ -283,6 +287,8 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   main{padding:12px 12px 60px}
   .bulk-head,.bulk-row{grid-template-columns:1fr 50px 80px 50px;gap:7px}
   .bulk-row .bn{font-size:13.5px}
+  .li-row{flex-wrap:wrap;row-gap:4px}
+  .li-btns{width:100%;justify-content:flex-end}
 }
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
@@ -410,6 +416,13 @@ function legs(s){const a=[];if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Nu
 function legsUSD(s){return legs(s).reduce((t,l)=>t+toUSD(l.amt,l.cur),0);}
 function payLabel(s){const L=legs(s);if(!L.length)return '—';
   return L.map(l=>`${l.type} ${fmt(l.amt)} ${CUR_SYM[l.cur]||l.cur}`).join(' + ');}
+/* What was actually handed over, in the currency it was handed over in.
+   No USD conversion here — the running totals above already do that. */
+function amountLabel(s){
+  const L=legs(s); if(!L.length) return '—';
+  return L.map(l=> (l.type==='Gift'||!l.amt) ? l.type
+                 : `${l.type} ${fmt(l.amt)} ${CUR_SYM[l.cur]||l.cur}`).join(' + ');
+}
 
 function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — Warehouse';
   const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
@@ -686,26 +699,33 @@ function logItemHTML(x){
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
     : '<span class="badge don">Donation</span>';
   const cat = (!isDon && catOf(x.bookId)==='aotm') ? '<span class="badge aotm">AoTM</span>' : '';
-  const state = pending?'<span class="badge pend">Awaiting payment</span>'
-              : (awaiting?'<span class="badge paid">Paid</span>':'');
-  const src = x.dsource==='Other warehouse'?'<span class="badge elsewhere">From other warehouse</span>':'';
+  const pend = pending?'<span class="badge pend">Pending</span>':'';
   const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-  const who=[x.name?esc(x.name):'', x.phone?esc(x.phone):'', x.comments?('“'+esc(x.comments)+'”'):'']
-    .filter(Boolean).join(' · ');
-  const locTag = CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE ? ` · <b>${esc(locName(x.location))}</b>`:'';
-  const onHand = awaiting ? invQty(x.location,x.bookId) : 0;
-  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''}">
-    <div class="log-top">
-      <div><span class="log-title">${esc(book)}</span> ${badge}${cat}${state}${src}</div>
-      <div class="log-usd">$${fmt(legsUSD(x))}</div>
-    </div>
-    <div class="log-pay">${payLabel(x)}</div>
-    <div class="log-meta">${who?who+' · ':''}${when}${locTag}${awaiting?` · <b>${onHand} on hand</b>`:''}</div>
-    <div class="log-actions">
-      ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">Mark paid</button>`:''}
-      ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" data-id="${x.saleId}">Delivered</button>`:''}
-      <button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>
-      <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
+
+  // Ordered by what you would miss most, because this is what truncates first.
+  const bits=[];
+  if(x.name) bits.push(esc(x.name));
+  if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
+  if(when) bits.push(esc(when));
+
+  // Anything that no longer fits on the line is still here on hover.
+  const tip=[book, when, x.name, x.phone, x.comments, locName(x.location),
+             x.dsource?('delivered from '+x.dsource.toLowerCase()):'',
+             awaiting?(invQty(x.location,x.bookId)+' on hand'):'']
+            .filter(Boolean).join(' · ');
+
+  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''}" title="${esc(tip)}">
+    <div class="li-row">
+      <span class="li-book">${esc(book)}</span>
+      ${badge}${cat}${pend}
+      ${bits.length?`<span class="li-who">${bits.join(' · ')}</span>`:''}
+      <span class="li-amt">${amountLabel(x)}</span>
+      <span class="li-btns">
+        ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">Paid</button>`:''}
+        ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" data-id="${x.saleId}">Deliver</button>`:''}
+        <button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>
+        <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
+      </span>
     </div>
   </div>`;
 }
