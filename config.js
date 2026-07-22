@@ -11,7 +11,7 @@
 window.TBS_CONFIG = {
 
   // Apps Script web-app address, ending in /exec.
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwKWT2joG8VTuAUPuKDtzh-_ojly5b1ft5fRACaAkCToSSbPw_F7iYFvMJVmwkfKnpS/exec',
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbxO3TNVmx3xhb9aDzeaVIdosceE3nKuCh0Yt_XX5ZQ1vXAB-xk52QAm7CG2ajZ4wZuv/exec',
 
   // Header photographs. Leave as-is unless you rename the files.
   PRABHUPADA_IMG: 'Srila_Prabhupada.jpeg',
