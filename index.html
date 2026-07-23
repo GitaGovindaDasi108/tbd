@@ -191,6 +191,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .li-row .badge{flex:none}
 
 .li-row{cursor:pointer}
+.log-item.fixed .li-row{cursor:default}
 .li-btns *{cursor:pointer}
 /* Everything the single-line row had to leave out. Open on tap, so it works on
    a phone where there is no hover. */
@@ -200,9 +201,19 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .li-det .k{display:inline-block;min-width:64px;color:var(--muted);font-weight:600;
   text-transform:uppercase;font-size:9.5px;letter-spacing:.5px}
 .li-det .v{color:var(--ink)}
-.li-det a.tel{color:var(--saffron-d);font-weight:700;text-decoration:none;font-size:15px;
-  border-bottom:1px solid var(--line-d);padding-bottom:1px}
-.li-det a.tel:hover{border-color:var(--saffron)}
+
+/* Second line, for the rows that carry more than a sale does: who owes what,
+   how to reach them, what is still on the shelf. Regular sales never get one. */
+.li-row2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;
+  padding-top:4px;border-top:1px dashed var(--line-d);font-size:11.5px;color:var(--muted)}
+.li-row2 .k{font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.5px;color:var(--muted)}
+.li-owed{font-weight:700;color:var(--clay)}
+.li-banked{color:var(--green);font-weight:600}
+.wa{display:inline-flex;align-items:center;gap:4px;color:#128C7E;font-weight:700;
+  text-decoration:none;font-size:12.5px;background:#E7F5F1;border:1px solid #C4E5DC;
+  border-radius:999px;padding:2px 9px}
+.wa:hover{background:#D6EDE6;border-color:#9FD4C6}
+.wa svg{width:12px;height:12px;fill:currentColor;flex:none}
 .li-chev{flex:none;color:var(--gold);font-size:11px;transition:transform .12s;opacity:.75}
 .log-item:hover .li-chev{opacity:1}
 .log-item.open .li-chev{transform:rotate(90deg);color:var(--muted)}
@@ -211,6 +222,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
 .badge.don{background:#F3E8F7;color:#8A4FA0}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
+.badge.part{background:#FDEBD0;color:#9C5A12}
 .badge.aotm{background:#EAF0F7;color:var(--blue)}
 .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:20px 8px;font-style:italic}
 
@@ -262,7 +274,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .seg button{flex:1;background:var(--paper);color:var(--muted);border:none;padding:9px 8px;font-size:12.5px;font-weight:700;letter-spacing:.3px}
 .seg button.on{background:var(--plum);color:var(--gold-l)}
 .bulk{display:flex;flex-direction:column}
-.bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 62px 92px 62px;gap:10px;align-items:center}
+.bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 58px 148px 58px;gap:10px;align-items:center}
 .bulk-head{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;
   padding:0 2px 6px;border-bottom:1px solid var(--line)}
 .bulk-head span:not(:first-child),.bulk-row .num{text-align:center}
@@ -275,6 +287,10 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .bulk-row .num.zero{color:var(--clay)}
 .bulk-row input{width:100%;text-align:center;padding:8px 4px;border:1.5px solid var(--line-d);
   border-radius:8px;background:#fff;font-size:15px;font-weight:600;color:var(--ink)}
+.bulk-row .d-delta,.bulk-row .d-set{width:calc(50% - 3px);display:inline-block}
+.bulk-row .d-delta{margin-right:6px}
+.bulk-row .d-set{border-style:dashed}
+.bulk-row input.dim{opacity:.35;background:var(--paper2)}
 .bulk-sec{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);
   padding:10px 2px 4px;border-bottom:1px solid var(--line)}
 .bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;
@@ -302,7 +318,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   .row3{grid-template-columns:1fr 1fr}
   .inv-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   main{padding:12px 12px 60px}
-  .bulk-head,.bulk-row{grid-template-columns:1fr 50px 80px 50px;gap:7px}
+  .bulk-head,.bulk-row{grid-template-columns:1fr 42px 116px 44px;gap:6px}
   .bulk-row .bn{font-size:13.5px}
   .li-row{flex-wrap:wrap;row-gap:4px}
   .li-btns{width:100%;justify-content:flex-end}
@@ -427,7 +443,21 @@ function isAotm(b){return b.cat==='aotm';}
 function priceFor(book,cur){return cur==='PLN'?book.pln:cur==='EUR'?book.eur:book.usd;}
 function toUSD(amt,cur){amt=Number(amt)||0;if(!amt)return 0;const r=STATE.rates||{plnPerUsd:3.79,eurPerUsd:.87};
   if(cur==='USD')return amt;if(cur==='PLN')return amt/r.plnPerUsd;if(cur==='EUR')return amt/r.eurPerUsd;return 0;}
-function isPaid(s){return !s.pending || s.paid;}
+/* Mirrors the backend exactly:
+     pending  → nothing received, the legs are what is owed
+     dueamt>0 → the legs are banked and this much is still outstanding */
+function pendingFlag(s){return !!s.pending && !s.paid;}
+function dueAmt(s){return Math.max(0, Number(s.dueamt)||0);}
+function dueCur(s){return String(s.duecur||'USD');}
+function isPartial(s){return !pendingFlag(s) && dueAmt(s)>0;}
+function isPaid(s){return !pendingFlag(s) && dueAmt(s)<=0;}
+function received(s){return !pendingFlag(s);}
+/* What is still owed, in the currencies it is owed in. */
+function dueParts(s){
+  if(pendingFlag(s)) return legs(s).filter(l=>l.amt>0).map(l=>({amt:l.amt,cur:l.cur}));
+  return dueAmt(s)>0 ? [{amt:dueAmt(s),cur:dueCur(s)}] : [];
+}
+function dueUSD(s){return dueParts(s).reduce((t,d)=>t+toUSD(d.amt,d.cur),0);}
 function legs(s){const a=[];if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Number(s.p1amt)||0});
   if(s.p2type)a.push({type:s.p2type,cur:s.p2cur,amt:Number(s.p2amt)||0});return a;}
 function legsUSD(s){return legs(s).reduce((t,l)=>t+toUSD(l.amt,l.cur),0);}
@@ -610,9 +640,13 @@ function renderTotals(){
   let totUsd=0, pendUsd=0;
   const got={PLN:0,EUR:0,USD:0}, due={PLN:0,EUR:0,USD:0};
   s.forEach(x=>{
-    const u=legsUSD(x);
-    if(isPaid(x)){ totUsd+=u; legs(x).forEach(l=>{ if(got[l.cur]!==undefined) got[l.cur]+=l.amt; }); }
-    else{ pendUsd+=u; legs(x).forEach(l=>{ if(due[l.cur]!==undefined) due[l.cur]+=l.amt; }); }
+    // A part-paid sale has money in both columns at once.
+    if(received(x)){
+      totUsd+=legsUSD(x);
+      legs(x).forEach(l=>{ if(got[l.cur]!==undefined) got[l.cur]+=l.amt; });
+    }
+    pendUsd+=dueUSD(x);
+    dueParts(x).forEach(d=>{ if(due[d.cur]!==undefined) due[d.cur]+=d.amt; });
   });
   const money=o=>[
     o.PLN?`<b>${fmt(o.PLN)}</b> zł`:'', o.EUR?`<b>${fmt(o.EUR)}</b> €`:'', o.USD?`$<b>${fmt(o.USD)}</b>`:''
@@ -680,7 +714,7 @@ function renderPayments(){
   const table={}; TYPES.forEach(t=>table[t]={PLN:0,EUR:0,USD:0});
   const curTot={PLN:0,EUR:0,USD:0}; let donUsd=0;
   s.forEach(x=>{
-    if(!isPaid(x))return;
+    if(!received(x))return;
     legs(x).forEach(l=>{
       if(table[l.type]&&table[l.type][l.cur]!==undefined) table[l.type][l.cur]+=l.amt;
       if(curTot[l.cur]!==undefined) curTot[l.cur]+=l.amt;
@@ -710,11 +744,21 @@ function renderPayments(){
 /* Which rows are open. Kept outside the state so a background refresh does not
    snap a row shut while it is being read. */
 const OPEN = new Set();
-/* Keeps the leading + and drops the spaces a dialler cannot use. */
-function telHref(p){ return String(p||'').replace(/[^\d+]/g,''); }
+/* wa.me wants bare digits with the country code and no plus or spaces. */
+function waHref(p){ return 'https://wa.me/' + String(p||'').replace(/\D/g,''); }
+/* What gets shown and copied: the number as entered, with its + intact. */
+function phoneText(p){
+  p = String(p||'').trim();
+  if(!p) return '';
+  return p.charAt(0)==='+' ? p : '+'+p.replace(/^0+/,'');
+}
+const WA_ICON = '<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.2-1.7-.8-2-.9-.3-.1-.5-.2-.7.1s-.7.9-.9 1.1c-.2.2-.3.2-.6.1s-1.2-.5-2.3-1.4c-.9-.8-1.4-1.7-1.6-2s0-.4.1-.6l.4-.5.3-.5c.1-.2 0-.4 0-.5L9.4 6.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.4s-1 1-1 2.4 1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.8s1.7-.7 1.9-1.3c.2-.7.2-1.2.2-1.3s-.2-.2-.5-.4zM12 2a10 10 0 0 0-8.6 15L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>';
+function waLink(p){
+  const t=phoneText(p); if(!t) return '';
+  return `<a class="wa" href="${esc(waHref(p))}" target="_blank" rel="noopener">${WA_ICON}${esc(t)}</a>`;
+}
 
 function logItemHTML(x, forceOpen){
-  const open = forceOpen || OPEN.has(x.saleId);
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
   const awaiting = x.type==='PREORDER' && !x.delivered;
@@ -723,8 +767,15 @@ function logItemHTML(x, forceOpen){
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
     : '<span class="badge don">Donation</span>';
   const cat = (!isDon && catOf(x.bookId)==='aotm') ? '<span class="badge aotm">AoTM</span>' : '';
-  const pend = pending?'<span class="badge pend">Pending</span>':'';
+  const partial = isPartial(x);
+  const pend = pending
+    ? (partial?'<span class="badge part">Part paid</span>':'<span class="badge pend">Pending</span>')
+    : '';
   const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+
+  // Anything with money or a book still outstanding earns a second line; a
+  // settled sale says everything it needs to on one.
+  const needsRow2 = pending || awaiting;
 
   // Ordered by what you would miss most, because this is what truncates first.
   const bits=[];
@@ -732,35 +783,50 @@ function logItemHTML(x, forceOpen){
   if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
   if(when) bits.push(esc(when));
 
-  // The full picture, opened by tapping the row.
-  const det=[];
-  if(x.name) det.push(['Name', esc(x.name)]);
-  if(x.phone) det.push(['Phone', `<a class="tel" href="tel:${esc(telHref(x.phone))}">${esc(x.phone)}</a>`]);
-  if(!isDon) det.push(['Payment', esc(payLabel(x))]);
-  if(x.comments) det.push(['Notes', esc(x.comments)]);
-  det.push(['Where', esc(locName(x.location))]);
-  if(when) det.push(['When', esc(when)]);
-  if(awaiting) det.push(['On hand', `${invQty(x.location,x.bookId)} at ${esc(locName(x.location))}`]);
-  if(x.dsource) det.push(['Given from', esc(x.dsource.toLowerCase())]);
+  // ---- second line, for outstanding money or an undelivered book ----
+  const r2=[];
+  if(pending){
+    const owed = dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ');
+    r2.push(`<span class="k">Still owed</span> <span class="li-owed">${owed||'—'}</span>`);
+    if(partial) r2.push(`<span class="k">Banked</span> <span class="li-banked">${esc(amountLabel(x))}</span>`);
+  }
+  if(awaiting){
+    r2.push(`<span class="k">On hand</span> <span>${invQty(x.location,x.bookId)} at ${esc(locName(x.location))}</span>`);
+  }
+  if(x.phone) r2.push(waLink(x.phone));
+  if(x.comments) r2.push(`<span>“${esc(x.comments)}”</span>`);
+  if(x.dsource) r2.push(`<span class="k">From</span> <span>${esc(x.dsource.toLowerCase())}</span>`);
 
-  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''}"
-       data-act="expand" data-id="${x.saleId}">
+  // A settled sale can still be opened for its notes and contact details.
+  const open = !needsRow2 && (forceOpen || OPEN.has(x.saleId));
+  const det=[];
+  if(!needsRow2){
+    if(x.name) det.push(['Name', esc(x.name)]);
+    if(x.phone) det.push(['Phone', waLink(x.phone)]);
+    if(!isDon) det.push(['Payment', esc(payLabel(x))]);
+    if(x.comments) det.push(['Notes', esc(x.comments)]);
+    det.push(['Where', esc(locName(x.location))]);
+    if(when) det.push(['When', esc(when)]);
+    if(x.dsource) det.push(['Given from', esc(x.dsource.toLowerCase())]);
+  }
+
+  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'fixed':''}"
+       ${needsRow2?'':`data-act="expand" data-id="${x.saleId}"`}>
     <div class="li-row">
-      <span class="li-chev">▶</span>
+      ${needsRow2?'':'<span class="li-chev">▶</span>'}
       <span class="li-book">${esc(book)}</span>
       ${badge}${cat}${pend}
       ${bits.length?`<span class="li-who">${bits.join(' · ')}</span>`:''}
       <span class="li-amt">${amountLabel(x)}</span>
       <span class="li-btns">
-        ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">Paid</button>`:''}
+        ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">${partial?'Settle':'Paid'}</button>`:''}
         ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" data-id="${x.saleId}">Deliver</button>`:''}
         <button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>
         <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
       </span>
     </div>
-    <div class="li-det">
-      ${det.map(d=>`<div><span class="k">${d[0]}</span> <span class="v">${d[1]}</span></div>`).join('')}
-    </div>
+    ${needsRow2?`<div class="li-row2">${r2.join('')}</div>`:
+      `<div class="li-det">${det.map(d=>`<div><span class="k">${d[0]}</span> <span class="v">${d[1]}</span></div>`).join('')}</div>`}
   </div>`;
 }
 
@@ -825,8 +891,7 @@ function saleModal(opts){
   const lastCopy = !isPre && !edit && avail===1;
   const title = edit?'Edit sale':(isPre?'Pre-order':'Record sale');
   // A pre-order hands over nothing today, so "book given now" would be wrong.
-  const pendingLabel = isPre ? 'Payment pending (payment not yet delivered)'
-                             : 'Payment pending (book given now, paid later)';
+  const noneLabel = isPre ? 'Payment not yet delivered' : 'Book given now, paid later';
 
   openModal(`
     ${mHead(title+' — '+book.name)}
@@ -841,7 +906,7 @@ function saleModal(opts){
       <div id="singlePay">
         <div class="row2">
           <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
-          <div class="field"><label>Amount</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
+          <div class="field"><label id="amtLabel">Amount received</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
         </div>
       </div>
 
@@ -862,7 +927,24 @@ function saleModal(opts){
         </div>
       </div>
 
-      <label class="checkline"><input type="checkbox" id="pending"> ${pendingLabel}</label>
+      <div class="field">
+        <label>Payment status</label>
+        <div class="seg" id="paySeg">
+          <button type="button" data-pay="full" class="on">Paid in full</button>
+          <button type="button" data-pay="part">Part paid</button>
+          <button type="button" data-pay="none">${esc(noneLabel)}</button>
+        </div>
+      </div>
+      <div id="dueBox" style="display:none">
+        <div class="leg-box">
+          <div class="lg-title">Still owed</div>
+          <div class="row2">
+            <div class="field"><label>Currency</label><select id="duecur">${curOptions('PLN')}</select></div>
+            <div class="field"><label>Amount outstanding</label><input id="dueamt" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+          <div class="hint" id="dueHint"></div>
+        </div>
+      </div>
       <div id="nameBox" style="display:${isPre?'block':'none'}">
         <div class="row2">
           <div class="field"><label>Name</label><input id="cname" type="text"></div>
@@ -894,7 +976,45 @@ function saleModal(opts){
   ptype.addEventListener('change',togglePay);
   pcur.addEventListener('change',()=>{pamt.dataset.touched='';syncSingleAmount();});
   pamt.addEventListener('input',()=>{pamt.dataset.touched='1';});
-  $('#pending').addEventListener('change',e=>{ if(!isPre) $('#nameBox').style.display=e.target.checked?'block':'none'; });
+  let payMode='full';
+  /* The amount on the payment fields means different things in each mode:
+     in "full" and "part" it is money received, in "none" it is money expected. */
+  function applyPayMode(){
+    $('#dueBox').style.display = payMode==='part' ? 'block' : 'none';
+    if(!isPre) $('#nameBox').style.display = payMode==='full' ? 'none' : 'block';
+    const lab = payMode==='none' ? 'Amount expected' : 'Amount received';
+    const l1=$('#amtLabel'); if(l1) l1.textContent=lab;
+    if(payMode==='part') suggestDue();
+  }
+  /* If they paid 30 of a 35 book, the balance is obvious — fill it in, but let
+     it be overridden for a discount. */
+  function suggestDue(){
+    const d=$('#dueamt'); if(!d || d.dataset.touched) return;
+    const cur=$('#duecur').value;
+    const paid = ptype.value==='Mixed'
+      ? legsInCur(cur)
+      : (pcur.value===cur ? (Number(pamt.value)||0) : 0);
+    const bal = basePrice(cur) - paid;
+    d.value = bal>0 ? Math.round(bal*100)/100 : '';
+    $('#dueHint').textContent = bal>0
+      ? `Full price is ${basePrice(cur)} ${cur}, so ${Math.round(bal*100)/100} ${cur} is left over.`
+      : 'Enter whatever is still outstanding.';
+  }
+  function legsInCur(cur){
+    let t=0;
+    if($('#m1cur').value===cur) t+=Number($('#m1amt').value)||0;
+    if($('#m2cur').value===cur) t+=Number($('#m2amt').value)||0;
+    return t;
+  }
+  $('#paySeg').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-pay]'); if(!b) return;
+    payMode=b.dataset.pay;
+    [...$('#paySeg').children].forEach(x=>x.classList.toggle('on',x===b));
+    applyPayMode();
+  });
+  $('#duecur').addEventListener('change',()=>{ const d=$('#dueamt'); if(d) d.dataset.touched=''; suggestDue(); });
+  $('#dueamt').addEventListener('input',()=>{ $('#dueamt').dataset.touched='1'; });
+  pamt.addEventListener('input',()=>{ if(payMode==='part'){ const d=$('#dueamt'); if(d) d.dataset.touched=''; suggestDue(); } });
 
   if(edit){
     const L=legs(edit);
@@ -904,12 +1024,16 @@ function saleModal(opts){
     }else if(L.length===1){ ptype.value=L[0].type; togglePay(); pcur.value=L[0].cur; pamt.value=L[0].amt; pamt.dataset.touched='1';
       if(L[0].type==='Gift') pamt.disabled=true;
     }
-    $('#pending').checked=!!edit.pending;
-    $('#nameBox').style.display=(isPre||edit.pending)?'block':'none';
+    payMode = pendingFlag(edit) ? 'none' : (isPartial(edit) ? 'part' : 'full');
+    [...$('#paySeg').children].forEach(x=>x.classList.toggle('on', x.dataset.pay===payMode));
+    if(isPartial(edit)){ $('#duecur').value=dueCur(edit); $('#dueamt').value=dueAmt(edit); $('#dueamt').dataset.touched='1'; }
+    applyPayMode();
+    $('#nameBox').style.display=(isPre||payMode!=='full')?'block':'none';
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
   }else{
     togglePay();
+    applyPayMode();
   }
 
   $('#saveSale').addEventListener('click',()=>{
@@ -922,23 +1046,29 @@ function saleModal(opts){
     }else{
       L=[{type:ptype.value,cur:pcur.value,amt:Number(pamt.value)||0}];
     }
-    const pending=$('#pending').checked;
+    const pending = payMode==='none';
+    const dueamt = payMode==='part' ? Math.max(0, Number($('#dueamt').value)||0) : 0;
+    const duecur = payMode==='part' ? $('#duecur').value : '';
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
-    if(pending && !name){$('#modalErr').textContent='Add a name so the pending payment can be traced.';return;}
+    if(payMode==='part' && dueamt<=0){$('#modalErr').textContent='Enter how much is still owed, or choose "Paid in full".';return;}
+    if(payMode!=='full' && !name){$('#modalErr').textContent='Add a name so the outstanding payment can be traced.';return;}
     if(isPre && !name){$('#modalErr').textContent='Add a name so the pre-ordered copy can be matched to a person.';return;}
 
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
-              legs:L,pending,name,phone,comments},
+              legs:L,pending,dueamt,duecur,name,phone,comments},
         st=>{ const s=findSale(st,edit.saleId); if(!s)return;
-              Object.assign(s, legFields(L), {pending,paid:!pending,name,phone,comments}); },
+              Object.assign(s, legFields(L),
+                {pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments}); },
         'Sale updated');
     }else{
       const id=tmpId();
-      commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,pending,name,phone,comments},
+      commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
+              pending,dueamt,duecur,name,phone,comments},
         st=>{
           st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,
-            type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,pending,paid:!pending,
+            type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,
+            pending,paid:!pending&&dueamt<=0,dueamt,duecur,
             delivered:!isPre,name,phone,comments}, legFields(L)));
           if(!isPre) invAdd(st,loc,opts.bookId,-1);
         },
@@ -1048,6 +1178,39 @@ function deliverModal(id){
   });
 }
 
+/* ---- Deleting an event ---- */
+function deleteEventModal(){
+  const loc=CUR_LOC, name=locName(loc);
+  const s=(STATE.sales||[]).filter(x=>x.location===loc);
+  const soldHere=s.filter(x=>x.type==='SALE'&&x.bookId&&x.dsource!=='Other warehouse').length;
+  const left=(STATE.books||[]).reduce((t,b)=>t+invQty(loc,b.id),0);
+
+  openModal(`
+    ${mHead('Delete '+name)}
+    <div class="m-body">
+      <div class="warn">This removes the event, its ${s.length} record${s.length===1?'':'s'} and its sheet tab. It cannot be undone.</div>
+      <div class="hint">${left} book${left===1?'':'s'} still at this event ${left===1?'goes':'go'} back to the warehouse either way.</div>
+      <div class="opts">
+        <button class="opt" data-restore="0">
+          <b>Delete — it was a real event</b>
+          <span>${soldHere} book${soldHere===1?'':'s'} sold here stay gone, because ${soldHere===1?'it':'they'} really left the shelf.</span>
+        </button>
+        <button class="opt" data-restore="1">
+          <b>Delete and put everything back</b>
+          <span>For a test run. The ${soldHere} book${soldHere===1?'':'s'} "sold" ${soldHere===1?'is':'are'} returned too, so the warehouse ends up exactly as it started.</span>
+        </button>
+      </div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>
+  `);
+  $('#modal').querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      commitSync({action:'deleteEvent',eventId:loc,restoreSold:btn.dataset.restore==='1'},'Event deleted');
+    });
+  });
+}
+
 /* ---- Event ---- */
 function eventModal(edit){
   openModal(`
@@ -1092,21 +1255,21 @@ function bulkRows(cols){
 function stockModal(){
   const loc=CUR_LOC;
   const where=loc===WAREHOUSE?(STATE.warehouseName||'')+' warehouse':locName(loc);
+
+  // Two ways in, side by side, always available: nudge a count by ±, or state
+  // the flat number you just counted on the shelf. Whichever you fill wins.
   const body = bulkRows(b=>({
     left: invQty(loc,b.id),
-    input:`<input type="number" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
+    input:`<input class="d-delta" type="number" step="1" data-book="${b.id}" placeholder="±" inputmode="numeric">`
+         +`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" placeholder="=" inputmode="numeric">`,
     right: invQty(loc,b.id)
   }));
 
   openModal(`
     ${mHead('Adjust stock — '+where)}
     <div class="m-body">
-      <div class="seg" id="modeSeg">
-        <button data-mode="add" class="on">Add / remove</button>
-        <button data-mode="set">Set exact count</button>
-      </div>
-      <div class="hint" id="modeHint">Enter how many arrived. Use a minus sign to take stock out — 25 on hand plus 12 becomes 37.</div>
-      <div class="bulk-head"><span>Title</span><span>Now</span><span id="colLabel">Change</span><span>After</span></div>
+      <div class="hint">Use <b>±&nbsp;Change</b> for a delivery or a removal (25 plus 12 becomes 37), or <b>Set&nbsp;to</b> when you have counted the shelf. Fill either column, title by title.</div>
+      <div class="bulk-head"><span>Title</span><span>Now</span><span>± Change &nbsp;/&nbsp; Set to</span><span>After</span></div>
       ${body}
       <div class="bulk-foot"><span>New total on hand</span><b id="footValue">0</b></div>
       <div class="err" id="modalErr"></div>
@@ -1116,50 +1279,60 @@ function stockModal(){
       <button class="btn btn-plum" id="saveStock">Save stock</button>
     </div>`, true);
 
-  let mode='add';
-  const inputs=[...document.querySelectorAll('#modal input[data-book]')];
+  const deltas=[...document.querySelectorAll('#modal input[data-book]')];
+  const sets=[...document.querySelectorAll('#modal input[data-set]')];
+  const setFor=id=>document.querySelector(`#modal input[data-set="${id}"]`);
+  const deltaFor=id=>document.querySelector(`#modal input[data-book="${id}"]`);
+
+  function nextFor(id){
+    const now=invQty(loc,id);
+    const sv=setFor(id).value, dv=deltaFor(id).value;
+    if(sv!=='') return Math.max(0, Math.round(Number(sv)));       // an exact count wins
+    if(dv!=='') return now + Math.round(Number(dv)||0);
+    return now;
+  }
   function recalc(){
     let total=0;
-    inputs.forEach(i=>{
-      const id=i.dataset.book, now=invQty(loc,id);
-      const v=i.value===''?null:Number(i.value);
-      let next = mode==='add' ? now+(v||0) : (v===null?now:v);
-      if(next<0) next=0;
+    deltas.forEach(i=>{
+      const id=i.dataset.book;
+      const next=Math.max(0,nextFor(id));
       total+=next;
       const cell=document.querySelector(`#modal [data-next="${id}"]`);
-      cell.textContent=next; cell.classList.toggle('zero', next===0);
+      cell.textContent=next;
+      cell.classList.toggle('zero', next===0);
+      // Only one of the pair can apply, so grey the other out rather than
+      // leaving two numbers that seem to disagree.
+      const sv=setFor(id).value!=='' , dv=i.value!=='';
+      setFor(id).classList.toggle('dim', dv && !sv);
+      i.classList.toggle('dim', sv);
     });
     $('#footValue').textContent=total;
   }
-  inputs.forEach(i=>i.addEventListener('input',recalc));
-  $('#modeSeg').addEventListener('click',e=>{
-    const b=e.target.closest('button[data-mode]'); if(!b) return;
-    mode=b.dataset.mode;
-    [...$('#modeSeg').children].forEach(x=>x.classList.toggle('on',x===b));
-    $('#colLabel').textContent = mode==='add'?'Change':'Set to';
-    $('#modeHint').textContent = mode==='add'
-      ? 'Enter how many arrived. Use a minus sign to take stock out — 25 on hand plus 12 becomes 37.'
-      : 'Enter the exact count now on the shelf. Leave a title blank to keep it as it is.';
-    inputs.forEach(i=>{i.value='';});
-    recalc();
-  });
+  deltas.concat(sets).forEach(i=>i.addEventListener('input',recalc));
   recalc();
 
   $('#saveStock').addEventListener('click',()=>{
-    if(mode==='add'){
-      const items=inputs.filter(i=>i.value!=='' && Number(i.value)!==0)
-        .map(i=>({bookId:i.dataset.book,delta:Math.round(Number(i.value))}));
-      if(!items.length){$('#modalErr').textContent='Enter an amount for at least one title.';return;}
-      const short=items.find(it=>it.delta<0 && invQty(loc,it.bookId)+it.delta<0);
-      if(short){$('#modalErr').textContent='Cannot remove more '+bookById(short.bookId).name+' than are on hand.';return;}
-      commit({action:'adjustStockBulk',location:loc,items},
-        st=>items.forEach(it=>invAdd(st,loc,it.bookId,it.delta)), 'Stock updated');
-    }else{
-      const items=inputs.filter(i=>i.value!=='')
-        .map(i=>({bookId:i.dataset.book,qty:Math.max(0,Math.round(Number(i.value)))}));
-      if(!items.length){$('#modalErr').textContent='Enter a count for at least one title.';return;}
-      commit({action:'setStockBulk',location:loc,items},
-        st=>items.forEach(it=>invSet(st,loc,it.bookId,it.qty)), 'Stock set');
+    const setItems=[], deltaItems=[];
+    deltas.forEach(i=>{
+      const id=i.dataset.book, sv=setFor(id).value, dv=i.value;
+      if(sv!=='') setItems.push({bookId:id, qty:Math.max(0,Math.round(Number(sv)))});
+      else if(dv!=='' && Number(dv)!==0) deltaItems.push({bookId:id, delta:Math.round(Number(dv))});
+    });
+    if(!setItems.length && !deltaItems.length){
+      $('#modalErr').textContent='Enter a change or a count for at least one title.';return;
+    }
+    const short=deltaItems.find(it=>it.delta<0 && invQty(loc,it.bookId)+it.delta<0);
+    if(short){$('#modalErr').textContent='Cannot remove more '+bookById(short.bookId).name+' than are on hand.';return;}
+
+    // Sent as separate writes so each keeps its own meaning on the server.
+    if(deltaItems.length){
+      commit({action:'adjustStockBulk',location:loc,items:deltaItems},
+        st=>deltaItems.forEach(it=>invAdd(st,loc,it.bookId,it.delta)),
+        setItems.length?null:'Stock updated');
+    }
+    if(setItems.length){
+      commit({action:'setStockBulk',location:loc,items:setItems},
+        st=>setItems.forEach(it=>invSet(st,loc,it.bookId,it.qty)), 'Stock updated');
     }
   });
 }
@@ -1240,7 +1413,7 @@ function transferModal(mode){
    EVENT DELEGATION
    ============================================================ */
 document.addEventListener('click',e=>{
-  if(e.target.closest('a.tel')) return;          // let the dialler handle it
+  if(e.target.closest('a')) return;              // let links open normally
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='expand'){
@@ -1256,11 +1429,7 @@ document.addEventListener('click',e=>{
   if(a==='syncsheet'){ syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
-  if(a==='deleteevent'){
-    if(confirm('Delete "'+locName(CUR_LOC)+'"? Any remaining event stock returns to the warehouse and this event\'s sales are removed.'))
-      commitSync({action:'deleteEvent',eventId:CUR_LOC},'Event deleted');
-    return;
-  }
+  if(a==='deleteevent'){ deleteEventModal(); return; }
   if(a==='donation'){ donationModal(); return; }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
@@ -1269,8 +1438,21 @@ document.addEventListener('click',e=>{
 
   if(a==='markpaid'){
     const id=t.dataset.id;
+    const s0=(STATE.sales||[]).find(x=>x.saleId===id);
+    const bal = s0 ? dueAmt(s0) : 0, balCur = s0 ? dueCur(s0) : 'USD';
     commit({action:'markPaid',saleId:id},
-      st=>{const s=findSale(st,id); if(s){s.pending=false;s.paid=true;}}, 'Marked paid');
+      st=>{
+        const s=findSale(st,id); if(!s) return;
+        // Fold the balance into the money already banked, the same way the
+        // server does, so the totals do not jump when the write lands.
+        if(!s.pending && bal>0){
+          if(s.p1type && s.p1cur===balCur) s.p1amt=(Number(s.p1amt)||0)+bal;
+          else if(s.p2type && s.p2cur===balCur) s.p2amt=(Number(s.p2amt)||0)+bal;
+          else if(!s.p2type){ s.p2type=s.p1type||'Cash'; s.p2cur=balCur; s.p2amt=bal; }
+          else s.p1amt=(Number(s.p1amt)||0)+bal;
+        }
+        s.pending=false; s.paid=true; s.dueamt=0; s.duecur='';
+      }, bal>0?'Balance settled':'Marked paid');
     return;
   }
   if(a==='deliver'){ deliverModal(t.dataset.id); return; }
