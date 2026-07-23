@@ -189,6 +189,23 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .log-item.pending .li-amt{color:var(--clay)}
 .li-btns{display:flex;gap:4px;flex:none}
 .li-row .badge{flex:none}
+
+.li-row{cursor:pointer}
+.li-btns *{cursor:pointer}
+/* Everything the single-line row had to leave out. Open on tap, so it works on
+   a phone where there is no hover. */
+.li-det{display:none;margin-top:6px;padding-top:6px;border-top:1px dashed var(--line-d);
+  font-size:11.5px;color:var(--muted);line-height:1.6}
+.log-item.open .li-det{display:block}
+.li-det .k{display:inline-block;min-width:64px;color:var(--muted);font-weight:600;
+  text-transform:uppercase;font-size:9.5px;letter-spacing:.5px}
+.li-det .v{color:var(--ink)}
+.li-det a.tel{color:var(--saffron-d);font-weight:700;text-decoration:none;font-size:15px;
+  border-bottom:1px solid var(--line-d);padding-bottom:1px}
+.li-det a.tel:hover{border-color:var(--saffron)}
+.li-chev{flex:none;color:var(--gold);font-size:11px;transition:transform .12s;opacity:.75}
+.log-item:hover .li-chev{opacity:1}
+.log-item.open .li-chev{transform:rotate(90deg);color:var(--muted)}
 .badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;vertical-align:1px}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
@@ -690,7 +707,14 @@ function renderPayments(){
     </div>`;
 }
 
-function logItemHTML(x){
+/* Which rows are open. Kept outside the state so a background refresh does not
+   snap a row shut while it is being read. */
+const OPEN = new Set();
+/* Keeps the leading + and drops the spaces a dialler cannot use. */
+function telHref(p){ return String(p||'').replace(/[^\d+]/g,''); }
+
+function logItemHTML(x, forceOpen){
+  const open = forceOpen || OPEN.has(x.saleId);
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
   const awaiting = x.type==='PREORDER' && !x.delivered;
@@ -708,14 +732,21 @@ function logItemHTML(x){
   if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
   if(when) bits.push(esc(when));
 
-  // Anything that no longer fits on the line is still here on hover.
-  const tip=[book, when, x.name, x.phone, x.comments, locName(x.location),
-             x.dsource?('delivered from '+x.dsource.toLowerCase()):'',
-             awaiting?(invQty(x.location,x.bookId)+' on hand'):'']
-            .filter(Boolean).join(' · ');
+  // The full picture, opened by tapping the row.
+  const det=[];
+  if(x.name) det.push(['Name', esc(x.name)]);
+  if(x.phone) det.push(['Phone', `<a class="tel" href="tel:${esc(telHref(x.phone))}">${esc(x.phone)}</a>`]);
+  if(!isDon) det.push(['Payment', esc(payLabel(x))]);
+  if(x.comments) det.push(['Notes', esc(x.comments)]);
+  det.push(['Where', esc(locName(x.location))]);
+  if(when) det.push(['When', esc(when)]);
+  if(awaiting) det.push(['On hand', `${invQty(x.location,x.bookId)} at ${esc(locName(x.location))}`]);
+  if(x.dsource) det.push(['Given from', esc(x.dsource.toLowerCase())]);
 
-  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''}" title="${esc(tip)}">
+  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''}"
+       data-act="expand" data-id="${x.saleId}">
     <div class="li-row">
+      <span class="li-chev">▶</span>
       <span class="li-book">${esc(book)}</span>
       ${badge}${cat}${pend}
       ${bits.length?`<span class="li-who">${bits.join(' · ')}</span>`:''}
@@ -727,13 +758,16 @@ function logItemHTML(x){
         <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
       </span>
     </div>
+    <div class="li-det">
+      ${det.map(d=>`<div><span class="k">${d[0]}</span> <span class="v">${d[1]}</span></div>`).join('')}
+    </div>
   </div>`;
 }
 
 function renderLog(){
   const s=scopedSales().slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   $('#logCount').textContent = s.length ? `(${s.length}, scroll for more)` : '';
-  $('#log').innerHTML = s.length? s.map(logItemHTML).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
+  $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
 }
 
 function renderBottom(){
@@ -745,8 +779,9 @@ function renderBottom(){
   pend.style.display = unpaid.length?'':'none';
   row.style.display = (owed.length||unpaid.length)?'':'none';
   row.classList.toggle('single', !(owed.length&&unpaid.length));
-  if(owed.length) $('#preList').innerHTML=owed.map(logItemHTML).join('');
-  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(logItemHTML).join('');
+  // These two panels exist to be acted on, so they show their details up front.
+  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,true)).join('');
+  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,true)).join('');
 }
 
 /* ============================================================
@@ -769,6 +804,16 @@ function payTypeOptions(includeMixed,includeGift){
   return opts;
 }
 function curOptions(sel){return ['PLN','EUR','USD'].map(c=>`<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]}</option>`).join('');}
+
+/* Phone numbers cross country codes here, so the leading + has to survive
+   typing, storage and read-back. Everything except digits and the usual
+   separators is dropped; a + is kept only in first position. */
+function cleanPhone(v){
+  v = String(v||'').trim();
+  const plus = v.charAt(0)==='+';
+  const rest = v.replace(/[^\d\s()\-]/g,'').trim();
+  return (plus?'+':'') + rest;
+}
 
 /* ---- Sale / Pre-order / Edit ---- */
 function saleModal(opts){
@@ -821,7 +866,7 @@ function saleModal(opts){
       <div id="nameBox" style="display:${isPre?'block':'none'}">
         <div class="row2">
           <div class="field"><label>Name</label><input id="cname" type="text"></div>
-          <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel"></div>
+          <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
         </div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
@@ -878,7 +923,7 @@ function saleModal(opts){
       L=[{type:ptype.value,cur:pcur.value,amt:Number(pamt.value)||0}];
     }
     const pending=$('#pending').checked;
-    const name=$('#cname').value.trim(), phone=$('#cphone').value.trim(), comments=$('#ccomments').value.trim();
+    const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
     if(pending && !name){$('#modalErr').textContent='Add a name so the pending payment can be traced.';return;}
     if(isPre && !name){$('#modalErr').textContent='Add a name so the pre-ordered copy can be matched to a person.';return;}
 
@@ -927,7 +972,7 @@ function donationModal(){
       </div>
       <div class="row2">
         <div class="field"><label>Name (optional)</label><input id="cname" type="text"></div>
-        <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel"></div>
+        <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789"></div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
       <div class="err" id="modalErr"></div>
@@ -949,7 +994,7 @@ function donationModal(){
       L=[{type:ptype.value,cur:$('#pcur').value,amt:Number($('#pamt').value)||0}];
     }
     if(!L.some(l=>l.amt>0)){$('#modalErr').textContent='Enter a donation amount.';return;}
-    const name=$('#cname').value.trim(), phone=$('#cphone').value.trim(), comments=$('#ccomments').value.trim();
+    const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
     const id=tmpId(), loc=CUR_LOC;
     commit({action:'donate',location:loc,legs:L,name,phone,comments},
       st=>{ st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,type:'DONATION',
@@ -1195,8 +1240,17 @@ function transferModal(mode){
    EVENT DELEGATION
    ============================================================ */
 document.addEventListener('click',e=>{
+  if(e.target.closest('a.tel')) return;          // let the dialler handle it
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
+  if(a==='expand'){
+    const id=t.dataset.id;
+    // The two lower panels are always open, so toggling there would be a trap.
+    if(t.closest('#preList')||t.closest('#pendingList')) return;
+    if(OPEN.has(id)) OPEN.delete(id); else OPEN.add(id);
+    t.classList.toggle('open');
+    return;
+  }
   if(a==='loc'){ CUR_LOC=t.dataset.loc; renderAll(); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
   if(a==='syncsheet'){ syncSheet(); return; }
