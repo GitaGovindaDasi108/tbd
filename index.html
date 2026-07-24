@@ -186,7 +186,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 /* Two-line rows show the title in full — these are the ones being acted on. */
 .log-item.two .li-book{white-space:normal;overflow:visible;text-overflow:clip;flex:0 0 auto}
 .li-who{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;flex:0 1 auto;flex-shrink:6;min-width:0}
+  text-overflow:ellipsis;flex:0 1 auto;flex-shrink:20;min-width:0}
 .li-amt{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;flex:none}
 .li-amt.owed{color:var(--clay);font-weight:700}
 .li-amt-sub{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.75}
@@ -840,11 +840,18 @@ function logItemHTML(x, opts){
   const owedLabel = dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ');
   const showOwed = opts.showOwed && pending && owedLabel;
 
-  // One line: everything else is a keystroke away in the drawer.
+  /* Line 1 carries the title, the status, the time and the money. Everything
+     else is one tap away in the drawer.
+       'pending' — the panel is already about one thing, so no event name
+       'pre'     — awaiting-delivery rows keep the event, which is the useful bit
+       default   — the main log, where the timestamp earns its place */
+  const ctx = opts.context || 'log';
   const bits=[];
-  if(!needsRow2 && x.name) bits.push(esc(x.name));
-  if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
-  if(!needsRow2 && when) bits.push(esc(when));
+  if(ctx==='pre'){
+    if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
+  }else if(ctx==='log'){
+    if(when) bits.push(esc(when));
+  }
 
   const r2=[];
   if(needsRow2){
@@ -852,17 +859,18 @@ function logItemHTML(x, opts){
     r2.push(x.phone ? waLink(x.phone) : `<span class="li-nonum">no number on file</span>`);
   }
 
-  // The drawer carries the rest, in plain words.
+  // The drawer carries the rest, in plain words. The title leads, so a name too
+  // long for the row is always readable in full somewhere.
   const det=[];
-  if(needsRow2 && when) det.push(['Taken', esc(when)]);
+  if(!isDon) det.push(['Book', esc(book)]);
+  if(when) det.push([needsRow2?'Taken':'When', esc(when)]);
   if(!needsRow2){
     if(x.name) det.push(['Name', esc(x.name)]);
     if(x.phone) det.push(['Phone', waLink(x.phone)]);
-    if(when) det.push(['When', esc(when)]);
   }
-  if(!isDon) det.push(['Paid with', esc(payLabel(x))]);
+  if(!isDon && !partial) det.push(['Paid with', esc(payLabel(x))]);
   if(pending){
-    if(partial) det.push(['Already paid', esc(amountLabel(x))]);
+    if(partial) det.push(['Already paid', esc(payLabel(x))]);
     det.push([showOwed?'Sale total':'Still to collect',
       showOwed ? esc(totalLabel(x)) : `<span class="li-owed">${owedLabel}</span>`]);
   }
@@ -915,8 +923,8 @@ function renderBottom(){
   row.style.display = (owed.length||unpaid.length)?'':'none';
   row.classList.toggle('single', !(owed.length&&unpaid.length));
   // These two panels exist to be acted on, so they show their details up front.
-  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x)).join('');
-  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true})).join('');
+  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,{context:'pre'})).join('');
+  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
 }
 
 /* ============================================================
