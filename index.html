@@ -183,15 +183,18 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .li-row{display:flex;align-items:center;gap:6px;min-width:0}
 .li-book{font-weight:700;color:var(--plum);font-size:13px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;flex-shrink:1}
+/* Two-line rows show the title in full — these are the ones being acted on. */
+.log-item.two .li-book{white-space:normal;overflow:visible;text-overflow:clip;flex:0 0 auto}
 .li-who{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;flex:0 1 auto;flex-shrink:6;min-width:0}
 .li-amt{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;flex:none}
+.li-amt.owed{color:var(--clay);font-weight:700}
+.li-amt-sub{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.75}
 .log-item.pending .li-amt{color:var(--clay)}
 .li-btns{display:flex;gap:4px;flex:none}
 .li-row .badge{flex:none}
 
 .li-row{cursor:pointer}
-.log-item.fixed .li-row{cursor:default}
 .li-btns *{cursor:pointer}
 /* Everything the single-line row had to leave out. Open on tap, so it works on
    a phone where there is no hover. */
@@ -207,8 +210,9 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .li-row2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:4px;
   padding-top:4px;border-top:1px dashed var(--line-d);font-size:11.5px;color:var(--muted)}
 .li-row2 .k{font-weight:700;text-transform:uppercase;font-size:9.5px;letter-spacing:.5px;color:var(--muted)}
+.li-name{font-weight:700;color:var(--plum);font-size:12.5px}
+.li-nonum{font-style:italic;opacity:.7}
 .li-owed{font-weight:700;color:var(--clay)}
-.li-banked{color:var(--green);font-weight:600}
 .wa{display:inline-flex;align-items:center;gap:4px;color:#128C7E;font-weight:700;
   text-decoration:none;font-size:12.5px;background:#E7F5F1;border:1px solid #C4E5DC;
   border-radius:999px;padding:2px 9px}
@@ -255,6 +259,9 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .checkline{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
 .checkline input{width:18px;height:18px}
 .warn{background:var(--clay-l);border:1px solid #EEC0b8;color:var(--clay);border-radius:9px;padding:10px 12px;font-size:13px;font-weight:600}
+.warn-pre{background:#FFF3E0;border-color:#F0CFA0;color:#9C5A12}
+.warn-detail{margin-top:5px;font-weight:500;font-size:12px;line-height:1.5;opacity:.95}
+.warn-detail b{font-weight:700}
 .note{background:#EAF1F9;border:1px solid #C7D6E8;color:var(--blue);border-radius:9px;padding:10px 12px;font-size:13px}
 .leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
 .leg-box .lg-title{font-size:11px;font-weight:700;color:var(--saffron-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
@@ -296,6 +303,11 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;
   padding:10px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted)}
 .bulk-foot b{font-family:'Marcellus',serif;font-size:18px;color:var(--plum)}
+.bulk-foot.totals3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
+.bulk-foot.totals3 > div{display:flex;flex-direction:column;gap:1px}
+.bulk-foot.totals3 .tl{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted)}
+.bulk-foot.totals3 .all{border-left:1px solid var(--line-d)}
+.bulk-foot.totals3 .all b{color:var(--saffron-d)}
 
 /* toast */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
@@ -405,6 +417,10 @@ const CONFIG = Object.assign({
 }, window.TBS_CONFIG || {});
 
 const WAREHOUSE = 'WAREHOUSE';
+/* Must match Code.gs. Older records used the previous wording. */
+const DSRC_WAREHOUSE = 'Regional warehouse';
+const DSRC_OUTSIDE   = 'Outside the region';
+const fromOutside = s => s.dsource===DSRC_OUTSIDE || s.dsource==='Other warehouse';
 const CUR_LABEL = { PLN:'PLN', EUR:'Euros', USD:'USD' };
 const CUR_SYM   = { PLN:'zł',  EUR:'€',     USD:'$'   };
 
@@ -478,10 +494,37 @@ function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location==
 function shownQty(bookId){return invQty(CUR_LOC,bookId);}
 /* A pre-order not yet handed over holds a copy back from general sale. */
 /* Copies spoken for by a pre-order that has not been handed over yet. */
+/* Every undelivered pre-order is a claim on the regional warehouse, wherever it
+   was taken — an event only takes pre-orders once it has sold out of the title,
+   so there is never event stock to hold back. */
 function reservedQty(loc,bookId){
-  return (STATE.sales||[]).filter(x=>x.type==='PREORDER'&&!x.delivered&&x.location===loc&&x.bookId===bookId).length;
+  if(loc!==WAREHOUSE) return 0;
+  return (STATE.sales||[]).filter(x=>x.type==='PREORDER'&&!x.delivered&&x.bookId===bookId).length;
 }
 function availQty(loc,bookId){return Math.max(0,invQty(loc,bookId)-reservedQty(loc,bookId));}
+
+/* Pre-order holds are a warning, not a lock — stock is sometimes genuinely
+   needed elsewhere. Returns how many promises a title would break if the
+   warehouse were left holding `after` copies. */
+function preorderShortfall(bookId,after){
+  return Math.max(0, reservedQty(WAREHOUSE,bookId) - Math.max(0,after));
+}
+function shortfallLine(bookId,after){
+  const short=preorderShortfall(bookId,after);
+  if(!short) return '';
+  const held=reservedQty(WAREHOUSE,bookId);
+  return `${short} of the ${held} pre-order${held===1?'':'s'} for `
+       + `<b>${esc(bookById(bookId).name)}</b> could no longer be filled from `
+       + `${esc(STATE.warehouseName||'the warehouse')}.`;
+}
+/* verbs: [singular, plural] — "…if you sell it" vs "…if you sell them". */
+function preorderWarning(lines,verbs){
+  if(!lines.length) return '';
+  const one=lines.length===1;
+  return `<div class="warn warn-pre">⚠ There are currently pre-orders for `
+       + `${one?'this book':'these books'} that you would no longer be able to `
+       + `fulfil if you ${one?verbs[0]:verbs[1]}.<div class="warn-detail">${lines.join(' ')}</div></div>`;
+}
 
 /* ============================================================
    TRANSPORT
@@ -671,7 +714,9 @@ function renderInventory(){
   (STATE.books||[]).forEach(b=>{
     const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
-    const sellable=avail>0;
+    // A copy that is physically here can always be sold — the pre-order hold is
+    // a warning, not a lock.
+    const sellable=q>0;
     const cls=q<=0?'zero':avail<=1?'low':'';
     let flag='';
     if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
@@ -758,7 +803,22 @@ function waLink(p){
   return `<a class="wa" href="${esc(waHref(p))}" target="_blank" rel="noopener">${WA_ICON}${esc(t)}</a>`;
 }
 
-function logItemHTML(x, forceOpen){
+/* The total value of the transaction: money banked plus anything still owed. */
+function totalParts(x){
+  const m={};
+  legs(x).forEach(l=>{ if(l.amt) m[l.cur]=(m[l.cur]||0)+l.amt; });
+  // For a fully pending sale the legs already ARE the amount owed, so only a
+  // part payment adds its balance on top.
+  if(isPartial(x)) dueParts(x).forEach(d=>{ m[d.cur]=(m[d.cur]||0)+d.amt; });
+  return Object.keys(m).map(c=>`${fmt(m[c])} ${CUR_SYM[c]||c}`);
+}
+function totalLabel(x){ const p=totalParts(x); return p.length?p.join(' + '):'—'; }
+
+/* opts.showOwed — in the Pending Payments panel the headline figure must be the
+   money still outstanding, not the value of the sale. Showing the total there
+   is what made a 5 € balance look like it had gone missing behind a 35 € sale. */
+function logItemHTML(x, opts){
+  opts = opts || {};
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
   const awaiting = x.type==='PREORDER' && !x.delivered;
@@ -773,51 +833,58 @@ function logItemHTML(x, forceOpen){
     : '';
   const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 
-  // Anything with money or a book still outstanding earns a second line; a
-  // settled sale says everything it needs to on one.
+  // Anything still owed, or a book not yet handed over, needs a second line for
+  // the person's name and number. A settled sale says it all on one.
   const needsRow2 = pending || awaiting;
+  const open = OPEN.has(x.saleId);
+  const owedLabel = dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ');
+  const showOwed = opts.showOwed && pending && owedLabel;
 
-  // Ordered by what you would miss most, because this is what truncates first.
+  // One line: everything else is a keystroke away in the drawer.
   const bits=[];
-  if(x.name) bits.push(esc(x.name));
+  if(!needsRow2 && x.name) bits.push(esc(x.name));
   if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
-  if(when) bits.push(esc(when));
+  if(!needsRow2 && when) bits.push(esc(when));
 
-  // ---- second line, for outstanding money or an undelivered book ----
   const r2=[];
-  if(pending){
-    const owed = dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ');
-    r2.push(`<span class="k">Still owed</span> <span class="li-owed">${owed||'—'}</span>`);
-    if(partial) r2.push(`<span class="k">Banked</span> <span class="li-banked">${esc(amountLabel(x))}</span>`);
+  if(needsRow2){
+    if(x.name) r2.push(`<span class="li-name">${esc(x.name)}</span>`);
+    r2.push(x.phone ? waLink(x.phone) : `<span class="li-nonum">no number on file</span>`);
   }
-  if(awaiting){
-    r2.push(`<span class="k">On hand</span> <span>${invQty(x.location,x.bookId)} at ${esc(locName(x.location))}</span>`);
-  }
-  if(x.phone) r2.push(waLink(x.phone));
-  if(x.comments) r2.push(`<span>“${esc(x.comments)}”</span>`);
-  if(x.dsource) r2.push(`<span class="k">From</span> <span>${esc(x.dsource.toLowerCase())}</span>`);
 
-  // A settled sale can still be opened for its notes and contact details.
-  const open = !needsRow2 && (forceOpen || OPEN.has(x.saleId));
+  // The drawer carries the rest, in plain words.
   const det=[];
+  if(needsRow2 && when) det.push(['Taken', esc(when)]);
   if(!needsRow2){
     if(x.name) det.push(['Name', esc(x.name)]);
     if(x.phone) det.push(['Phone', waLink(x.phone)]);
-    if(!isDon) det.push(['Payment', esc(payLabel(x))]);
-    if(x.comments) det.push(['Notes', esc(x.comments)]);
-    det.push(['Where', esc(locName(x.location))]);
     if(when) det.push(['When', esc(when)]);
-    if(x.dsource) det.push(['Given from', esc(x.dsource.toLowerCase())]);
   }
+  if(!isDon) det.push(['Paid with', esc(payLabel(x))]);
+  if(pending){
+    if(partial) det.push(['Already paid', esc(amountLabel(x))]);
+    det.push([showOwed?'Sale total':'Still to collect',
+      showOwed ? esc(totalLabel(x)) : `<span class="li-owed">${owedLabel}</span>`]);
+  }
+  if(awaiting){
+    const stock=invQty(WAREHOUSE,x.bookId);
+    det.push(['Copies in ' + esc(STATE.warehouseName||'the warehouse'),
+      `${stock}${stock<=0?' — would have to come from outside the region':''}`]);
+  }
+  if(x.comments) det.push(['Notes', esc(x.comments)]);
+  det.push(['Sold at', esc(locName(x.location))]);
+  if(x.dsource) det.push(['Copy came from', fromOutside(x)?'outside the region':esc(String(STATE.warehouseName||'the')+' warehouse')]);
 
-  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'fixed':''}"
-       ${needsRow2?'':`data-act="expand" data-id="${x.saleId}"`}>
+  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''}"
+       data-act="expand" data-id="${x.saleId}">
     <div class="li-row">
-      ${needsRow2?'':'<span class="li-chev">▶</span>'}
+      <span class="li-chev">▶</span>
       <span class="li-book">${esc(book)}</span>
       ${badge}${cat}${pend}
       ${bits.length?`<span class="li-who">${bits.join(' · ')}</span>`:''}
-      <span class="li-amt">${amountLabel(x)}</span>
+      <span class="li-amt ${showOwed?'owed':''}">${showOwed
+        ? owedLabel+' <span class="li-amt-sub">owed</span>'
+        : (needsRow2?totalLabel(x):amountLabel(x))}</span>
       <span class="li-btns">
         ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">${partial?'Settle':'Paid'}</button>`:''}
         ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" data-id="${x.saleId}">Deliver</button>`:''}
@@ -825,8 +892,10 @@ function logItemHTML(x, forceOpen){
         <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
       </span>
     </div>
-    ${needsRow2?`<div class="li-row2">${r2.join('')}</div>`:
-      `<div class="li-det">${det.map(d=>`<div><span class="k">${d[0]}</span> <span class="v">${d[1]}</span></div>`).join('')}</div>`}
+    ${needsRow2?`<div class="li-row2">${r2.join('')}</div>`:''}
+    <div class="li-det">
+      ${det.map(d=>`<div><span class="k">${d[0]}</span> <span class="v">${d[1]}</span></div>`).join('')}
+    </div>
   </div>`;
 }
 
@@ -846,8 +915,8 @@ function renderBottom(){
   row.style.display = (owed.length||unpaid.length)?'':'none';
   row.classList.toggle('single', !(owed.length&&unpaid.length));
   // These two panels exist to be acted on, so they show their details up front.
-  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,true)).join('');
-  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,true)).join('');
+  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x)).join('');
+  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true})).join('');
 }
 
 /* ============================================================
@@ -891,12 +960,15 @@ function saleModal(opts){
   const lastCopy = !isPre && !edit && avail===1;
   const title = edit?'Edit sale':(isPre?'Pre-order':'Record sale');
   // A pre-order hands over nothing today, so "book given now" would be wrong.
-  const noneLabel = isPre ? 'Payment not yet delivered' : 'Book given now, paid later';
+  const noneHint = isPre ? 'payment not yet delivered' : 'book given now, paid later';
 
   openModal(`
     ${mHead(title+' — '+book.name)}
     <div class="m-body">
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
+      ${(!isPre && !edit && loc===WAREHOUSE)
+        ? preorderWarning([shortfallLine(opts.bookId, onHand-1)].filter(Boolean), ['sell it','sell them'])
+        : ''}
       ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} on hand here, ${held} already pre-ordered. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
       <div class="field">
         <label>Payment type</label>
@@ -930,10 +1002,11 @@ function saleModal(opts){
       <div class="field">
         <label>Payment status</label>
         <div class="seg" id="paySeg">
-          <button type="button" data-pay="full" class="on">Paid in full</button>
-          <button type="button" data-pay="part">Part paid</button>
-          <button type="button" data-pay="none">${esc(noneLabel)}</button>
+          <button type="button" data-pay="full" class="on">Paid in Full</button>
+          <button type="button" data-pay="part">Partial Payment</button>
+          <button type="button" data-pay="none">Payment Pending</button>
         </div>
+        <div class="hint" id="payHint"></div>
       </div>
       <div id="dueBox" style="display:none">
         <div class="leg-box">
@@ -956,7 +1029,9 @@ function saleModal(opts){
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="saveSale">${edit?'Save changes':(isPre?'Record pre-order':'Record sale')}</button>
+      <button class="btn btn-primary" id="saveSale">${edit?'Save changes'
+        :(isPre?'Record pre-order'
+          :((loc===WAREHOUSE && preorderShortfall(opts.bookId, onHand-1))?'Sell anyway':'Record sale'))}</button>
     </div>
   `);
 
@@ -981,6 +1056,10 @@ function saleModal(opts){
      in "full" and "part" it is money received, in "none" it is money expected. */
   function applyPayMode(){
     $('#dueBox').style.display = payMode==='part' ? 'block' : 'none';
+    $('#payHint').textContent =
+      payMode==='full' ? 'The whole amount has been collected.'
+      : payMode==='part' ? 'Some has been collected; the rest is still owed.'
+      : ('Nothing collected yet — ' + noneHint + '.');
     if(!isPre) $('#nameBox').style.display = payMode==='full' ? 'none' : 'block';
     const lab = payMode==='none' ? 'Amount expected' : 'Amount received';
     const l1=$('#amtLabel'); if(l1) l1.textContent=lab;
@@ -1064,7 +1143,7 @@ function saleModal(opts){
     }else{
       const id=tmpId();
       commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
-              pending,dueamt,duecur,name,phone,comments},
+              pending,dueamt,duecur,name,phone,comments,override:true},
         st=>{
           st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,
             type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,
@@ -1078,9 +1157,9 @@ function saleModal(opts){
 }
 
 /* ---- Donation ---- */
-function donationModal(){
+function donationModal(edit){
   openModal(`
-    ${mHead('Record donation')}
+    ${mHead(edit?'Edit donation':'Record donation')}
     <div class="m-body">
       <div class="hint">Donations add to collections but are not book inventory.</div>
       <div class="field"><label>Payment type</label><select id="ptype">${payTypeOptions(true,false)}</select></div>
@@ -1109,12 +1188,26 @@ function donationModal(){
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-gold" id="saveDon">Record donation</button>
+      <button class="btn btn-gold" id="saveDon">${edit?'Save changes':'Record donation'}</button>
     </div>
   `);
   const ptype=$('#ptype');
-  ptype.addEventListener('change',()=>{const m=ptype.value==='Mixed';
-    $('#singlePay').style.display=m?'none':'block';$('#mixedPay').style.display=m?'block':'none';});
+  const togglePay=()=>{const m=ptype.value==='Mixed';
+    $('#singlePay').style.display=m?'none':'block';$('#mixedPay').style.display=m?'block':'none';};
+  ptype.addEventListener('change',togglePay);
+
+  if(edit){
+    const L=legs(edit);
+    if(L.length>1){ ptype.value='Mixed'; togglePay();
+      $('#m1type').value=L[0].type;$('#m1cur').value=L[0].cur;$('#m1amt').value=L[0].amt;
+      $('#m2type').value=L[1].type;$('#m2cur').value=L[1].cur;$('#m2amt').value=L[1].amt;
+    }else if(L.length===1){ ptype.value=L[0].type; togglePay();
+      $('#pcur').value=L[0].cur; $('#pamt').value=L[0].amt;
+    }
+    $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
+    $('#ccomments').value=edit.comments||'';
+  }
+
   $('#saveDon').addEventListener('click',()=>{
     let L=[];
     if(ptype.value==='Mixed'){
@@ -1125,11 +1218,19 @@ function donationModal(){
     }
     if(!L.some(l=>l.amt>0)){$('#modalErr').textContent='Enter a donation amount.';return;}
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
-    const id=tmpId(), loc=CUR_LOC;
-    commit({action:'donate',location:loc,legs:L,name,phone,comments},
-      st=>{ st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,type:'DONATION',
-              bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
-      'Donation recorded');
+    if(edit){
+      commit({action:'editSale',saleId:edit.saleId,type:'DONATION',location:edit.location,bookId:'',
+              legs:L,pending:false,dueamt:0,duecur:'',name,phone,comments},
+        st=>{ const d=findSale(st,edit.saleId); if(!d)return;
+              Object.assign(d, legFields(L), {pending:false,paid:true,dueamt:0,duecur:'',name,phone,comments}); },
+        'Donation updated');
+    }else{
+      const id=tmpId(), loc=CUR_LOC;
+      commit({action:'donate',location:loc,legs:L,name,phone,comments},
+        st=>{ st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,type:'DONATION',
+                bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
+        'Donation recorded');
+    }
   });
 }
 
@@ -1137,23 +1238,26 @@ function donationModal(){
 function deliverModal(id){
   const x=(STATE.sales||[]).find(s=>s.saleId===id); if(!x) return;
   const book=bookById(x.bookId);
-  const onHand=invQty(x.location,x.bookId);
-  const where=locName(x.location);
+  const wh=(STATE.warehouseName||'the')+' warehouse';
+  // The copy always comes off the regional warehouse shelf, never the event's.
+  const stock=invQty(WAREHOUSE,x.bookId);
+  const owedHere=(STATE.sales||[]).filter(s=>s.type==='PREORDER'&&!s.delivered&&s.bookId===x.bookId).length;
 
   openModal(`
     ${mHead('Deliver — '+book.name)}
     <div class="m-body">
-      <div class="note">Where is this copy coming from? Either way it is counted as sold${x.name?' to '+esc(x.name):''}.</div>
+      <div class="note">Where is this copy coming from? Either way it is counted as sold${x.name?' to '+esc(x.name):''}${x.location!==WAREHOUSE?', and stays on '+esc(locName(x.location))+"'s books":''}.</div>
       <div class="opts">
-        <button class="opt" data-src="here" ${onHand<=0?'disabled':''}>
-          <b>This warehouse</b>
-          <span>${onHand<=0
-            ? 'Nothing on hand at '+esc(where)+' to give.'
-            : 'Takes one copy off the shelf. '+onHand+' on hand at '+esc(where)+'.'}</span>
+        <button class="opt" data-src="here" ${stock<=0?'disabled':''}>
+          <b>From ${esc(wh)}</b>
+          <span>${stock<=0
+            ? 'No copies left in '+esc(wh)+'.'
+            : 'Takes one copy off the '+esc(wh)+' shelf — '+stock+' there now'
+              +(owedHere>1?', with '+owedHere+' pre-orders still to fill':'')+'.'}</span>
         </button>
         <button class="opt" data-src="other">
-          <b>Other warehouse</b>
-          <span>Stock here is left exactly as it is — the copy came from somewhere else.</span>
+          <b>From outside the region</b>
+          <span>Sourced from beyond this system entirely. Nothing is taken off the ${esc(wh)} shelf, and the sale still counts.</span>
         </button>
       </div>
       <div class="err" id="modalErr"></div>
@@ -1164,16 +1268,16 @@ function deliverModal(id){
   $('#modal').querySelectorAll('.opt').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const fromStock = btn.dataset.src==='here';
-      if(fromStock && invQty(x.location,x.bookId)<=0){
-        $('#modalErr').textContent='That copy has just gone. Deliver it from another warehouse instead.';
+      if(fromStock && invQty(WAREHOUSE,x.bookId)<=0){
+        $('#modalErr').textContent='The last copy has just gone. Source it from outside the region instead.';
         return;
       }
       commit({action:'markDelivered',saleId:id,fromStock},
         st=>{const t=findSale(st,id); if(!t)return;
              t.type='SALE'; t.delivered=true;
-             t.dsource = fromStock?'This warehouse':'Other warehouse';
-             if(fromStock) invAdd(st,t.location,t.bookId,-1);},
-        fromStock?'Delivered — one copy off the shelf':'Delivered from another warehouse');
+             t.dsource = fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE;
+             if(fromStock) invAdd(st,WAREHOUSE,t.bookId,-1);},
+        fromStock?('Delivered from '+wh):'Delivered from outside the region');
     });
   });
 }
@@ -1182,7 +1286,7 @@ function deliverModal(id){
 function deleteEventModal(){
   const loc=CUR_LOC, name=locName(loc);
   const s=(STATE.sales||[]).filter(x=>x.location===loc);
-  const soldHere=s.filter(x=>x.type==='SALE'&&x.bookId&&x.dsource!=='Other warehouse').length;
+  const soldHere=s.filter(x=>x.type==='SALE'&&x.bookId&&!fromOutside(x)).length;
   const left=(STATE.books||[]).reduce((t,b)=>t+invQty(loc,b.id),0);
 
   openModal(`
@@ -1271,7 +1375,12 @@ function stockModal(){
       <div class="hint">Use <b>±&nbsp;Change</b> for a delivery or a removal (25 plus 12 becomes 37), or <b>Set&nbsp;to</b> when you have counted the shelf. Fill either column, title by title.</div>
       <div class="bulk-head"><span>Title</span><span>Now</span><span>± Change &nbsp;/&nbsp; Set to</span><span>After</span></div>
       ${body}
-      <div class="bulk-foot"><span>New total on hand</span><b id="footValue">0</b></div>
+      <div class="bulk-foot totals3">
+        <div><span class="tl">Big Books</span><b id="footBig">0</b></div>
+        <div><span class="tl">Adventures</span><b id="footAotm">0</b></div>
+        <div class="all"><span class="tl">All titles</span><b id="footValue">0</b></div>
+      </div>
+      <div id="preWarn"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -1292,11 +1401,12 @@ function stockModal(){
     return now;
   }
   function recalc(){
-    let total=0;
+    let total=0, big=0, aotm=0;
     deltas.forEach(i=>{
       const id=i.dataset.book;
       const next=Math.max(0,nextFor(id));
       total+=next;
+      if(isAotm(bookById(id))) aotm+=next; else big+=next;
       const cell=document.querySelector(`#modal [data-next="${id}"]`);
       cell.textContent=next;
       cell.classList.toggle('zero', next===0);
@@ -1307,6 +1417,14 @@ function stockModal(){
       i.classList.toggle('dim', sv);
     });
     $('#footValue').textContent=total;
+    $('#footBig').textContent=big;
+    $('#footAotm').textContent=aotm;
+
+    const lines = loc===WAREHOUSE
+      ? deltas.map(i=>shortfallLine(i.dataset.book, nextFor(i.dataset.book))).filter(Boolean)
+      : [];
+    $('#preWarn').innerHTML = preorderWarning(lines,['reduce this count','reduce these counts']);
+    $('#saveStock').textContent = lines.length ? 'Save anyway' : 'Save stock';
   }
   deltas.concat(sets).forEach(i=>i.addEventListener('input',recalc));
   recalc();
@@ -1326,12 +1444,12 @@ function stockModal(){
 
     // Sent as separate writes so each keeps its own meaning on the server.
     if(deltaItems.length){
-      commit({action:'adjustStockBulk',location:loc,items:deltaItems},
+      commit({action:'adjustStockBulk',location:loc,items:deltaItems,override:true},
         st=>deltaItems.forEach(it=>invAdd(st,loc,it.bookId,it.delta)),
         setItems.length?null:'Stock updated');
     }
     if(setItems.length){
-      commit({action:'setStockBulk',location:loc,items:setItems},
+      commit({action:'setStockBulk',location:loc,items:setItems,override:true},
         st=>setItems.forEach(it=>invSet(st,loc,it.bookId,it.qty)), 'Stock updated');
     }
   });
@@ -1369,6 +1487,7 @@ function transferModal(mode){
       <div class="bulk-head"><span>Title</span><span>Avail.</span><span>Move</span><span>Left</span></div>
       ${body}
       <div class="bulk-foot"><span>Books in this load</span><b id="footValue">0</b></div>
+      <div id="preWarn"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -1390,6 +1509,17 @@ function transferModal(mode){
     });
     $('#footValue').textContent=load;
     $('#modalErr').textContent = over ? 'One or more titles exceed what is on hand.' : '';
+
+    // Taking stock out of the warehouse can strand pre-orders. Say so as it happens.
+    let lines=[];
+    if(from===WAREHOUSE){
+      lines = inputs.map(i=>{
+        const q=Math.max(0,Math.round(Number(i.value)||0));
+        return q ? shortfallLine(i.dataset.book, invQty(WAREHOUSE,i.dataset.book)-q) : '';
+      }).filter(Boolean);
+    }
+    $('#preWarn').innerHTML = preorderWarning(lines,['transfer it','transfer them']);
+    $('#saveTransfer').textContent = lines.length ? 'Transfer anyway' : 'Transfer';
   }
   inputs.forEach(i=>i.addEventListener('input',recalc));
   $('#tfrom').addEventListener('change',recalc);
@@ -1403,7 +1533,7 @@ function transferModal(mode){
     if(!items.length){$('#modalErr').textContent='Enter a quantity for at least one title.';return;}
     const bad=items.find(it=>it.qty>invQty(from,it.bookId));
     if(bad){$('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(from)+'.';return;}
-    commit({action:'transferBulk',from,to,items},
+    commit({action:'transferBulk',from,to,items,override:true},
       st=>items.forEach(it=>{invAdd(st,from,it.bookId,-it.qty);invAdd(st,to,it.bookId,it.qty);}),
       'Stock transferred');
   });
@@ -1418,8 +1548,6 @@ document.addEventListener('click',e=>{
   const a=t.dataset.act;
   if(a==='expand'){
     const id=t.dataset.id;
-    // The two lower panels are always open, so toggling there would be a trap.
-    if(t.closest('#preList')||t.closest('#pendingList')) return;
     if(OPEN.has(id)) OPEN.delete(id); else OPEN.add(id);
     t.classList.toggle('open');
     return;
@@ -1469,7 +1597,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='editsale'){
     const s=(STATE.sales||[]).find(x=>x.saleId===t.dataset.id); if(!s)return;
-    if(s.type==='DONATION'){ toast('To change a donation, delete it and add it again.',false); return; }
+    if(s.type==='DONATION'){ donationModal(s); return; }
     saleModal({bookId:s.bookId,isPreorder:s.type==='PREORDER',loc:s.location,edit:s});
     return;
   }
