@@ -753,7 +753,7 @@ function renderInventory(){
         <div class="qtyrow">
           <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
             ${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}
-            ${region>q?`<div class="region">${region} total unsold in region · ${region-q} out at events</div>`:''}</div>
+            ${region>q?`<div class="region">Event Stock: ${region-q} · Total Stock: ${region}</div>`:''}</div>
           <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
         </div>
         ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
