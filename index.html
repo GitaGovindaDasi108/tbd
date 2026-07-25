@@ -121,7 +121,12 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;min-height:0}
 .panel > h2{font-family:'Marcellus',serif;font-weight:400;font-size:18px;color:var(--plum);
   padding:12px 16px;border-bottom:1px solid var(--line);flex:none;
-  background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px}
+  background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.sortbar{font-family:'Inter',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:700;display:flex;align-items:center;gap:4px;margin-left:auto}
+.sort-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;
+  border:1px solid var(--line-d);background:var(--paper);color:var(--muted);border-radius:7px;padding:3px 9px}
+.sort-btn.on{background:var(--plum);color:var(--gold-l);border-color:var(--plum)}
 .panel .body{padding:12px 14px;flex:1;min-height:0;display:flex;flex-direction:column}
 
 /* ---------- Inventory cards ---------- */
@@ -139,6 +144,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .qty-chip.low{color:var(--gold)} .qty-chip.zero{color:var(--clay)}
 .qty-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .resv{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.3px;margin-top:2px}
+.region{font-size:9.5px;color:var(--blue);font-weight:600;letter-spacing:.2px;margin-top:2px;opacity:.9}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
@@ -372,7 +378,13 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
     </section>
     <div class="log-col">
       <section class="panel">
-        <h2>Active Sales Log <span class="hint" id="logCount"></span></h2>
+        <h2>Active Sales Log <span class="hint" id="logCount"></span>
+          <span class="sortbar">Sort
+            <button class="sort-btn" data-act="sortlog" data-sort="time">Date</button>
+            <button class="sort-btn" data-act="sortlog" data-sort="book">Book</button>
+            <button class="sort-btn" data-act="sortlog" data-sort="status">Status</button>
+          </span>
+        </h2>
         <div class="body"><div class="log" id="log"></div></div>
       </section>
     </div>
@@ -492,6 +504,13 @@ function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — 
   const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
 function scopedSales(){const s=STATE.sales||[];return CUR_LOC===WAREHOUSE?s:s.filter(x=>x.location===CUR_LOC);}
 function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location===loc&&i.bookId===bookId);return rec?rec.qty:0;}
+/* Every unsold physical copy anywhere in the region: the warehouse plus every
+   event table. What "unsold in region" on the warehouse card counts. */
+function regionUnsold(bookId){
+  let t=invQty(WAREHOUSE,bookId);
+  (STATE.events||[]).forEach(e=>{ t+=invQty(e.eventId,bookId); });
+  return t;
+}
 function shownQty(bookId){return invQty(CUR_LOC,bookId);}
 /* A pre-order not yet handed over holds a copy back from general sale. */
 /* Copies spoken for by a pre-order that has not been handed over yet. */
@@ -709,12 +728,13 @@ function renderTotals(){
 
 function renderInventory(){
   $('#invHeading').firstChild.textContent = (CUR_LOC===WAREHOUSE?'Warehouse Inventory ':'Event Inventory ');
-  $('#invHint').textContent = CUR_LOC===WAREHOUSE?'(stock on hand at the warehouse)':'(stock available at this event)';
+  $('#invHint').textContent = CUR_LOC===WAREHOUSE?'(what is in the warehouse right now)':'(stock available at this event)';
   const s=scopedSales();
   let h='';
   (STATE.books||[]).forEach(b=>{
     const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
+    const region = CUR_LOC===WAREHOUSE ? regionUnsold(b.id) : q;
     // A copy that is physically here can always be sold — the pre-order hold is
     // a warning, not a lock.
     const sellable=q>0;
@@ -731,8 +751,9 @@ function renderInventory(){
           <div class="price">${b.pln} zł · ${b.eur} € · $${b.usd}</div>
         </div>
         <div class="qtyrow">
-          <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">on hand</span>
-            ${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}</div>
+          <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
+            ${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}
+            ${region>q?`<div class="region">${region} total unsold in region · ${region-q} out at events</div>`:''}</div>
           <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
         </div>
         ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
@@ -917,9 +938,35 @@ function logItemHTML(x, opts){
   </div>`;
 }
 
+/* Sales log sort. 'key' is the field, 'dir' flips on a second tap of the same
+   header. Date defaults newest-first, the others A→Z / most-urgent-first. */
+let LOG_SORT = { key:'time', dir:-1 };
+/* Lower rank = higher up: money owed first, then books owed, then done. */
+function statusRank(x){
+  if(!isPaid(x)) return 0;                          // pending / part paid
+  if(x.type==='PREORDER' && !x.delivered) return 1; // awaiting delivery
+  return 2;                                          // settled
+}
+function sortedSales(list){
+  const d=LOG_SORT.dir;
+  const bookName=x=> x.type==='DONATION' ? '~Donation' : bookById(x.bookId).name;
+  const cmp={
+    time:  (a,b)=> new Date(a.ts)-new Date(b.ts),
+    book:  (a,b)=> bookName(a).localeCompare(bookName(b)) || (new Date(b.ts)-new Date(a.ts)),
+    status:(a,b)=> (statusRank(a)-statusRank(b)) || (new Date(b.ts)-new Date(a.ts))
+  }[LOG_SORT.key];
+  return list.slice().sort((a,b)=> d*cmp(a,b));
+}
+
 function renderLog(){
-  const s=scopedSales().slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  $('#logCount').textContent = s.length ? `(${s.length}, scroll for more)` : '';
+  const s=sortedSales(scopedSales());
+  $('#logCount').textContent = s.length ? `(${s.length})` : '';
+  document.querySelectorAll('.sort-btn').forEach(btn=>{
+    const on = btn.dataset.sort===LOG_SORT.key;
+    btn.classList.toggle('on', on);
+    btn.textContent = ({time:'Date',book:'Book',status:'Status'})[btn.dataset.sort]
+      + (on ? (LOG_SORT.dir<0?' ↓':' ↑') : '');
+  });
   $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
 }
 
@@ -987,7 +1034,7 @@ function saleModal(opts){
       ${(!isPre && !edit && loc===WAREHOUSE)
         ? preorderWarning([shortfallLine(opts.bookId, onHand-1)].filter(Boolean), ['sell it','sell them'])
         : ''}
-      ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} on hand here, ${held} already pre-ordered. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
+      ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} in stock here, ${held} already pre-ordered. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
       <div class="field">
         <label>Payment type</label>
         <select id="ptype">${payTypeOptions(true,true)}</select>
@@ -1458,7 +1505,7 @@ function stockModal(){
       $('#modalErr').textContent='Enter a change or a count for at least one title.';return;
     }
     const short=deltaItems.find(it=>it.delta<0 && invQty(loc,it.bookId)+it.delta<0);
-    if(short){$('#modalErr').textContent='Cannot remove more '+bookById(short.bookId).name+' than are on hand.';return;}
+    if(short){$('#modalErr').textContent='Cannot remove more '+bookById(short.bookId).name+' than are in stock.';return;}
 
     // Sent as separate writes so each keeps its own meaning on the server.
     if(deltaItems.length){
@@ -1526,7 +1573,7 @@ function transferModal(mode){
       cell.textContent=left; cell.classList.toggle('zero', left<=0);
     });
     $('#footValue').textContent=load;
-    $('#modalErr').textContent = over ? 'One or more titles exceed what is on hand.' : '';
+    $('#modalErr').textContent = over ? 'One or more titles exceed what is in stock.' : '';
 
     // Taking stock out of the warehouse can strand pre-orders. Say so as it happens.
     let lines=[];
@@ -1564,6 +1611,13 @@ document.addEventListener('click',e=>{
   if(e.target.closest('a')) return;              // let links open normally
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
+  if(a==='sortlog'){
+    const key=t.dataset.sort;
+    if(LOG_SORT.key===key) LOG_SORT.dir*=-1;
+    else LOG_SORT={key, dir: key==='time'?-1:1};
+    renderLog();
+    return;
+  }
   if(a==='expand'){
     const id=t.dataset.id;
     if(OPEN.has(id)) OPEN.delete(id); else OPEN.add(id);
