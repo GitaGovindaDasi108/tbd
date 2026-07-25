@@ -228,6 +228,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.part{background:#FDEBD0;color:#9C5A12}
 .badge.aotm{background:#EAF0F7;color:var(--blue)}
+.badge.filled{background:#DCE9F7;color:var(--blue);border:1px solid #BFD6EE}
 .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:20px 8px;font-style:italic}
 
 .bottom-panels .panel{max-height:420px}
@@ -823,7 +824,12 @@ function logItemHTML(x, opts){
   const isDon=x.type==='DONATION';
   const awaiting = x.type==='PREORDER' && !x.delivered;
   const book=isDon?'Donation':bookById(x.bookId).name;
-  const badge = x.type==='SALE'?'<span class="badge sale">Sale</span>'
+  // A delivered pre-order becomes an ordinary SALE, so without this it would be
+  // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
+  const wasPreorder = x.type==='SALE' && !!x.dsource;
+  const badge = x.type==='SALE'
+      ? (wasPreorder?'<span class="badge filled">Pre-order filled</span>'
+                    :'<span class="badge sale">Sale</span>')
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
     : '<span class="badge don">Donation</span>';
   const cat = (!isDon && catOf(x.bookId)==='aotm') ? '<span class="badge aotm">AoTM</span>' : '';
@@ -881,7 +887,11 @@ function logItemHTML(x, opts){
   }
   if(x.comments) det.push(['Notes', esc(x.comments)]);
   det.push(['Sold at', esc(locName(x.location))]);
-  if(x.dsource) det.push(['Copy came from', fromOutside(x)?'outside the region':esc(String(STATE.warehouseName||'the')+' warehouse')]);
+  if(wasPreorder){
+    det.push(['Pre-order', 'Fulfilled — copy came from '
+      + (fromOutside(x) ? 'outside the region'
+                        : esc(String(STATE.warehouseName||'the')+' warehouse'))]);
+  }
 
   return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''}"
        data-act="expand" data-id="${x.saleId}">
