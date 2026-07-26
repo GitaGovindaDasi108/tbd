@@ -1609,7 +1609,8 @@ function bundleModal(edit){
     });
 
     const payload = edit
-      ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true}
+      ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true,
+         ts:(edit.members.reduce((min,m)=> (m.ts && (!min || new Date(m.ts)<new Date(min))) ? m.ts : min, null))}
       : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true};
 
     commit(payload,
