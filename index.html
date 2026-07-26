@@ -1444,6 +1444,9 @@ function bundleModal(edit){
       else counts[m.bookId].buy++;   // a delivered pre-order counts as bought
     });
   }
+  // Push the (possibly pre-filled) counts into the visible steppers. Without this
+  // an edited bundle opened with every stepper showing 0.
+  function refreshAll(){ (STATE.books||[]).forEach(b=>refreshRow(b.id)); }
 
   const priceCur = ()=> ptype.value==='Mixed' ? 'PLN' : pcur.value;
   const unit = (bookId,cur)=>{ const b=bookById(bookId);
@@ -1532,7 +1535,7 @@ function bundleModal(edit){
     [...$('#paySeg').children].forEach(x=>x.classList.toggle('on',x===b));
     applyPayMode();
   });
-  applyPayMode(); updateCount();
+  applyPayMode(); updateCount(); refreshAll();
 
   if(edit){
     // Rebuild the combined payment from the members' legs.
@@ -1558,7 +1561,7 @@ function bundleModal(edit){
     // Strip the "N book sale" prefix from the shared comment for editing.
     const raw=String(edit.members[0].comments||'');
     $('#ccomments').value = raw.replace(/^\d+ book (sale|pre-order)( · )?/,'');
-    applyPayMode(); updateCount();
+    applyPayMode(); updateCount(); refreshAll();
   }
 
   $('#saveBundle').addEventListener('click',()=>{
