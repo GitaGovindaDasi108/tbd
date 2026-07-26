@@ -970,7 +970,9 @@ function logItemHTML(x, opts){
       <span class="li-btns">
         ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" ${idAttr}>${partial?'Settle':'Paid'}</button>`:''}
         ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" ${idAttr}>Deliver</button>`:''}
-        ${x._bundle?'':`<button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>`}
+        ${x._bundle
+          ? `<button class="btn btn-ghost btn-xs" data-act="editbundle" data-bundle="${x.bundle}">Edit</button>`
+          : `<button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>`}
         <button class="btn btn-danger btn-xs" data-act="delsale" ${idAttr}>Delete</button>
       </span>
     </div>
@@ -1022,6 +1024,10 @@ function groupBundles(list){
     members.forEach(m=>legs(m).forEach(l=>{ if(l.amt){ const k=l.type+'|'+l.cur; legSum[k]=(legSum[k]||0)+l.amt; } }));
     const merged=Object.keys(legSum).map(k=>{ const [type,cur]=k.split('|'); return {type,cur,amt:Math.round(legSum[k]*100)/100}; });
     const dueamt=members.reduce((t,m)=>t+(Number(m.dueamt)||0),0);
+    // The balance lives on one member; take its currency, not member 0's, since
+    // after a server round-trip the members carry their own ids and re-sort.
+    const dueMember=members.find(m=>(Number(m.dueamt)||0)>0);
+    const duecur = dueMember ? dueMember.duecur : '';
     const anyPending=members.some(m=>m.pending && !m.paid);
     // A bundle can mix bought copies with pre-ordered ones. The row counts as
     // still-awaiting only while any pre-order in it is undelivered; the type is
@@ -1036,6 +1042,7 @@ function groupBundles(list){
       type: (allPre && undelivered.length) ? 'PREORDER' : 'SALE',
       delivered: undelivered.length===0,
       dueamt: anyPending?0:dueamt,
+      duecur: anyPending?'':duecur,
       pending: anyPending, paid: !anyPending && dueamt<=0
     });
   });
@@ -1311,13 +1318,18 @@ function saleModal(opts){
    Books are picked with checkboxes; the total price fills in as you tick them.
    The one payment is split across the books on the server (proportional to list
    price). On submit each book's stock drops by one, exactly as if sold singly. */
-function bundleModal(){
-  const loc = CUR_LOC;
+function bundleModal(edit){
+  const loc = edit ? edit.members[0].location : CUR_LOC;
+  // When editing, a book's own stock still shows what's on the shelf now, but the
+  // copies already in THIS bundle are not really gone yet — they'll be rewritten.
+  // So show stock as if this bundle's bought copies were returned first.
+  const backIn = {};
+  if(edit){ edit.members.forEach(m=>{ if(m.type==='SALE') backIn[m.bookId]=(backIn[m.bookId]||0)+1; }); }
 
   // Each book has a Buy count and a Pre-order count. A single transaction can
   // mix the two — buy the ones in stock, pre-order the ones that aren't.
   const rows = (STATE.books||[]).map(b=>{
-    const stock = invQty(loc,b.id);
+    const stock = invQty(loc,b.id) + (backIn[b.id]||0);
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
       <div class="mb-main">
@@ -1342,7 +1354,7 @@ function bundleModal(){
   }).join('');
 
   openModal(`
-    ${mHead('Multiple books — '+esc(locName(loc)))}
+    ${mHead((edit?'Edit — ':'Multiple books — ')+esc(locName(loc)))}
     <div class="m-body">
       <div class="hint">Set how many of each book are being <b>bought</b> (from stock) and how many <b>pre-ordered</b>. You can do both in one sale. The total fills in as you go.</div>
       <div class="mb-list">${rows}</div>
@@ -1405,7 +1417,7 @@ function bundleModal(){
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="saveBundle">Record</button>
+      <button class="btn btn-primary" id="saveBundle">${edit?'Save changes':'Record'}</button>
     </div>
   `);
 
@@ -1414,6 +1426,13 @@ function bundleModal(){
   // counts[bookId] = { buy: n, pre: n }
   const counts={};
   (STATE.books||[]).forEach(b=>counts[b.id]={buy:0,pre:0});
+  if(edit){
+    edit.members.forEach(m=>{
+      if(!counts[m.bookId]) return;
+      if(m.type==='PREORDER' && !m.delivered) counts[m.bookId].pre++;
+      else counts[m.bookId].buy++;   // a delivered pre-order counts as bought
+    });
+  }
 
   const priceCur = ()=> ptype.value==='Mixed' ? 'PLN' : pcur.value;
   const unit = (bookId,cur)=>{ const b=bookById(bookId);
@@ -1504,6 +1523,33 @@ function bundleModal(){
   });
   applyPayMode(); updateCount();
 
+  if(edit){
+    // Rebuild the combined payment from the members' legs.
+    const legSum={};
+    edit.members.forEach(m=>legs(m).forEach(l=>{ if(l.amt){ const k=l.type+'|'+l.cur; legSum[k]=(legSum[k]||0)+l.amt; } }));
+    const merged=Object.keys(legSum).map(k=>{ const [type,cur]=k.split('|'); return {type,cur,amt:Math.round(legSum[k]*100)/100}; });
+    if(merged.length>1){
+      ptype.value='Mixed'; togglePay();
+      $('#m1type').value=merged[0].type; $('#m1cur').value=merged[0].cur; $('#m1amt').value=merged[0].amt;
+      $('#m2type').value=merged[1].type; $('#m2cur').value=merged[1].cur; $('#m2amt').value=merged[1].amt;
+    } else if(merged.length===1){
+      ptype.value=merged[0].type; togglePay();
+      $('#pcur').value=merged[0].cur; $('#pamt').value=merged[0].amt; pamt.dataset.touched='1';
+    }
+    // Payment status: pending / partial / full, from the members.
+    const anyPending=edit.members.some(m=>m.pending && !m.paid);
+    const dueMember=edit.members.find(m=>(Number(m.dueamt)||0)>0);
+    payMode = anyPending ? 'none' : (dueMember ? 'part' : 'full');
+    [...$('#paySeg').children].forEach(x=>x.classList.toggle('on', x.dataset.pay===payMode));
+    if(dueMember){ $('#duecur').value=dueMember.duecur||'PLN'; $('#dueamt').value=dueMember.dueamt; }
+    $('#cname').value=edit.members[0].name||'';
+    $('#cphone').value=edit.members[0].phone||'';
+    // Strip the "N book sale" prefix from the shared comment for editing.
+    const raw=String(edit.members[0].comments||'');
+    $('#ccomments').value = raw.replace(/^\d+ book (sale|pre-order)( · )?/,'');
+    applyPayMode(); updateCount();
+  }
+
   $('#saveBundle').addEventListener('click',()=>{
     const buy=buyIds(), pre=preIds();
     if(buy.length+pre.length < 2){
@@ -1548,18 +1594,29 @@ function bundleModal(){
       perItem[0].push({type:leg.type,cur:leg.cur,amt:Math.round((leg.amt-running)*100)/100});
     });
 
-    commit({action:'sellBundle',location:loc,items,legs:L,
-            pending,dueamt,duecur,name,phone,comments,override:true},
+    const payload = edit
+      ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true}
+      : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true};
+
+    commit(payload,
       st=>{
+        // Editing: drop the old members and return their bought copies first, so
+        // the rewrite starts from a clean slate.
+        if(edit){
+          st.sales.filter(x=>x.bundle===edit.bundle).forEach(m=>{
+            if(m.type==='SALE' && m.bookId) invAdd(st,m.location,m.bookId,1);
+          });
+          st.sales = st.sales.filter(x=>x.bundle!==edit.bundle);
+        }
         items.forEach((it,i)=>{
-          st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:new Date().toISOString(),location:loc,
+          st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:(edit?edit.members[0].ts:new Date().toISOString()),location:loc,
             type:it.pre?'PREORDER':'SALE',bookId:it.bookId,qty:1,
             pending,paid:!pending&&(i>0||dueamt<=0),dueamt:i===0?dueamt:0,duecur:i===0?duecur:'',
             delivered:!it.pre,name,phone,comments:note,bundle:bundleId}, legFields(perItem[i])));
           if(!it.pre) invAdd(st,loc,it.bookId,-1);
         });
       },
-      n+' books recorded');
+      edit? (n+' books updated') : (n+' books recorded'));
   });
 }
 
@@ -2047,6 +2104,13 @@ document.addEventListener('click',e=>{
       st=>{const i=st.sales.findIndex(x=>x.saleId===id); if(i<0)return;
            const x=st.sales[i]; if(x.type==='SALE'&&x.bookId) invAdd(st,x.location,x.bookId,1);
            st.sales.splice(i,1);}, 'Deleted');
+    return;
+  }
+  if(a==='editbundle'){
+    const bundle=t.dataset.bundle;
+    const members=(STATE.sales||[]).filter(x=>x.bundle===bundle);
+    if(!members.length) return;
+    bundleModal({bundle, members});
     return;
   }
   if(a==='editsale'){
