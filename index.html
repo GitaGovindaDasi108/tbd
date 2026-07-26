@@ -876,7 +876,18 @@ function logItemHTML(x, opts){
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
   const awaiting = (x.type==='PREORDER' && !x.delivered) || (x._bundle && x._preCount>0);
-  const book = x._bundle ? (x._count+' Books')
+  // A bundle normally shows as "N Books", but in the awaiting-delivery panel the
+  // useful thing is which books, with counts — e.g. "Sri Radha (Russian) — 2".
+  function bundlePreTitle(){
+    const c={};
+    x._members.forEach(m=>{ if(m.type==='PREORDER' && !m.delivered){
+      const nm=bookById(m.bookId).name; c[nm]=(c[nm]||0)+1; } });
+    const names=Object.keys(c);
+    if(!names.length) return x._count+' Books';
+    return names.map(nm=> nm+' — '+c[nm]).join(' · ');
+  }
+  const book = x._bundle
+    ? ((opts.context==='pre') ? bundlePreTitle() : (x._count+' Books'))
     : (isDon?'Donation':bookById(x.bookId).name);
   // A delivered pre-order becomes an ordinary SALE, so without this it would be
   // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
