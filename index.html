@@ -154,6 +154,26 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
 
+/* Multiple-books entry point + modal */
+#invMulti{margin-top:10px}
+.multi-btn{width:100%;background:var(--plum);color:var(--gold-l);border:none;border-radius:9px;
+  padding:9px;font-size:12.5px;font-weight:700;letter-spacing:.3px;cursor:pointer}
+.multi-btn:hover{filter:brightness(1.08)}
+.mb-list{border:1px solid var(--line-d);border-radius:10px;overflow:hidden;margin-bottom:6px}
+.mb-row{display:flex;align-items:center;gap:9px;padding:8px 11px;border-bottom:1px solid var(--line);
+  cursor:pointer;font-size:13px}
+.mb-row:last-child{border-bottom:none}
+.mb-row:hover{background:var(--paper2)}
+.mb-row.out{opacity:.5;cursor:not-allowed}
+.mb-check{width:17px;height:17px;flex:none}
+.mb-name{font-weight:600;color:var(--ink);flex:1 1 auto}
+.mb-price{font-size:12px;font-weight:700;color:var(--plum);flex:none}
+.mb-stock{font-size:10.5px;color:var(--muted);flex:none;min-width:56px;text-align:right}
+.mb-out{font-size:10.5px;color:var(--clay);font-weight:700;flex:none}
+.mb-count{font-size:12px;font-weight:700;color:var(--saffron-d);margin:2px 0 10px}
+.log-item.bundle .li-book{color:var(--saffron-d)}
+.badge.bundle-b{background:#F3E8D0;color:var(--saffron-d)}
+
 /* ---------- Sales-by-title ---------- */
 .title-list{display:flex;flex-direction:column;gap:2px}
 .title-row{display:flex;justify-content:space-between;padding:7px 4px;border-bottom:1px dashed var(--line);font-size:14px}
@@ -374,7 +394,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   <div class="cols">
     <section class="panel">
       <h2 id="invHeading">Inventory <span class="hint" id="invHint"></span></h2>
-      <div class="body"><div class="inv-grid" id="invGrid"></div></div>
+      <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
       <section class="panel">
@@ -762,6 +782,9 @@ function renderInventory(){
     </div>`;
   });
   $('#invGrid').innerHTML=h;
+  // One-line entry point for a multi-book transaction, under the grid.
+  $('#invMulti').innerHTML =
+    `<button class="multi-btn" data-act="multi" data-mode="sale">＋ Multiple Books — one transaction</button>`;
 }
 
 function renderTitleList(){
@@ -844,7 +867,8 @@ function logItemHTML(x, opts){
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
   const awaiting = x.type==='PREORDER' && !x.delivered;
-  const book=isDon?'Donation':bookById(x.bookId).name;
+  const book = x._bundle ? (x._count+' Books')
+    : (isDon?'Donation':bookById(x.bookId).name);
   // A delivered pre-order becomes an ordinary SALE, so without this it would be
   // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
   const wasPreorder = x.type==='SALE' && !!x.dsource;
@@ -889,7 +913,11 @@ function logItemHTML(x, opts){
   // The drawer carries the rest, in plain words. The title leads, so a name too
   // long for the row is always readable in full somewhere.
   const det=[];
-  if(!isDon) det.push(['Book', esc(book)]);
+  if(x._bundle){
+    det.push(['Books', x._members.map(m=>esc(bookById(m.bookId).name)).join(', ')]);
+  } else if(!isDon){
+    det.push(['Book', esc(book)]);
+  }
   if(when) det.push([needsRow2?'Taken':'When', esc(when)]);
   if(!needsRow2){
     if(x.name) det.push(['Name', esc(x.name)]);
@@ -914,8 +942,10 @@ function logItemHTML(x, opts){
                         : esc(String(STATE.warehouseName||'the')+' warehouse'))]);
   }
 
-  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''}"
-       data-act="expand" data-id="${x.saleId}">
+  const bAttr = x._bundle ? ` data-bundle="${x.bundle}"` : '';
+  const idAttr = `data-id="${x.saleId}"${bAttr}`;
+  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''} ${x._bundle?'bundle':''}"
+       data-act="expand" ${idAttr}>
     <div class="li-row">
       <span class="li-chev">▶</span>
       <span class="li-book">${esc(book)}</span>
@@ -925,10 +955,10 @@ function logItemHTML(x, opts){
         ? owedLabel+' <span class="li-amt-sub">owed</span>'
         : (needsRow2?totalLabel(x):amountLabel(x))}</span>
       <span class="li-btns">
-        ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" data-id="${x.saleId}">${partial?'Settle':'Paid'}</button>`:''}
-        ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" data-id="${x.saleId}">Deliver</button>`:''}
-        <button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>
-        <button class="btn btn-danger btn-xs" data-act="delsale" data-id="${x.saleId}">Delete</button>
+        ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" ${idAttr}>${partial?'Settle':'Paid'}</button>`:''}
+        ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" ${idAttr}>Deliver</button>`:''}
+        ${x._bundle?'':`<button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>`}
+        <button class="btn btn-danger btn-xs" data-act="delsale" ${idAttr}>Delete</button>
       </span>
     </div>
     ${needsRow2?`<div class="li-row2">${r2.join('')}</div>`:''}
@@ -949,7 +979,8 @@ function statusRank(x){
 }
 function sortedSales(list){
   const d=LOG_SORT.dir;
-  const bookName=x=> x.type==='DONATION' ? '~Donation' : bookById(x.bookId).name;
+  const bookName=x=> x._bundle ? (x._count+' Books')
+    : x.type==='DONATION' ? '~Donation' : bookById(x.bookId).name;
   const cmp={
     time:  (a,b)=> new Date(a.ts)-new Date(b.ts),
     book:  (a,b)=> bookName(a).localeCompare(bookName(b)) || (new Date(b.ts)-new Date(a.ts)),
@@ -958,8 +989,38 @@ function sortedSales(list){
   return list.slice().sort((a,b)=> d*cmp(a,b));
 }
 
+/* Collapse the members of a multi-book transaction into a single row for
+   display. Each member is a real sale on its own; here they become one "N Books"
+   line whose payment and balance are the members summed. Non-bundle sales pass
+   through untouched. The representative keeps the members so the dropdown can
+   list them and actions can fan out across the whole bundle. */
+function groupBundles(list){
+  const byId={}, order=[], singles=[];
+  list.forEach(x=>{
+    if(!x.bundle){ singles.push(x); return; }
+    if(!byId[x.bundle]){ byId[x.bundle]=[]; order.push(x.bundle); }
+    byId[x.bundle].push(x);
+  });
+  const reps=order.map(id=>{
+    const members=byId[id].slice().sort((a,b)=> (a.saleId>b.saleId?1:-1));
+    const head=members[0];
+    // Sum every member's legs into combined p1/p2 so amountLabel/totalLabel work.
+    const legSum={};
+    members.forEach(m=>legs(m).forEach(l=>{ if(l.amt){ const k=l.type+'|'+l.cur; legSum[k]=(legSum[k]||0)+l.amt; } }));
+    const merged=Object.keys(legSum).map(k=>{ const [type,cur]=k.split('|'); return {type,cur,amt:Math.round(legSum[k]*100)/100}; });
+    const dueamt=members.reduce((t,m)=>t+(Number(m.dueamt)||0),0);
+    const anyPending=members.some(m=>m.pending && !m.paid);
+    return Object.assign({}, head, legFields(merged), {
+      _bundle:true, _members:members, _count:members.length,
+      dueamt: anyPending?0:dueamt,
+      pending: anyPending, paid: !anyPending && dueamt<=0
+    });
+  });
+  return singles.concat(reps);
+}
+
 function renderLog(){
-  const s=sortedSales(scopedSales());
+  const s=sortedSales(groupBundles(scopedSales()));
   $('#logCount').textContent = s.length ? `(${s.length})` : '';
   document.querySelectorAll('.sort-btn').forEach(btn=>{
     const on = btn.dataset.sort===LOG_SORT.key;
@@ -972,8 +1033,9 @@ function renderLog(){
 
 function renderBottom(){
   const s=scopedSales();
-  const owed=s.filter(x=>x.type==='PREORDER'&&!x.delivered).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  const unpaid=s.filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const g=groupBundles(s);
+  const owed=g.filter(x=>x.type==='PREORDER'&&!x.delivered).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const unpaid=g.filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow');
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
@@ -1221,6 +1283,248 @@ function saleModal(opts){
   });
 }
 
+/* ---- Multiple books, one transaction ----
+   Books are picked with checkboxes; the total price fills in as you tick them.
+   The one payment is split across the books on the server (proportional to list
+   price). On submit each book's stock drops by one, exactly as if sold singly. */
+function bundleModal(opts){
+  const loc = CUR_LOC;
+  let isPre = !!(opts && opts.isPreorder);
+  let noneHint = isPre ? 'payment not yet delivered' : 'books given now, paid later';
+
+  const rows = (STATE.books||[]).map(b=>{
+    const stock = invQty(loc,b.id);
+    // Never disable — a pre-order of a sold-out title is the normal case, and the
+    // server is the real guard on selling more than are in stock.
+    return `<label class="mb-row ${stock<=0?'out':''}">
+      <input type="checkbox" class="mb-check" data-book="${b.id}">
+      <span class="mb-name">${esc(b.name)}</span>
+      <span class="mb-price" data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">${b.pln} zł</span>
+      <span class="mb-stock">${stock} in stock</span>
+    </label>`;
+  }).join('');
+
+  openModal(`
+    ${mHead((isPre?'Multiple pre-orders':'Multiple books')+' — '+esc(locName(loc)))}
+    <div class="m-body">
+      <div class="field">
+        <label>This is a</label>
+        <div class="seg" id="mbMode">
+          <button type="button" data-mode="sale" class="${isPre?'':'on'}">Sale</button>
+          <button type="button" data-mode="pre" class="${isPre?'on':''}">Pre-order</button>
+        </div>
+      </div>
+      <div class="hint">Tick every book in this transaction. The total fills in as you go; the payment is split across them automatically.</div>
+      <div class="mb-list">${rows}</div>
+      <div id="preWarn"></div>
+      <div class="mb-count" id="mbCount">No books selected yet.</div>
+
+      <div class="field">
+        <label>Payment type</label>
+        <select id="ptype">${payTypeOptions(true,true)}</select>
+      </div>
+      <div id="singlePay">
+        <div class="row2">
+          <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
+          <div class="field"><label id="amtLabel">Amount received</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
+        </div>
+      </div>
+      <div id="mixedPay" style="display:none">
+        <div class="leg-box"><div class="lg-title">Payment 1</div>
+          <div class="row3">
+            <div class="field"><label>Type</label><select id="m1type">${payTypeOptions(false,true)}</select></div>
+            <div class="field"><label>Curr.</label><select id="m1cur">${curOptions('PLN')}</select></div>
+            <div class="field"><label>Amount</label><input id="m1amt" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+        </div>
+        <div class="leg-box" style="margin-top:8px"><div class="lg-title">Payment 2</div>
+          <div class="row3">
+            <div class="field"><label>Type</label><select id="m2type">${payTypeOptions(false,true)}</select></div>
+            <div class="field"><label>Curr.</label><select id="m2cur">${curOptions('USD')}</select></div>
+            <div class="field"><label>Amount</label><input id="m2amt" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Payment status</label>
+        <div class="seg" id="paySeg">
+          <button type="button" data-pay="full" class="on">Paid in Full</button>
+          <button type="button" data-pay="part">Partial Payment</button>
+          <button type="button" data-pay="none">Payment Pending</button>
+        </div>
+        <div class="hint" id="payHint"></div>
+      </div>
+      <div id="dueBox" style="display:none">
+        <div class="leg-box">
+          <div class="lg-title">Still owed</div>
+          <div class="row2">
+            <div class="field"><label>Currency</label><select id="duecur">${curOptions('PLN')}</select></div>
+            <div class="field"><label>Amount outstanding</label><input id="dueamt" type="number" step="0.01" inputmode="decimal"></div>
+          </div>
+        </div>
+      </div>
+      <div id="nameBox" style="display:${isPre?'block':'none'}">
+        <div class="row2">
+          <div class="field"><label>Name</label><input id="cname" type="text"></div>
+          <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
+        </div>
+      </div>
+      <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveBundle">${isPre?'Record pre-orders':'Record sale'}</button>
+    </div>
+  `);
+
+  const checks=[...document.querySelectorAll('.mb-check')];
+  const ptype=$('#ptype'), pcur=$('#pcur'), pamt=$('#pamt');
+  let payMode='full';
+
+  const chosen = ()=> checks.filter(c=>c.checked).map(c=>c.dataset.book);
+  // Sum the list prices of the ticked books, in the chosen currency.
+  const sumPrice = cur => checks.filter(c=>c.checked).reduce((t,c)=>{
+    const p=c.parentNode.querySelector('.mb-price');
+    return t + Number(p.dataset[cur.toLowerCase()]||0);
+  },0);
+
+  function currentPriceCur(){ return ptype.value==='Mixed' ? 'PLN' : pcur.value; }
+
+  function refreshPrices(){
+    // show each book's price in the active currency
+    const cur=currentPriceCur();
+    checks.forEach(c=>{
+      const p=c.parentNode.querySelector('.mb-price');
+      const sym = cur==='PLN'?' zł':cur==='EUR'?' €':'';
+      const pre = cur==='USD'?'$':'';
+      p.textContent = pre + (p.dataset[cur.toLowerCase()]) + sym;
+    });
+  }
+
+  function fillTotal(){
+    if(payMode==='none') return;                 // expected amount is up to them
+    if(ptype.value==='Gift'){ pamt.value=0; return; }
+    if(ptype.value==='Mixed') return;            // don't touch a split they're editing
+    if(pamt.dataset.touched) return;
+    pamt.value = sumPrice(pcur.value) || '';
+  }
+
+  function updateCount(){
+    const n=chosen().length;
+    $('#mbCount').textContent = n<1 ? 'No books selected yet.'
+      : n===1 ? '1 book selected — pick at least one more, or use the single-sale button.'
+      : `${n} books · list total ${sumPrice(currentPriceCur())} ${currentPriceCur()}`;
+    // pre-order shortfall warning across all ticked warehouse books
+    if(!isPre && loc===WAREHOUSE){
+      const need={}; chosen().forEach(id=>need[id]=(need[id]||0)+1);
+      const lines=Object.keys(need).map(id=>shortfallLine(id, invQty(WAREHOUSE,id)-need[id])).filter(Boolean);
+      $('#preWarn').innerHTML = preorderWarning(lines,['sell it','sell them']);
+      $('#saveBundle').textContent = lines.length ? 'Sell anyway' : (isPre?'Record pre-orders':'Record sale');
+    }
+  }
+
+  function applyPayMode(){
+    $('#dueBox').style.display = payMode==='part' ? 'block' : 'none';
+    if(!isPre) $('#nameBox').style.display = payMode==='full' ? 'none' : 'block';
+    $('#amtLabel').textContent = payMode==='none' ? 'Amount expected' : 'Amount received';
+    $('#payHint').textContent =
+      payMode==='full' ? 'The whole amount has been collected.'
+      : payMode==='part' ? 'Some has been collected; the rest is still owed.'
+      : ('Nothing collected yet — ' + noneHint + '.');
+    fillTotal();
+  }
+
+  function togglePay(){
+    const mixed=ptype.value==='Mixed';
+    $('#singlePay').style.display=mixed?'none':'block';
+    $('#mixedPay').style.display=mixed?'block':'none';
+    refreshPrices(); fillTotal(); updateCount();
+  }
+
+  checks.forEach(c=>c.addEventListener('change',()=>{ pamt.dataset.touched=''; fillTotal(); updateCount(); }));
+  ptype.addEventListener('change',togglePay);
+  pcur.addEventListener('change',()=>{ pamt.dataset.touched=''; refreshPrices(); fillTotal(); updateCount(); });
+  pamt.addEventListener('input',()=>{ pamt.dataset.touched='1'; });
+  $('#paySeg').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-pay]'); if(!b) return;
+    payMode=b.dataset.pay;
+    [...$('#paySeg').children].forEach(x=>x.classList.toggle('on',x===b));
+    applyPayMode();
+  });
+  $('#mbMode').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-mode]'); if(!b) return;
+    isPre = b.dataset.mode==='pre';
+    noneHint = isPre ? 'payment not yet delivered' : 'books given now, paid later';
+    [...$('#mbMode').children].forEach(x=>x.classList.toggle('on',x===b));
+    // A pre-order always needs a name; a paid sale does not.
+    $('#nameBox').style.display = (isPre || payMode!=='full') ? 'block' : 'none';
+    $('#saveBundle').textContent = isPre ? 'Record pre-orders' : 'Record sale';
+    applyPayMode(); updateCount();
+  });
+
+  refreshPrices(); applyPayMode(); updateCount();
+
+  $('#saveBundle').addEventListener('click',()=>{
+    const ids=chosen();
+    if(ids.length<2){ $('#modalErr').textContent='Pick at least two books (use the single-sale button for one).'; return; }
+
+    let L=[];
+    if(ptype.value==='Mixed'){
+      L=[{type:$('#m1type').value,cur:$('#m1cur').value,amt:Number($('#m1amt').value)||0},
+         {type:$('#m2type').value,cur:$('#m2cur').value,amt:Number($('#m2amt').value)||0}]
+        .filter(l=>l.amt>0);
+    }else if(ptype.value==='Gift'){
+      L=[{type:'Gift',cur:pcur.value,amt:0}];
+    }else{
+      L=[{type:ptype.value,cur:pcur.value,amt:Number(pamt.value)||0}];
+    }
+
+    const pending = payMode==='none';
+    const dueamt = payMode==='part' ? Math.max(0, Number($('#dueamt').value)||0) : 0;
+    const duecur = payMode==='part' ? $('#duecur').value : '';
+    const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
+    if(payMode==='part' && dueamt<=0){ $('#modalErr').textContent='Enter how much is still owed, or choose "Paid in Full".'; return; }
+    if(payMode!=='full' && !name){ $('#modalErr').textContent='Add a name so the outstanding payment can be traced.'; return; }
+    if(isPre && !name){ $('#modalErr').textContent='Add a name so the pre-orders can be matched to a person.'; return; }
+
+    const n=ids.length;
+    const note = (comments ? (n+' book '+(isPre?'pre-order':'sale')+' · '+comments) : n+' book '+(isPre?'pre-order':'sale'));
+    const bundleId='tmpB_'+Math.random().toString(36).slice(2,9);
+
+    // Optimistic: build the split locally the same way the server does, so the
+    // log and totals look right immediately.
+    const books=ids.map(id=>bookById(id));
+    const weights=books.map(b=>Number(b.usd)||1);
+    const wSum=weights.reduce((a,c)=>a+c,0)||books.length;
+    const perBook=books.map(()=>[]);
+    L.forEach(leg=>{
+      let running=0;
+      for(let i=1;i<books.length;i++){
+        const share=Math.round((leg.amt*weights[i]/wSum)*100)/100;
+        perBook[i].push({type:leg.type,cur:leg.cur,amt:share}); running+=share;
+      }
+      perBook[0].push({type:leg.type,cur:leg.cur,amt:Math.round((leg.amt-running)*100)/100});
+    });
+
+    commit({action:'sellBundle',location:loc,bookIds:ids,isPreorder:isPre,legs:L,
+            pending,dueamt,duecur,name,phone,comments,override:true},
+      st=>{
+        books.forEach((b,i)=>{
+          st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:new Date().toISOString(),location:loc,
+            type:isPre?'PREORDER':'SALE',bookId:b.id,qty:1,
+            pending,paid:!pending&&(i>0||dueamt<=0),dueamt:i===0?dueamt:0,duecur:i===0?duecur:'',
+            delivered:!isPre,name,phone,comments:note,bundle:bundleId}, legFields(perBook[i])));
+          if(!isPre) invAdd(st,loc,b.id,-1);
+        });
+      },
+      isPre?(n+' pre-orders recorded'):(n+' books sold'));
+  });
+}
+
+
+
 /* ---- Donation ---- */
 function donationModal(edit){
   openModal(`
@@ -1300,29 +1604,33 @@ function donationModal(edit){
 }
 
 /* ---- Delivering a pre-order ---- */
-function deliverModal(id){
-  const x=(STATE.sales||[]).find(s=>s.saleId===id); if(!x) return;
-  const book=bookById(x.bookId);
+function deliverModal(id, bundle){
+  const members = bundle
+    ? (STATE.sales||[]).filter(s=>s.bundle===bundle && s.type==='PREORDER' && !s.delivered)
+    : [(STATE.sales||[]).find(s=>s.saleId===id)].filter(Boolean);
+  if(!members.length) return;
+  const x=members[0];
   const wh=(STATE.warehouseName||'the')+' warehouse';
-  // The copy always comes off the regional warehouse shelf, never the event's.
-  const stock=invQty(WAREHOUSE,x.bookId);
-  const owedHere=(STATE.sales||[]).filter(s=>s.type==='PREORDER'&&!s.delivered&&s.bookId===x.bookId).length;
+  const heading = bundle ? ('Deliver — '+members.length+' books') : ('Deliver — '+bookById(x.bookId).name);
+  // Can the warehouse cover the whole bundle? Count needs per title.
+  const need={}; members.forEach(m=>need[m.bookId]=(need[m.bookId]||0)+1);
+  const canStockAll = Object.keys(need).every(bid=>invQty(WAREHOUSE,bid)>=need[bid]);
 
   openModal(`
-    ${mHead('Deliver — '+book.name)}
+    ${mHead(heading)}
     <div class="m-body">
-      <div class="note">Where is this copy coming from? Either way it is counted as sold${x.name?' to '+esc(x.name):''}${x.location!==WAREHOUSE?', and stays on '+esc(locName(x.location))+"'s books":''}.</div>
+      <div class="note">Where ${members.length>1?'do these copies':'does this copy'} come from? Either way ${members.length>1?'they are':'it is'} counted as sold${x.name?' to '+esc(x.name):''}${x.location!==WAREHOUSE?', and stay'+(members.length>1?'':'s')+' on '+esc(locName(x.location))+"'s books":''}.</div>
+      ${bundle?`<div class="hint">The whole ${members.length}-book pre-order is delivered together.</div>`:''}
       <div class="opts">
-        <button class="opt" data-src="here" ${stock<=0?'disabled':''}>
+        <button class="opt" data-src="here" ${!canStockAll?'disabled':''}>
           <b>From ${esc(wh)}</b>
-          <span>${stock<=0
-            ? 'No copies left in '+esc(wh)+'.'
-            : 'Takes one copy off the '+esc(wh)+' shelf — '+stock+' there now'
-              +(owedHere>1?', with '+owedHere+' pre-orders still to fill':'')+'.'}</span>
+          <span>${canStockAll
+            ? 'Takes '+(members.length>1?members.length+' copies':'one copy')+' off the '+esc(wh)+' shelf.'
+            : 'Not enough in '+esc(wh)+' to cover all of them.'}</span>
         </button>
         <button class="opt" data-src="other">
           <b>From outside the region</b>
-          <span>Sourced from beyond this system entirely. Nothing is taken off the ${esc(wh)} shelf, and the sale still counts.</span>
+          <span>Sourced from beyond this system entirely. Nothing is taken off the ${esc(wh)} shelf, and the ${members.length>1?'sales':'sale'} still count${members.length>1?'':'s'}.</span>
         </button>
       </div>
       <div class="err" id="modalErr"></div>
@@ -1333,15 +1641,20 @@ function deliverModal(id){
   $('#modal').querySelectorAll('.opt').forEach(btn=>{
     btn.addEventListener('click',()=>{
       const fromStock = btn.dataset.src==='here';
-      if(fromStock && invQty(WAREHOUSE,x.bookId)<=0){
-        $('#modalErr').textContent='The last copy has just gone. Source it from outside the region instead.';
+      if(fromStock && !Object.keys(need).every(bid=>invQty(WAREHOUSE,bid)>=need[bid])){
+        $('#modalErr').textContent='Stock has changed — not enough to cover all. Source from outside the region instead.';
         return;
       }
-      commit({action:'markDelivered',saleId:id,fromStock},
-        st=>{const t=findSale(st,id); if(!t)return;
-             t.type='SALE'; t.delivered=true;
-             t.dsource = fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE;
-             if(fromStock) invAdd(st,WAREHOUSE,t.bookId,-1);},
+      const payload = bundle
+        ? {action:'markDeliveredBundle',bundle,fromStock}
+        : {action:'markDelivered',saleId:id,fromStock};
+      commit(payload,
+        st=>{ members.forEach(mem=>{
+                const t=findSale(st,mem.saleId); if(!t)return;
+                t.type='SALE'; t.delivered=true;
+                t.dsource = fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE;
+                if(fromStock) invAdd(st,WAREHOUSE,t.bookId,-1);
+              }); },
         fromStock?('Delivered from '+wh):'Delivered from outside the region');
     });
   });
@@ -1635,9 +1948,27 @@ document.addEventListener('click',e=>{
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
   if(a==='preorder'){ saleModal({bookId:t.dataset.book,isPreorder:true,loc:CUR_LOC}); return; }
+  if(a==='multi'){ bundleModal({isPreorder:false}); return; }
+  if(a==='multipre'){ bundleModal({isPreorder:true}); return; }
 
   if(a==='markpaid'){
     const id=t.dataset.id;
+    const bundle=t.dataset.bundle;
+    if(bundle){
+      const members=(STATE.sales||[]).filter(x=>x.bundle===bundle);
+      commit({action:'markPaidBundle',bundle},
+        st=>{ st.sales.filter(x=>x.bundle===bundle).forEach(m=>{
+                const bal=dueAmt(m), bc=dueCur(m);
+                if(!m.pending && bal>0){
+                  if(m.p1type&&m.p1cur===bc) m.p1amt=(Number(m.p1amt)||0)+bal;
+                  else if(m.p2type&&m.p2cur===bc) m.p2amt=(Number(m.p2amt)||0)+bal;
+                  else if(!m.p2type){ m.p2type=m.p1type||'Cash'; m.p2cur=bc; m.p2amt=bal; }
+                  else m.p1amt=(Number(m.p1amt)||0)+bal;
+                }
+                m.pending=false; m.paid=true; m.dueamt=0; m.duecur='';
+              }); }, 'Balance settled');
+      return;
+    }
     const s0=(STATE.sales||[]).find(x=>x.saleId===id);
     const bal = s0 ? dueAmt(s0) : 0, balCur = s0 ? dueCur(s0) : 'USD';
     commit({action:'markPaid',saleId:id},
@@ -1655,9 +1986,21 @@ document.addEventListener('click',e=>{
       }, bal>0?'Balance settled':'Marked paid');
     return;
   }
-  if(a==='deliver'){ deliverModal(t.dataset.id); return; }
+  if(a==='deliver'){ deliverModal(t.dataset.id, t.dataset.bundle); return; }
   if(a==='delsale'){
     const id=t.dataset.id;
+    const bundle=t.dataset.bundle;
+    if(bundle){
+      const members=(STATE.sales||[]).filter(x=>x.bundle===bundle);
+      const n=members.length;
+      if(!confirm('Delete this '+n+'-book transaction? '
+        +(members.some(m=>m.type==='SALE')?'The copies will be returned to stock.':''))) return;
+      commit({action:'deleteBundle',bundle},
+        st=>{ st.sales.filter(x=>x.bundle===bundle).forEach(m=>{
+                if(m.type==='SALE'&&m.bookId) invAdd(st,m.location,m.bookId,1); });
+              st.sales=st.sales.filter(x=>x.bundle!==bundle); }, 'Transaction deleted');
+      return;
+    }
     const s=(STATE.sales||[]).find(x=>x.saleId===id);
     const label=s?(s.type==='DONATION'?'this donation':bookById(s.bookId).name):'this record';
     if(!confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':''))) return;
