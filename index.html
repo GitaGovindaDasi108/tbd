@@ -145,6 +145,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .qty-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .resv{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.3px;margin-top:2px}
 .region{font-size:9.5px;color:var(--blue);font-weight:600;letter-spacing:.2px;margin-top:2px;opacity:.9}
+.region + .region{margin-top:0}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
@@ -159,7 +160,8 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .multi-btn{width:100%;background:var(--plum);color:var(--gold-l);border:none;border-radius:9px;
   padding:9px;font-size:12.5px;font-weight:700;letter-spacing:.3px;cursor:pointer}
 .multi-btn:hover{filter:brightness(1.08)}
-.mb-list{border:1px solid var(--line-d);border-radius:10px;overflow:hidden;margin-bottom:6px}
+.mb-list{border:1px solid var(--line-d);border-radius:10px;overflow-y:auto;margin-bottom:6px;
+  max-height:42vh;-webkit-overflow-scrolling:touch}
 .mb-row{padding:9px 11px;border-bottom:1px solid var(--line);font-size:13px}
 .mb-row:last-child{border-bottom:none}
 .mb-main{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
@@ -273,13 +275,14 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .overlay.show{display:flex}
 .modal{background:var(--paper);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
-  border:1px solid var(--line);margin:auto;animation:pop .12s ease;overflow:hidden}
+  border:1px solid var(--line);margin:auto;animation:pop .12s ease;overflow:hidden;
+  display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
 .modal.wide{max-width:620px}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
 .modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--gold-l);
   padding:14px 18px;background:var(--plum);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .modal h3 .x{background:none;border:none;color:var(--gold-l);font-size:22px;line-height:1;padding:0 2px}
-.modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;max-height:70vh;overflow:auto}
+.modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;overflow:auto;flex:1 1 auto;min-height:0}
 .modal .m-foot{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--paper2)}
 .field{display:flex;flex-direction:column;gap:5px}
 .field label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
@@ -777,7 +780,7 @@ function renderInventory(){
         <div class="qtyrow">
           <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
             ${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}
-            ${region>q?`<div class="region">Event Stock: ${region-q} · Total Stock: ${region}</div>`:''}</div>
+            ${region>q?`<div class="region">Event Stock: ${region-q}</div><div class="region">Total Stock: ${region}</div>`:''}</div>
           <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
         </div>
         ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
