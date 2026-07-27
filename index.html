@@ -84,6 +84,44 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .btn-primary{background:var(--saffron);color:#fff}
 .btn-plum{background:var(--plum);color:#FFF3DE}
 .btn-gold{background:var(--gold);color:#fff}
+.btn-teal{background:#2E7D6B;color:#EAF7F2}
+.org-cat{margin-bottom:14px}
+.org-cat-name{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;color:var(--saffron-d);
+  border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:6px}
+.org-person{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:4px 0}
+.org-pn{font-weight:600;color:var(--ink);font-size:14px}
+.org-wa{font-size:13px;font-weight:600;color:#2E7D6B;text-decoration:none;white-space:nowrap}
+.org-wa:hover{text-decoration:underline}
+.oe-cat{border:1px solid var(--line-d);border-radius:10px;padding:9px;margin-bottom:10px}
+.oe-catname{width:100%;font-weight:800;color:var(--saffron-d);border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;margin-bottom:7px;font-size:13px;text-transform:uppercase;letter-spacing:.4px}
+.oe-person{display:flex;gap:6px;margin-bottom:6px;align-items:center}
+.oe-name{flex:1 1 40%;min-width:0}
+.oe-phone{flex:1 1 45%;min-width:0}
+.oe-person input{border:1px solid var(--line-d);border-radius:7px;padding:7px 8px;font-size:13px}
+.oe-del{flex:none;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;padding:4px 6px}
+.oe-del:hover{color:var(--clay)}
+.oe-addp{border:none;background:transparent;color:var(--plum);font-weight:700;font-size:12px;cursor:pointer;padding:2px 0}
+.oe-addcat{width:100%;border:1.5px dashed var(--line-d);background:transparent;color:var(--saffron-d);
+  border-radius:9px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;margin-top:2px}
+.cash-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 6px}
+.cash-tbl th,.cash-tbl td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.cash-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:right}
+.cash-tbl tbody th{text-align:left;font-weight:700;color:var(--ink)}
+.cash-tbl td.zero{color:var(--muted)}
+.cash-tbl td.neg{color:var(--clay);font-weight:700}
+.cash-seg{margin:6px 0}
+.cash-hd{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:14px 0 6px;border-top:1px solid var(--line);padding-top:12px}
+.cash-ledger{max-height:34vh;overflow-y:auto;border:1px solid var(--line);border-radius:9px}
+.cash-row{padding:8px 11px;border-bottom:1px solid var(--line)}
+.cash-row:last-child{border-bottom:none}
+.cash-row-main{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cash-desc{font-weight:600;font-size:13px;color:var(--ink)}
+.cash-amt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
+.cash-row-sub{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
+.cash-row-sub span{font-size:10.5px;color:var(--muted)}
+.cash-del{border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
+.cash-del:hover{color:var(--clay)}
 .btn-green{background:var(--green);color:#fff}
 .btn-ghost{background:var(--paper);color:var(--plum);border:1.5px solid var(--line-d);box-shadow:none}
 .btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
@@ -330,9 +368,12 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .bulk-row .num.zero{color:var(--clay)}
 .bulk-row input{width:100%;text-align:center;padding:8px 4px;border:1.5px solid var(--line-d);
   border-radius:8px;background:#fff;font-size:15px;font-weight:600;color:var(--ink)}
-.bulk-row .d-delta,.bulk-row .d-set{width:calc(50% - 3px);display:inline-block}
-.bulk-row .d-delta{margin-right:6px}
-.bulk-row .d-set{border-style:dashed}
+.delta-wrap{display:inline-flex;align-items:stretch;width:calc(50% - 3px);margin-right:6px;gap:3px}
+.delta-wrap .d-delta{flex:1 1 auto;min-width:0}
+.sign-btn{flex:none;width:30px;border:1.5px solid var(--line-d);background:var(--paper);border-radius:8px;
+  font-size:15px;font-weight:800;color:var(--plum);cursor:pointer;line-height:1;padding:0;touch-action:manipulation}
+.sign-btn.on{background:var(--clay);color:#fff;border-color:var(--clay)}
+.bulk-row .d-set{width:calc(50% - 3px);display:inline-block;border-style:dashed}
 .bulk-row input.dim{opacity:.35;background:var(--paper2)}
 .bulk-sec{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);
   padding:10px 2px 4px;border-bottom:1px solid var(--line)}
@@ -379,6 +420,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 <header class="masthead">
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
+    <button class="btn-refresh" data-act="org" title="Who to contact about what">👥 Org chart</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -710,6 +752,7 @@ function renderTabs(){
 
 function renderContextActions(){
   let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
+  h+=`<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
   if(CUR_LOC===WAREHOUSE){
     h+=`<button class="btn btn-plum" data-act="stock">Adjust stock</button>`;
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
@@ -1187,10 +1230,10 @@ function saleModal(opts){
           <div class="hint" id="dueHint"></div>
         </div>
       </div>
-      <div id="nameBox" style="display:${isPre?'block':'none'}">
+      <div id="nameBox" style="display:block">
         <div class="row2">
-          <div class="field"><label>Name</label><input id="cname" type="text"></div>
-          <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
+          <div class="field"><label id="nameLbl">Name${isPre?'':' (optional)'}</label><input id="cname" type="text"></div>
+          <div class="field"><label>Phone${isPre?'':' (optional)'}</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
         </div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
@@ -1229,7 +1272,7 @@ function saleModal(opts){
       payMode==='full' ? 'The whole amount has been collected.'
       : payMode==='part' ? 'Some has been collected; the rest is still owed.'
       : ('Nothing collected yet — ' + noneHint + '.');
-    if(!isPre) $('#nameBox').style.display = payMode==='full' ? 'none' : 'block';
+    // name box stays visible for every sale now; nothing to toggle here
     const lab = payMode==='none' ? 'Amount expected' : 'Amount received';
     const l1=$('#amtLabel'); if(l1) l1.textContent=lab;
     if(payMode==='part') suggestDue();
@@ -1276,7 +1319,7 @@ function saleModal(opts){
     [...$('#paySeg').children].forEach(x=>x.classList.toggle('on', x.dataset.pay===payMode));
     if(isPartial(edit)){ $('#duecur').value=dueCur(edit); $('#dueamt').value=dueAmt(edit); $('#dueamt').dataset.touched='1'; }
     applyPayMode();
-    $('#nameBox').style.display=(isPre||payMode!=='full')?'block':'none';
+    $('#nameBox').style.display='block';
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
   }else{
@@ -1638,6 +1681,303 @@ function bundleModal(edit){
 
 
 /* ---- Donation ---- */
+/* ---- Organization chart: who to contact about what ----
+   Grouped by category; each person has a name and an optional WhatsApp number.
+   Any number of people per category, and categories can be added at any time.
+   Everything is editable. */
+function orgModal(){
+  const rows = (STATE.org||[]).slice().sort((a,b)=> (a.sort-b.sort) || 0);
+  // group into ordered categories
+  const cats=[]; const byCat={};
+  rows.forEach(r=>{ if(!byCat[r.category]){ byCat[r.category]=[]; cats.push(r.category); } byCat[r.category].push(r); });
+
+  function viewHTML(){
+    if(!cats.length) return `<div class="empty">No contacts yet. Tap Edit to add people.</div>`;
+    return cats.map(cat=>`
+      <div class="org-cat">
+        <div class="org-cat-name">${esc(cat)}</div>
+        ${byCat[cat].map(p=>`
+          <div class="org-person">
+            <span class="org-pn">${esc(p.name)}</span>
+            ${p.phone?`<a class="org-wa" href="https://wa.me/${esc(p.phone.replace(/[^0-9]/g,''))}" target="_blank" rel="noopener">${esc(p.phone)}</a>`:''}
+          </div>`).join('')}
+      </div>`).join('');
+  }
+
+  openModal(`
+    ${mHead('Organization chart')}
+    <div class="m-body">
+      <div class="hint">Who to contact about what in book distribution. Tap a number to message on WhatsApp.</div>
+      <div id="orgView">${viewHTML()}</div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn btn-plum" id="orgEdit">Edit</button>
+    </div>
+  `);
+  $('#orgEdit').addEventListener('click',orgEditModal);
+}
+
+function orgEditModal(){
+  // Work on a mutable copy: list of {category, name, phone}.
+  let work = (STATE.org||[]).slice().sort((a,b)=>a.sort-b.sort)
+    .map(r=>({category:r.category, name:r.name, phone:r.phone}));
+  // build the ordered category list
+  function categories(){ const seen=[]; work.forEach(r=>{ if(seen.indexOf(r.category)<0) seen.push(r.category); }); return seen; }
+
+  function render(){
+    const cats=categories();
+    const body = cats.map(cat=>{
+      const people=work.filter(r=>r.category===cat);
+      const rows=people.map((p)=>{
+        const gi=work.indexOf(p);
+        return `<div class="oe-person">
+          <input class="oe-name" data-i="${gi}" value="${esc(p.name)}" placeholder="Name">
+          <input class="oe-phone" data-i="${gi}" value="${esc(p.phone)}" placeholder="WhatsApp +48…" inputmode="tel">
+          <button class="oe-del" data-del="${gi}" title="Remove">✕</button>
+        </div>`;
+      }).join('');
+      return `<div class="oe-cat">
+        <input class="oe-catname" data-cat="${esc(cat)}" value="${esc(cat)}">
+        ${rows}
+        <button class="oe-addp" data-addp="${esc(cat)}">＋ Add person</button>
+      </div>`;
+    }).join('');
+    $('#oeList').innerHTML = body + `<button class="oe-addcat" id="oeAddCat">＋ Add category</button>`;
+    bind();
+  }
+
+  function bind(){
+    // edits to name/phone
+    $('#oeList').querySelectorAll('.oe-name').forEach(inp=>inp.oninput=()=>{ work[+inp.dataset.i].name=inp.value; });
+    $('#oeList').querySelectorAll('.oe-phone').forEach(inp=>inp.oninput=()=>{ work[+inp.dataset.i].phone=inp.value; });
+    // category rename: apply to all rows in that category on change
+    $('#oeList').querySelectorAll('.oe-catname').forEach(inp=>inp.onchange=()=>{
+      const old=inp.dataset.cat, val=inp.value.trim()||old;
+      work.forEach(r=>{ if(r.category===old) r.category=val; });
+      inp.dataset.cat=val; 
+    });
+    $('#oeList').querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ work.splice(+b.dataset.del,1); render(); });
+    $('#oeList').querySelectorAll('[data-addp]').forEach(b=>b.onclick=()=>{
+      // insert after the last person of that category
+      const cat=b.dataset.addp;
+      let idx=-1; work.forEach((r,i)=>{ if(r.category===cat) idx=i; });
+      work.splice(idx+1,0,{category:cat,name:'',phone:''}); render();
+    });
+    const ac=$('#oeAddCat'); if(ac) ac.onclick=()=>{
+      let n=1, name='New category';
+      while(categories().indexOf(name)>=0){ n++; name='New category '+n; }
+      work.push({category:name,name:'',phone:''}); render();
+    };
+  }
+
+  openModal(`
+    ${mHead('Edit organization chart')}
+    <div class="m-body">
+      <div class="hint">Add people or categories, edit names and WhatsApp numbers. Empty people are dropped when you save.</div>
+      <div id="oeList"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="org">Cancel</button>
+      <button class="btn btn-primary" id="oeSave">Save</button>
+    </div>
+  `);
+  render();
+
+  $('#oeSave').addEventListener('click',()=>{
+    const rows = work
+      .map((r,i)=>({id:'tmpO_'+i, category:(r.category||'').trim(), sort:i, name:(r.name||'').trim(), phone:(r.phone||'').trim()}))
+      .filter(r=>r.category && (r.name||r.phone));
+    commit({action:'orgSave',rows},
+      st=>{ st.org = rows.map((r,i)=>({id:r.id,category:r.category,sort:i,name:r.name,phone:r.phone})); },
+      'Org chart saved');
+    orgModal();
+  });
+}
+
+
+/* ---- Cash tracking (treasury) ----
+   Physical cash and bank balances across the warehouse, each event, and the
+   bank. Every entry is a signed movement; a balance is just their fold, mirrored
+   from the server so the view updates the instant you record something. */
+const CASH_CURS = ['PLN','EUR','USD'];
+function cashAccounts(){
+  const list=[{id:'WAREHOUSE',name:(STATE.warehouseName||'Warehouse')}];
+  (STATE.events||[]).forEach(e=>list.push({id:e.eventId,name:e.name}));
+  list.push({id:'BANK',name:'Bank'});
+  return list;
+}
+function cashAcctName(id){
+  if(id==='WAREHOUSE') return (STATE.warehouseName||'Warehouse');
+  if(id==='BANK') return 'Bank';
+  const e=(STATE.events||[]).find(x=>x.eventId===id);
+  return e?e.name:id;
+}
+function cashBalance(acct,cur){
+  let b=0;
+  (STATE.cash||[]).forEach(c=>{
+    if(c.cur!==cur) return;
+    const a=Number(c.amt)||0;
+    if(c.kind==='MOVE'){ if(c.fromAcct===acct)b-=a; if(c.toAcct===acct)b+=a; }
+    else if(c.toAcct===acct) b+=a;
+  });
+  return Math.round(b*100)/100;
+}
+function cashFmt(n,cur){
+  const v=Math.round(n*100)/100;
+  const sym = cur==='PLN'?' zł':cur==='EUR'?' €':'';
+  const pre = cur==='USD'?'$':'';
+  return pre+(Number.isInteger(v)?v:v.toFixed(2))+sym;
+}
+
+function cashModal(){
+  function balancesHTML(){
+    const accts=cashAccounts();
+    let rows=accts.map(a=>{
+      const cells=CASH_CURS.map(cur=>{
+        const v=cashBalance(a.id,cur);
+        return `<td class="${v<0?'neg':(v===0?'zero':'')}">${v===0?'—':cashFmt(v,cur)}</td>`;
+      }).join('');
+      return `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
+    }).join('');
+    return `<table class="cash-tbl">
+      <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
+      <tbody>${rows}</tbody></table>`;
+  }
+  function ledgerHTML(){
+    const rows=(STATE.cash||[]).slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
+    if(!rows.length) return `<div class="empty">No cash movements yet.</div>`;
+    return rows.map(c=>{
+      const when=fmtDate(c.ts);
+      let desc;
+      if(c.kind==='MOVE') desc=`${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`;
+      else desc=`${esc(cashAcctName(c.toAcct))} · adjustment`;
+      const amt=cashFmt(Math.abs(c.amt),c.cur);
+      const sign=(c.kind==='ADJUST'&&c.amt<0)?'−':'';
+      return `<div class="cash-row">
+        <div class="cash-row-main">
+          <span class="cash-desc">${desc}</span>
+          <span class="cash-amt">${sign}${amt}</span>
+        </div>
+        <div class="cash-row-sub">
+          <span>${esc(when)}${c.note?' · '+esc(c.note):''}</span>
+          <button class="cash-del" data-act="cashdel" data-id="${esc(c.id)}" title="Delete this entry">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const acctOpts = sel => cashAccounts().map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  const evId = (CUR_LOC!==WAREHOUSE && CUR_LOC) ? CUR_LOC : (cashAccounts()[1]?cashAccounts()[1].id:'BANK');
+
+  openModal(`
+    ${mHead('Cash tracking')}
+    <div class="m-body">
+      <div class="hint">Where the physical cash and bank money is. Record a move when cash goes to an event as change, comes back, or goes to / from the bank.</div>
+      ${balancesHTML()}
+
+      <div class="seg cash-seg" id="cashMode">
+        <button type="button" data-cm="move" class="on">Move cash</button>
+        <button type="button" data-cm="set">Set / correct a balance</button>
+      </div>
+
+      <div id="cashMovePane">
+        <div class="row2">
+          <div class="field"><label>From</label><select id="cmFrom">${acctOpts('WAREHOUSE')}</select></div>
+          <div class="field"><label>To</label><select id="cmTo">${acctOpts(evId)}</select></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Currency</label><select id="cmCur">${curOptions('PLN')}</select></div>
+          <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
+        </div>
+        <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float"></div>
+        <button class="btn btn-primary" id="cmSave">Record move</button>
+      </div>
+
+      <div id="cashSetPane" style="display:none">
+        <div class="row2">
+          <div class="field"><label>Account</label><select id="csAcct">${acctOpts('WAREHOUSE')}</select></div>
+          <div class="field"><label>Currency</label><select id="csCur">${curOptions('PLN')}</select></div>
+        </div>
+        <div class="seg" id="csKind">
+          <button type="button" data-ck="set" class="on">Set to exact amount</button>
+          <button type="button" data-ck="adjust">Add / remove</button>
+        </div>
+        <div class="field"><label id="csAmtLbl">New balance</label><input id="csAmt" type="number" step="0.01" inputmode="decimal"></div>
+        <div class="field"><label>Note (optional)</label><input id="csNote" type="text" placeholder="e.g. starting cash count"></div>
+        <button class="btn btn-plum" id="csSave">Save</button>
+      </div>
+
+      <div class="cash-hd">Recent movements</div>
+      <div class="cash-ledger">${ledgerHTML()}</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+  `);
+
+  $('#cashMode').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-cm]'); if(!b) return;
+    const move=b.dataset.cm==='move';
+    [...$('#cashMode').children].forEach(x=>x.classList.toggle('on',x===b));
+    $('#cashMovePane').style.display=move?'block':'none';
+    $('#cashSetPane').style.display=move?'none':'block';
+  });
+
+  let csKind='set';
+  $('#csKind').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-ck]'); if(!b) return;
+    csKind=b.dataset.ck;
+    [...$('#csKind').children].forEach(x=>x.classList.toggle('on',x===b));
+    $('#csAmtLbl').textContent = csKind==='set' ? 'New balance' : 'Add (or use − to remove)';
+  });
+
+  // Refresh the balances table + ledger in place after a change.
+  function redraw(){
+    const body=$('#modal');
+    const tbl=body.querySelector('.cash-tbl'); if(tbl) tbl.outerHTML=balancesHTML();
+    const led=body.querySelector('.cash-ledger'); if(led) led.innerHTML=ledgerHTML();
+  }
+
+  $('#cmSave').addEventListener('click',()=>{
+    const from=$('#cmFrom').value, to=$('#cmTo').value, cur=$('#cmCur').value;
+    const amt=Math.round((Number($('#cmAmt').value)||0)*100)/100;
+    if(from===to){ $('#modalErr').textContent='The source and destination are the same.'; return; }
+    if(amt<=0){ $('#modalErr').textContent='Enter an amount greater than zero.'; return; }
+    $('#modalErr').textContent='';
+    const note=$('#cmNote').value.trim();
+    const id='tmpC_'+Math.random().toString(36).slice(2,9);
+    commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
+      st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
+      'Cash moved');
+    $('#cmAmt').value=''; $('#cmNote').value='';
+    setTimeout(redraw,0);
+  });
+
+  $('#csSave').addEventListener('click',()=>{
+    const acct=$('#csAcct').value, cur=$('#csCur').value;
+    const amt=Math.round((Number($('#csAmt').value)||0)*100)/100;
+    const note=$('#csNote').value.trim();
+    $('#modalErr').textContent='';
+    const id='tmpC_'+Math.random().toString(36).slice(2,9);
+    if(csKind==='set'){
+      const delta=Math.round((amt-cashBalance(acct,cur))*100)/100;
+      if(delta===0){ $('#modalErr').textContent='That is already the balance.'; return; }
+      commit({action:'cashSet',toAcct:acct,cur,amt,note},
+        st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:note||('Set to '+amt+' '+cur)}); },
+        'Balance set');
+    } else {
+      if(!amt){ $('#modalErr').textContent='Enter an amount (use a minus sign to remove).'; return; }
+      commit({action:'cashAdjust',toAcct:acct,cur,amt,note},
+        st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt,note}); },
+        'Balance adjusted');
+    }
+    $('#csAmt').value=''; $('#csNote').value='';
+    setTimeout(redraw,0);
+  });
+}
+
+
 function donationModal(edit){
   openModal(`
     ${mHead(edit?'Edit donation':'Record donation')}
@@ -1854,8 +2194,9 @@ function stockModal(){
   // the flat number you just counted on the shelf. Whichever you fill wins.
   const body = bulkRows(b=>({
     left: invQty(loc,b.id),
-    input:`<input class="d-delta" type="number" step="1" data-book="${b.id}" placeholder="±" inputmode="numeric">`
-         +`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" placeholder="=" inputmode="numeric">`,
+    input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${b.id}" title="Flip to a removal">±</button>`
+         +`<input class="d-delta" type="number" step="1" data-book="${b.id}" placeholder="add / remove" inputmode="numeric"></span>`
+         +`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" placeholder="= count" inputmode="numeric">`,
     right: invQty(loc,b.id)
   }));
 
@@ -1917,6 +2258,23 @@ function stockModal(){
     $('#saveStock').textContent = lines.length ? 'Save anyway' : 'Save stock';
   }
   deltas.concat(sets).forEach(i=>i.addEventListener('input',recalc));
+  // Sign toggle: flips the delta between add and remove, so a numeric mobile
+  // keypad (no minus key) can still record a removal.
+  [...document.querySelectorAll('#modal .sign-btn')].forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const inp=deltaFor(btn.dataset.sign);
+      const v=Number(inp.value)||0;
+      if(v!==0){ inp.value=String(-v); }
+      else { inp.dataset.neg = inp.dataset.neg==='1'?'':'1'; }  // arm the sign for the next digits
+      btn.classList.toggle('on', (Number(inp.value)||0)<0 || inp.dataset.neg==='1');
+      recalc();
+    });
+  });
+  // If a sign was armed on an empty field, apply it as the user types.
+  deltas.forEach(inp=>inp.addEventListener('input',()=>{
+    if(inp.dataset.neg==='1' && Number(inp.value)>0){ inp.value=String(-Number(inp.value)); inp.dataset.neg=''; 
+      const b=document.querySelector(`#modal .sign-btn[data-sign="${inp.dataset.book}"]`); if(b) b.classList.remove('on'); recalc(); }
+  }));
   recalc();
 
   $('#saveStock').addEventListener('click',()=>{
@@ -2056,6 +2414,18 @@ document.addEventListener('click',e=>{
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
   if(a==='deleteevent'){ deleteEventModal(); return; }
   if(a==='donation'){ donationModal(); return; }
+  if(a==='cash'){ cashModal(); return; }
+  if(a==='org'){ orgModal(); return; }
+  if(a==='cashdel'){
+    const id=t.dataset.id;
+    if(!confirm('Delete this cash entry? Balances will be recalculated.')) return;
+    commit({action:'cashDelete',id},
+      st=>{ st.cash=(st.cash||[]).filter(x=>x.id!==id); }, 'Entry deleted');
+    // refresh the open modal if present
+    const body=$('#modal');
+    if(body){ setTimeout(()=>{ if(typeof cashModal==='function' && body.innerHTML.includes('Cash tracking')) cashModal(); },0); }
+    return;
+  }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
