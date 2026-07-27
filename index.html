@@ -85,6 +85,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .btn-plum{background:var(--plum);color:#FFF3DE}
 .btn-gold{background:var(--gold);color:#fff}
 .btn-teal{background:#2E7D6B;color:#EAF7F2}
+.rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
 .org-cat{margin-bottom:14px}
 .org-cat-name{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;color:var(--saffron-d);
   border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:6px}
@@ -771,6 +772,14 @@ function renderContextActions(){
   $('#ctxActions').innerHTML=h;
 }
 
+// A small footnote showing which USD conversion rates are in effect.
+function rateNote(){
+  const r=STATE.rates||{};
+  const pln=r.plnPerUsd?Number(r.plnPerUsd).toFixed(2):'—';
+  const eur=r.eurPerUsd?Number(r.eurPerUsd).toFixed(2):'—';
+  if(r.live) return `Live rates · $1 = ${pln} zł / ${eur} €${r.asOf?' · '+esc(r.asOf):''}`;
+  return `Rates $1 = ${pln} zł / ${eur} €`;
+}
 function renderTotals(){
   const s=scopedSales();
   const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat).length;
@@ -798,7 +807,8 @@ function renderTotals(){
     <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre}</div>
       <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered</div></div>
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
-      <div class="sub">${money(got)||'nothing collected yet'}</div></div>
+      <div class="sub">${money(got)||'nothing collected yet'}</div>
+      <div class="rate-note">${rateNote()}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
       <div class="sub">${money(due)||'nothing outstanding'}</div></div>`;
 }
