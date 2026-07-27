@@ -1849,7 +1849,7 @@ function cashModal(){
     const rows=(STATE.cash||[]).slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
     if(!rows.length) return `<div class="empty">No cash movements yet.</div>`;
     return rows.map(c=>{
-      const when=fmtDate(c.ts);
+      const when=c.ts?new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
       let desc;
       if(c.kind==='MOVE') desc=`${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`;
       else desc=`${esc(cashAcctName(c.toAcct))} · adjustment`;
