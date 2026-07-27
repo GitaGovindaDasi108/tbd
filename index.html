@@ -86,6 +86,9 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .btn-gold{background:var(--gold);color:#fff}
 .btn-teal{background:#2E7D6B;color:#EAF7F2}
 .rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
+.cash-reset{margin-top:10px;width:100%;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);
+  border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer}
+.cash-reset:hover{background:var(--clay);color:#fff;border-color:var(--clay)}
 .org-cat{margin-bottom:14px}
 .org-cat-name{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;color:var(--saffron-d);
   border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:6px}
@@ -1951,6 +1954,8 @@ function cashModal(){
       <div id="cashCollected">${collectedHTML()}</div>
       <div class="cash-hd">Recent movements</div>
       <div class="cash-ledger">${ledgerHTML()}</div>
+      ${(STATE.cash||[]).some(c=>c.fromAcct==='BANK'||c.toAcct==='BANK')
+        ? `<button class="cash-reset" id="cashResetBank">Reset bank to collected-only</button>` : ''}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
@@ -2014,6 +2019,15 @@ function cashModal(){
         'Balance adjusted');
     }
     $('#csAmt').value=''; $('#csNote').value='';
+    setTimeout(redraw,0);
+  });
+
+  const rb=$('#cashResetBank');
+  if(rb) rb.addEventListener('click',()=>{
+    if(!confirm('Remove the manual bank entries you recorded earlier? The bank will then reflect only what the tracker has moved into it. Collections and event transfers are untouched.')) return;
+    commit({action:'cashResetBank'},
+      st=>{ st.cash=(st.cash||[]).filter(c=>c.fromAcct!=='BANK'&&c.toAcct!=='BANK'); },
+      'Bank reset');
     setTimeout(redraw,0);
   });
 }
