@@ -112,6 +112,11 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .cash-tbl td.neg{color:var(--clay);font-weight:700}
 .cash-seg{margin:6px 0}
 .cash-hd{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:14px 0 6px;border-top:1px solid var(--line);padding-top:12px}
+.cash-coll{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.cash-coll-row{display:flex;justify-content:space-between;gap:8px;padding:6px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
+.cash-coll-row:last-child{border-bottom:none}
+.cash-coll-row span:first-child{font-weight:600;color:var(--ink)}
+.cash-coll-row span:last-child{color:#2E7D6B;font-weight:700}
 .cash-ledger{max-height:34vh;overflow-y:auto;border:1px solid var(--line);border-radius:9px}
 .cash-row{padding:8px 11px;border-bottom:1px solid var(--line)}
 .cash-row:last-child{border-bottom:none}
@@ -1814,8 +1819,20 @@ function cashAcctName(id){
   const e=(STATE.events||[]).find(x=>x.eventId===id);
   return e?e.name:id;
 }
+// Physical cash collected at a location: Cash-type legs from received sales and
+// donations there. The same basis as Collections. Bank has no sales.
+function cashCollected(acct,cur){
+  if(acct==='BANK') return 0;
+  let t=0;
+  (STATE.sales||[]).forEach(s=>{
+    if(s.location!==acct) return;
+    if(pendingFlag(s)) return;            // nothing in hand yet
+    legs(s).forEach(l=>{ if(l.type==='Cash' && l.cur===cur) t+=l.amt; });
+  });
+  return t;
+}
 function cashBalance(acct,cur){
-  let b=0;
+  let b=cashCollected(acct,cur);          // baseline from actual collections
   (STATE.cash||[]).forEach(c=>{
     if(c.cur!==cur) return;
     const a=Number(c.amt)||0;
@@ -1845,9 +1862,21 @@ function cashModal(){
       <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
+  // A reference of the cash the system knows was collected at each place — the
+  // baseline the balances build on.
+  function collectedHTML(){
+    const accts=cashAccounts().filter(a=>a.id!=='BANK');
+    const lines=[];
+    accts.forEach(a=>{
+      const parts=CASH_CURS.map(cur=>{ const v=cashCollected(a.id,cur); return v>0?cashFmt(v,cur):null; }).filter(Boolean);
+      if(parts.length) lines.push(`<div class="cash-coll-row"><span>${esc(a.name)}</span><span>${parts.join(' · ')}</span></div>`);
+    });
+    if(!lines.length) return '';
+    return `<div class="cash-hd">Cash collected (in the system)</div><div class="cash-coll">${lines.join('')}</div>`;
+  }
   function ledgerHTML(){
     const rows=(STATE.cash||[]).slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
-    if(!rows.length) return `<div class="empty">No cash movements yet.</div>`;
+    if(!rows.length) return `<div class="empty">No manual cash movements yet.</div>`;
     return rows.map(c=>{
       const when=c.ts?new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
       let desc;
@@ -1874,7 +1903,7 @@ function cashModal(){
   openModal(`
     ${mHead('Cash tracking')}
     <div class="m-body">
-      <div class="hint">Where the physical cash and bank money is. Record a move when cash goes to an event as change, comes back, or goes to / from the bank.</div>
+      <div class="hint">Where the physical cash sits. Each balance <b>starts from the cash actually collected</b> there (cash sales &amp; donations), then follows your moves: event cash can go to the warehouse, and warehouse cash to the bank.</div>
       ${balancesHTML()}
 
       <div class="seg cash-seg" id="cashMode">
@@ -1909,6 +1938,7 @@ function cashModal(){
         <button class="btn btn-plum" id="csSave">Save</button>
       </div>
 
+      <div id="cashCollected">${collectedHTML()}</div>
       <div class="cash-hd">Recent movements</div>
       <div class="cash-ledger">${ledgerHTML()}</div>
       <div class="err" id="modalErr"></div>
@@ -1937,6 +1967,7 @@ function cashModal(){
     const body=$('#modal');
     const tbl=body.querySelector('.cash-tbl'); if(tbl) tbl.outerHTML=balancesHTML();
     const led=body.querySelector('.cash-ledger'); if(led) led.innerHTML=ledgerHTML();
+    const col=body.querySelector('#cashCollected'); if(col) col.innerHTML=collectedHTML();
   }
 
   $('#cmSave').addEventListener('click',()=>{
