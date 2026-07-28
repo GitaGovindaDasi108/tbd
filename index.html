@@ -1913,13 +1913,16 @@ function cashModal(editEntryId){
 
   // ---- movement log: defensively filtered so one bad row can't blank it ----
   function logHTML(){
+    // Show every entry that carries an amount+currency. Tolerate rows missing an
+    // id or kind (older writes) so a movement is never silently hidden — the
+    // balances count them, so the log must too.
     const rows = (STATE.cash||[])
-      .filter(c=>c && c.id && c.kind && c.cur)
+      .filter(c=>c && c.cur && (Number(c.amt)||0)!==0)
       .slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
     if(!rows.length) return `<div class="cash-empty">No movements yet. Cash collected at events shows above; record a move to shift it around.</div>`;
     return rows.map(c=>{
       const when = c.ts ? new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-      const isMove = c.kind==='MOVE';
+      const isMove = (c.kind ? c.kind==='MOVE' : !!c.fromAcct);   // infer kind if missing
       const desc = isMove
         ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
         : `${esc(cashAcctName(c.toAcct))} · adjustment`;
