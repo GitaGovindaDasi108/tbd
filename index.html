@@ -669,6 +669,7 @@ async function pull(){
   OPS = OPS.filter(o=>o.rev===undefined || o.rev>REV);   // drop what the server now includes
   if(CUR_LOC!==WAREHOUSE && !(BASE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
   STATE = derive(); cacheSave(); renderAll();
+  try{ window.cashDebug = ()=>({ cashInState: (STATE.cash||[]), cashFromServer: (BASE.cash||[]), sales: (STATE.sales||[]).length }); }catch(e){}
   setStatus(OPS.length?'load':'ok', OPS.length?('Saving '+OPS.length+'…'):('Up to date · '+clock()));
 }
 
@@ -1947,7 +1948,7 @@ function cashModal(){
     ${mHead('Cash tracking')}
     <div class="m-body">
       <div class="hint">Balances start from the cash <b>collected</b> at each place, then follow your moves. <b>Tap any amount to set it.</b></div>
-      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}.</div>
+      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}. · v3</div>
 
       <table class="cash-tbl">
         <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
