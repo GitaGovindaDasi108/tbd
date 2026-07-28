@@ -669,6 +669,18 @@ async function pull(){
   OPS = OPS.filter(o=>o.rev===undefined || o.rev>REV);   // drop what the server now includes
   if(CUR_LOC!==WAREHOUSE && !(BASE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
   STATE = derive(); cacheSave(); renderAll();
+  try{ window.cashDOM = ()=>{
+    const log=document.querySelector('.cash-log');
+    const coll=document.querySelector('.cash-coll');
+    const out={
+      logExists: !!log, collExists: !!coll,
+      logChildCount: log?log.children.length:-1,
+      logHTML: log?log.innerHTML.slice(0,600):'(no .cash-log element)',
+      collHTML: coll?coll.innerHTML.slice(0,400):'(no .cash-coll element)'
+    };
+    console.log('=== CASH DOM ==='); console.log('log children:', out.logChildCount); console.log('LOG HTML:', out.logHTML); console.log('COLL HTML:', out.collHTML);
+    return out;
+  }; }catch(e){}
   try{ window.cashDebug = ()=>{
     const cash=(STATE.cash||[]);
     const salesSample=(STATE.sales||[]).slice(0,3).map(s=>({location:s.location,type:s.type,p1type:s.p1type,p1cur:s.p1cur,p1amt:s.p1amt,pending:s.pending,paid:s.paid}));
