@@ -115,6 +115,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .cash-logwhen{font-size:10.5px;color:var(--muted)}
 .cash-logacts{display:inline-flex;gap:2px;flex:none}
 .cash-empty{padding:14px 11px;font-size:12.5px;color:var(--muted);text-align:center;border:1px dashed var(--line-d);border-radius:9px}
+.cash-moveall{width:100%;margin-top:8px;font-size:12.5px}
 .cash-resetall{width:100%;margin-top:16px;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);border-radius:9px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer}
 .cash-resetall:hover{background:var(--clay);color:#fff;border-color:var(--clay)}
 .org-cat{margin-bottom:14px}
@@ -1955,18 +1956,13 @@ function cashModal(editEntryId){
         <div class="field"><label>From</label><select id="cmFrom">${acctOpts(defFrom)}</select></div>
         <div class="field"><label>To</label><select id="cmTo">${acctOpts(defTo)}</select></div>
       </div>
-      <div class="seg cash-seg" id="cmMode">
-        <button type="button" data-m="one" class="on">One amount</button>
-        <button type="button" data-m="all">Everything</button>
-      </div>
-      <div id="cmOne">
-        <div class="row2">
-          <div class="field"><label>Currency</label><select id="cmCur">${curOptions('PLN')}</select></div>
-          <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
-        </div>
+      <div class="row2">
+        <div class="field"><label>Currency</label><select id="cmCur">${curOptions('PLN')}</select></div>
+        <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
       </div>
       <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float, deposit"></div>
       <button class="btn btn-primary" id="cmGo">Record move</button>
+      <button class="btn btn-plum cash-moveall" id="cmGoAll">↦ Move ALL cash (every currency) From → To</button>
 
       ${collectedHTML()}
 
@@ -1981,34 +1977,30 @@ function cashModal(editEntryId){
 
   const err = msg => { $('#modalErr').textContent = msg||''; };
 
-  // one-amount vs everything
-  let moveMode = 'one';
-  $('#cmMode').addEventListener('click',e=>{
-    const b=e.target.closest('button[data-m]'); if(!b) return;
-    moveMode=b.dataset.m;
-    [...$('#cmMode').children].forEach(x=>x.classList.toggle('on',x===b));
-    $('#cmOne').style.display = moveMode==='one' ? 'block' : 'none';
-  });
-
-  // record a move (one currency, or sweep everything)
+  // Record a single-currency move.
   $('#cmGo').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
-    err('');
-    if(moveMode==='all'){
-      const moves=CASH_CURS.map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
-      if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
-      if(!confirm(`Move all cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
-      commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note},
-        st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,note:note||'Moved all cash'})); },
-        'Cash moved');
-      cashReopen(); return;
-    }
     const cur=$('#cmCur').value, amt=Math.round((Number($('#cmAmt').value)||0)*100)/100;
     if(amt<=0){ err('Enter an amount greater than zero.'); return; }
+    err('');
     commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
       st=>{ (st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
       'Cash moved');
+    cashReopen();
+  });
+
+  // Move EVERYTHING — every currency the source holds — in one action.
+  $('#cmGoAll').addEventListener('click',()=>{
+    const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
+    if(from===to){ err('Pick two different accounts.'); return; }
+    const moves=CASH_CURS.map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
+    if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
+    err('');
+    if(!confirm(`Move ALL cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
+    commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note},
+      st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,note:note||'Moved all cash'})); },
+      'All cash moved');
     cashReopen();
   });
 
