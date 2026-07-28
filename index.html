@@ -114,6 +114,10 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .cash-tbl tbody th{text-align:left;font-weight:700;color:var(--ink)}
 .cash-tbl td.zero{color:var(--muted)}
 .cash-tbl td.neg{color:var(--clay);font-weight:700}
+.cash-cell{cursor:pointer}
+.cash-cell:hover{background:#FBF3E4;box-shadow:inset 0 0 0 1.5px var(--gold)}
+.cash-rowreset{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;margin-left:6px;padding:0 2px;line-height:1}
+.cash-rowreset:hover{color:var(--plum)}
 .cash-seg{margin:6px 0}
 .cash-hd{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:14px 0 6px;border-top:1px solid var(--line);padding-top:12px}
 .cash-coll{border:1px solid var(--line);border-radius:9px;overflow:hidden}
@@ -1870,11 +1874,17 @@ function cashModal(){
   function balancesHTML(){
     const accts=cashAccounts();
     let rows=accts.map(a=>{
+      const collectedAny = CASH_CURS.some(cur=>cashCollected(a.id,cur)!==0);
+      const hasManual = (STATE.cash||[]).some(c=>c.fromAcct===a.id||c.toAcct===a.id);
       const cells=CASH_CURS.map(cur=>{
         const v=cashBalance(a.id,cur);
-        return `<td class="${v<0?'neg':(v===0?'zero':'')}">${v===0?'—':cashFmt(v,cur)}</td>`;
+        return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}"
+          data-acct="${esc(a.id)}" data-cur="${cur}" title="Tap to set the real amount">${v===0?'—':cashFmt(v,cur)}</td>`;
       }).join('');
-      return `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
+      const reset = hasManual
+        ? `<button class="cash-rowreset" data-resetacct="${esc(a.id)}" title="Drop manual entries — back to cash collected">↺</button>`
+        : '';
+      return `<tr><th>${esc(a.name)}${reset}</th>${cells}</tr>`;
     }).join('');
     return `<table class="cash-tbl">
       <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
@@ -1924,7 +1934,7 @@ function cashModal(){
   openModal(`
     ${mHead('Cash tracking')}
     <div class="m-body">
-      <div class="hint">Where the physical cash sits. Each balance <b>starts from the cash actually collected</b> there (cash sales &amp; donations), then follows your moves: event cash can go to the warehouse, and warehouse cash to the bank.</div>
+      <div class="hint">Each balance <b>starts from the cash actually collected</b> there, then follows your moves. <b>Tap any amount to set it directly</b>, or ↺ to reset an account back to what was collected.</div>
       ${balancesHTML()}
 
       <div class="seg cash-seg" id="cashMode">
@@ -2024,8 +2034,39 @@ function cashModal(){
   $('#cmCancelEdit').addEventListener('click',endEdit);
   // delegate edit clicks from the ledger
   $('#modal').addEventListener('click',e=>{
-    const b=e.target.closest('[data-cashedit]'); if(!b) return;
-    startEdit(b.dataset.cashedit);
+    // Edit an existing ledger entry
+    const be=e.target.closest('[data-cashedit]');
+    if(be){ startEdit(be.dataset.cashedit); return; }
+
+    // Directly set a balance by tapping its cell
+    const cell=e.target.closest('.cash-cell');
+    if(cell){
+      const acct=cell.dataset.acct, cur=cell.dataset.cur;
+      const now=cashBalance(acct,cur);
+      const raw=prompt(`Set the ${cur} balance for ${cashAcctName(acct)} to the real amount:`, now);
+      if(raw===null) return;
+      const target=Math.round((Number(raw)||0)*100)/100;
+      if(target===now) return;
+      const delta=Math.round((target-now)*100)/100;
+      const id='tmpC_'+Math.random().toString(36).slice(2,9);
+      commit({action:'cashSet',toAcct:acct,cur,amt:target,note:'Set to '+target+' '+cur},
+        st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:'Set to '+target+' '+cur}); },
+        'Balance set');
+      setTimeout(redraw,0);
+      return;
+    }
+
+    // Reset one account back to what was collected
+    const rr=e.target.closest('[data-resetacct]');
+    if(rr){
+      const acct=rr.dataset.resetacct;
+      if(!confirm(`Reset ${cashAcctName(acct)} to cash collected? This drops the manual entries touching it. Collections stay.`)) return;
+      commit({action:'cashResetAcct',acct},
+        st=>{ st.cash=(st.cash||[]).filter(c=>c.fromAcct!==acct&&c.toAcct!==acct); },
+        cashAcctName(acct)+' reset');
+      setTimeout(redraw,0);
+      return;
+    }
   });
 
   $('#cmSave').addEventListener('click',()=>{
