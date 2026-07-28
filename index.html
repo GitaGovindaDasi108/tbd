@@ -1856,7 +1856,7 @@ function cashCollected(acct,cur){
 function cashBalance(acct,cur){
   let b=cashCollected(acct,cur);          // baseline from actual collections
   (STATE.cash||[]).forEach(c=>{
-    if(c.cur!==cur) return;
+    if(!c || c.cur!==cur) return;
     const a=Number(c.amt)||0;
     if(c.kind==='MOVE'){ if(c.fromAcct===acct)b-=a; if(c.toAcct===acct)b+=a; }
     else if(c.toAcct===acct) b+=a;
@@ -1875,7 +1875,7 @@ function cashModal(){
     const accts=cashAccounts();
     let rows=accts.map(a=>{
       const collectedAny = CASH_CURS.some(cur=>cashCollected(a.id,cur)!==0);
-      const hasManual = (STATE.cash||[]).some(c=>c.fromAcct===a.id||c.toAcct===a.id);
+      const hasManual = (STATE.cash||[]).some(c=>c && (c.fromAcct===a.id||c.toAcct===a.id));
       const cells=CASH_CURS.map(cur=>{
         const v=cashBalance(a.id,cur);
         return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}"
@@ -1903,7 +1903,8 @@ function cashModal(){
     return `<div class="cash-hd">Cash collected (in the system)</div><div class="cash-coll">${lines.join('')}</div>`;
   }
   function ledgerHTML(){
-    const rows=(STATE.cash||[]).slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
+    const all=(STATE.cash||[]).filter(c=>c && c.kind && c.cur);   // guard against malformed/empty rows
+    const rows=all.slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0))).slice(0,50);
     if(!rows.length) return `<div class="empty">No manual cash movements yet.</div>`;
     return rows.map(c=>{
       const when=c.ts?new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
@@ -1975,7 +1976,7 @@ function cashModal(){
       <div id="cashCollected">${collectedHTML()}</div>
       <div class="cash-hd">Recent movements — tap ✎ to edit, ✕ to remove</div>
       <div class="cash-ledger">${ledgerHTML()}</div>
-      ${(STATE.cash||[]).some(c=>c.fromAcct==='BANK'||c.toAcct==='BANK')
+      ${(STATE.cash||[]).some(c=>c && (c.fromAcct==='BANK'||c.toAcct==='BANK'))
         ? `<button class="cash-reset" id="cashResetBank">Reset bank to collected-only</button>` : ''}
       <div class="err" id="modalErr"></div>
     </div>
