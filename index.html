@@ -131,6 +131,12 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .cash-row-sub span{font-size:10.5px;color:var(--muted)}
 .cash-del{border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
 .cash-del:hover{color:var(--clay)}
+.cash-acts{display:inline-flex;gap:2px;flex:none}
+.cash-edit{border:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;padding:2px 4px;line-height:1}
+.cash-edit:hover{color:var(--plum)}
+.cash-save-row{display:flex;gap:8px;align-items:center}
+.cash-save-row .btn{flex:1 1 auto}
+.cash-save-row .btn-ghost{flex:0 0 auto}
 .btn-green{background:var(--green);color:#fff}
 .btn-ghost{background:var(--paper);color:var(--plum);border:1.5px solid var(--line-d);box-shadow:none}
 .btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
@@ -810,8 +816,7 @@ function renderTotals(){
     <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre}</div>
       <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered</div></div>
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
-      <div class="sub">${money(got)||'nothing collected yet'}</div>
-      <div class="rate-note">${rateNote()}</div></div>
+      <div class="sub">${money(got)||'nothing collected yet'}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
       <div class="sub">${money(due)||'nothing outstanding'}</div></div>`;
 }
@@ -1904,7 +1909,10 @@ function cashModal(){
         </div>
         <div class="cash-row-sub">
           <span>${esc(when)}${c.note?' · '+esc(c.note):''}</span>
-          <button class="cash-del" data-act="cashdel" data-id="${esc(c.id)}" title="Delete this entry">✕</button>
+          <span class="cash-acts">
+            <button class="cash-edit" data-cashedit="${esc(c.id)}" title="Edit this entry">✎</button>
+            <button class="cash-del" data-act="cashdel" data-id="${esc(c.id)}" title="Delete this entry">✕</button>
+          </span>
         </div>
       </div>`;
     }).join('');
@@ -1934,7 +1942,10 @@ function cashModal(){
           <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
         </div>
         <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float"></div>
-        <button class="btn btn-primary" id="cmSave">Record move</button>
+        <div class="cash-save-row">
+          <button class="btn btn-primary" id="cmSave">Record move</button>
+          <button class="btn btn-ghost" id="cmCancelEdit" style="display:none">Cancel edit</button>
+        </div>
       </div>
 
       <div id="cashSetPane" style="display:none">
@@ -1952,7 +1963,7 @@ function cashModal(){
       </div>
 
       <div id="cashCollected">${collectedHTML()}</div>
-      <div class="cash-hd">Recent movements</div>
+      <div class="cash-hd">Recent movements — tap ✎ to edit, ✕ to remove</div>
       <div class="cash-ledger">${ledgerHTML()}</div>
       ${(STATE.cash||[]).some(c=>c.fromAcct==='BANK'||c.toAcct==='BANK')
         ? `<button class="cash-reset" id="cashResetBank">Reset bank to collected-only</button>` : ''}
@@ -1985,13 +1996,57 @@ function cashModal(){
     const col=body.querySelector('#cashCollected'); if(col) col.innerHTML=collectedHTML();
   }
 
+  // Editing an existing ledger entry: when set, the Move form updates that entry
+  // in place instead of creating a new one. An ADJUST entry loads here too — its
+  // 'from' is blank, shown as an adjustment.
+  let editingId=null;
+  function startEdit(id){
+    const c=(STATE.cash||[]).find(x=>x.id===id); if(!c) return;
+    // switch to the Move pane
+    [...$('#cashMode').children].forEach(x=>x.classList.toggle('on',x.dataset.cm==='move'));
+    $('#cashMovePane').style.display='block'; $('#cashSetPane').style.display='none';
+    editingId=id;
+    if(c.kind==='MOVE'){ $('#cmFrom').value=c.fromAcct; $('#cmTo').value=c.toAcct; $('#cmAmt').value=c.amt; }
+    else { // ADJUST — represent as an add into the account; from = same as to disables? keep from as to so it's a no-op source
+      $('#cmFrom').value=c.toAcct; $('#cmTo').value=c.toAcct; $('#cmAmt').value=c.amt; }
+    $('#cmCur').value=c.cur; $('#cmNote').value=c.note||'';
+    $('#cmSave').textContent='Update entry';
+    $('#cmCancelEdit').style.display='inline-flex';
+    $('#modalErr').textContent = c.kind==='ADJUST' ? 'Editing a balance adjustment — set From and To to the same account to keep it an adjustment.' : '';
+    const body=$('#modal'); if(body) body.querySelector('.m-body').scrollTop=0;
+  }
+  function endEdit(){
+    editingId=null;
+    $('#cmSave').textContent='Record move';
+    $('#cmCancelEdit').style.display='none';
+    $('#cmAmt').value=''; $('#cmNote').value=''; $('#modalErr').textContent='';
+  }
+  $('#cmCancelEdit').addEventListener('click',endEdit);
+  // delegate edit clicks from the ledger
+  $('#modal').addEventListener('click',e=>{
+    const b=e.target.closest('[data-cashedit]'); if(!b) return;
+    startEdit(b.dataset.cashedit);
+  });
+
   $('#cmSave').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, cur=$('#cmCur').value;
     const amt=Math.round((Number($('#cmAmt').value)||0)*100)/100;
-    if(from===to){ $('#modalErr').textContent='The source and destination are the same.'; return; }
-    if(amt<=0){ $('#modalErr').textContent='Enter an amount greater than zero.'; return; }
-    $('#modalErr').textContent='';
     const note=$('#cmNote').value.trim();
+    const isAdjust = editingId && from===to;   // same account = a balance adjustment
+    if(!isAdjust && from===to){ $('#modalErr').textContent='The source and destination are the same.'; return; }
+    if(!isAdjust && amt<=0){ $('#modalErr').textContent='Enter an amount greater than zero.'; return; }
+    if(isAdjust && !amt){ $('#modalErr').textContent='Enter an amount.'; return; }
+    $('#modalErr').textContent='';
+
+    if(editingId){
+      const id=editingId;
+      const kind=isAdjust?'ADJUST':'MOVE';
+      commit({action:'cashEdit',id,kind,fromAcct:isAdjust?'':from,toAcct:to,cur,amt,note},
+        st=>{ const c=(st.cash||[]).find(x=>x.id===id); if(c){ c.kind=kind; c.fromAcct=isAdjust?'':from; c.toAcct=to; c.cur=cur; c.amt=amt; c.note=note; } },
+        'Entry updated');
+      endEdit(); setTimeout(redraw,0); return;
+    }
+
     const id='tmpC_'+Math.random().toString(36).slice(2,9);
     commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
       st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
