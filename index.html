@@ -86,9 +86,37 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .btn-gold{background:var(--gold);color:#fff}
 .btn-teal{background:#2E7D6B;color:#EAF7F2}
 .rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
-.cash-reset{margin-top:10px;width:100%;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);
-  border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer}
-.cash-reset:hover{background:var(--clay);color:#fff;border-color:var(--clay)}
+/* cash tracking */
+.cash-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}
+.cash-tbl th,.cash-tbl td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
+.cash-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.cash-tbl tbody th{text-align:left;font-weight:700;color:var(--ink);white-space:nowrap}
+.cash-tbl td.zero{color:var(--muted)}
+.cash-tbl td.neg{color:var(--clay);font-weight:700}
+.cash-cell{cursor:pointer;border-radius:4px}
+.cash-cell:hover{background:#FBF3E4;box-shadow:inset 0 0 0 1.5px var(--gold)}
+.cash-sub{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:16px 0 7px;border-top:1px solid var(--line);padding-top:13px}
+.cash-seg{margin:8px 0}
+.cash-mini{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:1px 4px;line-height:1}
+.cash-mini:hover{color:var(--plum)}
+.cash-mini.danger:hover{color:var(--clay)}
+.cash-coll{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.cash-coll-row{display:flex;justify-content:space-between;gap:8px;padding:7px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
+.cash-coll-row:last-child{border-bottom:none}
+.cash-coll-row span:first-child{font-weight:600;color:var(--ink)}
+.cash-coll-row span:last-child{color:#2E7D6B;font-weight:700}
+.cash-log{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.cash-logrow{padding:8px 11px;border-bottom:1px solid var(--line)}
+.cash-logrow:last-child{border-bottom:none}
+.cash-logtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cash-logdesc{font-weight:600;font-size:13px;color:var(--ink)}
+.cash-logamt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
+.cash-logbot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
+.cash-logwhen{font-size:10.5px;color:var(--muted)}
+.cash-logacts{display:inline-flex;gap:2px;flex:none}
+.cash-empty{padding:14px 11px;font-size:12.5px;color:var(--muted);text-align:center;border:1px dashed var(--line-d);border-radius:9px}
+.cash-resetall{width:100%;margin-top:16px;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);border-radius:9px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer}
+.cash-resetall:hover{background:var(--clay);color:#fff;border-color:var(--clay)}
 .org-cat{margin-bottom:14px}
 .org-cat-name{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;color:var(--saffron-d);
   border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:6px}
@@ -108,40 +136,6 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .oe-addp{border:none;background:transparent;color:var(--plum);font-weight:700;font-size:12px;cursor:pointer;padding:2px 0}
 .oe-addcat{width:100%;border:1.5px dashed var(--line-d);background:transparent;color:var(--saffron-d);
   border-radius:9px;padding:9px;font-weight:700;font-size:13px;cursor:pointer;margin-top:2px}
-.cash-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 6px}
-.cash-tbl th,.cash-tbl td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line)}
-.cash-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);text-align:right}
-.cash-tbl tbody th{text-align:left;font-weight:700;color:var(--ink)}
-.cash-tbl td.zero{color:var(--muted)}
-.cash-tbl td.neg{color:var(--clay);font-weight:700}
-.cash-cell{cursor:pointer}
-.cash-cell:hover{background:#FBF3E4;box-shadow:inset 0 0 0 1.5px var(--gold)}
-.cash-rowreset{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;margin-left:6px;padding:0 2px;line-height:1}
-.cash-rowreset:hover{color:var(--plum)}
-.cash-seg{margin:6px 0}
-.cash-hd{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:14px 0 6px;border-top:1px solid var(--line);padding-top:12px}
-.cash-coll{border:1px solid var(--line);border-radius:9px;overflow:hidden}
-.cash-coll-row{display:flex;justify-content:space-between;gap:8px;padding:6px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
-.cash-coll-row:last-child{border-bottom:none}
-.cash-coll-row span:first-child{font-weight:600;color:var(--ink)}
-.cash-coll-row span:last-child{color:#2E7D6B;font-weight:700}
-.cash-ledger{max-height:34vh;overflow-y:auto;border:1px solid var(--line);border-radius:9px}
-.cash-row{padding:8px 11px;border-bottom:1px solid var(--line)}
-.cash-row:last-child{border-bottom:none}
-.cash-row-main{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.cash-desc{font-weight:600;font-size:13px;color:var(--ink)}
-.cash-amt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
-.cash-row-sub{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
-.cash-row-sub span{font-size:10.5px;color:var(--muted)}
-.cash-del{border:none;background:transparent;color:var(--muted);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
-.cash-del:hover{color:var(--clay)}
-.cash-acts{display:inline-flex;gap:2px;flex:none}
-.cash-edit{border:none;background:transparent;color:var(--muted);font-size:12px;cursor:pointer;padding:2px 4px;line-height:1}
-.cash-edit:hover{color:var(--plum)}
-.cash-save-row{display:flex;gap:8px;align-items:center}
-.cash-save-row .btn{flex:1 1 auto}
-.cash-save-row .btn-ghost{flex:0 0 auto}
-.cash-sweep{width:100%;margin-top:8px;font-size:12.5px}
 .btn-green{background:var(--green);color:#fff}
 .btn-ghost{background:var(--paper);color:var(--plum);border:1.5px solid var(--line-d);box-shadow:none}
 .btn-sm{padding:5px 10px;font-size:12.5px;border-radius:8px}
@@ -1871,265 +1865,253 @@ function cashFmt(n,cur){
   return pre+(Number.isInteger(v)?v:v.toFixed(2))+sym;
 }
 
-function cashModal(){
+/* ============================ CASH TRACKING ============================
+   A clean, self-contained cash panel. The data model:
+     • Every account's balance = cash COLLECTED there (from Cash sales/donations)
+       plus a fold of manual entries (MOVE between accounts, ADJUST one account).
+     • Balances recompute live from that data, so any change ripples through.
+   After every change we simply reopen the panel, so it always shows current
+   numbers and a working log. All amounts are editable; the tracker can be reset
+   to pure collections at any time.                                          */
+
+// Reopen the panel after a change so it stays open and fresh (commit() closes it).
+function cashReopen(){ setTimeout(()=>cashModal(),0); }
+
+function cashModal(editEntryId){
+  const accts = cashAccounts();
+  const curSym = { PLN:'zł', EUR:'€', USD:'$' };
+
+  // ---- balances table: every cell tappable to set directly ----
   function balancesHTML(){
-    const accts=cashAccounts();
-    let rows=accts.map(a=>{
-      const collectedAny = CASH_CURS.some(cur=>cashCollected(a.id,cur)!==0);
+    const rows = accts.map(a=>{
       const hasManual = (STATE.cash||[]).some(c=>c && (c.fromAcct===a.id||c.toAcct===a.id));
-      const cells=CASH_CURS.map(cur=>{
-        const v=cashBalance(a.id,cur);
-        return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}"
-          data-acct="${esc(a.id)}" data-cur="${cur}" title="Tap to set the real amount">${v===0?'—':cashFmt(v,cur)}</td>`;
+      const cells = CASH_CURS.map(cur=>{
+        const v = cashBalance(a.id,cur);
+        return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}"
+                 title="Tap to set the real ${cur} amount">${v===0?'—':cashFmt(v,cur)}</td>`;
       }).join('');
       const reset = hasManual
-        ? `<button class="cash-rowreset" data-resetacct="${esc(a.id)}" title="Drop manual entries — back to cash collected">↺</button>`
-        : '';
-      return `<tr><th>${esc(a.name)}${reset}</th>${cells}</tr>`;
+        ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset this account to collected">↺</button>` : '';
+      return `<tr><th>${esc(a.name)} ${reset}</th>${cells}</tr>`;
     }).join('');
     return `<table class="cash-tbl">
       <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
       <tbody>${rows}</tbody></table>`;
   }
-  // A reference of the cash the system knows was collected at each place — the
-  // baseline the balances build on.
+
+  // ---- collected reference (where the baseline comes from) ----
   function collectedHTML(){
-    const accts=cashAccounts().filter(a=>a.id!=='BANK');
     const lines=[];
-    accts.forEach(a=>{
+    accts.filter(a=>a.id!=='BANK').forEach(a=>{
       const parts=CASH_CURS.map(cur=>{ const v=cashCollected(a.id,cur); return v>0?cashFmt(v,cur):null; }).filter(Boolean);
       if(parts.length) lines.push(`<div class="cash-coll-row"><span>${esc(a.name)}</span><span>${parts.join(' · ')}</span></div>`);
     });
     if(!lines.length) return '';
-    return `<div class="cash-hd">Cash collected (in the system)</div><div class="cash-coll">${lines.join('')}</div>`;
+    return `<div class="cash-sub">Cash collected in the system</div><div class="cash-coll">${lines.join('')}</div>`;
   }
-  function ledgerHTML(){
-    const all=(STATE.cash||[]).filter(c=>c && c.kind && c.cur);   // guard against malformed/empty rows
-    const rows=all.slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0))).slice(0,50);
-    if(!rows.length) return `<div class="empty">No manual cash movements yet.</div>`;
+
+  // ---- movement log: defensively filtered so one bad row can't blank it ----
+  function logHTML(){
+    const rows = (STATE.cash||[])
+      .filter(c=>c && c.id && c.kind && c.cur)
+      .slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
+    if(!rows.length) return `<div class="cash-empty">No movements yet. Cash collected at events shows above; record a move to shift it around.</div>`;
     return rows.map(c=>{
-      const when=c.ts?new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
-      let desc;
-      if(c.kind==='MOVE') desc=`${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`;
-      else desc=`${esc(cashAcctName(c.toAcct))} · adjustment`;
-      const amt=cashFmt(Math.abs(c.amt),c.cur);
-      const sign=(c.kind==='ADJUST'&&c.amt<0)?'−':'';
-      return `<div class="cash-row">
-        <div class="cash-row-main">
-          <span class="cash-desc">${desc}</span>
-          <span class="cash-amt">${sign}${amt}</span>
+      const when = c.ts ? new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      const isMove = c.kind==='MOVE';
+      const desc = isMove
+        ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
+        : `${esc(cashAcctName(c.toAcct))} · adjustment`;
+      const sign = (!isMove && c.amt<0) ? '−' : '';
+      return `<div class="cash-logrow">
+        <div class="cash-logtop">
+          <span class="cash-logdesc">${desc}</span>
+          <span class="cash-logamt">${sign}${cashFmt(Math.abs(c.amt),c.cur)}</span>
         </div>
-        <div class="cash-row-sub">
-          <span>${esc(when)}${c.note?' · '+esc(c.note):''}</span>
-          <span class="cash-acts">
-            <button class="cash-edit" data-cashedit="${esc(c.id)}" title="Edit this entry">✎</button>
-            <button class="cash-del" data-act="cashdel" data-id="${esc(c.id)}" title="Delete this entry">✕</button>
+        <div class="cash-logbot">
+          <span class="cash-logwhen">${esc(when)}${c.note?' · '+esc(c.note):''}</span>
+          <span class="cash-logacts">
+            <button class="cash-mini" data-editentry="${esc(c.id)}" title="Edit">✎</button>
+            <button class="cash-mini danger" data-delentry="${esc(c.id)}" title="Delete">✕</button>
           </span>
         </div>
       </div>`;
     }).join('');
   }
 
-  const acctOpts = sel => cashAccounts().map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
-  const evId = (CUR_LOC!==WAREHOUSE && CUR_LOC) ? CUR_LOC : (cashAccounts()[1]?cashAccounts()[1].id:'BANK');
+  const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  // sensible defaults for the move form: from = current location, to = first other account
+  const defFrom = (CUR_LOC && cashAccounts().some(a=>a.id===CUR_LOC)) ? CUR_LOC : 'WAREHOUSE';
+  const defTo = (accts.find(a=>a.id!==defFrom)||accts[0]).id;
 
   openModal(`
     ${mHead('Cash tracking')}
     <div class="m-body">
-      <div class="hint">Each balance <b>starts from the cash actually collected</b> there, then follows your moves. <b>Tap any amount to set it directly</b>, or ↺ to reset an account back to what was collected.</div>
+      <div class="hint">Balances start from the cash <b>collected</b> at each place, then follow your moves. <b>Tap any amount to set it.</b></div>
       ${balancesHTML()}
 
-      <div class="seg cash-seg" id="cashMode">
-        <button type="button" data-cm="move" class="on">Move cash</button>
-        <button type="button" data-cm="set">Set / correct a balance</button>
+      <div class="cash-sub">Move cash</div>
+      <div class="row2">
+        <div class="field"><label>From</label><select id="cmFrom">${acctOpts(defFrom)}</select></div>
+        <div class="field"><label>To</label><select id="cmTo">${acctOpts(defTo)}</select></div>
       </div>
-
-      <div id="cashMovePane">
-        <div class="row2">
-          <div class="field"><label>From</label><select id="cmFrom">${acctOpts('WAREHOUSE')}</select></div>
-          <div class="field"><label>To</label><select id="cmTo">${acctOpts(evId)}</select></div>
-        </div>
+      <div class="seg cash-seg" id="cmMode">
+        <button type="button" data-m="one" class="on">One amount</button>
+        <button type="button" data-m="all">Everything</button>
+      </div>
+      <div id="cmOne">
         <div class="row2">
           <div class="field"><label>Currency</label><select id="cmCur">${curOptions('PLN')}</select></div>
           <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
         </div>
-        <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float"></div>
-        <div class="cash-save-row">
-          <button class="btn btn-primary" id="cmSave">Record move</button>
-          <button class="btn btn-ghost" id="cmCancelEdit" style="display:none">Cancel edit</button>
-        </div>
       </div>
+      <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float, deposit"></div>
+      <button class="btn btn-primary" id="cmGo">Record move</button>
 
-      <div id="cashSetPane" style="display:none">
-        <div class="row2">
-          <div class="field"><label>Account</label><select id="csAcct">${acctOpts('WAREHOUSE')}</select></div>
-          <div class="field"><label>Currency</label><select id="csCur">${curOptions('PLN')}</select></div>
-        </div>
-        <div class="seg" id="csKind">
-          <button type="button" data-ck="set" class="on">Set to exact amount</button>
-          <button type="button" data-ck="adjust">Add / remove</button>
-        </div>
-        <div class="field"><label id="csAmtLbl">New balance</label><input id="csAmt" type="number" step="0.01" inputmode="decimal"></div>
-        <div class="field"><label>Note (optional)</label><input id="csNote" type="text" placeholder="e.g. starting cash count"></div>
-        <button class="btn btn-plum" id="csSave">Save</button>
-      </div>
+      ${collectedHTML()}
 
-      <div id="cashCollected">${collectedHTML()}</div>
-      <div class="cash-hd">Recent movements — tap ✎ to edit, ✕ to remove</div>
-      <div class="cash-ledger">${ledgerHTML()}</div>
-      ${(STATE.cash||[]).some(c=>c && (c.fromAcct==='BANK'||c.toAcct==='BANK'))
-        ? `<button class="cash-reset" id="cashResetBank">Reset bank to collected-only</button>` : ''}
+      <div class="cash-sub">Movement log</div>
+      <div class="cash-log">${logHTML()}</div>
+
+      <button class="cash-resetall" id="cmResetAll">Reset tracker to collected values</button>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
   `);
 
-  $('#cashMode').addEventListener('click',e=>{
-    const b=e.target.closest('button[data-cm]'); if(!b) return;
-    const move=b.dataset.cm==='move';
-    [...$('#cashMode').children].forEach(x=>x.classList.toggle('on',x===b));
-    $('#cashMovePane').style.display=move?'block':'none';
-    $('#cashSetPane').style.display=move?'none':'block';
+  const err = msg => { $('#modalErr').textContent = msg||''; };
+
+  // one-amount vs everything
+  let moveMode = 'one';
+  $('#cmMode').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-m]'); if(!b) return;
+    moveMode=b.dataset.m;
+    [...$('#cmMode').children].forEach(x=>x.classList.toggle('on',x===b));
+    $('#cmOne').style.display = moveMode==='one' ? 'block' : 'none';
   });
 
-  let csKind='set';
-  $('#csKind').addEventListener('click',e=>{
-    const b=e.target.closest('button[data-ck]'); if(!b) return;
-    csKind=b.dataset.ck;
-    [...$('#csKind').children].forEach(x=>x.classList.toggle('on',x===b));
-    $('#csAmtLbl').textContent = csKind==='set' ? 'New balance' : 'Add (or use − to remove)';
+  // record a move (one currency, or sweep everything)
+  $('#cmGo').addEventListener('click',()=>{
+    const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
+    if(from===to){ err('Pick two different accounts.'); return; }
+    err('');
+    if(moveMode==='all'){
+      const moves=CASH_CURS.map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
+      if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
+      if(!confirm(`Move all cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
+      commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note},
+        st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,note:note||'Moved all cash'})); },
+        'Cash moved');
+      cashReopen(); return;
+    }
+    const cur=$('#cmCur').value, amt=Math.round((Number($('#cmAmt').value)||0)*100)/100;
+    if(amt<=0){ err('Enter an amount greater than zero.'); return; }
+    commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
+      st=>{ (st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
+      'Cash moved');
+    cashReopen();
   });
 
-  // Refresh the balances table + ledger in place after a change.
-  function redraw(){
-    const body=$('#modal');
-    const tbl=body.querySelector('.cash-tbl'); if(tbl) tbl.outerHTML=balancesHTML();
-    const led=body.querySelector('.cash-ledger'); if(led) led.innerHTML=ledgerHTML();
-    const col=body.querySelector('#cashCollected'); if(col) col.innerHTML=collectedHTML();
-  }
-
-  // Editing an existing ledger entry: when set, the Move form updates that entry
-  // in place instead of creating a new one. An ADJUST entry loads here too — its
-  // 'from' is blank, shown as an adjustment.
-  let editingId=null;
-  function startEdit(id){
-    const c=(STATE.cash||[]).find(x=>x.id===id); if(!c) return;
-    // switch to the Move pane
-    [...$('#cashMode').children].forEach(x=>x.classList.toggle('on',x.dataset.cm==='move'));
-    $('#cashMovePane').style.display='block'; $('#cashSetPane').style.display='none';
-    editingId=id;
-    if(c.kind==='MOVE'){ $('#cmFrom').value=c.fromAcct; $('#cmTo').value=c.toAcct; $('#cmAmt').value=c.amt; }
-    else { // ADJUST — represent as an add into the account; from = same as to disables? keep from as to so it's a no-op source
-      $('#cmFrom').value=c.toAcct; $('#cmTo').value=c.toAcct; $('#cmAmt').value=c.amt; }
-    $('#cmCur').value=c.cur; $('#cmNote').value=c.note||'';
-    $('#cmSave').textContent='Update entry';
-    $('#cmCancelEdit').style.display='inline-flex';
-    $('#modalErr').textContent = c.kind==='ADJUST' ? 'Editing a balance adjustment — set From and To to the same account to keep it an adjustment.' : '';
-    const body=$('#modal'); if(body) body.querySelector('.m-body').scrollTop=0;
-  }
-  function endEdit(){
-    editingId=null;
-    $('#cmSave').textContent='Record move';
-    $('#cmCancelEdit').style.display='none';
-    $('#cmAmt').value=''; $('#cmNote').value=''; $('#modalErr').textContent='';
-  }
-  $('#cmCancelEdit').addEventListener('click',endEdit);
-  // delegate edit clicks from the ledger
+  // delegated clicks: set a cell, reset an account, reset all, edit / delete an entry
   $('#modal').addEventListener('click',e=>{
-    // Edit an existing ledger entry
-    const be=e.target.closest('[data-cashedit]');
-    if(be){ startEdit(be.dataset.cashedit); return; }
-
-    // Directly set a balance by tapping its cell
-    const cell=e.target.closest('.cash-cell');
-    if(cell){
-      const acct=cell.dataset.acct, cur=cell.dataset.cur;
-      const now=cashBalance(acct,cur);
-      const raw=prompt(`Set the ${cur} balance for ${cashAcctName(acct)} to the real amount:`, now);
+    const setC=e.target.closest('[data-setacct]');
+    if(setC){
+      const acct=setC.dataset.setacct, cur=setC.dataset.setcur, now=cashBalance(acct,cur);
+      const raw=prompt(`Set the ${cur} balance for ${cashAcctName(acct)}:`, now);
       if(raw===null) return;
       const target=Math.round((Number(raw)||0)*100)/100;
       if(target===now) return;
       const delta=Math.round((target-now)*100)/100;
-      const id='tmpC_'+Math.random().toString(36).slice(2,9);
       commit({action:'cashSet',toAcct:acct,cur,amt:target,note:'Set to '+target+' '+cur},
-        st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:'Set to '+target+' '+cur}); },
+        st=>{ (st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:'Set to '+target+' '+cur}); },
         'Balance set');
-      setTimeout(redraw,0);
-      return;
+      cashReopen(); return;
     }
-
-    // Reset one account back to what was collected
-    const rr=e.target.closest('[data-resetacct]');
-    if(rr){
-      const acct=rr.dataset.resetacct;
-      if(!confirm(`Reset ${cashAcctName(acct)} to cash collected? This drops the manual entries touching it. Collections stay.`)) return;
+    const rA=e.target.closest('[data-resetacct]');
+    if(rA){
+      const acct=rA.dataset.resetacct;
+      if(!confirm(`Reset ${cashAcctName(acct)} to what was collected? Drops the manual entries touching it.`)) return;
       commit({action:'cashResetAcct',acct},
-        st=>{ st.cash=(st.cash||[]).filter(c=>c.fromAcct!==acct&&c.toAcct!==acct); },
-        cashAcctName(acct)+' reset');
-      setTimeout(redraw,0);
-      return;
+        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.fromAcct!==acct && c.toAcct!==acct); },
+        'Account reset');
+      cashReopen(); return;
+    }
+    const dE=e.target.closest('[data-delentry]');
+    if(dE){
+      const id=dE.dataset.delentry;
+      if(!confirm('Delete this movement?')) return;
+      commit({action:'cashDelete',id},
+        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.id!==id); }, 'Movement deleted');
+      cashReopen(); return;
+    }
+    const eE=e.target.closest('[data-editentry]');
+    if(eE){ cashEditEntry(eE.dataset.editentry); return; }
+    const rAll=e.target.closest('#cmResetAll');
+    if(rAll){
+      if(!(STATE.cash||[]).length){ err('Nothing to reset — no manual entries.'); return; }
+      if(!confirm('Reset the whole tracker to collected values? This removes every manual move and adjustment. Collections from sales are kept.')) return;
+      commit({action:'cashResetAll'}, st=>{ st.cash=[]; }, 'Tracker reset');
+      cashReopen(); return;
     }
   });
 
-  $('#cmSave').addEventListener('click',()=>{
-    const from=$('#cmFrom').value, to=$('#cmTo').value, cur=$('#cmCur').value;
-    const amt=Math.round((Number($('#cmAmt').value)||0)*100)/100;
-    const note=$('#cmNote').value.trim();
-    const isAdjust = editingId && from===to;   // same account = a balance adjustment
-    if(!isAdjust && from===to){ $('#modalErr').textContent='The source and destination are the same.'; return; }
-    if(!isAdjust && amt<=0){ $('#modalErr').textContent='Enter an amount greater than zero.'; return; }
-    if(isAdjust && !amt){ $('#modalErr').textContent='Enter an amount.'; return; }
-    $('#modalErr').textContent='';
-
-    if(editingId){
-      const id=editingId;
-      const kind=isAdjust?'ADJUST':'MOVE';
-      commit({action:'cashEdit',id,kind,fromAcct:isAdjust?'':from,toAcct:to,cur,amt,note},
-        st=>{ const c=(st.cash||[]).find(x=>x.id===id); if(c){ c.kind=kind; c.fromAcct=isAdjust?'':from; c.toAcct=to; c.cur=cur; c.amt=amt; c.note=note; } },
-        'Entry updated');
-      endEdit(); setTimeout(redraw,0); return;
-    }
-
-    const id='tmpC_'+Math.random().toString(36).slice(2,9);
-    commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
-      st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
-      'Cash moved');
-    $('#cmAmt').value=''; $('#cmNote').value='';
-    setTimeout(redraw,0);
-  });
-
-  $('#csSave').addEventListener('click',()=>{
-    const acct=$('#csAcct').value, cur=$('#csCur').value;
-    const amt=Math.round((Number($('#csAmt').value)||0)*100)/100;
-    const note=$('#csNote').value.trim();
-    $('#modalErr').textContent='';
-    const id='tmpC_'+Math.random().toString(36).slice(2,9);
-    if(csKind==='set'){
-      const delta=Math.round((amt-cashBalance(acct,cur))*100)/100;
-      if(delta===0){ $('#modalErr').textContent='That is already the balance.'; return; }
-      commit({action:'cashSet',toAcct:acct,cur,amt,note},
-        st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:note||('Set to '+amt+' '+cur)}); },
-        'Balance set');
-    } else {
-      if(!amt){ $('#modalErr').textContent='Enter an amount (use a minus sign to remove).'; return; }
-      commit({action:'cashAdjust',toAcct:acct,cur,amt,note},
-        st=>{ (st.cash=st.cash||[]).push({id,ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt,note}); },
-        'Balance adjusted');
-    }
-    $('#csAmt').value=''; $('#csNote').value='';
-    setTimeout(redraw,0);
-  });
-
-  const rb=$('#cashResetBank');
-  if(rb) rb.addEventListener('click',()=>{
-    if(!confirm('Remove the manual bank entries you recorded earlier? The bank will then reflect only what the tracker has moved into it. Collections and event transfers are untouched.')) return;
-    commit({action:'cashResetBank'},
-      st=>{ st.cash=(st.cash||[]).filter(c=>c.fromAcct!=='BANK'&&c.toAcct!=='BANK'); },
-      'Bank reset');
-    setTimeout(redraw,0);
-  });
+  // if we were asked to edit a specific entry, open its editor immediately
+  if(editEntryId) cashEditEntry(editEntryId);
 }
 
+// A small editor for one movement — all fields editable.
+function cashEditEntry(id){
+  const c=(STATE.cash||[]).find(x=>x && x.id===id);
+  if(!c){ cashModal(); return; }
+  const accts=cashAccounts();
+  const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
+  const isMove = c.kind==='MOVE';
+  openModal(`
+    ${mHead('Edit movement')}
+    <div class="m-body">
+      <div class="seg cash-seg" id="ceKind">
+        <button type="button" data-k="MOVE" class="${isMove?'on':''}">Move</button>
+        <button type="button" data-k="ADJUST" class="${!isMove?'on':''}">Adjustment</button>
+      </div>
+      <div class="row2">
+        <div class="field" id="ceFromWrap" style="display:${isMove?'block':'none'}"><label>From</label><select id="ceFrom">${acctOpts(c.fromAcct)}</select></div>
+        <div class="field"><label id="ceToLbl">${isMove?'To':'Account'}</label><select id="ceTo">${acctOpts(c.toAcct)}</select></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Currency</label><select id="ceCur">${curOptions(c.cur)}</select></div>
+        <div class="field"><label id="ceAmtLbl">Amount</label><input id="ceAmt" type="number" step="0.01" inputmode="decimal" value="${c.amt}"></div>
+      </div>
+      <div class="field"><label>Note (optional)</label><input id="ceNote" type="text" value="${esc(c.note||'')}"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="cashModal()">Cancel</button>
+      <button class="btn btn-primary" id="ceSave">Save</button>
+    </div>
+  `);
+  let kind=c.kind;
+  $('#ceKind').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-k]'); if(!b) return;
+    kind=b.dataset.k;
+    [...$('#ceKind').children].forEach(x=>x.classList.toggle('on',x===b));
+    $('#ceFromWrap').style.display = kind==='MOVE' ? 'block' : 'none';
+    $('#ceToLbl').textContent = kind==='MOVE' ? 'To' : 'Account';
+    $('#ceAmtLbl').textContent = kind==='MOVE' ? 'Amount' : 'Amount (− to remove)';
+  });
+  $('#ceSave').addEventListener('click',()=>{
+    const from=$('#ceFrom').value, to=$('#ceTo').value, cur=$('#ceCur').value;
+    const amt=Math.round((Number($('#ceAmt').value)||0)*100)/100;
+    const note=$('#ceNote').value.trim();
+    if(kind==='MOVE'){
+      if(from===to){ $('#modalErr').textContent='Pick two different accounts.'; return; }
+      if(amt<=0){ $('#modalErr').textContent='Enter an amount greater than zero.'; return; }
+    } else if(!amt){ $('#modalErr').textContent='Enter an amount.'; return; }
+    commit({action:'cashEdit',id,kind,fromAcct:kind==='MOVE'?from:'',toAcct:to,cur,amt,note},
+      st=>{ const x=(st.cash||[]).find(e=>e && e.id===id); if(x){ x.kind=kind; x.fromAcct=kind==='MOVE'?from:''; x.toAcct=to; x.cur=cur; x.amt=amt; x.note=note; } },
+      'Movement updated');
+    cashReopen();
+  });
+}
 
 function donationModal(edit){
   openModal(`
@@ -2569,16 +2551,6 @@ document.addEventListener('click',e=>{
   if(a==='donation'){ donationModal(); return; }
   if(a==='cash'){ cashModal(); return; }
   if(a==='org'){ orgModal(); return; }
-  if(a==='cashdel'){
-    const id=t.dataset.id;
-    if(!confirm('Delete this cash entry? Balances will be recalculated.')) return;
-    commit({action:'cashDelete',id},
-      st=>{ st.cash=(st.cash||[]).filter(x=>x.id!==id); }, 'Entry deleted');
-    // refresh the open modal if present
-    const body=$('#modal');
-    if(body){ setTimeout(()=>{ if(typeof cashModal==='function' && body.innerHTML.includes('Cash tracking')) cashModal(); },0); }
-    return;
-  }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
