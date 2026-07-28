@@ -562,7 +562,7 @@ function toUSD(amt,cur){amt=Number(amt)||0;if(!amt)return 0;const r=STATE.rates|
 /* Mirrors the backend exactly:
      pending  → nothing received, the legs are what is owed
      dueamt>0 → the legs are banked and this much is still outstanding */
-function pendingFlag(s){return !!s.pending && !s.paid;}
+function pendingFlag(s){return !!s && !!s.pending && !s.paid;}
 function dueAmt(s){return Math.max(0, Number(s.dueamt)||0);}
 function dueCur(s){return String(s.duecur||'USD');}
 function isPartial(s){return !pendingFlag(s) && dueAmt(s)>0;}
@@ -574,7 +574,7 @@ function dueParts(s){
   return dueAmt(s)>0 ? [{amt:dueAmt(s),cur:dueCur(s)}] : [];
 }
 function dueUSD(s){return dueParts(s).reduce((t,d)=>t+toUSD(d.amt,d.cur),0);}
-function legs(s){const a=[];if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Number(s.p1amt)||0});
+function legs(s){const a=[];if(!s)return a;if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Number(s.p1amt)||0});
   if(s.p2type)a.push({type:s.p2type,cur:s.p2cur,amt:Number(s.p2amt)||0});return a;}
 function legsUSD(s){return legs(s).reduce((t,l)=>t+toUSD(l.amt,l.cur),0);}
 function payLabel(s){const L=legs(s);if(!L.length)return '—';
@@ -1858,8 +1858,9 @@ function cashCollected(acct,cur){
   if(acct==='BANK') return 0;
   let t=0;
   (STATE.sales||[]).forEach(s=>{
+    if(!s || typeof s!=='object') return;   // guard: a null/blank sale must not crash the whole panel
     if(s.location!==acct) return;
-    if(pendingFlag(s)) return;            // nothing in hand yet
+    if(pendingFlag(s)) return;              // nothing in hand yet
     legs(s).forEach(l=>{ if(l.type==='Cash' && l.cur===cur) t+=l.amt; });
   });
   return t;
