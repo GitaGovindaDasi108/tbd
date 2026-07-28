@@ -1877,88 +1877,82 @@ function cashFmt(n,cur){
    to pure collections at any time.                                          */
 
 // Reopen the panel after a change so it stays open and fresh (commit() closes it).
-function cashReopen(){ setTimeout(()=>cashModal(),0); }
+/* ============================ CASH TRACKING (v3) ============================
+   Built defensively: collected and log are computed with plain loops that can
+   never throw or hide a row. Balances = collected + manual entries. After any
+   change we reopen the panel so it always shows current numbers.            */
 
-function cashModal(editEntryId){
-  const accts = cashAccounts();
-  const curSym = { PLN:'zł', EUR:'€', USD:'$' };
+function cashReopen(){ setTimeout(()=>{ try{ cashModal(); }catch(e){} },0); }
 
-  // ---- balances table: every cell tappable to set directly ----
-  function balancesHTML(){
-    const rows = accts.map(a=>{
-      const hasManual = (STATE.cash||[]).some(c=>c && (c.fromAcct===a.id||c.toAcct===a.id));
-      const cells = CASH_CURS.map(cur=>{
-        const v = cashBalance(a.id,cur);
-        return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}"
-                 title="Tap to set the real ${cur} amount">${v===0?'—':cashFmt(v,cur)}</td>`;
-      }).join('');
-      const reset = hasManual
-        ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset this account to collected">↺</button>` : '';
-      return `<tr><th>${esc(a.name)} ${reset}</th>${cells}</tr>`;
-    }).join('');
-    return `<table class="cash-tbl">
-      <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
-      <tbody>${rows}</tbody></table>`;
-  }
+function cashModal(){
+  const accts = cashAccounts();               // [{id,name}]  warehouse, events, bank
+  const entries = (STATE.cash||[]).filter(c=>c && typeof c==='object');
 
-  // ---- collected reference (where the baseline comes from) ----
-  function collectedHTML(){
-    const lines=[];
-    accts.filter(a=>a.id!=='BANK').forEach(a=>{
-      const parts=CASH_CURS.map(cur=>{ const v=cashCollected(a.id,cur); return v>0?cashFmt(v,cur):null; }).filter(Boolean);
-      if(parts.length) lines.push(`<div class="cash-coll-row"><span>${esc(a.name)}</span><span>${parts.join(' · ')}</span></div>`);
+  // ---------- balances table (tap a cell to set it) ----------
+  let balRows='';
+  accts.forEach(a=>{
+    const hasManual = entries.some(c=>c.fromAcct===a.id || c.toAcct===a.id);
+    let cells='';
+    CASH_CURS.forEach(cur=>{
+      const v=cashBalance(a.id,cur);
+      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
     });
-    // Always show the section so it never looks like it "disappeared".
-    const salesN=(STATE.sales||[]).length;
-    const body = lines.length
-      ? lines.join('')
-      : `<div class="cash-coll-row"><span>No cash collected yet</span><span>${salesN} sale${salesN===1?'':'s'} on record</span></div>`;
-    return `<div class="cash-sub">Cash collected in the system</div><div class="cash-coll">${body}</div>`;
-  }
+    const reset = hasManual ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset to collected">↺</button>` : '';
+    balRows += `<tr><th>${esc(a.name)} ${reset}</th>${cells}</tr>`;
+  });
 
-  // ---- movement log: defensively filtered so one bad row can't blank it ----
-  function logHTML(){
-    // Show every entry that carries an amount+currency. Tolerate rows missing an
-    // id or kind (older writes) so a movement is never silently hidden — the
-    // balances count them, so the log must too.
-    const rows = (STATE.cash||[])
-      .filter(c=>c && c.cur && (Number(c.amt)||0)!==0)
-      .slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
-    if(!rows.length) return `<div class="cash-empty">No movements yet. Cash collected at events shows above; record a move to shift it around.</div>`;
-    return rows.map(c=>{
-      const when = c.ts ? new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
-      const isMove = (c.kind ? c.kind==='MOVE' : !!c.fromAcct);   // infer kind if missing
-      const desc = isMove
-        ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
-        : `${esc(cashAcctName(c.toAcct))} · adjustment`;
-      const sign = (!isMove && c.amt<0) ? '−' : '';
-      return `<div class="cash-logrow">
+  // ---------- cash collected (plain loop, always shows) ----------
+  let collRows='';
+  accts.forEach(a=>{
+    if(a.id==='BANK') return;
+    const parts=[];
+    CASH_CURS.forEach(cur=>{ const v=cashCollected(a.id,cur); if(v>0) parts.push(cashFmt(v,cur)); });
+    if(parts.length) collRows += `<div class="cash-coll-row"><span>${esc(a.name)}</span><span>${parts.join(' · ')}</span></div>`;
+  });
+  if(!collRows) collRows = `<div class="cash-coll-row"><span>No cash collected yet</span><span>—</span></div>`;
+
+  // ---------- movement log (plain loop, shows EVERY entry) ----------
+  const sorted = entries.slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
+  let logRows='';
+  sorted.forEach(c=>{
+    let when=''; try{ when = c.ts ? new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){}
+    const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
+    const desc = isMove
+      ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
+      : `${esc(cashAcctName(c.toAcct))} · adjustment`;
+    const amt = Number(c.amt)||0;
+    const sign = (!isMove && amt<0) ? '−' : '';
+    const id = c.id || '';
+    logRows += `<div class="cash-logrow">
         <div class="cash-logtop">
           <span class="cash-logdesc">${desc}</span>
-          <span class="cash-logamt">${sign}${cashFmt(Math.abs(c.amt),c.cur)}</span>
+          <span class="cash-logamt">${sign}${cashFmt(Math.abs(amt),c.cur||'PLN')}</span>
         </div>
         <div class="cash-logbot">
           <span class="cash-logwhen">${esc(when)}${c.note?' · '+esc(c.note):''}</span>
           <span class="cash-logacts">
-            <button class="cash-mini" data-editentry="${esc(c.id)}" title="Edit">✎</button>
-            <button class="cash-mini danger" data-delentry="${esc(c.id)}" title="Delete">✕</button>
+            ${id?`<button class="cash-mini" data-editentry="${esc(id)}" title="Edit">✎</button>
+            <button class="cash-mini danger" data-delentry="${esc(id)}" title="Delete">✕</button>`:''}
           </span>
         </div>
       </div>`;
-    }).join('');
-  }
+  });
+  if(!logRows) logRows = `<div class="cash-empty">No movements yet. Use “Record move” or “Move ALL cash” above.</div>`;
 
   const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
-  // sensible defaults for the move form: from = current location, to = first other account
-  const defFrom = (CUR_LOC && cashAccounts().some(a=>a.id===CUR_LOC)) ? CUR_LOC : 'WAREHOUSE';
+  const defFrom = (CUR_LOC && accts.some(a=>a.id===CUR_LOC)) ? CUR_LOC : 'WAREHOUSE';
   const defTo = (accts.find(a=>a.id!==defFrom)||accts[0]).id;
 
   openModal(`
     ${mHead('Cash tracking')}
     <div class="m-body">
       <div class="hint">Balances start from the cash <b>collected</b> at each place, then follow your moves. <b>Tap any amount to set it.</b></div>
-      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${(STATE.cash||[]).length} recorded movement${(STATE.cash||[]).length===1?'':'s'}.</div>
-      ${balancesHTML()}
+      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}.</div>
+
+      <table class="cash-tbl">
+        <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
+        <tbody>${balRows}</tbody>
+      </table>
 
       <div class="cash-sub">Move cash</div>
       <div class="row2">
@@ -1973,10 +1967,11 @@ function cashModal(editEntryId){
       <button class="btn btn-primary" id="cmGo">Record move</button>
       <button class="btn btn-plum cash-moveall" id="cmGoAll">↦ Move ALL cash (every currency) From → To</button>
 
-      ${collectedHTML()}
+      <div class="cash-sub">Cash collected in the system</div>
+      <div class="cash-coll">${collRows}</div>
 
       <div class="cash-sub">Movement log</div>
-      <div class="cash-log">${logHTML()}</div>
+      <div class="cash-log">${logRows}</div>
 
       <button class="cash-resetall" id="cmResetAll">Reset tracker to collected values</button>
       <div class="err" id="modalErr"></div>
@@ -1984,9 +1979,9 @@ function cashModal(editEntryId){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
   `);
 
-  const err = msg => { $('#modalErr').textContent = msg||''; };
+  const err = m => { const e=$('#modalErr'); if(e) e.textContent=m||''; };
+  const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,9);
 
-  // Record a single-currency move.
   $('#cmGo').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
@@ -1994,26 +1989,24 @@ function cashModal(editEntryId){
     if(amt<=0){ err('Enter an amount greater than zero.'); return; }
     err('');
     commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
-      st=>{ (st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
+      st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
       'Cash moved');
     cashReopen();
   });
 
-  // Move EVERYTHING — every currency the source holds — in one action.
   $('#cmGoAll').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
     const moves=CASH_CURS.map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
     if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
-    err('');
     if(!confirm(`Move ALL cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
+    err('');
     commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note},
-      st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,note:note||'Moved all cash'})); },
+      st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,note:note||'Moved all cash'})); },
       'All cash moved');
     cashReopen();
   });
 
-  // delegated clicks: set a cell, reset an account, reset all, edit / delete an entry
   $('#modal').addEventListener('click',e=>{
     const setC=e.target.closest('[data-setacct]');
     if(setC){
@@ -2024,17 +2017,16 @@ function cashModal(editEntryId){
       if(target===now) return;
       const delta=Math.round((target-now)*100)/100;
       commit({action:'cashSet',toAcct:acct,cur,amt:target,note:'Set to '+target+' '+cur},
-        st=>{ (st.cash=st.cash||[]).push({id:'tmp_'+Math.random().toString(36).slice(2,9),ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:'Set to '+target+' '+cur}); },
+        st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:'Set to '+target+' '+cur}); },
         'Balance set');
       cashReopen(); return;
     }
     const rA=e.target.closest('[data-resetacct]');
     if(rA){
       const acct=rA.dataset.resetacct;
-      if(!confirm(`Reset ${cashAcctName(acct)} to what was collected? Drops the manual entries touching it.`)) return;
+      if(!confirm(`Reset ${cashAcctName(acct)} to what was collected?`)) return;
       commit({action:'cashResetAcct',acct},
-        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.fromAcct!==acct && c.toAcct!==acct); },
-        'Account reset');
+        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.fromAcct!==acct && c.toAcct!==acct); }, 'Account reset');
       cashReopen(); return;
     }
     const dE=e.target.closest('[data-delentry]');
@@ -2049,24 +2041,20 @@ function cashModal(editEntryId){
     if(eE){ cashEditEntry(eE.dataset.editentry); return; }
     const rAll=e.target.closest('#cmResetAll');
     if(rAll){
-      if(!(STATE.cash||[]).length){ err('Nothing to reset — no manual entries.'); return; }
-      if(!confirm('Reset the whole tracker to collected values? This removes every manual move and adjustment. Collections from sales are kept.')) return;
+      if(!entries.length){ err('Nothing to reset.'); return; }
+      if(!confirm('Reset the whole tracker to collected values? Removes every manual move and adjustment. Collections are kept.')) return;
       commit({action:'cashResetAll'}, st=>{ st.cash=[]; }, 'Tracker reset');
       cashReopen(); return;
     }
   });
-
-  // if we were asked to edit a specific entry, open its editor immediately
-  if(editEntryId) cashEditEntry(editEntryId);
 }
 
-// A small editor for one movement — all fields editable.
 function cashEditEntry(id){
   const c=(STATE.cash||[]).find(x=>x && x.id===id);
   if(!c){ cashModal(); return; }
   const accts=cashAccounts();
   const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
-  const isMove = c.kind==='MOVE';
+  const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
   openModal(`
     ${mHead('Edit movement')}
     <div class="m-body">
@@ -2080,7 +2068,7 @@ function cashEditEntry(id){
       </div>
       <div class="row2">
         <div class="field"><label>Currency</label><select id="ceCur">${curOptions(c.cur)}</select></div>
-        <div class="field"><label id="ceAmtLbl">Amount</label><input id="ceAmt" type="number" step="0.01" inputmode="decimal" value="${c.amt}"></div>
+        <div class="field"><label>Amount</label><input id="ceAmt" type="number" step="0.01" inputmode="decimal" value="${Number(c.amt)||0}"></div>
       </div>
       <div class="field"><label>Note (optional)</label><input id="ceNote" type="text" value="${esc(c.note||'')}"></div>
       <div class="err" id="modalErr"></div>
@@ -2090,23 +2078,20 @@ function cashEditEntry(id){
       <button class="btn btn-primary" id="ceSave">Save</button>
     </div>
   `);
-  let kind=c.kind;
+  let kind = isMove?'MOVE':'ADJUST';
   $('#ceKind').addEventListener('click',e=>{
     const b=e.target.closest('button[data-k]'); if(!b) return;
     kind=b.dataset.k;
     [...$('#ceKind').children].forEach(x=>x.classList.toggle('on',x===b));
-    $('#ceFromWrap').style.display = kind==='MOVE' ? 'block' : 'none';
-    $('#ceToLbl').textContent = kind==='MOVE' ? 'To' : 'Account';
-    $('#ceAmtLbl').textContent = kind==='MOVE' ? 'Amount' : 'Amount (− to remove)';
+    $('#ceFromWrap').style.display = kind==='MOVE'?'block':'none';
+    $('#ceToLbl').textContent = kind==='MOVE'?'To':'Account';
   });
   $('#ceSave').addEventListener('click',()=>{
     const from=$('#ceFrom').value, to=$('#ceTo').value, cur=$('#ceCur').value;
     const amt=Math.round((Number($('#ceAmt').value)||0)*100)/100;
     const note=$('#ceNote').value.trim();
-    if(kind==='MOVE'){
-      if(from===to){ $('#modalErr').textContent='Pick two different accounts.'; return; }
-      if(amt<=0){ $('#modalErr').textContent='Enter an amount greater than zero.'; return; }
-    } else if(!amt){ $('#modalErr').textContent='Enter an amount.'; return; }
+    if(kind==='MOVE'){ if(from===to){ $('#modalErr').textContent='Pick two different accounts.'; return; } if(amt<=0){ $('#modalErr').textContent='Enter an amount.'; return; } }
+    else if(!amt){ $('#modalErr').textContent='Enter an amount.'; return; }
     commit({action:'cashEdit',id,kind,fromAcct:kind==='MOVE'?from:'',toAcct:to,cur,amt,note},
       st=>{ const x=(st.cash||[]).find(e=>e && e.id===id); if(x){ x.kind=kind; x.fromAcct=kind==='MOVE'?from:''; x.toAcct=to; x.cur=cur; x.amt=amt; x.note=note; } },
       'Movement updated');
