@@ -1927,21 +1927,27 @@ function cashModal(){
   if(!collRows) collRows = `<div class="cash-coll-row"><span>No cash collected yet</span><span>—</span></div>`;
 
   // ---------- movement log (plain loop, shows EVERY entry) ----------
-  const sorted = entries.slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
+  let logBuildErr='';
+  // Bulletproof build: each row is wrapped so one bad entry can never blank the
+  // whole log, and a plain-text fallback guarantees the movement is always visible.
+  const sorted = entries.slice().sort((a,b)=>{ try{return (new Date(b.ts||0))-(new Date(a.ts||0));}catch(e){return 0;} });
   let logRows='';
   sorted.forEach(c=>{
-    let when=''; try{ when = c.ts ? new Date(c.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){}
-    const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
-    const desc = isMove
-      ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
-      : `${esc(cashAcctName(c.toAcct))} · adjustment`;
-    const amt = Number(c.amt)||0;
-    const sign = (!isMove && amt<0) ? '−' : '';
-    const id = c.id || '';
-    logRows += `<div class="cash-logrow">
+    try{
+      let when=''; try{ when = c.ts ? new Date(c.ts).toLocaleString() : ''; }catch(e){}
+      const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
+      const nmeFrom = (function(){ try{return cashAcctName(c.fromAcct);}catch(e){return String(c.fromAcct||'');} })();
+      const nmeTo   = (function(){ try{return cashAcctName(c.toAcct);}catch(e){return String(c.toAcct||'');} })();
+      const desc = isMove ? `${esc(nmeFrom)} → ${esc(nmeTo)}` : `${esc(nmeTo)} · adjustment`;
+      const amt = Number(c.amt)||0;
+      const cur = c.cur||'PLN';
+      let amtStr=''; try{ amtStr=cashFmt(Math.abs(amt),cur); }catch(e){ amtStr=Math.abs(amt)+' '+cur; }
+      const sign = (!isMove && amt<0) ? '−' : '';
+      const id = c.id || '';
+      logRows += `<div class="cash-logrow">
         <div class="cash-logtop">
           <span class="cash-logdesc">${desc}</span>
-          <span class="cash-logamt">${sign}${cashFmt(Math.abs(amt),c.cur||'PLN')}</span>
+          <span class="cash-logamt">${sign}${amtStr}</span>
         </div>
         <div class="cash-logbot">
           <span class="cash-logwhen">${esc(when)}${c.note?' · '+esc(c.note):''}</span>
@@ -1951,6 +1957,9 @@ function cashModal(){
           </span>
         </div>
       </div>`;
+    }catch(rowErr){
+      logRows += `<div class="cash-logrow"><div class="cash-logtop"><span class="cash-logdesc">${esc(String((c&&c.fromAcct)||''))} → ${esc(String((c&&c.toAcct)||''))}</span><span class="cash-logamt">${esc(String((c&&c.amt)||''))} ${esc(String((c&&c.cur)||''))}</span></div></div>`;
+    }
   });
   if(!logRows) logRows = `<div class="cash-empty">No movements yet. Use “Record move” or “Move ALL cash” above.</div>`;
 
@@ -1985,7 +1994,7 @@ function cashModal(){
       <div class="cash-sub">Cash collected in the system</div>
       <div class="cash-coll">${collRows}</div>
 
-      <div class="cash-sub">Movement log</div>
+      <div class="cash-sub">Movement log (${entries.length})</div>
       <div class="cash-log">${logRows}</div>
 
       <button class="cash-resetall" id="cmResetAll">Reset tracker to collected values</button>
