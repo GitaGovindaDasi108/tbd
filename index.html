@@ -669,32 +669,6 @@ async function pull(){
   OPS = OPS.filter(o=>o.rev===undefined || o.rev>REV);   // drop what the server now includes
   if(CUR_LOC!==WAREHOUSE && !(BASE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
   STATE = derive(); cacheSave(); renderAll();
-  try{ window.cashDOM = ()=>{
-    const log=document.querySelector('.cash-log');
-    const coll=document.querySelector('.cash-coll');
-    const out={
-      logExists: !!log, collExists: !!coll,
-      logChildCount: log?log.children.length:-1,
-      logHTML: log?log.innerHTML.slice(0,600):'(no .cash-log element)',
-      collHTML: coll?coll.innerHTML.slice(0,400):'(no .cash-coll element)'
-    };
-    console.log('=== CASH DOM ==='); console.log('log children:', out.logChildCount); console.log('LOG HTML:', out.logHTML); console.log('COLL HTML:', out.collHTML);
-    return out;
-  }; }catch(e){}
-  try{ window.cashDebug = ()=>{
-    const cash=(STATE.cash||[]);
-    const salesSample=(STATE.sales||[]).slice(0,3).map(s=>({location:s.location,type:s.type,p1type:s.p1type,p1cur:s.p1cur,p1amt:s.p1amt,pending:s.pending,paid:s.paid}));
-    const out={
-      cashCount:cash.length,
-      cashRaw:JSON.stringify(cash),
-      firstCashKeys: cash[0]?Object.keys(cash[0]):[],
-      accts:(typeof cashAccounts==='function'?cashAccounts():[]).map(a=>a.id+'='+a.name),
-      salesTotal:(STATE.sales||[]).length,
-      salesSample:JSON.stringify(salesSample),
-    };
-    console.log('=== CASH DEBUG ==='); console.log(out.cashRaw); console.log('accts:',out.accts); console.log('salesSample:',out.salesSample);
-    return out;
-  }; }catch(e){}
   setStatus(OPS.length?'load':'ok', OPS.length?('Saving '+OPS.length+'…'):('Up to date · '+clock()));
 }
 
@@ -1983,7 +1957,7 @@ function cashModal(){
     ${mHead('Cash tracking')}
     <div class="m-body">
       <div class="hint">Balances start from the cash <b>collected</b> at each place, then follow your moves. <b>Tap any amount to set it.</b></div>
-      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}. · v3</div>
+      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}.</div>
 
       <table class="cash-tbl">
         <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
@@ -2006,7 +1980,7 @@ function cashModal(){
       <div class="cash-sub">Cash collected in the system</div>
       <div class="cash-coll">${collRows}</div>
 
-      <div class="cash-sub">Movement log (${entries.length})</div>
+      <div class="cash-sub">Movement log</div>
       <div class="cash-log">${logRows}</div>
 
       <button class="cash-resetall" id="cmResetAll">Reset tracker to collected values</button>
