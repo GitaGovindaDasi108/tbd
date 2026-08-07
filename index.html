@@ -545,6 +545,19 @@ let syncTimer = null;
 /* ---------- helpers ---------- */
 const $ = s => document.querySelector(s);
 const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+// Convert between a Date/ISO string and the local-time value a <input type="datetime-local"> needs.
+function toLocalInput(ts){
+  const d = ts ? new Date(ts) : new Date();
+  if(isNaN(d)) return '';
+  const pad=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+function fromLocalInput(str){
+  if(!str) return null;
+  const d = new Date(str);   // datetime-local strings parse as local time
+  return isNaN(d) ? null : d.toISOString();
+}
+
 const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 
@@ -1261,6 +1274,8 @@ function saleModal(opts){
         </div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
+        <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -1369,19 +1384,20 @@ function saleModal(opts){
     if(payMode!=='full' && !name){$('#modalErr').textContent='Add a name so the outstanding payment can be traced.';return;}
     if(isPre && !name){$('#modalErr').textContent='Add a name so the pre-ordered copy can be matched to a person.';return;}
 
+    const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
-              legs:L,pending,dueamt,duecur,name,phone,comments},
+              legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal},
         st=>{ const s=findSale(st,edit.saleId); if(!s)return;
               Object.assign(s, legFields(L),
-                {pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments}); },
+                {pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments,ts:tsVal||s.ts}); },
         'Sale updated');
     }else{
       const id=tmpId();
       commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
-              pending,dueamt,duecur,name,phone,comments,override:true},
+              pending,dueamt,duecur,name,phone,comments,ts:tsVal,override:true},
         st=>{
-          st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,
+          st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,
             type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,
             pending,paid:!pending&&dueamt<=0,dueamt,duecur,
             delivered:!isPre,name,phone,comments}, legFields(L)));
@@ -1491,6 +1507,8 @@ function bundleModal(edit){
         </div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
+        <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.members[0].ts:new Date()))}"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -1675,10 +1693,13 @@ function bundleModal(edit){
       perItem[0].push({type:leg.type,cur:leg.cur,amt:Math.round((leg.amt-running)*100)/100});
     });
 
+    // Field is pre-filled with the original time on edit, so leaving it untouched
+    // preserves the transaction time; changing it re-dates the whole bundle.
+    const tsVal = fromLocalInput($('#csTs').value);
     const payload = edit
       ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true,
-         ts:(edit.members.reduce((min,m)=> (m.ts && (!min || new Date(m.ts)<new Date(min))) ? m.ts : min, null))}
-      : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true};
+         ts:tsVal}
+      : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal,override:true};
 
     commit(payload,
       st=>{
@@ -1691,7 +1712,7 @@ function bundleModal(edit){
           st.sales = st.sales.filter(x=>x.bundle!==edit.bundle);
         }
         items.forEach((it,i)=>{
-          st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:(edit?edit.members[0].ts:new Date().toISOString()),location:loc,
+          st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:(tsVal||new Date().toISOString()),location:loc,
             type:it.pre?'PREORDER':'SALE',bookId:it.bookId,qty:1,
             pending,paid:!pending&&(i>0||dueamt<=0),dueamt:i===0?dueamt:0,duecur:i===0?duecur:'',
             delivered:!it.pre,name,phone,comments:note,bundle:bundleId}, legFields(perItem[i])));
@@ -2136,6 +2157,8 @@ function donationModal(edit){
         <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789"></div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
+        <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -2170,16 +2193,17 @@ function donationModal(edit){
     }
     if(!L.some(l=>l.amt>0)){$('#modalErr').textContent='Enter a donation amount.';return;}
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
+    const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:'DONATION',location:edit.location,bookId:'',
-              legs:L,pending:false,dueamt:0,duecur:'',name,phone,comments},
+              legs:L,pending:false,dueamt:0,duecur:'',name,phone,comments,ts:tsVal},
         st=>{ const d=findSale(st,edit.saleId); if(!d)return;
-              Object.assign(d, legFields(L), {pending:false,paid:true,dueamt:0,duecur:'',name,phone,comments}); },
+              Object.assign(d, legFields(L), {pending:false,paid:true,dueamt:0,duecur:'',name,phone,comments,ts:tsVal||d.ts}); },
         'Donation updated');
     }else{
       const id=tmpId(), loc=CUR_LOC;
-      commit({action:'donate',location:loc,legs:L,name,phone,comments},
-        st=>{ st.sales.push(Object.assign({saleId:id,ts:new Date().toISOString(),location:loc,type:'DONATION',
+      commit({action:'donate',location:loc,legs:L,name,phone,comments,ts:tsVal},
+        st=>{ st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,type:'DONATION',
                 bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
         'Donation recorded');
     }
