@@ -112,6 +112,8 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
 .cash-logtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .cash-logdesc{font-weight:600;font-size:13px;color:var(--ink)}
 .cash-logamt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
+.cash-logamt.pos{color:#2E7D6B}
+.cash-logamt.neg{color:var(--clay)}
 .cash-logbot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
 .cash-logwhen{font-size:10.5px;color:var(--muted)}
 .cash-logacts{display:inline-flex;gap:2px;flex:none}
@@ -437,6 +439,7 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
     <button class="btn-refresh" data-act="org" title="Who to contact about what">👥 Org chart</button>
+    <button class="btn-refresh" data-act="transfers" title="Stock added and moved between locations">📦 Transfers</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1500,10 +1503,10 @@ function bundleModal(edit){
           </div>
         </div>
       </div>
-      <div id="nameBox" style="display:none">
+      <div id="nameBox" style="display:block">
         <div class="row2">
-          <div class="field"><label>Name</label><input id="cname" type="text"></div>
-          <div class="field"><label>Phone</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
+          <div class="field"><label id="nameLbl">Name (optional)</label><input id="cname" type="text"></div>
+          <div class="field"><label id="phoneLbl">Phone (optional)</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
         </div>
       </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
@@ -1579,8 +1582,12 @@ function bundleModal(edit){
       $('#preWarn').innerHTML = preorderWarning(lines,['sell it','sell them']);
     }
     // a pre-order (or any non-full payment) needs a name
+    // The name box is always visible now — just flag when it's genuinely
+    // needed (a pre-order or an unpaid balance) versus a nice-to-have.
     const needName = np>0 || payMode!=='full';
-    $('#nameBox').style.display = needName ? 'block' : 'none';
+    const nl=$('#nameLbl'), pl=$('#phoneLbl');
+    if(nl) nl.textContent = needName ? 'Name' : 'Name (optional)';
+    if(pl) pl.textContent = needName ? 'Phone' : 'Phone (optional)';
     $('#saveBundle').textContent =
       (loc===WAREHOUSE && buyIds().some((id,i,arr)=>preorderShortfall(id, invQty(WAREHOUSE,id)-arr.filter(x=>x===id).length)))
         ? 'Record anyway' : 'Record';
@@ -1730,6 +1737,66 @@ function bundleModal(edit){
    Grouped by category; each person has a name and an optional WhatsApp number.
    Any number of people per category, and categories can be added at any time.
    Everything is editable. */
+/* ============================ STOCK MOVEMENTS ============================
+   Where physical books came from and went: new stock arriving at (or being
+   corrected at) a location, and transfers between the warehouse and events.
+   Mirrors the cash ledger's shape and look. */
+function stockLocName(id){ return cashAcctName(id); }   // same lookup, different name for clarity here
+
+function transfersModal(){
+  const locs = [{id:'ALL',name:'All locations'}, {id:WAREHOUSE,name:stockLocName(WAREHOUSE)}];
+  (STATE.events||[]).forEach(e=>locs.push({id:e.eventId,name:e.name}));
+  let filterLoc = 'ALL';
+
+  function rowsHTML(){
+    let moves = (STATE.stockMoves||[]).filter(m=>m && m.bookId && (Number(m.qty)||0)!==0);
+    if(filterLoc!=='ALL') moves = moves.filter(m=>m.fromLoc===filterLoc || m.toLoc===filterLoc);
+    moves = moves.slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
+    if(!moves.length) return `<div class="cash-empty">No stock movements yet.</div>`;
+    return moves.map(m=>{
+      const book = esc(bookById(m.bookId).name);
+      let when=''; try{ when = m.ts ? new Date(m.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){}
+      let desc, amtStr, cls;
+      if(m.kind==='TRANSFER'){
+        desc = `${esc(stockLocName(m.fromLoc))} → ${esc(stockLocName(m.toLoc))}`;
+        amtStr = m.qty+'×'; cls='';
+      } else {
+        const added = m.qty>0;
+        desc = `${esc(stockLocName(m.toLoc))} · ${added?'stock added':'stock removed'}`;
+        amtStr = (added?'+':'')+m.qty; cls = added?'pos':'neg';
+      }
+      return `<div class="cash-logrow">
+        <div class="cash-logtop">
+          <span class="cash-logdesc">${book} — ${desc}</span>
+          <span class="cash-logamt ${cls}">${amtStr}</span>
+        </div>
+        <div class="cash-logbot">
+          <span class="cash-logwhen">${esc(when)}${m.note?' · '+esc(m.note):''}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  const locOpts = () => locs.map(l=>`<option value="${esc(l.id)}" ${filterLoc===l.id?'selected':''}>${esc(l.name)}</option>`).join('');
+
+  openModal(`
+    ${mHead('Stock movements')}
+    <div class="m-body">
+      <div class="hint">Every time stock is added to a location, or moved between the warehouse and an event, it shows here.</div>
+      <div class="field"><label>Show</label><select id="smFilter">${locOpts()}</select></div>
+      <div class="cash-log">${rowsHTML()}</div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
+  `);
+
+  $('#smFilter').addEventListener('change',()=>{
+    filterLoc = $('#smFilter').value;
+    const led = $('#modal').querySelector('.cash-log');
+    if(led) led.innerHTML = rowsHTML();
+  });
+}
+
+
 function orgModal(){
   const rows = (STATE.org||[]).slice().sort((a,b)=> (a.sort-b.sort) || 0);
   // group into ordered categories
@@ -2571,6 +2638,7 @@ document.addEventListener('click',e=>{
   if(a==='donation'){ donationModal(); return; }
   if(a==='cash'){ cashModal(); return; }
   if(a==='org'){ orgModal(); return; }
+  if(a==='transfers'){ transfersModal(); return; }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
