@@ -788,6 +788,7 @@ function renderContextActions(){
   if(CUR_LOC===WAREHOUSE){
     h+=`<button class="btn btn-plum" data-act="stock">Adjust stock</button>`;
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
+    h+=`<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Another warehouse</button>`;
   }else{
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
     h+=`<button class="btn btn-ghost" data-act="transfer" data-mode="return">Return to warehouse</button>`;
@@ -1760,6 +1761,11 @@ function transfersModal(){
       if(m.kind==='TRANSFER'){
         desc = `${esc(stockLocName(m.fromLoc))} → ${esc(stockLocName(m.toLoc))}`;
         amtStr = m.qty+'×'; cls='';
+      } else if(m.kind==='EXTERNAL'){
+        // fromLoc/toLoc for these hold either WAREHOUSE or the other warehouse's
+        // free-text name — stockLocName resolves both correctly either way.
+        desc = `${esc(stockLocName(m.fromLoc))} ↔ ${esc(stockLocName(m.toLoc))} (other warehouse)`;
+        amtStr = m.qty+'×'; cls='';
       } else {
         const added = m.qty>0;
         desc = `${esc(stockLocName(m.toLoc))} · ${added?'stock added':'stock removed'}`;
@@ -2526,6 +2532,101 @@ function stockModal(){
 }
 
 /* ---- Transfer ---- */
+/* ---- Sending or receiving stock from a warehouse outside this system ----
+   Simple for now: no shared inventory with the other warehouse, just a
+   labelled record of what left or arrived here. */
+function externalTransferModal(){
+  let dir = 'out';   // 'out' = leaving this warehouse, 'in' = arriving here
+
+  const body = bulkRows(b=>({
+    left:`<span data-avail="${b.id}">${invQty(WAREHOUSE,b.id)}</span>`,
+    input:`<input type="number" min="0" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
+    right:'0'
+  }));
+
+  openModal(`
+    ${mHead('Transfer with another warehouse')}
+    <div class="m-body">
+      <div class="hint">For sending stock to (or receiving it from) a warehouse that isn't part of this tracker yet. It only adjusts ${esc(STATE.warehouseName||'this warehouse')}'s own count — the other side isn't tracked here.</div>
+      <div class="seg" id="extDir">
+        <button type="button" data-d="out" class="on">Sending out →</button>
+        <button type="button" data-d="in">← Receiving in</button>
+      </div>
+      <div class="field"><label>Other warehouse</label><input id="extLabel" type="text" placeholder="e.g. Kraków Warehouse"></div>
+      <div class="hint" id="extHint">Fill in every title you are sending, then send the whole load at once.</div>
+      <div class="bulk-head"><span>Title</span><span>On hand</span><span id="extColLbl">Send</span><span>Left</span></div>
+      ${body}
+      <div class="bulk-foot"><span>Books in this load</span><b id="footValue">0</b></div>
+      <div id="preWarn"></div>
+      <div class="field"><label>Note (optional)</label><input id="extNote" type="text" placeholder="e.g. courier name, reason"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="saveExternal">Send</button>
+    </div>`, true);
+
+  $('#extDir').addEventListener('click',e=>{
+    const b=e.target.closest('button[data-d]'); if(!b) return;
+    dir=b.dataset.d;
+    [...$('#extDir').children].forEach(x=>x.classList.toggle('on',x===b));
+    $('#extColLbl').textContent = dir==='out' ? 'Send' : 'Receive';
+    $('#extHint').textContent = dir==='out'
+      ? 'Fill in every title you are sending, then send the whole load at once.'
+      : 'Fill in every title arriving, then record the whole load at once.';
+    $('#saveExternal').textContent = dir==='out' ? 'Send' : 'Receive';
+    recalc();
+  });
+
+  const inputs=[...document.querySelectorAll('#modal input[data-book]')];
+  function recalc(){
+    let load=0, over=false;
+    inputs.forEach(i=>{
+      const id=i.dataset.book, avail=invQty(WAREHOUSE,id);
+      const q=Math.max(0,Math.round(Number(i.value)||0));
+      load+=q;
+      const cell=document.querySelector(`#modal [data-next="${id}"]`);
+      if(dir==='out'){
+        const left=avail-q; if(left<0) over=true;
+        cell.textContent=left; cell.classList.toggle('zero', left<=0);
+      }else{
+        cell.textContent=avail+q; cell.classList.remove('zero');
+      }
+    });
+    $('#footValue').textContent=load;
+    $('#modalErr').textContent = over ? 'One or more titles exceed what is in stock.' : '';
+
+    let lines=[];
+    if(dir==='out'){
+      lines = inputs.map(i=>{
+        const q=Math.max(0,Math.round(Number(i.value)||0));
+        return q ? shortfallLine(i.dataset.book, invQty(WAREHOUSE,i.dataset.book)-q) : '';
+      }).filter(Boolean);
+    }
+    $('#preWarn').innerHTML = preorderWarning(lines,['send it','send them']);
+    if(dir==='out') $('#saveExternal').textContent = lines.length ? 'Send anyway' : 'Send';
+  }
+  inputs.forEach(i=>i.addEventListener('input',recalc));
+  recalc();
+
+  $('#saveExternal').addEventListener('click',()=>{
+    const label=$('#extLabel').value.trim();
+    if(!label){ $('#modalErr').textContent="Enter the other warehouse's name."; return; }
+    const items=inputs.filter(i=>Number(i.value)>0)
+      .map(i=>({bookId:i.dataset.book,qty:Math.round(Number(i.value))}));
+    if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
+    if(dir==='out'){
+      const bad=items.find(it=>it.qty>invQty(WAREHOUSE,it.bookId));
+      if(bad){ $('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(WAREHOUSE)+'.'; return; }
+    }
+    const note=$('#extNote').value.trim();
+    commit({action:'transferExternal',direction:dir,label,items,note,override:true},
+      st=>items.forEach(it=>invAdd(st,WAREHOUSE,it.bookId,dir==='out'?-it.qty:it.qty)),
+      dir==='out' ? 'Stock sent' : 'Stock received');
+  });
+}
+
+
 function transferModal(mode){
   const events=STATE.events||[];
   if(mode==='toevent' && !events.length){ toast('Create an event first.',true); return; }
@@ -2641,6 +2742,7 @@ document.addEventListener('click',e=>{
   if(a==='transfers'){ transfersModal(); return; }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
+  if(a==='externaltransfer'){ externalTransferModal(); return; }
   if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
   if(a==='preorder'){ saleModal({bookId:t.dataset.book,isPreorder:true,loc:CUR_LOC}); return; }
   if(a==='multi'){ bundleModal(); return; }
