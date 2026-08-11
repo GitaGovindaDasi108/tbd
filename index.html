@@ -81,6 +81,47 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
   padding:7px 14px;border-radius:999px;font-weight:600;font-size:14px;white-space:nowrap}
 .loc-tab.active{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .loc-tab.master{border-style:dashed}
+
+/* ---- Level cues -------------------------------------------------------
+   Three tiers, each with its own accent + a soft page wash. The wash marks the
+   LEVEL you're on, not which region or event — so every event feels like an
+   event, wherever you are in the tour. */
+body{transition:background-color .25s ease}
+body.lvl-season{background:#F2EEF8}
+body.lvl-region{background:#FDF5E8}
+body.lvl-event {background:#EDF6F1}
+
+body.lvl-season{--lvl:#5B3A78; --lvl-soft:#EFE7F7; --lvl-line:#C9B6DD}
+body.lvl-region{--lvl:#9A5B12; --lvl-soft:#FBEEDA; --lvl-line:#E7C99A}
+body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
+
+/* the level badge above the tabs */
+.lvl-bar{display:flex;align-items:center;gap:8px;margin:2px 0 8px;flex-wrap:wrap}
+.lvl-chip{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--lvl);background:var(--lvl-soft);border:1px solid var(--lvl-line);
+  padding:3px 9px;border-radius:999px}
+.crumb{font-size:12.5px;color:var(--muted);font-weight:600}
+.crumb b{color:var(--lvl)}
+.crumb .sep{opacity:.5;margin:0 5px}
+
+/* tab rows, one per tier */
+.tab-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
+.tab-row .row-lbl{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
+  color:var(--muted);min-width:56px}
+.tab-season{border-color:#C9B6DD;color:#5B3A78;background:#F7F2FB}
+.tab-season.active{background:#5B3A78;color:#F6EFFC;border-color:#5B3A78}
+.tab-region{border-color:#E7C99A;color:#9A5B12;background:#FEF7EC}
+.tab-region.active{background:#C4661A;color:#FFF6E9;border-color:#C4661A}
+.tab-event{border-color:#AFD5C7;color:#1F6B5A;background:#F1F8F5}
+.tab-event.active{background:#2E7D6B;color:#EAF7F2;border-color:#2E7D6B}
+/* region price grid */
+.rp-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
+.rp-row:last-child{border-bottom:none}
+.rp-name{flex:1 1 40%;font-size:13px;font-weight:600;color:var(--ink);min-width:0}
+.rp-name.aotm{color:var(--gold)}
+.rp-cells{display:flex;gap:5px;flex:1 1 55%;flex-wrap:wrap;justify-content:flex-end}
+.rp{width:82px;border:1px solid var(--line-d);border-radius:7px;padding:6px 7px;font-size:12.5px}
+.muted-note{font-weight:400;color:var(--muted);font-size:11px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:none;border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
 .btn:active{transform:translateY(1px)}
@@ -545,7 +586,10 @@ let BASE = null;      // last confirmed server state
 let REV  = -1;        // server revision that BASE corresponds to
 let OPS  = [];        // optimistic changes awaiting confirmation
 let STATE = null;     // BASE + OPS, what the screen shows
-let CUR_LOC = WAREHOUSE;
+const SEASON = 'SEASON';
+let CUR_LEVEL  = 'region';   // 'season' | 'region' | 'event'
+let CUR_REGION = '';         // regionId when at region or event level
+let CUR_LOC    = WAREHOUSE;  // SEASON, a region's warehouse loc, or an event id
 let inflight = 0;
 let syncTimer = null;
 
@@ -607,9 +651,81 @@ function amountLabel(s){
                  : `${l.type} ${fmt(l.amt)} ${CUR_SYM[l.cur]||l.cur}`).join(' + ');
 }
 
+/* ---- Hierarchy helpers ----
+   A "warehouse" is no longer one place: every region has one. These resolve a
+   location back to its region so the rest of the app can stay level-agnostic. */
+function regionsList(){ return STATE.regions||[]; }
+function regionById(id){ return regionsList().find(r=>r.regionId===id)||null; }
+function isWarehouseLoc(loc){ return regionsList().some(r=>r.whLoc===loc); }
+function regionOfLoc(loc){
+  if(loc===SEASON) return '';
+  const byWh = regionsList().find(r=>r.whLoc===loc);
+  if(byWh) return byWh.regionId;
+  const ev = (STATE.events||[]).find(e=>e.eventId===loc);
+  return ev ? (ev.regionId||'') : '';
+}
+function currentRegion(){ return regionById(CUR_REGION); }
+/** Events belonging to one region, in order. */
+function eventsOfRegion(regionId){
+  return (STATE.events||[]).filter(e=>(e.regionId||'')===regionId);
+}
+/** Every location inside a region: its warehouse plus its events. */
+function locsInRegion(regionId){
+  const r=regionById(regionId); const out=[];
+  if(r&&r.whLoc) out.push(r.whLoc);
+  eventsOfRegion(regionId).forEach(e=>out.push(e.eventId));
+  return out;
+}
+/** The org chart / settings scope for the page we're on. */
+/** Human name for the page whose chart/settings we're editing. */
+function scopeLabel(){
+  if(CUR_LEVEL==='season') return STATE.seasonName||'Season';
+  if(CUR_LEVEL==='region'){ const r=currentRegion(); return r?r.name:'Region'; }
+  return locName(CUR_LOC);
+}
+function currentScope(){
+  if(CUR_LEVEL==='season') return SEASON;
+  if(CUR_LEVEL==='region') return CUR_REGION;
+  return CUR_LOC;                 // event id
+}
+/** Currencies in play for the current page. */
+function curCurrencies(){
+  if(CUR_LEVEL==='season') return STATE.currencies||['USD'];
+  const r=regionById(CUR_REGION);
+  return (r&&r.currencies&&r.currencies.length)?r.currencies:(STATE.currencies||['USD']);
+}
+/** Price of a book in the current region, in a given currency. */
+function priceIn(bookId,cur){
+  const pr=(STATE.prices||{})[CUR_REGION];
+  if(pr&&pr[bookId]&&pr[bookId][cur]!==undefined) return Number(pr[bookId][cur])||0;
+  return 0;
+}
+/** Move the whole app to a level. Keeps CUR_REGION consistent with CUR_LOC. */
+function goTo(level, loc){
+  CUR_LEVEL=level;
+  if(level==='season'){ CUR_LOC=SEASON; CUR_REGION=''; }
+  else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:WAREHOUSE; }
+  else { CUR_LOC=loc; CUR_REGION=regionOfLoc(loc); }
+  applyLevelTheme();
+  renderAll();
+}
+/** Soft background + accent cue for the level you're on (not the individual item). */
+function applyLevelTheme(){
+  const b=document.body;
+  if(b&&b.classList){
+    b.classList.remove('lvl-season','lvl-region','lvl-event');
+    b.classList.add('lvl-'+CUR_LEVEL);
+  }
+}
+
 function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — Warehouse';
   const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
-function scopedSales(){const s=STATE.sales||[];return CUR_LOC===WAREHOUSE?s:s.filter(x=>x.location===CUR_LOC);}
+function scopedSales(){
+  const s=STATE.sales||[];
+  if(CUR_LEVEL==='season') return s;                       // whole tour
+  if(CUR_LEVEL==='region'){ const inR=locsInRegion(CUR_REGION); return s.filter(x=>inR.includes(x.location)); }
+  return s.filter(x=>x.location===CUR_LOC);                // one event
+}
 function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location===loc&&i.bookId===bookId);return rec?rec.qty:0;}
 /* Every unsold physical copy anywhere in the region: the warehouse plus every
    event table. What "unsold in region" on the warehouse card counts. */
@@ -687,7 +803,19 @@ async function pull(){
   const d = await post({action:'getState'});
   BASE = d.state; REV = d.rev;
   OPS = OPS.filter(o=>o.rev===undefined || o.rev>REV);   // drop what the server now includes
-  if(CUR_LOC!==WAREHOUSE && !(BASE.events||[]).some(e=>e.eventId===CUR_LOC)) CUR_LOC=WAREHOUSE;
+  // Keep the current position valid: fall back sensibly if a region or event
+  // vanished, and settle into the first region on a cold start.
+  (function(){
+    const regs=BASE.regions||[];
+    if(CUR_LEVEL==='season'){ CUR_LOC=SEASON; CUR_REGION=''; return; }
+    let reg = regs.find(r=>r.regionId===CUR_REGION) || regs[0];
+    if(!reg){ CUR_LEVEL='season'; CUR_LOC=SEASON; CUR_REGION=''; return; }
+    CUR_REGION = reg.regionId;
+    const stillThere = (CUR_LOC===reg.whLoc) ||
+      (BASE.events||[]).some(e=>e.eventId===CUR_LOC && (e.regionId||'')===reg.regionId);
+    if(!stillThere){ CUR_LEVEL='region'; CUR_LOC=reg.whLoc; }
+  })();
+  applyLevelTheme();
   STATE = derive(); cacheSave(); renderAll();
   setStatus(OPS.length?'load':'ok', OPS.length?('Saving '+OPS.length+'…'):('Up to date · '+clock()));
 }
@@ -778,18 +906,49 @@ function renderAll(){
 }
 
 function renderTabs(){
-  let h=`<button class="loc-tab master ${CUR_LOC===WAREHOUSE?'active':''}" data-act="loc" data-loc="${WAREHOUSE}">🏠 ${esc(STATE.warehouseName||'Warehouse')} (All)</button>`;
-  (STATE.events||[]).forEach(e=>{
-    h+=`<button class="loc-tab ${CUR_LOC===e.eventId?'active':''}" data-act="loc" data-loc="${esc(e.eventId)}">${esc(e.name)}</button>`;
+  const regions = regionsList();
+  const reg = currentRegion();
+
+  // Where am I? — level badge + breadcrumb
+  const lvlWord = CUR_LEVEL==='season'?'Season':CUR_LEVEL==='region'?'Region':'Event';
+  let crumb = `<b>${esc(STATE.seasonName||'Season')}</b>`;
+  if(reg) crumb += `<span class="sep">›</span><b>${esc(reg.name)}</b>`;
+  if(CUR_LEVEL==='event') crumb += `<span class="sep">›</span><b>${esc(locName(CUR_LOC))}</b>`;
+  let h = `<div class="lvl-bar"><span class="lvl-chip">${lvlWord}</span>
+             <span class="crumb">${crumb}</span></div>`;
+
+  // Tier 1 — the whole tour
+  h += `<div class="tab-row"><span class="row-lbl">Season</span>
+    <button class="loc-tab tab-season ${CUR_LEVEL==='season'?'active':''}"
+      data-act="goseason">🌍 ${esc(STATE.seasonName||'Season')}</button></div>`;
+
+  // Tier 2 — every region
+  h += `<div class="tab-row"><span class="row-lbl">Regions</span>`;
+  regions.forEach(r=>{
+    const on = (CUR_REGION===r.regionId && CUR_LEVEL!=='season');
+    h += `<button class="loc-tab tab-region ${on?'active':''}" data-act="goregion"
+            data-region="${esc(r.regionId)}">${esc(r.name)}</button>`;
   });
-  h+=`<button class="loc-tab" data-act="newevent" style="border-style:dashed;color:var(--saffron-d)">＋ New event</button>`;
+  h += `<button class="loc-tab tab-region" data-act="newregion" style="border-style:dashed">＋ New region</button></div>`;
+
+  // Tier 3 — the current region's warehouse + its events (hidden at season level)
+  if(CUR_LEVEL!=='season' && reg){
+    h += `<div class="tab-row"><span class="row-lbl">${esc(reg.name)}</span>`;
+    h += `<button class="loc-tab tab-event ${CUR_LOC===reg.whLoc?'active':''}" data-act="loc"
+            data-loc="${esc(reg.whLoc)}">🏠 Warehouse (All)</button>`;
+    eventsOfRegion(reg.regionId).forEach(e=>{
+      h += `<button class="loc-tab tab-event ${CUR_LOC===e.eventId?'active':''}" data-act="loc"
+              data-loc="${esc(e.eventId)}">${esc(e.name)}</button>`;
+    });
+    h += `<button class="loc-tab tab-event" data-act="newevent" style="border-style:dashed">＋ New event</button></div>`;
+  }
   $('#locTabs').innerHTML=h;
 }
 
 function renderContextActions(){
   let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
   h+=`<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
-  if(CUR_LOC===WAREHOUSE){
+  if(isWarehouseLoc(CUR_LOC)){
     h+=`<button class="btn btn-plum" data-act="stock">Adjust stock</button>`;
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
     h+=`<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Another warehouse</button>`;
@@ -844,14 +1003,14 @@ function renderTotals(){
 }
 
 function renderInventory(){
-  $('#invHeading').firstChild.textContent = (CUR_LOC===WAREHOUSE?'Warehouse Inventory ':'Event Inventory ');
-  $('#invHint').textContent = CUR_LOC===WAREHOUSE?'(what is in the warehouse right now)':'(stock available at this event)';
+  $('#invHeading').firstChild.textContent = (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
+  $('#invHint').textContent = isWarehouseLoc(CUR_LOC)?'(what is in the warehouse right now)':'(stock available at this event)';
   const s=scopedSales();
   let h='';
   (STATE.books||[]).forEach(b=>{
     const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
-    const region = CUR_LOC===WAREHOUSE ? regionUnsold(b.id) : q;
+    const region = isWarehouseLoc(CUR_LOC) ? regionUnsold(b.id) : q;
     // A copy that is physically here can always be sold — the pre-order hold is
     // a warning, not a lock.
     const sellable=q>0;
@@ -1007,7 +1166,7 @@ function logItemHTML(x, opts){
   const ctx = opts.context || 'log';
   const bits=[];
   if(ctx==='pre'){
-    if(CUR_LOC===WAREHOUSE && x.location!==WAREHOUSE) bits.push(esc(locName(x.location)));
+    if(isWarehouseLoc(CUR_LOC) && x.location!==CUR_LOC) bits.push(esc(locName(x.location)));
   }else if(ctx==='log'){
     if(when) bits.push(esc(when));
   }
@@ -1808,7 +1967,11 @@ function transfersModal(){
 
 
 function orgModal(){
-  const rows = (STATE.org||[]).slice().sort((a,b)=> (a.sort-b.sort) || 0);
+  // Each page keeps its own chart — an event's contacts differ from its region's,
+  // and the season has its own again.
+  const scope = currentScope();
+  const rows = (STATE.org||[]).filter(r=>String(r.scope||'')===scope)
+                 .slice().sort((a,b)=> (a.sort-b.sort) || 0);
   // group into ordered categories
   const cats=[]; const byCat={};
   rows.forEach(r=>{ if(!byCat[r.category]){ byCat[r.category]=[]; cats.push(r.category); } byCat[r.category].push(r); });
@@ -1827,7 +1990,7 @@ function orgModal(){
   }
 
   openModal(`
-    ${mHead('Organization chart')}
+    ${mHead('Organization chart — '+scopeLabel())}
     <div class="m-body">
       <div class="hint">Who to contact about what in book distribution. Tap a number to message on WhatsApp.</div>
       <div id="orgView">${viewHTML()}</div>
@@ -1842,7 +2005,8 @@ function orgModal(){
 
 function orgEditModal(){
   // Work on a mutable copy: list of {category, name, phone}.
-  let work = (STATE.org||[]).slice().sort((a,b)=>a.sort-b.sort)
+  const scope = currentScope();
+  let work = (STATE.org||[]).filter(r=>String(r.scope||'')===scope).slice().sort((a,b)=>a.sort-b.sort)
     .map(r=>({category:r.category, name:r.name, phone:r.phone}));
   // build the ordered category list
   function categories(){ const seen=[]; work.forEach(r=>{ if(seen.indexOf(r.category)<0) seen.push(r.category); }); return seen; }
@@ -1894,7 +2058,7 @@ function orgEditModal(){
   }
 
   openModal(`
-    ${mHead('Edit organization chart')}
+    ${mHead('Edit chart — '+scopeLabel())}
     <div class="m-body">
       <div class="hint">Add people or categories, edit names and WhatsApp numbers. Empty people are dropped when you save.</div>
       <div id="oeList"></div>
@@ -1911,8 +2075,9 @@ function orgEditModal(){
     const rows = work
       .map((r,i)=>({id:'tmpO_'+i, category:(r.category||'').trim(), sort:i, name:(r.name||'').trim(), phone:(r.phone||'').trim()}))
       .filter(r=>r.category && (r.name||r.phone));
-    commit({action:'orgSave',rows},
-      st=>{ st.org = rows.map((r,i)=>({id:r.id,category:r.category,sort:i,name:r.name,phone:r.phone})); },
+    commit({action:'orgSave',scope,rows},
+      st=>{ const others=(st.org||[]).filter(r=>String(r.scope||'')!==scope);
+            st.org = others.concat(rows.map((r,i)=>({id:r.id,scope,category:r.category,sort:i,name:r.name,phone:r.phone}))); },
       'Org chart saved');
     orgModal();
   });
@@ -2378,6 +2543,94 @@ function deleteEventModal(){
 }
 
 /* ---- Event ---- */
+/* ---- Create / edit a region ----
+   A region owns its currencies and its own price list, because the tour crosses
+   money borders: Poland sells in PLN, Macedonia in MKD, London in GBP. USD is
+   always kept as the common currency everything is reported back in. */
+function regionModal(edit){
+  const isEdit = !!edit;
+  const cur = isEdit ? (edit.currencies||['USD']).join(', ') : 'EUR, USD';
+  const priceOf = (bookId,c)=>{
+    if(!isEdit) return '';
+    const pr=(STATE.prices||{})[edit.regionId];
+    return (pr&&pr[bookId]&&pr[bookId][c]!==undefined)?pr[bookId][c]:'';
+  };
+
+  function priceRows(curList){
+    return (STATE.books||[]).map(b=>{
+      const cells=curList.map(c=>
+        `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
+           step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
+      ).join('');
+      return `<div class="rp-row"><div class="rp-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+                <div class="rp-cells">${cells}</div></div>`;
+    }).join('');
+  }
+
+  openModal(`
+    ${mHead(isEdit?'Edit region':'New region')}
+    <div class="m-body">
+      <div class="hint">A region has its own warehouse, its own currencies and its own prices.</div>
+      <div class="field"><label>Region name</label>
+        <input id="rgName" type="text" placeholder="e.g. Macedonia" value="${esc(isEdit?edit.name:'')}"></div>
+      <div class="field"><label>Currencies <span class="muted-note">(comma separated — USD is always included)</span></label>
+        <input id="rgCur" type="text" placeholder="MKD, EUR, USD" value="${esc(cur)}"></div>
+      <div class="cash-sub">Prices</div>
+      <div class="hint" id="rgPriceHint">Set what each book sells for in this region.</div>
+      <div id="rgPrices">${priceRows(parseCurs(cur))}</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="rgSave">${isEdit?'Save changes':'Create region'}</button>
+    </div>`, true);
+
+  // Re-draw the price grid whenever the currency list changes, keeping anything typed.
+  $('#rgCur').addEventListener('change',()=>{
+    const typed={};
+    [...document.querySelectorAll('#modal .rp')].forEach(i=>{
+      if(i.value!=='') typed[i.dataset.book+'|'+i.dataset.cur]=i.value;
+    });
+    const list=parseCurs($('#rgCur').value);
+    $('#rgPrices').innerHTML=priceRows(list);
+    [...document.querySelectorAll('#modal .rp')].forEach(i=>{
+      const k=i.dataset.book+'|'+i.dataset.cur;
+      if(typed[k]!==undefined) i.value=typed[k];
+    });
+  });
+
+  $('#rgSave').addEventListener('click',()=>{
+    const name=$('#rgName').value.trim();
+    if(!name){ $('#modalErr').textContent='Give the region a name.'; return; }
+    const curList=parseCurs($('#rgCur').value);
+    const prices={};
+    [...document.querySelectorAll('#modal .rp')].forEach(i=>{
+      const v=Number(i.value);
+      if(i.value==='' || isNaN(v)) return;
+      (prices[i.dataset.book]=prices[i.dataset.book]||{})[i.dataset.cur]=v;
+    });
+    $('#modalErr').textContent='';
+    if(isEdit){
+      commit({action:'editRegion',regionId:edit.regionId,name,currencies:curList.join(','),prices},
+        st=>{ const r=(st.regions||[]).find(x=>x.regionId===edit.regionId);
+              if(r){ r.name=name; r.currencies=curList; } },
+        'Region updated');
+    }else{
+      // The server assigns the real ids, so we just refresh once it lands.
+      commit({action:'createRegion',name,currencies:curList.join(','),prices},
+        st=>st, 'Region created');
+      setTimeout(pull,400);
+    }
+  });
+}
+function parseCurs(raw){
+  const list=String(raw||'').split(',').map(c=>c.trim().toUpperCase())
+    .filter(c=>/^[A-Z]{3}$/.test(c));
+  if(!list.includes('USD')) list.push('USD');
+  return [...new Set(list)];
+}
+
+
 function eventModal(edit){
   openModal(`
     ${mHead(edit?'Rename event':'New event')}
@@ -2395,7 +2648,7 @@ function eventModal(edit){
     const name=$('#evname').value.trim();
     if(!name){$('#modalErr').textContent='Enter a name.';return;}
     if(edit) commitSync({action:'renameEvent',eventId:edit,name},'Event renamed');
-    else commitSync({action:'createEvent',name},'Event created');
+    else commitSync({action:'createEvent',name,regionId:CUR_REGION},'Event created');
   });
 }
 
@@ -2734,7 +2987,7 @@ document.addEventListener('click',e=>{
     t.classList.toggle('open');
     return;
   }
-  if(a==='loc'){ CUR_LOC=t.dataset.loc; renderAll(); return; }
+  if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
   if(a==='syncsheet'){ syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
@@ -2744,6 +2997,9 @@ document.addEventListener('click',e=>{
   if(a==='cash'){ cashModal(); return; }
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
+  if(a==='goseason'){ goTo('season'); return; }
+  if(a==='goregion'){ goTo('region', t.dataset.region); return; }
+  if(a==='newregion'){ regionModal(); return; }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='externaltransfer'){ externalTransferModal(); return; }
