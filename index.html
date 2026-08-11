@@ -114,6 +114,36 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .tab-region.active{background:#C4661A;color:#FFF6E9;border-color:#C4661A}
 .tab-event{border-color:#AFD5C7;color:#1F6B5A;background:#F1F8F5}
 .tab-event.active{background:#2E7D6B;color:#EAF7F2;border-color:#2E7D6B}
+/* season rollups */
+.tw{display:inline-block;width:12px;color:var(--muted);font-size:11px}
+.wo-row{padding:9px 0;border-bottom:1px solid var(--line)}
+.wo-row:last-child{border-bottom:none}
+.wo-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.wo-book{font-weight:700;font-size:14px;color:var(--ink)}
+.wo-book.aotm{color:var(--gold)}
+.wo-total{font-weight:800;font-size:13px;color:var(--lvl,var(--plum));white-space:nowrap}
+.wo-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
+  padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
+.wo-chip:hover{border-color:var(--saffron);background:#FDF3E4}
+.wo-chip b{color:var(--saffron-d)}
+.sbr-region{border-bottom:1px solid var(--line)}
+.sbr-region:last-child{border-bottom:none}
+.sbr-head,.pt-head{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;
+  background:transparent;border:none;padding:10px 0;cursor:pointer;flex-wrap:wrap}
+.sbr-name,.pt-name{font-weight:700;font-size:14px;color:var(--ink);min-width:110px}
+.sbr-sum,.pt-sum{font-size:12.5px;color:var(--ink);flex:1}
+.sbr-detail,.pt-detail{padding:2px 0 10px 20px}
+.sbr-book{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12.5px}
+.sbr-book .aotm{color:var(--gold)}
+.sbr-hdr{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);
+  border-bottom:1px solid var(--line);padding-bottom:4px;margin-bottom:3px}
+.sbr-nums{font-weight:700;white-space:nowrap}
+.pt-block{border-bottom:1px solid var(--line)}
+.pt-block:last-child{border-bottom:none}
+.pt-row{display:flex;justify-content:space-between;gap:10px;padding:4px 0;font-size:12.5px}
+.pt-row span:first-child{color:var(--ink);font-weight:600}
+.muted{color:var(--muted);font-weight:400}
 /* region price grid */
 .rp-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
 .rp-row:last-child{border-bottom:none}
@@ -506,7 +536,24 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 
   <div class="totals" id="totals"></div>
 
-  <div class="cols">
+  <!-- Season-only: where the books are, and what each region has sold -->
+  <div id="seasonPanels" style="display:none">
+    <section class="panel">
+      <h2>Warehouse Overview <span class="hint">(where every title sits across the tour)</span></h2>
+      <div class="body"><div id="whOverview"></div></div>
+    </section>
+    <section class="panel">
+      <h2>Sales by Region <span class="hint">(tap a region for the per-title breakdown)</span></h2>
+      <div class="body"><div id="salesByRegion"></div></div>
+    </section>
+  </div>
+
+  <section class="panel" id="payPanel" style="display:none">
+    <h2>Totals by Payment Type <span class="hint" id="payHint"></span></h2>
+    <div class="body"><div id="payTotals"></div></div>
+  </section>
+
+  <div class="cols" id="regionCols">
     <section class="panel">
       <h2 id="invHeading">Inventory <span class="hint" id="invHint"></span></h2>
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
@@ -570,7 +617,11 @@ const DSRC_WAREHOUSE = 'Regional warehouse';
 const DSRC_OUTSIDE   = 'Outside the region';
 const fromOutside = s => s.dsource===DSRC_OUTSIDE || s.dsource==='Other warehouse';
 const CUR_LABEL = { PLN:'PLN', EUR:'Euros', USD:'USD' };
-const CUR_SYM   = { PLN:'zł',  EUR:'€',     USD:'$'   };
+/* Symbols for the currencies the tour meets. Anything not listed falls back to
+   its ISO code, so a new country works before anyone teaches the app about it. */
+const CUR_SYM   = { PLN:'zł',  EUR:'€', USD:'$', GBP:'£', MKD:'ден', INR:'₹',
+                    CHF:'Fr', CZK:'Kč', SEK:'kr', RSD:'дин', HUF:'Ft' };
+const CUR_PRE   = { USD:1, GBP:1, INR:1 };   // symbol goes before the number
 
 /* ------------------------------------------------------------
    HOW THIS STAYS FAST
@@ -716,6 +767,19 @@ function applyLevelTheme(){
     b.classList.remove('lvl-season','lvl-region','lvl-event');
     b.classList.add('lvl-'+CUR_LEVEL);
   }
+}
+
+/* Where a sale happened, qualified by region when you're looking across the
+   whole tour — "Macedonia — Skopje" rather than a bare event name that could
+   exist in three countries. */
+function locNameFull(loc){
+  const base = locName(loc);
+  if(CUR_LEVEL!=='season') return base;
+  const rid = regionOfLoc(loc);
+  const r = rid ? regionById(rid) : null;
+  if(!r) return base;
+  if(r.whLoc===loc) return r.name+' — Warehouse';
+  return r.name+' — '+base;
 }
 
 function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — Warehouse';
@@ -902,7 +966,24 @@ function renderAll(){
   $('#whTitle').textContent = STATE.warehouseName ? (': '+STATE.warehouseName) : '';
   document.title = 'Book Sales — '+(STATE.warehouseName||'');
   renderTabs(); renderContextActions(); renderTotals();
-  renderInventory(); renderTitleList(); renderPayments(); renderLog(); renderBottom();
+
+  const season = CUR_LEVEL==='season';
+  // The season is a portal: region rollups instead of a shelf and a sales log.
+  $('#seasonPanels').style.display = season?'block':'none';
+  $('#regionCols').style.display   = season?'none':'';
+  $('#payPanel').style.display     = 'block';
+  $('#payHint').textContent = season
+    ? '(tap a type to see it region by region)'
+    : '(tap a type to see it event by event)';
+
+  if(season){
+    $('#whOverview').innerHTML   = renderWarehouseOverview();
+    $('#salesByRegion').innerHTML= renderSalesByRegion();
+  }else{
+    renderInventory(); renderTitleList(); renderLog();
+  }
+  $('#payTotals').innerHTML = renderPaymentTotals();
+  renderPayments(); renderBottom();
 }
 
 function renderTabs(){
@@ -946,16 +1027,24 @@ function renderTabs(){
 }
 
 function renderContextActions(){
+  // The season is a viewing portal: money and books are handled in the region
+  // that actually holds them, so only the read-only cash view belongs here.
+  if(CUR_LEVEL==='season'){
+    $('#ctxActions').innerHTML = `<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
+    return;
+  }
   let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
   h+=`<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
   if(isWarehouseLoc(CUR_LOC)){
-    h+=`<button class="btn btn-plum" data-act="stock">Adjust stock</button>`;
+    h+=`<button class="btn btn-plum" data-act="stock">＋ Add / subtract stock</button>`;
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
     h+=`<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Another warehouse</button>`;
+    h+=`<button class="btn btn-ghost btn-sm" data-act="editregion">Edit region</button>`;
+    h+=`<button class="btn btn-danger btn-sm" data-act="deleteregion">Delete region</button>`;
   }else{
     h+=`<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
     h+=`<button class="btn btn-ghost" data-act="transfer" data-mode="return">Return to warehouse</button>`;
-    h+=`<button class="btn btn-ghost btn-sm" data-act="stock">Adjust stock</button>`;
+    h+=`<button class="btn btn-ghost btn-sm" data-act="stock">＋ Add / subtract stock</button>`;
     h+=`<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
     h+=`<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
   }
@@ -970,6 +1059,123 @@ function rateNote(){
   if(r.live) return `Live rates · $1 = ${pln} zł / ${eur} €${r.asOf?' · '+esc(r.asOf):''}`;
   return `Rates $1 = ${pln} zł / ${eur} €`;
 }
+/* ============================ SEASON VIEWS ============================
+   The season page answers "how is the whole tour doing?" — where the books
+   are, what each region has sold, and what has been collected in which
+   currency. Everything here aggregates across regions; per-event detail stays
+   at the region level where it belongs. */
+
+/** Stock of one book in a region (its warehouse plus all of its events). */
+function regionStockOf(regionId, bookId){
+  return locsInRegion(regionId).reduce((t,l)=>t+invQty(l,bookId),0);
+}
+
+/* ---- FE11: Warehouse Overview — where every title sits across the tour ---- */
+function renderWarehouseOverview(){
+  const regions = regionsList();
+  const rows = (STATE.books||[]).map(b=>{
+    const per = regions.map(r=>({r, n:regionStockOf(r.regionId,b.id)})).filter(x=>x.n>0);
+    const total = per.reduce((t,x)=>t+x.n,0);
+    if(!total && !per.length) return `<div class="wo-row"><div class="wo-head">
+        <span class="wo-book ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
+        <span class="wo-total muted">none</span></div></div>`;
+    const chips = per.map(x=>
+      `<button class="wo-chip" data-act="goregion" data-region="${esc(x.r.regionId)}">
+         <b>${x.n}</b> ${esc(x.r.name)}</button>`).join('');
+    return `<div class="wo-row">
+      <div class="wo-head">
+        <span class="wo-book ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
+        <span class="wo-total">${total} total</span>
+      </div>
+      <div class="wo-chips">${chips}</div>
+    </div>`;
+  }).join('');
+  return rows || `<div class="cash-empty">No stock recorded yet.</div>`;
+}
+
+/* ---- FE12: Sales by Region, expandable to per-title ---- */
+function renderSalesByRegion(){
+  const regions = regionsList();
+  if(!regions.length) return `<div class="cash-empty">No regions yet.</div>`;
+  return regions.map(r=>{
+    const locs = locsInRegion(r.regionId);
+    const sales = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
+    const count=(cat,type)=>sales.filter(x=>catOf(x.bookId)===cat && x.type===type).length;
+    const bs=count('big','SALE'), bp=count('big','PREORDER');
+    const as=count('aotm','SALE'), ap=count('aotm','PREORDER');
+
+    const perBook = (STATE.books||[]).map(b=>{
+      const sold=sales.filter(x=>x.bookId===b.id && x.type==='SALE').length;
+      const pre =sales.filter(x=>x.bookId===b.id && x.type==='PREORDER').length;
+      if(!sold && !pre) return '';
+      return `<div class="sbr-book"><span class="${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
+                <span class="sbr-nums">${sold} / ${pre}</span></div>`;
+    }).filter(Boolean).join('') || `<div class="sbr-book muted">No sales yet.</div>`;
+
+    return `<div class="sbr-region">
+      <button class="sbr-head" data-act="toggle" data-target="sbr-${esc(r.regionId)}">
+        <span class="tw">▸</span>
+        <span class="sbr-name">${esc(r.name)}</span>
+        <span class="sbr-sum">${bs+bp} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered)</span>
+          · ${as+ap} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered)</span></span>
+      </button>
+      <div class="sbr-detail" id="sbr-${esc(r.regionId)}" style="display:none">
+        <div class="sbr-book sbr-hdr"><span>Title</span><span class="sbr-nums">sold / pre-ordered</span></div>
+        ${perBook}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ---- FE13: Totals by payment type ----
+   Season groups by region; a region groups by its events + warehouse. Currencies
+   are whatever actually appear in the data, so a new one needs no code change. */
+function renderPaymentTotals(){
+  const sales = scopedSales();
+  const groups = (CUR_LEVEL==='season')
+    ? regionsList().map(r=>({id:r.regionId, name:r.name, locs:locsInRegion(r.regionId)}))
+    : (()=>{ const r=currentRegion(); if(!r) return [];
+        return [{id:r.whLoc,name:'Warehouse',locs:[r.whLoc]}]
+          .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name,locs:[e.eventId]}))); })();
+
+  // type -> currency -> amount, plus the same split per group
+  const byType={}, byTypeGroup={};
+  sales.forEach(x=>{
+    if(!received(x)) return;
+    legs(x).forEach(l=>{
+      if(!l.amt || !l.type) return;
+      (byType[l.type]=byType[l.type]||{})[l.cur]=(byType[l.type][l.cur]||0)+l.amt;
+      const g=groups.find(g=>g.locs.includes(x.location));
+      if(!g) return;
+      const gt=(byTypeGroup[l.type]=byTypeGroup[l.type]||{});
+      (gt[g.id]=gt[g.id]||{})[l.cur]=(gt[g.id][l.cur]||0)+l.amt;
+    });
+  });
+
+  const types=Object.keys(byType).sort();
+  if(!types.length) return `<div class="cash-empty">Nothing collected yet.</div>`;
+  const money=o=>Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ');
+
+  return types.map(t=>{
+    const usd=Object.keys(byType[t]).reduce((sum,c)=>sum+toUSD(byType[t][c],c),0);
+    const detail=groups.map(g=>{
+      const row=(byTypeGroup[t]||{})[g.id];
+      if(!row) return '';
+      return `<div class="pt-row"><span>${esc(g.name)}</span><span>${money(row)}</span></div>`;
+    }).filter(Boolean).join('') || `<div class="pt-row muted"><span>No breakdown</span><span></span></div>`;
+    const id='pt-'+t.replace(/\W+/g,'');
+    return `<div class="pt-block">
+      <button class="pt-head" data-act="toggle" data-target="${id}">
+        <span class="tw">▸</span>
+        <span class="pt-name">${esc(t)}</span>
+        <span class="pt-sum">${money(byType[t])} <span class="muted">≈ $${fmt(usd)}</span></span>
+      </button>
+      <div class="pt-detail" id="${id}" style="display:none">${detail}</div>
+    </div>`;
+  }).join('');
+}
+
+
 function renderTotals(){
   const s=scopedSales();
   const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat).length;
@@ -977,19 +1183,18 @@ function renderTotals(){
   const aotmSold=n('SALE','aotm'), aotmPre=n('PREORDER','aotm');
 
   let totUsd=0, pendUsd=0;
-  const got={PLN:0,EUR:0,USD:0}, due={PLN:0,EUR:0,USD:0};
+  const got={}, due={};
   s.forEach(x=>{
     // A part-paid sale has money in both columns at once.
     if(received(x)){
       totUsd+=legsUSD(x);
-      legs(x).forEach(l=>{ if(got[l.cur]!==undefined) got[l.cur]+=l.amt; });
+      legs(x).forEach(l=>{ if(l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
     }
     pendUsd+=dueUSD(x);
-    dueParts(x).forEach(d=>{ if(due[d.cur]!==undefined) due[d.cur]+=d.amt; });
+    dueParts(x).forEach(d=>{ if(d.amt) due[d.cur]=(due[d.cur]||0)+d.amt; });
   });
-  const money=o=>[
-    o.PLN?`<b>${fmt(o.PLN)}</b> zł`:'', o.EUR?`<b>${fmt(o.EUR)}</b> €`:'', o.USD?`$<b>${fmt(o.USD)}</b>`:''
-  ].filter(Boolean).join(' · ');
+  const money=o=>Object.keys(o).filter(c=>o[c])
+    .sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
   $('#totals').innerHTML=`
     <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre}</div>
@@ -1166,7 +1371,7 @@ function logItemHTML(x, opts){
   const ctx = opts.context || 'log';
   const bits=[];
   if(ctx==='pre'){
-    if(isWarehouseLoc(CUR_LOC) && x.location!==CUR_LOC) bits.push(esc(locName(x.location)));
+    if((CUR_LEVEL==='season') || (isWarehouseLoc(CUR_LOC) && x.location!==CUR_LOC)) bits.push(esc(locNameFull(x.location)));
   }else if(ctx==='log'){
     if(when) bits.push(esc(when));
   }
@@ -1908,13 +2113,40 @@ function bundleModal(edit){
 function stockLocName(id){ return cashAcctName(id); }   // same lookup, different name for clarity here
 
 function transfersModal(){
-  const locs = [{id:'ALL',name:'All locations'}, {id:WAREHOUSE,name:stockLocName(WAREHOUSE)}];
-  (STATE.events||[]).forEach(e=>locs.push({id:e.eventId,name:e.name}));
+  // What you can filter by depends on where you're standing: the season lists every
+  // region with its events indented beneath it, a region lists just its own places,
+  // and a single event needs no filter at all.
+  const locs = [{id:'ALL',name:'All locations'}];
+  if(CUR_LEVEL==='season'){
+    regionsList().forEach(r=>{
+      locs.push({id:'RG:'+r.regionId, name:r.name});
+      locs.push({id:r.whLoc, name:'\u00A0\u00A0\u00A0Warehouse'});
+      eventsOfRegion(r.regionId).forEach(e=>locs.push({id:e.eventId, name:'\u00A0\u00A0\u00A0'+e.name}));
+    });
+  }else if(CUR_LEVEL==='region'){
+    const r=currentRegion();
+    if(r){
+      locs.push({id:r.whLoc, name:'Warehouse'});
+      eventsOfRegion(r.regionId).forEach(e=>locs.push({id:e.eventId, name:e.name}));
+    }
+  }
   let filterLoc = 'ALL';
 
   function rowsHTML(){
     let moves = (STATE.stockMoves||[]).filter(m=>m && m.bookId && (Number(m.qty)||0)!==0);
-    if(filterLoc!=='ALL') moves = moves.filter(m=>m.fromLoc===filterLoc || m.toLoc===filterLoc);
+    // Only ever show movements belonging to the level you're on.
+    if(CUR_LEVEL==='region'){
+      const mine=locsInRegion(CUR_REGION);
+      moves = moves.filter(m=>mine.includes(m.fromLoc) || mine.includes(m.toLoc));
+    }else if(CUR_LEVEL==='event'){
+      moves = moves.filter(m=>m.fromLoc===CUR_LOC || m.toLoc===CUR_LOC);
+    }
+    if(filterLoc.startsWith('RG:')){
+      const inR=locsInRegion(filterLoc.slice(3));
+      moves = moves.filter(m=>inR.includes(m.fromLoc) || inR.includes(m.toLoc));
+    }else if(filterLoc!=='ALL'){
+      moves = moves.filter(m=>m.fromLoc===filterLoc || m.toLoc===filterLoc);
+    }
     moves = moves.slice().sort((a,b)=>(new Date(b.ts||0))-(new Date(a.ts||0)));
     if(!moves.length) return `<div class="cash-empty">No stock movements yet.</div>`;
     return moves.map(m=>{
@@ -1923,12 +2155,12 @@ function transfersModal(){
       let desc, amtStr, cls;
       if(m.kind==='TRANSFER'){
         desc = `${esc(stockLocName(m.fromLoc))} → ${esc(stockLocName(m.toLoc))}`;
-        amtStr = m.qty+'×'; cls='';
+        amtStr = String(m.qty); cls='';
       } else if(m.kind==='EXTERNAL'){
         // fromLoc/toLoc for these hold either WAREHOUSE or the other warehouse's
         // free-text name — stockLocName resolves both correctly either way.
         desc = `${esc(stockLocName(m.fromLoc))} ↔ ${esc(stockLocName(m.toLoc))} (other warehouse)`;
-        amtStr = m.qty+'×'; cls='';
+        amtStr = String(m.qty); cls='';
       } else {
         const added = m.qty>0;
         desc = `${esc(stockLocName(m.toLoc))} · ${added?'stock added':'stock removed'}`;
@@ -1952,13 +2184,16 @@ function transfersModal(){
     ${mHead('Stock movements')}
     <div class="m-body">
       <div class="hint">Every time stock is added to a location, or moved between the warehouse and an event, it shows here.</div>
-      <div class="field"><label>Show</label><select id="smFilter">${locOpts()}</select></div>
+      ${CUR_LEVEL==='event'
+        ? `<div class="field"><label>Show</label><div class="hint">N/A — this list is already just ${esc(locName(CUR_LOC))}.</div></div>`
+        : `<div class="field"><label>Show</label><select id="smFilter">${locOpts()}</select></div>`}
       <div class="cash-log">${rowsHTML()}</div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
   `);
 
-  $('#smFilter').addEventListener('change',()=>{
+  const smf=$('#smFilter');
+  if(smf) smf.addEventListener('change',()=>{
     filterLoc = $('#smFilter').value;
     const led = $('#modal').querySelector('.cash-log');
     if(led) led.innerHTML = rowsHTML();
@@ -2089,12 +2324,41 @@ function orgEditModal(){
    bank. Every entry is a signed movement; a balance is just their fold, mirrored
    from the server so the view updates the instant you record something. */
 const CASH_CURS = ['PLN','EUR','USD'];
+/* Which cash accounts are in play depends on the level. A region sees its own
+   warehouse and events; the bank is universal, so it always appears. */
 function cashAccounts(){
-  const list=[{id:'WAREHOUSE',name:(STATE.warehouseName||'Warehouse')}];
-  (STATE.events||[]).forEach(e=>list.push({id:e.eventId,name:e.name}));
+  const reg = currentRegion();
+  const list = [];
+  if(reg){
+    list.push({id:reg.whLoc, name:reg.name+' — Warehouse'});
+    eventsOfRegion(reg.regionId).forEach(e=>list.push({id:e.eventId,name:e.name}));
+  }else{
+    // Season: fall back to region warehouses so the totals still resolve.
+    regionsList().forEach(r=>list.push({id:r.whLoc,name:r.name}));
+  }
   list.push({id:'BANK',name:'Bank'});
   return list;
 }
+/** Season view: what each region holds and what it has sent to the bank. */
+function cashByRegion(){
+  return regionsList().map(r=>{
+    const locs=locsInRegion(r.regionId);
+    const held={}, toBank={};
+    curAllCurrencies().forEach(c=>{
+      let h=0; locs.forEach(l=>{ h+=cashBalance(l,c); });
+      if(h) held[c]=h;
+      let b=0;
+      (STATE.cash||[]).forEach(x=>{
+        if(!x||x.cur!==c||x.kind!=='MOVE') return;
+        if(x.toAcct==='BANK' && locs.includes(x.fromAcct)) b+=Number(x.amt)||0;
+        if(x.fromAcct==='BANK' && locs.includes(x.toAcct)) b-=Number(x.amt)||0;
+      });
+      if(b) toBank[c]=b;
+    });
+    return {region:r, held, toBank};
+  });
+}
+function curAllCurrencies(){ return STATE.currencies||['USD']; }
 function cashAcctName(id){
   if(id==='WAREHOUSE') return (STATE.warehouseName||'Warehouse');
   if(id==='BANK') return 'Bank';
@@ -2124,11 +2388,15 @@ function cashBalance(acct,cur){
   });
   return Math.round(b*100)/100;
 }
+/* Money for any currency the tour picks up. Known symbols get their glyph;
+   anything else falls back to the ISO code, so MKD/GBP/INR all read sensibly
+   without needing the app to be taught about them first. */
 function cashFmt(n,cur){
-  const v=Math.round(n*100)/100;
-  const sym = cur==='PLN'?' zł':cur==='EUR'?' €':'';
-  const pre = cur==='USD'?'$':'';
-  return pre+(Number.isInteger(v)?v:v.toFixed(2))+sym;
+  cur = String(cur||'').toUpperCase();
+  const v = Math.round((Number(n)||0)*100)/100;
+  const num = Number.isInteger(v)?String(v):v.toFixed(2);
+  const sym = CUR_SYM[cur] || cur;             // unknown currency: show its code
+  return CUR_PRE[cur] ? sym+num : num+' '+sym;
 }
 
 /* ============================ CASH TRACKING ============================
@@ -2148,7 +2416,42 @@ function cashFmt(n,cur){
 
 function cashReopen(){ setTimeout(()=>{ try{ cashModal(); }catch(e){} },0); }
 
+function seasonCashModal(){
+  const rows = cashByRegion();
+  const money=o=>Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ') || '—';
+  const totHeld={}, totBank={};
+  rows.forEach(r=>{
+    Object.keys(r.held).forEach(c=>totHeld[c]=(totHeld[c]||0)+r.held[c]);
+    Object.keys(r.toBank).forEach(c=>totBank[c]=(totBank[c]||0)+r.toBank[c]);
+  });
+  const bank={};
+  curAllCurrencies().forEach(c=>{ const v=cashBalance('BANK',c); if(v) bank[c]=v; });
+
+  const body = rows.map(r=>`
+    <tr><th>${esc(r.region.name)}</th>
+        <td>${money(r.held)}</td>
+        <td>${money(r.toBank)}</td></tr>`).join('');
+
+  openModal(`
+    ${mHead('Cash across the tour')}
+    <div class="m-body">
+      <div class="hint">Cash is held and moved inside each region; the bank is shared by the whole
+        tour. This is a read-only picture — to move money, go to the region that holds it.</div>
+      <table class="cash-tbl">
+        <thead><tr><th></th><th>Held in region</th><th>Sent to bank</th></tr></thead>
+        <tbody>${body || '<tr><td colspan="3">No regions yet.</td></tr>'}</tbody>
+        <tfoot><tr><th>All regions</th><td>${money(totHeld)}</td><td>${money(totBank)}</td></tr></tfoot>
+      </table>
+      <div class="cash-sub">Bank balance</div>
+      <div class="cash-coll"><div class="cash-coll-row"><span>Bank (universal)</span><span>${money(bank)}</span></div></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+}
+
 function cashModal(){
+  // At season level the bank is universal and the money physically lives in the
+  // regions, so this is a read-only picture rather than somewhere to move cash.
+  if(CUR_LEVEL==='season'){ seasonCashModal(); return; }
   const accts = cashAccounts();               // [{id,name}]  warehouse, events, bank
   const entries = (STATE.cash||[]).filter(c=>c && typeof c==='object');
 
@@ -2547,6 +2850,59 @@ function deleteEventModal(){
    A region owns its currencies and its own price list, because the tour crosses
    money borders: Poland sells in PLN, Macedonia in MKD, London in GBP. USD is
    always kept as the common currency everything is reported back in. */
+/* ---- Delete a region ----
+   Deliberately effortful: the name must be typed back, and any physical books
+   still on the shelves can be sent to another region rather than vanishing. */
+function deleteRegionModal(){
+  const reg = currentRegion();
+  if(!reg){ return; }
+  if(regionsList().length<=1){
+    openModal(`${mHead('Delete '+esc(reg.name))}
+      <div class="m-body"><div class="warn">This is the only region — the tour needs at least one.
+      Create another region first if you want to replace it.</div></div>
+      <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+    return;
+  }
+  const c = reg.counts || {events:0,sales:0,books:0};
+  const others = regionsList().filter(r=>r.regionId!==reg.regionId);
+
+  openModal(`
+    ${mHead('Delete '+esc(reg.name))}
+    <div class="m-body">
+      <div class="warn">This permanently removes <b>${esc(reg.name)}</b>, its warehouse,
+        its ${c.events} event${c.events===1?'':'s'} and all ${c.sales} sales record${c.sales===1?'':'s'},
+        along with its cash entries, transfers, prices and org chart. It cannot be undone.</div>
+      <div class="field"><label>The ${c.books} book${c.books===1?'':'s'} still on its shelves</label>
+        <select id="drMove">
+          ${others.map(r=>`<option value="${esc(r.regionId)}">Move to ${esc(r.name)}</option>`).join('')}
+          <option value="">Write them off — they are gone</option>
+        </select></div>
+      <div class="hint">Books are physical, so moving them keeps the count honest. Writing them off
+        is for a region that was only ever a test.</div>
+      <div class="field"><label>Type <b>${esc(reg.name)}</b> to confirm</label>
+        <input id="drName" type="text" placeholder="${esc(reg.name)}" autocomplete="off"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="drGo">Delete region</button>
+    </div>`);
+
+  $('#drGo').addEventListener('click',()=>{
+    const typed=$('#drName').value.trim();
+    if(typed.toLowerCase()!==reg.name.trim().toLowerCase()){
+      $('#modalErr').textContent='Type the region name exactly to confirm.'; return;
+    }
+    $('#modalErr').textContent='';
+    // Step away first, so we are not standing on the page we are deleting.
+    const fallback = regionsList().find(r=>r.regionId!==reg.regionId);
+    commitSync({action:'deleteRegion',regionId:reg.regionId,confirmName:typed,
+                moveStockTo:$('#drMove').value},'Region deleted');
+    if(fallback) goTo('region', fallback.regionId); else goTo('season');
+  });
+}
+
+
 function regionModal(edit){
   const isEdit = !!edit;
   const cur = isEdit ? (edit.currencies||['USD']).join(', ') : 'EUR, USD';
@@ -2679,7 +3035,7 @@ function stockModal(){
   // the flat number you just counted on the shelf. Whichever you fill wins.
   const body = bulkRows(b=>({
     left: invQty(loc,b.id),
-    input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${b.id}" title="Flip to a removal">±</button>`
+    input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${b.id}" title="Adding — tap to subtract instead">＋</button>`
          +`<input class="d-delta" type="number" step="1" data-book="${b.id}" placeholder="add / remove" inputmode="numeric"></span>`
          +`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" placeholder="= count" inputmode="numeric">`,
     right: invQty(loc,b.id)
@@ -2751,14 +3107,19 @@ function stockModal(){
       const v=Number(inp.value)||0;
       if(v!==0){ inp.value=String(-v); }
       else { inp.dataset.neg = inp.dataset.neg==='1'?'':'1'; }  // arm the sign for the next digits
-      btn.classList.toggle('on', (Number(inp.value)||0)<0 || inp.dataset.neg==='1');
+      const minus = (Number(inp.value)||0)<0 || inp.dataset.neg==='1';
+      btn.classList.toggle('on', minus);
+      btn.textContent = minus ? '\u2212' : '\uFF0B';
+      btn.title = minus ? 'Subtracting — tap to add instead' : 'Adding — tap to subtract instead';
       recalc();
     });
   });
   // If a sign was armed on an empty field, apply it as the user types.
   deltas.forEach(inp=>inp.addEventListener('input',()=>{
-    if(inp.dataset.neg==='1' && Number(inp.value)>0){ inp.value=String(-Number(inp.value)); inp.dataset.neg=''; 
-      const b=document.querySelector(`#modal .sign-btn[data-sign="${inp.dataset.book}"]`); if(b) b.classList.remove('on'); recalc(); }
+    if(inp.dataset.neg==='1' && Number(inp.value)>0){ inp.value=String(-Number(inp.value)); inp.dataset.neg='';
+      const b=document.querySelector(`#modal .sign-btn[data-sign="${inp.dataset.book}"]`);
+      if(b){ b.classList.add('on'); b.textContent='\u2212'; }   // stays a red minus: it IS a removal
+      recalc(); }
   }));
   recalc();
 
@@ -2796,7 +3157,7 @@ function externalTransferModal(){
   let dir = 'out';   // 'out' = leaving this warehouse, 'in' = arriving here
 
   const body = bulkRows(b=>({
-    left:`<span data-avail="${b.id}">${invQty(WAREHOUSE,b.id)}</span>`,
+    left:`<span data-avail="${b.id}">${invQty((currentRegion()||{}).whLoc||WAREHOUSE,b.id)}</span>`,
     input:`<input type="number" min="0" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
     right:'0'
   }));
@@ -2804,24 +3165,42 @@ function externalTransferModal(){
   openModal(`
     ${mHead('Transfer with another warehouse')}
     <div class="m-body">
-      <div class="hint">For sending stock to (or receiving it from) a warehouse that isn't part of this tracker yet. It only adjusts ${esc(STATE.warehouseName||'this warehouse')}'s own count — the other side isn't tracked here.</div>
+      <div class="hint" id="extNote"></div>
       <div class="seg" id="extDir">
         <button type="button" data-d="out" class="on">Sending out →</button>
         <button type="button" data-d="in">← Receiving in</button>
       </div>
-      <div class="field"><label>Other warehouse</label><input id="extLabel" type="text" placeholder="e.g. Kraków Warehouse"></div>
+      <div class="field"><label>Which warehouse</label>
+        <select id="extRegion">
+          ${regionsList().filter(r=>r.regionId!==CUR_REGION)
+            .map(r=>`<option value="${esc(r.regionId)}">${esc(r.name)}</option>`).join('')}
+          <option value="">Other — outside this tour</option>
+        </select></div>
+      <div class="field" id="extLabelWrap" style="display:none"><label>Name it</label>
+        <input id="extLabel" type="text" placeholder="e.g. Kraków Warehouse"></div>
       <div class="hint" id="extHint">Fill in every title you are sending, then send the whole load at once.</div>
       <div class="bulk-head"><span>Title</span><span>On hand</span><span id="extColLbl">Send</span><span>Left</span></div>
       ${body}
       <div class="bulk-foot"><span>Books in this load</span><b id="footValue">0</b></div>
       <div id="preWarn"></div>
-      <div class="field"><label>Note (optional)</label><input id="extNote" type="text" placeholder="e.g. courier name, reason"></div>
+      <div class="field"><label>Note (optional)</label><input id="extNoteInput" type="text" placeholder="e.g. courier name, reason"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="saveExternal">Send</button>
     </div>`, true);
+
+  function extSync(){
+    const rid=$('#extRegion').value;
+    $('#extLabelWrap').style.display = rid ? 'none' : 'block';
+    const other = rid ? (regionById(rid)||{}).name : 'a warehouse outside this tour';
+    $('#extNote').innerHTML = rid
+      ? `Books move for real: they leave ${esc(currentRegion()?currentRegion().name:'here')} and arrive at <b>${esc(other)}</b>.`
+      : `Only ${esc(currentRegion()?currentRegion().name:'this region')}'s count changes — the books leave the tour, but the movement is still recorded.`;
+  }
+  $('#extRegion').addEventListener('change',extSync);
+  extSync();
 
   $('#extDir').addEventListener('click',e=>{
     const b=e.target.closest('button[data-d]'); if(!b) return;
@@ -2839,7 +3218,7 @@ function externalTransferModal(){
   function recalc(){
     let load=0, over=false;
     inputs.forEach(i=>{
-      const id=i.dataset.book, avail=invQty(WAREHOUSE,id);
+      const id=i.dataset.book, avail=invQty((currentRegion()||{}).whLoc||WAREHOUSE,id);
       const q=Math.max(0,Math.round(Number(i.value)||0));
       load+=q;
       const cell=document.querySelector(`#modal [data-next="${id}"]`);
@@ -2857,7 +3236,7 @@ function externalTransferModal(){
     if(dir==='out'){
       lines = inputs.map(i=>{
         const q=Math.max(0,Math.round(Number(i.value)||0));
-        return q ? shortfallLine(i.dataset.book, invQty(WAREHOUSE,i.dataset.book)-q) : '';
+        return q ? shortfallLine(i.dataset.book, invQty((currentRegion()||{}).whLoc||WAREHOUSE,i.dataset.book)-q) : '';
       }).filter(Boolean);
     }
     $('#preWarn').innerHTML = preorderWarning(lines,['send it','send them']);
@@ -2867,18 +3246,24 @@ function externalTransferModal(){
   recalc();
 
   $('#saveExternal').addEventListener('click',()=>{
-    const label=$('#extLabel').value.trim();
-    if(!label){ $('#modalErr').textContent="Enter the other warehouse's name."; return; }
+    const toRegionId=$('#extRegion').value;
+    const label=toRegionId?((regionById(toRegionId)||{}).name||''):$('#extLabel').value.trim();
+    if(!toRegionId && !label){ $('#modalErr').textContent="Name the other warehouse."; return; }
+    const hereWh=(currentRegion()||{}).whLoc||WAREHOUSE;
+    const tgt=toRegionId?regionById(toRegionId):null;
     const items=inputs.filter(i=>Number(i.value)>0)
       .map(i=>({bookId:i.dataset.book,qty:Math.round(Number(i.value))}));
     if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
     if(dir==='out'){
-      const bad=items.find(it=>it.qty>invQty(WAREHOUSE,it.bookId));
-      if(bad){ $('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(WAREHOUSE)+'.'; return; }
+      const bad=items.find(it=>it.qty>invQty(hereWh,it.bookId));
+      if(bad){ $('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(hereWh)+'.'; return; }
     }
-    const note=$('#extNote').value.trim();
-    commit({action:'transferExternal',direction:dir,label,items,note,override:true},
-      st=>items.forEach(it=>invAdd(st,WAREHOUSE,it.bookId,dir==='out'?-it.qty:it.qty)),
+    const note=$('#extNoteInput').value.trim();
+    commit({action:'transferExternal',direction:dir,label,toRegionId,fromLoc:hereWh,items,note,override:true},
+      st=>items.forEach(it=>{
+        invAdd(st,hereWh,it.bookId,dir==='out'?-it.qty:it.qty);
+        if(tgt) invAdd(st,tgt.whLoc,it.bookId,dir==='out'?it.qty:-it.qty);
+      }),
       dir==='out' ? 'Stock sent' : 'Stock received');
   });
 }
@@ -2943,7 +3328,7 @@ function transferModal(mode){
     if(from===WAREHOUSE){
       lines = inputs.map(i=>{
         const q=Math.max(0,Math.round(Number(i.value)||0));
-        return q ? shortfallLine(i.dataset.book, invQty(WAREHOUSE,i.dataset.book)-q) : '';
+        return q ? shortfallLine(i.dataset.book, invQty((currentRegion()||{}).whLoc||WAREHOUSE,i.dataset.book)-q) : '';
       }).filter(Boolean);
     }
     $('#preWarn').innerHTML = preorderWarning(lines,['transfer it','transfer them']);
@@ -2997,9 +3382,18 @@ document.addEventListener('click',e=>{
   if(a==='cash'){ cashModal(); return; }
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
+  if(a==='toggle'){
+    const el=document.getElementById(t.dataset.target);
+    if(el){ const open=el.style.display!=='none';
+            el.style.display=open?'none':'block';
+            const tw=t.querySelector('.tw'); if(tw) tw.textContent=open?'▸':'▾'; }
+    return;
+  }
   if(a==='goseason'){ goTo('season'); return; }
   if(a==='goregion'){ goTo('region', t.dataset.region); return; }
   if(a==='newregion'){ regionModal(); return; }
+  if(a==='editregion'){ regionModal(currentRegion()); return; }
+  if(a==='deleteregion'){ deleteRegionModal(); return; }
   if(a==='stock'){ stockModal(); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='externaltransfer'){ externalTransferModal(); return; }
