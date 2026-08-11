@@ -87,16 +87,16 @@ main{max-width:1280px;margin:0 auto;padding:14px 18px 60px}
    LEVEL you're on, not which region or event — so every event feels like an
    event, wherever you are in the tour. */
 body{transition:background-color .25s ease}
-body.lvl-season{background:#F2EEF8}
-body.lvl-region{background:#FDF5E8}
+body.lvl-season{background:#FBF1E2}
+body.lvl-region{background:#FDF8F0}
 body.lvl-event {background:#EDF6F1}
 
-body.lvl-season{--lvl:#5B3A78; --lvl-soft:#EFE7F7; --lvl-line:#C9B6DD}
+body.lvl-season{--lvl:#8A4A12; --lvl-soft:#FAE7CE; --lvl-line:#E0B278}
 body.lvl-region{--lvl:#9A5B12; --lvl-soft:#FBEEDA; --lvl-line:#E7C99A}
 body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 
 /* the level badge above the tabs */
-.lvl-bar{display:flex;align-items:center;gap:8px;margin:2px 0 8px;flex-wrap:wrap}
+.lvl-bar{display:none}   /* the breadcrumb now lives inline in the single nav row */
 .lvl-chip{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
   color:var(--lvl);background:var(--lvl-soft);border:1px solid var(--lvl-line);
   padding:3px 9px;border-radius:999px}
@@ -105,11 +105,17 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .crumb .sep{opacity:.5;margin:0 5px}
 
 /* tab rows, one per tier */
-.tab-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:6px}
-.tab-row .row-lbl{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;
-  color:var(--muted);min-width:56px}
-.tab-season{border-color:#C9B6DD;color:#5B3A78;background:#F7F2FB}
-.tab-season.active{background:#5B3A78;color:#F6EFFC;border-color:#5B3A78}
+.tab-row{display:flex;gap:5px;align-items:center;margin-bottom:0;flex:0 0 auto}
+.tab-row .row-lbl{display:none}
+/* One scrolling line: season, then regions, then this region's places. */
+.nav-line{display:flex;align-items:center;gap:5px;overflow-x:auto;padding:2px 0 4px;
+  scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.nav-line::-webkit-scrollbar{height:5px}
+.nav-line::-webkit-scrollbar-thumb{background:var(--line-d);border-radius:3px}
+.nav-sep{color:var(--line-d);font-size:13px;flex:0 0 auto;user-select:none}
+.loc-tab{padding:5px 11px;font-size:13px}
+.tab-season{border-color:#E0B278;color:#8A4A12;background:#FCF3E6}
+.tab-season.active{background:#8A4A12;color:#FDF3E4;border-color:#8A4A12}
 .tab-region{border-color:#E7C99A;color:#9A5B12;background:#FEF7EC}
 .tab-region.active{background:#C4661A;color:#FFF6E9;border-color:#C4661A}
 .tab-event{border-color:#AFD5C7;color:#1F6B5A;background:#F1F8F5}
@@ -536,23 +542,31 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 
   <div class="totals" id="totals"></div>
 
-  <!-- Season-only: where the books are, and what each region has sold -->
-  <div id="seasonPanels" style="display:none">
+  <!-- SEASON TOTALS — the whole tour at a glance -->
+  <div class="cols-2" id="seasonTotals" style="display:none">
     <section class="panel">
-      <h2>Warehouse Overview <span class="hint">(where every title sits across the tour)</span></h2>
-      <div class="body"><div id="whOverview"></div></div>
+      <h2>Total Sales by Title <span class="hint">sold / pre-ordered</span></h2>
+      <div class="body"><div class="title-list" id="seasonTitleList"></div></div>
     </section>
     <section class="panel">
-      <h2>Sales by Region <span class="hint">(tap a region for the per-title breakdown)</span></h2>
-      <div class="body"><div id="salesByRegion"></div></div>
+      <h2>Total Collections by Payment <span class="hint">(tap a type for the regional split)</span></h2>
+      <div class="body" id="seasonPayBody"></div>
     </section>
   </div>
 
-  <section class="panel" id="payPanel" style="display:none">
-    <h2>Totals by Payment Type <span class="hint" id="payHint"></span></h2>
-    <div class="body"><div id="payTotals"></div></div>
-  </section>
+  <!-- REGIONAL TOTALS — how each region is doing -->
+  <div class="cols-2" id="regionalTotals" style="display:none">
+    <section class="panel">
+      <h2>Sales by Region <span class="hint">(tap for the per-title breakdown)</span></h2>
+      <div class="body"><div id="salesByRegion"></div></div>
+    </section>
+    <section class="panel">
+      <h2>Collections by Region <span class="hint">(tap a type for the regional split)</span></h2>
+      <div class="body" id="collByRegion"></div>
+    </section>
+  </div>
 
+  <!-- Region + event working area -->
   <div class="cols" id="regionCols">
     <section class="panel">
       <h2 id="invHeading">Inventory <span class="hint" id="invHint"></span></h2>
@@ -572,24 +586,30 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
     </div>
   </div>
 
+  <!-- WAREHOUSE INFORMATION — what still needs chasing, and where stock sits -->
   <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
-    <section class="panel pre-panel" id="prePanel" style="display:none">
-      <h2>Pre-Orders Awaiting Delivery</h2>
-      <div class="body"><div class="log" id="preList"></div></div>
-    </section>
     <section class="panel pend-panel" id="pendingPanel" style="display:none">
       <h2>Pending Payments</h2>
       <div class="body"><div class="log" id="pendingList"></div></div>
     </section>
+    <section class="panel pre-panel" id="prePanel" style="display:none">
+      <h2>Pre-Orders Awaiting Delivery</h2>
+      <div class="body"><div class="log" id="preList"></div></div>
+    </section>
   </div>
 
-  <div class="cols-2">
+  <section class="panel" id="whOverviewPanel" style="display:none">
+    <h2>Warehouse Overview <span class="hint">(where every title sits across the tour)</span></h2>
+    <div class="body"><div id="whOverview"></div></div>
+  </section>
+
+  <div class="cols-2" id="regionBottom">
     <section class="panel">
       <h2>Sales by Title <span class="hint">sold / pre-ordered</span></h2>
       <div class="body"><div class="title-list" id="titleList"></div></div>
     </section>
     <section class="panel">
-      <h2>Totals by Payment Type</h2>
+      <h2>Totals by Payment Type <span class="hint">(tap a type to see it event by event)</span></h2>
       <div class="body" id="payBody"></div>
     </section>
   </div>
@@ -671,7 +691,13 @@ const clock = () => new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-
 function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,cat:'big',usd:0,pln:0,eur:0};}
 function catOf(id){return bookById(id).cat==='aotm'?'aotm':'big';}
 function isAotm(b){return b.cat==='aotm';}
-function priceFor(book,cur){return cur==='PLN'?book.pln:cur==='EUR'?book.eur:book.usd;}
+/* Price comes from this region's own price list, falling back to the built-in
+   figures only if the region hasn't been priced yet. */
+function priceFor(book,cur){
+  const p = priceIn(book.id, cur);
+  if(p) return p;
+  return cur==='PLN'?book.pln:cur==='EUR'?book.eur:cur==='USD'?book.usd:0;
+}
 function toUSD(amt,cur){amt=Number(amt)||0;if(!amt)return 0;const r=STATE.rates||{plnPerUsd:3.79,eurPerUsd:.87};
   if(cur==='USD')return amt;if(cur==='PLN')return amt/r.plnPerUsd;if(cur==='EUR')return amt/r.eurPerUsd;return 0;}
 /* Mirrors the backend exactly:
@@ -794,9 +820,11 @@ function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location==
 /* Every unsold physical copy anywhere in the region: the warehouse plus every
    event table. What "unsold in region" on the warehouse card counts. */
 function regionUnsold(bookId){
-  let t=invQty(WAREHOUSE,bookId);
-  (STATE.events||[]).forEach(e=>{ t+=invQty(e.eventId,bookId); });
-  return t;
+  // Stock still on shelves in the CURRENT region only — its warehouse plus its
+  // own events. A new region must start at zero, not inherit Poland's numbers.
+  const rid = CUR_REGION || regionOfLoc(CUR_LOC);
+  if(!rid) return invQty(CUR_LOC,bookId);
+  return locsInRegion(rid).reduce((t,l)=>t+invQty(l,bookId),0);
 }
 function shownQty(bookId){return invQty(CUR_LOC,bookId);}
 /* A pre-order not yet handed over holds a copy back from general sale. */
@@ -968,61 +996,57 @@ function renderAll(){
   renderTabs(); renderContextActions(); renderTotals();
 
   const season = CUR_LEVEL==='season';
-  // The season is a portal: region rollups instead of a shelf and a sales log.
-  $('#seasonPanels').style.display = season?'block':'none';
-  $('#regionCols').style.display   = season?'none':'';
-  $('#payPanel').style.display     = 'block';
-  $('#payHint').textContent = season
-    ? '(tap a type to see it region by region)'
-    : '(tap a type to see it event by event)';
+  // The season is a portal: rollups instead of a shelf and a sales log.
+  $('#seasonTotals').style.display    = season?'':'none';
+  $('#regionalTotals').style.display  = season?'':'none';
+  $('#whOverviewPanel').style.display = season?'':'none';
+  $('#regionCols').style.display      = season?'none':'';
+  $('#regionBottom').style.display    = season?'none':'';
 
   if(season){
-    $('#whOverview').innerHTML   = renderWarehouseOverview();
-    $('#salesByRegion').innerHTML= renderSalesByRegion();
+    renderTitleList('#seasonTitleList');
+    $('#salesByRegion').innerHTML = renderSalesByRegion();
+    $('#whOverview').innerHTML    = renderWarehouseOverview();
+    renderPayments('#seasonPayBody');
+    // Same numbers, grouped by region — the season's "collections by region".
+    renderPayments('#collByRegion');
   }else{
-    renderInventory(); renderTitleList(); renderLog();
+    renderInventory(); renderTitleList('#titleList'); renderLog();
+    renderPayments('#payBody');
   }
-  $('#payTotals').innerHTML = renderPaymentTotals();
-  renderPayments(); renderBottom();
+  renderBottom();
 }
 
 function renderTabs(){
   const regions = regionsList();
   const reg = currentRegion();
 
-  // Where am I? — level badge + breadcrumb
-  const lvlWord = CUR_LEVEL==='season'?'Season':CUR_LEVEL==='region'?'Region':'Event';
-  let crumb = `<b>${esc(STATE.seasonName||'Season')}</b>`;
-  if(reg) crumb += `<span class="sep">›</span><b>${esc(reg.name)}</b>`;
-  if(CUR_LEVEL==='event') crumb += `<span class="sep">›</span><b>${esc(locName(CUR_LOC))}</b>`;
-  let h = `<div class="lvl-bar"><span class="lvl-chip">${lvlWord}</span>
-             <span class="crumb">${crumb}</span></div>`;
+  // Everything on one scrolling line: season › regions › this region's places.
+  let h = `<div class="nav-line">`;
+  h += `<button class="loc-tab tab-season ${CUR_LEVEL==='season'?'active':''}"
+          data-act="goseason" title="The whole tour">🌍 ${esc(STATE.seasonName||'Season')}</button>`;
 
-  // Tier 1 — the whole tour
-  h += `<div class="tab-row"><span class="row-lbl">Season</span>
-    <button class="loc-tab tab-season ${CUR_LEVEL==='season'?'active':''}"
-      data-act="goseason">🌍 ${esc(STATE.seasonName||'Season')}</button></div>`;
-
-  // Tier 2 — every region
-  h += `<div class="tab-row"><span class="row-lbl">Regions</span>`;
+  if(regions.length) h += `<span class="nav-sep">›</span>`;
   regions.forEach(r=>{
     const on = (CUR_REGION===r.regionId && CUR_LEVEL!=='season');
     h += `<button class="loc-tab tab-region ${on?'active':''}" data-act="goregion"
             data-region="${esc(r.regionId)}">${esc(r.name)}</button>`;
   });
-  h += `<button class="loc-tab tab-region" data-act="newregion" style="border-style:dashed">＋ New region</button></div>`;
+  h += `<button class="loc-tab tab-region" data-act="newregion" style="border-style:dashed"
+          title="Add a region">＋</button>`;
 
-  // Tier 3 — the current region's warehouse + its events (hidden at season level)
   if(CUR_LEVEL!=='season' && reg){
-    h += `<div class="tab-row"><span class="row-lbl">${esc(reg.name)}</span>`;
+    h += `<span class="nav-sep">›</span>`;
     h += `<button class="loc-tab tab-event ${CUR_LOC===reg.whLoc?'active':''}" data-act="loc"
-            data-loc="${esc(reg.whLoc)}">🏠 Warehouse (All)</button>`;
+            data-loc="${esc(reg.whLoc)}">🏠 Warehouse</button>`;
     eventsOfRegion(reg.regionId).forEach(e=>{
       h += `<button class="loc-tab tab-event ${CUR_LOC===e.eventId?'active':''}" data-act="loc"
               data-loc="${esc(e.eventId)}">${esc(e.name)}</button>`;
     });
-    h += `<button class="loc-tab tab-event" data-act="newevent" style="border-style:dashed">＋ New event</button></div>`;
+    h += `<button class="loc-tab tab-event" data-act="newevent" style="border-style:dashed"
+            title="Add an event">＋</button>`;
   }
+  h += `</div>`;
   $('#locTabs').innerHTML=h;
 }
 
@@ -1248,7 +1272,7 @@ function renderInventory(){
     `<button class="multi-btn" data-act="multi" data-mode="sale">＋ Multiple Books — one transaction</button>`;
 }
 
-function renderTitleList(){
+function renderTitleList(target){
   const s=scopedSales(); let h='';
   (STATE.books||[]).forEach(b=>{
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
@@ -1256,38 +1280,66 @@ function renderTitleList(){
     h+=`<div class="title-row"><span class="name">${esc(b.name)}</span>
       <span class="count"><b>${sold}</b> / <i>${pre}</i></span></div>`;
   });
-  $('#titleList').innerHTML=h;
+  $(target||'#titleList').innerHTML=h;
 }
 
-function renderPayments(){
+function renderPayments(target){
   const s=scopedSales();
-  const TYPES=STATE.payTypes||['Cash','Zelle','PayPal','Wise','Gift'];
-  const table={}; TYPES.forEach(t=>table[t]={PLN:0,EUR:0,USD:0});
-  const curTot={PLN:0,EUR:0,USD:0}; let donUsd=0;
+  const curs=curCurrencies();
+
+  /* Which rows a toggle opens depends on the level: the season breaks a payment
+     type down by region, a region breaks it down by event + warehouse. */
+  const groups = (CUR_LEVEL==='season')
+    ? regionsList().map(r=>({id:r.regionId,name:r.name,locs:locsInRegion(r.regionId)}))
+    : (()=>{ const r=currentRegion(); if(!r) return [];
+        return [{id:r.whLoc,name:'Warehouse',locs:[r.whLoc]}]
+          .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name,locs:[e.eventId]}))); })();
+
+  const table={}, byGroup={}, curTot={}; let donUsd=0;
   s.forEach(x=>{
     if(!received(x))return;
+    const g=groups.find(g=>g.locs.includes(x.location));
     legs(x).forEach(l=>{
-      if(table[l.type]&&table[l.type][l.cur]!==undefined) table[l.type][l.cur]+=l.amt;
-      if(curTot[l.cur]!==undefined) curTot[l.cur]+=l.amt;
+      if(!l.type||!l.amt) return;
+      (table[l.type]=table[l.type]||{})[l.cur]=(table[l.type][l.cur]||0)+l.amt;
+      curTot[l.cur]=(curTot[l.cur]||0)+l.amt;
       if(x.type==='DONATION') donUsd+=toUSD(l.amt,l.cur);
+      if(g){ const t=(byGroup[l.type]=byGroup[l.type]||{});
+             (t[g.id]=t[g.id]||{})[l.cur]=(t[g.id][l.cur]||0)+l.amt; }
     });
   });
+
+  // Gift is always zero by definition, so it only adds noise.
+  const TYPES=Object.keys(table).filter(t=>t!=='Gift').sort();
+  const usdOf=o=>Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
+  const cell=(o,c)=>fmt((o&&o[c])||0);
+
   let rows='';
   TYPES.forEach(t=>{
-    const r=table[t]; const usd=toUSD(r.PLN,'PLN')+toUSD(r.EUR,'EUR')+toUSD(r.USD,'USD');
-    rows+=`<tr><td>${t}</td><td>${fmt(r.PLN)}</td><td>${fmt(r.EUR)}</td><td>${fmt(r.USD)}</td><td class="usd">$${fmt(usd)}</td></tr>`;
+    // The season renders this table twice, so ids must be unique per panel.
+    const id='pay'+String(target||'body').replace(/\W+/g,'')+'-'+t.replace(/\W+/g,'');
+    const detail=groups.map(g=>{
+      const row=(byGroup[t]||{})[g.id];
+      if(!row) return '';
+      return `<tr class="pay-sub"><td>↳ ${esc(g.name)}</td>${
+        curs.map(c=>`<td>${cell(row,c)}</td>`).join('')
+      }<td class="usd">$${fmt(usdOf(row))}</td></tr>`;
+    }).filter(Boolean).join('');
+    rows+=`<tr class="pay-main" data-act="toggle" data-target="${id}">
+        <td><span class="tw">▸</span> ${esc(t)}</td>${
+        curs.map(c=>`<td>${cell(table[t],c)}</td>`).join('')
+      }<td class="usd">$${fmt(usdOf(table[t]))}</td></tr>`;
+    rows+=`<tbody class="pay-detail" id="${id}" style="display:none">${
+      detail || `<tr class="pay-sub"><td colspan="${curs.length+2}">No breakdown yet.</td></tr>`}</tbody>`;
   });
-  const grandUsd=toUSD(curTot.PLN,'PLN')+toUSD(curTot.EUR,'EUR')+toUSD(curTot.USD,'USD');
-  $('#payBody').innerHTML=`
+
+  $(target||'#payBody').innerHTML=`
     <table class="pay-table">
-      <thead><tr><th>Type</th><th>zł PLN</th><th>€ EUR</th><th>$ USD</th><th>USD eq.</th></tr></thead>
-      <tbody>${rows}</tbody>
-      <tfoot><tr><td>All</td><td>${fmt(curTot.PLN)}</td><td>${fmt(curTot.EUR)}</td><td>${fmt(curTot.USD)}</td><td class="usd">$${fmt(grandUsd)}</td></tr></tfoot>
+      <thead><tr><th>Type</th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||'')} ${esc(c)}</th>`).join('')}<th>USD eq.</th></tr></thead>
+      <tbody>${rows||`<tr><td colspan="${curs.length+2}">Nothing collected yet.</td></tr>`}</tbody>
+      <tfoot><tr><td>All</td>${curs.map(c=>`<td>${fmt(curTot[c]||0)}</td>`).join('')}<td class="usd">$${fmt(usdOf(curTot))}</td></tr></tfoot>
     </table>
     <div class="cur-strip">
-      <span class="cur-pill">By currency &nbsp;·&nbsp; <b>${fmt(curTot.PLN)} zł</b></span>
-      <span class="cur-pill"><b>${fmt(curTot.EUR)} €</b></span>
-      <span class="cur-pill"><b>$${fmt(curTot.USD)}</b></span>
       <span class="cur-pill">Donations: <b>$${fmt(donUsd)}</b></span>
     </div>`;
 }
@@ -1559,7 +1611,12 @@ function payTypeOptions(includeMixed,includeGift){
   if(includeMixed) opts+=`<option value="Mixed">Mixed (two payments)</option>`;
   return opts;
 }
-function curOptions(sel){return ['PLN','EUR','USD'].map(c=>`<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]}</option>`).join('');}
+/* The currency list follows the region you're standing in: Poland offers PLN/EUR/USD,
+   Macedonia offers MKD/USD, and a future region offers whatever it was set up with. */
+function curOptions(sel){
+  return curCurrencies().map(c=>
+    `<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]||c}</option>`).join('');
+}
 
 /* Phone numbers cross country codes here, so the leading + has to survive
    typing, storage and read-back. Everything except digits and the usual
@@ -3270,16 +3327,20 @@ function externalTransferModal(){
 
 
 function transferModal(mode){
-  const events=STATE.events||[];
-  if(mode==='toevent' && !events.length){ toast('Create an event first.',true); return; }
+  // Only ever offer places inside this region — books don't hop between regions
+  // here (that's what "Another warehouse" is for).
+  const reg = currentRegion();
+  const regionWh = reg ? reg.whLoc : WAREHOUSE;
+  const events = reg ? eventsOfRegion(reg.regionId) : [];
+  if(mode==='toevent' && !events.length){ toast('Create an event in this region first.',true); return; }
 
-  let fromDefault=WAREHOUSE, toDefault='', lockFrom=false, lockTo=false, heading='Transfer stock';
+  let fromDefault=regionWh, toDefault='', lockFrom=false, lockTo=false, heading='Transfer stock';
   if(mode==='toevent'){ heading='Transfer to event'; toDefault=events[0].eventId; lockFrom=true; }
   if(mode==='in'){ heading='Transfer into '+locName(CUR_LOC); toDefault=CUR_LOC; lockFrom=true; lockTo=true; }
-  if(mode==='return'){ heading='Return to warehouse'; fromDefault=CUR_LOC; toDefault=WAREHOUSE; lockFrom=true; lockTo=true; }
+  if(mode==='return'){ heading='Return to warehouse'; fromDefault=CUR_LOC; toDefault=regionWh; lockFrom=true; lockTo=true; }
 
   const locOpts=(sel)=>{
-    let o=`<option value="${WAREHOUSE}" ${sel===WAREHOUSE?'selected':''}>${esc(STATE.warehouseName||'')} (Warehouse)</option>`;
+    let o=`<option value="${esc(regionWh)}" ${sel===regionWh?'selected':''}>${esc(reg?reg.name:'')} (Warehouse)</option>`;
     events.forEach(e=>o+=`<option value="${e.eventId}" ${sel===e.eventId?'selected':''}>${esc(e.name)}</option>`);
     return o;
   };
@@ -3325,10 +3386,10 @@ function transferModal(mode){
 
     // Taking stock out of the warehouse can strand pre-orders. Say so as it happens.
     let lines=[];
-    if(from===WAREHOUSE){
+    if(from===regionWh){
       lines = inputs.map(i=>{
         const q=Math.max(0,Math.round(Number(i.value)||0));
-        return q ? shortfallLine(i.dataset.book, invQty((currentRegion()||{}).whLoc||WAREHOUSE,i.dataset.book)-q) : '';
+        return q ? shortfallLine(i.dataset.book, invQty(regionWh,i.dataset.book)-q) : '';
       }).filter(Boolean);
     }
     $('#preWarn').innerHTML = preorderWarning(lines,['transfer it','transfer them']);
