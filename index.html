@@ -187,6 +187,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   background:transparent;border:none;padding:10px 0;cursor:pointer;flex-wrap:wrap}
 .sbr-name,.pt-name{font-weight:700;font-size:14px;color:var(--ink);min-width:110px}
 .sbr-sum,.pt-sum{font-size:12.5px;color:var(--ink);flex:1}
+.sbr-line{display:block;line-height:1.5}
 .sbr-detail,.pt-detail{padding:2px 0 10px 20px}
 .sbr-book{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:12.5px}
 .sbr-book .aotm{color:var(--gold)}
@@ -210,6 +211,12 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .bk-item.on{opacity:1;border-color:var(--line-d);background:var(--paper2)}
 .bk-item .aotm{color:var(--gold)}
 .bk-cb{width:15px;height:15px;flex:none}
+.rp-head .rp-cells{padding-bottom:2px}
+.rp-cur{width:82px;text-align:center;font-size:10px;font-weight:800;letter-spacing:.4px;
+  text-transform:uppercase;color:var(--muted)}
+.rp-fill{background:var(--paper2);border-radius:8px;padding:5px 6px;margin:3px 0}
+.rp-fill .rp-name{font-weight:800;font-size:12px;color:var(--saffron-d)}
+.rp-all{border-style:dashed !important}
 .rp{width:82px;border:1px solid var(--line-d);border-radius:7px;padding:6px 7px;font-size:12.5px}
 .muted-note{font-weight:400;color:var(--muted);font-size:11px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -353,6 +360,14 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   border-radius:8px;padding:5px;font-size:11.5px;font-weight:700;letter-spacing:.3px}
 .pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
+.don-card{background:#FFF6E3;border-color:var(--gold-l)}
+.don-card .bname{color:var(--gold)}
+.don-card .qty-chip{color:var(--gold)}
+/* Inventory heading and its QR button share a line when there's room. */
+.inv-h2{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.qr-btn{flex:none;font-size:12px;padding:5px 11px}
+.admin-panel{margin-top:18px}
+.admin-panel .actions{display:flex;flex-wrap:wrap;gap:8px}
 
 /* Multiple-books entry point + modal */
 #invMulti{margin-top:10px}
@@ -390,7 +405,14 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
 /* ---------- Payments by type ---------- */
-.pay-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.pay-scroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;
+  max-width:100%;padding-bottom:2px}
+@media (max-width:700px){
+  /* Keep every column readable and let the panel scroll sideways instead of
+     squeezing the numbers into each other. */
+  .pay-table{min-width:520px}
+  .pay-table th:first-child,.pay-table td:first-child{width:150px}
+}
 .pay-table{width:100%;border-collapse:collapse;font-size:13.5px}
 .pay-table th,.pay-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
 .pay-table th:first-child,.pay-table td:first-child{text-align:left}
@@ -403,8 +425,18 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .pay-main:hover{background:var(--paper2)}
 /* A sub-row is the same shape as its parent — indented by padding, not an arrow,
    so every number stays in its column. */
-.pay-detail .pay-sub td{color:var(--muted);font-size:12.5px;background:var(--paper2)}
-.pay-detail .pay-sub td:first-child{padding-left:26px}
+/* The breakdown reuses the parent's column widths, so numbers line up exactly. */
+.pay-detail-cell{padding:0 !important;background:var(--paper2)}
+.pay-inner{width:100%;border-collapse:collapse;table-layout:fixed}
+.pay-inner td{padding:6px 8px;text-align:right;font-size:12.5px;color:var(--muted);
+  border-bottom:1px solid var(--line)}
+.pay-inner tr:last-child td{border-bottom:none}
+.pay-inner td:first-child{text-align:left;padding-left:26px;font-weight:600;color:var(--ink)}
+.pay-don .pay-main td{border-top:2px solid var(--line-d)}
+.pay-don .pay-main td:first-child{color:var(--gold)}
+/* Give the table real column widths so the inner rows can match them. */
+.pay-table{table-layout:fixed}
+.pay-table th:first-child,.pay-table td:first-child{width:34%}
 .pay-table tfoot td{font-weight:700;color:var(--plum);border-top:2px solid var(--line-d);border-bottom:none}
 .pay-table .usd{color:var(--green);font-weight:600}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
@@ -590,14 +622,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 <body>
 
 <header class="masthead">
-  <div class="util-bar">
-    <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
-    <button class="btn-refresh" data-act="org" title="Who to contact about what">👥 Org chart</button>
-    <button class="btn-refresh" data-act="transfers" title="Stock added and moved between locations">📦 Transfers</button>
-    <button class="btn-refresh" data-act="qr" title="Payment QR codes">📱 Pay codes</button>
-    <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
-    <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
-  </div>
+  <!-- Title first, so on a phone you always know where you are before anything else. -->
   <div class="masthead-inner">
     <div class="deity" id="imgLeft"><span>Śrīla<br>Prabhupāda</span></div>
     <div class="title-block">
@@ -605,6 +630,12 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
       <div class="mantra">gopī-bhartuḥ pada-kamalayor dāsa-dāsānudāsaḥ</div>
     </div>
     <div class="deity" id="imgRight"><span>Śrīla<br>Gurudeva</span></div>
+  </div>
+  <!-- Only what you need at a glance; everything else lives in App Admin. -->
+  <div class="util-bar">
+    <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
+    <button class="btn-refresh" data-act="org" title="Who to contact about what">👥 Org chart</button>
+    <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
   </div>
 </header>
 
@@ -643,7 +674,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   <!-- Region + event working area -->
   <div class="cols" id="regionCols">
     <section class="panel">
-      <h2 id="invHeading">Inventory <span class="hint" id="invHint"></span></h2>
+      <h2 id="invHeading" class="inv-h2">Inventory
+        <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Payment QRs</button></h2>
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
@@ -687,6 +719,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
       <div class="body" id="payBody"></div>
     </section>
   </div>
+
+  <section class="panel admin-panel">
+    <h2>App Admin <span class="hint">(setup, stock movements and money handling)</span></h2>
+    <div class="body"><div class="actions" id="adminActions"></div></div>
+  </section>
 </main>
 
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
@@ -1083,7 +1120,8 @@ function legFields(L){
    ============================================================ */
 function renderAll(){
   if(!STATE) return;
-  $('#whTitle').textContent = STATE.warehouseName ? (': '+STATE.warehouseName) : '';
+  // The title names where you actually are, not just the warehouse.
+  $('#whTitle').textContent = ': ' + scopeLabel();
   document.title = 'Book Sales — '+(STATE.warehouseName||'');
   renderTabs(); renderContextActions(); renderTotals();
 
@@ -1166,29 +1204,36 @@ function renderTabs(){
   });
 }
 
+/* The working surface stays clean: selling and reading live at the top, while
+   everything administrative collapses into one section at the foot of the page. */
 function renderContextActions(){
-  // The season is a viewing portal: money and books are handled in the region
-  // that actually holds them, so only the read-only cash view belongs here.
-  if(CUR_LEVEL==='season'){
-    $('#ctxActions').innerHTML = `<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
-    return;
+  $('#ctxActions').innerHTML = '';      // nothing sits beside the tabs any more
+  renderAdmin();
+}
+
+function renderAdmin(){
+  const season = CUR_LEVEL==='season';
+  let h = '';
+  h += `<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
+  h += `<button class="btn btn-ghost btn-sm" data-act="transfers">📦 Transfers</button>`;
+
+  if(!season){
+    if(isWarehouseLoc(CUR_LOC)){
+      h += `<button class="btn btn-plum" data-act="stock">＋ Add / subtract stock</button>`;
+      h += `<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
+      h += `<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Another warehouse</button>`;
+      h += `<button class="btn btn-ghost btn-sm" data-act="editregion">Edit region</button>`;
+      h += `<button class="btn btn-danger btn-sm" data-act="deleteregion">Delete region</button>`;
+    }else{
+      h += `<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
+      h += `<button class="btn btn-ghost" data-act="transfer" data-mode="return">Return to warehouse</button>`;
+      h += `<button class="btn btn-ghost btn-sm" data-act="stock">＋ Add / subtract stock</button>`;
+      h += `<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
+      h += `<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
+    }
   }
-  let h=`<button class="btn btn-gold" data-act="donation">♥ Donation</button>`;
-  h+=`<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
-  if(isWarehouseLoc(CUR_LOC)){
-    h+=`<button class="btn btn-plum" data-act="stock">＋ Add / subtract stock</button>`;
-    h+=`<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
-    h+=`<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Another warehouse</button>`;
-    h+=`<button class="btn btn-ghost btn-sm" data-act="editregion">Edit region</button>`;
-    h+=`<button class="btn btn-danger btn-sm" data-act="deleteregion">Delete region</button>`;
-  }else{
-    h+=`<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
-    h+=`<button class="btn btn-ghost" data-act="transfer" data-mode="return">Return to warehouse</button>`;
-    h+=`<button class="btn btn-ghost btn-sm" data-act="stock">＋ Add / subtract stock</button>`;
-    h+=`<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
-    h+=`<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
-  }
-  $('#ctxActions').innerHTML=h;
+  h += `<button class="btn btn-ghost btn-sm" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>`;
+  $('#adminActions').innerHTML = h;
 }
 
 // A small footnote showing which USD conversion rates are in effect.
@@ -1265,8 +1310,10 @@ function renderSalesByRegion(){
       <button class="sbr-head" data-act="toggle" data-target="sbr-${esc(r.regionId)}">
         <span class="tw">▸</span>
         <span class="sbr-name">${esc(r.name)}</span>
-        <span class="sbr-sum">${bs+bp+bg} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered${bg?` / ${bg} gift`:''})</span>
-          · ${as+ap+ag} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered${ag?` / ${ag} gift`:''})</span></span>
+        <span class="sbr-sum">
+          <span class="sbr-line">${bs+bp+bg} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered${bg?` / ${bg} gift`:''})</span></span>
+          <span class="sbr-line">${as+ap+ag} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered${ag?` / ${ag} gift`:''})</span></span>
+        </span>
       </button>
       <div class="sbr-detail" id="sbr-${esc(r.regionId)}" style="display:none">
         ${perBookWrap}
@@ -1360,7 +1407,6 @@ function renderTotals(){
 
 function renderInventory(){
   $('#invHeading').firstChild.textContent = (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
-  $('#invHint').textContent = isWarehouseLoc(CUR_LOC)?'(what is in the warehouse right now)':'(stock available at this event)';
   const s=scopedSales();
   let h='';
   curBooks().forEach(b=>{
@@ -1380,7 +1426,7 @@ function renderInventory(){
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
           <div class="bname">${esc(b.name)}</div>
-          <div class="price">${b.pln} zł · ${b.eur} € · $${b.usd}</div>
+          <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
         </div>
         <div class="qtyrow">
           <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
@@ -1393,6 +1439,22 @@ function renderInventory(){
       <button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order</button>
     </div>`;
   });
+  // Donations sit on the shelf too — they behave like a title you can always
+  // "sell", and carry their own running count.
+  const dons = scopedSales().filter(x=>x.type==='DONATION').length;
+  h+=`<div class="book sellable don-card">
+    <div class="top" data-act="donation">
+      <div>
+        <div class="bname">♥ Donation</div>
+        <div class="price">any amount</div>
+      </div>
+      <div class="qtyrow">
+        <div><span class="qty-chip ${dons?'':'zero'}">${dons}</span>
+          <span class="qty-label">received</span></div>
+        <div style="text-align:right"><span class="tap-hint">tap to record</span></div>
+      </div>
+    </div>
+  </div>`;
   $('#invGrid').innerHTML=h;
   // One-line entry point for a multi-book transaction, under the grid.
   $('#invMulti').innerHTML =
@@ -1436,7 +1498,8 @@ function renderPayments(target){
         return [{id:r.whLoc,name:'Warehouse',locs:[r.whLoc]}]
           .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name,locs:[e.eventId]}))); })();
 
-  const table={}, byGroup={}, curTot={}; let donUsd=0;
+  const table={}, byGroup={}, curTot={};
+  const don={}, donGroup={};
   s.forEach(x=>{
     if(!received(x))return;
     const g=groups.find(g=>g.locs.includes(x.location));
@@ -1444,9 +1507,13 @@ function renderPayments(target){
       if(!l.type||!l.amt) return;
       (table[l.type]=table[l.type]||{})[l.cur]=(table[l.type][l.cur]||0)+l.amt;
       curTot[l.cur]=(curTot[l.cur]||0)+l.amt;
-      if(x.type==='DONATION') donUsd+=toUSD(l.amt,l.cur);
       if(g){ const t=(byGroup[l.type]=byGroup[l.type]||{});
              (t[g.id]=t[g.id]||{})[l.cur]=(t[g.id][l.cur]||0)+l.amt; }
+      // Donations are tracked in parallel so they can open the same way.
+      if(x.type==='DONATION'){
+        don[l.cur]=(don[l.cur]||0)+l.amt;
+        if(g){ (donGroup[g.id]=donGroup[g.id]||{})[l.cur]=(donGroup[g.id][l.cur]||0)+l.amt; }
+      }
     });
   });
 
@@ -1454,35 +1521,43 @@ function renderPayments(target){
   const TYPES=Object.keys(table).filter(t=>t!=='Gift').sort();
   const usdOf=o=>Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
   const cell=(o,c)=>fmt((o&&o[c])||0);
+  const pid=String(target||'body').replace(/\W+/g,'');
 
-  let rows='';
-  TYPES.forEach(t=>{
-    // The season renders this table twice, so ids must be unique per panel.
-    const id='pay'+String(target||'body').replace(/\W+/g,'')+'-'+t.replace(/\W+/g,'');
+  /* Each type is its own <tbody> holding the summary row and its breakdown, so
+     every number stays in the same column when a row opens. */
+  function block(label, totals, perGroup, key, cls){
+    const id='pay'+pid+'-'+key;
     const detail=groups.map(g=>{
-      const row=(byGroup[t]||{})[g.id];
+      const row=(perGroup||{})[g.id];
       if(!row) return '';
       return `<tr class="pay-sub"><td>${esc(g.name)}</td>${
         curs.map(c=>`<td>${cell(row,c)}</td>`).join('')
       }<td class="usd">$${fmt(usdOf(row))}</td></tr>`;
-    }).filter(Boolean).join('');
-    rows+=`<tr class="pay-main" data-act="toggle" data-target="${id}">
-        <td><span class="tw">▸</span> ${esc(t)}</td>${
-        curs.map(c=>`<td>${cell(table[t],c)}</td>`).join('')
-      }<td class="usd">$${fmt(usdOf(table[t]))}</td></tr>`;
-    rows+=`<tbody class="pay-detail" id="${id}" style="display:none">${
-      detail || `<tr class="pay-sub"><td colspan="${curs.length+2}">No breakdown yet.</td></tr>`}</tbody>`;
-  });
+    }).filter(Boolean).join('')
+      || `<tr class="pay-sub"><td colspan="${curs.length+2}">No breakdown yet.</td></tr>`;
+    return `<tbody class="pay-block ${cls||''}">
+      <tr class="pay-main" data-act="toggle" data-target="${id}">
+        <td><span class="tw">▸</span> ${esc(label)}</td>${
+        curs.map(c=>`<td>${cell(totals,c)}</td>`).join('')
+      }<td class="usd">$${fmt(usdOf(totals))}</td></tr>
+      <tr class="pay-detail-row" id="${id}" style="display:none">
+        <td colspan="${curs.length+2}" class="pay-detail-cell">
+          <table class="pay-inner">${detail}</table>
+        </td>
+      </tr>
+    </tbody>`;
+  }
+
+  let rows=TYPES.map(t=>block(t, table[t], byGroup[t], t.replace(/\W+/g,''))).join('');
+  // Donations keep their place at the foot but behave like every other row.
+  if(Object.keys(don).length) rows+=block('Donations', don, donGroup, 'donations', 'pay-don');
 
   $(target||'#payBody').innerHTML=`
-    <table class="pay-table">
+    <div class="pay-scroll"><table class="pay-table">
       <thead><tr><th>Type</th>${curs.map(c=>`<th><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></th>`).join('')}<th>USD eq.</th></tr></thead>
-      <tbody>${rows||`<tr><td colspan="${curs.length+2}">Nothing collected yet.</td></tr>`}</tbody>
+      ${rows||`<tbody><tr><td colspan="${curs.length+2}">Nothing collected yet.</td></tr></tbody>`}
       <tfoot><tr><td>All</td>${curs.map(c=>`<td>${fmt(curTot[c]||0)}</td>`).join('')}<td class="usd">$${fmt(usdOf(curTot))}</td></tr></tfoot>
-    </table></div>
-    <div class="cur-strip">
-      <span class="cur-pill">Donations: <b>$${fmt(donUsd)}</b></span>
-    </div>`;
+    </table></div>`;
 }
 
 /* Which rows are open. Kept outside the state so a background refresh does not
@@ -2557,7 +2632,9 @@ function orgEditModal(){
    Physical cash and bank balances across the warehouse, each event, and the
    bank. Every entry is a signed movement; a balance is just their fold, mirrored
    from the server so the view updates the instant you record something. */
-const CASH_CURS = ['PLN','EUR','USD'];
+/* Cash deals in whatever the current page's region actually uses — a Macedonian
+   till has no złoty drawer. Kept as a function so it re-reads on every render. */
+function cashCurs(){ return curCurrencies(); }
 /* Which cash accounts are in play depends on the level. A region sees its own
    warehouse and events; the bank is universal, so it always appears. */
 function cashAccounts(){
@@ -2698,7 +2775,7 @@ function cashModal(){
   accts.forEach(a=>{
     const hasManual = entries.some(c=>c.fromAcct===a.id || c.toAcct===a.id);
     let cells='';
-    CASH_CURS.forEach(cur=>{
+    cashCurs().forEach(cur=>{
       const v=cashBalance(a.id,cur);
       cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
     });
@@ -2711,7 +2788,7 @@ function cashModal(){
   accts.forEach(a=>{
     if(a.id==='BANK') return;
     const parts=[];
-    CASH_CURS.forEach(cur=>{ const v=cashCollected(a.id,cur); if(v>0) parts.push(cashFmt(v,cur)); });
+    cashCurs().forEach(cur=>{ const v=cashCollected(a.id,cur); if(v>0) parts.push(cashFmt(v,cur)); });
     if(parts.length) collRows += `<div class="cash-coll-row"><span>${esc(a.name)}</span><span>${parts.join(' · ')}</span></div>`;
   });
   if(!collRows) collRows = `<div class="cash-coll-row"><span>No cash collected yet</span><span>—</span></div>`;
@@ -2811,7 +2888,7 @@ function cashModal(){
   $('#cmGoAll').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
-    const moves=CASH_CURS.map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
+    const moves=cashCurs().map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
     if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
     if(!confirm(`Move ALL cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
     err('');
@@ -3151,7 +3228,19 @@ function regionModal(edit){
   };
 
   function priceRows(curList){
-    return curBooks().map(b=>{
+    // Header naming each currency column, so it's never a guess which box is which.
+    const head = `<div class="rp-row rp-head"><div class="rp-name"></div>
+      <div class="rp-cells">${curList.map(c=>
+        `<span class="rp-cur">${esc(CUR_SYM[c]||'')} ${esc(c)}</span>`).join('')}</div></div>`;
+
+    // Most regions price every big book the same, so fill them in one go.
+    const fill = (label,cat)=>`<div class="rp-row rp-fill"><div class="rp-name">${label}
+        <span class="muted-note">fill all</span></div>
+      <div class="rp-cells">${curList.map(c=>
+        `<input class="rp rp-all" data-cat="${cat}" data-cur="${esc(c)}" type="number"
+           step="0.01" inputmode="decimal" placeholder="${esc(c)}">`).join('')}</div></div>`;
+
+    const rowsFor = list => list.map(b=>{
       const cells=curList.map(c=>
         `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
            step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
@@ -3159,6 +3248,12 @@ function regionModal(edit){
       return `<div class="rp-row"><div class="rp-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
                 <div class="rp-cells">${cells}</div></div>`;
     }).join('');
+
+    const all=(STATE.books||[]);
+    const big=all.filter(b=>!isAotm(b)), aotm=all.filter(isAotm);
+    return head
+      + (big.length ? fill('Big Books','big') + rowsFor(big) : '')
+      + (aotm.length ? fill('Adventures','aotm') + rowsFor(aotm) : '');
   }
 
   openModal(`
@@ -3191,6 +3286,17 @@ function regionModal(edit){
     </div>`, true);
 
   // Re-draw the price grid whenever the currency list changes, keeping anything typed.
+  // Typing in a "fill all" box writes that price into every book of that kind.
+  $('#rgPrices').addEventListener('input',e=>{
+    const src=e.target.closest('.rp-all'); if(!src) return;
+    const cat=src.dataset.cat, cur=src.dataset.cur, v=src.value;
+    (STATE.books||[]).forEach(b=>{
+      if((isAotm(b)?'aotm':'big')!==cat) return;
+      const box=document.querySelector(`#modal .rp[data-book="${b.id}"][data-cur="${cur}"]`);
+      if(box) box.value=v;
+    });
+  });
+
   // Dim a title the moment it's unticked, so the choice reads at a glance.
   $('#rgBooks').addEventListener('change',e=>{
     const cb=e.target.closest('.bk-cb'); if(!cb) return;
