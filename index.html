@@ -108,6 +108,23 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .tab-row{display:flex;gap:5px;align-items:center;margin-bottom:0;flex:0 0 auto}
 .tab-row .row-lbl{display:none}
 /* One scrolling line: season, then regions, then this region's places. */
+/* ---- Compact breadcrumb navigation ---- */
+.navbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 4px}
+.crumbs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
+.crumb-btn{border:1.5px solid var(--lvl-line,var(--line-d));background:var(--paper);
+  color:var(--lvl,var(--plum));border-radius:999px;padding:5px 12px;font-weight:700;
+  font-size:13px;cursor:pointer;white-space:nowrap}
+.crumb-btn.on{background:var(--lvl,var(--plum));color:#FFF6E9;border-color:var(--lvl,var(--plum))}
+.crumb-sep{color:var(--line-d);font-size:13px;user-select:none}
+.crumb-pick{position:relative;display:inline-flex}
+.crumb-sel{appearance:none;-webkit-appearance:none;border:1.5px solid var(--lvl-line,var(--line-d));
+  background:var(--paper);color:var(--lvl,var(--plum));border-radius:999px;
+  padding:5px 26px 5px 12px;font-weight:700;font-size:13px;cursor:pointer;
+  max-width:44vw;text-overflow:ellipsis}
+.crumb-sel.on{background:var(--lvl,var(--plum));color:#FFF6E9;border-color:var(--lvl,var(--plum))}
+.crumb-pick::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  font-size:10px;pointer-events:none;color:currentColor;opacity:.7}
+.crumb-pick:has(.crumb-sel.on)::after{color:#FFF6E9}
 .nav-line{display:flex;align-items:center;gap:5px;overflow-x:auto;padding:2px 0 4px;
   scrollbar-width:thin;-webkit-overflow-scrolling:touch}
 .nav-line::-webkit-scrollbar{height:5px}
@@ -122,6 +139,37 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .tab-event.active{background:#2E7D6B;color:#EAF7F2;border-color:#2E7D6B}
 /* season rollups */
 .tw{display:inline-block;width:12px;color:var(--muted);font-size:11px}
+
+/* ---- Stat cards: the shelf language reused for sales and stock ---- */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
+.stat-card{border:1.5px solid var(--line-d);border-radius:12px;padding:10px 11px;
+  background:var(--paper2);display:flex;flex-direction:column;gap:2px;min-height:92px}
+.stat-card.dim{opacity:.55}
+.sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
+.sc-name.aotm{color:var(--gold)}
+.sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:auto}
+.sc-big{font-family:'Marcellus',serif;font-size:26px;line-height:1;color:var(--green)}
+.sc-big.zero{color:var(--muted)}
+.sc-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.sc-sub{display:flex;flex-wrap:wrap;gap:6px;min-height:14px}
+.sc-pre{font-size:10.5px;color:var(--saffron-d);font-weight:700}
+.sc-gift{font-size:10.5px;color:var(--gold);font-weight:700}
+.sc-none{font-size:10.5px;color:var(--muted)}
+.stat-card .wo-chips{margin-top:6px}
+
+/* ---- Mini cards: same idea, sized to live inside a dropdown ---- */
+.mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;padding:4px 0 2px}
+.mini-card{border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:var(--paper)}
+.mc-name{font-size:11px;font-weight:700;color:var(--plum);line-height:1.25;min-height:28px}
+.mc-name.aotm{color:var(--gold)}
+.mc-figs{display:flex;align-items:baseline;gap:4px;margin-top:3px}
+.mc-big{font-family:'Marcellus',serif;font-size:18px;line-height:1;color:var(--green)}
+.mc-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
+.mc-sub{font-size:9.5px;color:var(--saffron-d);font-weight:700;margin-top:1px}
+@media (max-width:560px){
+  .stat-grid{grid-template-columns:repeat(auto-fill,minmax(132px,1fr))}
+  .mini-grid{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))}
+}
 .wo-row{padding:9px 0;border-bottom:1px solid var(--line)}
 .wo-row:last-child{border-bottom:none}
 .wo-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
@@ -156,6 +204,12 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .rp-name{flex:1 1 40%;font-size:13px;font-weight:600;color:var(--ink);min-width:0}
 .rp-name.aotm{color:var(--gold)}
 .rp-cells{display:flex;gap:5px;flex:1 1 55%;flex-wrap:wrap;justify-content:flex-end}
+.bk-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:5px;margin-bottom:4px}
+.bk-item{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:8px;
+  padding:6px 9px;font-size:12.5px;cursor:pointer;background:var(--paper);opacity:.5}
+.bk-item.on{opacity:1;border-color:var(--line-d);background:var(--paper2)}
+.bk-item .aotm{color:var(--gold)}
+.bk-cb{width:15px;height:15px;flex:none}
 .rp{width:82px;border:1px solid var(--line-d);border-radius:7px;padding:6px 7px;font-size:12.5px}
 .muted-note{font-weight:400;color:var(--muted);font-size:11px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -187,6 +241,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .cash-coll-row:last-child{border-bottom:none}
 .cash-coll-row span:first-child{font-weight:600;color:var(--ink)}
 .cash-coll-row span:last-child{color:#2E7D6B;font-weight:700}
+.cur-line{display:block;white-space:nowrap}
+.cash-tbl td{white-space:nowrap}
 .cash-log{border:1px solid var(--line);border-radius:9px;overflow:visible;flex:0 0 auto;height:auto}
 .cash-logrow{flex:none;padding:8px 11px;border-bottom:1px solid var(--line)}
 .cash-logrow:last-child{border-bottom:none}
@@ -197,7 +253,13 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .cash-logamt.neg{color:var(--clay)}
 .cash-logbot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
 .cash-logwhen{font-size:10.5px;color:var(--muted)}
+.mv-counts{font-size:10.5px;color:var(--lvl,var(--plum));font-weight:700;white-space:nowrap}
 .cash-logacts{display:inline-flex;gap:2px;flex:none}
+.qr-card{border:1px solid var(--line-d);border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;background:var(--paper)}
+.qr-name{font-weight:800;font-size:14px;color:var(--lvl,var(--plum));margin-bottom:8px;
+  text-transform:uppercase;letter-spacing:.5px}
+.qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
+.qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
 .cash-empty{padding:14px 11px;font-size:12.5px;color:var(--muted);text-align:center;border:1px dashed var(--line-d);border-radius:9px;flex:none}
 .cash-moveall{width:100%;margin-top:8px;font-size:12.5px}
 .cash-resetall{width:100%;margin-top:16px;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);border-radius:9px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer}
@@ -328,10 +390,21 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
 /* ---------- Payments by type ---------- */
+.pay-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .pay-table{width:100%;border-collapse:collapse;font-size:13.5px}
 .pay-table th,.pay-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
 .pay-table th:first-child,.pay-table td:first-child{text-align:left}
 .pay-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
+/* Currency symbol above its code, so the heads read evenly across the row. */
+.cur-sym{display:block;font-size:13px;line-height:1.1;color:var(--ink)}
+.cur-code{display:block;font-size:10px;letter-spacing:.5px}
+.pay-table td,.pay-table th{white-space:nowrap}
+.pay-main{cursor:pointer}
+.pay-main:hover{background:var(--paper2)}
+/* A sub-row is the same shape as its parent — indented by padding, not an arrow,
+   so every number stays in its column. */
+.pay-detail .pay-sub td{color:var(--muted);font-size:12.5px;background:var(--paper2)}
+.pay-detail .pay-sub td:first-child{padding-left:26px}
 .pay-table tfoot td{font-weight:700;color:var(--plum);border-top:2px solid var(--line-d);border-bottom:none}
 .pay-table .usd{color:var(--green);font-weight:600}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
@@ -521,6 +594,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
     <button class="btn-refresh" data-act="org" title="Who to contact about what">👥 Org chart</button>
     <button class="btn-refresh" data-act="transfers" title="Stock added and moved between locations">📦 Transfers</button>
+    <button class="btn-refresh" data-act="qr" title="Payment QR codes">📱 Pay codes</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -715,6 +789,12 @@ function dueParts(s){
   return dueAmt(s)>0 ? [{amt:dueAmt(s),cur:dueCur(s)}] : [];
 }
 function dueUSD(s){return dueParts(s).reduce((t,d)=>t+toUSD(d.amt,d.cur),0);}
+/* A sale given away rather than paid for. Counted separately everywhere so a
+   gift never inflates the money, but never disappears from the book count. */
+function isGift(x){
+  const L=legs(x);
+  return L.length>0 && L.every(l=>l.type==='Gift');
+}
 function legs(s){const a=[];if(!s)return a;if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Number(s.p1amt)||0});
   if(s.p2type)a.push({type:s.p2type,cur:s.p2cur,amt:Number(s.p2amt)||0});return a;}
 function legsUSD(s){return legs(s).reduce((t,l)=>t+toUSD(l.amt,l.cur),0);}
@@ -766,6 +846,18 @@ function currentScope(){
   return CUR_LOC;                 // event id
 }
 /** Currencies in play for the current page. */
+/* Titles the current region carries. A region with none recorded carries them
+   all, so nothing changes for a region that was never edited. */
+function regionBooks(regionId){
+  const all = STATE.books||[];
+  const r = regionById(regionId||CUR_REGION);
+  if(!r || !r.books || !r.books.length) return all;
+  return all.filter(b=>r.books.includes(b.id));
+}
+function curBooks(){
+  if(CUR_LEVEL==='season') return STATE.books||[];
+  return regionBooks(CUR_REGION);
+}
 function curCurrencies(){
   if(CUR_LEVEL==='season') return STATE.currencies||['USD'];
   const r=regionById(CUR_REGION);
@@ -1020,34 +1112,58 @@ function renderAll(){
 function renderTabs(){
   const regions = regionsList();
   const reg = currentRegion();
+  const lvlWord = CUR_LEVEL==='season'?'Season':CUR_LEVEL==='region'?'Region':'Event';
 
-  // Everything on one scrolling line: season › regions › this region's places.
-  let h = `<div class="nav-line">`;
-  h += `<button class="loc-tab tab-season ${CUR_LEVEL==='season'?'active':''}"
-          data-act="goseason" title="The whole tour">🌍 ${esc(STATE.seasonName||'Season')}</button>`;
+  /* One compact bar: a badge saying which level you're on, then the path you
+     took to get here. Each step is a dropdown, so the whole tour is reachable
+     in two taps without a wall of buttons. */
+  const opt=(v,label,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(label)}</option>`;
 
-  if(regions.length) h += `<span class="nav-sep">›</span>`;
-  regions.forEach(r=>{
-    const on = (CUR_REGION===r.regionId && CUR_LEVEL!=='season');
-    h += `<button class="loc-tab tab-region ${on?'active':''}" data-act="goregion"
-            data-region="${esc(r.regionId)}">${esc(r.name)}</button>`;
-  });
-  h += `<button class="loc-tab tab-region" data-act="newregion" style="border-style:dashed"
-          title="Add a region">＋</button>`;
+  let h = `<div class="navbar">
+    <span class="lvl-chip">${lvlWord}</span>
+    <div class="crumbs">`;
 
+  // Season — always the root, and the way back up.
+  h += `<button class="crumb-btn ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
+          title="The whole tour">${esc(STATE.seasonName||'Season')}</button>`;
+
+  // Region picker
+  h += `<span class="crumb-sep">›</span>
+    <span class="crumb-pick">
+      <select class="crumb-sel ${CUR_LEVEL!=='season'?'on':''}" data-act="pickregion">
+        ${CUR_LEVEL==='season'?opt('','Choose a region…',true):''}
+        ${regions.map(r=>opt(r.regionId,r.name,r.regionId===CUR_REGION&&CUR_LEVEL!=='season')).join('')}
+        ${opt('__new','＋ New region…',false)}
+      </select>
+    </span>`;
+
+  // Place picker — this region's warehouse and its events
   if(CUR_LEVEL!=='season' && reg){
-    h += `<span class="nav-sep">›</span>`;
-    h += `<button class="loc-tab tab-event ${CUR_LOC===reg.whLoc?'active':''}" data-act="loc"
-            data-loc="${esc(reg.whLoc)}">🏠 Warehouse</button>`;
-    eventsOfRegion(reg.regionId).forEach(e=>{
-      h += `<button class="loc-tab tab-event ${CUR_LOC===e.eventId?'active':''}" data-act="loc"
-              data-loc="${esc(e.eventId)}">${esc(e.name)}</button>`;
-    });
-    h += `<button class="loc-tab tab-event" data-act="newevent" style="border-style:dashed"
-            title="Add an event">＋</button>`;
+    h += `<span class="crumb-sep">›</span>
+      <span class="crumb-pick">
+        <select class="crumb-sel ${CUR_LEVEL==='event'?'on':''}" data-act="pickloc">
+          ${opt(reg.whLoc,'🏠 Warehouse',CUR_LOC===reg.whLoc)}
+          ${eventsOfRegion(reg.regionId).map(e=>opt(e.eventId,e.name,CUR_LOC===e.eventId)).join('')}
+          ${opt('__new','＋ New event…',false)}
+        </select>
+      </span>`;
   }
-  h += `</div>`;
+  h += `</div></div>`;
   $('#locTabs').innerHTML=h;
+
+  // Wire the pickers here, since this markup is rebuilt on every render.
+  const rs=$('#locTabs').querySelector('[data-act="pickregion"]');
+  if(rs) rs.addEventListener('change',()=>{
+    const v=rs.value;
+    if(v==='__new'){ renderTabs(); regionModal(); return; }
+    if(v) goTo('region',v);
+  });
+  const ls=$('#locTabs').querySelector('[data-act="pickloc"]');
+  if(ls) ls.addEventListener('change',()=>{
+    const v=ls.value;
+    if(v==='__new'){ renderTabs(); eventModal(); return; }
+    goTo(isWarehouseLoc(v)?'region':'event', isWarehouseLoc(v)?regionOfLoc(v):v);
+  });
 }
 
 function renderContextActions(){
@@ -1095,26 +1211,26 @@ function regionStockOf(regionId, bookId){
 }
 
 /* ---- FE11: Warehouse Overview — where every title sits across the tour ---- */
+/* Where every title sits, as shelf cards: the total is the headline, and each
+   region is a tappable chip that takes you straight there. */
 function renderWarehouseOverview(){
   const regions = regionsList();
-  const rows = (STATE.books||[]).map(b=>{
+  const cards = (STATE.books||[]).map(b=>{
     const per = regions.map(r=>({r, n:regionStockOf(r.regionId,b.id)})).filter(x=>x.n>0);
     const total = per.reduce((t,x)=>t+x.n,0);
-    if(!total && !per.length) return `<div class="wo-row"><div class="wo-head">
-        <span class="wo-book ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
-        <span class="wo-total muted">none</span></div></div>`;
     const chips = per.map(x=>
-      `<button class="wo-chip" data-act="goregion" data-region="${esc(x.r.regionId)}">
-         <b>${x.n}</b> ${esc(x.r.name)}</button>`).join('');
-    return `<div class="wo-row">
-      <div class="wo-head">
-        <span class="wo-book ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
-        <span class="wo-total">${total} total</span>
+      `<button class="wo-chip" data-act="goregion" data-region="${esc(x.r.regionId)}"
+         title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('');
+    return `<div class="stat-card${total?'':' dim'}">
+      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      <div class="sc-figs">
+        <span class="sc-big ${total?'':'zero'}">${total}</span>
+        <span class="sc-lbl">in stock</span>
       </div>
-      <div class="wo-chips">${chips}</div>
+      <div class="wo-chips">${chips||'<span class="sc-none">nowhere yet</span>'}</div>
     </div>`;
   }).join('');
-  return rows || `<div class="cash-empty">No stock recorded yet.</div>`;
+  return `<div class="stat-grid">${cards}</div>`;
 }
 
 /* ---- FE12: Sales by Region, expandable to per-title ---- */
@@ -1124,28 +1240,36 @@ function renderSalesByRegion(){
   return regions.map(r=>{
     const locs = locsInRegion(r.regionId);
     const sales = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
-    const count=(cat,type)=>sales.filter(x=>catOf(x.bookId)===cat && x.type===type).length;
-    const bs=count('big','SALE'), bp=count('big','PREORDER');
-    const as=count('aotm','SALE'), ap=count('aotm','PREORDER');
+    const count=(cat,type)=>sales.filter(x=>catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
+    const gcount=(cat)=>sales.filter(x=>catOf(x.bookId)===cat && isGift(x)).length;
+    const bs=count('big','SALE'), bp=count('big','PREORDER'), bg=gcount('big');
+    const as=count('aotm','SALE'), ap=count('aotm','PREORDER'), ag=gcount('aotm');
 
+    // Mini cards — same language as the shelf, sized to sit inside a dropdown.
     const perBook = (STATE.books||[]).map(b=>{
-      const sold=sales.filter(x=>x.bookId===b.id && x.type==='SALE').length;
-      const pre =sales.filter(x=>x.bookId===b.id && x.type==='PREORDER').length;
-      if(!sold && !pre) return '';
-      return `<div class="sbr-book"><span class="${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
-                <span class="sbr-nums">${sold} / ${pre}</span></div>`;
-    }).filter(Boolean).join('') || `<div class="sbr-book muted">No sales yet.</div>`;
+      const sold=sales.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
+      const pre =sales.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
+      const gift=sales.filter(x=>x.bookId===b.id && isGift(x)).length;
+      if(!sold && !pre && !gift) return '';
+      return `<div class="mini-card">
+        <div class="mc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+        <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
+        <div class="mc-sub">${pre?`${pre} pre`:''}${(pre&&gift)?' · ':''}${gift?`${gift} gift`:''}${(!pre&&!gift)?'&nbsp;':''}</div>
+      </div>`;
+    }).filter(Boolean).join('');
+    const perBookWrap = perBook
+      ? `<div class="mini-grid">${perBook}</div>`
+      : `<div class="sbr-book muted">No sales yet.</div>`;
 
     return `<div class="sbr-region">
       <button class="sbr-head" data-act="toggle" data-target="sbr-${esc(r.regionId)}">
         <span class="tw">▸</span>
         <span class="sbr-name">${esc(r.name)}</span>
-        <span class="sbr-sum">${bs+bp} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered)</span>
-          · ${as+ap} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered)</span></span>
+        <span class="sbr-sum">${bs+bp+bg} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered${bg?` / ${bg} gift`:''})</span>
+          · ${as+ap+ag} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered${ag?` / ${ag} gift`:''})</span></span>
       </button>
       <div class="sbr-detail" id="sbr-${esc(r.regionId)}" style="display:none">
-        <div class="sbr-book sbr-hdr"><span>Title</span><span class="sbr-nums">sold / pre-ordered</span></div>
-        ${perBook}
+        ${perBookWrap}
       </div>
     </div>`;
   }).join('');
@@ -1202,9 +1326,12 @@ function renderPaymentTotals(){
 
 function renderTotals(){
   const s=scopedSales();
-  const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat).length;
-  const bigSold=n('SALE','big'), bigPre=n('PREORDER','big');
-  const aotmSold=n('SALE','aotm'), aotmPre=n('PREORDER','aotm');
+  // A gift is still a book that left the shelf, so it counts toward the total —
+  // it just isn't a sale and isn't money.
+  const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat && !isGift(x)).length;
+  const g=(cat)=>s.filter(x=>x.bookId && catOf(x.bookId)===cat && isGift(x)).length;
+  const bigSold=n('SALE','big'), bigPre=n('PREORDER','big'), bigGift=g('big');
+  const aotmSold=n('SALE','aotm'), aotmPre=n('PREORDER','aotm'), aotmGift=g('aotm');
 
   let totUsd=0, pendUsd=0;
   const got={}, due={};
@@ -1221,10 +1348,10 @@ function renderTotals(){
     .sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
   $('#totals').innerHTML=`
-    <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre}</div>
-      <div class="sub"><b>${bigSold}</b> sold · <b>${bigPre}</b> pre-ordered</div></div>
-    <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre}</div>
-      <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered</div></div>
+    <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre+bigGift}</div>
+      <div class="sub"><b>${bigSold}</b> sold · <b>${bigPre}</b> pre-ordered${bigGift?` · <b>${bigGift}</b> gift${bigGift===1?'':'s'}`:''}</div></div>
+    <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre+aotmGift}</div>
+      <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered${aotmGift?` · <b>${aotmGift}</b> gift${aotmGift===1?'':'s'}`:''}</div></div>
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
       <div class="sub">${money(got)||'nothing collected yet'}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
@@ -1236,7 +1363,7 @@ function renderInventory(){
   $('#invHint').textContent = isWarehouseLoc(CUR_LOC)?'(what is in the warehouse right now)':'(stock available at this event)';
   const s=scopedSales();
   let h='';
-  (STATE.books||[]).forEach(b=>{
+  curBooks().forEach(b=>{
     const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
     const region = isWarehouseLoc(CUR_LOC) ? regionUnsold(b.id) : q;
@@ -1272,15 +1399,29 @@ function renderInventory(){
     `<button class="multi-btn" data-act="multi" data-mode="sale">＋ Multiple Books — one transaction</button>`;
 }
 
+/* Sales by title as cards, echoing the warehouse shelf so the eye reads them the
+   same way: the big number is what matters, the small print qualifies it. */
 function renderTitleList(target){
-  const s=scopedSales(); let h='';
-  (STATE.books||[]).forEach(b=>{
+  const s=scopedSales();
+  const h=curBooks().map(b=>{
     const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
-    const pre=s.filter(x=>x.type==='PREORDER'&&x.bookId===b.id).length;
-    h+=`<div class="title-row"><span class="name">${esc(b.name)}</span>
-      <span class="count"><b>${sold}</b> / <i>${pre}</i></span></div>`;
-  });
-  $(target||'#titleList').innerHTML=h;
+    const pre =s.filter(x=>x.type==='PREORDER'&&x.bookId===b.id).length;
+    const gift=s.filter(x=>x.bookId===b.id && isGift(x)).length;
+    const dim = (!sold && !pre && !gift) ? ' dim' : '';
+    return `<div class="stat-card${dim}">
+      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      <div class="sc-figs">
+        <span class="sc-big ${sold?'':'zero'}">${sold}</span>
+        <span class="sc-lbl">sold</span>
+      </div>
+      <div class="sc-sub">
+        ${pre?`<span class="sc-pre">${pre} pre-ordered</span>`:''}
+        ${gift?`<span class="sc-gift">${gift} gift${gift===1?'':'s'}</span>`:''}
+        ${(!pre&&!gift)?'<span class="sc-none">&nbsp;</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+  $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
 }
 
 function renderPayments(target){
@@ -1321,7 +1462,7 @@ function renderPayments(target){
     const detail=groups.map(g=>{
       const row=(byGroup[t]||{})[g.id];
       if(!row) return '';
-      return `<tr class="pay-sub"><td>↳ ${esc(g.name)}</td>${
+      return `<tr class="pay-sub"><td>${esc(g.name)}</td>${
         curs.map(c=>`<td>${cell(row,c)}</td>`).join('')
       }<td class="usd">$${fmt(usdOf(row))}</td></tr>`;
     }).filter(Boolean).join('');
@@ -1335,10 +1476,10 @@ function renderPayments(target){
 
   $(target||'#payBody').innerHTML=`
     <table class="pay-table">
-      <thead><tr><th>Type</th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||'')} ${esc(c)}</th>`).join('')}<th>USD eq.</th></tr></thead>
+      <thead><tr><th>Type</th>${curs.map(c=>`<th><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></th>`).join('')}<th>USD eq.</th></tr></thead>
       <tbody>${rows||`<tr><td colspan="${curs.length+2}">Nothing collected yet.</td></tr>`}</tbody>
       <tfoot><tr><td>All</td>${curs.map(c=>`<td>${fmt(curTot[c]||0)}</td>`).join('')}<td class="usd">$${fmt(usdOf(curTot))}</td></tr></tfoot>
-    </table>
+    </table></div>
     <div class="cur-strip">
       <span class="cur-pill">Donations: <b>$${fmt(donUsd)}</b></span>
     </div>`;
@@ -2223,6 +2364,15 @@ function transfersModal(){
         desc = `${esc(stockLocName(m.toLoc))} · ${added?'stock added':'stock removed'}`;
         amtStr = (added?'+':'')+m.qty; cls = added?'pos':'neg';
       }
+      // Show how the shelves actually changed, so a move that "looks like nothing
+      // happened" can be checked at a glance.
+      const shown = v => (v===''||v===undefined||v===null)?null:Number(v);
+      const fB=shown(m.fromBefore), fA=shown(m.fromAfter), tB=shown(m.toBefore), tA=shown(m.toAfter);
+      const bits=[];
+      if(m.kind==='TRANSFER' && fB!==null) bits.push(`${esc(stockLocName(m.fromLoc))} ${fB}→${fA}`);
+      if(tB!==null) bits.push(`${esc(stockLocName(m.toLoc))} ${tB}→${tA}`);
+      const counts = bits.length ? `<span class="mv-counts">${bits.join(' · ')}</span>` : '';
+      const canUndo = (m.kind==='TRANSFER'||m.kind==='ADJUST') && m.id;
       return `<div class="cash-logrow">
         <div class="cash-logtop">
           <span class="cash-logdesc">${book} — ${desc}</span>
@@ -2230,6 +2380,9 @@ function transfersModal(){
         </div>
         <div class="cash-logbot">
           <span class="cash-logwhen">${esc(when)}${m.note?' · '+esc(m.note):''}</span>
+          <span class="cash-logacts">${counts}${canUndo?`
+            <button class="cash-mini danger" data-act="undomove" data-id="${esc(m.id)}"
+              title="Undo this movement">↺</button>`:''}</span>
         </div>
       </div>`;
     }).join('');
@@ -2257,6 +2410,30 @@ function transfersModal(){
   });
 }
 
+
+/* Payment QR codes, kept together so anyone on the team can show a donor the
+   right one without hunting through a phone. */
+function qrModal(){
+  const codes = [
+    { file:'qr-wise.jpeg',   name:'Wise',
+      lines:['Name: Renuka Radhakrishnan','WiseTag: https://wise.com/pay/me/renukar73'] },
+    { file:'qr-paypal.jpeg', name:'PayPal', lines:['rradhakrsna@gmail.com'] },
+    { file:'qr-zelle.jpeg',  name:'Zelle',
+      lines:['Name: Renuka RadhaKrishnan','rradhakrsna@gmail.com'] }
+  ];
+  openModal(`
+    ${mHead('Payment QR codes')}
+    <div class="m-body">
+      <div class="hint">Show the donor the code for the method they want to use.</div>
+      ${codes.map(c=>`
+        <div class="qr-card">
+          <div class="qr-name">${esc(c.name)}</div>
+          <img class="qr-img" src="${esc(c.file)}" alt="${esc(c.name)} QR code">
+          ${c.lines.map(l=>`<div class="qr-line">${esc(l)}</div>`).join('')}
+        </div>`).join('')}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+}
 
 function orgModal(){
   // Each page keeps its own chart — an event's contacts differ from its region's,
@@ -2475,7 +2652,11 @@ function cashReopen(){ setTimeout(()=>{ try{ cashModal(); }catch(e){} },0); }
 
 function seasonCashModal(){
   const rows = cashByRegion();
-  const money=o=>Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ') || '—';
+  // One currency per line: on a phone a " · " run wraps mid-amount ("3228 / zł").
+  const money=o=>{
+    const parts=Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c));
+    return parts.length ? parts.map(x=>`<span class="cur-line">${x}</span>`).join('') : '—';
+  };
   const totHeld={}, totBank={};
   rows.forEach(r=>{
     Object.keys(r.held).forEach(c=>totHeld[c]=(totHeld[c]||0)+r.held[c]);
@@ -2970,7 +3151,7 @@ function regionModal(edit){
   };
 
   function priceRows(curList){
-    return (STATE.books||[]).map(b=>{
+    return curBooks().map(b=>{
       const cells=curList.map(c=>
         `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
            step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
@@ -2988,6 +3169,17 @@ function regionModal(edit){
         <input id="rgName" type="text" placeholder="e.g. Macedonia" value="${esc(isEdit?edit.name:'')}"></div>
       <div class="field"><label>Currencies <span class="muted-note">(comma separated — USD is always included)</span></label>
         <input id="rgCur" type="text" placeholder="MKD, EUR, USD" value="${esc(cur)}"></div>
+      <div class="cash-sub">Titles carried here</div>
+      <div class="hint">Untick anything this region won't be offering — it then stays out of
+        the sale screens entirely. Leave them all ticked to carry the full catalogue.</div>
+      <div class="bk-pick" id="rgBooks">
+        ${(STATE.books||[]).map(b=>{
+          const on = !isEdit || !edit.books || !edit.books.length || edit.books.includes(b.id);
+          return `<label class="bk-item ${on?'on':''}">
+            <input type="checkbox" class="bk-cb" value="${esc(b.id)}" ${on?'checked':''}>
+            <span class="${isAotm(b)?'aotm':''}">${esc(b.name)}</span></label>`;
+        }).join('')}
+      </div>
       <div class="cash-sub">Prices</div>
       <div class="hint" id="rgPriceHint">Set what each book sells for in this region.</div>
       <div id="rgPrices">${priceRows(parseCurs(cur))}</div>
@@ -2999,6 +3191,11 @@ function regionModal(edit){
     </div>`, true);
 
   // Re-draw the price grid whenever the currency list changes, keeping anything typed.
+  // Dim a title the moment it's unticked, so the choice reads at a glance.
+  $('#rgBooks').addEventListener('change',e=>{
+    const cb=e.target.closest('.bk-cb'); if(!cb) return;
+    cb.closest('.bk-item').classList.toggle('on', cb.checked);
+  });
   $('#rgCur').addEventListener('change',()=>{
     const typed={};
     [...document.querySelectorAll('#modal .rp')].forEach(i=>{
@@ -3016,6 +3213,12 @@ function regionModal(edit){
     const name=$('#rgName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the region a name.'; return; }
     const curList=parseCurs($('#rgCur').value);
+    const allBooks=(STATE.books||[]).map(b=>b.id);
+    const picked=[...document.querySelectorAll('#modal .bk-cb')].filter(c=>c.checked).map(c=>c.value);
+    if(!picked.length){ $('#modalErr').textContent='Keep at least one title.'; return; }
+    // All ticked = "carries everything", stored as blank so adding a new title later
+    // shows up automatically.
+    const books = picked.length===allBooks.length ? '' : picked.join(',');
     const prices={};
     [...document.querySelectorAll('#modal .rp')].forEach(i=>{
       const v=Number(i.value);
@@ -3024,13 +3227,13 @@ function regionModal(edit){
     });
     $('#modalErr').textContent='';
     if(isEdit){
-      commit({action:'editRegion',regionId:edit.regionId,name,currencies:curList.join(','),prices},
+      commit({action:'editRegion',regionId:edit.regionId,name,currencies:curList.join(','),books,prices},
         st=>{ const r=(st.regions||[]).find(x=>x.regionId===edit.regionId);
-              if(r){ r.name=name; r.currencies=curList; } },
+              if(r){ r.name=name; r.currencies=curList; r.books=books?books.split(','):[]; } },
         'Region updated');
     }else{
       // The server assigns the real ids, so we just refresh once it lands.
-      commit({action:'createRegion',name,currencies:curList.join(','),prices},
+      commit({action:'createRegion',name,currencies:curList.join(','),books,prices},
         st=>st, 'Region created');
       setTimeout(pull,400);
     }
@@ -3067,8 +3270,8 @@ function eventModal(edit){
 
 /* ---- Shared builder: one row per title ---- */
 function bulkRows(cols){
-  const big=(STATE.books||[]).filter(b=>!isAotm(b));
-  const aotm=(STATE.books||[]).filter(isAotm);
+  const big=curBooks().filter(b=>!isAotm(b));
+  const aotm=curBooks().filter(isAotm);
   const row=b=>{
     const c=cols(b);
     return `<div class="bulk-row">
@@ -3450,6 +3653,13 @@ document.addEventListener('click',e=>{
             const tw=t.querySelector('.tw'); if(tw) tw.textContent=open?'▸':'▾'; }
     return;
   }
+  if(a==='undomove'){
+    if(!confirm('Undo this movement? The books go back where they were and the entry is removed.')) return;
+    commitSync({action:'undoStockMove',id:t.dataset.id},'Movement undone');
+    setTimeout(()=>transfersModal(),0);
+    return;
+  }
+  if(a==='qr'){ qrModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
   if(a==='goregion'){ goTo('region', t.dataset.region); return; }
   if(a==='newregion'){ regionModal(); return; }
