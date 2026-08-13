@@ -671,7 +671,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b22</span>
+    <span class="build-tag" title="Which version of the page is loaded">b23</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
@@ -1774,7 +1774,7 @@ function logItemHTML(x, opts){
 
   // Anything still owed, or a book not yet handed over, needs a second line for
   // the person's name and number. A settled sale says it all on one.
-  const needsRow2 = pending || awaiting;
+  const needsRow2 = pending || awaiting || !!x.soldBy;
   const open = OPEN.has(x.saleId);
   const owedLabel = dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ');
   const showOwed = opts.showOwed && pending && owedLabel;
@@ -1797,6 +1797,9 @@ function logItemHTML(x, opts){
     if(x.name) r2.push(`<span class="li-name">${esc(x.name)}</span>`);
     r2.push(x.phone ? waLink(x.phone) : `<span class="li-nonum">no number on file</span>`);
   }
+  // Who recorded it, on the row itself — the point is to see it at a glance
+  // rather than having to open each sale.
+  if(x.soldBy) r2.push(`<span class="li-by">👤 ${esc(x.soldBy)}</span>`);
 
   // The drawer carries the rest, in plain words. The title leads, so a name too
   // long for the row is always readable in full somewhere.
