@@ -427,6 +427,9 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .ptg{display:grid;min-width:420px;align-items:stretch;font-size:13.5px}
 .ptg > div{padding:8px 10px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end}
+/* An author `display` rule beats the browser's own styling for [hidden], so the
+   breakdown rows have to be hidden explicitly or they would always show. */
+.ptg > div[hidden]{display:none}
 .ptg > div.ptg-first{text-align:left;justify-content:flex-start;gap:4px}
 .ptg-h{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
   font-weight:600;flex-direction:column;align-items:flex-end !important;gap:0 !important}
@@ -638,7 +641,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   <!-- Only what you need at a glance; everything else lives in App Admin. -->
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b15</span>
+    <span class="build-tag" title="Which version of the page is loaded">b16</span>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -3855,13 +3858,19 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='paytoggle'){
-    // Show or hide every sibling row belonging to this type.
+    // Every cell of the type row carries the toggle, so the whole row is
+    // clickable — which means the arrow has to be found by the row it belongs
+    // to, not on whichever cell happened to be clicked.
     const cls=t.dataset.target;
-    const kids=[...document.querySelectorAll('.'+cls)];   // every cell of those rows
-    const open=kids.length && !kids[0].hidden;
+    const kids=[...document.querySelectorAll('.'+cls)];   // every cell of the breakdown rows
+    if(!kids.length) return;
+    const open=!kids[0].hidden;
     kids.forEach(k=>{ k.hidden=open; });
-    const tw=t.querySelector('.tw'); if(tw) tw.textContent = open?'▸':'▾';
-    t.classList.toggle('open', !open);
+    document.querySelectorAll(`[data-target="${cls}"]`).forEach(cell=>{
+      cell.classList.toggle('open', !open);
+      const tw=cell.querySelector('.tw');
+      if(tw) tw.textContent = open?'▸':'▾';
+    });
     return;
   }
   if(a==='undomove'){
