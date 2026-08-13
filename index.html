@@ -233,6 +233,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .btn-gold{background:var(--gold);color:#fff}
 .btn-teal{background:#2E7D6B;color:#EAF7F2}
 .btn-indigo{background:#4A5B8C;color:#EEF1FA}
+.btn-slate{background:#5A6472;color:#EEF0F3}
+.btn-moss{background:#5E7248;color:#EFF3E8}
 .rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
 /* cash tracking */
 .cash-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}
@@ -273,6 +275,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.qr-edit{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;
+  padding:8px;margin-bottom:8px;background:var(--paper)}
+.qr-thumb{width:54px;height:54px;object-fit:contain;border-radius:6px;flex:none;background:#fff}
+.qr-fields{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
+.qr-fields input,.qr-fields textarea{border:1px solid var(--line-d);border-radius:7px;padding:6px 8px;font-size:12.5px;width:100%}
 .cash-empty{padding:14px 11px;font-size:12.5px;color:var(--muted);text-align:center;border:1px dashed var(--line-d);border-radius:9px;flex:none}
 .cash-moveall{width:100%;margin-top:8px;font-size:12.5px}
 .cash-resetall{width:100%;margin-top:16px;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);border-radius:9px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer}
@@ -417,11 +424,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* Fixed layout + an explicit colgroup means the header, the type rows and the
    breakdown rows all share exactly the same column edges. */
 .pt-table{width:100%;min-width:440px;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
-.pt-col-type{width:38%}
+.pt-col-type{width:36%}
 .pt-col-num{width:auto}
 .pt-table th,.pt-table td{padding:8px 10px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line)}
-.pt-table th.pt-type,.pt-table td.pt-type{text-align:left;width:38%;min-width:130px}
+.pt-table th.pt-type,.pt-table td.pt-type{text-align:left}
 .pt-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;
   color:var(--muted);font-weight:600;vertical-align:bottom}
 .cur-sym{display:block;font-size:14px;line-height:1.1;color:var(--ink)}
@@ -1050,9 +1057,22 @@ function cacheLoad(){
 }
 
 async function pull(){
+  /* Never read while a write is still in the air. If a pull lands after the
+     server has applied a change but before this page has recorded the revision
+     that change produced, the local copy of the change looks unconfirmed and
+     gets replayed on top of a state that already contains it — which showed up
+     as a sale silently duplicating itself. Writes in a brand-new region are slow
+     (its spreadsheet is being created), so the window was wide enough to hit. */
+  if(inflight){ scheduleSync(); return; }
+  const startOps = OPS.slice();
   const d = await post({action:'getState'});
   BASE = d.state; REV = d.rev;
-  OPS = OPS.filter(o=>o.rev===undefined || o.rev>REV);   // drop what the server now includes
+  // Only retire ops that existed when this read began; anything committed while
+  // it was in flight is not represented in what came back.
+  OPS = OPS.filter(o=>{
+    if(!startOps.includes(o)) return true;              // newer than this snapshot
+    return o.rev===undefined || o.rev>REV;              // still not in the server's copy
+  });
   // Keep the current position valid: fall back sensibly if a region or event
   // vanished, and settle into the first region on a cold start.
   (function(){
@@ -1245,8 +1265,8 @@ function renderAdmin(){
   const season = CUR_LEVEL==='season';
   let h = '';
   h += `<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
-  h += `<button class="btn btn-ghost btn-sm" data-act="transfers">📦 Transfers</button>`;
-  h += `<button class="btn btn-ghost btn-sm" data-act="org">👥 Org chart</button>`;
+  h += `<button class="btn btn-slate btn-sm" data-act="transfers">📦 Transfers</button>`;
+  h += `<button class="btn btn-moss btn-sm" data-act="org">👥 Org chart</button>`;
 
   if(!season){
     if(isWarehouseLoc(CUR_LOC)){
@@ -2536,24 +2556,97 @@ function transfersModal(){
 /* Payment QR codes, kept together so anyone on the team can show a donor the
    right one without hunting through a phone. */
 function qrModal(){
-  const codes = [
-    { file:'qr-wise.jpeg',   name:'Wise',
-      lines:['Name: Renuka Radhakrishnan','WiseTag: https://wise.com/pay/me/renukar73'] },
-    { file:'qr-paypal.jpeg', name:'PayPal', lines:['rradhakrsna@gmail.com'] },
-    { file:'qr-zelle.jpeg',  name:'Zelle',
-      lines:['Name: Renuka RadhaKrishnan','rradhakrsna@gmail.com'] }
-  ];
+  // Codes shared across the tour, plus any this region added of its own.
+  const scope = CUR_REGION || SEASON;
+  const mine = (STATE.qr||[]).filter(q=>q.scope===SEASON || q.scope===scope);
+  const cards = mine.length ? mine.map(q=>`
+        <div class="qr-card">
+          <div class="qr-name">${esc(q.label)}</div>
+          <img class="qr-img" src="${esc(q.src)}" alt="${esc(q.label)} QR code">
+          ${q.caption ? q.caption.split('\n').map(l=>`<div class="qr-line">${esc(l)}</div>`).join('') : ''}
+        </div>`).join('')
+    : `<div class="cash-empty">No payment codes yet. Add one below.</div>`;
+
   openModal(`
     ${mHead('Digital Payment QRs')}
     <div class="m-body">
-      ${codes.map(c=>`
-        <div class="qr-card">
-          <div class="qr-name">${esc(c.name)}</div>
-          <img class="qr-img" src="${esc(c.file)}" alt="${esc(c.name)} QR code">
-          ${c.lines.map(l=>`<div class="qr-line">${esc(l)}</div>`).join('')}
-        </div>`).join('')}
+      ${cards}
+      <button class="btn btn-ghost btn-sm" data-act="qredit">Manage codes</button>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+}
+
+/* Add, caption or remove the codes for this page. Images are read straight into
+   the sheet as data URLs, so there's no separate hosting to keep alive. */
+function qrEditModal(){
+  const scope = CUR_REGION || SEASON;
+  let work = (STATE.qr||[]).filter(q=>q.scope===scope)
+    .map(q=>({id:q.id,label:q.label,caption:q.caption,src:q.src}));
+  const shared = (STATE.qr||[]).filter(q=>q.scope===SEASON && scope!==SEASON);
+
+  function render(){
+    const rows = work.map((q,i)=>`
+      <div class="qr-edit">
+        <img class="qr-thumb" src="${esc(q.src)}" alt="">
+        <div class="qr-fields">
+          <input class="qr-label" data-i="${i}" value="${esc(q.label)}" placeholder="e.g. Wise">
+          <textarea class="qr-cap" data-i="${i}" rows="2" placeholder="Caption — name, email, link">${esc(q.caption)}</textarea>
+        </div>
+        <button class="cash-mini danger" data-qrdel="${i}" title="Remove">✕</button>
+      </div>`).join('') || `<div class="cash-empty">Nothing added for this page yet.</div>`;
+    $('#qrList').innerHTML = rows;
+    [...document.querySelectorAll('#modal .qr-label')].forEach(el=>el.oninput=()=>{work[+el.dataset.i].label=el.value;});
+    [...document.querySelectorAll('#modal .qr-cap')].forEach(el=>el.oninput=()=>{work[+el.dataset.i].caption=el.value;});
+    [...document.querySelectorAll('#modal [data-qrdel]')].forEach(b=>b.onclick=()=>{work.splice(+b.dataset.qrdel,1);render();});
+  }
+
+  openModal(`
+    ${mHead('Manage payment codes')}
+    <div class="m-body">
+      <div class="hint">Codes added here belong to <b>${esc(scopeLabel())}</b>.
+        ${shared.length?`It also shows ${shared.length} code${shared.length===1?'':'s'} shared across the whole tour.`:''}</div>
+      <div id="qrList"></div>
+      <div class="cash-sub">Add a code</div>
+      ${shared.length?`<div class="field"><label>Reuse one already on the tour</label>
+        <select id="qrPick"><option value="">Choose…</option>
+          ${shared.map(q=>`<option value="${esc(q.id)}">${esc(q.label)}</option>`).join('')}
+        </select></div>`:''}
+      <div class="field"><label>Or upload an image</label>
+        <input id="qrFile" type="file" accept="image/*"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="qr">Cancel</button>
+      <button class="btn btn-primary" id="qrSave">Save</button>
+    </div>`);
+  render();
+
+  const pick=$('#qrPick');
+  if(pick) pick.addEventListener('change',()=>{
+    const q=shared.find(x=>x.id===pick.value);
+    if(!q) return;
+    work.push({label:q.label,caption:q.caption,src:q.src});
+    pick.value=''; render();
+  });
+
+  $('#qrFile').addEventListener('change',e=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f) return;
+    if(f.size > 900*1024){ $('#modalErr').textContent='That image is too large — use one under about 900 KB.'; return; }
+    const fr=new FileReader();
+    fr.onload=()=>{ work.push({label:'',caption:'',src:String(fr.result)}); $('#qrFile').value=''; render(); };
+    fr.readAsDataURL(f);
+  });
+
+  $('#qrSave').addEventListener('click',()=>{
+    const bad=work.find(q=>!q.label.trim());
+    if(bad){ $('#modalErr').textContent='Give every code a label.'; return; }
+    commit({action:'qrSave',scope,rows:work},
+      st=>{ st.qr=(st.qr||[]).filter(q=>q.scope!==scope)
+              .concat(work.map((q,i)=>({id:q.id||('tmp'+i),scope,label:q.label,caption:q.caption,src:q.src,sort:i}))); },
+      'Payment codes saved');
+    setTimeout(qrModal,0);
+  });
 }
 
 function orgModal(){
@@ -3834,6 +3927,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='qr'){ qrModal(); return; }
+  if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
   if(a==='goregion'){ goTo('region', t.dataset.region); return; }
   if(a==='newregion'){ regionModal(); return; }
