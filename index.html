@@ -404,41 +404,30 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .title-row .count{font-family:'Marcellus',serif;color:var(--plum);font-size:16px}
 .title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
-/* ---------- Payments by type ---------- */
-.pay-scroll{overflow-x:auto;overflow-y:visible;-webkit-overflow-scrolling:touch;
-  max-width:100%;padding-bottom:2px}
-@media (max-width:700px){
-  /* Keep every column readable and let the panel scroll sideways instead of
-     squeezing the numbers into each other. */
-  .pay-table{min-width:520px}
-  .pay-table th:first-child,.pay-table td:first-child{width:150px}
-}
-.pay-table{width:100%;border-collapse:collapse;font-size:13.5px}
-.pay-table th,.pay-table td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line)}
-.pay-table th:first-child,.pay-table td:first-child{text-align:left}
-.pay-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600}
-/* Currency symbol above its code, so the heads read evenly across the row. */
-.cur-sym{display:block;font-size:13px;line-height:1.1;color:var(--ink)}
-.cur-code{display:block;font-size:10px;letter-spacing:.5px}
-.pay-table td,.pay-table th{white-space:nowrap}
-.pay-main{cursor:pointer}
-.pay-main:hover{background:var(--paper2)}
-/* A sub-row is the same shape as its parent — indented by padding, not an arrow,
-   so every number stays in its column. */
-/* The breakdown reuses the parent's column widths, so numbers line up exactly. */
-.pay-detail-cell{padding:0 !important;background:var(--paper2)}
-.pay-inner{width:100%;border-collapse:collapse;table-layout:fixed}
-.pay-inner td{padding:6px 8px;text-align:right;font-size:12.5px;color:var(--muted);
+/* ---------- Payments by type ----------
+   One flat table: type rows and their breakdown rows are siblings, so columns
+   line up without any width juggling. Scrolls sideways rather than squashing. */
+.pt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px}
+.pt-table{width:100%;min-width:440px;border-collapse:collapse;font-size:13.5px}
+.pt-table th,.pt-table td{padding:8px 10px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line)}
-.pay-inner tr:last-child td{border-bottom:none}
-.pay-inner td:first-child{text-align:left;padding-left:26px;font-weight:600;color:var(--ink)}
-.pay-don .pay-main td{border-top:2px solid var(--line-d)}
-.pay-don .pay-main td:first-child{color:var(--gold)}
-/* Give the table real column widths so the inner rows can match them. */
-.pay-table{table-layout:fixed}
-.pay-table th:first-child,.pay-table td:first-child{width:34%}
-.pay-table tfoot td{font-weight:700;color:var(--plum);border-top:2px solid var(--line-d);border-bottom:none}
-.pay-table .usd{color:var(--green);font-weight:600}
+.pt-table th.pt-type,.pt-table td.pt-type{text-align:left;width:38%;min-width:130px}
+.pt-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--muted);font-weight:600;vertical-align:bottom}
+.cur-sym{display:block;font-size:14px;line-height:1.1;color:var(--ink)}
+.cur-code{display:block;font-size:10px;letter-spacing:.5px}
+.pt-row{cursor:pointer}
+.pt-row:hover{background:var(--paper2)}
+.pt-row .pt-type{font-weight:700;color:var(--ink)}
+.pt-row.open .pt-type{color:var(--lvl,var(--plum))}
+.pt-sub{background:var(--paper2)}
+.pt-sub td{color:var(--muted);font-size:12.5px;padding-top:6px;padding-bottom:6px}
+.pt-sub .pt-type{padding-left:30px;font-weight:600;color:var(--ink)}
+.pt-don .pt-type{color:var(--gold)}
+.pt-table .usd{color:var(--green);font-weight:600}
+.pt-table .z{color:var(--line-d)}
+.pt-table tfoot td{font-weight:700;color:var(--plum);
+  border-top:2px solid var(--line-d);border-bottom:none}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
 .cur-pill b{color:var(--plum)}
@@ -797,7 +786,8 @@ const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';
   clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',isErr?5000:2600);}
 function setStatus(kind,text){$('#dot').className='dot '+kind;$('#statusText').textContent=text;}
-const clock = () => new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const LOCALE='en-GB';   // the app speaks English wherever the tour is
+const clock = () => new Date().toLocaleTimeString(LOCALE, {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
 function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,cat:'big',usd:0,pln:0,eur:0};}
 function catOf(id){return bookById(id).cat==='aotm'?'aotm':'big';}
@@ -809,8 +799,17 @@ function priceFor(book,cur){
   if(p) return p;
   return cur==='PLN'?book.pln:cur==='EUR'?book.eur:cur==='USD'?book.usd:0;
 }
-function toUSD(amt,cur){amt=Number(amt)||0;if(!amt)return 0;const r=STATE.rates||{plnPerUsd:3.79,eurPerUsd:.87};
-  if(cur==='USD')return amt;if(cur==='PLN')return amt/r.plnPerUsd;if(cur==='EUR')return amt/r.eurPerUsd;return 0;}
+/* Every currency the tour uses, not just the original three — a Macedonian sale
+   must convert, or the season totals silently read $0. */
+function toUSD(amt,cur){
+  amt=Number(amt)||0; if(!amt) return 0;
+  cur=String(cur||'').toUpperCase();
+  if(cur==='USD') return amt;
+  const r=STATE.rates||{};
+  const per=(r.perUsd&&Number(r.perUsd[cur])) ||
+            (cur==='PLN'?Number(r.plnPerUsd):cur==='EUR'?Number(r.eurPerUsd):0);
+  return per>0 ? amt/per : 0;
+}
 /* Mirrors the backend exactly:
      pending  → nothing received, the legs are what is owed
      dueamt>0 → the legs are banked and this much is still outstanding */
@@ -912,8 +911,20 @@ function goTo(level, loc){
   if(level==='season'){ CUR_LOC=SEASON; CUR_REGION=''; }
   else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:WAREHOUSE; }
   else { CUR_LOC=loc; CUR_REGION=regionOfLoc(loc); }
+  savePos();
   applyLevelTheme();
   renderAll();
+}
+/* Remember where you were standing, so a refresh (or a reopened tab) puts you
+   back there instead of dumping you at the first region's warehouse. */
+function savePos(){
+  try{ localStorage.setItem('tbs_pos', JSON.stringify({l:CUR_LEVEL,r:CUR_REGION,c:CUR_LOC})); }catch(e){}
+}
+function loadPos(){
+  try{
+    const p=JSON.parse(localStorage.getItem('tbs_pos')||'null');
+    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||WAREHOUSE; }
+  }catch(e){}
 }
 /** Soft background + accent cue for the level you're on (not the individual item). */
 function applyLevelTheme(){
@@ -1036,6 +1047,7 @@ async function pull(){
       (BASE.events||[]).some(e=>e.eventId===CUR_LOC && (e.regionId||'')===reg.regionId);
     if(!stillThere){ CUR_LEVEL='region'; CUR_LOC=reg.whLoc; }
   })();
+  savePos();
   applyLevelTheme();
   STATE = derive(); cacheSave(); renderAll();
   setStatus(OPS.length?'load':'ok', OPS.length?('Saving '+OPS.length+'…'):('Up to date · '+clock()));
@@ -1221,7 +1233,7 @@ function renderAdmin(){
     if(isWarehouseLoc(CUR_LOC)){
       h += `<button class="btn btn-plum" data-act="stock">＋ Add / subtract stock</button>`;
       h += `<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
-      h += `<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Another warehouse</button>`;
+      h += `<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Transfer to region</button>`;
       h += `<button class="btn btn-ghost btn-sm" data-act="editregion">Edit region</button>`;
       h += `<button class="btn btn-danger btn-sm" data-act="deleteregion">Delete region</button>`;
     }else{
@@ -1486,77 +1498,89 @@ function renderTitleList(target){
   $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
 }
 
+/* ============================ TOTALS BY PAYMENT TYPE ============================
+   Written as ONE flat table. Every row — the payment type and each of its
+   breakdown rows — is a sibling <tr> in the same <tbody>, so the browser gives
+   them identical column widths automatically. (Nesting a second table inside a
+   cell is what made the old version's numbers wander out of their columns.)
+   Opening a type just unhides its rows; nothing reflows.                     */
 function renderPayments(target){
-  const s=scopedSales();
-  const curs=curCurrencies();
+  const sales   = scopedSales();
+  const curs    = curCurrencies();
+  const panelId = String(target||'body').replace(/\W+/g,'');
 
-  /* Which rows a toggle opens depends on the level: the season breaks a payment
-     type down by region, a region breaks it down by event + warehouse. */
+  // Season groups by region; a region groups by its warehouse and events.
   const groups = (CUR_LEVEL==='season')
-    ? regionsList().map(r=>({id:r.regionId,name:r.name,locs:locsInRegion(r.regionId)}))
+    ? regionsList().map(r=>({id:r.regionId, name:r.name, locs:locsInRegion(r.regionId)}))
     : (()=>{ const r=currentRegion(); if(!r) return [];
-        return [{id:r.whLoc,name:'Warehouse',locs:[r.whLoc]}]
-          .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name,locs:[e.eventId]}))); })();
+        return [{id:r.whLoc, name:'Warehouse', locs:[r.whLoc]}]
+          .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId, name:e.name, locs:[e.eventId]})));
+      })();
 
-  const table={}, byGroup={}, curTot={};
-  const don={}, donGroup={};
-  s.forEach(x=>{
-    if(!received(x))return;
-    const g=groups.find(g=>g.locs.includes(x.location));
+  // Tally: type -> currency, and type -> group -> currency. Donations run in
+  // parallel so they can behave like any other row.
+  const byType={}, byTypeGroup={}, grand={}, don={}, donGroup={};
+  sales.forEach(x=>{
+    if(!received(x)) return;
+    const g = groups.find(gr=>gr.locs.includes(x.location));
     legs(x).forEach(l=>{
-      if(!l.type||!l.amt) return;
-      (table[l.type]=table[l.type]||{})[l.cur]=(table[l.type][l.cur]||0)+l.amt;
-      curTot[l.cur]=(curTot[l.cur]||0)+l.amt;
-      if(g){ const t=(byGroup[l.type]=byGroup[l.type]||{});
-             (t[g.id]=t[g.id]||{})[l.cur]=(t[g.id][l.cur]||0)+l.amt; }
-      // Donations are tracked in parallel so they can open the same way.
+      if(!l.type || !l.amt) return;
+      (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
+      grand[l.cur] = (grand[l.cur]||0) + l.amt;
+      if(g){
+        const t = byTypeGroup[l.type] = byTypeGroup[l.type]||{};
+        (t[g.id] = t[g.id]||{})[l.cur] = (t[g.id][l.cur]||0) + l.amt;
+      }
       if(x.type==='DONATION'){
-        don[l.cur]=(don[l.cur]||0)+l.amt;
-        if(g){ (donGroup[g.id]=donGroup[g.id]||{})[l.cur]=(donGroup[g.id][l.cur]||0)+l.amt; }
+        don[l.cur] = (don[l.cur]||0) + l.amt;
+        if(g) (donGroup[g.id] = donGroup[g.id]||{})[l.cur] = (donGroup[g.id][l.cur]||0) + l.amt;
       }
     });
   });
 
   // Gift is always zero by definition, so it only adds noise.
-  const TYPES=Object.keys(table).filter(t=>t!=='Gift').sort();
-  const usdOf=o=>Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
-  const cell=(o,c)=>fmt((o&&o[c])||0);
-  const pid=String(target||'body').replace(/\W+/g,'');
+  const types = Object.keys(byType).filter(t=>t!=='Gift').sort();
+  const usdOf = o => Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
+  const num   = (o,c) => { const v=(o&&o[c])||0; return v ? fmt(v) : '<span class="z">0</span>'; };
 
-  /* Each type is its own <tbody> holding the summary row and its breakdown, so
-     every number stays in the same column when a row opens. */
-  function block(label, totals, perGroup, key, cls){
-    const id='pay'+pid+'-'+key;
-    const detail=groups.map(g=>{
-      const row=(perGroup||{})[g.id];
+  // One type: its summary row plus a hidden row per group. All siblings.
+  function rowsFor(label, totals, perGroup, key, extraClass){
+    const rowId = 'pay'+panelId+'-'+key;
+    let out = `<tr class="pt-row ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">
+        <td class="pt-type"><span class="tw">▸</span> ${esc(label)}</td>
+        ${curs.map(c=>`<td>${num(totals,c)}</td>`).join('')}
+        <td class="usd">$${fmt(usdOf(totals))}</td>
+      </tr>`;
+    const kids = groups.map(g=>{
+      const row = (perGroup||{})[g.id];
       if(!row) return '';
-      return `<tr class="pay-sub"><td>${esc(g.name)}</td>${
-        curs.map(c=>`<td>${cell(row,c)}</td>`).join('')
-      }<td class="usd">$${fmt(usdOf(row))}</td></tr>`;
-    }).filter(Boolean).join('')
-      || `<tr class="pay-sub"><td colspan="${curs.length+2}">No breakdown yet.</td></tr>`;
-    return `<tbody class="pay-block ${cls||''}">
-      <tr class="pay-main" data-act="toggle" data-target="${id}">
-        <td><span class="tw">▸</span> ${esc(label)}</td>${
-        curs.map(c=>`<td>${cell(totals,c)}</td>`).join('')
-      }<td class="usd">$${fmt(usdOf(totals))}</td></tr>
-      <tr class="pay-detail-row" id="${id}" style="display:none">
-        <td colspan="${curs.length+2}" class="pay-detail-cell">
-          <table class="pay-inner">${detail}</table>
-        </td>
-      </tr>
-    </tbody>`;
+      return `<tr class="pt-sub ${rowId}" hidden>
+        <td class="pt-type">${esc(g.name)}</td>
+        ${curs.map(c=>`<td>${num(row,c)}</td>`).join('')}
+        <td class="usd">$${fmt(usdOf(row))}</td>
+      </tr>`;
+    }).filter(Boolean).join('');
+    return out + (kids || `<tr class="pt-sub ${rowId}" hidden>
+        <td class="pt-type muted">No breakdown yet</td>
+        ${curs.map(()=>'<td></td>').join('')}<td></td></tr>`);
   }
 
-  let rows=TYPES.map(t=>block(t, table[t], byGroup[t], t.replace(/\W+/g,''))).join('');
-  // Donations keep their place at the foot but behave like every other row.
-  if(Object.keys(don).length) rows+=block('Donations', don, donGroup, 'donations', 'pay-don');
+  let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''))).join('');
+  if(Object.keys(don).length) body += rowsFor('Donations', don, donGroup, 'donations', 'pt-don');
 
-  $(target||'#payBody').innerHTML=`
-    <div class="pay-scroll"><table class="pay-table">
-      <thead><tr><th>Type</th>${curs.map(c=>`<th><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></th>`).join('')}<th>USD eq.</th></tr></thead>
-      ${rows||`<tbody><tr><td colspan="${curs.length+2}">Nothing collected yet.</td></tr></tbody>`}
-      <tfoot><tr><td>All</td>${curs.map(c=>`<td>${fmt(curTot[c]||0)}</td>`).join('')}<td class="usd">$${fmt(usdOf(curTot))}</td></tr></tfoot>
+  $(target||'#payBody').innerHTML = `
+    <div class="pt-wrap"><table class="pt-table">
+      <thead><tr>
+        <th class="pt-type">Type</th>
+        ${curs.map(c=>`<th><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></th>`).join('')}
+        <th>USD eq.</th>
+      </tr></thead>
+      <tbody>${body || `<tr><td class="pt-type muted">Nothing collected yet</td>${curs.map(()=>'<td></td>').join('')}<td></td></tr>`}</tbody>
+      <tfoot><tr>
+        <td class="pt-type">All</td>
+        ${curs.map(c=>`<td>${num(grand,c)}</td>`).join('')}
+        <td class="usd">$${fmt(usdOf(grand))}</td>
+      </tr></tfoot>
     </table></div>`;
 }
 
@@ -1622,7 +1646,7 @@ function logItemHTML(x, opts){
   const pend = pending
     ? (partial?'<span class="badge part">Part paid</span>':'<span class="badge pend">Pending</span>')
     : '';
-  const when=x.ts?new Date(x.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
+  const when=x.ts?new Date(x.ts).toLocaleString(LOCALE, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 
   // Anything still owed, or a book not yet handed over, needs a second line for
   // the person's name and number. A settled sale says it all on one.
@@ -2424,7 +2448,7 @@ function transfersModal(){
     if(!moves.length) return `<div class="cash-empty">No stock movements yet.</div>`;
     return moves.map(m=>{
       const book = esc(bookById(m.bookId).name);
-      let when=''; try{ when = m.ts ? new Date(m.ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){}
+      let when=''; try{ when = m.ts ? new Date(m.ts).toLocaleString(LOCALE, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){}
       let desc, amtStr, cls;
       if(m.kind==='TRANSFER'){
         desc = `${esc(stockLocName(m.fromLoc))} → ${esc(stockLocName(m.toLoc))}`;
@@ -2801,7 +2825,7 @@ function cashModal(){
   let logRows='';
   sorted.forEach(c=>{
     try{
-      let when=''; try{ when = c.ts ? new Date(c.ts).toLocaleString() : ''; }catch(e){}
+      let when=''; try{ when = c.ts ? new Date(c.ts).toLocaleString(LOCALE) : ''; }catch(e){}
       const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
       const nmeFrom = (function(){ try{return cashAcctName(c.fromAcct);}catch(e){return String(c.fromAcct||'');} })();
       const nmeTo   = (function(){ try{return cashAcctName(c.toAcct);}catch(e){return String(c.toAcct||'');} })();
@@ -2841,7 +2865,7 @@ function cashModal(){
       <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}.</div>
 
       <table class="cash-tbl">
-        <thead><tr><th></th><th>PLN</th><th>EUR</th><th>USD</th></tr></thead>
+        <thead><tr><th></th>${cashCurs().map(c=>`<th>${esc(CUR_SYM[c]||'')} ${esc(c)}</th>`).join('')}</tr></thead>
         <tbody>${balRows}</tbody>
       </table>
 
@@ -3529,7 +3553,7 @@ function externalTransferModal(){
   }));
 
   openModal(`
-    ${mHead('Transfer with another warehouse')}
+    ${mHead('Transfer to another region')}
     <div class="m-body">
       <div class="hint" id="extNote"></div>
       <div class="seg" id="extDir">
@@ -3759,6 +3783,16 @@ document.addEventListener('click',e=>{
             const tw=t.querySelector('.tw'); if(tw) tw.textContent=open?'▸':'▾'; }
     return;
   }
+  if(a==='paytoggle'){
+    // Show or hide every sibling row belonging to this type.
+    const cls=t.dataset.target;
+    const kids=[...document.querySelectorAll('.'+cls)];
+    const open=kids.length && !kids[0].hidden;
+    kids.forEach(k=>{ k.hidden=open; });
+    const tw=t.querySelector('.tw'); if(tw) tw.textContent = open?'▸':'▾';
+    t.classList.toggle('open', !open);
+    return;
+  }
   if(a==='undomove'){
     if(!confirm('Undo this movement? The books go back where they were and the entry is removed.')) return;
     commitSync({action:'undoStockMove',id:t.dataset.id},'Movement undone');
@@ -3859,8 +3893,12 @@ document.addEventListener('click',e=>{
   if(CONFIG.PRABHUPADA_IMG) $('#imgLeft').innerHTML=`<img src="${CONFIG.PRABHUPADA_IMG}" alt="Śrīla Prabhupāda">`;
   if(CONFIG.GURUDEVA_IMG)   $('#imgRight').innerHTML=`<img src="${CONFIG.GURUDEVA_IMG}" alt="Śrīla Gurudeva">`;
 
+  // Pick up where you left off — before the first paint, so the page never
+  // flashes the wrong region on the way to the right one.
+  loadPos();
   // Draw last session's data straight away so the page is usable on open.
   if(cacheLoad()) setStatus('load','Checking for changes…');
+  applyLevelTheme();
   pull().catch(err=>{ setStatus('bad','Offline — '+err.message.slice(0,40)); if(!BASE) toast(err.message,true); });
 
   setInterval(()=>{ if(!$('#overlay').classList.contains('show')) poll(); },
