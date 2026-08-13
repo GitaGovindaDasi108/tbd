@@ -420,33 +420,29 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .title-row .count b{color:var(--saffron-d)} .title-row .count i{color:var(--blue);font-style:normal}
 
 /* ---------- Payments by type ----------
-   One flat table: type rows and their breakdown rows are siblings, so columns
-   line up without any width juggling. Scrolls sideways rather than squashing. */
-.pt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px}
-/* Fixed layout + an explicit colgroup means the header, the type rows and the
-   breakdown rows all share exactly the same column edges. */
-.pt-table{width:100%;min-width:440px;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
-.pt-col-type{width:36%}
-.pt-col-num{width:auto}
-.pt-table th,.pt-table td{padding:8px 10px;text-align:right;white-space:nowrap;
-  border-bottom:1px solid var(--line)}
-.pt-table th.pt-type,.pt-table td.pt-type{text-align:left}
-.pt-table thead th{font-size:11px;text-transform:uppercase;letter-spacing:.5px;
-  color:var(--muted);font-weight:600;vertical-align:bottom}
-.cur-sym{display:block;font-size:14px;line-height:1.1;color:var(--ink)}
-.cur-code{display:block;font-size:10px;letter-spacing:.5px}
-.pt-row{cursor:pointer}
-.pt-row:hover{background:var(--paper2)}
-.pt-row .pt-type{font-weight:700;color:var(--ink)}
-.pt-row.open .pt-type{color:var(--lvl,var(--plum))}
-.pt-sub{background:var(--paper2)}
-.pt-sub td{color:var(--muted);font-size:12.5px;padding-top:6px;padding-bottom:6px}
-.pt-sub .pt-type{padding-left:30px;font-weight:600;color:var(--ink)}
-.pt-don .pt-type{color:var(--gold)}
-.pt-table .usd{color:var(--green);font-weight:600}
-.pt-table .z{color:var(--line-d)}
-.pt-table tfoot td{font-weight:700;color:var(--plum);
-  border-top:2px solid var(--line-d);border-bottom:none}
+   A CSS grid, not a table. The column template is declared once on the
+   container and every cell is a direct child, so all rows share identical
+   column edges. There is no nested layout that can drift out of step. */
+.ptg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.ptg{display:grid;min-width:420px;align-items:stretch;font-size:13.5px}
+.ptg > div{padding:8px 10px;text-align:right;white-space:nowrap;
+  border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end}
+.ptg > div.ptg-first{text-align:left;justify-content:flex-start;gap:4px}
+.ptg-h{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
+  font-weight:600;flex-direction:column;align-items:flex-end !important;gap:0 !important}
+.ptg-h.ptg-first{align-items:flex-start !important}
+.cur-sym{font-size:14px;line-height:1.1;color:var(--ink)}
+.cur-code{font-size:10px;letter-spacing:.5px}
+.ptg-r{cursor:pointer;font-weight:600;color:var(--ink)}
+.ptg-r:hover{background:var(--paper2)}
+.ptg-s{background:var(--paper2);color:var(--muted);font-size:12.5px}
+.ptg-s.ptg-first{padding-left:28px;font-weight:600;color:var(--ink)}
+.ptg-t{font-weight:700;color:var(--plum);border-top:2px solid var(--line-d);border-bottom:none}
+.ptg .usd{color:var(--green);font-weight:600}
+.ptg .z{color:var(--line-d)}
+.ptg .tw{color:var(--muted);font-size:11px}
+.ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
+.ptg-empty{color:var(--muted);justify-content:flex-start}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
 .cur-pill b{color:var(--plum)}
@@ -642,7 +638,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   <!-- Only what you need at a glance; everything else lives in App Admin. -->
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b14</span>
+    <span class="build-tag" title="Which version of the page is loaded">b15</span>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1538,47 +1534,41 @@ function renderPayments(target){
   // One type: its summary row plus a hidden row per group. All siblings.
   function rowsFor(label, totals, perGroup, key, extraClass){
     const rowId = 'pay'+panelId+'-'+key;
-    let out = `<tr class="pt-row ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">
-        <td class="pt-type"><span class="tw">▸</span> ${esc(label)}</td>
-        ${curs.map(c=>`<td>${num(totals,c)}</td>`).join('')}
-        <td class="usd">$${fmt(usdOf(totals))}</td>
-      </tr>`;
+    let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
+        ><span class="tw">▸</span> ${esc(label)}</div>`
+      + curs.map(c=>`<div class="ptg-r ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">${num(totals,c)}</div>`).join('')
+      + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">$${fmt(usdOf(totals))}</div>`;
     const kids = groups.map(g=>{
       const row = (perGroup||{})[g.id];
       if(!row) return '';
-      return `<tr class="pt-sub ${rowId}" hidden>
-        <td class="pt-type">${esc(g.name)}</td>
-        ${curs.map(c=>`<td>${num(row,c)}</td>`).join('')}
-        <td class="usd">$${fmt(usdOf(row))}</td>
-      </tr>`;
+      return `<div class="ptg-s ptg-first ${rowId}" hidden>${esc(g.name)}</div>`
+        + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(row,c)}</div>`).join('')
+        + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(row))}</div>`;
     }).filter(Boolean).join('');
-    return out + (kids || `<tr class="pt-sub ${rowId}" hidden>
-        <td class="pt-type muted">No breakdown yet</td>
-        ${curs.map(()=>'<td></td>').join('')}<td></td></tr>`);
+    return out + kids;
   }
 
   let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''))).join('');
   if(Object.keys(don).length) body += rowsFor('Donations', don, donGroup, 'donations', 'pt-don');
 
+  /* Rendered as a CSS grid rather than a table. One column definition lives on
+     the container and every row is a direct child of it, so the header, the type
+     rows, the breakdown rows and the total all share the same column edges by
+     construction — there is no second layout context that can drift. */
+  const template = `minmax(120px,1.6fr) repeat(${curs.length + 1}, minmax(74px,1fr))`;
+
   $(target||'#payBody').innerHTML = `
-    <div class="pt-wrap"><table class="pt-table">
-      <colgroup>
-        <col class="pt-col-type">
-        ${curs.map(()=>'<col class="pt-col-num">').join('')}
-        <col class="pt-col-num">
-      </colgroup>
-      <thead><tr>
-        <th class="pt-type">Type</th>
-        ${curs.map(c=>`<th><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></th>`).join('')}
-        <th>USD eq.</th>
-      </tr></thead>
-      <tbody>${body || `<tr><td class="pt-type muted">Nothing collected yet</td>${curs.map(()=>'<td></td>').join('')}<td></td></tr>`}</tbody>
-      <tfoot><tr>
-        <td class="pt-type">All</td>
-        ${curs.map(c=>`<td>${num(grand,c)}</td>`).join('')}
-        <td class="usd">$${fmt(usdOf(grand))}</td>
-      </tr></tfoot>
-    </table></div>`;
+    <div class="ptg-scroll">
+      <div class="ptg" style="grid-template-columns:${template}">
+        <div class="ptg-h ptg-first">Type</div>
+        ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
+        <div class="ptg-h">USD eq.</div>
+        ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
+        <div class="ptg-t ptg-first">All</div>
+        ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
+        <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
+      </div>
+    </div>`;
 }
 
 /* Which rows are open. Kept outside the state so a background refresh does not
@@ -3867,7 +3857,7 @@ document.addEventListener('click',e=>{
   if(a==='paytoggle'){
     // Show or hide every sibling row belonging to this type.
     const cls=t.dataset.target;
-    const kids=[...document.querySelectorAll('.'+cls)];
+    const kids=[...document.querySelectorAll('.'+cls)];   // every cell of those rows
     const open=kids.length && !kids[0].hidden;
     kids.forEach(k=>{ k.hidden=open; });
     const tw=t.querySelector('.tw'); if(tw) tw.textContent = open?'▸':'▾';
