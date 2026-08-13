@@ -235,6 +235,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .btn-indigo{background:#4A5B8C;color:#EEF1FA}
 .btn-slate{background:#5A6472;color:#EEF0F3}
 .btn-moss{background:#5E7248;color:#EFF3E8}
+.build-tag{font-size:10px;font-weight:700;letter-spacing:.5px;color:#FFF3DE;opacity:.5;
+  border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:2px 7px}
 .rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
 /* cash tracking */
 .cash-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}
@@ -640,6 +642,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   <!-- Only what you need at a glance; everything else lives in App Admin. -->
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
+    <span class="build-tag" title="Which version of the page is loaded">b14</span>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1371,55 +1374,6 @@ function renderSalesByRegion(){
     </div>`;
   }).join('');
 }
-
-/* ---- FE13: Totals by payment type ----
-   Season groups by region; a region groups by its events + warehouse. Currencies
-   are whatever actually appear in the data, so a new one needs no code change. */
-function renderPaymentTotals(){
-  const sales = scopedSales();
-  const groups = (CUR_LEVEL==='season')
-    ? regionsList().map(r=>({id:r.regionId, name:r.name, locs:locsInRegion(r.regionId)}))
-    : (()=>{ const r=currentRegion(); if(!r) return [];
-        return [{id:r.whLoc,name:'Warehouse',locs:[r.whLoc]}]
-          .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name,locs:[e.eventId]}))); })();
-
-  // type -> currency -> amount, plus the same split per group
-  const byType={}, byTypeGroup={};
-  sales.forEach(x=>{
-    if(!received(x)) return;
-    legs(x).forEach(l=>{
-      if(!l.amt || !l.type) return;
-      (byType[l.type]=byType[l.type]||{})[l.cur]=(byType[l.type][l.cur]||0)+l.amt;
-      const g=groups.find(g=>g.locs.includes(x.location));
-      if(!g) return;
-      const gt=(byTypeGroup[l.type]=byTypeGroup[l.type]||{});
-      (gt[g.id]=gt[g.id]||{})[l.cur]=(gt[g.id][l.cur]||0)+l.amt;
-    });
-  });
-
-  const types=Object.keys(byType).sort();
-  if(!types.length) return `<div class="cash-empty">Nothing collected yet.</div>`;
-  const money=o=>Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ');
-
-  return types.map(t=>{
-    const usd=Object.keys(byType[t]).reduce((sum,c)=>sum+toUSD(byType[t][c],c),0);
-    const detail=groups.map(g=>{
-      const row=(byTypeGroup[t]||{})[g.id];
-      if(!row) return '';
-      return `<div class="pt-row"><span>${esc(g.name)}</span><span>${money(row)}</span></div>`;
-    }).filter(Boolean).join('') || `<div class="pt-row muted"><span>No breakdown</span><span></span></div>`;
-    const id='pt-'+t.replace(/\W+/g,'');
-    return `<div class="pt-block">
-      <button class="pt-head" data-act="toggle" data-target="${id}">
-        <span class="tw">▸</span>
-        <span class="pt-name">${esc(t)}</span>
-        <span class="pt-sum">${money(byType[t])} <span class="muted">≈ $${fmt(usd)}</span></span>
-      </button>
-      <div class="pt-detail" id="${id}" style="display:none">${detail}</div>
-    </div>`;
-  }).join('');
-}
-
 
 function renderTotals(){
   const s=scopedSales();
