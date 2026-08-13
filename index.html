@@ -476,18 +476,24 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 /* Everything for one sale on a single row. The middle section is the part that
    gives way when space runs out, so the book, the money and the buttons always
    stay legible. */
-.li-row{display:flex;align-items:center;gap:6px;min-width:0}
+/* Wraps rather than overflows: when the buttons cannot fit beside the title
+   they drop to their own line instead of being clipped. */
+.li-row{display:flex;align-items:center;gap:6px;min-width:0;flex-wrap:wrap;row-gap:5px}
 .li-book{font-weight:700;color:var(--plum);font-size:13px;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;flex-shrink:1}
-/* Two-line rows show the title in full — these are the ones being acted on. */
-.log-item.two .li-book{white-space:normal;overflow:visible;text-overflow:clip;flex:0 0 auto}
+/* Two-line rows show the title in full — these are the ones being acted on.
+   They may still shrink, though: a pre-order carries an extra "Deliver" button,
+   and a title that refuses to give way pushed "Delete" off the right edge. */
+.log-item.two .li-book{white-space:normal;overflow:visible;text-overflow:clip;
+  flex:0 1 auto;min-width:0}
 .li-who{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;flex:0 1 auto;flex-shrink:20;min-width:0}
-.li-amt{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;flex:none}
+.li-amt{margin-left:auto;font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;
+  flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .li-amt.owed{color:var(--clay);font-weight:700}
 .li-amt-sub{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.75}
 .log-item.pending .li-amt{color:var(--clay)}
-.li-btns{display:flex;gap:4px;flex:none}
+.li-btns{display:flex;gap:4px;flex:none;margin-left:auto}
 .li-row .badge{flex:none}
 
 .li-row{cursor:pointer}
@@ -655,7 +661,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b17</span>
+    <span class="build-tag" title="Which version of the page is loaded">b18</span>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
