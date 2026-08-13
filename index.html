@@ -205,6 +205,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .rp-name{flex:1 1 40%;font-size:13px;font-weight:600;color:var(--ink);min-width:0}
 .rp-name.aotm{color:var(--gold)}
 .rp-cells{display:flex;gap:5px;flex:1 1 55%;flex-wrap:wrap;justify-content:flex-end}
+.bk-row.off{opacity:.45}
+.bk-row .rp-name{display:flex;align-items:center;gap:7px;cursor:pointer}
+.rp-add{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.rp-add input{flex:1 1 180px;border:1px solid var(--line-d);border-radius:8px;padding:7px 9px;font-size:12.5px}
+.rp-add select{border:1px solid var(--line-d);border-radius:8px;padding:7px 9px;font-size:12.5px}
 .bk-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:5px;margin-bottom:4px}
 .bk-item{display:flex;align-items:center;gap:7px;border:1px solid var(--line);border-radius:8px;
   padding:6px 9px;font-size:12.5px;cursor:pointer;background:var(--paper);opacity:.5}
@@ -227,6 +232,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .btn-plum{background:var(--plum);color:#FFF3DE}
 .btn-gold{background:var(--gold);color:#fff}
 .btn-teal{background:#2E7D6B;color:#EAF7F2}
+.btn-indigo{background:#4A5B8C;color:#EEF1FA}
 .rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
 /* cash tracking */
 .cash-tbl{width:100%;border-collapse:collapse;font-size:13px;margin:4px 0 10px}
@@ -408,7 +414,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
    One flat table: type rows and their breakdown rows are siblings, so columns
    line up without any width juggling. Scrolls sideways rather than squashing. */
 .pt-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -2px}
-.pt-table{width:100%;min-width:440px;border-collapse:collapse;font-size:13.5px}
+/* Fixed layout + an explicit colgroup means the header, the type rows and the
+   breakdown rows all share exactly the same column edges. */
+.pt-table{width:100%;min-width:440px;border-collapse:collapse;font-size:13.5px;table-layout:fixed}
+.pt-col-type{width:38%}
+.pt-col-num{width:auto}
 .pt-table th,.pt-table td{padding:8px 10px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line)}
 .pt-table th.pt-type,.pt-table td.pt-type{text-align:left;width:38%;min-width:130px}
@@ -623,8 +633,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   <!-- Only what you need at a glance; everything else lives in App Admin. -->
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span></div>
-    <button class="btn-refresh" data-act="org" title="Who to contact about what">👥 Org chart</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
+    <button class="btn-refresh" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
 </header>
 
@@ -664,7 +674,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   <div class="cols" id="regionCols">
     <section class="panel">
       <h2 id="invHeading" class="inv-h2">Inventory
-        <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Payment QRs</button></h2>
+        <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button></h2>
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
@@ -948,8 +958,16 @@ function locNameFull(loc){
   return r.name+' — '+base;
 }
 
-function locName(loc){if(loc===WAREHOUSE)return (STATE.warehouseName||'')+' — Warehouse';
-  const e=(STATE.events||[]).find(e=>e.eventId===loc);return e?e.name:loc;}
+function locName(loc){
+  // Every region has a warehouse, so match on the region record rather than the
+  // one original id — otherwise a new region shows its raw internal id.
+  const r=(STATE.regions||[]).find(x=>x.whLoc===loc);
+  if(r) return r.name+' — Warehouse';
+  if(loc===WAREHOUSE) return (STATE.warehouseName||'')+' — Warehouse';
+  if(loc===SEASON) return STATE.seasonName||'Season';
+  const e=(STATE.events||[]).find(e=>e.eventId===loc);
+  return e?e.name:loc;
+}
 function scopedSales(){
   const s=STATE.sales||[];
   if(CUR_LEVEL==='season') return s;                       // whole tour
@@ -1228,12 +1246,13 @@ function renderAdmin(){
   let h = '';
   h += `<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
   h += `<button class="btn btn-ghost btn-sm" data-act="transfers">📦 Transfers</button>`;
+  h += `<button class="btn btn-ghost btn-sm" data-act="org">👥 Org chart</button>`;
 
   if(!season){
     if(isWarehouseLoc(CUR_LOC)){
       h += `<button class="btn btn-plum" data-act="stock">＋ Add / subtract stock</button>`;
       h += `<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
-      h += `<button class="btn btn-ghost btn-sm" data-act="externaltransfer">↔ Transfer to region</button>`;
+      h += `<button class="btn btn-indigo btn-sm" data-act="externaltransfer">↔ Transfer to region</button>`;
       h += `<button class="btn btn-ghost btn-sm" data-act="editregion">Edit region</button>`;
       h += `<button class="btn btn-danger btn-sm" data-act="deleteregion">Delete region</button>`;
     }else{
@@ -1244,7 +1263,6 @@ function renderAdmin(){
       h += `<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
     }
   }
-  h += `<button class="btn btn-ghost btn-sm" data-act="syncsheet" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>`;
   $('#adminActions').innerHTML = h;
 }
 
@@ -1570,6 +1588,11 @@ function renderPayments(target){
 
   $(target||'#payBody').innerHTML = `
     <div class="pt-wrap"><table class="pt-table">
+      <colgroup>
+        <col class="pt-col-type">
+        ${curs.map(()=>'<col class="pt-col-num">').join('')}
+        <col class="pt-col-num">
+      </colgroup>
       <thead><tr>
         <th class="pt-type">Type</th>
         ${curs.map(c=>`<th><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></th>`).join('')}
@@ -2521,9 +2544,8 @@ function qrModal(){
       lines:['Name: Renuka RadhaKrishnan','rradhakrsna@gmail.com'] }
   ];
   openModal(`
-    ${mHead('Payment QR codes')}
+    ${mHead('Digital Payment QRs')}
     <div class="m-body">
-      <div class="hint">Show the donor the code for the method they want to use.</div>
       ${codes.map(c=>`
         <div class="qr-card">
           <div class="qr-name">${esc(c.name)}</div>
@@ -3265,11 +3287,15 @@ function regionModal(edit){
            step="0.01" inputmode="decimal" placeholder="${esc(c)}">`).join('')}</div></div>`;
 
     const rowsFor = list => list.map(b=>{
+      const on = !isEdit || !edit.books || !edit.books.length || edit.books.includes(b.id);
       const cells=curList.map(c=>
         `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
            step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
       ).join('');
-      return `<div class="rp-row"><div class="rp-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      return `<div class="rp-row bk-row ${on?'':'off'}" data-row="${esc(b.id)}">
+                <label class="rp-name ${isAotm(b)?'aotm':''}">
+                  <input type="checkbox" class="bk-cb" value="${esc(b.id)}" ${on?'checked':''}>
+                  <span>${esc(b.name)}</span></label>
                 <div class="rp-cells">${cells}</div></div>`;
     }).join('');
 
@@ -3288,20 +3314,18 @@ function regionModal(edit){
         <input id="rgName" type="text" placeholder="e.g. Macedonia" value="${esc(isEdit?edit.name:'')}"></div>
       <div class="field"><label>Currencies <span class="muted-note">(comma separated — USD is always included)</span></label>
         <input id="rgCur" type="text" placeholder="MKD, EUR, USD" value="${esc(cur)}"></div>
-      <div class="cash-sub">Titles carried here</div>
-      <div class="hint">Untick anything this region won't be offering — it then stays out of
-        the sale screens entirely. Leave them all ticked to carry the full catalogue.</div>
-      <div class="bk-pick" id="rgBooks">
-        ${(STATE.books||[]).map(b=>{
-          const on = !isEdit || !edit.books || !edit.books.length || edit.books.includes(b.id);
-          return `<label class="bk-item ${on?'on':''}">
-            <input type="checkbox" class="bk-cb" value="${esc(b.id)}" ${on?'checked':''}>
-            <span class="${isAotm(b)?'aotm':''}">${esc(b.name)}</span></label>`;
-        }).join('')}
-      </div>
-      <div class="cash-sub">Prices</div>
-      <div class="hint" id="rgPriceHint">Set what each book sells for in this region.</div>
+      <div class="cash-sub">Titles &amp; prices</div>
+      <div class="hint">Untick a title this region won't offer and it stays out of the sale
+        screens. Use the "fill all" row to price a whole category at once.</div>
       <div id="rgPrices">${priceRows(parseCurs(cur))}</div>
+      <div class="rp-add">
+        <input id="rgNewBook" type="text" placeholder="Add a title — e.g. Sri Radha (Spanish)">
+        <select id="rgNewCat">
+          <option value="big">Big Book</option>
+          <option value="aotm">Adventures</option>
+        </select>
+        <button type="button" class="btn btn-ghost btn-sm" id="rgAddBook">Add</button>
+      </div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -3322,9 +3346,17 @@ function regionModal(edit){
   });
 
   // Dim a title the moment it's unticked, so the choice reads at a glance.
-  $('#rgBooks').addEventListener('change',e=>{
+  $('#rgPrices').addEventListener('change',e=>{
     const cb=e.target.closest('.bk-cb'); if(!cb) return;
-    cb.closest('.bk-item').classList.toggle('on', cb.checked);
+    cb.closest('.bk-row').classList.toggle('off', !cb.checked);
+  });
+  // A brand-new title: save it, then reopen so it appears with a price box.
+  $('#rgAddBook').addEventListener('click',()=>{
+    const name=$('#rgNewBook').value.trim();
+    if(!name){ $('#modalErr').textContent='Type the title first.'; return; }
+    $('#modalErr').textContent='';
+    commitSync({action:'addBook',name,cat:$('#rgNewCat').value},'Title added');
+    setTimeout(()=>pull().then(()=>regionModal(isEdit?regionById(edit.regionId):undefined)),300);
   });
   $('#rgCur').addEventListener('change',()=>{
     const typed={};
@@ -3426,7 +3458,7 @@ function stockModal(){
   const body = bulkRows(b=>({
     left: invQty(loc,b.id),
     input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${b.id}" title="Adding — tap to subtract instead">＋</button>`
-         +`<input class="d-delta" type="number" step="1" data-book="${b.id}" placeholder="add / remove" inputmode="numeric"></span>`
+         +`<input class="d-delta" type="number" step="1" data-book="${b.id}" placeholder="how many" inputmode="numeric" min="0"></span>`
          +`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" placeholder="= count" inputmode="numeric">`,
     right: invQty(loc,b.id)
   }));
@@ -3454,12 +3486,24 @@ function stockModal(){
   const sets=[...document.querySelectorAll('#modal input[data-set]')];
   const setFor=id=>document.querySelector(`#modal input[data-set="${id}"]`);
   const deltaFor=id=>document.querySelector(`#modal input[data-book="${id}"]`);
+  const signBtn=id=>document.querySelector(`#modal .sign-btn[data-sign="${id}"]`);
+  /* The typed number is always a magnitude; the ± button carries the direction.
+     Rewriting the field mid-keystroke (the old behaviour) made digits appear to
+     change themselves as you typed. */
+  function signedDelta(id){
+    const inp=deltaFor(id);
+    if(!inp || inp.value==='') return null;
+    const mag=Math.abs(Math.round(Number(inp.value)||0));
+    if(!mag) return 0;
+    const b=signBtn(id);
+    return (b && b.dataset.dir==='-1') ? -mag : mag;
+  }
 
   function nextFor(id){
     const now=invQty(loc,id);
-    const sv=setFor(id).value, dv=deltaFor(id).value;
+    const sv=setFor(id).value, d=signedDelta(id);
     if(sv!=='') return Math.max(0, Math.round(Number(sv)));       // an exact count wins
-    if(dv!=='') return now + Math.round(Number(dv)||0);
+    if(d!==null) return now + d;
     return now;
   }
   function recalc(){
@@ -3489,28 +3533,18 @@ function stockModal(){
     $('#saveStock').textContent = lines.length ? 'Save anyway' : 'Save stock';
   }
   deltas.concat(sets).forEach(i=>i.addEventListener('input',recalc));
-  // Sign toggle: flips the delta between add and remove, so a numeric mobile
-  // keypad (no minus key) can still record a removal.
+  // The ± button only flips a direction; it never edits what you typed.
   [...document.querySelectorAll('#modal .sign-btn')].forEach(btn=>{
+    btn.dataset.dir = '1';
     btn.addEventListener('click',()=>{
-      const inp=deltaFor(btn.dataset.sign);
-      const v=Number(inp.value)||0;
-      if(v!==0){ inp.value=String(-v); }
-      else { inp.dataset.neg = inp.dataset.neg==='1'?'':'1'; }  // arm the sign for the next digits
-      const minus = (Number(inp.value)||0)<0 || inp.dataset.neg==='1';
+      const minus = btn.dataset.dir !== '-1';
+      btn.dataset.dir = minus ? '-1' : '1';
       btn.classList.toggle('on', minus);
       btn.textContent = minus ? '\u2212' : '\uFF0B';
       btn.title = minus ? 'Subtracting — tap to add instead' : 'Adding — tap to subtract instead';
       recalc();
     });
   });
-  // If a sign was armed on an empty field, apply it as the user types.
-  deltas.forEach(inp=>inp.addEventListener('input',()=>{
-    if(inp.dataset.neg==='1' && Number(inp.value)>0){ inp.value=String(-Number(inp.value)); inp.dataset.neg='';
-      const b=document.querySelector(`#modal .sign-btn[data-sign="${inp.dataset.book}"]`);
-      if(b){ b.classList.add('on'); b.textContent='\u2212'; }   // stays a red minus: it IS a removal
-      recalc(); }
-  }));
   recalc();
 
   $('#saveStock').addEventListener('click',()=>{
@@ -3518,7 +3552,7 @@ function stockModal(){
     deltas.forEach(i=>{
       const id=i.dataset.book, sv=setFor(id).value, dv=i.value;
       if(sv!=='') setItems.push({bookId:id, qty:Math.max(0,Math.round(Number(sv)))});
-      else if(dv!=='' && Number(dv)!==0) deltaItems.push({bookId:id, delta:Math.round(Number(dv))});
+      else { const d=signedDelta(id); if(d) deltaItems.push({bookId:id, delta:d}); }
     });
     if(!setItems.length && !deltaItems.length){
       $('#modalErr').textContent='Enter a change or a count for at least one title.';return;
