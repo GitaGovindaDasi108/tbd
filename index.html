@@ -671,7 +671,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b19</span>
+    <span class="build-tag" title="Which version of the page is loaded">b20</span>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1174,6 +1174,8 @@ function commit(payload, apply, okMsg){
 }
 
 /* Structural changes need an id from the server, so these do wait. */
+/* Returns true only if the write landed, so a caller that wants to carry on
+   (reopening a panel, say) doesn't do so on top of a failure. */
 async function commitSync(payload, okMsg){
   const btns=[...document.querySelectorAll('#modal .btn')]; btns.forEach(b=>b.disabled=true);
   setStatus('load','Saving…');
@@ -1182,10 +1184,13 @@ async function commitSync(payload, okMsg){
     await pull();
     closeModal();
     if(okMsg) toast(okMsg);
+    setStatus('ok','Saved · '+clock());
+    return true;
   }catch(err){
     btns.forEach(b=>b.disabled=false);
     const e=$('#modalErr'); if(e) e.textContent=err.message; else toast(err.message,true);
     setStatus('bad','Error');
+    return false;
   }
 }
 
@@ -2603,11 +2608,14 @@ function shareLinksModal(){
         <span class="sl-note">${esc(note)}</span>
       </div>
       ${k ? `<div class="sl-link"><input readonly value="${esc(link(k))}">
-              <button class="btn btn-ghost btn-sm" data-sl-copy="${esc(link(k))}">Copy</button></div>`
+              <button class="btn btn-ghost btn-sm" data-act="slcopy"
+                data-link="${esc(link(k))}">Copy</button></div>`
           : `<div class="sl-none">No link yet</div>`}
       <div class="sl-acts">
-        <button class="btn btn-primary btn-sm" data-sl-new="${kind}:${esc(id)}">${k?'Reset link':'Create link'}</button>
-        ${k?`<button class="btn btn-danger btn-sm" data-sl-off="${kind}:${esc(id)}">Turn off</button>`:''}
+        <button class="btn btn-primary btn-sm" data-act="slnew"
+          data-kind="${esc(kind)}" data-id="${esc(id)}">${k?'Reset link':'Create link'}</button>
+        ${k?`<button class="btn btn-danger btn-sm" data-act="sloff"
+          data-kind="${esc(kind)}" data-id="${esc(id)}">Turn off</button>`:''}
       </div>
     </div>`;
   };
@@ -2629,21 +2637,19 @@ function shareLinksModal(){
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
 
-  [...document.querySelectorAll('#modal [data-sl-copy]')].forEach(b=>b.onclick=()=>{
-    const v=b.dataset.slCopy;
-    navigator.clipboard ? navigator.clipboard.writeText(v).then(()=>toast('Link copied'))
-                        : toast('Select the link and copy it', true);
-  });
-  const act = (attr, clear) => [...document.querySelectorAll('#modal ['+attr+']')].forEach(b=>b.onclick=()=>{
-    const [kind,id]=b.getAttribute(attr).split(':');
-    if(clear && !confirm('Turn off this link? Anyone still holding it loses access immediately.')) return;
-    if(!clear && (kind==='region'?keys.regions:keys.events)[id]
-       && !confirm('Reset this link? The old one stops working immediately.')) return;
-    commitSync({action:'setKey',kind,id,clear:clear?'true':'false'},'Link updated');
-    setTimeout(()=>shareLinksModal(),400);
-  });
-  act('data-sl-new', false);
-  act('data-sl-off', true);
+}
+
+/* Handled through the app's normal click routing (see the data-act switch), so
+   these buttons work the same way every other button in the app does. */
+async function shareKeySet(kind, id, clear){
+  const keys = STATE.keys || {regions:{},events:{}};
+  const existing = (kind==='region'?keys.regions:keys.events)[id] || '';
+  if(clear && !confirm('Turn off this link? Anyone still holding it loses access immediately.')) return;
+  if(!clear && existing && !confirm('Reset this link? The old one stops working immediately.')) return;
+  const done = await commitSync({action:'setKey',kind,id,clear:clear?'true':'false'},'Link updated');
+  if(done) shareLinksModal();   // reopen so the new link is visible straight away
+  // On failure the modal stays put with the reason showing, rather than being
+  // replaced by a fresh one that looks like nothing happened.
 }
 
 
@@ -4029,6 +4035,14 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='sharelinks'){ shareLinksModal(); return; }
+  if(a==='slnew'){ shareKeySet(t.dataset.kind, t.dataset.id, false); return; }
+  if(a==='sloff'){ shareKeySet(t.dataset.kind, t.dataset.id, true);  return; }
+  if(a==='slcopy'){
+    const v=t.dataset.link;
+    if(navigator.clipboard) navigator.clipboard.writeText(v).then(()=>toast('Link copied'),()=>toast('Copy failed — select it by hand',true));
+    else toast('Select the link and copy it', true);
+    return;
+  }
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
