@@ -671,7 +671,8 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b21</span>
+    <span class="build-tag" title="Which version of the page is loaded">b22</span>
+    <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1071,13 +1072,51 @@ function preorderWarning(lines,verbs){
 /* A share link's key rides along with every request. The server decides what it
    permits — the page only hides what the holder can't use anyway. */
 const SHARE_KEY = (new URLSearchParams(location.search).get('k')||'').trim();
+
+/* Who is holding this link. Asked once, kept on the device, and attached to
+   every sale so a figure can be traced back to a person. It is self-declared,
+   not a login — enough to know who to ask, not proof of anything. */
+function whoAmI(){
+  if(!SHARE_KEY) return '';
+  try{ return localStorage.getItem('tbs_who_'+SHARE_KEY) || ''; }catch(e){ return ''; }
+}
+function setWhoAmI(name){
+  try{ localStorage.setItem('tbs_who_'+SHARE_KEY, String(name||'').trim().slice(0,40)); }catch(e){}
+}
+function askWhoAmI(force){
+  if(!SHARE_KEY) return;
+  const current = whoAmI();
+  if(current && !force) return;
+  openModal(`
+    ${mHead(current ? 'Change who is recording' : 'Who is recording sales?')}
+    <div class="m-body">
+      <div class="hint">Your name goes on every sale you record, so anything can be
+        traced back if it needs checking later. It stays on this device.</div>
+      <div class="field"><label>Your name</label>
+        <input id="whoName" type="text" autocomplete="name" placeholder="e.g. Balarama das"
+          value="${esc(current)}"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      ${current?'<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>':''}
+      <button class="btn btn-primary" id="whoSave">Start selling</button>
+    </div>`);
+  const go = ()=>{
+    const v=$('#whoName').value.trim();
+    if(!v){ $('#modalErr').textContent='Please enter a name.'; return; }
+    setWhoAmI(v); closeModal(); renderAll();
+  };
+  $('#whoSave').addEventListener('click',go);
+  $('#whoName').addEventListener('keydown',e=>{ if(e.key==='Enter') go(); });
+  $('#whoName').focus();
+}
 function isAdmin(){ return !SHARE_KEY && (STATE ? (STATE.role||'admin')==='admin' : true); }
 function isSeller(){ return STATE && STATE.role==='seller'; }
 function hideMoney(){ return !!(STATE && STATE.hideMoney); }
 
 async function post(payload){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
-  if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY}, payload);
+  if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
   const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
   const txt = await res.text();
   let d; try{d=JSON.parse(txt);}catch(e){throw new Error('The server sent something unreadable. Check the deployment address and access settings.');}
@@ -1236,6 +1275,11 @@ function renderAll(){
   if(!STATE) return;
   // The title names where you actually are, not just the warehouse.
   $('#whTitle').textContent = ': ' + scopeLabel();
+  // On a share link, show whose name is going on the sales — and let them fix it.
+  const who = whoAmI();
+  const wb = $('#whoBtn');
+  if(SHARE_KEY && who){ wb.style.display=''; wb.textContent = '👤 ' + who; }
+  else wb.style.display='none';
   document.title = 'Book Sales — '+(STATE.warehouseName||'');
   renderTabs(); renderContextActions(); renderTotals();
 
@@ -1783,7 +1827,8 @@ function logItemHTML(x, opts){
       `${stock}${stock<=0?' — would have to come from outside the region':''}`]);
   }
   if(x.comments) det.push(['Notes', esc(x.comments)]);
-  det.push(['Sold at', esc(locName(x.location))]);
+  det.push(['Sold at', esc(locNameFull(x.location))]);
+  if(x.soldBy) det.push(['Recorded by', esc(x.soldBy)]);
   if(wasPreorder){
     det.push(['Pre-order', 'Fulfilled — copy came from '
       + (fromOutside(x) ? 'outside the region'
@@ -4037,6 +4082,7 @@ document.addEventListener('click',e=>{
     setTimeout(()=>transfersModal(),0);
     return;
   }
+  if(a==='whoami'){ askWhoAmI(true); return; }
   if(a==='sharelinks'){ shareLinksModal(); return; }
   if(a==='slnew'){ shareKeySet(t.dataset.kind, t.dataset.id, false); return; }
   if(a==='sloff'){ shareKeySet(t.dataset.kind, t.dataset.id, true);  return; }
@@ -4144,6 +4190,8 @@ document.addEventListener('click',e=>{
   // Pick up where you left off — before the first paint, so the page never
   // flashes the wrong region on the way to the right one.
   loadPos();
+  // A share link asks who is holding it before anything gets recorded.
+  if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
   // Draw last session's data straight away so the page is usable on open.
   if(cacheLoad()) setStatus('load','Checking for changes…');
   applyLevelTheme();
