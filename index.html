@@ -671,7 +671,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b24</span>
+    <span class="build-tag" title="Which version of the page is loaded">b25</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
@@ -1663,18 +1663,23 @@ function renderPayments(target){
   sales.forEach(x=>{
     if(!received(x)) return;
     const g = groups.find(gr=>gr.locs.includes(x.location));
+    const isDonation = (x.type === 'DONATION');
     legs(x).forEach(l=>{
       if(!l.type || !l.amt) return;
-      (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
-      grand[l.cur] = (grand[l.cur]||0) + l.amt;
-      if(g){
-        const t = byTypeGroup[l.type] = byTypeGroup[l.type]||{};
-        (t[g.id] = t[g.id]||{})[l.cur] = (t[g.id][l.cur]||0) + l.amt;
-      }
-      if(x.type==='DONATION'){
+      // Every column adds up: a donation belongs to the Donations row only, not
+      // also inside Cash or PayPal. Otherwise the same money appeared twice and
+      // the rows never summed to the total.
+      if(isDonation){
         don[l.cur] = (don[l.cur]||0) + l.amt;
         if(g) (donGroup[g.id] = donGroup[g.id]||{})[l.cur] = (donGroup[g.id][l.cur]||0) + l.amt;
+      }else{
+        (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
+        if(g){
+          const t = byTypeGroup[l.type] = byTypeGroup[l.type]||{};
+          (t[g.id] = t[g.id]||{})[l.cur] = (t[g.id][l.cur]||0) + l.amt;
+        }
       }
+      grand[l.cur] = (grand[l.cur]||0) + l.amt;   // the total covers both
     });
   });
 
