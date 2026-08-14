@@ -290,6 +290,9 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.rep-box{width:100%;border:1px solid var(--line-d);border-radius:8px;padding:9px;
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;
+  background:var(--paper2);color:var(--ink);resize:vertical}
 .sl-row{border:1px solid var(--line-d);border-radius:10px;padding:10px;margin-bottom:9px;background:var(--paper)}
 .sl-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
 .sl-name{font-weight:800;font-size:13.5px;color:var(--plum)}
@@ -480,8 +483,13 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .log::-webkit-scrollbar-thumb{background:var(--line-d);border-radius:99px;border:2px solid var(--paper2)}
 .log::-webkit-scrollbar-thumb:hover{background:var(--gold)}
 .log-item{border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--paper2);flex:none}
-.log-item.pending{border-color:#EBC9A0;background:#FFF6E7}
-.log-item.awaiting{border-color:#C7D6E8;background:#F4F8FC}
+/* Two states worth spotting from across a table: money still owed, and a copy
+   still to hand over. Each gets a tint and a coloured edge so they read at a
+   glance rather than needing the badge to be studied. */
+.log-item.pending{border-color:#E3A98B;background:#FDF0E8;border-left:4px solid var(--clay)}
+.log-item.awaiting{border-color:#C7D6E8;background:#F4F8FC;border-left:4px solid #5B7FA6}
+/* Owed money outranks an undelivered copy when a row is both. */
+.log-item.pending.awaiting{border-color:#E3A98B;background:#FDF0E8;border-left:4px solid var(--clay)}
 /* Everything for one sale on a single row. The middle section is the part that
    gives way when space runs out, so the book, the money and the buttons always
    stay legible. */
@@ -671,8 +679,9 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b25</span>
+    <span class="build-tag" title="Which version of the page is loaded">b26</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
+    <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1291,6 +1300,7 @@ function renderAll(){
   // The title names where you actually are, not just the warehouse.
   $('#whTitle').textContent = ': ' + scopeLabel();
   // On a share link, show whose name is going on the sales — and let them fix it.
+  $('#reportBtn').style.display = isAdmin() ? '' : 'none';
   const who = whoAmI();
   const wb = $('#whoBtn');
   if(SHARE_KEY && who){ wb.style.display=''; wb.textContent = '👤 ' + who; }
@@ -1323,6 +1333,9 @@ function renderAll(){
     renderInventory(); renderTitleList('#titleList'); renderLog();
     if(money) renderPayments('#payBody');
   }
+  // A seller works from the sales log alone; the pending and pre-order panels
+  // repeat what is already in front of them.
+  $('#bottomRow').style.display = isSeller() ? 'none' : '';
   renderBottom();
 }
 
@@ -1404,7 +1417,13 @@ function renderAdmin(){
   const admin = isAdmin();
   // A seller gets no admin panel at all; a coordinator gets the stock tools for
   // their own region but never the money.
-  if(isSeller()){ $('#adminPanel').style.display='none'; $('#adminActions').innerHTML=''; return; }
+  if(isSeller()){
+    // One thing a seller does need: who to call when something goes wrong.
+    $('#adminPanel').style.display='';
+    $('#adminActions').innerHTML =
+      `<button class="btn btn-moss btn-sm" data-act="org">👥 Org chart</button>`;
+    return;
+  }
   $('#adminPanel').style.display='';
 
   let h = '';
@@ -2718,6 +2737,108 @@ async function shareKeySet(kind, id, clear){
   if(done) shareLinksModal();   // reopen so the new link is visible straight away
   // On failure the modal stays put with the reason showing, rather than being
   // replaced by a fresh one that looks like nothing happened.
+}
+
+
+/* ---- Shareable text report ----
+   Plain text sized for a WhatsApp message: what sold, what came in, what is
+   still owed. Uses *bold* markers, which WhatsApp renders and everything else
+   shows harmlessly. Adapts to the level you're on, and a seller link gets the
+   book counts without the money. */
+function buildReport(){
+  const L = [];
+  const s = scopedSales();
+  const money = !hideMoney();
+  const nf = n => fmt(n);
+
+  L.push('*' + (STATE.seasonName||'Book Sales') + ' — ' + scopeLabel() + '*');
+  L.push(new Date().toLocaleString(LOCALE,{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}));
+  L.push('');
+
+  // Books, split the way the team thinks about them.
+  const count = (cat,type) => s.filter(x=>x.bookId && catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
+  const gifts = cat => s.filter(x=>x.bookId && catOf(x.bookId)===cat && isGift(x)).length;
+  [['big','BIG BOOKS'],['aotm','ADVENTURES']].forEach(([cat,label])=>{
+    const books = curBooks().filter(b=>(b.cat==='aotm'?'aotm':'big')===cat);
+    if(!books.length) return;
+    const sold=count(cat,'SALE'), pre=count(cat,'PREORDER'), gift=gifts(cat);
+    const tot = sold+pre+gift;
+    L.push('*' + label + ' — ' + tot + '*');
+    books.forEach(b=>{
+      const bs=s.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
+      const bp=s.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
+      const bg=s.filter(x=>x.bookId===b.id && isGift(x)).length;
+      if(!bs && !bp && !bg) return;
+      let line = '  ' + b.name + ': ' + bs;
+      const extra=[];
+      if(bp) extra.push(bp+' pre-ordered');
+      if(bg) extra.push(bg+' gift'+(bg===1?'':'s'));
+      if(extra.length) line += ' (' + extra.join(', ') + ')';
+      L.push(line);
+    });
+    const foot=[];
+    if(pre) foot.push(pre+' pre-ordered');
+    if(gift) foot.push(gift+' gift'+(gift===1?'':'s'));
+    L.push('  → ' + sold + ' sold' + (foot.length?', '+foot.join(', '):''));
+    L.push('');
+  });
+
+  if(money){
+    // Collections by payment type, in the currencies actually taken.
+    const byType={}, don={}, grand={};
+    s.forEach(x=>{
+      if(!received(x)) return;
+      const isDon = x.type==='DONATION';
+      legs(x).forEach(l=>{
+        if(!l.type || !l.amt) return;
+        const bucket = isDon ? don : (byType[l.type] = byType[l.type]||{});
+        bucket[l.cur] = (bucket[l.cur]||0) + l.amt;
+        grand[l.cur] = (grand[l.cur]||0) + l.amt;
+      });
+    });
+    const asText = o => Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ');
+    const usd = o => Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
+
+    L.push('*COLLECTED*');
+    Object.keys(byType).filter(t=>t!=='Gift').sort().forEach(t=>{
+      L.push('  ' + t + ': ' + asText(byType[t]));
+    });
+    if(Object.keys(don).length) L.push('  Donations: ' + asText(don));
+    L.push('  *Total: ' + (asText(grand)||'nothing yet') + '*');
+    if(Object.keys(grand).length) L.push('  ≈ $' + nf(usd(grand)));
+
+    // What is still owed.
+    let pendUsd=0; const due={};
+    s.forEach(x=>{ pendUsd += dueUSD(x);
+      dueParts(x).forEach(d=>{ if(d.amt) due[d.cur]=(due[d.cur]||0)+d.amt; }); });
+    if(pendUsd>0.005){
+      L.push('');
+      L.push('*STILL TO COLLECT*');
+      L.push('  ' + (asText(due)||'—') + '  ≈ $' + nf(pendUsd));
+    }
+  }
+  return L.join('\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* Hand it to whatever the device offers: the share sheet on a phone (which puts
+   WhatsApp one tap away), the clipboard on a desktop, and a selectable box if
+   neither is available. */
+async function shareReport(){
+  const text = buildReport();
+  try{
+    if(navigator.share){ await navigator.share({text}); return; }
+  }catch(e){ if(e && e.name==='AbortError') return; }   // they cancelled
+  try{
+    if(navigator.clipboard){ await navigator.clipboard.writeText(text); toast('Report copied — paste it into WhatsApp'); return; }
+  }catch(e){}
+  openModal(`
+    ${mHead('Report')}
+    <div class="m-body">
+      <div class="hint">Select all of this and copy it.</div>
+      <textarea id="repText" class="rep-box" rows="14" readonly>${esc(text)}</textarea>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+  const box=$('#repText'); box.focus(); box.select();
 }
 
 
@@ -4112,6 +4233,7 @@ document.addEventListener('click',e=>{
     else toast('Select the link and copy it', true);
     return;
   }
+  if(a==='report'){ shareReport(); return; }
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
