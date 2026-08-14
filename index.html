@@ -671,7 +671,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b23</span>
+    <span class="build-tag" title="Which version of the page is loaded">b24</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
@@ -975,11 +975,11 @@ function goTo(level, loc){
 /* Remember where you were standing, so a refresh (or a reopened tab) puts you
    back there instead of dumping you at the first region's warehouse. */
 function savePos(){
-  try{ localStorage.setItem('tbs_pos', JSON.stringify({l:CUR_LEVEL,r:CUR_REGION,c:CUR_LOC})); }catch(e){}
+  try{ localStorage.setItem('tbs_pos'+(SHARE_KEY?'_'+SHARE_KEY:''), JSON.stringify({l:CUR_LEVEL,r:CUR_REGION,c:CUR_LOC})); }catch(e){}
 }
 function loadPos(){
   try{
-    const p=JSON.parse(localStorage.getItem('tbs_pos')||'null');
+    const p=JSON.parse(localStorage.getItem('tbs_pos'+(SHARE_KEY?'_'+SHARE_KEY:''))||'null');
     if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||WAREHOUSE; }
   }catch(e){}
 }
@@ -1131,13 +1131,28 @@ function derive(){
   return st;
 }
 
+/* The instant-open cache is per link, not per browser.
+
+   With one shared key, opening a seller link first painted the admin's cached
+   data (and the admin's tab painted the seller's) until the fresh copy landed —
+   which is the flicker between the two views. Keying by the link means each
+   only ever redraws its own last state. */
+const CACHE_KEY = 'tbs_cache' + (SHARE_KEY ? '_' + SHARE_KEY : '');
 function cacheSave(){
-  try{ localStorage.setItem('tbs_cache', JSON.stringify({rev:REV,state:BASE})); }catch(e){}
+  try{ localStorage.setItem(CACHE_KEY, JSON.stringify({rev:REV,state:BASE})); }catch(e){}
 }
 function cacheLoad(){
   try{
-    const c=JSON.parse(localStorage.getItem('tbs_cache')||'null');
-    if(c&&c.state&&c.state.books){ BASE=c.state; REV=c.rev; STATE=derive(); renderAll(); return true; }
+    const c=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');
+    if(c&&c.state&&c.state.books){
+      // Refuse a cache that belongs to a different kind of view, in case an old
+      // one is still sitting there from before this change.
+      const cachedRole = c.state.role || 'admin';
+      const wantRole = SHARE_KEY ? cachedRole : 'admin';
+      if(SHARE_KEY ? cachedRole==='admin' : cachedRole!=='admin') return false;
+      if(cachedRole!==wantRole) return false;
+      BASE=c.state; REV=c.rev; STATE=derive(); renderAll(); return true;
+    }
   }catch(e){}
   return false;
 }
@@ -1774,7 +1789,7 @@ function logItemHTML(x, opts){
 
   // Anything still owed, or a book not yet handed over, needs a second line for
   // the person's name and number. A settled sale says it all on one.
-  const needsRow2 = pending || awaiting || !!x.soldBy;
+  const needsRow2 = pending || awaiting;
   const open = OPEN.has(x.saleId);
   const owedLabel = dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ');
   const showOwed = opts.showOwed && pending && owedLabel;
@@ -1797,9 +1812,6 @@ function logItemHTML(x, opts){
     if(x.name) r2.push(`<span class="li-name">${esc(x.name)}</span>`);
     r2.push(x.phone ? waLink(x.phone) : `<span class="li-nonum">no number on file</span>`);
   }
-  // Who recorded it, on the row itself — the point is to see it at a glance
-  // rather than having to open each sale.
-  if(x.soldBy) r2.push(`<span class="li-by">👤 ${esc(x.soldBy)}</span>`);
 
   // The drawer carries the rest, in plain words. The title leads, so a name too
   // long for the row is always readable in full somewhere.
