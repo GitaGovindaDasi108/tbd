@@ -271,6 +271,14 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   padding:2px 9px;font-size:11.5px;color:var(--ink)}
 .sh-acts{display:flex;gap:6px;flex-wrap:wrap}
 .pick-row{display:block;width:100%;text-align:left;margin-bottom:6px;font-size:14px}
+.ro-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--paper)}
+.ro-name{font-size:13.5px;font-weight:600;color:var(--ink)}
+.ro-tag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;
+  border-radius:999px;padding:1px 7px;margin-left:6px}
+.ro-tag.done{background:#E8F3EC;color:#1F6B43;border:1px solid #A9CDB6}
+.ro-tag.pend{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
+.ro-btns{display:flex;gap:4px;flex:none}
 /* Busy indicator: a small ring by the status text, plus a thin bar across the
    very top so it is visible even when scrolled away from the header. */
 .spin{display:none;width:12px;height:12px;border-radius:50%;flex:none;
@@ -456,21 +464,24 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .adm-lbl{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
   color:var(--muted);padding-bottom:2px;border-bottom:1px solid var(--line)}
 .adm-col .btn{width:100%;text-align:left;font-size:13px;padding:9px 12px;color:#fff;border:none}
-.adm-cash    {background:#2E7D6B}
-.adm-org     {background:#5E7248}
-.adm-links   {background:#B8862F}
-.adm-qr      {background:#8A6D3B}
-.adm-stock   {background:#6B4E8A}
-.adm-transit {background:#2F6FB5}
-.adm-devotee {background:#3E8C8C}
-.adm-toevent {background:#C4661A}
-.adm-toregion{background:#4A5B8C}
-.adm-record  {background:#5A6472}
-.adm-newregion{background:#7A8B3A}
-.adm-edit    {background:#8A5A12}
-.adm-close   {background:#A8552B}
-.adm-reopen  {background:#4C7A5A}
-.adm-delete  {background:#A6362B}
+/* A full spectrum so each action is a colour you reach for, not a label you
+   read. Deepened a little from pure rainbow so white text stays legible and it
+   still sits beside the cream and plum of the rest of the app. */
+.adm-cash     {background:#C0392B}   /* red      */
+.adm-org      {background:#D35400}   /* orange   */
+.adm-links    {background:#C99400}   /* amber    */
+.adm-order    {background:#7F8C1A}   /* olive    */
+.adm-stock    {background:#2E8B45}   /* green    */
+.adm-transit  {background:#149A8E}   /* teal     */
+.adm-devotee  {background:#1B7FA8}   /* cyan     */
+.adm-toevent  {background:#2F6FB5}   /* blue     */
+.adm-toregion {background:#4B5CC4}   /* indigo   */
+.adm-record   {background:#7A4FBF}   /* violet   */
+.adm-newregion{background:#A64BAF}   /* purple   */
+.adm-edit     {background:#C0399B}   /* magenta  */
+.adm-close    {background:#B03060}   /* rose     */
+.adm-reopen   {background:#2E8B45}   /* green — the undo of closing */
+.adm-delete   {background:#8B1A1A}   /* deep red, so it never blends in */
 .adm-col .btn:active{filter:brightness(.92)}
 
 /* Multiple-books entry point + modal */
@@ -743,7 +754,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b33</span>
+    <span class="build-tag" title="Which version of the page is loaded">b34</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -792,12 +803,13 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
     </section>
     <div class="log-col">
       <section class="panel">
-        <h2>Active Sales Log <span class="hint" id="logCount"></span>
+        <h2 class="sec-h2">Active Sales Log <span class="hint" id="logCount"></span>
           <span class="sortbar">Sort
             <button class="sort-btn" data-act="sortlog" data-sort="time">Date</button>
             <button class="sort-btn" data-act="sortlog" data-sort="book">Book</button>
             <button class="sort-btn" data-act="sortlog" data-sort="status">Status</button>
           </span>
+          <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
         </h2>
         <div class="body"><div class="log" id="log"></div></div>
       </section>
@@ -807,11 +819,11 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <!-- WAREHOUSE INFORMATION — what still needs chasing, and where stock sits -->
   <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
     <section class="panel pend-panel" id="pendingPanel" style="display:none">
-      <h2>Pending Payments</h2>
+      <h2 class="sec-h2">Pending Payments <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="pending" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="pendingList"></div></div>
     </section>
     <section class="panel pre-panel" id="prePanel" style="display:none">
-      <h2>Pre-Orders Awaiting Delivery</h2>
+      <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
     </section>
   </div>
@@ -1552,7 +1564,10 @@ function renderAdmin(){
   if(admin) cols[0].push(season
     ? `<button class="btn adm-links" data-act="pick" data-then="sharelinks">🔗 Share links…</button>`
     : (isWarehouseLoc(CUR_LOC) ? `<button class="btn adm-links" data-act="sharelinks">🔗 Share links</button>` : ''));
-  cols[0].push(`<button class="btn adm-qr" data-act="qr">📱 Payment QRs</button>`);
+  // Payment QRs live in the inventory header — one home is enough.
+  if(admin) cols[0].push(season
+    ? `<button class="btn adm-order" data-act="reorder" data-kind="region">↕ Order regions</button>`
+    : `<button class="btn adm-order" data-act="reorder" data-kind="${isWarehouseLoc(CUR_LOC)?'event':'region'}">↕ Order ${isWarehouseLoc(CUR_LOC)?'events':'regions'}</button>`);
 
   // 2 — where the books are
   const shipCount = season
@@ -1605,8 +1620,7 @@ function renderAdmin(){
     }
   }
 
-  const labels = ['Money & people', 'Where the books are', 'Moving them',
-                  season?'Regions':(isWarehouseLoc(CUR_LOC)?'This region':'This event')];
+  const labels = ['Admin', 'Books', 'Transfers', 'Region'];
   $('#adminActions').innerHTML = `<div class="adm-grid">${
     cols.map((c,i)=> c.filter(Boolean).length
       ? `<div class="adm-col"><div class="adm-lbl">${esc(labels[i])}</div>${c.filter(Boolean).join('')}</div>`
@@ -1737,9 +1751,9 @@ function renderTotals(){
       const aotmOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='aotm' && !isGift(x)).length;
       return `
     <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigOut+bigGift}</div>
-      <div class="sub"><b>${bigSold}</b> sold${bigPre?` · <b>${bigPre}</b> pre-ordered`:''}${bigGift?` · <b>${bigGift}</b> gift${bigGift===1?'':'s'}`:''}</div></div>
+      <div class="sub"><b>${bigSold}</b> sold${bigPre?` · (<b>${bigPre}</b> pre-ordered)`:''}${bigGift?` · (<b>${bigGift}</b> gift${bigGift===1?'':'s'})`:''}</div></div>
     <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmOut+aotmGift}</div>
-      <div class="sub"><b>${aotmSold}</b> sold${aotmPre?` · <b>${aotmPre}</b> pre-ordered`:''}${aotmGift?` · <b>${aotmGift}</b> gift${aotmGift===1?'':'s'}`:''}</div></div>`;
+      <div class="sub"><b>${aotmSold}</b> sold${aotmPre?` · (<b>${aotmPre}</b> pre-ordered)`:''}${aotmGift?` · (<b>${aotmGift}</b> gift${aotmGift===1?'':'s'})`:''}</div></div>`;
     })()}
     ${hideMoney() ? '' : `
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
@@ -3102,6 +3116,43 @@ function buildReport(part){
     L.push('');
   });
 
+  if(want('pending')){
+    // Who still owes, so it can be chased directly from the message.
+    const owed = s.filter(x=>pendingFlag(x) || dueParts(x).length);
+    L.push('*PAYMENTS OUTSTANDING* — ' + owed.length);
+    owed.forEach(x=>{
+      const what = x.bookId ? bookById(x.bookId).name : 'Donation';
+      const amt = dueParts(x).map(d=>cashFmt(d.amt,d.cur)).join(' + ')
+        || legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ');
+      L.push('  ' + what + ' — ' + (amt||'—') + (x.name?' · '+x.name:'') + (x.phone?' · '+x.phone:''));
+    });
+    if(!owed.length) L.push('  Nothing outstanding.');
+    L.push('');
+  }
+
+  if(want('preorders')){
+    const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
+    L.push('*PRE-ORDERS TO DELIVER* — ' + due.length);
+    due.forEach(x=>{
+      L.push('  ' + bookById(x.bookId).name + (x.name?' — '+x.name:'') + (x.phone?' · '+x.phone:''));
+    });
+    if(!due.length) L.push('  Nothing awaiting delivery.');
+    L.push('');
+  }
+
+  if(want('log')){
+    // The recent run of sales, newest first — enough to answer "what happened?".
+    const recent = s.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
+    L.push('*RECENT SALES* — showing ' + recent.length + ' of ' + s.length);
+    recent.forEach(x=>{
+      const what = x.bookId ? bookById(x.bookId).name : 'Donation';
+      const amt = legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ');
+      const when = x.ts ? new Date(x.ts).toLocaleString(LOCALE,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      L.push('  ' + what + ' — ' + (amt||'gift') + (when?' · '+when:'') + (x.soldBy?' · '+x.soldBy:''));
+    });
+    L.push('');
+  }
+
   if(want('stock')){
     // Where the books are, for when someone asks about stock rather than sales.
     const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
@@ -4419,6 +4470,54 @@ function runPicked(act){
   if(act==='newevent'){ eventModal(); return; }
 }
 
+/* ---- Hand-picked order ----
+   Which region or event belongs at the top is a judgement about the tour, so
+   this is arranged by hand rather than by a rule. */
+function reorderModal(kind){
+  const isEvent = kind==='event';
+  let list = isEvent
+    ? eventsOfRegion(CUR_REGION).map(e=>({id:e.eventId, name:e.name, st:closureOf(e.eventId)}))
+    : regionsList().map(r=>({id:r.regionId, name:r.name, st:regionClosure(r.regionId)}));
+  if(!list.length){ toast('Nothing to arrange yet.', true); return; }
+
+  function draw(){
+    $('#roList').innerHTML = list.map((x,i)=>`
+      <div class="ro-row">
+        <span class="ro-name">${esc(x.name)}
+          ${x.st==='complete'?'<span class="ro-tag done">closed</span>'
+           :x.st==='pending'?'<span class="ro-tag pend">closing</span>':''}</span>
+        <span class="ro-btns">
+          <button class="cash-mini" data-ro-up="${i}" ${i===0?'disabled':''}>↑</button>
+          <button class="cash-mini" data-ro-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
+        </span>
+      </div>`).join('');
+    [...document.querySelectorAll('#modal [data-ro-up]')].forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.roUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw();
+    });
+    [...document.querySelectorAll('#modal [data-ro-dn]')].forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.roDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw();
+    });
+  }
+
+  openModal(`
+    ${mHead('Order the ' + (isEvent?'events':'regions'))}
+    <div class="m-body">
+      <div class="hint">Put whatever is active at the top and anything finished at the bottom.
+        This is the order they appear in everywhere.</div>
+      <div id="roList"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="roSave">Save order</button>
+    </div>`);
+  draw();
+  $('#roSave').addEventListener('click',()=>{
+    commitSync({action:'reorder', kind, ids:list.map(x=>x.id)}, 'Order saved');
+  });
+}
+
+
 function shipmentsModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
@@ -4880,6 +4979,7 @@ document.addEventListener('click',e=>{
   if(a==='reopenhere'){ reopenHere(); return; }
   if(a==='pick'){ pickRegionThen(t.dataset.then); return; }
   if(a==='pickgo'){ closeModal(); goTo('region', t.dataset.region); setTimeout(()=>runPicked(t.dataset.then),0); return; }
+  if(a==='reorder'){ reorderModal(t.dataset.kind); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shreceive'){ shipReceiveModal(t.dataset.id); return; }
