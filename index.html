@@ -270,6 +270,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .sh-chip{background:var(--paper2);border:1px solid var(--line);border-radius:999px;
   padding:2px 9px;font-size:11.5px;color:var(--ink)}
 .sh-acts{display:flex;gap:6px;flex-wrap:wrap}
+.pick-row{display:block;width:100%;text-align:left;margin-bottom:6px;font-size:14px}
 /* Busy indicator: a small ring by the status text, plus a thin bar across the
    very top so it is visible even when scrolled away from the header. */
 .spin{display:none;width:12px;height:12px;border-radius:50%;flex:none;
@@ -441,10 +442,36 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .don-card .bname{color:var(--gold)}
 .don-card .qty-chip{color:var(--gold)}
 /* Inventory heading and its QR button share a line when there's room. */
+.sec-h2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sec-rep{flex:none;font-size:12px;padding:4px 9px;line-height:1}
 .inv-h2{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .qr-btn{flex:none;font-size:12px;padding:5px 11px}
 .admin-panel{margin-top:18px}
-.admin-panel .actions{display:flex;flex-wrap:wrap;gap:8px}
+/* App Admin: four labelled columns, each button its own colour so it becomes a
+   shape you reach for. Hues stay inside the saffron/plum/teal family the rest
+   of the app uses, spread across it rather than repeating three colours. */
+.admin-panel .actions{display:block}
+.adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
+.adm-col{display:flex;flex-direction:column;gap:7px;min-width:0}
+.adm-lbl{font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+  color:var(--muted);padding-bottom:2px;border-bottom:1px solid var(--line)}
+.adm-col .btn{width:100%;text-align:left;font-size:13px;padding:9px 12px;color:#fff;border:none}
+.adm-cash    {background:#2E7D6B}
+.adm-org     {background:#5E7248}
+.adm-links   {background:#B8862F}
+.adm-qr      {background:#8A6D3B}
+.adm-stock   {background:#6B4E8A}
+.adm-transit {background:#2F6FB5}
+.adm-devotee {background:#3E8C8C}
+.adm-toevent {background:#C4661A}
+.adm-toregion{background:#4A5B8C}
+.adm-record  {background:#5A6472}
+.adm-newregion{background:#7A8B3A}
+.adm-edit    {background:#8A5A12}
+.adm-close   {background:#A8552B}
+.adm-reopen  {background:#4C7A5A}
+.adm-delete  {background:#A6362B}
+.adm-col .btn:active{filter:brightness(.92)}
 
 /* Multiple-books entry point + modal */
 #invMulti{margin-top:10px}
@@ -716,7 +743,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b31</span>
+    <span class="build-tag" title="Which version of the page is loaded">b33</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -735,11 +762,11 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <!-- SEASON TOTALS — the whole tour at a glance -->
   <div class="cols-2" id="seasonTotals" style="display:none">
     <section class="panel">
-      <h2>Total Sales by Title <span class="hint">sold / pre-ordered</span></h2>
+      <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="seasonTitleList"></div></div>
     </section>
     <section class="panel">
-      <h2>Total Collections by Payment <span class="hint">(tap a type for the regional split)</span></h2>
+      <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="seasonPayBody"></div>
     </section>
   </div>
@@ -747,11 +774,11 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <!-- REGIONAL TOTALS — how each region is doing -->
   <div class="cols-2" id="regionalTotals" style="display:none">
     <section class="panel">
-      <h2>Sales by Region <span class="hint">(tap for the per-title breakdown)</span></h2>
+      <h2 class="sec-h2">Sales by Region <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="salesByRegion"></div></div>
     </section>
     <section class="panel">
-      <h2>Collections by Region <span class="hint">(tap a type for the regional split)</span></h2>
+      <h2 class="sec-h2">Collections by Region <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="collByRegion"></div>
     </section>
   </div>
@@ -790,17 +817,17 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   </div>
 
   <section class="panel" id="whOverviewPanel" style="display:none">
-    <h2>Warehouse Overview <span class="hint">(where every title sits across the tour)</span></h2>
+    <h2 class="sec-h2">Warehouse Overview <span class="hint">(where every title sits across the tour)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
     <div class="body"><div id="whOverview"></div></div>
   </section>
 
   <div class="cols-2" id="regionBottom">
     <section class="panel" id="titlePanel">
-      <h2>Sales by Title <span class="hint">sold / pre-ordered</span></h2>
+      <h2 class="sec-h2">Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="titleList"></div></div>
     </section>
     <section class="panel" id="payPanelRegion">
-      <h2>Totals by Payment Type <span class="hint">(tap a type to see it event by event)</span></h2>
+      <h2 class="sec-h2">Totals by Payment Type <span class="hint">(tap a type to see it event by event)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="payBody"></div>
     </section>
   </div>
@@ -833,6 +860,9 @@ const WAREHOUSE = 'WAREHOUSE';
 const DSRC_WAREHOUSE = 'Regional warehouse';
 const DSRC_OUTSIDE   = 'Outside the region';
 const fromOutside = s => s.dsource===DSRC_OUTSIDE || s.dsource==='Other warehouse';
+/* A delivered pre-order is filed as a SALE; only the delivery stamps dsource,
+   so that is what marks a sale as having started life as a pre-order. */
+const wasPreorderSale = x => x.type==='SALE' && !!x.dsource;
 const CUR_LABEL = { PLN:'PLN', EUR:'Euros', USD:'USD' };
 /* Symbols for the currencies the tour meets. Anything not listed falls back to
    its ISO code, so a new country works before anyone teaches the app about it. */
@@ -1497,59 +1527,90 @@ function renderContextActions(){
 
 function renderAdmin(){
   const season = CUR_LEVEL==='season';
-  const admin = isAdmin();
-  const shut = isClosedHere();
-  // A seller gets no admin panel at all; a coordinator gets the stock tools for
-  // their own region but never the money.
+  const admin  = isAdmin();
+  const shut   = isClosedHere();
+
+  // A seller gets one thing: who to call when something goes wrong.
   if(isSeller()){
-    // One thing a seller does need: who to call when something goes wrong.
     $('#adminPanel').style.display='';
     $('#adminActions').innerHTML =
-      `<button class="btn btn-moss btn-sm" data-act="org">👥 Org chart</button>`;
+      `<div class="adm-grid"><div class="adm-col">
+         <button class="btn adm-org" data-act="org">👥 Org chart</button>
+       </div></div>`;
     return;
   }
   $('#adminPanel').style.display='';
 
-  let h = '';
-  if(admin) h += `<button class="btn btn-teal" data-act="cash">💵 Cash</button>`;
-  h += `<button class="btn btn-slate btn-sm" data-act="transfers">📦 Transfers</button>`;
-  h += `<button class="btn btn-moss btn-sm" data-act="org">👥 Org chart</button>`;
+  /* Grouped so the eye can find things: money and people, stock, movement,
+     then the region itself. Each button keeps its own colour so it becomes a
+     shape you reach for rather than a label you read. */
+  const cols = [[], [], [], []];
 
-  if(!season){
-    if(isWarehouseLoc(CUR_LOC)){
-      if(!shut){
-        h += `<button class="btn btn-plum" data-act="stock">＋ Add / subtract stock</button>`;
-        h += `<button class="btn btn-primary" data-act="transfer" data-mode="toevent">Transfer to event →</button>`;
-      }
-      const inb = inboundShipments(CUR_REGION).length + outboundShipments(CUR_REGION).length;
-      h += `<button class="btn btn-blue btn-sm" data-act="shipments">🚚 In transit${inb?` (${inb})`:''}</button>`;
-      h += `<button class="btn btn-moss btn-sm" data-act="holders">🏠 Devotee storage</button>`;
-      // Setting up and moving stock between regions stays with the owner.
-      if(admin){
-        h += `<button class="btn btn-indigo btn-sm" data-act="externaltransfer">↔ Transfer to region</button>`;
-        h += `<button class="btn btn-ghost btn-sm" data-act="editregion">Edit region</button>`;
-        h += `<button class="btn btn-danger btn-sm" data-act="deleteregion">Delete region</button>`;
-        h += `<button class="btn btn-gold btn-sm" data-act="sharelinks">🔗 Share links</button>`;
-        h += regionClosure(CUR_REGION)
-          ? `<button class="btn btn-ghost btn-sm" data-act="reopenhere">Reopen region</button>`
-          : `<button class="btn btn-danger btn-sm" data-act="closehere">Close region</button>`;
-      }
-    }else{
-      if(!shut){
-        h += `<button class="btn btn-primary" data-act="transfer" data-mode="in">← Transfer in</button>`;
-        h += `<button class="btn btn-indigo" data-act="transfer" data-mode="return">Return to warehouse</button>`;
-        h += `<button class="btn btn-plum btn-sm" data-act="stock">＋ Add / subtract stock</button>`;
-      }
-      if(admin){
-        h += closureOf(CUR_LOC)
-          ? `<button class="btn btn-ghost btn-sm" data-act="reopenhere">Reopen event</button>`
-          : `<button class="btn btn-danger btn-sm" data-act="closehere">Close event</button>`;
-        h += `<button class="btn btn-ghost btn-sm" data-act="renameevent">Rename</button>`;
-        h += `<button class="btn btn-danger btn-sm" data-act="deleteevent">Delete event</button>`;
-      }
+  // 1 — money, people, access
+  if(admin) cols[0].push(`<button class="btn adm-cash" data-act="cash">💵 Cash</button>`);
+  cols[0].push(`<button class="btn adm-org" data-act="org">👥 Org chart</button>`);
+  if(admin) cols[0].push(season
+    ? `<button class="btn adm-links" data-act="pick" data-then="sharelinks">🔗 Share links…</button>`
+    : (isWarehouseLoc(CUR_LOC) ? `<button class="btn adm-links" data-act="sharelinks">🔗 Share links</button>` : ''));
+  cols[0].push(`<button class="btn adm-qr" data-act="qr">📱 Payment QRs</button>`);
+
+  // 2 — where the books are
+  const shipCount = season
+    ? (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').length
+    : inboundShipments(CUR_REGION).length + outboundShipments(CUR_REGION).length;
+  if(season){
+    if(admin) cols[1].push(`<button class="btn adm-stock" data-act="pick" data-then="stock">＋ Add / subtract stock…</button>`);
+  }else if(!shut){
+    cols[1].push(`<button class="btn adm-stock" data-act="stock">＋ Add / subtract stock</button>`);
+  }
+  cols[1].push(`<button class="btn adm-transit" data-act="shipments">🚚 Books in transit${shipCount?` (${shipCount})`:''}</button>`);
+  cols[1].push(`<button class="btn adm-devotee" data-act="holders">🏠 Devotees storing books</button>`);
+
+  // 3 — moving them
+  if(season){
+    if(admin){
+      cols[2].push(`<button class="btn adm-toevent" data-act="pick" data-then="transfer">→ Transfer to event…</button>`);
+      cols[2].push(`<button class="btn adm-toregion" data-act="pick" data-then="externaltransfer">↔ Transfer to region…</button>`);
+    }
+  }else if(isWarehouseLoc(CUR_LOC)){
+    if(!shut) cols[2].push(`<button class="btn adm-toevent" data-act="transfer" data-mode="toevent">→ Transfer to event</button>`);
+    if(admin) cols[2].push(`<button class="btn adm-toregion" data-act="externaltransfer">↔ Transfer to region</button>`);
+  }else{
+    if(!shut){
+      cols[2].push(`<button class="btn adm-toevent" data-act="transfer" data-mode="in">← Transfer in</button>`);
+      cols[2].push(`<button class="btn adm-toregion" data-act="transfer" data-mode="return">Return to warehouse</button>`);
     }
   }
-  $('#adminActions').innerHTML = h;
+  cols[2].push(`<button class="btn adm-record" data-act="transfers">📦 Transfer record</button>`);
+
+  // 4 — the region or event itself
+  if(admin){
+    if(season){
+      cols[3].push(`<button class="btn adm-newregion" data-act="newregion">＋ New region</button>`);
+      cols[3].push(`<button class="btn adm-edit" data-act="pick" data-then="editregion">Edit region…</button>`);
+      cols[3].push(`<button class="btn adm-close" data-act="pick" data-then="closehere">Close region…</button>`);
+      cols[3].push(`<button class="btn adm-delete" data-act="pick" data-then="deleteregion">Delete region…</button>`);
+    }else if(isWarehouseLoc(CUR_LOC)){
+      cols[3].push(`<button class="btn adm-edit" data-act="editregion">Edit region</button>`);
+      cols[3].push(regionClosure(CUR_REGION)
+        ? `<button class="btn adm-reopen" data-act="reopenhere">Reopen region</button>`
+        : `<button class="btn adm-close" data-act="closehere">Close region</button>`);
+      cols[3].push(`<button class="btn adm-delete" data-act="deleteregion">Delete region</button>`);
+    }else{
+      cols[3].push(`<button class="btn adm-edit" data-act="renameevent">Rename event</button>`);
+      cols[3].push(closureOf(CUR_LOC)
+        ? `<button class="btn adm-reopen" data-act="reopenhere">Reopen event</button>`
+        : `<button class="btn adm-close" data-act="closehere">Close event</button>`);
+      cols[3].push(`<button class="btn adm-delete" data-act="deleteevent">Delete event</button>`);
+    }
+  }
+
+  const labels = ['Money & people', 'Where the books are', 'Moving them',
+                  season?'Regions':(isWarehouseLoc(CUR_LOC)?'This region':'This event')];
+  $('#adminActions').innerHTML = `<div class="adm-grid">${
+    cols.map((c,i)=> c.filter(Boolean).length
+      ? `<div class="adm-col"><div class="adm-lbl">${esc(labels[i])}</div>${c.filter(Boolean).join('')}</div>`
+      : '').join('')}</div>`;
 }
 
 // A small footnote showing which USD conversion rates are in effect.
@@ -1644,8 +1705,14 @@ function renderTotals(){
   // it just isn't a sale and isn't money.
   const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat && !isGift(x)).length;
   const g=(cat)=>s.filter(x=>x.bookId && catOf(x.bookId)===cat && isGift(x)).length;
-  const bigSold=n('SALE','big'), bigPre=n('PREORDER','big'), bigGift=g('big');
-  const aotmSold=n('SALE','aotm'), aotmPre=n('PREORDER','aotm'), aotmGift=g('aotm');
+  /* How many pre-orders were taken here, delivered or not. A delivered one turns
+     into an ordinary sale in the records, so counting only the outstanding ones
+     understates what the city actually did — and that number is what future
+     planning rests on. */
+  const pre=(cat)=>s.filter(x=>x.bookId && catOf(x.bookId)===cat && !isGift(x)
+    && (x.type==='PREORDER' || wasPreorderSale(x))).length;
+  const bigSold=n('SALE','big'), bigPre=pre('big'), bigGift=g('big');
+  const aotmSold=n('SALE','aotm'), aotmPre=pre('aotm'), aotmGift=g('aotm');
 
   let totUsd=0, pendUsd=0;
   const got={}, due={};
@@ -1662,10 +1729,18 @@ function renderTotals(){
     .sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
   $('#totals').innerHTML=`
-    <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigPre+bigGift}</div>
-      <div class="sub"><b>${bigSold}</b> sold · <b>${bigPre}</b> pre-ordered${bigGift?` · <b>${bigGift}</b> gift${bigGift===1?'':'s'}`:''}</div></div>
-    <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmPre+aotmGift}</div>
-      <div class="sub"><b>${aotmSold}</b> sold · <b>${aotmPre}</b> pre-ordered${aotmGift?` · <b>${aotmGift}</b> gift${aotmGift===1?'':'s'}`:''}</div></div>
+    ${(function(){
+      // Delivered pre-orders are already inside the sold count, so the headline
+      // adds only the ones still outstanding — the breakdown still reports every
+      // pre-order taken.
+      const bigOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='big' && !isGift(x)).length;
+      const aotmOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='aotm' && !isGift(x)).length;
+      return `
+    <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigOut+bigGift}</div>
+      <div class="sub"><b>${bigSold}</b> sold${bigPre?` · <b>${bigPre}</b> pre-ordered`:''}${bigGift?` · <b>${bigGift}</b> gift${bigGift===1?'':'s'}`:''}</div></div>
+    <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmOut+aotmGift}</div>
+      <div class="sub"><b>${aotmSold}</b> sold${aotmPre?` · <b>${aotmPre}</b> pre-ordered`:''}${aotmGift?` · <b>${aotmGift}</b> gift${aotmGift===1?'':'s'}`:''}</div></div>`;
+    })()}
     ${hideMoney() ? '' : `
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
       <div class="sub">${money(got)||'nothing collected yet'}</div></div>
@@ -1745,11 +1820,26 @@ function renderInventory(){
    same way: the big number is what matters, the small print qualifies it. */
 function renderTitleList(target){
   const s=scopedSales();
+  // Inside a region, show where each title actually sold — the same chips as the
+  // season's warehouse overview, so the shape of a tour reads the same way at
+  // every level.
+  const places = (CUR_LEVEL==='region' && currentRegion())
+    ? [{id:currentRegion().whLoc, name:'Warehouse'}]
+        .concat(eventsOfRegion(CUR_REGION).map(e=>({id:e.eventId, name:e.name})))
+        .concat(holdersOf(CUR_REGION).map(hh=>({id:hh.holderId, name:hh.name})))
+    : [];
+
   const h=curBooks().map(b=>{
-    const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
-    const pre =s.filter(x=>x.type==='PREORDER'&&x.bookId===b.id).length;
-    const gift=s.filter(x=>x.bookId===b.id && isGift(x)).length;
+    const mine = s.filter(x=>x.bookId===b.id);
+    const sold=mine.filter(x=>x.type==='SALE').length;
+    const pre =mine.filter(x=>x.type==='PREORDER'||wasPreorderSale(x)).length;
+    const gift=mine.filter(x=>isGift(x)).length;
     const dim = (!sold && !pre && !gift) ? ' dim' : '';
+    const chips = places.map(pl=>{
+      const n = mine.filter(x=>x.location===pl.id && x.type==='SALE').length;
+      return n ? `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
+        title="Go to ${esc(pl.name)}"><b>${n}</b> ${esc(pl.name)}</button>` : '';
+    }).filter(Boolean).join('');
     return `<div class="stat-card${dim}">
       <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
       <div class="sc-figs">
@@ -1761,6 +1851,7 @@ function renderTitleList(target){
         ${gift?`<span class="sc-gift">${gift} gift${gift===1?'':'s'}</span>`:''}
         ${(!pre&&!gift)?'<span class="sc-none">&nbsp;</span>':''}
       </div>
+      ${chips?`<div class="wo-chips">${chips}</div>`:''}
     </div>`;
   }).join('');
   $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
@@ -2972,8 +3063,9 @@ async function shareKeySet(kind, id, clear){
    still owed. Uses *bold* markers, which WhatsApp renders and everything else
    shows harmlessly. Adapts to the level you're on, and a seller link gets the
    book counts without the money. */
-function buildReport(){
+function buildReport(part){
   const L = [];
+  const want = k => !part || part===k;
   const s = scopedSales();
   const money = !hideMoney();
   const nf = n => fmt(n);
@@ -2985,7 +3077,7 @@ function buildReport(){
   // Books, split the way the team thinks about them.
   const count = (cat,type) => s.filter(x=>x.bookId && catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
   const gifts = cat => s.filter(x=>x.bookId && catOf(x.bookId)===cat && isGift(x)).length;
-  [['big','BIG BOOKS'],['aotm','ADVENTURES']].forEach(([cat,label])=>{
+  if(want('books')) [['big','BIG BOOKS'],['aotm','ADVENTURES']].forEach(([cat,label])=>{
     const books = curBooks().filter(b=>(b.cat==='aotm'?'aotm':'big')===cat);
     if(!books.length) return;
     const sold=count(cat,'SALE'), pre=count(cat,'PREORDER'), gift=gifts(cat);
@@ -3010,7 +3102,25 @@ function buildReport(){
     L.push('');
   });
 
-  if(money){
+  if(want('stock')){
+    // Where the books are, for when someone asks about stock rather than sales.
+    const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
+    L.push('*STOCK ON HAND*');
+    curBooks().forEach(b=>{
+      const per = regions.map(r=>({r, n:locsInRegion(r.regionId).reduce((t,l)=>t+invQty(l,b.id),0)}))
+        .filter(x=>x.n>0);
+      const total = per.reduce((t,x)=>t+x.n,0);
+      const transit = regions.reduce((t,r)=>t+inTransitQty(b.id,r.regionId),0);
+      if(!total && !transit) return;
+      let line = '  ' + b.name + ': ' + total;
+      if(regions.length>1 && per.length) line += ' (' + per.map(x=>x.n+' '+x.r.name).join(', ') + ')';
+      if(transit) line += ' · ' + transit + ' in transit';
+      L.push(line);
+    });
+    L.push('');
+  }
+
+  if(money && want('cash')){
     // Collections by payment type, in the currencies actually taken.
     const byType={}, don={}, grand={};
     s.forEach(x=>{
@@ -3072,10 +3182,10 @@ function buildReport(){
    on a desktop it can reject silently, and because this runs asynchronously the
    failure disappeared without a word. Showing the text first means the button
    always does something visible, and copying or sharing is one more tap. */
-function shareReport(){
+function shareReport(part){
   let text;
   try{
-    text = buildReport();
+    text = buildReport(part);
   }catch(err){
     toast('Could not build the report — ' + err.message, true);
     return;
@@ -3136,8 +3246,12 @@ function qrModal(){
 
 /* Add, caption or remove the codes for this page. Images are read straight into
    the sheet as data URLs, so there's no separate hosting to keep alive. */
-function qrEditModal(){
-  const scope = CUR_REGION || SEASON;
+function qrEditModal(which){
+  // The tour-wide codes and a region's own are two separate sets. An owner can
+  // edit either — otherwise the ones seeded for the whole tour could never be
+  // corrected from inside a region, which is where you usually are.
+  const canSeason = isAdmin();
+  const scope = (which==='season' || !CUR_REGION) ? SEASON : (which==='region' ? CUR_REGION : (CUR_REGION||SEASON));
   let work = (STATE.qr||[]).filter(q=>q.scope===scope)
     .map(q=>({id:q.id,label:q.label,caption:q.caption,src:q.src}));
   const shared = (STATE.qr||[]).filter(q=>q.scope===SEASON && scope!==SEASON);
@@ -3161,8 +3275,13 @@ function qrEditModal(){
   openModal(`
     ${mHead('Manage payment codes')}
     <div class="m-body">
-      <div class="hint">Codes added here belong to <b>${esc(scopeLabel())}</b>.
-        ${shared.length?`It also shows ${shared.length} code${shared.length===1?'':'s'} shared across the whole tour.`:''}</div>
+      ${canSeason && CUR_REGION ? `<div class="field"><label>Which set</label>
+        <select id="qrScope">
+          <option value="region" ${scope!==SEASON?'selected':''}>Just ${esc((currentRegion()||{}).name||'this region')}</option>
+          <option value="season" ${scope===SEASON?'selected':''}>Shared across the whole tour</option>
+        </select></div>` : ''}
+      <div class="hint">Editing the <b>${scope===SEASON?'tour-wide':esc((currentRegion()||{}).name||'region')}</b> set.
+        Change a label or caption, or remove a code with ✕.</div>
       <div id="qrList"></div>
       <div class="cash-sub">Add a code</div>
       ${shared.length?`<div class="field"><label>Reuse one already on the tour</label>
@@ -3178,6 +3297,9 @@ function qrEditModal(){
       <button class="btn btn-primary" id="qrSave">Save</button>
     </div>`);
   render();
+
+  const scopeSel=$('#qrScope');
+  if(scopeSel) scopeSel.addEventListener('change',()=>qrEditModal(scopeSel.value));
 
   const pick=$('#qrPick');
   if(pick) pick.addEventListener('change',()=>{
@@ -4268,11 +4390,44 @@ function stockModal(){
 /* ---- Books on the road ----
    Everything heading to or leaving this region, as batches. Details can be
    filled in as they become known, and a shipment can be received in parts. */
+/* Some tools only make sense inside a region. From the season we ask which one,
+   then go there and open it — so the season really does reach everything. */
+function pickRegionThen(act){
+  const regs = regionsList();
+  if(!regs.length){ toast('Create a region first.', true); return; }
+  if(regs.length===1){ goTo('region', regs[0].regionId); setTimeout(()=>runPicked(act),0); return; }
+  openModal(`
+    ${mHead('Which region?')}
+    <div class="m-body">
+      <div class="hint">This applies to one region at a time.</div>
+      ${regs.map(r=>{
+        const cl = regionClosure(r.regionId);
+        return `<button class="btn btn-ghost pick-row" data-act="pickgo" data-region="${esc(r.regionId)}"
+          data-then="${esc(act)}">${esc(r.name)}${cl==='complete'?' ✓':cl==='pending'?' •':''}</button>`;
+      }).join('')}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
+}
+function runPicked(act){
+  if(act==='transfer'){ transferModal('toevent'); return; }
+  if(act==='stock'){ stockModal(); return; }
+  if(act==='externaltransfer'){ externalTransferModal(); return; }
+  if(act==='sharelinks'){ shareLinksModal(); return; }
+  if(act==='editregion'){ regionModal(currentRegion()); return; }
+  if(act==='deleteregion'){ deleteRegionModal(); return; }
+  if(act==='closehere'){ closeModalFor('region'); return; }
+  if(act==='newevent'){ eventModal(); return; }
+}
+
 function shipmentsModal(){
+  const season = CUR_LEVEL==='season';
   const reg = currentRegion();
-  if(!reg) return;
-  const inb = inboundShipments(reg.regionId);
-  const out = outboundShipments(reg.regionId);
+  if(!season && !reg) return;
+  // From the season this is every batch on the road anywhere on the tour.
+  const inb = season
+    ? (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED')
+    : inboundShipments(reg.regionId);
+  const out = season ? [] : outboundShipments(reg.regionId);
 
   const card = (x, incoming) => {
     const books = shipBooks(x);
@@ -4298,10 +4453,11 @@ function shipmentsModal(){
   openModal(`
     ${mHead('Books in transit')}
     <div class="m-body">
-      <div class="cash-sub">Coming to ${esc(reg.name)}</div>
-      ${inb.length ? inb.map(x=>card(x,true)).join('') : `<div class="cash-empty">Nothing on its way here.</div>`}
-      <div class="cash-sub">Sent from ${esc(reg.name)}</div>
-      ${out.length ? out.map(x=>card(x,false)).join('') : `<div class="cash-empty">Nothing outstanding.</div>`}
+      <div class="cash-sub">${season?'Everywhere on the tour':'Coming to '+esc(reg.name)}</div>
+      ${inb.length ? inb.map(x=>card(x,true)).join('')
+        : `<div class="cash-empty">${season?'Nothing is on the road.':'Nothing on its way here.'}</div>`}
+      ${season ? '' : `<div class="cash-sub">Sent from ${esc(reg.name)}</div>
+      ${out.length ? out.map(x=>card(x,false)).join('') : `<div class="cash-empty">Nothing outstanding.</div>`}`}
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 }
@@ -4382,9 +4538,10 @@ function shipReceiveModal(id){
    Books kept at people's homes. They are the region's stock, just not in one
    place, so each devotee is somewhere books can be moved to and sold from. */
 function holdersModal(){
+  const season = CUR_LEVEL==='season';
   const reg = currentRegion();
-  if(!reg) return;
-  const list = holdersOf(reg.regionId);
+  if(!season && !reg) return;
+  const list = season ? (STATE.holders||[]) : holdersOf(reg.regionId);
   const row = h => {
     const books = curBooks().map(b=>({b,n:invQty(h.holderId,b.id)})).filter(r=>r.n>0);
     const total = books.reduce((t,r)=>t+r.n,0);
@@ -4403,22 +4560,30 @@ function holdersModal(){
     </div>`;
   };
   openModal(`
-    ${mHead('Devotee storage — '+esc(reg.name))}
+    ${mHead('Devotee storage' + (season?'':' — '+esc(reg.name)))}
     <div class="m-body">
-      <div class="hint">Books kept at devotees' homes. They count as this region's stock, and
+      <div class="hint">Books kept at devotees' homes. They count as their region's stock, and
         can be sold from directly or moved with the ordinary transfer.</div>
-      ${list.length ? list.map(row).join('') : `<div class="cash-empty">No devotee storage set up yet.</div>`}
+      ${season
+        ? (regionsList().map(r=>{
+            const mine = (STATE.holders||[]).filter(h=>h.regionId===r.regionId);
+            if(!mine.length) return '';
+            return `<div class="cash-sub">${esc(r.name)}</div>` + mine.map(row).join('');
+          }).join('') || `<div class="cash-empty">No devotee storage set up anywhere yet.</div>`)
+        : (list.length ? list.map(row).join('') : `<div class="cash-empty">No devotee storage set up yet.</div>`)}
+      ${season ? `<div class="hint">To add someone, open their region.</div>` : `
       <div class="cash-sub">Add someone</div>
       <div class="rp-add">
         <input id="hdName" type="text" placeholder="Name">
         <input id="hdPhone" type="tel" placeholder="WhatsApp (optional)">
         <button type="button" class="btn btn-primary btn-sm" id="hdAdd">Add</button>
-      </div>
+      </div>`}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 
-  $('#hdAdd').addEventListener('click',async ()=>{
+  const addBtn = $('#hdAdd');
+  if(addBtn) addBtn.addEventListener('click',async ()=>{
     const name=$('#hdName').value.trim();
     if(!name){ $('#modalErr').textContent='Enter a name.'; return; }
     if(await commitSync({action:'saveHolder', regionId:reg.regionId, name,
@@ -4713,6 +4878,8 @@ document.addEventListener('click',e=>{
   if(a==='whoami'){ askWhoAmI(true); return; }
   if(a==='closehere'){ closeModalFor(CUR_LEVEL==='event'?'event':'region'); return; }
   if(a==='reopenhere'){ reopenHere(); return; }
+  if(a==='pick'){ pickRegionThen(t.dataset.then); return; }
+  if(a==='pickgo'){ closeModal(); goTo('region', t.dataset.region); setTimeout(()=>runPicked(t.dataset.then),0); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shreceive'){ shipReceiveModal(t.dataset.id); return; }
@@ -4727,7 +4894,7 @@ document.addEventListener('click',e=>{
     else toast('Select the link and copy it', true);
     return;
   }
-  if(a==='report'){ shareReport(); return; }
+  if(a==='report'){ shareReport(t.dataset.part||''); return; }
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
