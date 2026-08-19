@@ -269,6 +269,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .sh-books{display:flex;flex-wrap:wrap;gap:5px;margin:7px 0 8px}
 .sh-chip{background:var(--paper2);border:1px solid var(--line);border-radius:999px;
   padding:2px 9px;font-size:11.5px;color:var(--ink)}
+.sh-chip.done{background:#E8F3EC;border-color:#A9CDB6;color:#1F6B43}
+.sh-of{font-weight:400;color:var(--muted);font-size:11.5px}
 .sh-acts{display:flex;gap:6px;flex-wrap:wrap}
 .pick-row{display:block;width:100%;text-align:left;margin-bottom:6px;font-size:14px}
 .ro-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -754,7 +756,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b35</span>
+    <span class="build-tag" title="Which version of the page is loaded">b36</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1142,10 +1144,19 @@ function shipWho(x){
   if(x.mode==='shipping') return x.tracking ? ('Courier · '+x.tracking) : 'Courier';
   return x.carrier ? ('With '+x.carrier) : 'With a devotee';
 }
+/* Progress of a batch, per title: how many were handed over at the start, how
+   many have landed, and how many are still on the way. */
 function shipBooks(x){
-  return curBooks().map(b=>({b, n:invQty(x.shipId,b.id)})).filter(r=>r.n>0);
+  const man = x.manifest || {};
+  const ids = new Set([...Object.keys(man), ...curBooks().map(b=>b.id).filter(id=>invQty(x.shipId,id)>0)]);
+  return [...ids].map(id=>{
+    const left = invQty(x.shipId, id);
+    const sent = Number(man[id]) || left;      // older batches have no manifest
+    return { b: bookById(id), sent, left, arrived: Math.max(0, sent-left) };
+  }).filter(r=>r.sent>0 || r.left>0);
 }
-function shipTotal(x){ return shipBooks(x).reduce((t,r)=>t+r.n,0); }
+function shipTotal(x){ return shipBooks(x).reduce((t,r)=>t+r.left,0); }
+function shipSentTotal(x){ return shipBooks(x).reduce((t,r)=>t+r.sent,0); }
 
 function regionUnsold(bookId){
   // Stock still on shelves in the CURRENT region only — its warehouse plus its
@@ -4534,14 +4545,18 @@ function shipmentsModal(){
     return `<div class="sh-card ${x.status==='PARTIAL'?'part':''}">
       <div class="sh-top">
         <span class="sh-route">${esc(shipLabel(x))}</span>
-        <span class="sh-count">${shipTotal(x)} book${shipTotal(x)===1?'':'s'}</span>
+        <span class="sh-count">${shipTotal(x)} still coming${
+          shipSentTotal(x)>shipTotal(x) ? ` <span class="sh-of">of ${shipSentTotal(x)}</span>` : ''}</span>
       </div>
       <div class="sh-who">${esc(shipWho(x))}${x.phone?` · ${waLink(x.phone)}`:''}</div>
       ${x.trackingUrl?`<div class="sh-who"><a href="${esc(x.trackingUrl)}" target="_blank" rel="noopener">Track it</a></div>`:''}
       <div class="sh-meta">${eta?`Expected ${esc(eta)}`:'No arrival date yet'}
         ${x.status==='PARTIAL'?'<span class="sh-tag">partly delivered</span>':''}
         ${x.note?' · '+esc(x.note):''}</div>
-      <div class="sh-books">${books.map(r=>`<span class="sh-chip">${r.n} ${esc(r.b.name)}</span>`).join('')}</div>
+      <div class="sh-books">${books.map(r=>
+        `<span class="sh-chip ${r.left?'':'done'}">${esc(r.b.name)}:
+          ${r.arrived?`<b>${r.arrived} of ${r.sent}</b> arrived${r.left?` · ${r.left} coming`:''}`
+                     : `<b>${r.left}</b> coming`}</span>`).join('')}</div>
       <div class="sh-acts">
         ${incoming?`<button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Mark arrived…</button>`:''}
         <button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit details</button>
@@ -4610,7 +4625,7 @@ function shipCountModal(id){
         so nothing disappears from the count.</div>
       ${rows.map(r=>`<div class="cl-row">
         <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}</div>
-        <div class="cl-exp">listed ${r.n}</div>
+        <div class="cl-exp">${r.n} still coming</div>
         <input class="cl-in sc-q" type="number" min="0" inputmode="numeric"
           data-book="${esc(r.b.id)}" data-was="${r.n}" value="${r.n}">
         <div class="cl-diff" data-for="${esc(r.b.id)}"></div>
@@ -4670,13 +4685,14 @@ function shipReceiveModal(id){
         stays recorded as still travelling, so a batch that came in pieces stays honest.</div>
       <div class="field"><label>Arriving at</label>
         <select id="rcTo">${dests.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></div>
-      ${books.map(r=>`<div class="cl-row">
-        <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}</div>
-        <div class="cl-exp">${r.n} travelling</div>
-        <input class="cl-in rc-q" type="number" min="0" max="${r.n}" inputmode="numeric"
-          data-book="${esc(r.b.id)}" data-max="${r.n}" value="${r.n}">
+      ${books.filter(r=>r.left>0).map(r=>`<div class="cl-row">
+        <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}
+          ${r.arrived?`<span class="cl-loc">${r.arrived} of ${r.sent} already arrived</span>`:''}</div>
+        <div class="cl-exp">${r.left} still coming</div>
+        <input class="cl-in rc-q" type="number" min="0" max="${r.left}" inputmode="numeric"
+          data-book="${esc(r.b.id)}" data-max="${r.left}" value="${r.left}">
         <div></div>
-      </div>`).join('') || `<div class="cash-empty">Nothing left in this shipment.</div>`}
+      </div>`).join('') || `<div class="cash-empty">Everything in this batch has arrived.</div>`}
       <div class="field"><label>Note (optional)</label><input id="rcNote" type="text"></div>
       <div class="err" id="modalErr"></div>
     </div>
