@@ -165,6 +165,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .stat-card{border:1.5px solid var(--line-d);border-radius:12px;padding:10px 11px;
   background:var(--paper2);display:flex;flex-direction:column;gap:2px;min-height:92px}
 .stat-card.dim{opacity:.55}
+.stat-card.consign{background:#F2F6FB;border-color:#B9CBE0}
 .sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
 .sc-name.aotm{color:var(--gold)}
 .sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:auto}
@@ -397,6 +398,8 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .tcard.aotm::before{background:var(--blue)}
 .tcard.usd::before{background:var(--green)}
 .tcard.pend::before{background:var(--clay)}
+.tcard.consign::before{background:#2F5C8A}
+.tcard.consign .value{color:#2F5C8A}
 .tcard .label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);
   font-weight:700;line-height:1.3}
 .tcard .value{font-family:'Marcellus',serif;font-size:clamp(20px,2.4vw,30px);color:var(--plum);
@@ -770,7 +773,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b43</span>
+    <span class="build-tag" title="Which version of the page is loaded">b44</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1147,9 +1150,20 @@ function locName(loc){
   const e=(STATE.events||[]).find(e=>e.eventId===loc);
   return e?e.name:loc;
 }
+/* Everything sold at this scope, ours and any consignment. The log, the
+   pre-orders and the pending list all work from this, so a consignment sale can
+   be found, corrected or deleted like any other. Totals use tourSales() below,
+   which is where the two are kept apart. */
+/** Our own sales only — what every tour total is built from. */
+function tourSales(){ return scopedSales().filter(x=>!isPartnerSale(x)); }
+/** Consignment sales at this scope, optionally for one group. */
+function consignSales(partnerId){
+  return scopedSales().filter(x=>isPartnerSale(x) &&
+    (!partnerId || bookById(x.bookId).partnerId===partnerId));
+}
+
 function scopedSales(){
-  // Consignment sales are reported on their own page, never mixed into ours.
-  const s=(STATE.sales||[]).filter(x=>!isPartnerSale(x));
+  const s=STATE.sales||[];
   if(CUR_LEVEL==='season') return s;                       // whole tour
   if(CUR_LEVEL==='region'){ const inR=locsInRegion(CUR_REGION); return s.filter(x=>inR.includes(x.location)); }
   return s.filter(x=>x.location===CUR_LOC);                // one event
@@ -1772,7 +1786,7 @@ function renderSalesByRegion(){
 }
 
 function renderTotals(){
-  const s=scopedSales();
+  const s=tourSales();          // our tiles never include consignment
   // A gift is still a book that left the shelf, so it counts toward the total —
   // it just isn't a sale and isn't money.
   const n=(type,cat)=>s.filter(x=>x.type===type && x.bookId && catOf(x.bookId)===cat && !isGift(x)).length;
@@ -1814,6 +1828,18 @@ function renderTotals(){
       <div class="sub"><b>${aotmSold}</b> sold${aotmGift?` · (<b>${aotmGift}</b> gift${aotmGift===1?'':'s'})`:''}${aotmPre?` · (<b>${aotmPre}</b> of ${aotmSold+aotmOut+aotmGift} pre-ordered)`:''}</div></div>`;
     })()}
     ${hideMoney() ? '' : `
+    ${(function(){
+      // Their books counted separately — visible at a glance, never added in.
+      const con = consignSales();
+      if(!con.length) return '';
+      const cs = con.filter(x=>x.type==='SALE').length;
+      const cp = con.filter(x=>x.type==='PREORDER').length;
+      const names = [...new Set(con.map(x=>((partnerById((bookById(x.bookId)||{}).partnerId)||{}).name)).filter(Boolean))];
+      return `<div class="tcard consign"><div class="label">Consignment</div>
+        <div class="value">${cs+cp}</div>
+        <div class="sub"><b>${cs}</b> sold${cp?` · (<b>${cp}</b> pre-ordered)`:''}${
+          names.length?` · ${esc(names.join(', '))}`:''}</div></div>`;
+    })()}
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
       <div class="sub">${money(got)||'nothing collected yet'}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
@@ -1906,7 +1932,7 @@ function renderTitleList(target){
         .concat(holdersOf(CUR_REGION).map(hh=>({id:hh.holderId, name:hh.name})))
     : [];
 
-  const h=curBooks().map(b=>{
+  const h=shelfBooks().map(b=>{
     const mine = s.filter(x=>x.bookId===b.id);
     const sold=mine.filter(x=>x.type==='SALE').length;
     const pre =mine.filter(x=>x.type==='PREORDER'||wasPreorderSale(x)).length;
@@ -1917,8 +1943,9 @@ function renderTitleList(target){
       return n ? `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
         title="Go to ${esc(pl.name)}"><b>${n}</b> ${esc(pl.name)}</button>` : '';
     }).filter(Boolean).join('');
-    return `<div class="stat-card${dim}">
-      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+    return `<div class="stat-card${dim}${b.partnerId?' consign':''}">
+      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}${
+        b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big ${sold?'':'zero'}">${sold}</span>
         <span class="sc-lbl">sold</span>
@@ -1941,7 +1968,7 @@ function renderTitleList(target){
    cell is what made the old version's numbers wander out of their columns.)
    Opening a type just unhides its rows; nothing reflows.                     */
 function renderPayments(target){
-  const sales   = scopedSales();
+  const sales   = tourSales();    // consignment money has its own page
   const curs    = curCurrencies();
   const panelId = String(target||'body').replace(/\W+/g,'');
 
@@ -2076,6 +2103,8 @@ function logItemHTML(x, opts){
   // A delivered pre-order becomes an ordinary SALE, so without this it would be
   // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
   const wasPreorder = x.type==='SALE' && !!x.dsource;
+  // Whose book this was — consignment rows are marked so they never read as ours.
+  const conOwner = x.bookId ? (partnerById((bookById(x.bookId)||{}).partnerId)||null) : null;
   const badge = x.type==='SALE'
       ? (wasPreorder?'<span class="badge filled">Pre-order filled</span>'
                     :'<span class="badge sale">Sale</span>')
@@ -2107,6 +2136,9 @@ function logItemHTML(x, opts){
   }else if(ctx==='log'){
     if(when) bits.push(esc(when));
   }
+  // Whose book it was, right on the row — otherwise a consignment sale looks
+  // identical to ours in the list.
+  if(conOwner) bits.push(`<span class="con-tag">${esc(conOwner.name)}</span>`);
 
   const r2=[];
   if(needsRow2){
@@ -2144,6 +2176,7 @@ function logItemHTML(x, opts){
   }
   if(x.comments) det.push(['Notes', esc(x.comments)]);
   det.push(['Sold at', esc(locNameFull(x.location))]);
+  if(conOwner) det.push(['Belongs to', esc(conOwner.name) + ' (consignment)']);
   if(x.soldBy) det.push(['Recorded by', esc(x.soldBy)]);
   if(wasPreorder){
     det.push(['Pre-order', 'Fulfilled — copy came from '
