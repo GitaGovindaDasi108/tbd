@@ -181,6 +181,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* ---- Mini cards: same idea, sized to live inside a dropdown ---- */
 .mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;padding:4px 0 2px}
 .mini-card{border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:var(--paper)}
+.mini-card.consign{background:#F2F6FB;border-color:#B9CBE0}
+.sbr-line.con{color:#2F5C8A;font-weight:600}
 .mc-name{font-size:11px;font-weight:700;color:var(--plum);line-height:1.25;min-height:28px}
 .mc-name.aotm{color:var(--gold)}
 .mc-figs{display:flex;align-items:baseline;gap:4px;margin-top:3px}
@@ -564,6 +566,9 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .ptg .z{color:var(--line-d)}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
+.ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
+.ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
+  text-transform:uppercase;color:var(--muted);border-top:2px solid var(--line-d)}
 .ptg-empty{color:var(--muted);justify-content:flex-start}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
@@ -773,7 +778,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b44</span>
+    <span class="build-tag" title="Which version of the page is loaded">b45</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1747,7 +1752,8 @@ function renderSalesByRegion(){
   if(!regions.length) return `<div class="cash-empty">No regions yet.</div>`;
   return regions.map(r=>{
     const locs = locsInRegion(r.regionId);
-    const sales = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
+    const allHere = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
+    const sales = allHere.filter(x=>!isPartnerSale(x));   // headline counts stay ours
     const count=(cat,type)=>sales.filter(x=>catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
     const gcount=(cat)=>sales.filter(x=>catOf(x.bookId)===cat && isGift(x)).length;
     const bs=count('big','SALE'), bp=count('big','PREORDER'), bg=gcount('big');
@@ -1755,12 +1761,13 @@ function renderSalesByRegion(){
 
     // Mini cards — same language as the shelf, sized to sit inside a dropdown.
     const perBook = (STATE.books||[]).map(b=>{
-      const sold=sales.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
-      const pre =sales.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
-      const gift=sales.filter(x=>x.bookId===b.id && isGift(x)).length;
+      const sold=allHere.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
+      const pre =allHere.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
+      const gift=allHere.filter(x=>x.bookId===b.id && isGift(x)).length;
       if(!sold && !pre && !gift) return '';
-      return `<div class="mini-card">
-        <div class="mc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      return `<div class="mini-card${b.partnerId?' consign':''}">
+        <div class="mc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}${
+          b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
         <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
         <div class="mc-sub">${pre?`${pre} pre`:''}${(pre&&gift)?' · ':''}${gift?`${gift} gift`:''}${(!pre&&!gift)?'&nbsp;':''}</div>
       </div>`;
@@ -1776,6 +1783,13 @@ function renderSalesByRegion(){
         <span class="sbr-sum">
           <span class="sbr-line">${bs+bp+bg} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered${bg?` / ${bg} gift`:''})</span></span>
           <span class="sbr-line">${as+ap+ag} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered${ag?` / ${ag} gift`:''})</span></span>
+          ${(function(){
+            // Consignment shown per region too, so it reads the same at every level.
+            const con = (STATE.sales||[]).filter(x=>locs.includes(x.location) && isPartnerSale(x));
+            if(!con.length) return '';
+            const cs=con.filter(x=>x.type==='SALE').length, cp=con.filter(x=>x.type==='PREORDER').length;
+            return `<span class="sbr-line con">${cs+cp} consignment <span class="muted">(${cs} sold${cp?` / ${cp} pre-ordered`:''})</span></span>`;
+          })()}
         </span>
       </button>
       <div class="sbr-detail" id="sbr-${esc(r.regionId)}" style="display:none">
@@ -2031,6 +2045,28 @@ function renderPayments(target){
   let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''))).join('');
   if(Object.keys(don).length) body += rowsFor('Donations', don, donGroup, 'donations', 'pt-don');
 
+  /* Consignment money gets its own rows beneath the tour's total, and stays
+     outside it. You handle their notes on the day, so the figure has to be
+     visible — it is simply not ours. */
+  const conPartners = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION));
+  let conBody = '';
+  conPartners.forEach(pt=>{
+    const mine = consignSales(pt.partnerId);
+    if(!mine.length) return;
+    const tot={}, perGroup={};
+    mine.forEach(x=>{
+      if(!received(x)) return;
+      const g=groups.find(gr=>gr.locs.includes(x.location));
+      legs(x).forEach(l=>{
+        if(!l.type||!l.amt) return;
+        tot[l.cur]=(tot[l.cur]||0)+l.amt;
+        if(g) (perGroup[g.id]=perGroup[g.id]||{})[l.cur]=(perGroup[g.id][l.cur]||0)+l.amt;
+      });
+    });
+    if(!Object.keys(tot).length) return;
+    conBody += rowsFor(pt.name, tot, perGroup, 'con'+pt.partnerId.replace(/\W+/g,''), 'ptg-con');
+  });
+
   /* Rendered as a CSS grid rather than a table. One column definition lives on
      the container and every row is a direct child of it, so the header, the type
      rows, the breakdown rows and the total all share the same column edges by
@@ -2047,6 +2083,7 @@ function renderPayments(target){
         <div class="ptg-t ptg-first">All</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
+        ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment — not ours, not counted above</div>${conBody}` : ''}
       </div>
     </div>`;
 }
