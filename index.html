@@ -756,7 +756,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b40</span>
+    <span class="build-tag" title="Which version of the page is loaded">b41</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3541,7 +3541,10 @@ function cashAccounts(){
 function hideBank(){ return !!(STATE && STATE.hideBank); }
 /** What this link's own places have sent to the bank, per currency. */
 function sentToBank(){
-  const mine = (CUR_LEVEL==='event') ? [CUR_LOC] : locsInRegion(CUR_REGION);
+  // Always measured across the whole region, because that is the set of accounts
+  // the cash panel shows — counting only one event would leave the figure not
+  // matching the rows above it.
+  const mine = CUR_REGION ? locsInRegion(CUR_REGION) : [CUR_LOC];
   const out = {};
   (STATE.cash||[]).forEach(c=>{
     if(!c || c.kind!=='MOVE') return;
@@ -3687,15 +3690,24 @@ function cashModal(){
 
   // ---------- balances table (tap a cell to set it) ----------
   let balRows='';
+  const sent = sentToBank();     // what THIS region has handed over
   accts.forEach(a=>{
-    const hasManual = entries.some(c=>c.fromAcct===a.id || c.toAcct===a.id);
+    /* The bank belongs to the whole tour, so inside a region its row shows what
+       this region has sent there — not the pooled balance, which would mix in
+       money from places that have nothing to do with here. The true total lives
+       at season level, where it means something. */
+    const isBank = a.id==='BANK';
+    const hasManual = !isBank && entries.some(c=>c.fromAcct===a.id || c.toAcct===a.id);
     let cells='';
     cashCurs().forEach(cur=>{
-      const v=cashBalance(a.id,cur);
-      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
+      const v = isBank ? (sent[cur]||0) : cashBalance(a.id,cur);
+      cells += isBank
+        ? `<td class="cash-cell ${v===0?'zero':''}">${v===0?'—':cashFmt(v,cur)}</td>`
+        : `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
     });
     const reset = hasManual ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset to collected">↺</button>` : '';
-    balRows += `<tr><th>${esc(a.name)} ${reset}</th>${cells}</tr>`;
+    const label = isBank ? 'Sent to the bank from here' : esc(a.name);
+    balRows += `<tr><th>${label} ${reset}</th>${cells}</tr>`;
   });
 
   // ---------- cash collected (plain loop, always shows) ----------
@@ -3712,7 +3724,13 @@ function cashModal(){
   let logBuildErr='';
   // Bulletproof build: each row is wrapped so one bad entry can never blank the
   // whole log, and a plain-text fallback guarantees the movement is always visible.
-  const sorted = entries.slice().sort((a,b)=>{ try{return (new Date(b.ts||0))-(new Date(a.ts||0));}catch(e){return 0;} });
+  /* Only movements that touch this region. The bank is shared by the whole tour,
+     so without this filter a region's log listed other regions' deposits. */
+  const here = CUR_REGION ? locsInRegion(CUR_REGION) : [];
+  const mineOnly = here.length
+    ? entries.filter(c=>here.includes(c.fromAcct) || here.includes(c.toAcct))
+    : entries;
+  const sorted = mineOnly.slice().sort((a,b)=>{ try{return (new Date(b.ts||0))-(new Date(a.ts||0));}catch(e){return 0;} });
   let logRows='';
   sorted.forEach(c=>{
     try{
