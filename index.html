@@ -272,6 +272,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .sh-chip.done{background:#E8F3EC;border-color:#A9CDB6;color:#1F6B43}
 .sh-of{font-weight:400;color:var(--muted);font-size:11.5px}
 .sh-acts{display:flex;gap:6px;flex-wrap:wrap}
+.con-money{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:4px 12px;margin:7px 0}
+.con-money>div{display:flex;justify-content:space-between;gap:8px;font-size:12.5px}
+.con-k{color:var(--muted)}
+.con-v{font-weight:700;color:var(--ink)}
+.con-v.owing{color:var(--clay)}
 .pick-row{display:block;width:100%;text-align:left;margin-bottom:6px;font-size:14px}
 .ro-row{display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding:8px 10px;border:1px solid var(--line);border-radius:9px;margin-bottom:6px;background:var(--paper)}
@@ -449,6 +454,12 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
 .don-card{background:#FFF6E3;border-color:var(--gold-l)}
+/* Consignment: someone else's book on our table. Marked so it is never mistaken
+   for ours, but sold exactly the same way. */
+.book.consign{background:#F2F6FB;border-color:#B9CBE0}
+.con-tag{display:inline-block;margin-left:6px;background:#DCE8F5;color:#2F5C8A;
+  border:1px solid #B9CBE0;border-radius:999px;padding:1px 7px;font-size:9.5px;
+  font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
 .don-card .bname{color:var(--gold)}
 .don-card .qty-chip{color:var(--gold)}
 /* Inventory heading and its QR button share a line when there's room. */
@@ -476,6 +487,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .adm-stock    {background:#2E8B45}   /* green    */
 .adm-transit  {background:#149A8E}   /* teal     */
 .adm-devotee  {background:#1B7FA8}   /* cyan     */
+.adm-consign  {background:#2F5C8A}   /* deep blue — someone else's books */
 .adm-toevent  {background:#2F6FB5}   /* blue     */
 .adm-toregion {background:#4B5CC4}   /* indigo   */
 .adm-record   {background:#7A4FBF}   /* violet   */
@@ -756,7 +768,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b41</span>
+    <span class="build-tag" title="Which version of the page is loaded">b42</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1040,9 +1052,34 @@ function regionBooks(regionId){
   if(!r || !r.books || !r.books.length) return all;
   return all.filter(b=>r.books.includes(b.id));
 }
+/* ---- Consignment ----
+   Books belonging to a local group, sold from our table but never counted as
+   ours. Ownership sits on the title, so a seller taps it exactly like any other
+   and the separation happens behind them. */
+function partnersOf(regionId){
+  return (STATE.partners||[]).filter(p=>p.regionId===(regionId||CUR_REGION));
+}
+function partnerById(id){ return (STATE.partners||[]).find(p=>p.partnerId===id)||null; }
+function isPartnerBook(bookId){ const b=bookById(bookId); return !!(b && b.partnerId); }
+function isPartnerSale(x){ return !!(x && x.bookId && isPartnerBook(x.bookId)); }
+/** Titles a partner has on our table here. */
+function partnerBooks(partnerId){
+  return (STATE.books||[]).filter(b=>b.partnerId===partnerId);
+}
+/** Every book on the shelf, ours and any consignment ones in this region. */
+function shelfBooks(){
+  const ours = curBooks();
+  const theirs = (CUR_LEVEL==='season')
+    ? (STATE.books||[]).filter(b=>b.partnerId)
+    : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
+  const seen = new Set(ours.map(b=>b.id));
+  return ours.concat(theirs.filter(b=>!seen.has(b.id)));
+}
+
 function curBooks(){
-  if(CUR_LEVEL==='season') return STATE.books||[];
-  return regionBooks(CUR_REGION);
+  // Our own titles only — every total in the app is built from these.
+  const all = (CUR_LEVEL==='season') ? (STATE.books||[]) : regionBooks(CUR_REGION);
+  return all.filter(b=>!b.partnerId);
 }
 function curCurrencies(){
   if(CUR_LEVEL==='season') return STATE.currencies||['USD'];
@@ -1109,7 +1146,8 @@ function locName(loc){
   return e?e.name:loc;
 }
 function scopedSales(){
-  const s=STATE.sales||[];
+  // Consignment sales are reported on their own page, never mixed into ours.
+  const s=(STATE.sales||[]).filter(x=>!isPartnerSale(x));
   if(CUR_LEVEL==='season') return s;                       // whole tour
   if(CUR_LEVEL==='region'){ const inR=locsInRegion(CUR_REGION); return s.filter(x=>inR.includes(x.location)); }
   return s.filter(x=>x.location===CUR_LOC);                // one event
@@ -1596,6 +1634,8 @@ function renderAdmin(){
   }
   cols[1].push(`<button class="btn adm-transit" data-act="shipments">🚚 Books in transit${shipCount?` (${shipCount})`:''}</button>`);
   cols[1].push(`<button class="btn adm-devotee" data-act="holders">🏠 Devotees storing books</button>`);
+  const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
+  cols[1].push(`<button class="btn adm-consign" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
 
   // 3 — moving them
   if(season){
@@ -1781,10 +1821,14 @@ function renderTotals(){
 function renderInventory(){
   $('#invHeading').firstChild.textContent = (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
   const s=scopedSales();
+  const allSales=STATE.sales||[];
   let h='';
-  curBooks().forEach(b=>{
+  // The shelf carries every book on the table — a consignment title is sold the
+  // same way, it is only the reporting that keeps them apart.
+  shelfBooks().forEach(b=>{
     const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
-    const sold=s.filter(x=>x.type==='SALE'&&x.bookId===b.id).length;
+    const mine=b.partnerId?allSales:s;
+    const sold=mine.filter(x=>x.type==='SALE'&&x.bookId===b.id&&x.location===CUR_LOC).length;
     const region = isWarehouseLoc(CUR_LOC) ? regionUnsold(b.id) : q;
     // A copy that is physically here can always be sold — the pre-order hold is
     // a warning, not a lock.
@@ -1794,11 +1838,12 @@ function renderInventory(){
     if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
     else if(avail<=0) flag=`<span class="flag held sold-tag">ALL PRE-ORDERED</span>`;
     else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
-    h+=`<div class="book ${sellable?'sellable':''}">
+    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':''}">
       ${(q<=0||avail<=0)?flag:''}
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
-          <div class="bname">${esc(b.name)}</div>
+          <div class="bname">${esc(b.name)}${
+            b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
           <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
         </div>
         <div class="qtyrow">
@@ -4562,6 +4607,159 @@ function reorderModal(kind){
 }
 
 
+/* ---- Consignment panel ----
+   A local group's books sold from our table. Deliberately simple: what they
+   sold, what came in, what we still owe them. */
+function partnersModal(){
+  const season = CUR_LEVEL==='season';
+  const reg = currentRegion();
+  const list = season ? (STATE.partners||[]) : partnersOf(CUR_REGION);
+  const money = o => Object.keys(o||{}).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ');
+
+  const card = p => {
+    const books = partnerBooks(p.partnerId);
+    const owedTxt = money(p.owed);
+    return `<div class="sh-card ${Object.keys(p.owed||{}).some(c=>p.owed[c]>0)?'part':''}">
+      <div class="sh-top">
+        <span class="sh-route">${esc(p.name)}</span>
+        <span class="sh-count">${p.sold} sold${p.preordered?` · ${p.preordered} pre-ordered`:''}</span>
+      </div>
+      ${season?`<div class="sh-meta">${esc((regionById(p.regionId)||{}).name||'')}</div>`:''}
+      <div class="con-money">
+        <div><span class="con-k">Taken in</span><span class="con-v">${money(p.took)||'—'}</span></div>
+        <div><span class="con-k">Handed over</span><span class="con-v">${money(p.paid)||'—'}</span></div>
+        <div><span class="con-k">Still to hand over</span>
+          <span class="con-v ${owedTxt?'owing':''}">${owedTxt||'nothing'}</span></div>
+      </div>
+      <div class="sh-books">${books.map(b=>{
+        const sold=(STATE.sales||[]).filter(x=>x.bookId===b.id&&x.type==='SALE').length;
+        return `<span class="sh-chip">${esc(b.name)}: <b>${sold}</b></span>`;
+      }).join('') || '<span class="sh-meta">No titles yet.</span>'}</div>
+      <div class="sh-acts">
+        <button class="btn btn-primary btn-sm" data-act="conpay" data-id="${esc(p.partnerId)}">Record hand-over…</button>
+        <button class="btn btn-ghost btn-sm" data-act="conbook" data-id="${esc(p.partnerId)}">Add a title</button>
+        <button class="btn btn-ghost btn-sm" data-act="conedit" data-id="${esc(p.partnerId)}">Edit</button>
+      </div>
+    </div>`;
+  };
+
+  openModal(`
+    ${mHead('Consignment' + (season?'':' — '+esc((reg||{}).name||'')))}
+    <div class="m-body">
+      <div class="hint">Books belonging to a local group, sold from our table. Their sales and
+        their money stay out of every tour total, and each group gets its own spreadsheet.</div>
+      ${list.length ? list.map(card).join('') : `<div class="cash-empty">No consignment set up${season?'':' in this region'} yet.</div>`}
+      ${season ? `<div class="hint">To add a group, open their region.</div>` : `
+      <div class="cash-sub">Add a group</div>
+      <div class="rp-add">
+        <input id="conName" type="text" placeholder="e.g. Macedonian Devotees">
+        <button type="button" class="btn btn-primary btn-sm" id="conAdd">Add</button>
+      </div>`}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+
+  const add=$('#conAdd');
+  if(add) add.addEventListener('click',async ()=>{
+    const name=$('#conName').value.trim();
+    if(!name){ $('#modalErr').textContent='Enter a name.'; return; }
+    if(await commitSync({action:'savePartner',regionId:CUR_REGION,name},'Added')) partnersModal();
+  });
+}
+
+/* Their cash sat in our box all day; this is us handing it over. */
+function partnerPayModal(id){
+  const p = partnerById(id);
+  if(!p) return;
+  const owed = p.owed||{};
+  const curs = Object.keys(owed).filter(c=>owed[c]>0).sort();
+  openModal(`
+    ${mHead('Hand over to ' + esc(p.name))}
+    <div class="m-body">
+      <div class="hint">Their share of the takings. Recording it here settles what we owe —
+        it never touches our own cash, which was kept separate all along.</div>
+      ${curs.length ? curs.map(c=>`<div class="cl-row">
+        <div class="cl-name">${esc(CUR_SYM[c]||c)} ${esc(c)}</div>
+        <div class="cl-exp">owed ${cashFmt(owed[c],c)}</div>
+        <input class="cl-in con-q" type="number" min="0" step="0.01" inputmode="decimal"
+          data-cur="${esc(c)}" value="${owed[c]}">
+        <div></div>
+      </div>`).join('') : `<div class="cash-empty">Nothing outstanding.</div>`}
+      <div class="field"><label>Note (optional)</label>
+        <input id="conNote" type="text" placeholder="e.g. handed to Gopal after the festival"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="partners">Back</button>
+      <button class="btn btn-primary" id="conGo">Record hand-over</button>
+    </div>`);
+  $('#conGo').addEventListener('click',async ()=>{
+    const rows=[...document.querySelectorAll('#modal .con-q')]
+      .map(i=>({cur:i.dataset.cur, amt:Number(i.value)||0})).filter(x=>x.amt>0);
+    if(!rows.length){ $('#modalErr').textContent='Enter an amount.'; return; }
+    const note=$('#conNote').value.trim();
+    let ok=true;
+    for(const r of rows){
+      ok = await commitSync({action:'partnerPayout',partnerId:id,cur:r.cur,amt:r.amt,note},'Recorded') && ok;
+      if(!ok) break;
+    }
+    if(ok) partnersModal();
+  });
+}
+
+function partnerBookModal(id){
+  const p = partnerById(id);
+  if(!p) return;
+  openModal(`
+    ${mHead('Add a title for ' + esc(p.name))}
+    <div class="m-body">
+      <div class="hint">This book will appear on the shelf alongside ours, marked as theirs.
+        Its sales and money stay out of every tour total.</div>
+      <div class="field"><label>Title</label>
+        <input id="cbName" type="text" placeholder="e.g. Sri Radha (Macedonian)"></div>
+      <div class="field"><label>Kind</label>
+        <select id="cbCat"><option value="big">Big Book</option><option value="aotm">Adventures</option></select></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="partners">Back</button>
+      <button class="btn btn-primary" id="cbGo">Add title</button>
+    </div>`);
+  $('#cbGo').addEventListener('click',async ()=>{
+    const name=$('#cbName').value.trim();
+    if(!name){ $('#modalErr').textContent='Give the title a name.'; return; }
+    if(await commitSync({action:'addBook',name,cat:$('#cbCat').value,partnerId:id},'Title added')) partnersModal();
+  });
+}
+
+function partnerEditModal(id){
+  const p = partnerById(id);
+  if(!p) return;
+  openModal(`
+    ${mHead('Edit ' + esc(p.name))}
+    <div class="m-body">
+      <div class="field"><label>Name</label><input id="peName" type="text" value="${esc(p.name)}"></div>
+      <div class="field"><label>Note</label><input id="peNote" type="text" value="${esc(p.note||'')}"></div>
+      <div class="hint">Removing a group only takes it off the list; its records and spreadsheet stay.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="partners">Back</button>
+      <button class="btn btn-danger btn-sm" id="peDel">Remove</button>
+      <button class="btn btn-primary" id="peSave">Save</button>
+    </div>`);
+  $('#peSave').addEventListener('click',async ()=>{
+    if(await commitSync({action:'savePartner',partnerId:id,regionId:p.regionId,
+      name:$('#peName').value.trim(),note:$('#peNote').value.trim()},'Saved')) partnersModal();
+  });
+  $('#peDel').addEventListener('click',async ()=>{
+    if(!confirm('Remove '+p.name+' from the list? Their records and spreadsheet stay as they are.')) return;
+    if(await commitSync({action:'savePartner',partnerId:id,regionId:p.regionId,name:p.name,
+      note:p.note,archived:true},'Removed')) partnersModal();
+  });
+}
+
+
 function shipmentsModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
@@ -5129,6 +5327,10 @@ document.addEventListener('click',e=>{
   if(a==='pick'){ pickRegionThen(t.dataset.then); return; }
   if(a==='pickgo'){ closeModal(); goTo('region', t.dataset.region); setTimeout(()=>runPicked(t.dataset.then),0); return; }
   if(a==='reorder'){ reorderModal(t.dataset.kind); return; }
+  if(a==='partners'){ partnersModal(); return; }
+  if(a==='conpay'){ partnerPayModal(t.dataset.id); return; }
+  if(a==='conbook'){ partnerBookModal(t.dataset.id); return; }
+  if(a==='conedit'){ partnerEditModal(t.dataset.id); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
