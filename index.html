@@ -798,7 +798,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b51</span>
+    <span class="build-tag" title="Which version of the page is loaded">b52</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2612,9 +2612,9 @@ function saleModal(opts){
     $('#nameBox').style.display='block';
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
-    // Any change still owed is shown so it can be corrected or cleared here.
+    // Any change still owed shows here so it can be corrected or cleared.
     if($('#chgamt')){
-      $('#chgamt').value = Number(edit.changeamt)||'' ;
+      $('#chgamt').value = Number(edit.changeamt)||'';
       if(edit.changecur) $('#chgcur').value = edit.changecur;
     }
   }else{
@@ -2768,6 +2768,11 @@ function bundleModal(edit){
           <div class="field"><label id="phoneLbl">Phone (optional)</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
         </div>
       </div>
+      <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
+        <div class="mixrow">
+          <input id="chgamt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">
+          <select id="chgcur">${curOptions()}</select>
+        </div></div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
       <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.members[0].ts:new Date()))}"></div>
@@ -2912,6 +2917,12 @@ function bundleModal(edit){
     // Strip the "N book sale" prefix from the shared comment for editing.
     const raw=String(edit.members[0].comments||'');
     $('#ccomments').value = raw.replace(/^\d+ book (sale|pre-order)( · )?/,'');
+     // A bundle carries its change on the first line, so read it from there.
+     if($('#chgamt')){
+       const c = edit.members.find(m=>Number(m.changeamt)>0);
+       $('#chgamt').value = c ? Number(c.changeamt) : '';
+       if(c && c.changecur) $('#chgcur').value = c.changecur;
+     }
     applyPayMode(); updateCount(); refreshAll();
   }
 
@@ -2936,6 +2947,9 @@ function bundleModal(edit){
     const dueamt = payMode==='part' ? Math.max(0, Number($('#dueamt').value)||0) : 0;
     const duecur = payMode==='part' ? $('#duecur').value : '';
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
+    // What we could not break, owed back to them.
+    const changeamt = Math.max(0, Number(($('#chgamt')||{}).value)||0);
+    const changecur = changeamt ? (($('#chgcur')||{}).value || 'PLN') : '';
     if(payMode==='part' && dueamt<=0){ $('#modalErr').textContent='Enter how much is still owed, or choose "Paid in Full".'; return; }
     if((pre.length>0 || payMode!=='full') && !name){ $('#modalErr').textContent='Add a name so the pre-order or balance can be traced.'; return; }
 
@@ -2965,7 +2979,8 @@ function bundleModal(edit){
     const payload = edit
       ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true,
          ts:tsVal}
-      : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal,override:true};
+      : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
+         ts:tsVal,changeamt,changecur,override:true};
 
     commit(payload,
       st=>{
@@ -4185,6 +4200,11 @@ function donationModal(edit){
         <div class="field"><label>Name (optional)</label><input id="cname" type="text"></div>
         <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789"></div>
       </div>
+      <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
+        <div class="mixrow">
+          <input id="chgamt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">
+          <select id="chgcur">${curOptions()}</select>
+        </div></div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
       <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
@@ -4210,6 +4230,11 @@ function donationModal(edit){
     }
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
+    // Any change still owed shows here so it can be corrected or cleared.
+    if($('#chgamt')){
+      $('#chgamt').value = Number(edit.changeamt)||'';
+      if(edit.changecur) $('#chgcur').value = edit.changecur;
+    }
   }
 
   $('#saveDon').addEventListener('click',()=>{
@@ -4222,6 +4247,9 @@ function donationModal(edit){
     }
     if(!L.some(l=>l.amt>0)){$('#modalErr').textContent='Enter a donation amount.';return;}
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
+    // What we could not break, owed back to them.
+    const changeamt = Math.max(0, Number(($('#chgamt')||{}).value)||0);
+    const changecur = changeamt ? (($('#chgcur')||{}).value || 'PLN') : '';
     const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:'DONATION',location:edit.location,bookId:'',
@@ -4231,7 +4259,7 @@ function donationModal(edit){
         'Donation updated');
     }else{
       const id=tmpId(), loc=CUR_LOC;
-      commit({action:'donate',location:loc,legs:L,name,phone,comments,ts:tsVal},
+      commit({action:'donate',location:loc,legs:L,name,phone,comments,ts:tsVal,changeamt,changecur},
         st=>{ st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,type:'DONATION',
                 bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
         'Donation recorded');
