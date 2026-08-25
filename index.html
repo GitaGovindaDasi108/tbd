@@ -801,7 +801,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b53</span>
+    <span class="build-tag" title="Which version of the page is loaded">b54</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1108,8 +1108,11 @@ function partnerBooks(partnerId){
 /** Every book on the shelf, ours and any consignment ones in this region. */
 function shelfBooks(){
   const ours = curBooks();
+  // A consignment title only belongs on the shelf while its group still exists.
+  // Season used to list every partner book regardless, so titles left behind by
+  // a removed group kept showing up there and nowhere else.
   const theirs = (CUR_LEVEL==='season')
-    ? (STATE.books||[]).filter(b=>b.partnerId)
+    ? (STATE.books||[]).filter(b=>b.partnerId && partnerById(b.partnerId))
     : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
   const seen = new Set(ours.map(b=>b.id));
   return ours.concat(theirs.filter(b=>!seen.has(b.id)));
@@ -4916,6 +4919,26 @@ function partnersModal(){
       <div class="hint">Books belonging to a local group, sold from our table. Their sales and
         their money stay out of every tour total, and each group gets its own spreadsheet.</div>
       ${list.length ? list.map(card).join('') : `<div class="cash-empty">No consignment set up${season?'':' in this region'} yet.</div>`}
+      ${(function(){
+        /* Titles whose group has gone. They belong to nothing now, so they get
+           listed here plainly with a way to remove them. */
+        const orphans = (STATE.books||[]).filter(b=>b.partnerId && !partnerById(b.partnerId));
+        if(!orphans.length) return '';
+        return `<div class="cash-sub">Left over from removed groups</div>
+          <div class="hint">These titles belonged to a consignment group that no longer exists.</div>
+          ${orphans.map(b=>{
+            const sold=(STATE.sales||[]).filter(x=>x.bookId===b.id).length;
+            const stock=regionsList().reduce((t,r)=>t+regionStockOf(r.regionId,b.id),0);
+            return `<div class="sh-card">
+              <div class="sh-top"><span class="sh-route">${esc(b.name)}</span>
+                <span class="sh-count">${sold?`${sold} sold`:'never sold'}</span></div>
+              <div class="sh-meta">${stock?`${stock} still showing as stock`:'no stock'}</div>
+              <div class="sh-acts">
+                <button class="btn btn-danger btn-sm" data-act="conbookdel"
+                  data-book="${esc(b.id)}">Remove title</button>
+              </div></div>`;
+          }).join('')}`;
+      })()}
       ${season ? `<div class="hint">To add a group, open their region.</div>` : `
       <div class="cash-sub">Add a group</div>
       <div class="rp-add">
@@ -5020,6 +5043,8 @@ function partnerBookModal(id, editId){
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" data-act="partners">Back</button>
+      ${existing?`<button class="btn btn-danger btn-sm" data-act="conbookdel"
+        data-book="${esc(existing.id)}">Remove title</button>`:''}
       <button class="btn btn-primary" id="cbGo">${existing?'Save':'Add title'}</button>
     </div>`, true);
 
@@ -5768,6 +5793,18 @@ document.addEventListener('click',e=>{
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
   if(a==='conbook'){ partnerBookModal(t.dataset.id, t.dataset.book||''); return; }
   if(a==='conedit'){ partnerEditModal(t.dataset.id); return; }
+  if(a==='conbookdel'){
+    const id=t.dataset.book, b=bookById(id);
+    const sold=(STATE.sales||[]).filter(x=>x.bookId===id).length;
+    if(sold){
+      alert(b.name+' has '+sold+' sale'+(sold===1?'':'s')+' recorded against it. '
+        +'Delete those first if you really mean to remove the title.');
+      return;
+    }
+    if(!confirm('Remove '+b.name+' from the catalogue? This cannot be undone.')) return;
+    commitSync({action:'deleteBook', bookId:id}, 'Title removed').then(ok=>{ if(ok) partnersModal(); });
+    return;
+  }
   if(a==='shoutside'){ shipOutsideModal(); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
