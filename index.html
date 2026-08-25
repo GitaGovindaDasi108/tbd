@@ -300,12 +300,23 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   animation:spin .7s linear infinite}
 body.busy .spin{display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
-#busyBar{position:fixed;left:0;top:0;height:3px;width:100%;z-index:90;
-  background:linear-gradient(90deg,transparent,var(--gold),transparent);
-  background-size:40% 100%;background-repeat:no-repeat;
-  opacity:0;transition:opacity .2s;pointer-events:none}
-body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
-@keyframes sweep{0%{background-position:-40% 0}100%{background-position:140% 0}}
+/* A real measure of progress rather than a spinner: the bar fills as saves
+   complete, so a slow burst visibly moves rather than just sitting there. */
+#busyBar{position:fixed;left:0;top:0;height:4px;width:100%;z-index:90;
+  background:rgba(138,74,18,.12);opacity:0;transition:opacity .25s;pointer-events:none}
+body.busy #busyBar{opacity:1}
+#busyFill{height:100%;width:0;border-radius:0 3px 3px 0;
+  background:linear-gradient(90deg,var(--saffron),var(--gold));
+  transition:width .3s ease}
+#busyLabel{position:fixed;top:10px;right:14px;z-index:91;
+  background:var(--plum);color:var(--gold-l);font-size:11.5px;font-weight:700;
+  padding:4px 11px;border-radius:999px;opacity:0;transition:opacity .25s;
+  pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+body.busy #busyLabel{opacity:1}
+/* Held on the device because there was no signal. */
+#pendBadge{position:fixed;left:14px;bottom:14px;z-index:91;background:var(--clay);color:#fff;
+  font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;
+  box-shadow:0 2px 8px rgba(0,0,0,.2)}
 .build-tag{font-size:10px;font-weight:700;letter-spacing:.5px;color:#FFF3DE;opacity:.5;
   border:1px solid rgba(255,255,255,.3);border-radius:999px;padding:2px 7px}
 .rate-note{font-size:9.5px;color:var(--muted);margin-top:3px;opacity:.85}
@@ -365,6 +376,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .qr-thumb{width:54px;height:54px;object-fit:contain;border-radius:6px;flex:none;background:#fff}
 .qr-fields{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .qr-fields input,.qr-fields textarea{border:1px solid var(--line-d);border-radius:7px;padding:6px 8px;font-size:12.5px;width:100%}
+.float-out{color:var(--clay);font-weight:800}
 .cash-empty{padding:14px 11px;font-size:12.5px;color:var(--muted);text-align:center;border:1px dashed var(--line-d);border-radius:9px;flex:none}
 .cash-moveall{width:100%;margin-top:8px;font-size:12.5px}
 .cash-resetall{width:100%;margin-top:16px;background:transparent;border:1.5px solid var(--line-d);color:var(--clay);border-radius:9px;padding:9px;font-size:12.5px;font-weight:700;cursor:pointer}
@@ -475,7 +487,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .sec-h2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .sec-rep{flex:none;font-size:12px;padding:4px 9px;line-height:1}
 .inv-h2{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.qr-btn{flex:none;font-size:12px;padding:5px 11px}
+.qr-btn{flex:none;font-size:12px;padding:5px 11px;margin-left:auto;margin-right:auto}
 .admin-panel{margin-top:18px}
 /* App Admin: four labelled columns, each button its own colour so it becomes a
    shape you reach for. Hues stay inside the saffron/plum/teal family the rest
@@ -801,7 +813,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b56</span>
+    <span class="build-tag" title="Which version of the page is loaded">b58</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -845,9 +857,9 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="cols" id="regionCols">
     <section class="panel">
       <h2 id="invHeading" class="inv-h2">Inventory
+        <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
-          title="Copy the shelf for WhatsApp">📋</button>
-        <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button></h2>
+          title="Copy the shelf for WhatsApp">📋</button></h2>
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
@@ -903,7 +915,9 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   </section>
 </main>
 
-<div id="busyBar"></div>
+<div id="busyBar"><div id="busyFill"></div></div>
+<div id="busyLabel"></div>
+<div id="pendBadge" style="display:none"></div>
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 <div id="toast"></div>
 
@@ -1465,28 +1479,115 @@ async function pull(){
   setStatus(OPS.length?'load':'ok', OPS.length?('Saving '+OPS.length+'…'):('Up to date · '+clock()));
 }
 
-function scheduleSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>pull().catch(()=>{}), 900); }
+function scheduleSync(){ clearTimeout(syncTimer); syncTimer=setTimeout(()=>{ flushPending(); pull().catch(()=>{}); }, 900); }
 
 /* Apply now, send in the background. */
+/* Progress across a burst of saves.
+
+   Work is applied on screen at once and saved behind, which is fast but silent —
+   there was no way to tell whether three saves were still going or none. These
+   count what has finished against what was started, and reset once the queue
+   empties. */
+let saveDone = 0, saveTotal = 0;
+
+/* ---- Working without a signal ----
+
+   Festivals happen in places with no reception. A save that cannot reach the
+   server is kept on the device instead of being thrown away, and goes up by
+   itself the moment the connection returns. The queue survives closing the tab,
+   so nothing is lost by the phone dying or the app being shut. */
+const PENDING_KEY = 'tbs_pending' + (SHARE_KEY ? '_' + SHARE_KEY : '');
+let PENDING = [];
+function pendingLoad(){
+  try{ PENDING = JSON.parse(localStorage.getItem(PENDING_KEY) || '[]') || []; }catch(e){ PENDING = []; }
+}
+function pendingSave(){
+  try{ localStorage.setItem(PENDING_KEY, JSON.stringify(PENDING)); }catch(e){}
+}
+function isOffline(err){
+  return (typeof navigator!=='undefined' && navigator.onLine===false)
+      || /Failed to fetch|NetworkError|Load failed|network/i.test(String(err && err.message || ''));
+}
+function queueOffline(payload){
+  PENDING.push({payload, at:Date.now()});
+  pendingSave();
+  showPending();
+}
+function showPending(){
+  const el = $('#pendBadge');
+  if(!el) return;
+  if(!PENDING.length){ el.style.display='none'; return; }
+  el.style.display='';
+  el.textContent = `⛆ ${PENDING.length} waiting to send`;
+}
+/** Send anything held on the device, oldest first. */
+async function flushPending(){
+  if(!PENDING.length || flushPending._busy) return;
+  flushPending._busy = true;
+  try{
+    while(PENDING.length){
+      const next = PENDING[0];
+      try{ await post(next.payload); }
+      catch(err){
+        if(isOffline(err)) break;           // still no signal — keep it for later
+        PENDING.shift(); pendingSave();     // the server refused it; it will never succeed
+        toast('One saved change was refused — ' + err.message, true);
+        continue;
+      }
+      PENDING.shift(); pendingSave();
+    }
+    showPending();
+    if(!PENDING.length) await pull().catch(()=>{});
+  } finally { flushPending._busy = false; }
+}
+if(typeof window!=='undefined'){
+  window.addEventListener('online', ()=>{ toast('Back online — sending what was waiting'); flushPending(); });
+}
+function saveProgress(){
+  const bar = $('#busyFill');
+  if(!bar) return;
+  if(!saveTotal){ document.body.classList.remove('busy'); return; }
+  document.body.classList.add('busy');
+  const pct = Math.round((saveDone / saveTotal) * 100);
+  bar.style.width = pct + '%';
+  const label = $('#busyLabel');
+  if(label) label.textContent = saveTotal>1
+    ? `Saving ${saveDone} of ${saveTotal}…`
+    : (saveDone ? 'Almost there…' : 'Saving…');
+}
+
 function commit(payload, apply, okMsg){
   const op = { apply };
   OPS.push(op);
   STATE = derive(); renderAll(); closeModal();
   if(okMsg) toast(okMsg);
 
-  inflight++; setStatus('load','Saving…');
+  inflight++; saveTotal++; setStatus('load','Saving…'); saveProgress();
   post(payload).then(d=>{
     op.rev = d.rev;
     scheduleSync();
   }).catch(err=>{
+    if(isOffline(err)){
+      // No signal. Keep the change on screen and the request on the device.
+      op.rev = -1;                       // never dropped by a sync it never saw
+      queueOffline(payload);
+      toast('No signal — saved on this device, it will send itself');
+      return;
+    }
     OPS = OPS.filter(o=>o!==op);
     STATE = derive(); renderAll();
     // Name the action, so a failure is traceable rather than a bare apology.
     toast('Not saved (' + (payload.action||'change') + ') — ' + err.message, true);
     console.error('Failed to save', payload, err);
   }).finally(()=>{
-    inflight--;
-    if(!inflight) setStatus('ok','Saved · '+clock());
+    inflight--; saveDone++; saveProgress();
+    if(!inflight){
+      setStatus('ok','Saved · '+clock());
+      // Hold the full bar for a beat so it reads as finished, not as vanished.
+      saveDone = saveTotal;
+      saveProgress();
+      setTimeout(()=>{ if(!inflight){ saveDone=0; saveTotal=0; saveProgress(); } }, 700);
+    }
   });
 }
 
@@ -1709,9 +1810,13 @@ function renderAdmin(){
     ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share links…</button>`
     : (isWarehouseLoc(CUR_LOC) ? `<button class="btn" data-act="sharelinks">🔗 Share links</button>` : ''));
   // Payment QRs live in the inventory header — one home is enough.
-  if(admin) cols[0].push(season
-    ? `<button class="btn" data-act="reorder" data-kind="region">↕ Change region order</button>`
-    : `<button class="btn" data-act="reorder" data-kind="${isWarehouseLoc(CUR_LOC)?'event':'region'}">↕ Change ${isWarehouseLoc(CUR_LOC)?'event':'region'} order</button>`);
+  if(admin) cols[0].push(`<button class="btn" data-act="seasons">🗓 Seasons${
+    (STATE.seasons||[]).length>1?` (${(STATE.seasons||[]).length})`:''}</button>`);
+  if(admin && season)
+    cols[0].push(`<button class="btn" data-act="reorder" data-kind="region">↕ Change region order</button>`);
+  else if(admin && isWarehouseLoc(CUR_LOC))
+    cols[0].push(`<button class="btn" data-act="reorder" data-kind="event">↕ Change event order</button>`);
+  // An event holds nothing that needs ordering, so no button there.
 
   // 2 — moving them
   if(season){
@@ -1932,7 +2037,7 @@ function renderTotals(){
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
       <div class="sub">${money(got)||'nothing collected yet'}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
-      <div class="sub">${money(due)||'nothing outstanding'}</div></div>`}`;
+      <div class="sub">${money(due)||'none withdrawnstanding'}</div></div>`}`;
 }
 
 function renderInventory(){
@@ -3826,6 +3931,22 @@ function cashAccounts(){
 }
 function hideBank(){ return !!(STATE && STATE.hideBank); }
 /** What this link's own places have sent to the bank, per currency. */
+/* A change float is bank money sitting in the box to make change with. It looks
+   like takings until it goes back, so the app says plainly how much is still
+   out. */
+function floatOut(){
+  const mine = CUR_REGION ? locsInRegion(CUR_REGION) : [CUR_LOC];
+  const out = {};
+  (STATE.cash||[]).forEach(c=>{
+    if(!c) return;
+    const amt = Number(c.amt)||0;
+    if(c.purpose==='FLOAT' && mine.includes(c.toAcct)) out[c.cur]=(out[c.cur]||0)+amt;
+    if(c.purpose==='FLOAT_BACK' && mine.includes(c.fromAcct)) out[c.cur]=(out[c.cur]||0)-amt;
+  });
+  Object.keys(out).forEach(c=>{ if(Math.abs(out[c])<0.005) delete out[c]; });
+  return out;
+}
+
 function sentToBank(){
   // Always measured across the whole region, because that is the set of accounts
   // the cash panel shows — counting only one event would leave the figure not
@@ -4086,6 +4207,23 @@ function cashModal(){
             <span>Handed over so far</span><span>${parts.length?parts.join(' · '):'—'}</span>
           </div></div>`;
       })() : ''}
+
+      ${(function(){
+        // Bank money out on loan for making change.
+        const out = floatOut();
+        const curs = Object.keys(out).filter(c=>Math.abs(out[c])>0.005).sort();
+        return `<div class="cash-sub">Change from the bank</div>
+          <div class="hint">Cash withdrawn from the bank to make change with. It is in the box but it is
+            not takings — this is what still has to be deposited back.</div>
+          <div class="cash-coll"><div class="cash-coll-row">
+            <span>Still withdrawn</span>
+            <span class="${curs.length?'float-out':''}">${curs.length?curs.map(c=>cashFmt(out[c],c)).join(' · '):'none withdrawn'}</span>
+          </div></div>
+          <div class="sh-acts" style="margin:7px 0 4px">
+            <button class="btn btn-ghost btn-sm" data-act="floatout">Withdraw change</button>
+            ${curs.length?`<button class="btn btn-primary btn-sm" data-act="floatback">Deposit change</button>`:''}
+          </div>`;
+      })()}
 
       <div class="cash-sub">Cash collected in the system</div>
       <div class="cash-coll">${collRows}</div>
@@ -4833,6 +4971,70 @@ function runPicked(act){
 /* ---- Hand-picked order ----
    Which region or event belongs at the top is a judgement about the tour, so
    this is arranged by hand rather than by a rule. */
+/* ---- Seasons ----
+   One tour per season. Switching swaps the whole app over: its regions, events,
+   stock, sales and money. Nothing is shared between them except the book
+   catalogue itself. */
+function seasonsModal(){
+  const list = STATE.seasons||[];
+  const active = STATE.activeSeason;
+  openModal(`
+    ${mHead('Seasons')}
+    <div class="m-body">
+      <div class="hint">Each season is a tour of its own — its own regions, events, stock and
+        takings. Switching changes everything the app shows.</div>
+      ${list.map(x=>`<div class="sh-card ${x.seasonId===active?'part':''}">
+        <div class="sh-top">
+          <span class="sh-route">${esc(x.name)}${x.seasonId===active?' <span class="sh-tag">showing now</span>':''}</span>
+        </div>
+        <div class="sh-acts">
+          ${x.seasonId===active?'':`<button class="btn btn-primary btn-sm" data-act="seasongo" data-id="${esc(x.seasonId)}">Switch to this</button>`}
+          <button class="btn btn-ghost btn-sm" data-act="seasonedit" data-id="${esc(x.seasonId)}">Rename</button>
+          ${list.length>1?`<button class="btn btn-danger btn-sm" data-act="seasondel" data-id="${esc(x.seasonId)}">Delete</button>`:''}
+        </div></div>`).join('')}
+
+      <div class="cash-sub">Start another season</div>
+      <div class="hint">It begins with the same regions, currencies and prices as the one you
+        are in — but none of its stock, sales or money.</div>
+      <div class="rp-add">
+        <input id="snName" type="text" placeholder="e.g. Europe Tour 2027">
+        <button type="button" class="btn btn-primary btn-sm" id="snAdd">Create</button>
+      </div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+
+  $('#snAdd').addEventListener('click',async ()=>{
+    const name=$('#snName').value.trim();
+    if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+    if(await commitSync({action:'saveSeason', name, copyFrom:active},'Season created')){
+      // A new season is a different world, so start from a clean position.
+      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos();
+      seasonsModal();
+    }
+  });
+}
+
+function seasonEditModal(id){
+  const x=(STATE.seasons||[]).find(v=>v.seasonId===id);
+  if(!x) return;
+  openModal(`
+    ${mHead('Rename season')}
+    <div class="m-body">
+      <div class="field"><label>Name</label><input id="seName" type="text" value="${esc(x.name)}"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="seasons">Back</button>
+      <button class="btn btn-primary" id="seSave">Save</button>
+    </div>`);
+  $('#seSave').addEventListener('click',async ()=>{
+    const name=$('#seName').value.trim();
+    if(!name){ $('#modalErr').textContent='Give it a name.'; return; }
+    if(await commitSync({action:'saveSeason', seasonId:id, name},'Saved')) seasonsModal();
+  });
+}
+
 function reorderModal(kind){
   const isEvent = kind==='event';
   let list = isEvent
@@ -4909,6 +5111,15 @@ function partnersModal(){
           data-book="${esc(b.id)}" title="Edit price and stock">${esc(b.name)}:
           <b>${sold}</b> sold${here?` · ${here} here`:''}</button>`;
       }).join('') || '<span class="sh-meta">No titles yet.</span>'}</div>
+      ${(function(){
+        const paid=(STATE.payouts||[]).filter(x=>x.partnerId===p.partnerId);
+        if(!paid.length) return '';
+        return `<div class="sh-meta" style="margin-top:6px">Handed over so far</div>` +
+          paid.map(x=>`<div class="sh-top" style="font-size:12px">
+            <span>${cashFmt(x.amt,x.cur)} · ${esc(x.method||'Cash')}${x.note?' · '+esc(x.note):''}</span>
+            <button class="cash-mini" data-act="condelpay" data-id="${esc(x.id)}"
+              title="Remove this record">✕</button></div>`).join('');
+      })()}
       <div class="sh-acts">
         ${(function(){
           // One button per way the money actually arrived — cash goes back as
@@ -5132,6 +5343,57 @@ function partnerEditModal(id){
    no Indian region. Nothing leaves a shelf, because nothing here was theirs to
    begin with; the batch simply exists on its way in and becomes stock on
    arrival, exactly like a pre-order filled from outside. */
+/* Taking a float out, or putting it back. Multi-currency, because a float is
+   usually a handful of notes in each. */
+function floatModal(back){
+  const reg = currentRegion();
+  if(!reg) return;
+  const out = floatOut();
+  const accts = cashAccounts().filter(a=>a.id!=='BANK');
+  const curs = back
+    ? Object.keys(out).filter(c=>Math.abs(out[c])>0.005).sort()
+    : cashCurs();
+
+  openModal(`
+    ${mHead(back ? 'Deposit change' : 'Withdraw change')}
+    <div class="m-body">
+      <div class="hint">${back
+        ? 'Depositing the change money back into the bank. It never counted as takings.'
+        : 'Cash withdrawn from the bank to make change with. It sits in the box but belongs to the bank until it is deposited back.'}</div>
+      <div class="field"><label>${back?'Coming back from':'Going to'}</label>
+        <select id="flLoc">${accts.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('')}</select></div>
+      ${curs.length ? curs.map(c=>`<div class="cl-row">
+        <div class="cl-name">${esc(CUR_SYM[c]||c)} ${esc(c)}</div>
+        <div class="cl-exp">${back?('out: '+cashFmt(out[c]||0,c)):''}</div>
+        <input class="cl-in fl-q" type="number" step="0.01" min="0" inputmode="decimal"
+          data-cur="${esc(c)}" value="${back?(out[c]||''):''}" placeholder="0">
+        <div></div>
+      </div>`).join('') : `<div class="cash-empty">Nothing is out at the moment.</div>`}
+      <div class="field"><label>Note (optional)</label>
+        <input id="flNote" type="text" placeholder="${back?'e.g. returned after the festival':'e.g. change for the Skopje festival'}"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="cash">Back</button>
+      <button class="btn btn-primary" id="flGo">${back?'Record deposit':'Record withdrawal'}</button>
+    </div>`);
+
+  $('#flGo').addEventListener('click',async ()=>{
+    const loc=$('#flLoc').value, note=$('#flNote').value.trim();
+    const rows=[...document.querySelectorAll('#modal .fl-q')]
+      .map(i=>({cur:i.dataset.cur, amt:Number(i.value)||0})).filter(x=>x.amt>0);
+    if(!rows.length){ $('#modalErr').textContent='Enter an amount.'; return; }
+    let ok=true;
+    for(const r of rows){
+      ok = await commitSync({action:'cashFloat', loc, cur:r.cur, amt:r.amt,
+                             back:back?'true':'false', note}, back?'Change deposited':'Change withdrawn') && ok;
+      if(!ok) break;
+    }
+    if(ok) cashModal();
+  });
+}
+
+
 function shipOutsideModal(){
   const reg = currentRegion();
   if(!reg) return;
@@ -5254,6 +5516,7 @@ function shipmentsModal(){
         ${incoming?`<button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Mark arrived…</button>`:''}
         <button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit details</button>
         <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct contents</button>
+        <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>
       </div>
     </div>`;
   };
@@ -5467,6 +5730,7 @@ function holdersModal(){
         || '<span class="sh-meta">Holding nothing at the moment.</span>'}</div>
       <div class="sh-acts">
         <button class="btn btn-ghost btn-sm" data-act="holderedit" data-id="${esc(h.holderId)}">Edit</button>
+        <button class="btn btn-danger btn-sm" data-act="holderdel" data-id="${esc(h.holderId)}">Delete</button>
       </div>
     </div>`;
   };
@@ -5802,6 +6066,24 @@ document.addEventListener('click',e=>{
   if(a==='reopenhere'){ reopenHere(); return; }
   if(a==='pick'){ pickRegionThen(t.dataset.then); return; }
   if(a==='pickgo'){ closeModal(); goTo('region', t.dataset.region); setTimeout(()=>runPicked(t.dataset.then),0); return; }
+  if(a==='seasons'){ seasonsModal(); return; }
+  if(a==='seasonedit'){ seasonEditModal(t.dataset.id); return; }
+  if(a==='seasongo'){
+    commitSync({action:'setSeason', seasonId:t.dataset.id}, 'Switched').then(ok=>{
+      if(!ok) return;
+      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
+    });
+    return;
+  }
+  if(a==='seasondel'){
+    const x=(STATE.seasons||[]).find(v=>v.seasonId===t.dataset.id); if(!x) return;
+    const typed=prompt('Deleting "'+x.name+'" removes its regions, events, stock and sales '
+      +'permanently.\n\nType the season name exactly to confirm:');
+    if(typed===null) return;
+    commitSync({action:'deleteSeason', seasonId:x.seasonId, confirmName:typed}, 'Season deleted')
+      .then(ok=>{ if(ok){ CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); seasonsModal(); } });
+    return;
+  }
   if(a==='reorder'){ reorderModal(t.dataset.kind); return; }
   if(a==='partners'){ partnersModal(); return; }
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
@@ -5820,9 +6102,30 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='shoutside'){ shipOutsideModal(); return; }
+  if(a==='floatout'){ floatModal(false); return; }
+  if(a==='floatback'){ floatModal(true); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
+  if(a==='shdel'){
+    const x=(STATE.shipments||[]).find(v=>v.shipId===t.dataset.id); if(!x) return;
+    const left=shipTotal(x);
+    if(!confirm('Delete this shipment?'+(left?` The ${left} book${left===1?'':'s'} still in it go back to where they came from.`:''))) return;
+    commitSync({action:'deleteShipment', shipId:x.shipId}, 'Shipment deleted').then(ok=>{ if(ok) shipmentsModal(); });
+    return;
+  }
+  if(a==='holderdel'){
+    const h=holderById(t.dataset.id); if(!h) return;
+    const total=shelfBooks().reduce((n,b)=>n+invQty(h.holderId,b.id),0);
+    if(!confirm('Delete '+h.name+'?'+(total?` Their ${total} book${total===1?'':'s'} go back to the warehouse.`:''))) return;
+    commitSync({action:'deleteHolder', holderId:h.holderId}, 'Removed').then(ok=>{ if(ok) holdersModal(); });
+    return;
+  }
+  if(a==='condelpay'){
+    if(!confirm('Remove this hand-over record? What is owed goes back up by that amount.')) return;
+    commitSync({action:'deletePayout', id:t.dataset.id}, 'Removed').then(ok=>{ if(ok) partnersModal(); });
+    return;
+  }
   if(a==='shreceive'){ shipReceiveModal(t.dataset.id); return; }
   if(a==='holders'){ holdersModal(); return; }
   if(a==='holderedit'){ holderEditModal(t.dataset.id); return; }
@@ -5951,6 +6254,7 @@ document.addEventListener('click',e=>{
   // Pick up where you left off — before the first paint, so the page never
   // flashes the wrong region on the way to the right one.
   loadPos();
+  pendingLoad(); showPending(); flushPending();
   // A share link asks who is holding it before anything gets recorded.
   if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
   // Draw last session's data straight away so the page is usable on open.
