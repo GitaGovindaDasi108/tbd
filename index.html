@@ -200,6 +200,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .wo-book.aotm{color:var(--gold)}
 .wo-total{font-weight:800;font-size:13px;color:var(--lvl,var(--plum));white-space:nowrap}
 .wo-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.wo-chip.transit{background:#E7F0FA;border-color:#B9D2EC;color:#2F6FB5;cursor:default}
+.sc-transit{color:#2F6FB5;font-weight:700;font-size:11.5px}
 .wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
   padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
 .wo-chip:hover{border-color:var(--saffron);background:#FDF3E4}
@@ -661,6 +663,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
 .badge.don{background:#F3E8F7;color:#8A4FA0}
+.badge.chg{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.part{background:#FDEBD0;color:#9C5A12}
 .badge.aotm{background:#EAF0F7;color:var(--blue)}
@@ -795,7 +798,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b48</span>
+    <span class="build-tag" title="Which version of the page is loaded">b49</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -866,6 +869,10 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
     <section class="panel pre-panel" id="prePanel" style="display:none">
       <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
+    </section>
+    <section class="panel change-panel" id="changePanel" style="display:none">
+      <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body"><div class="log" id="changeList"></div></div>
     </section>
   </div>
 
@@ -1214,9 +1221,13 @@ function inTransitQty(bookId, regionId){
 function withHoldersQty(bookId, regionId){
   return holdersOf(regionId).reduce((t,h)=>t+invQty(h.holderId,bookId),0);
 }
+const OUTSIDE_ORIGIN = 'OUTSIDE';
 function shipLabel(x){
   const to = (regionById(x.toRegion)||{}).name || x.toRegion;
-  const from = (regionById(x.fromRegion)||{}).name || x.fromRegion;
+  // A batch from beyond the tour is named by where it actually came from.
+  const from = x.fromRegion===OUTSIDE_ORIGIN
+    ? (x.origin || 'Outside the tour')
+    : ((regionById(x.fromRegion)||{}).name || x.fromRegion);
   return from + ' → ' + to;
 }
 function shipWho(x){
@@ -1759,15 +1770,24 @@ function renderWarehouseOverview(){
   const cards = (STATE.books||[]).map(b=>{
     const per = regions.map(r=>({r, n:regionStockOf(r.regionId,b.id)})).filter(x=>x.n>0);
     const total = per.reduce((t,x)=>t+x.n,0);
+    /* Copies on the road belong to no region yet, so summing the regions alone
+       quietly lost them — a batch of 20 in transit simply vanished from the
+       tour-wide count. They get their own chip and their own line. */
+    const transit = (STATE.shipments||[])
+      .filter(x=>x.status!=='ARRIVED')
+      .reduce((t,x)=>t+invQty(x.shipId,b.id),0);
     const chips = per.map(x=>
       `<button class="wo-chip" data-act="goregion" data-region="${esc(x.r.regionId)}"
-         title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('');
-    return `<div class="stat-card${total?'':' dim'}">
-      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+         title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
+      + (transit?`<span class="wo-chip transit"><b>${transit}</b> in transit</span>`:'');
+    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}">
+      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}${
+        b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big ${total?'':'zero'}">${total}</span>
         <span class="sc-lbl">in stock</span>
       </div>
+      ${transit?`<div class="sc-sub"><span class="sc-transit">${total+transit} expected</span></div>`:''}
       <div class="wo-chips">${chips||'<span class="sc-none">nowhere yet</span>'}</div>
     </div>`;
   }).join('');
@@ -2192,6 +2212,9 @@ function logItemHTML(x, opts){
   // Whose book it was, right on the row — otherwise a consignment sale looks
   // identical to ours in the list.
   if(conOwner) bits.push(`<span class="con-tag">${esc(conOwner.name)}</span>`);
+  // Money we owe back, shown wherever the sale appears.
+  const owedBack = changeOwed(x);
+  if(owedBack>0) bits.push(`<span class="badge chg">${cashFmt(owedBack, changeCur(x))} change owed</span>`);
 
   const r2=[];
   if(needsRow2){
@@ -2251,6 +2274,7 @@ function logItemHTML(x, opts){
         : (needsRow2?totalLabel(x):amountLabel(x))}</span>
       <span class="li-btns">
         ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" ${idAttr}>${partial?'Settle':'Paid'}</button>`:''}
+        ${owedBack>0?`<button class="btn btn-gold btn-xs" data-act="gavechange" data-id="${esc(x.saleId)}">Gave change</button>`:''}
         ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" ${idAttr}>Deliver</button>`:''}
         ${x._bundle
           ? `<button class="btn btn-ghost btn-xs" data-act="editbundle" data-bundle="${x.bundle}">Edit</button>`
@@ -2349,15 +2373,24 @@ function renderBottom(){
   // A mixed bundle is a SALE with copies still to deliver, so include it here too.
   const owed=g.filter(x=>(x.type==='PREORDER'&&!x.delivered)||(x._bundle&&x._preCount>0)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   const unpaid=g.filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow');
+  // The reverse of a pending payment: they overpaid and we could not break it.
+  const change=g.filter(x=>changeOwed(x)>0).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow'), chg=$('#changePanel');
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
-  row.style.display = (owed.length||unpaid.length)?'':'none';
-  row.classList.toggle('single', !(owed.length&&unpaid.length));
-  // These two panels exist to be acted on, so they show their details up front.
+  chg.style.display = change.length?'':'none';
+  const showing = [owed.length, unpaid.length, change.length].filter(Boolean).length;
+  row.style.display = showing?'':'none';
+  row.classList.toggle('single', showing<2);
+  // These panels exist to be acted on, so they show their details up front.
   if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,{context:'pre'})).join('');
   if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
+  if(change.length) $('#changeList').innerHTML=change.map(x=>logItemHTML(x,{context:'change'})).join('');
 }
+
+/** How much change we still owe on a sale, in its own currency. */
+function changeOwed(x){ return Number(x && x.changeamt) || 0; }
+function changeCur(x){ return String((x && x.changecur) || ''); }
 
 /* ============================================================
    MODALS
@@ -2469,6 +2502,11 @@ function saleModal(opts){
           <div class="field"><label>Phone${isPre?'':' (optional)'}</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
         </div>
       </div>
+      <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
+        <div class="mixrow">
+          <input id="chgamt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">
+          <select id="chgcur">${curOptions()}</select>
+        </div></div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
       <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
@@ -2557,6 +2595,11 @@ function saleModal(opts){
     $('#nameBox').style.display='block';
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
+    // Any change still owed is shown so it can be corrected or cleared here.
+    if($('#chgamt')){
+      $('#chgamt').value = Number(edit.changeamt)||'' ;
+      if(edit.changecur) $('#chgcur').value = edit.changecur;
+    }
   }else{
     togglePay();
     applyPayMode();
@@ -2576,6 +2619,11 @@ function saleModal(opts){
     const dueamt = payMode==='part' ? Math.max(0, Number($('#dueamt').value)||0) : 0;
     const duecur = payMode==='part' ? $('#duecur').value : '';
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
+    // The reverse of a part payment: they handed over more than the price and we
+    // could not break it, so we owe them the difference.
+    const changeamt = Math.max(0, Number(($('#chgamt')||{}).value)||0);
+    const changecur = changeamt ? (($('#chgcur')||{}).value || pcur.value) : '';
+    if(changeamt>0 && !name){$('#modalErr').textContent='Add a name so the change can be traced back to them.';return;}
     if(payMode==='part' && dueamt<=0){$('#modalErr').textContent='Enter how much is still owed, or choose "Paid in full".';return;}
     if(payMode!=='full' && !name){$('#modalErr').textContent='Add a name so the outstanding payment can be traced.';return;}
     if(isPre && !name){$('#modalErr').textContent='Add a name so the pre-ordered copy can be matched to a person.';return;}
@@ -2583,19 +2631,20 @@ function saleModal(opts){
     const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
-              legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal},
+              legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur},
         st=>{ const s=findSale(st,edit.saleId); if(!s)return;
               Object.assign(s, legFields(L),
-                {pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments,ts:tsVal||s.ts}); },
+                {pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments,
+                 changeamt,changecur,ts:tsVal||s.ts}); },
         'Sale updated');
     }else{
       const id=tmpId();
       commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
-              pending,dueamt,duecur,name,phone,comments,ts:tsVal,override:true},
+              pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true},
         st=>{
           st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,
             type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,
-            pending,paid:!pending&&dueamt<=0,dueamt,duecur,
+            pending,paid:!pending&&dueamt<=0,dueamt,duecur,changeamt,changecur,
             delivered:!isPre,name,phone,comments}, legFields(L)));
           if(!isPre) invAdd(st,loc,opts.bookId,-1);
         },
@@ -3292,6 +3341,17 @@ function buildReport(part){
       L.push('  ' + what + ' — ' + (amt||'—') + (x.name?' · '+x.name:'') + (x.phone?' · '+x.phone:''));
     });
     if(!owed.length) L.push('  Nothing outstanding.');
+    L.push('');
+  }
+
+  if(want('change')){
+    const owe = s.filter(x=>changeOwed(x)>0);
+    L.push('*CHANGE WE OWE* — ' + owe.length);
+    owe.forEach(x=>{
+      L.push('  ' + cashFmt(changeOwed(x), changeCur(x)) + ' to ' + (x.name||'someone')
+        + (x.phone?' · '+x.phone:''));
+    });
+    if(!owe.length) L.push('  Nothing owed.');
     L.push('');
   }
 
@@ -4956,6 +5016,100 @@ function partnerEditModal(id){
 }
 
 
+/* Books arriving from beyond the tour — shipped from India, say, when there is
+   no Indian region. Nothing leaves a shelf, because nothing here was theirs to
+   begin with; the batch simply exists on its way in and becomes stock on
+   arrival, exactly like a pre-order filled from outside. */
+function shipOutsideModal(){
+  const reg = currentRegion();
+  if(!reg) return;
+  openModal(`
+    ${mHead('Books coming from outside the tour')}
+    <div class="m-body">
+      <div class="hint">For books sent from somewhere the app doesn't track — a printer,
+        a temple, another country. Nothing is deducted from any shelf; they become
+        stock in <b>${esc(reg.name)}</b> when you mark them arrived.</div>
+
+      <div class="field"><label>Where are they coming from</label>
+        <input id="soOrigin" type="text" placeholder="e.g. India"></div>
+
+      <div class="field"><label>How are they travelling?</label>
+        <select id="soMode">
+          <option value="devotee">With a devotee — in transit</option>
+          <option value="shipping">Shipping company — in transit</option>
+          <option value="direct">They are already here — add straight to stock</option>
+        </select></div>
+
+      <div id="soDevotee">
+        <div class="field"><label>Who is carrying them</label>
+          <input id="soCarrier" type="text" placeholder="e.g. Radha Chandra"></div>
+        <div class="field"><label>WhatsApp number</label><input id="soPhone" type="tel"></div>
+      </div>
+      <div id="soShipping" style="display:none">
+        <div class="field"><label>Tracking number <span class="muted-note">(optional)</span></label>
+          <input id="soTracking" type="text"></div>
+        <div class="field"><label>Tracking website <span class="muted-note">(optional)</span></label>
+          <input id="soUrl" type="url" placeholder="https://…"></div>
+      </div>
+      <div class="field" id="soEtaWrap">
+        <label>Expected arrival <span class="muted-note">(optional)</span></label>
+        <input id="soEta" type="date"></div>
+
+      <div class="cash-sub">Which books</div>
+      <div id="soRows">${shelfBooks().map(b=>`
+        <div class="cl-row">
+          <div class="cl-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+          <div class="cl-exp"></div>
+          <input class="cl-in so-q" type="number" min="0" inputmode="numeric"
+            data-book="${esc(b.id)}" placeholder="0">
+          <div></div>
+        </div>`).join('')}</div>
+      <div class="field"><label>Note (optional)</label><input id="soNote" type="text"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" data-act="shipments">Back</button>
+      <button class="btn btn-primary" id="soGo">Record</button>
+    </div>`, true);
+
+  function syncMode(){
+    const m=$('#soMode').value;
+    $('#soDevotee').style.display  = m==='devotee'?'block':'none';
+    $('#soShipping').style.display = m==='shipping'?'block':'none';
+    $('#soEtaWrap').style.display  = m==='direct'?'none':'block';
+    $('#soGo').textContent = m==='direct' ? 'Add to stock' : 'Mark in transit';
+  }
+  $('#soMode').addEventListener('change',syncMode);
+  syncMode();
+
+  $('#soGo').addEventListener('click',()=>{
+    const origin=$('#soOrigin').value.trim();
+    if(!origin){ $('#modalErr').textContent='Say where they are coming from.'; return; }
+    const mode=$('#soMode').value;
+    const items=[...document.querySelectorAll('#modal .so-q')]
+      .map(i=>({bookId:i.dataset.book, qty:Math.max(0,Math.round(Number(i.value)||0))}))
+      .filter(x=>x.qty>0);
+    if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
+
+    const payload = {action:'sendShipment', mode, fromRegion:OUTSIDE_ORIGIN,
+      toRegion:reg.regionId, origin,
+      carrier: mode==='devotee' ? $('#soCarrier').value.trim() : '',
+      phone:   mode==='devotee' ? $('#soPhone').value.trim() : '',
+      tracking: mode==='shipping' ? $('#soTracking').value.trim() : '',
+      trackingUrl: mode==='shipping' ? $('#soUrl').value.trim() : '',
+      eta: mode==='direct' ? '' : $('#soEta').value,
+      note: $('#soNote').value.trim(), items};
+
+    // Straight to stock if they have already landed; otherwise they wait in the
+    // batch until someone confirms arrival.
+    commit(payload, st=>{
+      if(mode==='direct') items.forEach(it=>invAdd(st, reg.whLoc, it.bookId, it.qty));
+    }, mode==='direct' ? 'Added to stock' : 'Marked in transit');
+    closeModal();
+  });
+}
+
+
 function shipmentsModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
@@ -4995,6 +5149,9 @@ function shipmentsModal(){
   openModal(`
     ${mHead('Books in transit')}
     <div class="m-body">
+      ${season?'':`<div class="rp-add">
+        <button type="button" class="btn btn-primary btn-sm" data-act="shoutside">＋ Books coming from outside the tour</button>
+      </div>`}
       <div class="cash-sub">${season?'Everywhere on the tour':'Coming to '+esc(reg.name)}</div>
       ${inb.length ? inb.map(x=>card(x,true)).join('')
         : `<div class="cash-empty">${season?'Nothing is on the road.':'Nothing on its way here.'}</div>`}
@@ -5538,6 +5695,7 @@ document.addEventListener('click',e=>{
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
   if(a==='conbook'){ partnerBookModal(t.dataset.id, t.dataset.book||''); return; }
   if(a==='conedit'){ partnerEditModal(t.dataset.id); return; }
+  if(a==='shoutside'){ shipOutsideModal(); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
@@ -5611,6 +5769,13 @@ document.addEventListener('click',e=>{
         }
         s.pending=false; s.paid=true; s.dueamt=0; s.duecur='';
       }, bal>0?'Balance settled':'Marked paid');
+    return;
+  }
+  if(a==='gavechange'){
+    const sid=t.dataset.id;
+    commit({action:'giveChange', saleId:sid, location:CUR_LOC},
+      st=>{ const v=(st.sales||[]).find(z=>z.saleId===sid); if(v){ v.changeamt=0; v.changecur=''; } },
+      'Change given');
     return;
   }
   if(a==='deliver'){ deliverModal(t.dataset.id, t.dataset.bundle); return; }
