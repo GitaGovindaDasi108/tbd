@@ -674,6 +674,9 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
 .pre-panel > h2{background:linear-gradient(180deg,#EAF1F9,transparent);color:var(--blue);font-size:16px;padding:9px 14px}
 .pend-panel{border-color:#EBC9A0}
 .pend-panel > h2{background:linear-gradient(180deg,#FFF1DA,transparent);color:var(--clay);font-size:16px;padding:9px 14px}
+/* Change we owe is the mirror of a pending payment, so it is titled the same way. */
+.change-panel{border-color:#E3C089}
+.change-panel > h2{background:linear-gradient(180deg,#FDF3E2,transparent);color:#8A5A12;font-size:16px;padding:9px 14px}
 .bottom-panels .body{padding:10px 12px}
 .bottom-panels .log{gap:5px}
 
@@ -798,7 +801,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b52</span>
+    <span class="build-tag" title="Which version of the page is loaded">b53</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -842,6 +845,8 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="cols" id="regionCols">
     <section class="panel">
       <h2 id="invHeading" class="inv-h2">Inventory
+        <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
+          title="Copy the shelf for WhatsApp">📋</button>
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button></h2>
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
@@ -3407,6 +3412,29 @@ function buildReport(part){
       const when = x.ts ? new Date(x.ts).toLocaleString(LOCALE,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
       L.push('  ' + what + ' — ' + (amt||'gift') + (when?' · '+when:'') + (x.soldBy?' · '+x.soldBy:''));
     });
+    L.push('');
+  }
+
+  if(want('inventory')){
+    /* The shelf where you are standing: what is here, what is out at events or
+       with devotees, and what is still on its way. */
+    const here = curBooks().map(b=>({b, n:shownQty(b.id)})).filter(x=>x.n || CUR_LEVEL!=='season');
+    L.push('*ON THE SHELF — ' + scopeLabel().toUpperCase() + '*');
+    let any = false;
+    here.forEach(({b,n})=>{
+      const atEvents = isWarehouseLoc(CUR_LOC)
+        ? eventsOfRegion(CUR_REGION).reduce((t,e)=>t+invQty(e.eventId,b.id),0) : 0;
+      const held = isWarehouseLoc(CUR_LOC) ? withHoldersQty(b.id) : 0;
+      const transit = isWarehouseLoc(CUR_LOC) ? inTransitQty(b.id) : 0;
+      if(!n && !atEvents && !held && !transit) return;
+      any = true;
+      const extra = [];
+      if(atEvents) extra.push(atEvents + ' at events');
+      if(held) extra.push(held + ' with devotees');
+      if(transit) extra.push(transit + ' in transit');
+      L.push('  ' + b.name + ': ' + n + (extra.length ? ' (' + extra.join(', ') + ')' : ''));
+    });
+    if(!any) L.push('  Nothing in stock.');
     L.push('');
   }
 
