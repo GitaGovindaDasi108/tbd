@@ -798,7 +798,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b49</span>
+    <span class="build-tag" title="Which version of the page is loaded">b51</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1351,7 +1351,22 @@ async function post(payload){
 function derive(){
   if(!BASE) return null;
   const st = JSON.parse(JSON.stringify(BASE));
-  OPS.forEach(op=>{ try{ op.apply(st); }catch(e){} });
+  // These arrays are assumed to exist all over the app; a missing one used to
+  // make an unsaved change throw and vanish without a word.
+  ['sales','inventory','events','regions','holders','shipments','partners',
+   'cash','stockMoves','org','payouts'].forEach(k=>{ if(!Array.isArray(st[k])) st[k]=[]; });
+
+  /* If an unsaved change cannot be applied, say so. Swallowing the error left
+     the record on the server but absent from the screen — it looked exactly
+     like the transaction had been lost. */
+  OPS.forEach(op=>{
+    try{ op.apply(st); }
+    catch(e){
+      op.broken = true;
+      console.error('Could not show an unsaved change:', e);
+    }
+  });
+  if(OPS.some(o=>o.broken)) st._deriveWarning = true;
   return st;
 }
 
@@ -1444,7 +1459,9 @@ function commit(payload, apply, okMsg){
   }).catch(err=>{
     OPS = OPS.filter(o=>o!==op);
     STATE = derive(); renderAll();
-    toast('Not saved — '+err.message, true);
+    // Name the action, so a failure is traceable rather than a bare apology.
+    toast('Not saved (' + (payload.action||'change') + ') — ' + err.message, true);
+    console.error('Failed to save', payload, err);
   }).finally(()=>{
     inflight--;
     if(!inflight) setStatus('ok','Saved · '+clock());
