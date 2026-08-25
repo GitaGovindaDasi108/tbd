@@ -801,7 +801,7 @@ body.busy #busyBar{opacity:1;animation:sweep 1.1s ease-in-out infinite}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b54</span>
+    <span class="build-tag" title="Which version of the page is loaded">b56</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -987,7 +987,21 @@ function setStatus(kind,text){
 const LOCALE='en-GB';   // the app speaks English wherever the tour is
 const clock = () => new Date().toLocaleTimeString(LOCALE, {hour:'2-digit',minute:'2-digit',second:'2-digit'});
 
-function bookById(id){return (STATE.books||[]).find(b=>b.id===id)||{id,name:id,cat:'big',usd:0,pln:0,eur:0};}
+/* Book and stock lookups happen thousands of times per render — once per sale
+   per panel — so scanning the whole list each time is what made a busy page,
+   and the consignment panel in particular, feel sluggish. Both are indexed and
+   rebuilt whenever the data changes. */
+let _bookIdx=null, _invIdx=null, _idxFor=null;
+function rebuildIndexes(){
+  _bookIdx={}; (STATE&&STATE.books||[]).forEach(b=>{ _bookIdx[b.id]=b; });
+  _invIdx={}; (STATE&&STATE.inventory||[]).forEach(i=>{ _invIdx[i.location+'||'+i.bookId]=Number(i.qty)||0; });
+  _idxFor=STATE;
+}
+function idx(){ if(_idxFor!==STATE) rebuildIndexes(); }
+function bookById(id){
+  idx();
+  return _bookIdx[id] || {id,name:id,cat:'big',usd:0,pln:0,eur:0};
+}
 function catOf(id){return bookById(id).cat==='aotm'?'aotm':'big';}
 function isAotm(b){return b.cat==='aotm';}
 /* Price comes from this region's own price list, falling back to the built-in
@@ -1205,7 +1219,7 @@ function scopedSales(){
   if(CUR_LEVEL==='region'){ const inR=locsInRegion(CUR_REGION); return s.filter(x=>inR.includes(x.location)); }
   return s.filter(x=>x.location===CUR_LOC);                // one event
 }
-function invQty(loc,bookId){const rec=(STATE.inventory||[]).find(i=>i.location===loc&&i.bookId===bookId);return rec?rec.qty:0;}
+function invQty(loc,bookId){ idx(); const v=_invIdx[loc+'||'+bookId]; return v===undefined?0:v; }
 /* Every unsold physical copy anywhere in the region: the warehouse plus every
    event table. What "unsold in region" on the warehouse card counts. */
 /* ---- Devotee storage and books on the road ---- */
