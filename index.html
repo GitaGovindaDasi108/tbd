@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b64</span>
+    <span class="build-tag" title="Which version of the page is loaded">b65</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1811,12 +1811,16 @@ function renderAdmin(){
   const admin  = isAdmin();
   const shut   = isClosedHere();
 
-  // A seller gets one thing: who to call when something goes wrong.
-  if(isSeller()){
+  /* Anyone on a share link gets one thing: who to call when something goes
+     wrong. Everything else in this panel is the owner's work — and the server
+     refuses it from a link anyway, so showing more only offered buttons that
+     would fail. */
+  if(!admin){
     $('#adminPanel').style.display='';
     $('#adminActions').innerHTML =
       `<div class="adm-grid"><div class="adm-col">
-         <button class="btn" data-act="org">👥 Org chart</button>
+         <div class="adm-lbl">Admin</div>
+         <button class="btn adm-c1-1" data-act="org">👥 Org chart</button>
        </div></div>`;
     return;
   }
