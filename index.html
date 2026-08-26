@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b63</span>
+    <span class="build-tag" title="Which version of the page is loaded">b64</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1873,10 +1873,15 @@ function renderAdmin(){
   }else if(!shut && isWarehouseLoc(CUR_LOC)){
     cols[2].push(`<button class="btn" data-act="stock">＋ Add / subtract stock</button>`);
   }
-  cols[2].push(`<button class="btn" data-act="shipments">🚚 Books in transit${shipCount?` (${shipCount})`:''}</button>`);
-  cols[2].push(`<button class="btn" data-act="holders">🏠 Devotees storing books</button>`);
-  const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
-  cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
+  /* Where the books came from, who is holding them and whose they are is the
+     owner's business. A regional coordinator sells and moves stock; they do not
+     need the tour's logistics or anyone else's money. */
+  if(admin){
+    cols[2].push(`<button class="btn" data-act="shipments">🚚 Books in transit${shipCount?` (${shipCount})`:''}</button>`);
+    cols[2].push(`<button class="btn" data-act="holders">🏠 Devotees storing books</button>`);
+    const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
+    cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
+  }
 
   // 4 — the region or event itself
   if(admin){
