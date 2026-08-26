@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b58</span>
+    <span class="build-tag" title="Which version of the page is loaded">b59</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3619,6 +3619,17 @@ function buildReport(part){
     else { L.push('  *Total:*'); gcs.forEach(c => L.push('    *' + cashFmt(grand[c], c) + '*')); }
     if(gcs.length) L.push('  ≈ $' + nf(usd(grand)));
 
+    // Change withdrawn from the bank sits in the box but is not takings, so the
+    // report has to say so or the figures look bigger than they are.
+    const fl = floatOut();
+    const flCurs = Object.keys(fl).filter(c=>Math.abs(fl[c])>0.005).sort();
+    if(flCurs.length){
+      L.push('');
+      L.push('*CHANGE FROM THE BANK*');
+      flCurs.forEach(c=>L.push('  ' + cashFmt(fl[c], c) + ' still to deposit back'));
+      L.push('  (already counted above — it is in the box but not takings)');
+    }
+
     // What is still owed.
     let pendUsd=0; const due={};
     s.forEach(x=>{ pendUsd += dueUSD(x);
@@ -4213,8 +4224,7 @@ function cashModal(){
         const out = floatOut();
         const curs = Object.keys(out).filter(c=>Math.abs(out[c])>0.005).sort();
         return `<div class="cash-sub">Change from the bank</div>
-          <div class="hint">Cash withdrawn from the bank to make change with. It is in the box but it is
-            not takings — this is what still has to be deposited back.</div>
+
           <div class="cash-coll"><div class="cash-coll-row">
             <span>Still withdrawn</span>
             <span class="${curs.length?'float-out':''}">${curs.length?curs.map(c=>cashFmt(out[c],c)).join(' · '):'none withdrawn'}</span>
@@ -4230,8 +4240,6 @@ function cashModal(){
 
       <div class="cash-sub">Movement log</div>
       <div class="cash-log">${logRows}</div>
-
-      <button class="cash-resetall" id="cmResetAll">Reset tracker to collected values</button>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>
@@ -4297,13 +4305,6 @@ function cashModal(){
     }
     const eE=e.target.closest('[data-editentry]');
     if(eE){ cashEditEntry(eE.dataset.editentry); return; }
-    const rAll=e.target.closest('#cmResetAll');
-    if(rAll){
-      if(!entries.length){ err('Nothing to reset.'); return; }
-      if(!confirm('Reset the whole tracker to collected values? Removes every manual move and adjustment. Collections are kept.')) return;
-      commit({action:'cashResetAll'}, st=>{ st.cash=[]; }, 'Tracker reset');
-      cashReopen(); return;
-    }
   });
 }
 
@@ -4994,8 +4995,8 @@ function seasonsModal(){
         </div></div>`).join('')}
 
       <div class="cash-sub">Start another season</div>
-      <div class="hint">It begins with the same regions, currencies and prices as the one you
-        are in — but none of its stock, sales or money.</div>
+      <div class="hint">A completely fresh start — no regions, events, stock, sales or money.
+        Only the book titles carry over, since those belong to no single tour.</div>
       <div class="rp-add">
         <input id="snName" type="text" placeholder="e.g. Europe Tour 2027">
         <button type="button" class="btn btn-primary btn-sm" id="snAdd">Create</button>
@@ -5007,7 +5008,7 @@ function seasonsModal(){
   $('#snAdd').addEventListener('click',async ()=>{
     const name=$('#snName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
-    if(await commitSync({action:'saveSeason', name, copyFrom:active},'Season created')){
+    if(await commitSync({action:'saveSeason', name},'Season created')){
       // A new season is a different world, so start from a clean position.
       CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos();
       seasonsModal();
@@ -5215,13 +5216,8 @@ function partnerPayModal(id, method){
       .map(i=>({cur:i.dataset.cur, amt:Number(i.value)||0})).filter(x=>x.amt>0);
     if(!rows.length){ $('#modalErr').textContent='Enter an amount.'; return; }
     const note=$('#conNote').value.trim();
-    let ok=true;
-    for(const r of rows){
-      ok = await commitSync({action:'partnerPayout',partnerId:id,cur:r.cur,amt:r.amt,
-                             method:mth,note},'Recorded') && ok;
-      if(!ok) break;
-    }
-    if(ok) partnersModal();
+    if(await commitSync({action:'partnerPayout', partnerId:id, items:rows,
+        method:mth, note}, 'Recorded')) partnersModal();
   });
 }
 
@@ -5383,13 +5379,10 @@ function floatModal(back){
     const rows=[...document.querySelectorAll('#modal .fl-q')]
       .map(i=>({cur:i.dataset.cur, amt:Number(i.value)||0})).filter(x=>x.amt>0);
     if(!rows.length){ $('#modalErr').textContent='Enter an amount.'; return; }
-    let ok=true;
-    for(const r of rows){
-      ok = await commitSync({action:'cashFloat', loc, cur:r.cur, amt:r.amt,
-                             back:back?'true':'false', note}, back?'Change deposited':'Change withdrawn') && ok;
-      if(!ok) break;
-    }
-    if(ok) cashModal();
+    // Sent as one request: asking per currency meant the dialog reappeared for
+    // each and the balances shifted underneath the checks.
+    if(await commitSync({action:'cashFloat', loc, items:rows,
+        back:back?'true':'false', note}, back?'Change deposited':'Change withdrawn')) cashModal();
   });
 }
 
