@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b59</span>
+    <span class="build-tag" title="Which version of the page is loaded">b60</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1721,9 +1721,22 @@ function renderTabs(){
     return;
   }
 
-  // Season — always the root, and the way back up.
-  h += `<button class="crumb-btn ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
-          title="The whole tour">${esc(STATE.seasonName||'Season')}</button>`;
+  /* Season — the root, and the way back up. With more than one tour on record it
+     becomes a picker, exactly like regions and events, rather than being buried
+     in a panel. */
+  const seasons = STATE.seasons || [];
+  if(seasons.length > 1 && isAdmin()){
+    h += `<span class="crumb-pick">
+      <select class="crumb-sel ${CUR_LEVEL==='season'?'on':''}" data-act="pickseason"
+        title="Switch tour">
+        ${seasons.map(x=>opt(x.seasonId, x.name, x.seasonId===STATE.activeSeason)).join('')}
+        ${opt('__new','＋ New season…',false)}
+      </select>
+    </span>`;
+  }else{
+    h += `<button class="crumb-btn ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
+            title="The whole tour">${esc(STATE.seasonName||'Season')}</button>`;
+  }
 
   // Region picker
   h += `<span class="crumb-sep">›</span>
@@ -1761,6 +1774,18 @@ function renderTabs(){
   $('#locTabs').innerHTML=h;
 
   // Wire the pickers here, since this markup is rebuilt on every render.
+  const ss=$('#locTabs').querySelector('[data-act="pickseason"]');
+  if(ss) ss.addEventListener('change',()=>{
+    const v=ss.value;
+    if(v==='__new'){ renderTabs(); newSeasonModal(); return; }
+    if(!v || v===STATE.activeSeason) return;
+    // A different tour entirely, so start at its top rather than trying to hold
+    // a position that belongs to the one being left.
+    commitSync({action:'setSeason', seasonId:v}, 'Switched').then(ok=>{
+      if(!ok){ renderTabs(); return; }
+      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
+    });
+  });
   const rs=$('#locTabs').querySelector('[data-act="pickregion"]');
   if(rs) rs.addEventListener('change',()=>{
     const v=rs.value;
@@ -4976,6 +5001,30 @@ function runPicked(act){
    One tour per season. Switching swaps the whole app over: its regions, events,
    stock, sales and money. Nothing is shared between them except the book
    catalogue itself. */
+function newSeasonModal(){
+  openModal(`
+    ${mHead('Start another season')}
+    <div class="m-body">
+      <div class="hint">A completely fresh start — no regions, events, stock, sales or money.
+        Only the book titles carry over, since those belong to no single tour.</div>
+      <div class="field"><label>Name</label>
+        <input id="nsName" type="text" placeholder="e.g. Europe Tour 2027"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="nsGo">Create</button>
+    </div>`);
+  $('#nsName').focus();
+  $('#nsGo').addEventListener('click',async ()=>{
+    const name=$('#nsName').value.trim();
+    if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+    if(await commitSync({action:'saveSeason', name}, 'Season created')){
+      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
+    }
+  });
+}
+
 function seasonsModal(){
   const list = STATE.seasons||[];
   const active = STATE.activeSeason;
