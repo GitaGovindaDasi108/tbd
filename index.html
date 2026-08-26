@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b60</span>
+    <span class="build-tag" title="Which version of the page is loaded">b61</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1508,7 +1508,11 @@ function isOffline(err){
   return (typeof navigator!=='undefined' && navigator.onLine===false)
       || /Failed to fetch|NetworkError|Load failed|network/i.test(String(err && err.message || ''));
 }
+/* Actions that set a state rather than add to one. Replaying these later would
+   move you somewhere you are no longer trying to be, so they are never queued. */
+const NEVER_QUEUE = {setSeason:1, syncSheets:1, getState:1, ping:1};
 function queueOffline(payload){
+  if(NEVER_QUEUE[payload && payload.action]) return;
   PENDING.push({payload, at:Date.now()});
   pendingSave();
   showPending();
@@ -1779,12 +1783,7 @@ function renderTabs(){
     const v=ss.value;
     if(v==='__new'){ renderTabs(); newSeasonModal(); return; }
     if(!v || v===STATE.activeSeason) return;
-    // A different tour entirely, so start at its top rather than trying to hold
-    // a position that belongs to the one being left.
-    commitSync({action:'setSeason', seasonId:v}, 'Switched').then(ok=>{
-      if(!ok){ renderTabs(); return; }
-      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
-    });
+    switchSeason(v);
   });
   const rs=$('#locTabs').querySelector('[data-act="pickregion"]');
   if(rs) rs.addEventListener('change',()=>{
@@ -1858,6 +1857,8 @@ function renderAdmin(){
       cols[1].push(`<button class="btn" data-act="transfer" data-mode="return">Return to warehouse</button>`);
     }
   }
+  if(admin && (STATE.seasons||[]).length>1 && !season && isWarehouseLoc(CUR_LOC))
+    cols[1].push(`<button class="btn" data-act="seasonxfer">🗓 Hand stock to another season</button>`);
   cols[1].push(`<button class="btn" data-act="transfers">📦 Transfer record</button>`);
 
   // 3 — where the books are
@@ -4634,8 +4635,28 @@ function deleteRegionModal(){
     $('#modalErr').textContent='';
     // Step away first, so we are not standing on the page we are deleting.
     const fallback = regionsList().find(r=>r.regionId!==reg.regionId);
-    commitSync({action:'deleteRegion',regionId:reg.regionId,confirmName:typed,
-                moveStockTo:$('#drMove').value},'Region deleted');
+    const moveTo = $('#drMove').value;
+    /* Applied here, saved behind — the same way a sale works. Waiting on the
+       server twice is what made deleting a region feel slow. */
+    commit({action:'deleteRegion',regionId:reg.regionId,confirmName:typed,moveStockTo:moveTo},
+      st=>{
+        const gone = locsInRegion(reg.regionId);
+        if(moveTo){
+          const dest=(st.regions||[]).find(r=>r.regionId===moveTo);
+          if(dest) (st.inventory||[]).forEach(i=>{
+            if(gone.includes(i.location) && i.qty>0){
+              const d=(st.inventory||[]).find(x=>x.location===dest.whLoc && x.bookId===i.bookId);
+              if(d) d.qty += i.qty; else st.inventory.push({location:dest.whLoc,bookId:i.bookId,qty:i.qty});
+            }
+          });
+        }
+        st.regions   = (st.regions||[]).filter(r=>r.regionId!==reg.regionId);
+        st.events    = (st.events||[]).filter(e=>e.regionId!==reg.regionId);
+        st.holders   = (st.holders||[]).filter(h=>h.regionId!==reg.regionId);
+        st.inventory = (st.inventory||[]).filter(i=>!gone.includes(i.location));
+        st.sales     = (st.sales||[]).filter(x=>!gone.includes(x.location));
+        st.cash      = (st.cash||[]).filter(c=>!gone.includes(c.fromAcct)&&!gone.includes(c.toAcct));
+      }, 'Region deleted');
     if(fallback) goTo('region', fallback.regionId); else goTo('season');
   });
 }
@@ -5001,6 +5022,33 @@ function runPicked(act){
    One tour per season. Switching swaps the whole app over: its regions, events,
    stock, sales and money. Nothing is shared between them except the book
    catalogue itself. */
+/* Switching tours: one request that both sets the season and brings back its
+   data, so it is as quick as moving between regions.
+
+   Not routed through the ordinary save path on purpose — that queues offline
+   and retries, and replaying "switch season" later would drag you somewhere you
+   are no longer trying to be. */
+async function switchSeason(id){
+  if(!id || id===STATE.activeSeason) return;
+  setStatus('load','Switching…');
+  try{
+    const d = await post({action:'setSeason', seasonId:id});
+    if(d.state){
+      BASE = d.state; REV = d.rev;
+      OPS = [];                     // the old season's pending edits do not apply here
+      // A different tour entirely, so start at its top.
+      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON;
+      STATE = derive(); savePos(); cacheSave(); renderAll();
+      setStatus('ok','Saved · '+clock());
+      toast('Now showing ' + ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name);
+    }
+  }catch(err){
+    setStatus('bad','Error');
+    toast('Could not switch — ' + err.message, true);
+    renderTabs();                   // put the picker back where it was
+  }
+}
+
 function newSeasonModal(){
   openModal(`
     ${mHead('Start another season')}
@@ -5432,6 +5480,89 @@ function floatModal(back){
     // each and the balances shifted underneath the checks.
     if(await commitSync({action:'cashFloat', loc, items:rows,
         back:back?'true':'false', note}, back?'Change deposited':'Change withdrawn')) cashModal();
+  });
+}
+
+
+/* Handing stock to another season. The books do not travel — they are already
+   where they are; they simply belong to a different tour from now on. */
+function seasonTransferModal(){
+  const reg = currentRegion();
+  if(!reg) return;
+  const here = (STATE.allRegions||[]).filter(r=>r.seasonId===STATE.activeSeason);
+  const elsewhere = (STATE.allRegions||[]).filter(r=>r.seasonId!==STATE.activeSeason);
+  if(!elsewhere.length){
+    toast('There is only one season — create another first.', true);
+    return;
+  }
+  const srcs = [{id:reg.whLoc, name:reg.name+' — Warehouse'}]
+    .concat(holdersOf(reg.regionId).map(h=>({id:h.holderId, name:h.name+' (devotee storage)'})));
+
+  openModal(`
+    ${mHead('Hand stock to another season')}
+    <div class="m-body">
+      <div class="hint">For books that outlive a tour — what is left here at the end becomes the
+        opening stock of the next one. Nothing travels; the books stay put and simply
+        belong to the other season from now on.</div>
+
+      <div class="field"><label>From</label>
+        <select id="xsFrom">${srcs.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>
+
+      <div class="field"><label>To</label>
+        <select id="xsTo">
+          ${elsewhere.map(r=>`<option value="${esc(r.regionId)}">${esc(r.seasonName)} › ${esc(r.name)}</option>`).join('')}
+        </select></div>
+
+      <div class="cash-sub">Which books</div>
+      <div id="xsRows"></div>
+      <div class="sh-acts" style="margin:6px 0"><button class="btn btn-ghost btn-sm" id="xsAll">Take everything</button></div>
+      <div class="field"><label>Note (optional)</label><input id="xsNote" type="text"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="xsGo">Hand over</button>
+    </div>`, true);
+
+  function draw(){
+    const from = $('#xsFrom').value;
+    $('#xsRows').innerHTML = shelfBooks().map(b=>{
+      const have = invQty(from, b.id);
+      if(!have) return '';
+      return `<div class="cl-row">
+        <div class="cl-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+        <div class="cl-exp">${have} here</div>
+        <input class="cl-in xs-q" type="number" min="0" max="${have}" inputmode="numeric"
+          data-book="${esc(b.id)}" data-have="${have}" placeholder="0">
+        <div></div>
+      </div>`;
+    }).join('') || `<div class="cash-empty">Nothing in stock there.</div>`;
+  }
+  $('#xsFrom').addEventListener('change',draw);
+  draw();
+  $('#xsAll').addEventListener('click',()=>{
+    [...document.querySelectorAll('#modal .xs-q')].forEach(i=>{ i.value = i.dataset.have; });
+  });
+
+  $('#xsGo').addEventListener('click',()=>{
+    const fromLoc=$('#xsFrom').value, toRegion=$('#xsTo').value;
+    const items=[...document.querySelectorAll('#modal .xs-q')]
+      .map(i=>({bookId:i.dataset.book, qty:Math.max(0,Math.round(Number(i.value)||0)), have:Number(i.dataset.have)}))
+      .filter(x=>x.qty>0);
+    if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
+    const over=items.find(x=>x.qty>x.have);
+    if(over){ $('#modalErr').textContent='Only '+over.have+' × '+bookById(over.bookId).name+' available.'; return; }
+    const dest=(STATE.allRegions||[]).find(r=>r.regionId===toRegion)||{};
+    if(!confirm(`Hand ${items.reduce((t,x)=>t+x.qty,0)} book(s) to ${dest.seasonName} › ${dest.name}?\n\n`
+      +'They leave this season\u2019s books and join that one.')) return;
+
+    // The books leave this season on screen at once; where they land belongs to
+    // another season, so it shows when you switch to it.
+    commit({action:'seasonTransfer', fromRegion:reg.regionId, toRegion, fromLoc,
+            items:items.map(x=>({bookId:x.bookId, qty:x.qty})), note:$('#xsNote').value.trim()},
+      st=>{ items.forEach(it=>invAdd(st, fromLoc, it.bookId, -it.qty)); },
+      'Handed over');
+    closeModal();
   });
 }
 
@@ -6110,13 +6241,7 @@ document.addEventListener('click',e=>{
   if(a==='pickgo'){ closeModal(); goTo('region', t.dataset.region); setTimeout(()=>runPicked(t.dataset.then),0); return; }
   if(a==='seasons'){ seasonsModal(); return; }
   if(a==='seasonedit'){ seasonEditModal(t.dataset.id); return; }
-  if(a==='seasongo'){
-    commitSync({action:'setSeason', seasonId:t.dataset.id}, 'Switched').then(ok=>{
-      if(!ok) return;
-      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
-    });
-    return;
-  }
+  if(a==='seasongo'){ closeModal(); switchSeason(t.dataset.id); return; }
   if(a==='seasondel'){
     const x=(STATE.seasons||[]).find(v=>v.seasonId===t.dataset.id); if(!x) return;
     const typed=prompt('Deleting "'+x.name+'" removes its regions, events, stock and sales '
@@ -6146,6 +6271,7 @@ document.addEventListener('click',e=>{
   if(a==='shoutside'){ shipOutsideModal(); return; }
   if(a==='floatout'){ floatModal(false); return; }
   if(a==='floatback'){ floatModal(true); return; }
+  if(a==='seasonxfer'){ seasonTransferModal(); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
