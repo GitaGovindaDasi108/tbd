@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b65</span>
+    <span class="build-tag" title="Which version of the page is loaded">b66</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1504,9 +1504,15 @@ function pendingLoad(){
 function pendingSave(){
   try{ localStorage.setItem(PENDING_KEY, JSON.stringify(PENDING)); }catch(e){}
 }
+/* Only a genuine network failure counts as offline.
+
+   This used to trust navigator.onLine, which some browsers report as false when
+   the connection is merely poor. A save then went into the queue and retried for
+   ever — the "waiting to send" badge that never cleared, with nothing saved. A
+   server that answers, even to refuse, is not offline. */
 function isOffline(err){
-  return (typeof navigator!=='undefined' && navigator.onLine===false)
-      || /Failed to fetch|NetworkError|Load failed|network/i.test(String(err && err.message || ''));
+  return /Failed to fetch|NetworkError|Load failed|ERR_INTERNET|ERR_NETWORK|timed out/i
+    .test(String(err && err.message || ''));
 }
 /* Actions that set a state rather than add to one. Replaying these later would
    move you somewhere you are no longer trying to be, so they are never queued. */
@@ -1522,7 +1528,7 @@ function showPending(){
   if(!el) return;
   if(!PENDING.length){ el.style.display='none'; return; }
   el.style.display='';
-  el.textContent = `⛆ ${PENDING.length} waiting to send`;
+  el.textContent = `⛆ ${PENDING.length} waiting for a signal`;
 }
 /** Send anything held on the device, oldest first. */
 async function flushPending(){
@@ -1533,9 +1539,22 @@ async function flushPending(){
       const next = PENDING[0];
       try{ await post(next.payload); }
       catch(err){
-        if(isOffline(err)) break;           // still no signal — keep it for later
+        if(isOffline(err)){
+          /* Still no signal. Give up after enough attempts and say so, rather
+             than sitting on it silently — a queue that never empties looks
+             exactly like a save that never happened. */
+          next.tries = (next.tries||0) + 1;
+          pendingSave();
+          if(next.tries >= 8){
+            PENDING.shift(); pendingSave();
+            toast('Could not send one change after several tries — please redo it', true);
+            console.error('Gave up on', next.payload);
+            continue;
+          }
+          break;
+        }
         PENDING.shift(); pendingSave();     // the server refused it; it will never succeed
-        toast('One saved change was refused — ' + err.message, true);
+        toast('One change was refused — ' + err.message, true);
         continue;
       }
       PENDING.shift(); pendingSave();
@@ -1838,8 +1857,6 @@ function renderAdmin(){
     ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share links…</button>`
     : (isWarehouseLoc(CUR_LOC) ? `<button class="btn" data-act="sharelinks">🔗 Share links</button>` : ''));
   // Payment QRs live in the inventory header — one home is enough.
-  if(admin) cols[0].push(`<button class="btn" data-act="seasons">🗓 Seasons${
-    (STATE.seasons||[]).length>1?` (${(STATE.seasons||[]).length})`:''}</button>`);
   if(admin && season)
     cols[0].push(`<button class="btn" data-act="reorder" data-kind="region">↕ Change region order</button>`);
   else if(admin && isWarehouseLoc(CUR_LOC))
@@ -1890,7 +1907,6 @@ function renderAdmin(){
   // 4 — the region or event itself
   if(admin){
     if(season){
-      cols[3].push(`<button class="btn" data-act="newregion">＋ New region</button>`);
       cols[3].push(`<button class="btn" data-act="pick" data-then="editregion">Edit region…</button>`);
       cols[3].push(`<button class="btn" data-act="pick" data-then="closehere">Close region…</button>`);
       cols[3].push(`<button class="btn" data-act="pick" data-then="deleteregion">Delete region…</button>`);
