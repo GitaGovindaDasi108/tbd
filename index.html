@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b61</span>
+    <span class="build-tag" title="Which version of the page is loaded">b62</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -4040,6 +4040,13 @@ function cashAcctName(id){
 }
 // Physical cash collected at a location: Cash-type legs from received sales and
 // donations there. The same basis as Collections. Bank has no sales.
+/* Cash taken at a place.
+
+   Consignment notes are physically in the same box, so they count here — the
+   box really does hold them. What keeps the books honest is that handing that
+   money over is recorded as cash leaving, so the balance falls when it does.
+   The server counts it the same way; when the two disagreed, moving all cash
+   left a residue that looked like money appearing from nowhere. */
 function cashCollected(acct,cur){
   if(acct==='BANK') return 0;
   let t=0;
@@ -4259,6 +4266,26 @@ function cashModal(){
             <button class="btn btn-ghost btn-sm" data-act="floatout">Withdraw change</button>
             ${curs.length?`<button class="btn btn-primary btn-sm" data-act="floatback">Deposit change</button>`:''}
           </div>`;
+      })()}
+
+      ${(function(){
+        /* Their notes are in the box and counted above, so the box total is
+           physically true. This says how much of it is not ours. */
+        const owed = {};
+        (STATE.partners||[]).forEach(pt=>{
+          const bm = (pt.byMethod||{}).Cash;
+          if(!bm) return;
+          Object.keys(bm.owed||{}).forEach(c=>{
+            if(Math.abs(bm.owed[c])>0.005) owed[c]=(owed[c]||0)+bm.owed[c];
+          });
+        });
+        const curs = Object.keys(owed).filter(c=>Math.abs(owed[c])>0.005).sort();
+        if(!curs.length) return '';
+        return `<div class="cash-sub">Of that, owed to consignment</div>
+          <div class="cash-coll"><div class="cash-coll-row">
+            <span>In the box but not ours</span>
+            <span class="float-out">${curs.map(c=>cashFmt(owed[c],c)).join(' · ')}</span>
+          </div></div>`;
       })()}
 
       <div class="cash-sub">Cash collected in the system</div>
@@ -5028,24 +5055,55 @@ function runPicked(act){
    Not routed through the ordinary save path on purpose — that queues offline
    and retries, and replaying "switch season" later would drag you somewhere you
    are no longer trying to be. */
+/* Each season's last-known data is kept on the device, so switching back to one
+   you have already opened paints instantly — the same as moving between regions
+   — and the fresh copy arrives behind you. Only the first visit to a season has
+   to wait for the network. */
+const SEASON_CACHE = 'tbs_season_' + (SHARE_KEY ? SHARE_KEY + '_' : '');
+function seasonCacheSave(id, state, rev){
+  try{ localStorage.setItem(SEASON_CACHE+id, JSON.stringify({rev, state})); }catch(e){}
+}
+function seasonCacheLoad(id){
+  try{
+    const c = JSON.parse(localStorage.getItem(SEASON_CACHE+id) || 'null');
+    return (c && c.state && c.state.books) ? c : null;
+  }catch(e){ return null; }
+}
+
+function showSeason(state, rev, id){
+  BASE = state; REV = rev;
+  OPS = [];                        // the previous season's pending edits do not apply here
+  CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON;
+  STATE = derive(); savePos(); cacheSave(); renderAll();
+}
+
 async function switchSeason(id){
   if(!id || id===STATE.activeSeason) return;
-  setStatus('load','Switching…');
+  // Keep where we are, so coming back is instant too.
+  seasonCacheSave(STATE.activeSeason, BASE, REV);
+
+  const cached = seasonCacheLoad(id);
+  if(cached){
+    showSeason(cached.state, cached.rev, id);
+    setStatus('load','Refreshing…');
+  }else{
+    setStatus('load','Opening…');
+  }
   try{
     const d = await post({action:'setSeason', seasonId:id});
     if(d.state){
-      BASE = d.state; REV = d.rev;
-      OPS = [];                     // the old season's pending edits do not apply here
-      // A different tour entirely, so start at its top.
-      CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON;
-      STATE = derive(); savePos(); cacheSave(); renderAll();
+      seasonCacheSave(id, d.state, d.rev);
+      if(!cached) showSeason(d.state, d.rev, id);
+      else { BASE = d.state; REV = d.rev; STATE = derive(); renderAll(); }
       setStatus('ok','Saved · '+clock());
-      toast('Now showing ' + ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name);
+      if(!cached) toast('Now showing ' + ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name);
     }
   }catch(err){
     setStatus('bad','Error');
-    toast('Could not switch — ' + err.message, true);
-    renderTabs();                   // put the picker back where it was
+    if(!cached){
+      toast('Could not switch — ' + err.message, true);
+      renderTabs();                // put the picker back where it was
+    }
   }
 }
 
