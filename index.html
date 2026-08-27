@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b66</span>
+    <span class="build-tag" title="Which version of the page is loaded">b67</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1749,6 +1749,11 @@ function renderTabs(){
      in a panel. */
   const seasons = STATE.seasons || [];
   if(seasons.length > 1 && isAdmin()){
+    /* Two controls, because they do different things: the button goes UP to the
+       tour-wide view, the picker moves BETWEEN tours. With only the picker there
+       was no way back to the season overview from inside a region. */
+    h += `<button class="crumb-btn ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
+            title="The whole tour">⌂</button>`;
     h += `<span class="crumb-pick">
       <select class="crumb-sel ${CUR_LEVEL==='season'?'on':''}" data-act="pickseason"
         title="Switch tour">
@@ -4009,6 +4014,11 @@ function floatOut(){
   return out;
 }
 
+/* What this region has genuinely handed to the bank.
+
+   Change withdrawn and deposited is deliberately left out: it has its own line
+   below, and counting it here too made the same money appear twice with
+   opposite signs — a 45 € withdrawal showed as "-45 € sent". */
 function sentToBank(){
   // Always measured across the whole region, because that is the set of accounts
   // the cash panel shows — counting only one event would leave the figure not
@@ -4017,6 +4027,7 @@ function sentToBank(){
   const out = {};
   (STATE.cash||[]).forEach(c=>{
     if(!c || c.kind!=='MOVE') return;
+    if(c.purpose==='FLOAT' || c.purpose==='FLOAT_BACK') return;   // its own line below
     const amt = Number(c.amt)||0;
     if(c.toAcct==='BANK' && mine.includes(c.fromAcct)) out[c.cur]=(out[c.cur]||0)+amt;
     if(c.fromAcct==='BANK' && mine.includes(c.toAcct)) out[c.cur]=(out[c.cur]||0)-amt;
@@ -4172,17 +4183,23 @@ function cashModal(){
        this region has sent there — not the pooled balance, which would mix in
        money from places that have nothing to do with here. The true total lives
        at season level, where it means something. */
+    /* Inside a region the bank row is that region's own contribution — the
+       pooled balance belongs to the whole tour and would mix in money from
+       places that have nothing to do with here. At season level, where it does
+       mean something, it is the real balance. */
     const isBank = a.id==='BANK';
+    const seasonWide = (CUR_LEVEL==='season') || !CUR_REGION;
     const hasManual = !isBank && entries.some(c=>c.fromAcct===a.id || c.toAcct===a.id);
     let cells='';
     cashCurs().forEach(cur=>{
-      const v = isBank ? (sent[cur]||0) : cashBalance(a.id,cur);
-      cells += isBank
+      const v = isBank ? (seasonWide ? cashBalance('BANK',cur) : (sent[cur]||0))
+                       : cashBalance(a.id,cur);
+      cells += (isBank && !seasonWide)
         ? `<td class="cash-cell ${v===0?'zero':''}">${v===0?'—':cashFmt(v,cur)}</td>`
         : `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
     });
     const reset = hasManual ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset to collected">↺</button>` : '';
-    const label = isBank ? 'Sent to the bank from here' : esc(a.name);
+    const label = isBank ? (seasonWide ? 'Bank' : 'Sent to the bank from here') : esc(a.name);
     balRows += `<tr><th>${label} ${reset}</th>${cells}</tr>`;
   });
 
