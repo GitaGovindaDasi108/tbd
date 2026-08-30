@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b67</span>
+    <span class="build-tag" title="Which version of the page is loaded">b68</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2093,7 +2093,7 @@ function renderTotals(){
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
       <div class="sub">${money(got)||'nothing collected yet'}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
-      <div class="sub">${money(due)||'none withdrawnstanding'}</div></div>`}`;
+      <div class="sub">${money(due)||'nothing outstanding'}</div></div>`}`;
 }
 
 function renderInventory(){
@@ -2985,7 +2985,12 @@ function bundleModal(edit){
 
   const priceCur = ()=> ptype.value==='Mixed' ? 'PLN' : pcur.value;
   const unit = (bookId,cur)=>{ const b=bookById(bookId);
-    return cur==='PLN'?b.pln:cur==='EUR'?b.eur:b.usd; };
+    /* The REGION's price, not the built-in default.
+       This read the fallback figures baked into the app (35 € for a big book,
+       13 € for Adventures) and ignored what the region actually charges — so a
+       bundle in Croatia, priced at 30 € and 15 €, was suggested at 2470 € when
+       the books came to 2175 €. */
+    return priceFor(b, cur); };
 
   // Every book to be BOUGHT (expanded to one entry per copy), then pre-ordered.
   function expand(kind){
@@ -3144,7 +3149,12 @@ function bundleModal(edit){
 
     // Optimistic split, matching the server: proportional to list price (USD),
     // remainder on the first item.
-    const weights=items.map(it=>Number(bookById(it.bookId).usd)||1);
+    /* Share the payment out by what each book costs IN THE CURRENCY PAID.
+       Weighting by the USD figure gave each title the wrong share whenever the
+       local prices were not in the same proportion — the transaction total came
+       out right, but the money attributed to each title did not. */
+    const wCur = (L[0] && L[0].cur) || curCurrencies()[0];
+    const weights=items.map(it=>Number(priceFor(bookById(it.bookId), wCur))||1);
     const wSum=weights.reduce((a,c)=>a+c,0)||items.length;
     const perItem=items.map(()=>[]);
     L.forEach(leg=>{
@@ -4302,7 +4312,7 @@ function cashModal(){
 
           <div class="cash-coll"><div class="cash-coll-row">
             <span>Still withdrawn</span>
-            <span class="${curs.length?'float-out':''}">${curs.length?curs.map(c=>cashFmt(out[c],c)).join(' · '):'none withdrawn'}</span>
+            <span class="${curs.length?'float-out':''}">${curs.length?curs.map(c=>cashFmt(out[c],c)).join(' · '):'nothing withdrawn'}</span>
           </div></div>
           <div class="sh-acts" style="margin:7px 0 4px">
             <button class="btn btn-ghost btn-sm" data-act="floatout">Withdraw change</button>
