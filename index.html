@@ -813,7 +813,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b69</span>
+    <span class="build-tag" title="Which version of the page is loaded">b70</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5291,6 +5291,18 @@ function reorderModal(kind){
 /* ---- Consignment panel ----
    A local group's books sold from our table. Deliberately simple: what they
    sold, what came in, what we still owe them. */
+/* When nothing is owed, say so with a figure rather than the word "nothing" —
+   a zero in the currency they deal in reads as a settled account, whereas a
+   word reads as an absence of information. */
+function zeroOwed(p){
+  const curs = [...new Set([
+    ...Object.keys(p.took||{}),
+    ...Object.keys(p.paid||{})
+  ])].filter(Boolean).sort();
+  if(!curs.length) return cashFmt(0, (curCurrencies()[0] || 'USD'));
+  return curs.map(c=>cashFmt(0, c)).join(' · ');
+}
+
 function partnersModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
@@ -5307,10 +5319,10 @@ function partnersModal(){
       </div>
       ${season?`<div class="sh-meta">${esc((regionById(p.regionId)||{}).name||'')}</div>`:''}
       <div class="con-money">
-        <div><span class="con-k">Taken in</span><span class="con-v">${money(p.took)||'—'}</span></div>
-        <div><span class="con-k">Handed over</span><span class="con-v">${money(p.paid)||'—'}</span></div>
-        <div><span class="con-k">Still to hand over</span>
-          <span class="con-v ${owedTxt?'owing':''}">${owedTxt||'nothing'}</span></div>
+        <div><span class="con-k">Collected</span><span class="con-v">${money(p.took)||'—'}</span></div>
+        <div><span class="con-k">Given to consignee</span><span class="con-v">${money(p.paid)||'—'}</span></div>
+        <div><span class="con-k">Owed</span>
+          <span class="con-v ${owedTxt?'owing':''}">${owedTxt || zeroOwed(p)}</span></div>
       </div>
       <div class="sh-books">${books.map(b=>{
         const sold=(STATE.sales||[]).filter(x=>x.bookId===b.id&&x.type==='SALE').length;
@@ -5335,7 +5347,7 @@ function partnersModal(){
           const bm = p.byMethod||{};
           const methods = Object.keys(bm).filter(mth=>
             Object.keys(bm[mth].owed||{}).some(c=>Math.abs(bm[mth].owed[c])>0.005));
-          if(!methods.length) return `<span class="sh-meta">Nothing outstanding.</span>`;
+          if(!methods.length) return `<span class="sh-meta">Nothing owed — settled in full.</span>`;
           return methods.sort().map(mth=>
             `<button class="btn btn-primary btn-sm" data-act="conpay"
                data-id="${esc(p.partnerId)}" data-method="${esc(mth)}">Deliver ${esc(mth)}</button>`).join('');
@@ -5409,7 +5421,7 @@ function partnerPayModal(id, method){
         <input class="cl-in con-q" type="number" min="0" step="0.01" inputmode="decimal"
           data-cur="${esc(c)}" value="${owed[c]}">
         <div></div>
-      </div>`).join('') : `<div class="cash-empty">Nothing outstanding.</div>`}
+      </div>`).join('') : `<div class="cash-empty">Nothing owed.</div>`}
       <div class="field"><label>Note (optional)</label>
         <input id="conNote" type="text" placeholder="e.g. handed to Gopal after the festival"></div>
       <div class="err" id="modalErr"></div>
