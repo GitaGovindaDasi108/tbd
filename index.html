@@ -346,14 +346,30 @@ body.busy #busyLabel{opacity:1}
 .cash-logrow{flex:none;padding:8px 11px;border-bottom:1px solid var(--line)}
 .cash-logrow:last-child{border-bottom:none}
 .cash-logtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.cash-logdesc{font-weight:600;font-size:13px;color:var(--ink)}
+.cash-logdesc{font-weight:600;font-size:13px;color:var(--ink);
+  min-width:0;overflow-wrap:anywhere}
 .cash-logamt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
 .cash-logamt.pos{color:#2E7D6B}
 .cash-logamt.neg{color:var(--clay)}
-.cash-logbot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px}
-.cash-logwhen{font-size:10.5px;color:var(--muted)}
+/* The lower line of a movement row holds a date-and-note on one side and the
+   before/after counts on the other. Held side by side on a phone, the note was
+   squeezed into a one-word-wide column while the counts ran off the edge — so
+   below a comfortable width they stack instead. */
+.cash-logbot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px;
+  flex-wrap:wrap}
+.cash-logwhen{font-size:10.5px;color:var(--muted);flex:1 1 auto;min-width:0;
+  overflow-wrap:anywhere}
 .mv-counts{font-size:10.5px;color:var(--lvl,var(--plum));font-weight:700;white-space:nowrap}
 .cash-logacts{display:inline-flex;gap:2px;flex:none}
+@media (max-width:640px){
+  .cash-logbot{flex-direction:column;align-items:flex-start;gap:3px}
+  .cash-logwhen{flex:none;width:100%}
+  .cash-logacts{width:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+  .mv-counts{white-space:normal}
+  .cash-logtop{flex-wrap:wrap}
+  .cash-logdesc{flex:1 1 auto}
+  .cash-logamt{flex:none}
+}
 .qr-card{border:1px solid var(--line-d);border-radius:12px;padding:12px;margin-bottom:12px;text-align:center;background:var(--paper)}
 .qr-name{font-weight:800;font-size:14px;color:var(--lvl,var(--plum));margin-bottom:8px;
   text-transform:uppercase;letter-spacing:.5px}
@@ -813,7 +829,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b70</span>
+    <span class="build-tag" title="Which version of the page is loaded">b71</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
