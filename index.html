@@ -829,7 +829,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b71</span>
+    <span class="build-tag" title="Which version of the page is loaded">b72</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1390,14 +1390,46 @@ function isAdmin(){ return !SHARE_KEY && (STATE ? (STATE.role||'admin')==='admin
 function isSeller(){ return STATE && STATE.role==='seller'; }
 function hideMoney(){ return !!(STATE && STATE.hideMoney); }
 
-async function post(payload){
+/* Every write carries a one-off id, so if it has to be sent again the server
+   recognises it and does the work only once. */
+let opCounter = 0;
+function newOpId(){
+  opCounter++;
+  return 'op' + Date.now().toString(36) + '_' + opCounter + '_' +
+         Math.random().toString(36).slice(2,8);
+}
+
+async function post(payload, opts){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
   const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
   const txt = await res.text();
-  let d; try{d=JSON.parse(txt);}catch(e){throw new Error('The server sent something unreadable. Check the deployment address and access settings.');}
+  let d;
+  try{ d=JSON.parse(txt); }
+  catch(e){
+    /* The reply could not be read — but the work may well have been done.
+       Rather than calling it a failure and inviting a second press, check
+       whether it actually landed. Retrying is safe now: the id above means the
+       server will not repeat itself. */
+    const err = new Error('The reply could not be read.');
+    err.unreadable = true;
+    throw err;
+  }
   if(!d.ok) throw new Error(d.error||'That did not go through.');
   return d;
+}
+
+/* Send a write, and if the reply is unreadable try once more with the same id.
+   The server treats the repeat as the same request, so this can only ever have
+   the effect of one. */
+async function postWrite(payload){
+  const withId = Object.assign({opId:newOpId()}, payload);
+  try{ return await post(withId); }
+  catch(err){
+    if(!err.unreadable) throw err;
+    await new Promise(r=>setTimeout(r, 700));
+    return await post(withId);          // same id — the server will not redo it
+  }
 }
 
 function derive(){
@@ -1553,7 +1585,7 @@ async function flushPending(){
   try{
     while(PENDING.length){
       const next = PENDING[0];
-      try{ await post(next.payload); }
+      try{ await postWrite(next.payload); }
       catch(err){
         if(isOffline(err)){
           /* Still no signal. Give up after enough attempts and say so, rather
@@ -1602,7 +1634,7 @@ function commit(payload, apply, okMsg){
   if(okMsg) toast(okMsg);
 
   inflight++; saveTotal++; setStatus('load','Saving…'); saveProgress();
-  post(payload).then(d=>{
+  postWrite(payload).then(d=>{
     op.rev = d.rev;
     scheduleSync();
   }).catch(err=>{
@@ -1637,7 +1669,7 @@ async function commitSync(payload, okMsg){
   const btns=[...document.querySelectorAll('#modal .btn')]; btns.forEach(b=>b.disabled=true);
   setStatus('load','Saving…');
   try{
-    await post(payload);
+    await postWrite(payload);
     await pull();
     closeModal();
     if(okMsg) toast(okMsg);
@@ -5538,7 +5570,7 @@ function partnerBookModal(id, editId){
 /* A few of these run back to back, so they share one quiet post rather than
    each redrawing the page. */
 async function postQuiet(payload){
-  try{ setStatus('load','Saving…'); return await post(payload); }
+  try{ setStatus('load','Saving…'); return await postWrite(payload); }
   catch(err){ toast(err.message,true); return null; }
 }
 
