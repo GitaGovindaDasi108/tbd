@@ -829,7 +829,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b72</span>
+    <span class="build-tag" title="Which version of the page is loaded">b73</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1423,12 +1423,19 @@ async function post(payload, opts){
    The server treats the repeat as the same request, so this can only ever have
    the effect of one. */
 async function postWrite(payload){
-  const withId = Object.assign({opId:newOpId()}, payload);
-  try{ return await post(withId); }
+  /* The id is fixed to the CHANGE, not to the attempt.
+
+     It used to be minted afresh on every send, so a change waiting in the
+     offline queue got a new id each time it was retried and the server treated
+     it as brand new — which is how something deleted could come back, and how a
+     save could land twice. Stamped once here, every later attempt is recognised
+     as the same request. */
+  if(!payload.opId) payload.opId = newOpId();
+  try{ return await post(payload); }
   catch(err){
     if(!err.unreadable) throw err;
     await new Promise(r=>setTimeout(r, 700));
-    return await post(withId);          // same id — the server will not redo it
+    return await post(payload);         // same id — the server will not redo it
   }
 }
 
@@ -1576,7 +1583,30 @@ function showPending(){
   if(!el) return;
   if(!PENDING.length){ el.style.display='none'; return; }
   el.style.display='';
-  el.textContent = `⛆ ${PENDING.length} waiting for a signal`;
+  // Tappable: a queue that will not clear needs a way out that isn't
+  // clearing the browser's storage by hand.
+  el.textContent = `⛆ ${PENDING.length} waiting — tap to discard`;
+  el.style.cursor = 'pointer';
+  el.onclick = ()=>{
+    if(!confirm(PENDING.length + ' change(s) are waiting to send.\n\n'
+      + 'Discard them? Anything already saved on the server stays. '
+      + 'Anything not saved will need doing again.')) return;
+    PENDING = []; pendingSave(); showPending();
+    toast('Queue cleared');
+    pull().catch(()=>{});
+  };
+}
+
+/* Anything left over from an older version of the app has no id, so resending
+   it could duplicate work. Those are dropped once, on load. */
+function pendingPrune(){
+  const before = PENDING.length;
+  PENDING = PENDING.filter(x => x && x.payload && x.payload.opId);
+  if(PENDING.length !== before){
+    pendingSave();
+    console.warn('Discarded', before - PENDING.length,
+      'queued change(s) from an older version that could not be resent safely.');
+  }
 }
 /** Send anything held on the device, oldest first. */
 async function flushPending(){
@@ -1601,7 +1631,14 @@ async function flushPending(){
           }
           break;
         }
-        PENDING.shift(); pendingSave();     // the server refused it; it will never succeed
+        if(err.unreadable){
+          // Cannot tell whether it landed. The id makes a resend safe, so keep
+          // it for one more pass rather than guessing either way.
+          next.tries = (next.tries||0) + 1;
+          pendingSave();
+          if(next.tries < 4) break;
+        }
+        PENDING.shift(); pendingSave();     // the server refused it outright
         toast('One change was refused — ' + err.message, true);
         continue;
       }
@@ -1628,6 +1665,7 @@ function saveProgress(){
 }
 
 function commit(payload, apply, okMsg){
+  payload.opId = payload.opId || newOpId();   // fixed now, survives any retry
   const op = { apply };
   OPS.push(op);
   STATE = derive(); renderAll(); closeModal();
@@ -1638,6 +1676,15 @@ function commit(payload, apply, okMsg){
     op.rev = d.rev;
     scheduleSync();
   }).catch(err=>{
+    if(err.unreadable){
+      /* The reply could not be read, which is not the same as failing. The
+         write has very likely landed — so rather than snatching the change back
+         off the screen and reporting an error, ask the server what it actually
+         has. Whatever it says becomes the truth. */
+      op.rev = -1;                       // hold the change until the answer comes
+      pull().catch(()=>{});
+      return;
+    }
     if(isOffline(err)){
       // No signal. Keep the change on screen and the request on the device.
       op.rev = -1;                       // never dropped by a sync it never saw
@@ -1666,6 +1713,7 @@ function commit(payload, apply, okMsg){
 /* Returns true only if the write landed, so a caller that wants to carry on
    (reopening a panel, say) doesn't do so on top of a failure. */
 async function commitSync(payload, okMsg){
+  payload.opId = payload.opId || newOpId();
   const btns=[...document.querySelectorAll('#modal .btn')]; btns.forEach(b=>b.disabled=true);
   setStatus('load','Saving…');
   try{
@@ -1676,6 +1724,18 @@ async function commitSync(payload, okMsg){
     setStatus('ok','Saved · '+clock());
     return true;
   }catch(err){
+    if(err.unreadable){
+      /* Unreadable is not the same as failed. Check what the server has before
+         telling anyone anything — this is what produced an error message for a
+         change that had in fact been made. */
+      try{
+        await pull();
+        closeModal();
+        if(okMsg) toast(okMsg);
+        setStatus('ok','Saved · '+clock());
+        return true;
+      }catch(e2){ /* fall through and report honestly */ }
+    }
     btns.forEach(b=>b.disabled=false);
     const e=$('#modalErr'); if(e) e.textContent=err.message; else toast(err.message,true);
     setStatus('bad','Error');
@@ -6592,7 +6652,7 @@ document.addEventListener('click',e=>{
   // Pick up where you left off — before the first paint, so the page never
   // flashes the wrong region on the way to the right one.
   loadPos();
-  pendingLoad(); showPending(); flushPending();
+  pendingLoad(); pendingPrune(); showPending(); flushPending();
   // A share link asks who is holding it before anything gets recorded.
   if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
   // Draw last session's data straight away so the page is usable on open.
