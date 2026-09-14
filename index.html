@@ -829,7 +829,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b73</span>
+    <span class="build-tag" title="Which version of the page is loaded">b74</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2737,6 +2737,21 @@ function cleanPhone(v){
 }
 
 /* ---- Sale / Pre-order / Edit ---- */
+/* Every place in this region a sale could have happened — the warehouse, any of
+   its events, and anyone storing books for it. A sale entered against the
+   warehouse when it really happened at a festival can be put right here. */
+function saleLocOptions(current){
+  const reg = currentRegion();
+  const rid = reg ? reg.regionId : CUR_REGION;
+  const out = [];
+  if(reg) out.push({id:reg.whLoc, name:reg.name+' — Warehouse'});
+  eventsOfRegion(rid).forEach(e=>out.push({id:e.eventId, name:e.name}));
+  holdersOf(rid).forEach(h=>out.push({id:h.holderId, name:h.name+' (storing books)'}));
+  // Never lose sight of where it is now, even if that place has since gone.
+  if(current && !out.some(x=>x.id===current)) out.unshift({id:current, name:locName(current)});
+  return out.map(x=>`<option value="${esc(x.id)}" ${x.id===current?'selected':''}>${esc(x.name)}</option>`).join('');
+}
+
 function saleModal(opts){
   const book=bookById(opts.bookId);
   const loc=opts.loc||CUR_LOC;
@@ -2818,6 +2833,10 @@ function saleModal(opts){
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
       <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
+      ${edit ? `<div class="field"><label>Where it was sold</label>
+        <select id="csLoc">${saleLocOptions(edit.location)}</select>
+        <div class="muted-note">Moving it also moves the copy — it goes back on the old
+          shelf and comes off the new one.</div></div>` : ''}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -2938,13 +2957,22 @@ function saleModal(opts){
 
     const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
-      commit({action:'editSale',saleId:edit.saleId,type:edit.type,location:edit.location,bookId:edit.bookId,
+      const newLoc = ($('#csLoc')||{}).value || edit.location;
+      const moved = newLoc !== edit.location;
+      commit({action:'editSale',saleId:edit.saleId,type:edit.type,
+              location:newLoc,bookId:edit.bookId,
               legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur},
         st=>{ const s=findSale(st,edit.saleId); if(!s)return;
+              /* If the sale moved, the copy moves with it: back onto the shelf
+                 it was wrongly taken from, and off the one it really left. */
+              if(moved && edit.type==='SALE' && edit.bookId){
+                invAdd(st, edit.location, edit.bookId, 1);
+                invAdd(st, newLoc, edit.bookId, -1);
+              }
               Object.assign(s, legFields(L),
-                {pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments,
+                {location:newLoc,pending,paid:!pending&&dueamt<=0,dueamt,duecur,name,phone,comments,
                  changeamt,changecur,ts:tsVal||s.ts}); },
-        'Sale updated');
+        moved ? 'Moved to '+locName(newLoc) : 'Sale updated');
     }else{
       const id=tmpId();
       commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
