@@ -232,6 +232,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .rp-cells{display:flex;gap:5px;flex:1 1 55%;flex-wrap:wrap;justify-content:flex-end}
 .bk-row.off{opacity:.45}
 .bk-row .rp-name{display:flex;align-items:center;gap:7px;cursor:pointer}
+.pt-row{display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:14px;cursor:pointer}
+.pt-row input{width:17px;height:17px}
 .rp-add{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .rp-add input{flex:1 1 180px;border:1px solid var(--line-d);border-radius:8px;padding:7px 9px;font-size:12.5px}
 .rp-add select{border:1px solid var(--line-d);border-radius:8px;padding:7px 9px;font-size:12.5px}
@@ -829,7 +831,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b74</span>
+    <span class="build-tag" title="Which version of the page is loaded">b76</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1966,6 +1968,8 @@ function renderAdmin(){
   // 1 — money, people, access
   if(admin) cols[0].push(`<button class="btn" data-act="cash">💵 Cash</button>`);
   cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
+  if(admin && !season)
+    cols[0].push(`<button class="btn" data-act="paytypes">💳 Payments taken here</button>`);
   if(admin) cols[0].push(season
     ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share links…</button>`
     : (isWarehouseLoc(CUR_LOC) ? `<button class="btn" data-act="sharelinks">🔗 Share links</button>` : ''));
@@ -2713,8 +2717,24 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 const mHead = t => `<h3>${esc(t)}<button class="x" onclick="closeModal()" aria-label="Close">×</button></h3>`;
 
+/* What can be taken where you're standing.
+
+   An event may set its own list, a region may set one, and otherwise the tour's
+   default applies. Blank at a level means "use the one above", so a place only
+   records a difference when there actually is one. */
+function curPayTypes(){
+  const all = STATE.payTypes||['Cash','Card','Zelle','PayPal','Wise','Other','Gift'];
+  if(CUR_LEVEL==='event'){
+    const e=(STATE.events||[]).find(x=>x.eventId===CUR_LOC);
+    if(e && (e.payTypes||[]).length) return e.payTypes;
+  }
+  const r=currentRegion();
+  if(r && (r.payTypes||[]).length) return r.payTypes;
+  return all;
+}
+
 function payTypeOptions(includeMixed,includeGift){
-  const base=(STATE.payTypes||['Cash','Zelle','PayPal','Wise','Gift']).filter(t=>includeGift||t!=='Gift');
+  const base=curPayTypes().filter(t=>includeGift||t!=='Gift');
   let opts=base.map(t=>`<option value="${t}">${t}</option>`).join('');
   if(includeMixed) opts+=`<option value="Mixed">Mixed (two payments)</option>`;
   return opts;
@@ -5319,6 +5339,77 @@ function newSeasonModal(){
   });
 }
 
+/* Choosing what can be taken here.
+
+   Deliberately scoped to the place you are standing in: a card machine that
+   turns up at one festival is that festival's business, not the tour's. */
+function payTypesModal(){
+  const isEvent = CUR_LEVEL==='event';
+  const reg = currentRegion();
+  if(!isEvent && !reg) return;
+  const kind = isEvent ? 'event' : 'region';
+  const id   = isEvent ? CUR_LOC : reg.regionId;
+  const here = isEvent
+    ? (((STATE.events||[]).find(x=>x.eventId===CUR_LOC)||{}).payTypes || [])
+    : ((reg.payTypes)||[]);
+  const inherited = here.length===0;
+  const active = new Set(inherited ? curPayTypes() : here);
+  // Everything the tour knows, plus anything this place has added of its own.
+  const known = [...new Set([...(STATE.payTypes||[]), ...here])];
+
+  openModal(`
+    ${mHead('Payments taken at ' + esc(isEvent ? locName(CUR_LOC) : reg.name))}
+    <div class="m-body">
+      <div class="hint">${inherited
+        ? 'Following ' + (isEvent ? 'the region' : 'the tour') + ' at the moment. Change anything here and this place keeps its own list.'
+        : 'This place has its own list. Clear it to follow ' + (isEvent ? 'the region' : 'the tour') + ' again.'}</div>
+
+      <div id="ptList">${known.map(t=>`
+        <label class="pt-row">
+          <input type="checkbox" class="pt-box" value="${esc(t)}" ${active.has(t)?'checked':''}>
+          <span>${esc(t)}</span>
+        </label>`).join('')}</div>
+
+      <div class="cash-sub">Add another</div>
+      <div class="rp-add">
+        <input id="ptNew" type="text" placeholder="e.g. Revolut, bank transfer">
+        <button type="button" class="btn btn-ghost btn-sm" id="ptAdd">Add</button>
+      </div>
+      <div class="hint">Anything you add here can be used straight away. It stays on this
+        ${isEvent?'event':'region'} unless you add it elsewhere too.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      ${inherited?'':`<button class="btn btn-ghost btn-sm" id="ptClear">Follow ${isEvent?'the region':'the tour'}</button>`}
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="ptSave">Save</button>
+    </div>`, true);
+
+  $('#ptAdd').addEventListener('click',()=>{
+    const name=$('#ptNew').value.trim();
+    if(!name){ $('#modalErr').textContent='Type a name first.'; return; }
+    if([...document.querySelectorAll('#modal .pt-box')].some(b=>b.value.toLowerCase()===name.toLowerCase())){
+      $('#modalErr').textContent='That one is already listed.'; return;
+    }
+    $('#ptList').insertAdjacentHTML('beforeend',
+      `<label class="pt-row"><input type="checkbox" class="pt-box" value="${esc(name)}" checked>
+        <span>${esc(name)}</span></label>`);
+    $('#ptNew').value=''; $('#modalErr').textContent='';
+  });
+
+  const clear=$('#ptClear');
+  if(clear) clear.addEventListener('click',async ()=>{
+    if(await commitSync({action:'setPayTypes', kind, id, types:[]}, 'Now following the level above')) closeModal();
+  });
+
+  $('#ptSave').addEventListener('click',async ()=>{
+    const types=[...document.querySelectorAll('#modal .pt-box')].filter(b=>b.checked).map(b=>b.value);
+    if(!types.length){ $('#modalErr').textContent='Keep at least one way of paying.'; return; }
+    if(await commitSync({action:'setPayTypes', kind, id, types}, 'Saved')) closeModal();
+  });
+}
+
+
 function seasonsModal(){
   const list = STATE.seasons||[];
   const active = STATE.activeSeason;
@@ -6497,6 +6588,7 @@ document.addEventListener('click',e=>{
   if(a==='reopenhere'){ reopenHere(); return; }
   if(a==='pick'){ pickRegionThen(t.dataset.then); return; }
   if(a==='pickgo'){ closeModal(); goTo('region', t.dataset.region); setTimeout(()=>runPicked(t.dataset.then),0); return; }
+  if(a==='paytypes'){ payTypesModal(); return; }
   if(a==='seasons'){ seasonsModal(); return; }
   if(a==='seasonedit'){ seasonEditModal(t.dataset.id); return; }
   if(a==='seasongo'){ closeModal(); switchSeason(t.dataset.id); return; }
