@@ -835,7 +835,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b77</span>
+    <span class="build-tag" title="Which version of the page is loaded">b78</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2015,8 +2015,13 @@ function renderAdmin(){
       cols[1].push(`<button class="btn" data-act="transfer" data-mode="return">Return to warehouse</button>`);
     }
   }
-  if(admin && (STATE.seasons||[]).length>1 && !season && isWarehouseLoc(CUR_LOC))
-    cols[1].push(`<button class="btn" data-act="seasonxfer">🗓 Hand stock to another season</button>`);
+  /* Reachable from anywhere inside a region, not only while standing at its
+     warehouse — the dialog asks which shelf the books are coming from anyway. */
+  if(admin && (STATE.seasons||[]).length>1){
+    cols[1].push(season
+      ? `<button class="btn" data-act="pick" data-then="seasonxfer">🗓 Hand stock to another season…</button>`
+      : `<button class="btn" data-act="seasonxfer">🗓 Hand stock to another season</button>`);
+  }
   cols[1].push(`<button class="btn" data-act="transfers">📦 Transfer record</button>`);
 
   // 3 — where the books are
@@ -2039,6 +2044,7 @@ function renderAdmin(){
     cols[2].push(`<button class="btn" data-act="holders">🏠 Devotees storing books</button>`);
     const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
     cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
+    cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order</button>`);
   }
 
   // 4 — the region or event itself
@@ -5040,12 +5046,50 @@ function regionModal(edit){
     cb.closest('.bk-row').classList.toggle('off', !cb.checked);
   });
   // A brand-new title: save it, then reopen so it appears with a price box.
-  $('#rgAddBook').addEventListener('click',()=>{
+  /* Add a title without losing the dialog.
+
+     This used to fire the save and, 300ms later, reopen the whole dialog — two
+     things racing each other. The save's own "close the modal" could land after
+     the reopen, shutting the fresh one, so the title looked as though it had
+     never been added even though it had. Now it saves, waits, and rebuilds just
+     the price grid in place, keeping every price already typed. */
+  $('#rgAddBook').addEventListener('click',async ()=>{
+    const btn=$('#rgAddBook');
     const name=$('#rgNewBook').value.trim();
     if(!name){ $('#modalErr').textContent='Type the title first.'; return; }
+    if((STATE.books||[]).some(b=>b.name.toLowerCase()===name.toLowerCase())){
+      $('#modalErr').textContent='There is already a title with that name.'; return;
+    }
     $('#modalErr').textContent='';
-    commitSync({action:'addBook',name,cat:$('#rgNewCat').value},'Title added');
-    setTimeout(()=>pull().then(()=>regionModal(isEdit?regionById(edit.regionId):undefined)),300);
+    btn.disabled=true; btn.textContent='Adding…';
+    try{
+      await postWrite({action:'addBook', name, cat:$('#rgNewCat').value});
+      await pull();
+      // Keep whatever has been typed, then redraw with the new title included.
+      const typed={};
+      [...document.querySelectorAll('#modal .rp[data-book]')].forEach(i=>{
+        if(i.value!=='') typed[i.dataset.book+'|'+i.dataset.cur]=i.value;
+      });
+      const ticked = new Set([...document.querySelectorAll('#modal .bk-cb')]
+        .filter(c=>c.checked).map(c=>c.value));
+      const newBook = (STATE.books||[]).find(b=>b.name.toLowerCase()===name.toLowerCase());
+      if(newBook) ticked.add(newBook.id);
+      $('#rgPrices').innerHTML = priceRows(parseCurs($('#rgCur').value));
+      [...document.querySelectorAll('#modal .rp[data-book]')].forEach(i=>{
+        const k=i.dataset.book+'|'+i.dataset.cur;
+        if(typed[k]!==undefined) i.value=typed[k];
+      });
+      [...document.querySelectorAll('#modal .bk-cb')].forEach(c=>{
+        c.checked = ticked.has(c.value);
+        c.closest('.bk-row').classList.toggle('off', !c.checked);
+      });
+      $('#rgNewBook').value='';
+      toast('Added ' + name);
+    }catch(err){
+      $('#modalErr').textContent = err.message || 'Could not add that title.';
+    }finally{
+      btn.disabled=false; btn.textContent='Add';
+    }
   });
   $('#rgCur').addEventListener('change',()=>{
     const typed={};
@@ -5304,6 +5348,7 @@ function runPicked(act){
   if(act==='deleteregion'){ deleteRegionModal(); return; }
   if(act==='closehere'){ closeModalFor('region'); return; }
   if(act==='newevent'){ eventModal(); return; }
+  if(act==='seasonxfer'){ seasonTransferModal(); return; }
 }
 
 /* ---- Hand-picked order ----
@@ -5523,6 +5568,55 @@ function seasonEditModal(id){
     const name=$('#seName').value.trim();
     if(!name){ $('#modalErr').textContent='Give it a name.'; return; }
     if(await commitSync({action:'saveSeason', seasonId:id, name},'Saved')) seasonsModal();
+  });
+}
+
+/* Arrange the books themselves.
+
+   The shelf is read left to right dozens of times a day, so the order matters:
+   whatever is selling should be near the top. Same up/down handling as regions
+   and events, so it behaves the way the rest of the app already does. */
+function reorderBooksModal(){
+  let list = (STATE.books||[]).map(b=>({
+    id:b.id, name:b.name, cat:(b.cat==='aotm'?'aotm':'big'),
+    partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
+  }));
+  if(!list.length){ toast('No titles yet.', true); return; }
+
+  function draw(){
+    $('#rbList').innerHTML = list.map((x,i)=>`
+      <div class="ro-row">
+        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
+          ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}</span>
+        <span class="ro-btns">
+          <button class="cash-mini" data-rb-up="${i}" ${i===0?'disabled':''}>↑</button>
+          <button class="cash-mini" data-rb-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
+        </span>
+      </div>`).join('');
+    [...document.querySelectorAll('#modal [data-rb-up]')].forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.rbUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw();
+    });
+    [...document.querySelectorAll('#modal [data-rb-dn]')].forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.rbDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw();
+    });
+  }
+
+  openModal(`
+    ${mHead('Change book order')}
+    <div class="m-body">
+      <div class="hint">This is the order titles appear on every shelf and in every list,
+        everywhere on the tour.</div>
+      <div id="rbList"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="rbSave">Save order</button>
+    </div>`, true);
+  draw();
+
+  $('#rbSave').addEventListener('click',async ()=>{
+    await commitSync({action:'reorderBooks', ids:list.map(x=>x.id)}, 'Order saved');
   });
 }
 
@@ -6657,6 +6751,7 @@ document.addEventListener('click',e=>{
       .then(ok=>{ if(ok){ CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); seasonsModal(); } });
     return;
   }
+  if(a==='reorderbooks'){ reorderBooksModal(); return; }
   if(a==='reorder'){ reorderModal(t.dataset.kind); return; }
   if(a==='partners'){ partnersModal(); return; }
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
