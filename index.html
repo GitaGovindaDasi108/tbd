@@ -249,6 +249,10 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .rp-fill{background:var(--paper2);border-radius:8px;padding:5px 6px;margin:3px 0}
 .rp-fill .rp-name{font-weight:800;font-size:12px;color:var(--saffron-d)}
 .rp-all{border-style:dashed !important}
+/* Worked out from the local price — still yours to change. */
+.rp-auto{background:#F4F8F4;color:#2E6B4F}
+.rp-local{color:var(--saffron-d,#8A4A12)}
+.rp-loc-tag{font-size:8.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;opacity:.75}
 .rp{width:82px;border:1px solid var(--line-d);border-radius:7px;padding:6px 7px;font-size:12.5px}
 .muted-note{font-weight:400;color:var(--muted);font-size:11px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -831,7 +835,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b76</span>
+    <span class="build-tag" title="Which version of the page is loaded">b77</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1045,6 +1049,22 @@ function priceFor(book,cur){
 }
 /* Every currency the tour uses, not just the original three — a Macedonian sale
    must convert, or the season totals silently read $0. */
+/* The reverse of toUSD: what a dollar amount is worth in some currency. */
+function fromUSD(usd,cur){
+  usd=Number(usd)||0; if(!usd) return 0;
+  cur=String(cur||'').toUpperCase();
+  if(cur==='USD') return usd;
+  const r=STATE.rates||{};
+  const per=(r.perUsd&&Number(r.perUsd[cur])) ||
+            (cur==='PLN'?Number(r.plnPerUsd):cur==='EUR'?Number(r.eurPerUsd):0);
+  return per>0 ? usd*per : 0;
+}
+/** Convert straight between two currencies, via the dollar the rates are kept in. */
+function convertCur(amt,from,to){
+  if(String(from).toUpperCase()===String(to).toUpperCase()) return Number(amt)||0;
+  return fromUSD(toUSD(amt,from), to);
+}
+
 function toUSD(amt,cur){
   amt=Number(amt)||0; if(!amt) return 0;
   cur=String(cur||'').toUpperCase();
@@ -4908,9 +4928,12 @@ function regionModal(edit){
 
   function priceRows(curList){
     // Header naming each currency column, so it's never a guess which box is which.
+    /* The first currency is the local one and drives the others, so it is
+       marked — otherwise the rule is invisible and surprising. */
     const head = `<div class="rp-row rp-head"><div class="rp-name"></div>
-      <div class="rp-cells">${curList.map(c=>
-        `<span class="rp-cur">${esc(CUR_SYM[c]||'')} ${esc(c)}</span>`).join('')}</div></div>`;
+      <div class="rp-cells">${curList.map((c,i)=>
+        `<span class="rp-cur ${i===0?'rp-local':''}">${esc(CUR_SYM[c]||'')} ${esc(c)}${
+          i===0?'<br><span class="rp-loc-tag">local</span>':''}</span>`).join('')}</div></div>`;
 
     // Most regions price every big book the same, so fill them in one go.
     const fill = (label,cat)=>`<div class="rp-row rp-fill"><div class="rp-name">${label}
@@ -4949,7 +4972,9 @@ function regionModal(edit){
         <input id="rgCur" type="text" placeholder="MKD, EUR, USD" value="${esc(cur)}"></div>
       <div class="cash-sub">Titles &amp; prices</div>
       <div class="hint">Untick a title this region won't offer and it stays out of the sale
-        screens. Use the "fill all" row to price a whole category at once.</div>
+        screens. Use the "fill all" row to price a whole category at once.
+        Set a price in the <b>local</b> currency — the first one listed — and the others
+        are worked out at today's rate. Change any of those and it stays as you set it.</div>
       <div id="rgPrices">${priceRows(parseCurs(cur))}</div>
       <div class="rp-add">
         <input id="rgNewBook" type="text" placeholder="Add a title — e.g. Sri Radha (Spanish)">
@@ -4968,14 +4993,45 @@ function regionModal(edit){
 
   // Re-draw the price grid whenever the currency list changes, keeping anything typed.
   // Typing in a "fill all" box writes that price into every book of that kind.
-  $('#rgPrices').addEventListener('input',e=>{
-    const src=e.target.closest('.rp-all'); if(!src) return;
-    const cat=src.dataset.cat, cur=src.dataset.cur, v=src.value;
-    (STATE.books||[]).forEach(b=>{
-      if((isAotm(b)?'aotm':'big')!==cat) return;
-      const box=document.querySelector(`#modal .rp[data-book="${b.id}"][data-cur="${cur}"]`);
-      if(box) box.value=v;
+  /* The first currency listed is the local one, and it drives the rest.
+
+     Set a book at 30 € in Spain and the other currencies fill themselves in at
+     today's rate — but only from the local one. Typing directly into a
+     non-local box changes that box alone, because a price set deliberately in
+     dollars should not be overwritten by arithmetic. Every figure stays
+     editable: the conversion is a starting point, not a rule. */
+  function localCur(){
+    const list = $('#rgCur').value.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean);
+    return list[0] || '';
+  }
+  function spreadFrom(bookId, from, value){
+    const amt = Number(value);
+    const others = [...document.querySelectorAll(`#modal .rp[data-book="${bookId}"]`)]
+      .filter(x=>x.dataset.cur !== from);
+    others.forEach(box=>{
+      if(value==='' || !(amt>0)){ box.value=''; return; }
+      const conv = convertCur(amt, from, box.dataset.cur);
+      // Two decimals, but whole numbers stay whole rather than reading 30.00.
+      box.value = conv ? String(Math.round(conv*100)/100) : '';
+      box.classList.add('rp-auto');
     });
+  }
+
+  $('#rgPrices').addEventListener('input',e=>{
+    const all=e.target.closest('.rp-all');
+    if(all){
+      const cat=all.dataset.cat, cur=all.dataset.cur, v=all.value;
+      (STATE.books||[]).forEach(b=>{
+        if((isAotm(b)?'aotm':'big')!==cat) return;
+        const box=document.querySelector(`#modal .rp[data-book="${b.id}"][data-cur="${cur}"]`);
+        if(box){ box.value=v; if(cur===localCur()) spreadFrom(b.id, cur, v); }
+      });
+      return;
+    }
+    const cell=e.target.closest('.rp[data-book]');
+    if(!cell) return;
+    cell.classList.remove('rp-auto');                 // typed by hand now
+    if(cell.dataset.cur === localCur()) spreadFrom(cell.dataset.book, cell.dataset.cur, cell.value);
   });
 
   // Dim a title the moment it's unticked, so the choice reads at a glance.
