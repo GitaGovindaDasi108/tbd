@@ -443,6 +443,8 @@ body.busy #busyLabel{opacity:1}
 .tcard{background:var(--paper);border:1px solid var(--line);border-radius:11px;
   padding:8px 12px 9px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
 .tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--saffron-d)}
+.tcard.other::before{background:#7A5AA8}
+.tcard.other .value{color:#5E3F8A}
 .tcard.aotm::before{background:var(--blue)}
 .tcard.usd::before{background:var(--green)}
 .tcard.pend::before{background:var(--clay)}
@@ -638,7 +640,10 @@ body.busy #busyLabel{opacity:1}
 .ptg-s{background:var(--paper2);color:var(--muted);font-size:12.5px}
 .ptg-s.ptg-first{padding-left:28px;font-weight:600;color:var(--ink)}
 .ptg-t{font-weight:700;color:var(--plum);border-top:2px solid var(--line-d);border-bottom:none}
-.ptg .usd{color:var(--green);font-weight:600}
+/* Every USD equivalent above the final line is a working figure, so it reads in
+   the same quiet ink as the rest. Green is kept for the one number that answers
+   the question — what the tour actually took. */
+.ptg .usd{color:var(--ink);font-weight:600}
 .ptg .z{color:var(--line-d)}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
@@ -649,9 +654,14 @@ body.busy #busyLabel{opacity:1}
 .ptg-r.ptg-first{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden}
 .ptg-t.ptg-first,.ptg-s.ptg-first{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptg-s.ptg-don{color:var(--gold)}
-.ptg-t.ptg-net{border-top:2px solid var(--line-d);color:var(--plum);font-weight:800}
+/* The one figure that answers the question — what the tour actually took — so
+   it carries the green. Declared last so nothing above it wins on order. */
+.ptg-t.ptg-net,
+.ptg-t.ptg-net.usd{border-top:2px solid var(--line-d);color:var(--green);font-weight:800}
 .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
-  text-transform:uppercase;color:var(--muted);border-top:2px solid var(--line-d)}
+  text-transform:uppercase;color:var(--muted);border-top:2px solid var(--line-d);
+  /* Reads as a heading for the rows beneath it, so it sits where their labels do. */
+  text-align:left;justify-content:flex-start}
 .ptg-empty{color:var(--muted);justify-content:flex-start}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
@@ -865,7 +875,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b89</span>
+    <span class="build-tag" title="Which version of the page is loaded">b91</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1069,8 +1079,17 @@ function bookById(id){
   idx();
   return _bookIdx[id] || {id,name:id,cat:'big',usd:0,pln:0,eur:0};
 }
-function catOf(id){return bookById(id).cat==='aotm'?'aotm':'big';}
-function isAotm(b){return b.cat==='aotm';}
+/* Three kinds of title, not two.
+
+   'other' used to be collapsed into 'big' here, so a pamphlet counted as a Big
+   Book in every total and had no section of its own anywhere. These are the one
+   place the categories are decided. */
+const CATS = ['big','aotm','other'];
+const CAT_LABEL = {big:'Big Books', aotm:'AoTM — Adventures', other:'Other'};
+function catOfBook(b){ const c=(b&&b.cat)||'big'; return CATS.includes(c) ? c : 'big'; }
+function catOf(id){ return catOfBook(bookById(id)); }
+function isAotm(b){return catOfBook(b)==='aotm';}
+function isOther(b){return catOfBook(b)==='other';}
 /* Price comes from this region's own price list, falling back to the built-in
    figures only if the region hasn't been priced yet. */
 function priceFor(book,cur){
@@ -2321,6 +2340,7 @@ function renderTotals(){
     && (x.type==='PREORDER' || wasPreorderSale(x))).length;
   const bigSold=n('SALE','big'), bigPre=pre('big'), bigGift=g('big');
   const aotmSold=n('SALE','aotm'), aotmPre=pre('aotm'), aotmGift=g('aotm');
+  const othSold=n('SALE','other'), othPre=pre('other'), othGift=g('other');
 
   let totUsd=0, pendUsd=0;
   const got={}, due={};
@@ -2343,9 +2363,14 @@ function renderTotals(){
       // pre-order taken.
       const bigOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='big' && !isGift(x)).length;
       const aotmOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='aotm' && !isGift(x)).length;
+      const othOut  = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='other' && !isGift(x)).length;
       return `
     <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigOut+bigGift}</div>
       <div class="sub"><b>${bigSold}</b> sold${bigGift?` · (<b>${bigGift}</b> gift${bigGift===1?'':'s'})`:''}${bigPre?` · (<b>${bigPre}</b> of ${bigSold+bigOut+bigGift} pre-ordered)`:''}</div></div>
+    ${(othSold+othOut+othGift) ? `<div class="tcard other"><div class="label">Other Total</div>
+      <div class="value">${othSold+othOut+othGift}</div>
+      <div class="sub"><b>${othSold}</b> sold${othGift?` · (<b>${othGift}</b> gift${othGift===1?'':'s'})`:''}${
+        othPre?` · (<b>${othPre}</b> of ${othSold+othOut+othGift} pre-ordered)`:''}</div></div>` : ''}
     <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmOut+aotmGift}</div>
       <div class="sub"><b>${aotmSold}</b> sold${aotmGift?` · (<b>${aotmGift}</b> gift${aotmGift===1?'':'s'})`:''}${aotmPre?` · (<b>${aotmPre}</b> of ${aotmSold+aotmOut+aotmGift} pre-ordered)`:''}</div></div>`;
     })()}
@@ -3969,7 +3994,7 @@ function buildReport(part){
   const count = (cat,type) => s.filter(x=>x.bookId && catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
   const gifts = cat => s.filter(x=>x.bookId && catOf(x.bookId)===cat && isGift(x)).length;
   if(want('books')) [['big','BIG BOOKS'],['aotm','ADVENTURES']].forEach(([cat,label])=>{
-    const books = curBooks().filter(b=>(b.cat==='aotm'?'aotm':'big')===cat);
+    const books = curBooks().filter(b=>catOfBook(b)===cat);
     if(!books.length) return;
     const sold=count(cat,'SALE'), pre=count(cat,'PREORDER'), gift=gifts(cat);
     const tot = sold+pre+gift;
@@ -5299,7 +5324,7 @@ function regionModal(edit){
     if(all){
       const cat=all.dataset.cat, cur=all.dataset.cur, v=all.value;
       (STATE.books||[]).forEach(b=>{
-        if((isAotm(b)?'aotm':'big')!==cat) return;
+        if(catOfBook(b)!==cat) return;
         const box=document.querySelector(`#modal .rp[data-book="${b.id}"][data-cur="${cur}"]`);
         if(box){ box.value=v; if(cur===localCur()) spreadFrom(b.id, cur, v); }
       });
@@ -5436,8 +5461,9 @@ function eventModal(edit){
 
 /* ---- Shared builder: one row per title ---- */
 function bulkRows(cols){
-  const big=shelfBooks().filter(b=>!isAotm(b));
+  const big=shelfBooks().filter(b=>catOfBook(b)==='big');
   const aotm=shelfBooks().filter(isAotm);
+  const other=shelfBooks().filter(isOther);
   const row=b=>{
     const c=cols(b);
     return `<div class="bulk-row">
@@ -5449,6 +5475,7 @@ function bulkRows(cols){
   };
   let h='<div class="bulk"><div class="bulk-sec">Big Books</div>'+big.map(row).join('');
   if(aotm.length) h+=`<div class="bulk-sec">AoTM — Adventures</div>`+aotm.map(row).join('');
+  if(other.length) h+=`<div class="bulk-sec">Other</div>`+other.map(row).join('');
   return h+'</div>';
 }
 
@@ -5475,6 +5502,7 @@ function stockModal(){
       ${body}
       <div class="bulk-foot totals3">
         <div><span class="tl">Big Books</span><b id="footBig">0</b></div>
+        <div><span class="tl">Other</span><b id="footOther">0</b></div>
         <div><span class="tl">Adventures</span><b id="footAotm">0</b></div>
         <div class="all"><span class="tl">All titles</span><b id="footValue">0</b></div>
       </div>
@@ -5513,12 +5541,14 @@ function stockModal(){
     return now;
   }
   function recalc(){
-    let total=0, big=0, aotm=0;
+    let total=0, big=0, aotm=0, other=0;
     deltas.forEach(i=>{
       const id=i.dataset.book;
       const next=Math.max(0,nextFor(id));
       total+=next;
-      if(isAotm(bookById(id))) aotm+=next; else big+=next;
+      // Three buckets now, so a pamphlet is not counted as a Big Book.
+      const c=catOfBook(bookById(id));
+      if(c==='aotm') aotm+=next; else if(c==='other') other+=next; else big+=next;
       const cell=document.querySelector(`#modal [data-next="${id}"]`);
       cell.textContent=next;
       cell.classList.toggle('zero', next===0);
@@ -5531,6 +5561,7 @@ function stockModal(){
     $('#footValue').textContent=total;
     $('#footBig').textContent=big;
     $('#footAotm').textContent=aotm;
+    if($('#footOther')) $('#footOther').textContent=other;
 
     const lines = loc===WAREHOUSE
       ? deltas.map(i=>shortfallLine(i.dataset.book, nextFor(i.dataset.book))).filter(Boolean)
@@ -5920,7 +5951,7 @@ function makeSortable(container, onDrop){
 
 function reorderBooksModal(){
   let list = (STATE.books||[]).map(b=>({
-    id:b.id, name:b.name, cat:(b.cat==='aotm'?'aotm':'big'),
+    id:b.id, name:b.name, cat:catOfBook(b),
     partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
   }));
   if(!list.length){ toast('No titles yet.', true); return; }
@@ -6252,17 +6283,39 @@ function partnerBookModal(id, editId){
     });
     const stock = $('#cbStock').value===''?null:Math.max(0,Math.round(Number($('#cbStock').value)||0));
 
-    /* One request for the lot — name, kind, price and stock. Four separate
-       calls meant four round trips, and a failure part-way left the rest done. */
+    /* One request for the lot — name, kind, price and stock — applied here at
+       once and saved behind, like a sale.
+
+       It was four separate calls, then one that still waited for the server. The
+       work takes milliseconds; what you were waiting on was the round trip. A
+       new title gets a temporary id until the real one arrives, the same way a
+       new sale does. */
     const cat = existing ? (($('#cbCatEdit')||{}).value || existing.cat) : $('#cbCat').value;
-    const ok = await commitSync({
+    const localId = editId || tmpId();
+    commit({
       action:'saveConsignBook',
       bookId: editId || '', partnerId: id, name, cat,
       regionId: CUR_REGION, location: CUR_LOC,
       prices: Object.keys(prices).length ? prices : null,
       stock: stock
+    }, st=>{
+      st.books = st.books || [];
+      const found = st.books.find(b=>b.id===localId);
+      if(found){ found.name=name; found.cat=cat; }
+      else st.books.push({id:localId, name, cat, usd:0, pln:0, eur:0, partnerId:id});
+
+      if(Object.keys(prices).length){
+        st.prices = st.prices || {};
+        const bag = st.prices[CUR_REGION] = st.prices[CUR_REGION] || {};
+        bag[localId] = Object.assign({}, bag[localId]||{}, prices);
+      }
+      if(stock!==null){
+        const row=(st.inventory||[]).find(i=>i.location===CUR_LOC && i.bookId===localId);
+        if(row) row.qty=stock; else (st.inventory=st.inventory||[]).push({location:CUR_LOC,bookId:localId,qty:stock});
+      }
     }, editId ? 'Saved' : 'Title added');
-    if(ok) partnersModal();
+    closeModal();
+    partnersModal();
   });
 }
 
