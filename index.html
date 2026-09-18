@@ -28,6 +28,9 @@
      money categories are never the same colour. */
   --consign:#2F5D8A; --consign-l:#E4EDF6; --consign-b:#B9CFE6;
   --teal:#1F6B5A; --teal-l:#E3F0EC; --teal-b:#B4D5CB;
+  /* Donations had been sharing gold with AoTM, so the two read as one thing.
+     A warm rose keeps it in the family while telling them apart. */
+  --donate:#9B3B6A; --donate-l:#F7E7EF; --donate-b:#E0BCCE;
   --line:#EBDFC8; --line-d:#DCCBA8;
   --shadow:0 1px 2px rgba(59,42,70,.06), 0 8px 24px rgba(59,42,70,.08);
   --radius:14px;
@@ -535,16 +538,19 @@ body.busy #busyLabel{opacity:1}
   letter-spacing:.3px}
 .pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
-.don-card{background:#FFF6E3;border-color:var(--gold-l)}
+.don-card{background:var(--donate-l);border-color:var(--donate-b)}
 /* Consignment: someone else's book on our table. Marked so it is never mistaken
    for ours, but sold exactly the same way. */
 .book.consign{background:var(--consign-l);border-color:var(--consign-b)}
 .con-tag.log{background:var(--consign-l);color:var(--consign);border-color:var(--consign-b)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
-  font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
-.don-card .bname{color:var(--gold)}
-.don-card .qty-chip{color:var(--gold)}
+  font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle;
+  /* letter-spacing is added after the LAST character as well, which left a gap
+     inside the bubble. Trimmed back by the same amount. */
+  padding-right:calc(7px - .3px)}
+.don-card .bname{color:var(--donate)}
+.don-card .qty-chip{color:var(--donate)}
 /* Inventory heading and its QR button share a line when there's room. */
 .sec-h2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .sec-rep{flex:none;font-size:12px;padding:4px 9px;line-height:1}
@@ -661,14 +667,14 @@ body.busy #busyLabel{opacity:1}
 .ptg .usd{color:var(--ink);font-weight:600}
 .ptg .z{color:var(--line-d)}
 .ptg .tw{color:var(--muted);font-size:11px}
-.ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
+.ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--donate)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
 .ptg-r.ptg-con,.ptg-s.ptg-con{color:var(--consign)}
 /* Names are clipped rather than allowed to shove the numbers sideways. */
 .ptg-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .ptg-r.ptg-first{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden}
 .ptg-t.ptg-first,.ptg-s.ptg-first{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ptg-s.ptg-don{color:var(--gold)}
+.ptg-s.ptg-don{color:var(--donate)}
 /* The one figure that answers the question — what the tour actually took — so
    it carries the green. Declared last so nothing above it wins on order. */
 .ptg-t.ptg-net,
@@ -751,7 +757,7 @@ body.busy #busyLabel{opacity:1}
 .badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;vertical-align:1px}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
-.badge.don{background:#F3E8F7;color:#8A4FA0}
+.badge.don{background:var(--donate-l);color:var(--donate);border:1px solid var(--donate-b)}
 .badge.chg{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.part{background:#FDEBD0;color:#9C5A12}
@@ -892,7 +898,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b93</span>
+    <span class="build-tag" title="Which version of the page is loaded">b94</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
