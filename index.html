@@ -298,6 +298,15 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   border-radius:999px;padding:1px 7px;margin-left:6px}
 .ro-tag.done{background:#E8F3EC;color:#1F6B43;border:1px solid #A9CDB6}
 .ro-tag.pend{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
+/* Drag handle and the gap left behind while a row is being moved. */
+.ro-grip{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+  padding:0 8px 0 2px;color:var(--muted);font-size:15px;line-height:1}
+/* Stops the page scrolling under a finger that is dragging a row. */
+.ro-row{touch-action:none}
+.ro-grip:active{cursor:grabbing}
+.ro-row.ro-lift{position:relative;z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.18);
+  background:var(--paper);border-color:var(--saffron);opacity:.97}
+.ro-gap{border:1.5px dashed var(--line-d);border-radius:9px;margin-bottom:5px;background:#FBF6EC}
 .ro-btns{display:flex;gap:4px;flex:none}
 /* Busy indicator: a small ring by the status text, plus a thin bar across the
    very top so it is visible even when scrolled away from the header. */
@@ -620,6 +629,8 @@ body.busy #busyLabel{opacity:1}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
+.ptg-r.ptg-con,.ptg-s.ptg-con{color:#2F5C8A}
+.ptg-t.ptg-net{border-top:2px solid var(--line-d);color:var(--plum);font-weight:800}
 .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
   text-transform:uppercase;color:var(--muted);border-top:2px solid var(--line-d)}
 .ptg-empty{color:var(--muted);justify-content:flex-start}
@@ -835,7 +846,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b78</span>
+    <span class="build-tag" title="Which version of the page is loaded">b81</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -890,6 +901,7 @@ body.busy #busyLabel{opacity:1}
           <span class="sortbar">Sort
             <button class="sort-btn" data-act="sortlog" data-sort="time">Date</button>
             <button class="sort-btn" data-act="sortlog" data-sort="book">Book</button>
+            <button class="sort-btn" data-act="sortlog" data-sort="pay">Payment</button>
             <button class="sort-btn" data-act="sortlog" data-sort="status">Status</button>
           </span>
           <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
@@ -1181,13 +1193,34 @@ function shelfBooks(){
     ? (STATE.books||[]).filter(b=>b.partnerId && partnerById(b.partnerId))
     : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
   const seen = new Set(ours.map(b=>b.id));
-  return ours.concat(theirs.filter(b=>!seen.has(b.id)));
+  return inRegionOrder(ours.concat(theirs.filter(b=>!seen.has(b.id))));
+}
+
+/* Put a list of books in the order the current region wants them.
+
+   The order lives on the region, so Poland can lead with what sells there
+   without rearranging Macedonia. Anything the region has not placed keeps its
+   natural position behind the ones it has. */
+function inRegionOrder(list){
+  const r = currentRegion();
+  const raw = (r && r.bookOrder) || [];
+  const order = Array.isArray(raw) ? raw : String(raw).split(',').map(x=>x.trim()).filter(Boolean);
+  if(!order.length) return list;
+  const rank = {}; order.forEach((id,i)=>{ rank[id]=i; });
+  return list.map((b,i)=>({b,i})).sort((x,y)=>{
+    const a=rank[x.b.id], c=rank[y.b.id];
+    const aH=a!==undefined, cH=c!==undefined;
+    if(aH&&cH&&a!==c) return a-c;
+    if(aH&&!cH) return -1;
+    if(!aH&&cH) return 1;
+    return x.i-y.i;
+  }).map(x=>x.b);
 }
 
 function curBooks(){
   // Our own titles only — every total in the app is built from these.
   const all = (CUR_LEVEL==='season') ? (STATE.books||[]) : regionBooks(CUR_REGION);
-  return all.filter(b=>!b.partnerId);
+  return inRegionOrder(all.filter(b=>!b.partnerId));
 }
 function curCurrencies(){
   if(CUR_LEVEL==='season') return STATE.currencies||['USD'];
@@ -1251,7 +1284,22 @@ function locName(loc){
   if(loc===WAREHOUSE) return (STATE.warehouseName||'')+' — Warehouse';
   if(loc===SEASON) return STATE.seasonName||'Season';
   const e=(STATE.events||[]).find(e=>e.eventId===loc);
-  return e?e.name:loc;
+  if(e) return e.name;
+  /* Books on the road and books with a devotee are locations too. Without these
+     the transfer log fell back to the raw internal id — a reference number where
+     a name should be. */
+  const h=(STATE.holders||[]).find(x=>x.holderId===loc);
+  if(h) return h.name+' (storing books)';
+  const sp=(STATE.shipments||[]).find(x=>x.shipId===loc);
+  if(sp){
+    const who = sp.mode==='shipping'
+      ? (sp.tracking ? 'courier '+sp.tracking : 'courier')
+      : (sp.carrier || 'a devotee');
+    return 'In transit with '+who+(sp.origin?' from '+sp.origin:'');
+  }
+  if(loc==='BANK') return 'Bank';
+  if(loc==='OUTSIDE') return 'Outside the tour';
+  return loc;
 }
 /* Everything sold at this scope, ours and any consignment. The log, the
    pre-orders and the pending list all work from this, so a consignment sale can
@@ -1739,8 +1787,11 @@ async function commitSync(payload, okMsg){
   const btns=[...document.querySelectorAll('#modal .btn')]; btns.forEach(b=>b.disabled=true);
   setStatus('load','Saving…');
   try{
-    await postWrite(payload);
-    await pull();
+    /* One round trip, not two: the save brings the new state back with it.
+       Falls back to a separate fetch if the server is an older deployment. */
+    const d = await postWrite(Object.assign({wantState:true}, payload));
+    if(d && d.state){ BASE=d.state; REV=d.rev; STATE=derive(); renderAll(); }
+    else await pull();
     closeModal();
     if(okMsg) toast(okMsg);
     setStatus('ok','Saved · '+clock());
@@ -2028,12 +2079,16 @@ function renderAdmin(){
   const shipCount = season
     ? (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').length
     : inboundShipments(CUR_REGION).length + outboundShipments(CUR_REGION).length;
-  /* Stock is only ever added at a region's warehouse. An event's shelf is
-     whatever was carried to it, so letting stock appear there would quietly
-     break the trail of where the books came from. */
+  /* Adjustable wherever you are standing — an event shelf included.
+
+     I had this limited to warehouses, on the reasoning that an event's stock
+     should only ever be what was carried to it. In practice books do turn up at
+     an event by other means, and a count that cannot be corrected where it is
+     wrong is worse than a slightly looser audit trail. Every adjustment is
+     still recorded in the movement log with whatever note you give it. */
   if(season){
     if(admin) cols[2].push(`<button class="btn" data-act="pick" data-then="stock">＋ Add / subtract stock…</button>`);
-  }else if(!shut && isWarehouseLoc(CUR_LOC)){
+  }else if(!shut){
     cols[2].push(`<button class="btn" data-act="stock">＋ Add / subtract stock</button>`);
   }
   /* Where the books came from, who is holding them and whose they are is the
@@ -2044,7 +2099,7 @@ function renderAdmin(){
     cols[2].push(`<button class="btn" data-act="holders">🏠 Devotees storing books</button>`);
     const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
     cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
-    cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order</button>`);
+    if(!season) cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order</button>`);
   }
 
   // 4 — the region or event itself
@@ -2356,7 +2411,11 @@ function renderTitleList(target){
    cell is what made the old version's numbers wander out of their columns.)
    Opening a type just unhides its rows; nothing reflows.                     */
 function renderPayments(target){
-  const sales   = tourSales();    // consignment money has its own page
+  /* Every sale feeds this table, consignment included — the money really did
+     come through these payment types. What keeps it honest is that consignment
+     is tallied in parallel and shown separately inside each row, with a
+     Consignment total at the bottom that can be subtracted. */
+  const sales   = scopedSales();
   const curs    = curCurrencies();
   const panelId = String(target||'body').replace(/\W+/g,'');
 
@@ -2371,10 +2430,24 @@ function renderPayments(target){
   // Tally: type -> currency, and type -> group -> currency. Donations run in
   // parallel so they can behave like any other row.
   const byType={}, byTypeGroup={}, grand={}, don={}, donGroup={};
+  // The consignment share of each of those, so a row can show both.
+  const conType={}, conTypeGroup={}, conGrand={};
   sales.forEach(x=>{
     if(!received(x)) return;
     const g = groups.find(gr=>gr.locs.includes(x.location));
     const isDonation = (x.type === 'DONATION');
+    const isCon = isPartnerSale(x);
+    if(isCon){
+      legs(x).forEach(l=>{
+        if(!l.type || !l.amt) return;
+        (conType[l.type]=conType[l.type]||{})[l.cur]=(conType[l.type][l.cur]||0)+l.amt;
+        conGrand[l.cur]=(conGrand[l.cur]||0)+l.amt;
+        if(g){
+          const bag=(conTypeGroup[l.type]=conTypeGroup[l.type]||{});
+          (bag[g.id]=bag[g.id]||{})[l.cur]=(bag[g.id][l.cur]||0)+l.amt;
+        }
+      });
+    }
     legs(x).forEach(l=>{
       if(!l.type || !l.amt) return;
       // Every column adds up: a donation belongs to the Donations row only, not
@@ -2400,7 +2473,16 @@ function renderPayments(target){
   const num   = (o,c) => { const v=(o&&o[c])||0; return v ? fmt(v) : '<span class="z">0</span>'; };
 
   // One type: its summary row plus a hidden row per group. All siblings.
-  function rowsFor(label, totals, perGroup, key, extraClass){
+  /* What is actually ours: everything taken, less what belongs to the groups
+     whose books we are only selling. */
+  function netOf(all, con){
+    const out={};
+    Object.keys(all||{}).forEach(c=>{ out[c]=(all[c]||0)-((con||{})[c]||0); });
+    Object.keys(con||{}).forEach(c=>{ if(out[c]===undefined) out[c]=-(con[c]||0); });
+    return out;
+  }
+
+  function rowsFor(label, totals, perGroup, key, extraClass, conOf){
     const rowId = 'pay'+panelId+'-'+key;
     let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
         ><span class="tw">▸</span> ${esc(label)}</div>`
@@ -2413,10 +2495,19 @@ function renderPayments(target){
         + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(row,c)}</div>`).join('')
         + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(row))}</div>`;
     }).filter(Boolean).join('');
-    return out + kids;
+    /* How much of this row is consignment, in blue beneath its places — so the
+       figure above is the true amount that came through this payment type, and
+       you can still see at a glance how much of it was never ours. */
+    const conRow = conOf ? conOf[label] : null;
+    const conKids = (conRow && Object.keys(conRow).length)
+      ? `<div class="ptg-s ptg-first ptg-con ${rowId}" hidden>of which consignment</div>`
+        + curs.map(c=>`<div class="ptg-s ptg-con ${rowId}" hidden>${num(conRow,c)}</div>`).join('')
+        + `<div class="ptg-s usd ptg-con ${rowId}" hidden>$${fmt(usdOf(conRow))}</div>`
+      : '';
+    return out + kids + conKids;
   }
 
-  let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''))).join('');
+  let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''), '', {[t]:conType[t]})).join('');
   if(Object.keys(don).length) body += rowsFor('Donations', don, donGroup, 'donations', 'pt-don');
 
   /* Consignment money gets its own rows beneath the tour's total, and stays
@@ -2457,7 +2548,10 @@ function renderPayments(target){
         <div class="ptg-t ptg-first">All</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
-        ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment</div>${conBody}` : ''}
+        ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment — included above</div>${conBody}
+        <div class="ptg-t ptg-first ptg-net">Totals — consignment</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(grand,conGrand),c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(grand,conGrand)))}</div>` : ''}
       </div>
     </div>`;
 }
@@ -2640,10 +2734,17 @@ function sortedSales(list){
   const d=LOG_SORT.dir;
   const bookName=x=> x._bundle ? (x._count+' Books')
     : x.type==='DONATION' ? '~Donation' : bookById(x.bookId).name;
+  /* How a sale was paid for, for sorting. A split payment sorts under its first
+     leg, which is the larger one in practice and the one you'd look for. */
+  const payName=x=>{
+    const l=legs(x).filter(v=>v.type);
+    return l.length ? l.map(v=>v.type).join(' + ') : '~';
+  };
   const cmp={
     time:  (a,b)=> new Date(a.ts)-new Date(b.ts),
     book:  (a,b)=> bookName(a).localeCompare(bookName(b)) || (new Date(b.ts)-new Date(a.ts)),
-    status:(a,b)=> (statusRank(a)-statusRank(b)) || (new Date(b.ts)-new Date(a.ts))
+    status:(a,b)=> (statusRank(a)-statusRank(b)) || (new Date(b.ts)-new Date(a.ts)),
+    pay:   (a,b)=> payName(a).localeCompare(payName(b)) || (new Date(b.ts)-new Date(a.ts))
   }[LOG_SORT.key];
   return list.slice().sort((a,b)=> d*cmp(a,b));
 }
@@ -4173,19 +4274,34 @@ function orgEditModal(){
 function cashCurs(){ return curCurrencies(); }
 /* Which cash accounts are in play depends on the level. A region sees its own
    warehouse and events; the bank is universal, so it always appears. */
+/** A region's own bank account. */
+function regionBankId(regionId){ return 'BANK_'+regionId; }
+function isRegionBank(acct){ return String(acct).indexOf('BANK_')===0; }
+function bankLabel(acct){
+  if(acct==='BANK') return 'Global bank';
+  if(isRegionBank(acct)){
+    const r=(STATE.regions||[]).find(x=>x.regionId===String(acct).slice(5));
+    return (r && (r.bankName||'').trim()) || ((r?r.name:'Region')+' bank');
+  }
+  return '';
+}
+
 function cashAccounts(){
   const reg = currentRegion();
   const list = [];
   if(reg){
     list.push({id:reg.whLoc, name:reg.name+' — Warehouse'});
     eventsOfRegion(reg.regionId).forEach(e=>list.push({id:e.eventId,name:e.name}));
+    holdersOf(reg.regionId).forEach(h=>list.push({id:h.holderId,name:h.name+' (storing books)'}));
+    /* The region's own account — where its coordinator actually banks. Shown
+       only here, because Poland's bank is no business of Macedonia's. */
+    if(!hideBank()) list.push({id:regionBankId(reg.regionId), name:bankLabel(regionBankId(reg.regionId))});
   }else{
     // Season: fall back to region warehouses so the totals still resolve.
     regionsList().forEach(r=>list.push({id:r.whLoc,name:r.name}));
   }
-  // The bank belongs to the whole tour, so a share link never sees its balance —
-  // only what this place itself has sent there.
-  if(!hideBank()) list.push({id:'BANK',name:'Bank'});
+  // The global account is where money finally lands, so it appears everywhere.
+  if(!hideBank()) list.push({id:'BANK',name:'Global bank'});
   return list;
 }
 function hideBank(){ return !!(STATE && STATE.hideBank); }
@@ -4391,7 +4507,7 @@ function cashModal(){
         : `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
     });
     const reset = hasManual ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset to collected">↺</button>` : '';
-    const label = isBank ? (seasonWide ? 'Bank' : 'Sent to the bank from here') : esc(a.name);
+    const label = isBank ? 'Global bank' : esc(a.name);
     balRows += `<tr><th>${label} ${reset}</th>${cells}</tr>`;
   });
 
@@ -4480,7 +4596,7 @@ function cashModal(){
         // A link sees what it has sent onward, never the bank's own balance.
         const sent = sentToBank();
         const parts = Object.keys(sent).filter(c=>sent[c]).sort().map(c=>cashFmt(sent[c],c));
-        return `<div class="cash-sub">Sent to the bank from here</div>
+        return `<div class="cash-sub">Sent to the global bank from here</div>
           <div class="cash-coll"><div class="cash-coll-row">
             <span>Handed over so far</span><span>${parts.length?parts.join(' · '):'—'}</span>
           </div></div>`;
@@ -5576,6 +5692,77 @@ function seasonEditModal(id){
    The shelf is read left to right dozens of times a day, so the order matters:
    whatever is selling should be near the top. Same up/down handling as regions
    and events, so it behaves the way the rest of the app already does. */
+/* Drag to reorder, by touch or mouse.
+
+   Built on pointer events rather than HTML5 drag-and-drop, which simply does not
+   fire on a phone — and this list is used on a phone more than anywhere else.
+   Dragging is on a handle, not the whole row, so the list can still be scrolled
+   with a finger. The arrows stay: dragging is fiddly on a small screen and
+   nobody should be forced into it. */
+function makeSortable(container, onDrop){
+  if(!container) return;
+  let row=null, rows=[], startY=0, offset=0, placeholder=null;
+
+  function rowsNow(){ return [...container.children].filter(c=>c.classList.contains('ro-row')); }
+
+  function onDown(e){
+    const handle = e.target.closest('.ro-grip');
+    if(!handle) return;
+    row = handle.closest('.ro-row');
+    if(!row) return;
+    e.preventDefault();
+    rows = rowsNow();
+    const r = row.getBoundingClientRect();
+    startY = e.clientY; offset = 0;
+    // A gap of the same height keeps everything below from jumping about.
+    placeholder = document.createElement('div');
+    placeholder.className = 'ro-gap';
+    placeholder.style.height = r.height + 'px';
+    row.parentNode.insertBefore(placeholder, row);
+    row.classList.add('ro-lift');
+    row.style.width = r.width + 'px';
+    row.style.height = r.height + 'px';
+    handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp, {once:true});
+    document.addEventListener('pointercancel', onUp, {once:true});
+  }
+
+  function onMove(e){
+    if(!row) return;
+    offset = e.clientY - startY;
+    row.style.transform = 'translateY(' + offset + 'px)';
+    const mid = row.getBoundingClientRect().top + row.offsetHeight/2;
+    const others = rowsNow().filter(x=>x!==row);
+    let target = null;
+    for(const x of others){
+      const b = x.getBoundingClientRect();
+      if(mid < b.top + b.height/2){ target = x; break; }
+    }
+    // Move the gap, never the dragged row, so the drag stays smooth.
+    if(target) container.insertBefore(placeholder, target);
+    else container.appendChild(placeholder);
+  }
+
+  function onUp(){
+    document.removeEventListener('pointermove', onMove);
+    if(!row) return;
+    row.classList.remove('ro-lift');
+    row.style.transform=''; row.style.width=''; row.style.height='';
+    if(placeholder && placeholder.parentNode){
+      placeholder.parentNode.insertBefore(row, placeholder);
+      placeholder.remove();
+    }
+    placeholder=null;
+    const order = rowsNow().map(x=>x.dataset.id).filter(Boolean);
+    row=null;
+    if(onDrop) onDrop(order);
+  }
+
+  container.addEventListener('pointerdown', onDown);
+}
+
+
 function reorderBooksModal(){
   let list = (STATE.books||[]).map(b=>({
     id:b.id, name:b.name, cat:(b.cat==='aotm'?'aotm':'big'),
@@ -5585,7 +5772,8 @@ function reorderBooksModal(){
 
   function draw(){
     $('#rbList').innerHTML = list.map((x,i)=>`
-      <div class="ro-row">
+      <div class="ro-row" data-id="${esc(x.id)}">
+        <span class="ro-grip" title="Drag to move">⠿</span>
         <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
           ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}</span>
         <span class="ro-btns">
@@ -5599,13 +5787,19 @@ function reorderBooksModal(){
     [...document.querySelectorAll('#modal [data-rb-dn]')].forEach(b=>b.onclick=()=>{
       const i=+b.dataset.rbDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw();
     });
+    // Dragging rearranges the DOM; take the new order from it and redraw so the
+    // arrows agree with what is now on screen.
+    makeSortable($('#rbList'), order=>{
+      list = order.map(id=>list.find(x=>x.id===id)).filter(Boolean);
+      draw();
+    });
   }
 
   openModal(`
     ${mHead('Change book order')}
     <div class="m-body">
-      <div class="hint">This is the order titles appear on every shelf and in every list,
-        everywhere on the tour.</div>
+      <div class="hint">Drag a row by its handle, or use the arrows. This is the order titles
+        appear on every shelf and in every list, everywhere on the tour.</div>
       <div id="rbList"></div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -5616,7 +5810,7 @@ function reorderBooksModal(){
   draw();
 
   $('#rbSave').addEventListener('click',async ()=>{
-    await commitSync({action:'reorderBooks', ids:list.map(x=>x.id)}, 'Order saved');
+    await commitSync({action:'reorderBooks', regionId:CUR_REGION, ids:list.map(x=>x.id)}, 'Order saved');
   });
 }
 
@@ -5629,7 +5823,8 @@ function reorderModal(kind){
 
   function draw(){
     $('#roList').innerHTML = list.map((x,i)=>`
-      <div class="ro-row">
+      <div class="ro-row" data-id="${esc(x.id)}">
+        <span class="ro-grip" title="Drag to move">⠿</span>
         <span class="ro-name">${esc(x.name)}
           ${x.st==='complete'?'<span class="ro-tag done">closed</span>'
            :x.st==='pending'?'<span class="ro-tag pend">closing</span>':''}</span>
@@ -5643,6 +5838,10 @@ function reorderModal(kind){
     });
     [...document.querySelectorAll('#modal [data-ro-dn]')].forEach(b=>b.onclick=()=>{
       const i=+b.dataset.roDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw();
+    });
+    makeSortable($('#roList'), order=>{
+      list = order.map(id=>list.find(x=>x.id===id)).filter(Boolean);
+      draw();
     });
   }
 
@@ -5833,7 +6032,13 @@ function partnerBookModal(id, editId){
         Its sales and money stay out of every tour total.</div>
       <div class="field"><label>Title</label>
         <input id="cbName" type="text" placeholder="e.g. Sri Radha (Macedonian)"
-          value="${esc(existing?existing.name:'')}" ${existing?'disabled':''}></div>
+          value="${esc(existing?existing.name:'')}"></div>
+      ${existing?`<div class="field"><label>Kind</label>
+        <select id="cbCatEdit">
+          <option value="big" ${existing.cat!=='aotm'?'selected':''}>Big Book</option>
+          <option value="aotm" ${existing.cat==='aotm'?'selected':''}>Adventures</option>
+          <option value="other" ${existing.cat==='other'?'selected':''}>Other</option>
+        </select></div>`:''}
       ${existing?'':`<div class="field"><label>Kind</label>
         <select id="cbCat"><option value="big">Big Book</option><option value="aotm">Adventures</option></select></div>`}
 
@@ -5875,6 +6080,12 @@ function partnerBookModal(id, editId){
     const stock = $('#cbStock').value===''?null:Math.max(0,Math.round(Number($('#cbStock').value)||0));
 
     let bookId = editId;
+    if(bookId && name !== (existing ? existing.name : '')){
+      await postQuiet({action:'renameBook', bookId, name,
+                       cat:(($('#cbCatEdit')||{}).value || existing.cat)});
+    }else if(bookId && ($('#cbCatEdit')||{}).value && $('#cbCatEdit').value !== existing.cat){
+      await postQuiet({action:'renameBook', bookId, name, cat:$('#cbCatEdit').value});
+    }
     if(!bookId){
       const made = await postQuiet({action:'addBook',name,cat:$('#cbCat').value,partnerId:id});
       if(!made){ $('#modalErr').textContent='Could not add the title.'; return; }
