@@ -504,6 +504,7 @@ body.busy #busyLabel{opacity:1}
 .sold-tag{position:absolute;top:8px;right:8px}
 /* Two plain buttons, so neither action depends on knowing the card is tappable. */
 .bk-btns{display:flex;gap:6px;align-items:stretch}
+.bk-acts .bk-btns>button{margin-top:0}
 /* Both buttons share one box model, so they match whatever the text does. */
 .bk-btns>button{flex:1;min-height:38px;border-radius:9px;padding:9px 8px;font-size:13.5px;
   font-weight:800;font-family:inherit;cursor:pointer;touch-action:manipulation;
@@ -511,8 +512,11 @@ body.busy #busyLabel{opacity:1}
 .sell-btn{border:1.5px solid var(--green,#2E6B4F);background:var(--green,#2E6B4F);color:#fff}
 .sell-btn:disabled{opacity:.4;cursor:not-allowed}
 .sell-btn:active{filter:brightness(.92)}
-.pre-btn{margin-top:8px;width:100%;background:transparent;color:var(--plum);border:1.5px solid var(--line-d);
-  border-radius:8px;padding:5px;font-size:11.5px;font-weight:700;letter-spacing:.3px}
+/* Only the LOOK differs — the box is set once on .bk-btns>button above, so the
+   two match. This used to redeclare padding, font size and a top margin, which
+   is why Pre-order sat shorter and lower than Sell. */
+.pre-btn{background:transparent;color:var(--plum);border:1.5px solid var(--line-d);
+  letter-spacing:.3px}
 .pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
 .tap-hint{font-size:10.5px;color:var(--saffron-d);font-weight:600}
 .don-card{background:#FFF6E3;border-color:var(--gold-l)}
@@ -861,7 +865,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b88</span>
+    <span class="build-tag" title="Which version of the page is loaded">b89</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
