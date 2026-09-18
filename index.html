@@ -128,6 +128,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .cl-row:last-child{border-bottom:none}
 .cl-name{font-size:13px;font-weight:600;color:var(--ink)}
 .cl-name.aotm{color:var(--gold)}
+.cl-name.other{color:#6B4FA0}
 .cl-loc{display:block;font-size:10.5px;color:var(--muted);font-weight:400}
 .cl-exp{font-size:11.5px;color:var(--muted);white-space:nowrap}
 .cl-in{width:78px;border:1px solid var(--line-d);border-radius:7px;padding:6px 8px;font-size:13px;text-align:right}
@@ -168,6 +169,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .stat-card.consign{background:#F2F6FB;border-color:#B9CBE0}
 .sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
 .sc-name.aotm{color:var(--gold)}
+.sc-name.other{color:#6B4FA0}
 .sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:auto}
 .sc-big{font-family:'Marcellus',serif;font-size:26px;line-height:1;color:var(--green)}
 .sc-big.zero{color:var(--muted)}
@@ -185,6 +187,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .sbr-line.con{color:#2F5C8A;font-weight:600}
 .mc-name{font-size:11px;font-weight:700;color:var(--plum);line-height:1.25;min-height:28px}
 .mc-name.aotm{color:var(--gold)}
+.mc-name.other{color:#6B4FA0}
 .mc-figs{display:flex;align-items:baseline;gap:4px;margin-top:3px}
 .mc-big{font-family:'Marcellus',serif;font-size:18px;line-height:1;color:var(--green)}
 .mc-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
@@ -490,6 +493,9 @@ body.busy #busyLabel{opacity:1}
 .book.sellable .top{cursor:pointer}
 .book.sellable .top:active{transform:scale(.985)}
 .book .bname{font-weight:700;font-size:14.5px;color:var(--plum);line-height:1.2}
+/* A third kind of title reads as its own thing rather than a Big Book. */
+.book .bname.other, .bname.other{color:#6B4FA0}
+.bulk-row .bk-name.other{color:#6B4FA0}
 .book .price{font-size:11.5px;color:var(--muted);margin-top:2px}
 .book .qtyrow{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:6px}
 .qty-chip{font-family:'Marcellus',serif;font-size:22px;color:var(--green);line-height:1}
@@ -505,13 +511,14 @@ body.busy #busyLabel{opacity:1}
 .flag.held{background:#FCEFD0;color:var(--gold)}
 .sold-tag{position:absolute;top:8px;right:8px}
 /* Two plain buttons, so neither action depends on knowing the card is tappable. */
-.bk-btns{display:flex;gap:6px;align-items:stretch}
+.bk-btns{display:flex;gap:6px;align-items:stretch;margin-top:10px}
 .bk-acts .bk-btns>button{margin-top:0}
 /* Both buttons share one box model, so they match whatever the text does. */
 .bk-btns>button{flex:1;min-height:38px;border-radius:9px;padding:9px 8px;font-size:13.5px;
   font-weight:800;font-family:inherit;cursor:pointer;touch-action:manipulation;
   display:inline-flex;align-items:center;justify-content:center;line-height:1}
-.sell-btn{border:1.5px solid var(--green,#2E6B4F);background:var(--green,#2E6B4F);color:#fff}
+.sell-btn{border:1.5px solid var(--saffron,#C0691A);background:var(--saffron,#C0691A);color:#fff}
+.sell-btn:hover{background:#fff;color:var(--saffron,#C0691A);border-color:var(--saffron,#C0691A)}
 .sell-btn:disabled{opacity:.4;cursor:not-allowed}
 .sell-btn:active{filter:brightness(.92)}
 /* Only the LOOK differs — the box is set once on .bk-btns>button above, so the
@@ -525,6 +532,7 @@ body.busy #busyLabel{opacity:1}
 /* Consignment: someone else's book on our table. Marked so it is never mistaken
    for ours, but sold exactly the same way. */
 .book.consign{background:#F2F6FB;border-color:#B9CBE0}
+.con-tag.log{background:#EDE4F7;color:#5E3F8A;border-color:#C9B6E4}
 .con-tag{display:inline-block;margin-left:6px;background:#DCE8F5;color:#2F5C8A;
   border:1px solid #B9CBE0;border-radius:999px;padding:1px 7px;font-size:9.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
@@ -824,7 +832,9 @@ body.busy #busyLabel{opacity:1}
 .bulk-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;
   padding:10px 12px;background:var(--paper2);border:1px solid var(--line);border-radius:10px;font-size:13px;color:var(--muted)}
 .bulk-foot b{font-family:'Marcellus',serif;font-size:18px;color:var(--plum)}
-.bulk-foot.totals3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center}
+/* One row whatever the number of categories — a fixed three columns pushed the
+   fourth onto a line of its own. */
+.bulk-foot.totals3{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px;text-align:center}
 .bulk-foot.totals3 > div{display:flex;flex-direction:column;gap:1px}
 .bulk-foot.totals3 .tl{font-size:9.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted)}
 .bulk-foot.totals3 .all{border-left:1px solid var(--line-d)}
@@ -875,7 +885,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b91</span>
+    <span class="build-tag" title="Which version of the page is loaded">b92</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2260,7 +2270,7 @@ function renderWarehouseOverview(){
          title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
       + (transit?`<span class="wo-chip transit"><b>${transit}</b> in transit</span>`:'');
     return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}">
-      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}${
+      <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big ${total?'':'zero'}">${total}</span>
@@ -2293,7 +2303,7 @@ function renderSalesByRegion(){
       const gift=allHere.filter(x=>x.bookId===b.id && isGift(x)).length;
       if(!sold && !pre && !gift) return '';
       return `<div class="mini-card${b.partnerId?' consign':''}">
-        <div class="mc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}${
+        <div class="mc-name ${catOfBook(b)}">${esc(b.name)}${
           b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
         <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
         <div class="mc-sub">${pre?`${pre} pre`:''}${(pre&&gift)?' · ':''}${gift?`${gift} gift`:''}${(!pre&&!gift)?'&nbsp;':''}</div>
@@ -2405,7 +2415,7 @@ function renderInventory(){
       ${(q<=0||avail<=0)?flag:''}
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
-          <div class="bname">${esc(b.name)}${
+          <div class="bname ${catOfBook(b)}">${esc(b.name)}${
             b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
           <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
         </div>
@@ -2482,7 +2492,7 @@ function renderTitleList(target){
         title="Go to ${esc(pl.name)}"><b>${n}</b> ${esc(pl.name)}</button>` : '';
     }).filter(Boolean).join('');
     return `<div class="stat-card${dim}${b.partnerId?' consign':''}">
-      <div class="sc-name ${isAotm(b)?'aotm':''}">${esc(b.name)}${
+      <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big ${sold?'':'zero'}">${sold}</span>
@@ -2767,7 +2777,10 @@ function logItemHTML(x, opts){
   }
   // Whose book it was, right on the row — otherwise a consignment sale looks
   // identical to ours in the list.
-  if(conOwner) bits.push(`<span class="con-tag">${esc(conOwner.name)}</span>`);
+  /* In the log a row is already crowded, so the bubble says what it IS rather
+     than whose it is — the group's name is a breath away in the tooltip and in
+     the opened detail. */
+  if(conOwner) bits.push(`<span class="con-tag log" title="${esc(conOwner.name)}">Consign.</span>`);
   // Money we owe back, shown wherever the sale appears.
   const owedBack = changeOwed(x);
   if(owedBack>0) bits.push(`<span class="badge chg">${cashFmt(owedBack, changeCur(x))} change owed</span>`);
@@ -3778,7 +3791,7 @@ function closeModalFor(kind){
 
   const body = rows.length ? rows.map(r=>`
     <div class="cl-row" data-key="${esc(r.loc+'|'+r.book.id)}">
-      <div class="cl-name ${isAotm(r.book)?'aotm':''}">${esc(r.book.name)}
+      <div class="cl-name ${catOfBook(r.book)}">${esc(r.book.name)}
         ${locs.length>1?`<span class="cl-loc">${esc(locName(r.loc))}</span>`:''}</div>
       <div class="cl-exp">expected <b>${r.expected}</b></div>
       <input class="cl-in" type="number" min="0" inputmode="numeric"
