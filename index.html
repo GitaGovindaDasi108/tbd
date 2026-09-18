@@ -503,11 +503,12 @@ body.busy #busyLabel{opacity:1}
 .flag.held{background:#FCEFD0;color:var(--gold)}
 .sold-tag{position:absolute;top:8px;right:8px}
 /* Two plain buttons, so neither action depends on knowing the card is tappable. */
-.bk-btns{display:flex;gap:6px}
-.bk-btns>button{flex:1}
-.sell-btn{border:1.5px solid var(--green,#2E6B4F);background:var(--green,#2E6B4F);color:#fff;
-  border-radius:9px;padding:9px;font-size:13.5px;font-weight:800;cursor:pointer;
-  font-family:inherit;touch-action:manipulation}
+.bk-btns{display:flex;gap:6px;align-items:stretch}
+/* Both buttons share one box model, so they match whatever the text does. */
+.bk-btns>button{flex:1;min-height:38px;border-radius:9px;padding:9px 8px;font-size:13.5px;
+  font-weight:800;font-family:inherit;cursor:pointer;touch-action:manipulation;
+  display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.sell-btn{border:1.5px solid var(--green,#2E6B4F);background:var(--green,#2E6B4F);color:#fff}
 .sell-btn:disabled{opacity:.4;cursor:not-allowed}
 .sell-btn:active{filter:brightness(.92)}
 .pre-btn{margin-top:8px;width:100%;background:transparent;color:var(--plum);border:1.5px solid var(--line-d);
@@ -860,7 +861,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b87</span>
+    <span class="build-tag" title="Which version of the page is loaded">b88</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1878,6 +1879,28 @@ function legFields(L){
 /* ============================================================
    RENDER
    ============================================================ */
+/* Anything clipped becomes hoverable.
+
+   Rather than remembering to add a tooltip at each site, this walks the page
+   after a render and gives every element whose text is being cut off a title
+   attribute holding the full text — and removes it again if a wider screen
+   means it now fits. It also covers a long-press on a phone. */
+function addTooltipsToClipped(){
+  const sel = '.ptg-label,.ptg-first,.sc-name,.bname,.ro-name,.sh-route,.cl-name,'
+            + '.rp-name,.log-name,.crumb-btn,.adm-col .btn,.mc-name,.con-k,.cash-coll-row span';
+  document.querySelectorAll(sel).forEach(el=>{
+    if(el.querySelector('input,select,textarea')) return;
+    const clipped = el.scrollWidth > el.clientWidth + 1;
+    if(clipped){
+      const full = (el.textContent||'').trim();
+      if(full && el.getAttribute('title') !== full) el.setAttribute('title', full);
+    }else if(el.dataset.keepTitle !== '1'){
+      // Only clear one we added — a deliberate tooltip elsewhere is left alone.
+      if(el.getAttribute('title') === (el.textContent||'').trim()) el.removeAttribute('title');
+    }
+  });
+}
+
 function renderAll(){
   if(!STATE) return;
   // The title names where you actually are, not just the warehouse.
@@ -1922,6 +1945,8 @@ function renderAll(){
   // repeat what is already in front of them.
   $('#bottomRow').style.display = isSeller() ? 'none' : '';
   renderBottom();
+  // Done last, once the page has its final width, so clipping is measured true.
+  try{ addTooltipsToClipped(); }catch(e){}
 }
 
 function renderTabs(){
@@ -2909,6 +2934,8 @@ function changeCur(x){ return String((x && x.changecur) || ''); }
 function openModal(html,wide){
   const m=$('#modal'); m.className='modal'+(wide?' wide':''); m.innerHTML=html;
   $('#overlay').classList.add('show');
+  // Dialogs clip too, so they get the same treatment once laid out.
+  try{ addTooltipsToClipped(); }catch(e){}
 }
 function closeModal(){$('#overlay').classList.remove('show');}
 $('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
@@ -4755,9 +4782,9 @@ function cashModal(){
         });
         const curs = Object.keys(owed).filter(c=>Math.abs(owed[c])>0.005).sort();
         if(!curs.length) return '';
-        return `<div class="cash-sub">Of that, owed to consignment</div>
+        return `<div class="cash-sub">Consignment</div>
           <div class="cash-coll"><div class="cash-coll-row">
-            <span>In the box but not ours</span>
+            <span>Owed</span>
             <span class="float-out">${curs.map(c=>cashFmt(owed[c],c)).join(' · ')}</span>
           </div></div>`;
       })()}
