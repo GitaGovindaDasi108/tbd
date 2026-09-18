@@ -664,7 +664,9 @@ body.busy #busyLabel{opacity:1}
 /* Every USD equivalent above the final line is a working figure, so it reads in
    the same quiet ink as the rest. Green is kept for the one number that answers
    the question — what the tour actually took. */
-.ptg .usd{color:var(--ink);font-weight:600}
+/* Working figures read in a quiet grey; only the final line carries colour. */
+.ptg-r:not(.ptg-first):not(.usd){color:#616161}
+.ptg .usd{color:#424242;font-weight:600}
 .ptg .z{color:var(--line-d)}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--donate)}
@@ -679,10 +681,13 @@ body.busy #busyLabel{opacity:1}
    it carries the green. Declared last so nothing above it wins on order. */
 .ptg-t.ptg-net,
 .ptg-t.ptg-net.usd{border-top:2px solid var(--line-d);color:var(--green);font-weight:800}
-.ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
-  text-transform:uppercase;color:var(--muted);border-top:2px solid var(--line-d);
+/* Written as `.ptg > .ptg-split` so it actually beats the base cell rule, which
+   right-aligns every cell and was winning on specificity. */
+.ptg > .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
+  text-transform:uppercase;border-top:2px solid var(--line-d);
   /* Reads as a heading for the rows beneath it, so it sits where their labels do. */
-  text-align:left;justify-content:flex-start}
+  text-align:left;justify-content:flex-start;
+  color:var(--consign)}
 .ptg-empty{color:var(--muted);justify-content:flex-start}
 .cur-strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
 .cur-pill{background:var(--paper2);border:1px solid var(--line-d);border-radius:999px;padding:5px 11px;font-size:12.5px}
@@ -898,7 +903,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b94</span>
+    <span class="build-tag" title="Which version of the page is loaded">b95</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
