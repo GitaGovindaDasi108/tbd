@@ -502,6 +502,14 @@ body.busy #busyLabel{opacity:1}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
 .sold-tag{position:absolute;top:8px;right:8px}
+/* Two plain buttons, so neither action depends on knowing the card is tappable. */
+.bk-btns{display:flex;gap:6px}
+.bk-btns>button{flex:1}
+.sell-btn{border:1.5px solid var(--green,#2E6B4F);background:var(--green,#2E6B4F);color:#fff;
+  border-radius:9px;padding:9px;font-size:13.5px;font-weight:800;cursor:pointer;
+  font-family:inherit;touch-action:manipulation}
+.sell-btn:disabled{opacity:.4;cursor:not-allowed}
+.sell-btn:active{filter:brightness(.92)}
 .pre-btn{margin-top:8px;width:100%;background:transparent;color:var(--plum);border:1.5px solid var(--line-d);
   border-radius:8px;padding:5px;font-size:11.5px;font-weight:700;letter-spacing:.3px}
 .pre-btn:hover{background:var(--plum);color:#FFF3DE;border-color:var(--plum)}
@@ -852,7 +860,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b86</span>
+    <span class="build-tag" title="Which version of the page is loaded">b87</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2363,11 +2371,14 @@ function renderInventory(){
                 <div class="region transit">Expected total: ${q+atEvents+held+transit}</div>`);
               return lines.join('');
             })() : (region>q?`<div class="region">Event Stock: ${region-q}</div><div class="region total">Total Stock: ${region}</div>`:'')}</div>
-          <div style="text-align:right">${sellable?`<span class="tap-hint">tap to sell</span>`:''}<div class="qty-label">sold ${sold}</div></div>
+          <div style="text-align:right"><div class="qty-label">sold ${sold}</div></div>
         </div>
         ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
       </div>
-      <button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order</button>
+      <div class="bk-btns">
+        <button class="sell-btn" data-act="sell" data-book="${b.id}" ${sellable?'':'disabled'}>Sell</button>
+        <button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order</button>
+      </div>
     </div>`;
   });
   // Donations sit on the shelf too — they behave like a title you can always
@@ -2604,7 +2615,7 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">Totals</div>
+        <div class="ptg-t ptg-first">Totals (w/Consignment)</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
         ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
