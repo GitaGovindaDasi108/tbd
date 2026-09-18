@@ -400,6 +400,7 @@ body.busy #busyLabel{opacity:1}
 .sl-link{display:flex;gap:6px;margin:7px 0}
 .sl-link input{flex:1;min-width:0;border:1px solid var(--line);border-radius:7px;padding:6px 8px;
   font-size:11.5px;background:var(--paper2);color:var(--ink)}
+.sl-showing{font-size:12px;color:var(--muted);margin:4px 0 2px}
 .sl-none{font-size:12px;color:var(--muted);margin:7px 0}
 .sl-acts{display:flex;gap:6px;flex-wrap:wrap}
 .qr-edit{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;
@@ -630,6 +631,10 @@ body.busy #busyLabel{opacity:1}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
 .ptg-r.ptg-con,.ptg-s.ptg-con{color:#2F5C8A}
+/* Names are clipped rather than allowed to shove the numbers sideways. */
+.ptg-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ptg-r.ptg-first{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden}
+.ptg-t.ptg-first,.ptg-s.ptg-first{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptg-s.ptg-don{color:var(--gold)}
 .ptg-t.ptg-net{border-top:2px solid var(--line-d);color:var(--plum);font-weight:800}
 .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
@@ -847,7 +852,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b84</span>
+    <span class="build-tag" title="Which version of the page is loaded">b86</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1579,9 +1584,19 @@ async function pull(){
   // vanished, and settle into the first region on a cold start.
   (function(){
     const regs=BASE.regions||[];
-    // A share link pins you to its own place; there is nowhere else to go.
+    /* A seller link covering one event pins you to it. Covering several — as it
+       does at reconciling time — you land on one and can move between them, but
+       still cannot leave the set. */
     if(BASE.lockedEvent){
       CUR_LEVEL='event'; CUR_LOC=BASE.lockedEvent; CUR_REGION=BASE.lockedRegion||'';
+      return;
+    }
+    const mine = BASE.sellerEvents || [];
+    if(mine.length){
+      CUR_REGION = BASE.lockedRegion || '';
+      if(CUR_LEVEL!=='event' || !mine.includes(CUR_LOC)){
+        CUR_LEVEL='event'; CUR_LOC=mine[0];
+      }
       return;
     }
     if(BASE.lockedRegion && (BASE.role||'admin')!=='admin'){
@@ -1918,11 +1933,25 @@ function renderTabs(){
     <span class="lvl-chip">${lvlWord}</span>
     <div class="crumbs">`;
   if(locked){
-    // Nothing to navigate to: the link covers exactly one place.
     const where = reg ? reg.name : '';
-    h += `<span class="crumb-btn on">${esc(where)}${CUR_LEVEL==='event'?' › '+esc(locName(CUR_LOC)):''}</span>`;
+    const mine = STATE.sellerEvents || [];
+    if(mine.length > 1){
+      /* The link covers several events — usually because reconciling is under
+         way — so a chooser, limited to exactly those. */
+      h += `<span class="crumb-btn on">${esc(where)}</span><span class="crumb-sep">›</span>
+        <span class="crumb-pick">
+          <select class="crumb-sel on" data-act="pickloc">
+            ${mine.map(id=>opt(id, locName(id), id===CUR_LOC)).join('')}
+          </select></span>`;
+    }else{
+      // Exactly one place: nothing to navigate to.
+      h += `<span class="crumb-btn on">${esc(where)}${CUR_LEVEL==='event'?' › '+esc(locName(CUR_LOC)):''}</span>`;
+    }
     h += `</div></div>`;
     $('#locTabs').innerHTML=h;
+    // This branch returns early, so its chooser has to be wired here.
+    const sel=$('#locTabs').querySelector('[data-act="pickloc"]');
+    if(sel) sel.addEventListener('change',()=>{ goTo('event', sel.value); });
     return;
   }
 
@@ -2498,7 +2527,7 @@ function renderPayments(target){
   function rowsFor(label, totals, perGroup, key, extraClass, conOf, conOfGroup, donOf, donOfGroup){
     const rowId = 'pay'+panelId+'-'+key;
     let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
-        ><span class="tw">▸</span> ${esc(label)}</div>`
+        ><span class="tw">▸</span> <span class="ptg-label" title="${esc(label)}">${esc(label)}</span></div>`
       + curs.map(c=>`<div class="ptg-r ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">${num(totals,c)}</div>`).join('')
       + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">$${fmt(usdOf(totals))}</div>`;
     /* A place's line shows what was ours there — the consignment share has its
@@ -2575,7 +2604,7 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">Totals (inc. Consignment)</div>
+        <div class="ptg-t ptg-first">Totals</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
         ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
@@ -3802,14 +3831,66 @@ function shareLinksModal(){
       <div class="cash-sub">Whole region</div>
       ${row('region', reg.regionId, reg.name, 'sell anywhere in this region, move stock between its places — no cash, no other region')}
 
-      <div class="cash-sub">Single events</div>
-      ${eventsOfRegion(reg.regionId).map(e=>row('event', e.eventId, e.name,
-        'sell at this event only — no stock moves, no cash, no totals')).join('')
-        || `<div class="cash-empty">No events in this region yet.</div>`}
+      ${(function(){
+        /* One link for everyone selling in this region, and the owner decides
+           which event it opens on. A person keeps the same link all week; you
+           move it from Monday's festival to Tuesday's, and widen it to the whole
+           region at reconciling time — without reissuing anything. */
+        const sell = ((STATE.keys||{}).sellers||{})[reg.regionId] || {key:'',scope:''};
+        const evs = eventsOfRegion(reg.regionId);
+        const scope = String(sell.scope||'');
+        const showing = (!scope || scope==='ALL')
+          ? 'every event in this region'
+          : (evs.find(e=>e.eventId===scope) ? locName(scope) : 'every event in this region');
+        return `
+        <div class="cash-sub">Sellers</div>
+        <div class="hint">One link for everyone selling here. Change what it shows below —
+          the link itself never changes, so nobody has to be sent a new one.</div>
+        <div class="sl-row">
+          <div class="sl-top">
+            <span class="sl-name">Sellers in ${esc(reg.name)}</span>
+            <span class="sl-note">record sales — no stock moves, no cash, no totals</span>
+          </div>
+          ${sell.key ? `<div class="sl-link"><input readonly value="${esc(link(sell.key))}">
+                  <button class="btn btn-ghost btn-sm" data-act="slcopy"
+                    data-link="${esc(link(sell.key))}">Copy</button></div>`
+              : `<div class="sl-none">No link yet</div>`}
+          ${sell.key ? `<div class="sl-showing">Currently showing: <b>${esc(showing)}</b></div>
+          <div class="field"><label>What holders of this link can see</label>
+            <select id="slScope">
+              <option value="ALL" ${(!scope||scope==='ALL')?'selected':''}>Every event in this region</option>
+              ${evs.map(e=>`<option value="${esc(e.eventId)}" ${scope===e.eventId?'selected':''}>${esc(e.name)} only</option>`).join('')}
+            </select></div>` : ''}
+          <div class="sl-acts">
+            <button class="btn btn-primary btn-sm" data-act="slseller"
+              data-mode="${sell.key?'reset':'create'}">${sell.key?'Reset link':'Create link'}</button>
+            ${sell.key?`<button class="btn btn-danger btn-sm" data-act="slseller" data-mode="off">Turn off</button>`:''}
+          </div>
+        </div>
+        ${evs.length?'':`<div class="cash-empty">No events in this region yet.</div>`}`;
+      })()}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
 
+  const sc = $('#slScope');
+  if(sc) sc.addEventListener('change',()=>{
+    // Takes effect for everyone holding the link the moment it is saved.
+    commitSync({action:'sellerLink', regionId:reg.regionId, scope:sc.value}, 'Sellers now see '
+      + (sc.value==='ALL' ? 'every event' : locName(sc.value))).then(ok=>{ if(ok) shareLinksModal(); });
+  });
+}
+
+/** Create, reset or turn off the one seller link for this region. */
+async function sellerLinkSet(mode){
+  const reg = currentRegion();
+  if(!reg) return;
+  if(mode==='off' && !confirm('Turn off the seller link? Everyone holding it loses access immediately.')) return;
+  if(mode==='reset' && !confirm('Reset the seller link? The old one stops working immediately and everyone needs the new one.')) return;
+  const ok = await commitSync({action:'sellerLink', regionId:reg.regionId,
+    revoke: mode==='off' ? 'true' : '', regenerate: mode==='reset' ? 'true' : ''},
+    mode==='off' ? 'Link turned off' : 'Link ready');
+  if(ok) shareLinksModal();
 }
 
 /* Handled through the app's normal click routing (see the data-act switch), so
@@ -5898,7 +5979,18 @@ function reorderModal(kind){
     </div>`);
   draw();
   $('#roSave').addEventListener('click',()=>{
-    commitSync({action:'reorder', kind, ids:list.map(x=>x.id)}, 'Order saved');
+    /* Applied on screen at once and saved behind. There is nothing to wait for:
+       the new order is already known here, and the server has no answer we
+       need. */
+    const ids = list.map(x=>x.id);
+    commit({action:'reorder', kind, ids},
+      st=>{
+        const bag = kind==='region' ? (st.regions||[]) : (st.events||[]);
+        const key = kind==='region' ? 'regionId' : 'eventId';
+        ids.forEach((id,i)=>{ const row=bag.find(x=>x[key]===id); if(row) row.sort=i; });
+        bag.sort((a,b)=>(Number(a.sort)||0)-(Number(b.sort)||0));
+      }, 'Order saved');
+    closeModal();
   });
 }
 
@@ -7037,6 +7129,7 @@ document.addEventListener('click',e=>{
   if(a==='sharelinks'){ shareLinksModal(); return; }
   if(a==='slnew'){ shareKeySet(t.dataset.kind, t.dataset.id, false); return; }
   if(a==='sloff'){ shareKeySet(t.dataset.kind, t.dataset.id, true);  return; }
+  if(a==='slseller'){ sellerLinkSet(t.dataset.mode); return; }
   if(a==='slcopy'){
     const v=t.dataset.link;
     if(navigator.clipboard) navigator.clipboard.writeText(v).then(()=>toast('Link copied'),()=>toast('Copy failed — select it by hand',true));
