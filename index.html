@@ -23,6 +23,11 @@
   --green:#2E7D4F; --green-l:#E3F1E8;
   --clay:#C0392B; --clay-l:#FBE7E4;
   --blue:#2F5D8A;
+  /* Consignment reads in the tour's own blue, donations in its gold, and the
+     third book category in its teal — so nothing new is introduced and the two
+     money categories are never the same colour. */
+  --consign:#2F5D8A; --consign-l:#E4EDF6; --consign-b:#B9CFE6;
+  --teal:#1F6B5A; --teal-l:#E3F0EC; --teal-b:#B4D5CB;
   --line:#EBDFC8; --line-d:#DCCBA8;
   --shadow:0 1px 2px rgba(59,42,70,.06), 0 8px 24px rgba(59,42,70,.08);
   --radius:14px;
@@ -128,7 +133,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .cl-row:last-child{border-bottom:none}
 .cl-name{font-size:13px;font-weight:600;color:var(--ink)}
 .cl-name.aotm{color:var(--gold)}
-.cl-name.other{color:#6B4FA0}
+.cl-name.other{color:var(--teal)}
 .cl-loc{display:block;font-size:10.5px;color:var(--muted);font-weight:400}
 .cl-exp{font-size:11.5px;color:var(--muted);white-space:nowrap}
 .cl-in{width:78px;border:1px solid var(--line-d);border-radius:7px;padding:6px 8px;font-size:13px;text-align:right}
@@ -166,10 +171,10 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .stat-card{border:1.5px solid var(--line-d);border-radius:12px;padding:10px 11px;
   background:var(--paper2);display:flex;flex-direction:column;gap:2px;min-height:92px}
 .stat-card.dim{opacity:.55}
-.stat-card.consign{background:#F2F6FB;border-color:#B9CBE0}
+.stat-card.consign{background:var(--consign-l);border-color:var(--consign-b)}
 .sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
 .sc-name.aotm{color:var(--gold)}
-.sc-name.other{color:#6B4FA0}
+.sc-name.other{color:var(--teal)}
 .sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:auto}
 .sc-big{font-family:'Marcellus',serif;font-size:26px;line-height:1;color:var(--green)}
 .sc-big.zero{color:var(--muted)}
@@ -183,11 +188,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* ---- Mini cards: same idea, sized to live inside a dropdown ---- */
 .mini-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:6px;padding:4px 0 2px}
 .mini-card{border:1px solid var(--line);border-radius:9px;padding:7px 8px;background:var(--paper)}
-.mini-card.consign{background:#F2F6FB;border-color:#B9CBE0}
-.sbr-line.con{color:#2F5C8A;font-weight:600}
+.mini-card.consign{background:var(--consign-l);border-color:var(--consign-b)}
+.sbr-line.con{color:var(--consign);font-weight:600}
 .mc-name{font-size:11px;font-weight:700;color:var(--plum);line-height:1.25;min-height:28px}
 .mc-name.aotm{color:var(--gold)}
-.mc-name.other{color:#6B4FA0}
+.mc-name.other{color:var(--teal)}
 .mc-figs{display:flex;align-items:baseline;gap:4px;margin-top:3px}
 .mc-big{font-family:'Marcellus',serif;font-size:18px;line-height:1;color:var(--green)}
 .mc-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
@@ -403,9 +408,11 @@ body.busy #busyLabel{opacity:1}
 .sl-link{display:flex;gap:6px;margin:7px 0}
 .sl-link input{flex:1;min-width:0;border:1px solid var(--line);border-radius:7px;padding:6px 8px;
   font-size:11.5px;background:var(--paper2);color:var(--ink)}
-.sl-showing{font-size:12px;color:var(--muted);margin:4px 0 2px}
+/* The dropdown was running straight into the buttons beneath it. */
+.sl-scope{margin:10px 0 12px}
+.sl-scope select{width:100%}
 .sl-none{font-size:12px;color:var(--muted);margin:7px 0}
-.sl-acts{display:flex;gap:6px;flex-wrap:wrap}
+.sl-acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .qr-edit{display:flex;gap:9px;align-items:flex-start;border:1px solid var(--line);border-radius:10px;
   padding:8px;margin-bottom:8px;background:var(--paper)}
 .qr-thumb{width:54px;height:54px;object-fit:contain;border-radius:6px;flex:none;background:#fff}
@@ -446,8 +453,8 @@ body.busy #busyLabel{opacity:1}
 .tcard{background:var(--paper);border:1px solid var(--line);border-radius:11px;
   padding:8px 12px 9px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
 .tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--saffron-d)}
-.tcard.other::before{background:#7A5AA8}
-.tcard.other .value{color:#5E3F8A}
+.tcard.other::before{background:var(--teal)}
+.tcard.other .value{color:var(--teal)}
 .tcard.aotm::before{background:var(--blue)}
 .tcard.usd::before{background:var(--green)}
 .tcard.pend::before{background:var(--clay)}
@@ -494,8 +501,8 @@ body.busy #busyLabel{opacity:1}
 .book.sellable .top:active{transform:scale(.985)}
 .book .bname{font-weight:700;font-size:14.5px;color:var(--plum);line-height:1.2}
 /* A third kind of title reads as its own thing rather than a Big Book. */
-.book .bname.other, .bname.other{color:#6B4FA0}
-.bulk-row .bk-name.other{color:#6B4FA0}
+.book .bname.other, .bname.other{color:var(--teal)}
+.bulk-row .bk-name.other{color:var(--teal)}
 .book .price{font-size:11.5px;color:var(--muted);margin-top:2px}
 .book .qtyrow{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:6px}
 .qty-chip{font-family:'Marcellus',serif;font-size:22px;color:var(--green);line-height:1}
@@ -531,10 +538,10 @@ body.busy #busyLabel{opacity:1}
 .don-card{background:#FFF6E3;border-color:var(--gold-l)}
 /* Consignment: someone else's book on our table. Marked so it is never mistaken
    for ours, but sold exactly the same way. */
-.book.consign{background:#F2F6FB;border-color:#B9CBE0}
-.con-tag.log{background:#EDE4F7;color:#5E3F8A;border-color:#C9B6E4}
-.con-tag{display:inline-block;margin-left:6px;background:#DCE8F5;color:#2F5C8A;
-  border:1px solid #B9CBE0;border-radius:999px;padding:1px 7px;font-size:9.5px;
+.book.consign{background:var(--consign-l);border-color:var(--consign-b)}
+.con-tag.log{background:var(--consign-l);color:var(--consign);border-color:var(--consign-b)}
+.con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
+  border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle}
 .don-card .bname{color:var(--gold)}
 .don-card .qty-chip{color:var(--gold)}
@@ -656,7 +663,7 @@ body.busy #busyLabel{opacity:1}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
-.ptg-r.ptg-con,.ptg-s.ptg-con{color:#2F5C8A}
+.ptg-r.ptg-con,.ptg-s.ptg-con{color:var(--consign)}
 /* Names are clipped rather than allowed to shove the numbers sideways. */
 .ptg-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .ptg-r.ptg-first{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden}
@@ -885,7 +892,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b92</span>
+    <span class="build-tag" title="Which version of the page is loaded">b93</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2780,7 +2787,7 @@ function logItemHTML(x, opts){
   /* In the log a row is already crowded, so the bubble says what it IS rather
      than whose it is — the group's name is a breath away in the tooltip and in
      the opened detail. */
-  if(conOwner) bits.push(`<span class="con-tag log" title="${esc(conOwner.name)}">Consign.</span>`);
+  if(conOwner) bits.push(`<span class="con-tag log" title="${esc(conOwner.name)}">consign</span>`);
   // Money we owe back, shown wherever the sale appears.
   const owedBack = changeOwed(x);
   if(owedBack>0) bits.push(`<span class="badge chg">${cashFmt(owedBack, changeCur(x))} change owed</span>`);
@@ -3924,8 +3931,8 @@ function shareLinksModal(){
           : (evs.find(e=>e.eventId===scope) ? locName(scope) : 'every event in this region');
         return `
         <div class="cash-sub">Sellers</div>
-        <div class="hint">One link for everyone selling here. Change what it shows below —
-          the link itself never changes, so nobody has to be sent a new one.</div>
+        <div class="hint">One link for everyone selling here. The link itself never changes,
+          so nobody has to be sent a new one.</div>
         <div class="sl-row">
           <div class="sl-top">
             <span class="sl-name">Sellers in ${esc(reg.name)}</span>
@@ -3935,11 +3942,10 @@ function shareLinksModal(){
                   <button class="btn btn-ghost btn-sm" data-act="slcopy"
                     data-link="${esc(link(sell.key))}">Copy</button></div>`
               : `<div class="sl-none">No link yet</div>`}
-          ${sell.key ? `<div class="sl-showing">Currently showing: <b>${esc(showing)}</b></div>
-          <div class="field"><label>What holders of this link can see</label>
+          ${sell.key ? `<div class="field sl-scope"><label>Current seller permissions</label>
             <select id="slScope">
-              <option value="ALL" ${(!scope||scope==='ALL')?'selected':''}>Every event in this region</option>
-              ${evs.map(e=>`<option value="${esc(e.eventId)}" ${scope===e.eventId?'selected':''}>${esc(e.name)} only</option>`).join('')}
+              <option value="ALL" ${(!scope||scope==='ALL')?'selected':''}>All events</option>
+              ${evs.map(e=>`<option value="${esc(e.eventId)}" ${scope===e.eventId?'selected':''}>${esc(e.name)}</option>`).join('')}
             </select></div>` : ''}
           <div class="sl-acts">
             <button class="btn btn-primary btn-sm" data-act="slseller"
