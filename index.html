@@ -846,7 +846,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b81</span>
+    <span class="build-tag" title="Which version of the page is loaded">b82</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2500,7 +2500,7 @@ function renderPayments(target){
        you can still see at a glance how much of it was never ours. */
     const conRow = conOf ? conOf[label] : null;
     const conKids = (conRow && Object.keys(conRow).length)
-      ? `<div class="ptg-s ptg-first ptg-con ${rowId}" hidden>of which consignment</div>`
+      ? `<div class="ptg-s ptg-first ptg-con ${rowId}" hidden>Consignment</div>`
         + curs.map(c=>`<div class="ptg-s ptg-con ${rowId}" hidden>${num(conRow,c)}</div>`).join('')
         + `<div class="ptg-s usd ptg-con ${rowId}" hidden>$${fmt(usdOf(conRow))}</div>`
       : '';
@@ -2545,11 +2545,11 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">All</div>
+        <div class="ptg-t ptg-first">Totals (inc. Consignment)</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
-        ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment — included above</div>${conBody}
-        <div class="ptg-t ptg-first ptg-net">Totals — consignment</div>
+        ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
+        <div class="ptg-t ptg-first ptg-net">Sales Total</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(grand,conGrand),c)}</div>`).join('')}
         <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(grand,conGrand)))}</div>` : ''}
       </div>
@@ -5810,7 +5810,14 @@ function reorderBooksModal(){
   draw();
 
   $('#rbSave').addEventListener('click',async ()=>{
-    await commitSync({action:'reorderBooks', regionId:CUR_REGION, ids:list.map(x=>x.id)}, 'Order saved');
+    /* Applied on screen at once and saved behind, like a sale. There is nothing
+       to wait for: the new order is already known here, and the server has no
+       answer we need. */
+    const ids = list.map(x=>x.id);
+    commit({action:'reorderBooks', regionId:CUR_REGION, ids},
+      st=>{ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.bookOrder=ids; },
+      'Order saved');
+    closeModal();
   });
 }
 
@@ -6079,31 +6086,17 @@ function partnerBookModal(id, editId){
     });
     const stock = $('#cbStock').value===''?null:Math.max(0,Math.round(Number($('#cbStock').value)||0));
 
-    let bookId = editId;
-    if(bookId && name !== (existing ? existing.name : '')){
-      await postQuiet({action:'renameBook', bookId, name,
-                       cat:(($('#cbCatEdit')||{}).value || existing.cat)});
-    }else if(bookId && ($('#cbCatEdit')||{}).value && $('#cbCatEdit').value !== existing.cat){
-      await postQuiet({action:'renameBook', bookId, name, cat:$('#cbCatEdit').value});
-    }
-    if(!bookId){
-      const made = await postQuiet({action:'addBook',name,cat:$('#cbCat').value,partnerId:id});
-      if(!made){ $('#modalErr').textContent='Could not add the title.'; return; }
-      bookId = made.result;
-    }
-    // Price lives on the region, exactly like our own titles.
-    // Merges into the region's price list — going through editRegion would
-    // replace it wholesale and wipe every other title.
-    if(Object.keys(prices).length){
-      await postQuiet({action:'setPrices', regionId:CUR_REGION, prices:{[bookId]:prices}});
-    }
-    if(stock!==null){
-      await postQuiet({action:'setStockBulk', location:CUR_LOC, items:[{bookId, qty:stock}], override:true});
-    }
-    await pull();
-    closeModal();
-    toast(editId?'Saved':'Title added');
-    partnersModal();
+    /* One request for the lot — name, kind, price and stock. Four separate
+       calls meant four round trips, and a failure part-way left the rest done. */
+    const cat = existing ? (($('#cbCatEdit')||{}).value || existing.cat) : $('#cbCat').value;
+    const ok = await commitSync({
+      action:'saveConsignBook',
+      bookId: editId || '', partnerId: id, name, cat,
+      regionId: CUR_REGION, location: CUR_LOC,
+      prices: Object.keys(prices).length ? prices : null,
+      stock: stock
+    }, editId ? 'Saved' : 'Title added');
+    if(ok) partnersModal();
   });
 }
 
