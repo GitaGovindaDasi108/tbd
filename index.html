@@ -630,6 +630,7 @@ body.busy #busyLabel{opacity:1}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--gold)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
 .ptg-r.ptg-con,.ptg-s.ptg-con{color:#2F5C8A}
+.ptg-s.ptg-don{color:var(--gold)}
 .ptg-t.ptg-net{border-top:2px solid var(--line-d);color:var(--plum);font-weight:800}
 .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
   text-transform:uppercase;color:var(--muted);border-top:2px solid var(--line-d)}
@@ -846,7 +847,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b83</span>
+    <span class="build-tag" title="Which version of the page is loaded">b84</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2432,6 +2433,8 @@ function renderPayments(target){
   const byType={}, byTypeGroup={}, grand={}, don={}, donGroup={};
   // The consignment share of each of those, so a row can show both.
   const conType={}, conTypeGroup={}, conGrand={};
+  // And the donation share, shown the same way.
+  const donType={}, donTypeGroup={};
   sales.forEach(x=>{
     if(!received(x)) return;
     const g = groups.find(gr=>gr.locs.includes(x.location));
@@ -2448,22 +2451,32 @@ function renderPayments(target){
         }
       });
     }
+    /* Donations sit inside their payment type now, the same as consignment.
+
+       A donation taken in cash IS cash, so burying it in a separate row meant
+       the Cash figure was never the amount of cash actually taken. It is
+       counted in the type and shown as its own line within that type's
+       breakdown, so the row still adds up. */
+    if(isDonation){
+      legs(x).forEach(l=>{
+        if(!l.type || !l.amt) return;
+        (donType[l.type]=donType[l.type]||{})[l.cur]=(donType[l.type][l.cur]||0)+l.amt;
+        don[l.cur] = (don[l.cur]||0) + l.amt;
+        if(g){
+          const bag=(donTypeGroup[l.type]=donTypeGroup[l.type]||{});
+          (bag[g.id]=bag[g.id]||{})[l.cur]=(bag[g.id][l.cur]||0)+l.amt;
+          (donGroup[g.id] = donGroup[g.id]||{})[l.cur] = (donGroup[g.id][l.cur]||0) + l.amt;
+        }
+      });
+    }
     legs(x).forEach(l=>{
       if(!l.type || !l.amt) return;
-      // Every column adds up: a donation belongs to the Donations row only, not
-      // also inside Cash or PayPal. Otherwise the same money appeared twice and
-      // the rows never summed to the total.
-      if(isDonation){
-        don[l.cur] = (don[l.cur]||0) + l.amt;
-        if(g) (donGroup[g.id] = donGroup[g.id]||{})[l.cur] = (donGroup[g.id][l.cur]||0) + l.amt;
-      }else{
-        (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
-        if(g){
-          const t = byTypeGroup[l.type] = byTypeGroup[l.type]||{};
-          (t[g.id] = t[g.id]||{})[l.cur] = (t[g.id][l.cur]||0) + l.amt;
-        }
+      (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
+      if(g){
+        const t = byTypeGroup[l.type] = byTypeGroup[l.type]||{};
+        (t[g.id] = t[g.id]||{})[l.cur] = (t[g.id][l.cur]||0) + l.amt;
       }
-      grand[l.cur] = (grand[l.cur]||0) + l.amt;   // the total covers both
+      grand[l.cur] = (grand[l.cur]||0) + l.amt;
     });
   });
 
@@ -2482,7 +2495,7 @@ function renderPayments(target){
     return out;
   }
 
-  function rowsFor(label, totals, perGroup, key, extraClass, conOf, conOfGroup){
+  function rowsFor(label, totals, perGroup, key, extraClass, conOf, conOfGroup, donOf, donOfGroup){
     const rowId = 'pay'+panelId+'-'+key;
     let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
         ><span class="tw">▸</span> ${esc(label)}</div>`
@@ -2491,16 +2504,27 @@ function renderPayments(target){
     /* A place's line shows what was ours there — the consignment share has its
        own line below. Otherwise the two lines double-count the same notes and
        the breakdown adds up to more than the row above it. */
+    /* A place's line shows books sold there — donations and consignment each get
+       their own line below, so the breakdown sums to the row above it rather
+       than counting the same notes twice. */
     const conG = conOfGroup ? (conOfGroup[label]||{}) : {};
+    const donG = donOfGroup ? (donOfGroup[label]||{}) : {};
     const kids = groups.map(g=>{
       const row = (perGroup||{})[g.id];
       if(!row) return '';
-      const mine = netOf(row, conG[g.id]||{});
+      const mine = netOf(netOf(row, conG[g.id]||{}), donG[g.id]||{});
       if(!Object.keys(mine).some(c=>Math.abs(mine[c])>0.005)) return '';
       return `<div class="ptg-s ptg-first ${rowId}" hidden>${esc(g.name)}</div>`
         + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(mine,c)}</div>`).join('')
         + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(mine))}</div>`;
     }).filter(Boolean).join('');
+
+    const donRow = donOf ? donOf[label] : null;
+    const donKids = (donRow && Object.keys(donRow).some(c=>Math.abs(donRow[c])>0.005))
+      ? `<div class="ptg-s ptg-first ptg-don ${rowId}" hidden>Donations</div>`
+        + curs.map(c=>`<div class="ptg-s ptg-don ${rowId}" hidden>${num(donRow,c)}</div>`).join('')
+        + `<div class="ptg-s usd ptg-don ${rowId}" hidden>$${fmt(usdOf(donRow))}</div>`
+      : '';
     /* How much of this row is consignment, in blue beneath its places — so the
        figure above is the true amount that came through this payment type, and
        you can still see at a glance how much of it was never ours. */
@@ -2510,12 +2534,11 @@ function renderPayments(target){
         + curs.map(c=>`<div class="ptg-s ptg-con ${rowId}" hidden>${num(conRow,c)}</div>`).join('')
         + `<div class="ptg-s usd ptg-con ${rowId}" hidden>$${fmt(usdOf(conRow))}</div>`
       : '';
-    return out + kids + conKids;
+    return out + kids + donKids + conKids;
   }
 
   let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''), '',
-    {[t]:conType[t]}, {[t]:conTypeGroup[t]})).join('');
-  if(Object.keys(don).length) body += rowsFor('Donations', don, donGroup, 'donations', 'pt-don');
+    {[t]:conType[t]}, {[t]:conTypeGroup[t]}, {[t]:donType[t]}, {[t]:donTypeGroup[t]})).join('');
 
   /* Consignment money gets its own rows beneath the tour's total, and stays
      outside it. You handle their notes on the day, so the figure has to be
