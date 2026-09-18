@@ -846,7 +846,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b82</span>
+    <span class="build-tag" title="Which version of the page is loaded">b83</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2482,18 +2482,24 @@ function renderPayments(target){
     return out;
   }
 
-  function rowsFor(label, totals, perGroup, key, extraClass, conOf){
+  function rowsFor(label, totals, perGroup, key, extraClass, conOf, conOfGroup){
     const rowId = 'pay'+panelId+'-'+key;
     let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
         ><span class="tw">▸</span> ${esc(label)}</div>`
       + curs.map(c=>`<div class="ptg-r ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">${num(totals,c)}</div>`).join('')
       + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">$${fmt(usdOf(totals))}</div>`;
+    /* A place's line shows what was ours there — the consignment share has its
+       own line below. Otherwise the two lines double-count the same notes and
+       the breakdown adds up to more than the row above it. */
+    const conG = conOfGroup ? (conOfGroup[label]||{}) : {};
     const kids = groups.map(g=>{
       const row = (perGroup||{})[g.id];
       if(!row) return '';
+      const mine = netOf(row, conG[g.id]||{});
+      if(!Object.keys(mine).some(c=>Math.abs(mine[c])>0.005)) return '';
       return `<div class="ptg-s ptg-first ${rowId}" hidden>${esc(g.name)}</div>`
-        + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(row,c)}</div>`).join('')
-        + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(row))}</div>`;
+        + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(mine,c)}</div>`).join('')
+        + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(mine))}</div>`;
     }).filter(Boolean).join('');
     /* How much of this row is consignment, in blue beneath its places — so the
        figure above is the true amount that came through this payment type, and
@@ -2507,7 +2513,8 @@ function renderPayments(target){
     return out + kids + conKids;
   }
 
-  let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''), '', {[t]:conType[t]})).join('');
+  let body = types.map(t=>rowsFor(t, byType[t], byTypeGroup[t], t.replace(/\W+/g,''), '',
+    {[t]:conType[t]}, {[t]:conTypeGroup[t]})).join('');
   if(Object.keys(don).length) body += rowsFor('Donations', don, donGroup, 'donations', 'pt-don');
 
   /* Consignment money gets its own rows beneath the tour's total, and stays
@@ -2800,7 +2807,9 @@ function renderLog(){
   document.querySelectorAll('.sort-btn').forEach(btn=>{
     const on = btn.dataset.sort===LOG_SORT.key;
     btn.classList.toggle('on', on);
-    btn.textContent = ({time:'Date',book:'Book',status:'Status'})[btn.dataset.sort]
+    // Every sort button needs a label here, or it renders as "undefined".
+    const LABELS = {time:'Date', book:'Book', pay:'Payment', status:'Status'};
+    btn.textContent = (LABELS[btn.dataset.sort] || btn.dataset.sort)
       + (on ? (LOG_SORT.dir<0?' ↓':' ↑') : '');
   });
   $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
