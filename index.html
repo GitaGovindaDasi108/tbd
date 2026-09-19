@@ -31,6 +31,7 @@
   /* Donations had been sharing gold with AoTM, so the two read as one thing.
      A warm rose keeps it in the family while telling them apart. */
   --donate:#9B3B6A; --donate-l:#F7E7EF; --donate-b:#E0BCCE;
+  --aotm-l:#FAF0DA; --aotm-b:#E3C98C;
   --line:#EBDFC8; --line-d:#DCCBA8;
   --shadow:0 1px 2px rgba(59,42,70,.06), 0 8px 24px rgba(59,42,70,.08);
   --radius:14px;
@@ -175,6 +176,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   background:var(--paper2);display:flex;flex-direction:column;gap:2px;min-height:92px}
 .stat-card.dim{opacity:.55}
 .stat-card.consign{background:var(--consign-l);border-color:var(--consign-b)}
+.stat-card.aotm-card{background:var(--aotm-l);border-color:var(--aotm-b)}
+.sc-name.aotm{color:var(--plum)}
 .sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
 .sc-name.aotm{color:var(--gold)}
 .sc-name.other{color:var(--teal)}
@@ -544,6 +547,10 @@ body.busy #busyLabel{opacity:1}
 /* Consignment: someone else's book on our table. Marked so it is never mistaken
    for ours, but sold exactly the same way. */
 .book.consign{background:var(--consign-l);border-color:var(--consign-b)}
+/* The card carries the colour, so the title reads in the ordinary ink — the
+   same arrangement consignment and donations already use. */
+.book.aotm-card{background:var(--aotm-l);border-color:var(--aotm-b)}
+.book .bname.aotm{color:var(--plum)}
 .con-tag.log{background:var(--consign-l);color:var(--consign);border-color:var(--consign-b)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
@@ -669,6 +676,9 @@ body.busy #busyLabel{opacity:1}
 /* Working figures read in a quiet grey; only the final line carries colour. */
 .ptg-r{color:#616161}
 .ptg .usd{color:#616161;font-weight:600}
+/* The "Totals" line is the summary of everything above it, so it reads black
+   rather than in the greys used for the working figures. */
+.ptg-t,.ptg-t.usd{color:#000}
 .ptg .z{color:var(--line-d)}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--donate)}
@@ -765,7 +775,7 @@ body.busy #busyLabel{opacity:1}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
 /* What a sale IS, carried by the row rather than a bubble. */
-.log-item.kind-aotm{background:#FBF5E8;border-color:var(--gold-l)}
+.log-item.kind-aotm{background:var(--aotm-l);border-color:var(--aotm-b)}
 .log-item.kind-con{background:var(--consign-l);border-color:var(--consign-b)}
 .log-item.kind-don{background:var(--donate-l);border-color:var(--donate-b)}
 .log-item.kind-other{background:var(--teal-l);border-color:var(--teal-b)}
@@ -910,7 +920,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b96</span>
+    <span class="build-tag" title="Which version of the page is loaded">b98</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1236,11 +1246,19 @@ function currentScope(){
 /** Currencies in play for the current page. */
 /* Titles the current region carries. A region with none recorded carries them
    all, so nothing changes for a region that was never edited. */
+/* Which titles this region offers.
+
+   A region can be narrowed to a chosen set, but stock always wins over that
+   list: a title with copies on the shelf is shown whether or not it was chosen,
+   because stock you cannot see is stock you cannot count, sell or move. That is
+   how books added to a region could vanish after being saved. */
 function regionBooks(regionId){
   const all = STATE.books||[];
   const r = regionById(regionId||CUR_REGION);
   if(!r || !r.books || !r.books.length) return all;
-  return all.filter(b=>r.books.includes(b.id));
+  const chosen = new Set(r.books);
+  const here = locsInRegion(r.regionId);
+  return all.filter(b=>chosen.has(b.id) || here.some(l=>invQty(l,b.id)>0));
 }
 /* ---- Consignment ----
    Books belonging to a local group, sold from our table but never counted as
@@ -1457,8 +1475,15 @@ function shownQty(bookId){return invQty(CUR_LOC,bookId);}
    was taken — an event only takes pre-orders once it has sold out of the title,
    so there is never event stock to hold back. */
 function reservedQty(loc,bookId){
-  if(loc!==WAREHOUSE) return 0;
-  return (STATE.sales||[]).filter(x=>x.type==='PREORDER'&&!x.delivered&&x.bookId===bookId).length;
+  /* Every region's warehouse holds back copies for its own undelivered
+     pre-orders — this only recognised the original one, so a hold in Madrid
+     counted for nothing. Each region answers for its own. */
+  if(!isWarehouseLoc(loc)) return 0;
+  const regionId = regionOfLoc(loc);
+  const mine = locsInRegion(regionId);
+  return (STATE.sales||[]).filter(x=>
+    x.type==='PREORDER' && !x.delivered && x.bookId===bookId && mine.includes(x.location)
+  ).length;
 }
 function availQty(loc,bookId){return Math.max(0,invQty(loc,bookId)-reservedQty(loc,bookId));}
 
@@ -2436,7 +2461,7 @@ function renderInventory(){
     if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
     else if(avail<=0) flag=`<span class="flag held sold-tag">ALL PRE-ORDERED</span>`;
     else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
-    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':''}">
+    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}">
       ${(q<=0||avail<=0)?flag:''}
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
@@ -2516,7 +2541,7 @@ function renderTitleList(target){
       return n ? `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
         title="Go to ${esc(pl.name)}"><b>${n}</b> ${esc(pl.name)}</button>` : '';
     }).filter(Boolean).join('');
-    return `<div class="stat-card${dim}${b.partnerId?' consign':''}">
+    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}">
       <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
