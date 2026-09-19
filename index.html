@@ -920,7 +920,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b98</span>
+    <span class="build-tag" title="Which version of the page is loaded">b100</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1284,7 +1284,23 @@ function shelfBooks(){
     ? (STATE.books||[]).filter(b=>b.partnerId && partnerById(b.partnerId))
     : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
   const seen = new Set(ours.map(b=>b.id));
-  return inRegionOrder(ours.concat(theirs.filter(b=>!seen.has(b.id))));
+  const list = ours.concat(theirs.filter(b=>!seen.has(b.id)));
+
+  /* Whatever is physically here is always shown.
+
+     A title could be filtered out by the region's chosen list, or by belonging
+     to a consignment group registered in another region — and then copies
+     sitting on this very shelf became invisible and unsellable. Stock is a
+     fact; the lists are preferences, and a fact outranks a preference. */
+  const have = new Set(list.map(b=>b.id));
+  const here = (CUR_LEVEL==='season')
+    ? regionsList().flatMap(r=>locsInRegion(r.regionId))
+    : locsInRegion(CUR_REGION).concat(CUR_LOC);
+  (STATE.books||[]).forEach(b=>{
+    if(have.has(b.id)) return;
+    if(here.some(l=>invQty(l,b.id)>0)) list.push(b);
+  });
+  return inRegionOrder(list);
 }
 
 /* Put a list of books in the order the current region wants them.
@@ -3344,6 +3360,14 @@ function saleModal(opts){
    The one payment is split across the books on the server (proportional to list
    price). On submit each book's stock drops by one, exactly as if sold singly. */
 function bundleModal(edit){
+  /* The same titles, in the same order, as the shelf behind this dialog.
+
+     It read the raw catalogue instead, so a region's own book order — and its
+     consignment titles — never reached the multi-book screen. Picking books
+     here meant hunting through a different arrangement from the one you had
+     just set. */
+  const bundleBooks = () => shelfBooks();
+
   const loc = edit ? edit.members[0].location : CUR_LOC;
   // When editing, a book's own stock still shows what's on the shelf now, but the
   // copies already in THIS bundle are not really gone yet — they'll be rewritten.
@@ -3353,7 +3377,7 @@ function bundleModal(edit){
 
   // Each book has a Buy count and a Pre-order count. A single transaction can
   // mix the two — buy the ones in stock, pre-order the ones that aren't.
-  const rows = (STATE.books||[]).map(b=>{
+  const rows = bundleBooks().map(b=>{
     const stock = invQty(loc,b.id) + (backIn[b.id]||0);
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
@@ -3457,7 +3481,7 @@ function bundleModal(edit){
   let payMode='full';
   // counts[bookId] = { buy: n, pre: n }
   const counts={};
-  (STATE.books||[]).forEach(b=>counts[b.id]={buy:0,pre:0});
+  bundleBooks().forEach(b=>counts[b.id]={buy:0,pre:0});
   if(edit){
     edit.members.forEach(m=>{
       if(!counts[m.bookId]) return;
@@ -3467,7 +3491,7 @@ function bundleModal(edit){
   }
   // Push the (possibly pre-filled) counts into the visible steppers. Without this
   // an edited bundle opened with every stepper showing 0.
-  function refreshAll(){ (STATE.books||[]).forEach(b=>refreshRow(b.id)); }
+  function refreshAll(){ bundleBooks().forEach(b=>refreshRow(b.id)); }
 
   const priceCur = ()=> ptype.value==='Mixed' ? 'PLN' : pcur.value;
   const unit = (bookId,cur)=>{ const b=bookById(bookId);
@@ -3481,7 +3505,7 @@ function bundleModal(edit){
   // Every book to be BOUGHT (expanded to one entry per copy), then pre-ordered.
   function expand(kind){
     const out=[];
-    (STATE.books||[]).forEach(b=>{ for(let i=0;i<counts[b.id][kind];i++) out.push(b.id); });
+    bundleBooks().forEach(b=>{ for(let i=0;i<counts[b.id][kind];i++) out.push(b.id); });
     return out;
   }
   const buyIds = ()=>expand('buy');
@@ -3490,7 +3514,7 @@ function bundleModal(edit){
 
   function listTotal(cur){
     let t=0;
-    (STATE.books||[]).forEach(b=>{ t += (counts[b.id].buy+counts[b.id].pre) * unit(b.id,cur); });
+    bundleBooks().forEach(b=>{ t += (counts[b.id].buy+counts[b.id].pre) * unit(b.id,cur); });
     return Math.round(t*100)/100;
   }
 
