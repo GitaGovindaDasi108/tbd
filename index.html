@@ -505,6 +505,8 @@ body.busy #busyLabel{opacity:1}
 .book .bname{font-weight:700;font-size:14.5px;color:var(--plum);line-height:1.2}
 /* A third kind of title reads as its own thing rather than a Big Book. */
 .book .bname.other, .bname.other{color:var(--teal)}
+/* The shelf colours a title by its kind, the same as every other list does. */
+.book .bname.aotm, .bname.aotm{color:var(--gold)}
 .bulk-row .bk-name.other{color:var(--teal)}
 .book .price{font-size:11.5px;color:var(--muted);margin-top:2px}
 .book .qtyrow{display:flex;align-items:center;justify-content:space-between;margin-top:9px;gap:6px}
@@ -665,8 +667,8 @@ body.busy #busyLabel{opacity:1}
    the same quiet ink as the rest. Green is kept for the one number that answers
    the question — what the tour actually took. */
 /* Working figures read in a quiet grey; only the final line carries colour. */
-.ptg-r:not(.ptg-first):not(.usd){color:#616161}
-.ptg .usd{color:#424242;font-weight:600}
+.ptg-r{color:#616161}
+.ptg .usd{color:#616161;font-weight:600}
 .ptg .z{color:var(--line-d)}
 .ptg .tw{color:var(--muted);font-size:11px}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--donate)}
@@ -762,11 +764,16 @@ body.busy #busyLabel{opacity:1}
 .badge{font-size:9.5px;font-weight:700;padding:1px 5px;border-radius:5px;letter-spacing:.4px;text-transform:uppercase;vertical-align:1px}
 .badge.sale{background:var(--green-l);color:var(--green)}
 .badge.pre{background:#E4ECF7;color:var(--blue)}
+/* What a sale IS, carried by the row rather than a bubble. */
+.log-item.kind-aotm{background:#FBF5E8;border-color:var(--gold-l)}
+.log-item.kind-con{background:var(--consign-l);border-color:var(--consign-b)}
+.log-item.kind-don{background:var(--donate-l);border-color:var(--donate-b)}
+.log-item.kind-other{background:var(--teal-l);border-color:var(--teal-b)}
 .badge.don{background:var(--donate-l);color:var(--donate);border:1px solid var(--donate-b)}
 .badge.chg{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.part{background:#FDEBD0;color:#9C5A12}
-.badge.aotm{background:#EAF0F7;color:var(--blue)}
+.badge.aotm{background:#F6EEDC;color:var(--gold);border:1px solid var(--gold-l)}
 .badge.filled{background:#DCE9F7;color:var(--blue);border:1px solid #BFD6EE}
 .empty{color:var(--muted);font-size:13.5px;text-align:center;padding:20px 8px;font-style:italic}
 
@@ -903,7 +910,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b95</span>
+    <span class="build-tag" title="Which version of the page is loaded">b96</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2762,12 +2769,22 @@ function logItemHTML(x, opts){
   const wasPreorder = x.type==='SALE' && !!x.dsource;
   // Whose book this was — consignment rows are marked so they never read as ours.
   const conOwner = x.bookId ? (partnerById((bookById(x.bookId)||{}).partnerId)||null) : null;
+  /* A badge only for what is unusual.
+
+     An ordinary sale needs no label — it is what every row is unless told
+     otherwise. What a row IS (Adventures, consignment, a donation) is carried
+     by the colour of the row itself now, which reads faster than a bubble and
+     stops a crowded row wrapping onto two lines. */
   const badge = x.type==='SALE'
-      ? (wasPreorder?'<span class="badge filled">Pre-order filled</span>'
-                    :'<span class="badge sale">Sale</span>')
+      ? (wasPreorder?'<span class="badge filled">Pre-order filled</span>':'')
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
-    : '<span class="badge don">Donation</span>';
-  const cat = (!isDon && catOf(x.bookId)==='aotm') ? '<span class="badge aotm">AoTM</span>' : '';
+    : '';
+  const cat = '';
+  // The row's own kind, used to tint it below.
+  const rowKind = isDon ? 'don'
+    : conOwner ? 'con'
+    : (x.bookId && catOf(x.bookId)==='aotm') ? 'aotm'
+    : (x.bookId && catOf(x.bookId)==='other') ? 'other' : '';
   const partial = isPartial(x);
   const pend = pending
     ? (partial?'<span class="badge part">Part paid</span>':'<span class="badge pend">Pending</span>')
@@ -2798,7 +2815,8 @@ function logItemHTML(x, opts){
   /* In the log a row is already crowded, so the bubble says what it IS rather
      than whose it is — the group's name is a breath away in the tooltip and in
      the opened detail. */
-  if(conOwner) bits.push(`<span class="con-tag log" title="${esc(conOwner.name)}">consign</span>`);
+  // The row's tint says it is consignment; the group's name lives in the tooltip
+  // and in the opened detail.
   // Money we owe back, shown wherever the sale appears.
   const owedBack = changeOwed(x);
   if(owedBack>0) bits.push(`<span class="badge chg">${cashFmt(owedBack, changeCur(x))} change owed</span>`);
@@ -2849,7 +2867,8 @@ function logItemHTML(x, opts){
 
   const bAttr = x._bundle ? ` data-bundle="${x.bundle}"` : '';
   const idAttr = `data-id="${x.saleId}"${bAttr}`;
-  return `<div class="log-item ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''} ${x._bundle?'bundle':''}"
+  return `<div class="log-item ${rowKind?'kind-'+rowKind:''} ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''} ${x._bundle?'bundle':''}"
+    ${conOwner?`title="${esc(conOwner.name)}"`:''}
        data-act="expand" ${idAttr}>
     <div class="li-row">
       <span class="li-chev">▶</span>
