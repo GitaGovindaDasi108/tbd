@@ -364,6 +364,9 @@ body.busy #busyLabel{opacity:1}
 .cash-mini{border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:13px;padding:1px 4px;line-height:1}
 .cash-mini:hover{color:var(--plum)}
 .cash-mini.danger:hover{color:var(--clay)}
+/* A row being undone: visibly busy, and not tappable a second time. */
+.cash-logrow.undoing{opacity:.5;pointer-events:none}
+.cash-mini:disabled{opacity:.6;cursor:default}
 .cash-coll{border:1px solid var(--line);border-radius:9px;overflow:visible;flex:0 0 auto;height:auto}
 .cash-coll-row{flex:none;display:flex;justify-content:space-between;gap:8px;padding:7px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
 .cash-coll-row:last-child{border-bottom:none}
@@ -675,7 +678,11 @@ body.busy #busyLabel{opacity:1}
    the question — what the tour actually took. */
 /* Working figures read in a quiet grey; only the final line carries colour. */
 .ptg-r{color:#616161}
-.ptg .usd{color:#616161;font-weight:600}
+/* The dollar column is a derived total, not another currency, so it gets a
+   little more room to its left. Without it the gap depended on how wide the
+   last currency's number happened to be — roomy next to a 0, squashed next to
+   7,600 — so the Totals line looked cramped while the rows above did not. */
+.ptg .usd{color:#616161;font-weight:600;padding-left:26px}
 /* The "Totals" line is the summary of everything above it, so it reads black
    rather than in the greys used for the working figures. */
 .ptg-t,.ptg-t.usd{color:#000}
@@ -920,7 +927,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b102</span>
+    <span class="build-tag" title="Which version of the page is loaded">b104</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2736,7 +2743,9 @@ function renderPayments(target){
      the container and every row is a direct child of it, so the header, the type
      rows, the breakdown rows and the total all share the same column edges by
      construction — there is no second layout context that can drift. */
-  const template = `minmax(120px,1.6fr) repeat(${curs.length + 1}, minmax(74px,1fr))`;
+  /* The dollar column carries the widest figures and its own left padding, so
+     it is given a wider floor than the currency columns. */
+  const template = `minmax(120px,1.6fr) repeat(${curs.length}, minmax(74px,1fr)) minmax(104px,1.15fr)`;
 
   $(target||'#payBody').innerHTML = `
     <div class="ptg-scroll">
@@ -3719,6 +3728,18 @@ function bundleModal(edit){
    corrected at) a location, and transfers between the warehouse and events.
    Mirrors the cash ledger's shape and look. */
 function stockLocName(id){ return cashAcctName(id); }   // same lookup, different name for clarity here
+
+/* Undo one movement, keeping the button honest about what is happening. */
+async function undoMovement(id, btn, row){
+  const ok = await commitSync({action:'undoStockMove', id}, 'Movement undone');
+  if(ok){
+    transfersModal();               // redraw only once the change has landed
+  }else{
+    // Put it back the way it was so the row can be tried again.
+    if(btn){ btn.disabled=false; btn.textContent='↺'; btn.title='Undo this movement'; }
+    if(row) row.classList.remove('undoing');
+  }
+}
 
 function transfersModal(){
   // What you can filter by depends on where you're standing: the season lists every
@@ -7177,8 +7198,19 @@ document.addEventListener('click',e=>{
   }
   if(a==='undomove'){
     if(!confirm('Undo this movement? The books go back where they were and the entry is removed.')) return;
-    commitSync({action:'undoStockMove',id:t.dataset.id},'Movement undone');
-    setTimeout(()=>transfersModal(),0);
+    /* Say plainly that it is working.
+
+       This fired the save and reopened the dialog in the same breath, so the
+       list redrew from the old data and the row was still sitting there — it
+       looked as though the tap had done nothing, and the only thing to do was
+       tap again. Now the button shows it is busy, the row dims, and the list is
+       redrawn once the save has actually landed. */
+    const row = t.closest('.cash-logrow') || t.closest('.cash-log') || null;
+    t.disabled = true;
+    t.textContent = '…';
+    t.title = 'Undoing…';
+    if(row) row.classList.add('undoing');
+    undoMovement(t.dataset.id, t, row);
     return;
   }
   if(a==='whoami'){ askWhoAmI(true); return; }
