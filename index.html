@@ -927,7 +927,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b104</span>
+    <span class="build-tag" title="Which version of the page is loaded">b105</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2770,12 +2770,12 @@ function renderPayments(target){
 const OPEN = new Set();
 /* wa.me wants bare digits with the country code and no plus or spaces. */
 function waHref(p){ return 'https://wa.me/' + String(p||'').replace(/\D/g,''); }
-/* What gets shown and copied: the number as entered, with its + intact. */
-function phoneText(p){
-  p = String(p||'').trim();
-  if(!p) return '';
-  return p.charAt(0)==='+' ? p : '+'+p.replace(/^0+/,'');
-}
+/* What gets shown and copied: exactly what was entered.
+
+   This used to add a "+" when one was missing, which meant the number on screen
+   was not the number typed — and a pasted international number then looked as
+   though the app had mangled it. The + is asked for in the field instead. */
+function phoneText(p){ return String(p||'').trim(); }
 const WA_ICON = '<svg viewBox="0 0 24 24"><path d="M17.5 14.4c-.3-.2-1.7-.8-2-.9-.3-.1-.5-.2-.7.1s-.7.9-.9 1.1c-.2.2-.3.2-.6.1s-1.2-.5-2.3-1.4c-.9-.8-1.4-1.7-1.6-2s0-.4.1-.6l.4-.5.3-.5c.1-.2 0-.4 0-.5L9.4 6.9c-.2-.5-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.4s-1 1-1 2.4 1 2.8 1.2 3c.1.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.8s1.7-.7 1.9-1.3c.2-.7.2-1.2.2-1.3s-.2-.2-.5-.4zM12 2a10 10 0 0 0-8.6 15L2 22l5.1-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-3-.2-.3A8.2 8.2 0 1 1 12 20.2z"/></svg>';
 function waLink(p){
   const t=phoneText(p); if(!t) return '';
@@ -3105,10 +3105,13 @@ function curOptions(sel){
    typing, storage and read-back. Everything except digits and the usual
    separators is dropped; a + is kept only in first position. */
 function cleanPhone(v){
-  v = String(v||'').trim();
-  const plus = v.charAt(0)==='+';
-  const rest = v.replace(/[^\d\s()\-]/g,'').trim();
-  return (plus?'+':'') + rest;
+  /* Trim the ends and leave the rest alone.
+
+     It used to strip anything that was not a digit, space, bracket or dash —
+     so a pasted "+34 612 34 56 78" kept its + only if it was the very first
+     character, and anything else a person had typed was silently thrown away.
+     What they entered is what gets stored. */
+  return String(v||'').trim();
 }
 
 /* ---- Sale / Pre-order / Edit ---- */
@@ -3197,7 +3200,7 @@ function saleModal(opts){
       <div id="nameBox" style="display:block">
         <div class="row2">
           <div class="field"><label id="nameLbl">Name${isPre?'':' (optional)'}</label><input id="cname" type="text"></div>
-          <div class="field"><label>Phone${isPre?'':' (optional)'}</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
+          <div class="field"><label>Phone${isPre?'':' (optional)'}</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789 (include the +)"></div>
         </div>
       </div>
       <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
@@ -3467,7 +3470,7 @@ function bundleModal(edit){
       <div id="nameBox" style="display:block">
         <div class="row2">
           <div class="field"><label id="nameLbl">Name (optional)</label><input id="cname" type="text"></div>
-          <div class="field"><label id="phoneLbl">Phone (optional)</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789"></div>
+          <div class="field"><label id="phoneLbl">Phone (optional)</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789 (include the +)"></div>
         </div>
       </div>
       <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
@@ -4426,7 +4429,7 @@ function orgEditModal(){
         const gi=work.indexOf(p);
         return `<div class="oe-person">
           <input class="oe-name" data-i="${gi}" value="${esc(p.name)}" placeholder="Name">
-          <input class="oe-phone" data-i="${gi}" value="${esc(p.phone)}" placeholder="WhatsApp +48…" inputmode="tel">
+          <input class="oe-phone" data-i="${gi}" value="${esc(p.phone)}" placeholder="WhatsApp — include the + and country code" inputmode="tel">
           <button class="oe-del" data-del="${gi}" title="Remove">✕</button>
         </div>`;
       }).join('');
@@ -5011,7 +5014,7 @@ function donationModal(edit){
       </div>
       <div class="row2">
         <div class="field"><label>Name (optional)</label><input id="cname" type="text"></div>
-        <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789"></div>
+        <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789 (include the +)"></div>
       </div>
       <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
         <div class="mixrow">
