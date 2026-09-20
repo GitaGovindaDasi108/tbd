@@ -927,7 +927,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b105</span>
+    <span class="build-tag" title="Which version of the page is loaded">b107</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3070,6 +3070,25 @@ function closeModal(){$('#overlay').classList.remove('show');}
 $('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
+/* Attach a delegated listener to the modal exactly once.
+
+   #modal is a permanent element: opening a dialog replaces its contents, not
+   the element itself. So a dialog that did $('#modal').addEventListener(...)
+   left its handler behind on close, and the next open added another. After
+   three visits to the cash screen every click fired three times — three
+   confirm boxes to dismiss, three saves attempted, and a good chance of them
+   treading on each other. Binding through here keeps exactly one. */
+const _modalBound = {};
+function onModal(type, key, fn){
+  if(_modalBound[key]) return;
+  _modalBound[key] = true;
+  $('#modal').addEventListener(type, e=>{
+    // Only act while the dialog that owns this handler is the one on screen.
+    if(!$('#overlay').classList.contains('show')) return;
+    fn(e);
+  });
+}
+
 const mHead = t => `<h3>${esc(t)}<button class="x" onclick="closeModal()" aria-label="Close">×</button></h3>`;
 
 /* What can be taken where you're standing.
@@ -3584,7 +3603,11 @@ function bundleModal(edit){
   }
 
   // Stepper clicks, scoped to this modal.
-  $('#modal').addEventListener('click',e=>{
+  /* Bound to the dialog's BODY, which is rebuilt each time the dialog opens —
+     not to #modal, which is permanent and would collect a fresh handler on
+     every visit. This one closes over the dialog's own counts, so it has to be
+     per-dialog rather than bound once. */
+  ($('#modal .m-body') || $('#modal')).addEventListener('click',e=>{
     const plus=e.target.closest('.mb-plus'), minus=e.target.closest('.mb-minus');
     const btn=plus||minus; if(!btn) return;
     const id=btn.dataset.book, kind=btn.dataset.kind;
@@ -4905,7 +4928,7 @@ function cashModal(){
     cashReopen();
   });
 
-  $('#modal').addEventListener('click',e=>{
+  onModal('click','cash',e=>{
     const setC=e.target.closest('[data-setacct]');
     if(setC){
       const acct=setC.dataset.setacct, cur=setC.dataset.setcur, now=cashBalance(acct,cur);
@@ -6765,7 +6788,7 @@ function shipCountModal(id){
       ? `<span class="cl-bad">${moved} title${moved===1?'':'s'} changed.</span> The difference returns to ${esc((from||{}).name||'the sender')}.`
       : `<span class="cl-ok">Nothing changed.</span>`;
   }
-  $('#modal').addEventListener('input',e=>{ if(e.target.closest('.sc-q')) recount(); });
+  onModal('input','count',e=>{ if(e.target.closest('.sc-q')) recount(); });
   recount();
 
   $('#scGo').addEventListener('click',()=>{
