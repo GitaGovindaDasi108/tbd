@@ -920,7 +920,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b100</span>
+    <span class="build-tag" title="Which version of the page is loaded">b101</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -4077,198 +4077,125 @@ async function shareKeySet(kind, id, clear){
    still owed. Uses *bold* markers, which WhatsApp renders and everything else
    shows harmlessly. Adapts to the level you're on, and a seller link gets the
    book counts without the money. */
+/* A WhatsApp report, kept to the bone.
+
+   These are read on a phone, mid-festival, usually to answer one question. So:
+   a line per thing, a total at the end, and nothing else. No banner, no
+   timestamp, no section headings repeating what the numbers already say, and no
+   figure stated twice in different words. Anything a reader would skip is
+   noise, and noise is what stops these being read at all. */
 function buildReport(part){
   const L = [];
   const want = k => !part || part===k;
   const s = scopedSales();
   const money = !hideMoney();
   const nf = n => fmt(n);
+  const line = (label, value) => L.push(label + ' - ' + value);
+  const gap = () => { if(L.length && L[L.length-1] !== '') L.push(''); };
 
-  L.push('*' + (STATE.seasonName||'Book Sales') + ' — ' + scopeLabel() + '*');
-  L.push(new Date().toLocaleString(LOCALE,{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}));
-  L.push('');
-
-  // Books, split the way the team thinks about them.
-  const count = (cat,type) => s.filter(x=>x.bookId && catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
-  const gifts = cat => s.filter(x=>x.bookId && catOf(x.bookId)===cat && isGift(x)).length;
-  if(want('books')) [['big','BIG BOOKS'],['aotm','ADVENTURES']].forEach(([cat,label])=>{
-    const books = curBooks().filter(b=>catOfBook(b)===cat);
-    if(!books.length) return;
-    const sold=count(cat,'SALE'), pre=count(cat,'PREORDER'), gift=gifts(cat);
-    const tot = sold+pre+gift;
-    L.push('*' + label + ' — ' + tot + '*');
-    books.forEach(b=>{
-      const bs=s.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
-      const bp=s.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
-      const bg=s.filter(x=>x.bookId===b.id && isGift(x)).length;
+  if(want('books')){
+    const sold = b => s.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
+    const pre  = b => s.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
+    const gift = b => s.filter(x=>x.bookId===b.id && isGift(x)).length;
+    let tSold=0, tPre=0, tGift=0, any=false;
+    shelfBooks().forEach(b=>{
+      const bs=sold(b), bp=pre(b), bg=gift(b);
       if(!bs && !bp && !bg) return;
-      let line = '  ' + b.name + ': ' + bs;
+      any=true; tSold+=bs; tPre+=bp; tGift+=bg;
       const extra=[];
-      if(bp) extra.push(bp+' pre-ordered');
-      if(bg) extra.push(bg+' gift'+(bg===1?'':'s'));
-      if(extra.length) line += ' (' + extra.join(', ') + ')';
-      L.push(line);
+      if(bp) extra.push(bp+' pre');
+      if(bg) extra.push(bg+' gift');
+      line(b.name, bs + (extra.length?' ('+extra.join(', ')+')':''));
     });
-    const foot=[];
-    if(pre) foot.push(pre+' pre-ordered');
-    if(gift) foot.push(gift+' gift'+(gift===1?'':'s'));
-    L.push('  → ' + sold + ' sold' + (foot.length?', '+foot.join(', '):''));
-    L.push('');
-  });
+    if(any){
+      const foot=[];
+      if(tPre) foot.push(tPre+' pre');
+      if(tGift) foot.push(tGift+' gift');
+      line('Total', tSold + (foot.length?' ('+foot.join(', ')+')':''));
+    }
+    gap();
+  }
+
+  if(want('inventory')){
+    let total=0, any=false;
+    shelfBooks().forEach(b=>{
+      const n=shownQty(b.id);
+      if(!n) return;
+      any=true; total+=n; line(b.name, n);
+    });
+    if(any) line('Total', total);
+    gap();
+  }
+
+  if(want('stock')){
+    const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
+    let total=0, any=false;
+    shelfBooks().forEach(b=>{
+      const n = regions.reduce((t,r)=>t+locsInRegion(r.regionId).reduce((u,l)=>u+invQty(l,b.id),0), 0);
+      if(!n) return;
+      any=true; total+=n; line(b.name, n);
+    });
+    if(any) line('Total', total);
+    gap();
+  }
 
   if(want('pending')){
-    // Who still owes, so it can be chased directly from the message.
     const owed = s.filter(x=>pendingFlag(x) || dueParts(x).length);
-    L.push('*PAYMENTS OUTSTANDING* — ' + owed.length);
     owed.forEach(x=>{
       const what = x.bookId ? bookById(x.bookId).name : 'Donation';
       const amt = dueParts(x).map(d=>cashFmt(d.amt,d.cur)).join(' + ')
         || legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ');
-      L.push('  ' + what + ' — ' + (amt||'—') + (x.name?' · '+x.name:'') + (x.phone?' · '+x.phone:''));
+      line(what + (x.name?' · '+x.name:''), amt||'—');
     });
-    if(!owed.length) L.push('  Nothing outstanding.');
-    L.push('');
+    if(owed.length) line('Total', owed.length);
+    gap();
   }
 
   if(want('change')){
     const owe = s.filter(x=>changeOwed(x)>0);
-    L.push('*CHANGE WE OWE* — ' + owe.length);
-    owe.forEach(x=>{
-      L.push('  ' + cashFmt(changeOwed(x), changeCur(x)) + ' to ' + (x.name||'someone')
-        + (x.phone?' · '+x.phone:''));
-    });
-    if(!owe.length) L.push('  Nothing owed.');
-    L.push('');
+    owe.forEach(x=>line(x.name||'someone', cashFmt(changeOwed(x), changeCur(x))));
+    if(owe.length) line('Total', owe.length);
+    gap();
   }
 
   if(want('preorders')){
     const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
-    L.push('*PRE-ORDERS TO DELIVER* — ' + due.length);
-    due.forEach(x=>{
-      L.push('  ' + bookById(x.bookId).name + (x.name?' — '+x.name:'') + (x.phone?' · '+x.phone:''));
-    });
-    if(!due.length) L.push('  Nothing awaiting delivery.');
-    L.push('');
+    due.forEach(x=>line(bookById(x.bookId).name + (x.name?' · '+x.name:''),
+                        x.phone || 'to deliver'));
+    if(due.length) line('Total', due.length);
+    gap();
   }
 
   if(want('log')){
-    // The recent run of sales, newest first — enough to answer "what happened?".
     const recent = s.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
-    L.push('*RECENT SALES* — showing ' + recent.length + ' of ' + s.length);
     recent.forEach(x=>{
       const what = x.bookId ? bookById(x.bookId).name : 'Donation';
-      const amt = legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ');
-      const when = x.ts ? new Date(x.ts).toLocaleString(LOCALE,{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-      L.push('  ' + what + ' — ' + (amt||'gift') + (when?' · '+when:'') + (x.soldBy?' · '+x.soldBy:''));
+      line(what, legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ') || 'gift');
     });
-    L.push('');
-  }
-
-  if(want('inventory')){
-    /* The shelf where you are standing: what is here, what is out at events or
-       with devotees, and what is still on its way. */
-    const here = curBooks().map(b=>({b, n:shownQty(b.id)})).filter(x=>x.n || CUR_LEVEL!=='season');
-    L.push('*ON THE SHELF — ' + scopeLabel().toUpperCase() + '*');
-    let any = false;
-    here.forEach(({b,n})=>{
-      const atEvents = isWarehouseLoc(CUR_LOC)
-        ? eventsOfRegion(CUR_REGION).reduce((t,e)=>t+invQty(e.eventId,b.id),0) : 0;
-      const held = isWarehouseLoc(CUR_LOC) ? withHoldersQty(b.id) : 0;
-      const transit = isWarehouseLoc(CUR_LOC) ? inTransitQty(b.id) : 0;
-      if(!n && !atEvents && !held && !transit) return;
-      any = true;
-      const extra = [];
-      if(atEvents) extra.push(atEvents + ' at events');
-      if(held) extra.push(held + ' with devotees');
-      if(transit) extra.push(transit + ' in transit');
-      L.push('  ' + b.name + ': ' + n + (extra.length ? ' (' + extra.join(', ') + ')' : ''));
-    });
-    if(!any) L.push('  Nothing in stock.');
-    L.push('');
-  }
-
-  if(want('stock')){
-    // Where the books are, for when someone asks about stock rather than sales.
-    const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
-    L.push('*STOCK ON HAND*');
-    curBooks().forEach(b=>{
-      const per = regions.map(r=>({r, n:locsInRegion(r.regionId).reduce((t,l)=>t+invQty(l,b.id),0)}))
-        .filter(x=>x.n>0);
-      const total = per.reduce((t,x)=>t+x.n,0);
-      const transit = regions.reduce((t,r)=>t+inTransitQty(b.id,r.regionId),0);
-      if(!total && !transit) return;
-      let line = '  ' + b.name + ': ' + total;
-      if(regions.length>1 && per.length) line += ' (' + per.map(x=>x.n+' '+x.r.name).join(', ') + ')';
-      if(transit) line += ' · ' + transit + ' in transit';
-      L.push(line);
-    });
-    L.push('');
+    if(recent.length) line('Total', s.length);
+    gap();
   }
 
   if(money && want('cash')){
-    // Collections by payment type, in the currencies actually taken.
-    const byType={}, don={}, grand={};
+    const byType={}, grand={};
     s.forEach(x=>{
       if(!received(x)) return;
-      const isDon = x.type==='DONATION';
       legs(x).forEach(l=>{
         if(!l.type || !l.amt) return;
-        const bucket = isDon ? don : (byType[l.type] = byType[l.type]||{});
-        bucket[l.cur] = (bucket[l.cur]||0) + l.amt;
+        (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
         grand[l.cur] = (grand[l.cur]||0) + l.amt;
       });
     });
-    const curList = o => Object.keys(o).filter(c=>o[c]).sort();
-    const asText = o => curList(o).map(c=>cashFmt(o[c],c)).join(' · ');
-    // A payment type with more than one currency reads better stacked than
-    // strung along a single line.
-    const asLines = (o, indent) => {
-      const cs = curList(o);
-      if(!cs.length) return [];
-      if(cs.length===1) return [indent + cashFmt(o[cs[0]], cs[0])];
-      return cs.map(c => indent + '  ' + cashFmt(o[c], c));
-    };
-    const usd = o => Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
-
-    L.push('*COLLECTED*');
-    const block = (label, o) => {
-      const cs = curList(o);
-      if(!cs.length) return;
-      if(cs.length===1){ L.push('  ' + label + ': ' + cashFmt(o[cs[0]], cs[0])); return; }
-      L.push('  ' + label + ':');
-      cs.forEach(c => L.push('    ' + cashFmt(o[c], c)));
-    };
-    Object.keys(byType).filter(t=>t!=='Gift').sort().forEach(t=>block(t, byType[t]));
-    block('Donations', don);
-    const gcs = curList(grand);
-    if(!gcs.length) L.push('  *Total: nothing yet*');
-    else if(gcs.length===1) L.push('  *Total: ' + cashFmt(grand[gcs[0]], gcs[0]) + '*');
-    else { L.push('  *Total:*'); gcs.forEach(c => L.push('    *' + cashFmt(grand[c], c) + '*')); }
-    if(gcs.length) L.push('  ≈ $' + nf(usd(grand)));
-
-    // Change withdrawn from the bank sits in the box but is not takings, so the
-    // report has to say so or the figures look bigger than they are.
-    const fl = floatOut();
-    const flCurs = Object.keys(fl).filter(c=>Math.abs(fl[c])>0.005).sort();
-    if(flCurs.length){
-      L.push('');
-      L.push('*CHANGE FROM THE BANK*');
-      flCurs.forEach(c=>L.push('  ' + cashFmt(fl[c], c) + ' still to deposit back'));
-      L.push('  (already counted above — it is in the box but not takings)');
-    }
-
-    // What is still owed.
-    let pendUsd=0; const due={};
-    s.forEach(x=>{ pendUsd += dueUSD(x);
-      dueParts(x).forEach(d=>{ if(d.amt) due[d.cur]=(due[d.cur]||0)+d.amt; }); });
-    if(pendUsd>0.005){
-      L.push('');
-      L.push('*STILL TO COLLECT*');
-      const dcs = curList(due);
-      if(dcs.length<=1) L.push('  ' + (asText(due)||'—') + '  ≈ $' + nf(pendUsd));
-      else { dcs.forEach(c => L.push('  ' + cashFmt(due[c], c))); L.push('  ≈ $' + nf(pendUsd)); }
-    }
+    const curs = o => Object.keys(o).filter(c=>o[c]).sort();
+    const text = o => curs(o).map(c=>cashFmt(o[c],c)).join(' + ');
+    const usd  = o => Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
+    Object.keys(byType).filter(t=>t!=='Gift').sort().forEach(t=>{
+      if(curs(byType[t]).length) line(t, text(byType[t]));
+    });
+    if(curs(grand).length) line('Total', text(grand) + ' ≈ $' + nf(usd(grand)));
+    gap();
   }
+
   return L.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 
