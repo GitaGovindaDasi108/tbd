@@ -920,7 +920,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b101</span>
+    <span class="build-tag" title="Which version of the page is loaded">b102</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2745,7 +2745,7 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">Totals (w/Consignment)</div>
+        <div class="ptg-t ptg-first">${conBody ? 'Totals (w/Consignment)' : 'Totals'}</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
         ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
