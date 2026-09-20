@@ -927,7 +927,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b108</span>
+    <span class="build-tag" title="Which version of the page is loaded">b111</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1138,6 +1138,9 @@ function bookById(id){
    place the categories are decided. */
 const CATS = ['big','aotm','other'];
 const CAT_LABEL = {big:'Big Books', aotm:'AoTM — Adventures', other:'Other'};
+/* Short forms for the WhatsApp reports, where a section heading like
+   "AoTM — Adventures total" reads as clutter on a phone. */
+const CAT_SHORT = {big:'Big Books', aotm:'Adventures', other:'Other'};
 function catOfBook(b){ const c=(b&&b.cat)||'big'; return CATS.includes(c) ? c : 'big'; }
 function catOf(id){ return catOfBook(bookById(id)); }
 function isAotm(b){return catOfBook(b)==='aotm';}
@@ -4144,55 +4147,88 @@ function buildReport(part){
     const sold = b => s.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
     const pre  = b => s.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
     const gift = b => s.filter(x=>x.bookId===b.id && isGift(x)).length;
-    let tSold=0, tPre=0, tGift=0, any=false;
-    shelfBooks().forEach(b=>{
-      const bs=sold(b), bp=pre(b), bg=gift(b);
-      if(!bs && !bp && !bg) return;
-      any=true; tSold+=bs; tPre+=bp; tGift+=bg;
-      const extra=[];
-      if(bp) extra.push(bp+' pre');
-      if(bg) extra.push(bg+' gift');
-      line(b.name, bs + (extra.length?' ('+extra.join(', ')+')':''));
+
+    /* Each kind gets its own block and its own total.
+
+       A single running list put a pamphlet next to a Big Book and gave one
+       figure covering both, which is not a number anyone can act on — the kinds
+       are counted, reported and compared separately everywhere else, so the
+       report follows suit. */
+    let grand=0, gPre=0, gGift=0, blocks=0;
+    CATS.forEach(kind=>{
+      const books = shelfBooks().filter(b=>catOfBook(b)===kind);
+      let tSold=0, tPre=0, tGift=0; const lines=[];
+      books.forEach(b=>{
+        const bs=sold(b), bp=pre(b), bg=gift(b);
+        if(!bs && !bp && !bg) return;
+        tSold+=bs; tPre+=bp; tGift+=bg;
+        const extra=[];
+        if(bp) extra.push(bp+' pre');
+        if(bg) extra.push(bg+' gift');
+        lines.push([b.name, bs + (extra.length?' ('+extra.join(', ')+')':'')]);
+      });
+      if(!lines.length) return;
+      if(blocks) gap();
+      blocks++;
+      lines.forEach(([a,b])=>line(a,b));
+      /* A total under a single title just repeats that title's own figure, so
+         it only appears once there are two or more to add up. */
+      if(lines.length>1){
+        const foot=[];
+        if(tPre) foot.push(tPre+' pre');
+        if(tGift) foot.push(tGift+' gift');
+        line(CAT_SHORT[kind] + ' total', tSold + (foot.length?' ('+foot.join(', ')+')':''));
+      }
+      grand+=tSold; gPre+=tPre; gGift+=tGift;
     });
-    if(any){
-      const foot=[];
-      if(tPre) foot.push(tPre+' pre');
-      if(tGift) foot.push(tGift+' gift');
-      line('Total', tSold + (foot.length?' ('+foot.join(', ')+')':''));
-    }
+    /* No total across the kinds. Adding a pamphlet to a Big Book gives a
+       number nobody acts on, and it invited the two to be compared as if they
+       were the same thing. Each kind totals itself. */
     gap();
   }
 
   if(want('inventory')){
-    let total=0, any=false;
-    shelfBooks().forEach(b=>{
-      const n=shownQty(b.id);
-      if(!n) return;
-      any=true; total+=n; line(b.name, n);
+    // Same split as the sales report: a count per kind, then the whole shelf.
+    let grand=0, blocks=0;
+    CATS.forEach(kind=>{
+      const books = shelfBooks().filter(b=>catOfBook(b)===kind && shownQty(b.id));
+      if(!books.length) return;
+      if(blocks) gap();
+      blocks++;
+      let t=0;
+      books.forEach(b=>{ const n=shownQty(b.id); t+=n; line(b.name, n); });
+      if(books.length>1) line(CAT_SHORT[kind] + ' total', t);
+      grand+=t;
     });
-    if(any) line('Total', total);
     gap();
   }
 
   if(want('stock')){
     const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
-    let total=0, any=false;
-    shelfBooks().forEach(b=>{
-      const n = regions.reduce((t,r)=>t+locsInRegion(r.regionId).reduce((u,l)=>u+invQty(l,b.id),0), 0);
-      if(!n) return;
-      any=true; total+=n; line(b.name, n);
+    const held = b => regions.reduce((t,r)=>
+      t + locsInRegion(r.regionId).reduce((u,l)=>u+invQty(l,b.id), 0), 0);
+    let grand=0, blocks=0;
+    CATS.forEach(kind=>{
+      const books = shelfBooks().filter(b=>catOfBook(b)===kind && held(b));
+      if(!books.length) return;
+      if(blocks) gap();
+      blocks++;
+      let t=0;
+      books.forEach(b=>{ const n=held(b); t+=n; line(b.name, n); });
+      if(books.length>1) line(CAT_SHORT[kind] + ' total', t);
+      grand+=t;
     });
-    if(any) line('Total', total);
     gap();
   }
 
   if(want('pending')){
+    // The title and what is owed on it — no customer name, no date.
     const owed = s.filter(x=>pendingFlag(x) || dueParts(x).length);
     owed.forEach(x=>{
       const what = x.bookId ? bookById(x.bookId).name : 'Donation';
       const amt = dueParts(x).map(d=>cashFmt(d.amt,d.cur)).join(' + ')
         || legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ');
-      line(what + (x.name?' · '+x.name:''), amt||'—');
+      line(what, amt||'—');
     });
     if(owed.length) line('Total', owed.length);
     gap();
@@ -4200,26 +4236,39 @@ function buildReport(part){
 
   if(want('change')){
     const owe = s.filter(x=>changeOwed(x)>0);
-    owe.forEach(x=>line(x.name||'someone', cashFmt(changeOwed(x), changeCur(x))));
+    // The book it relates to and the amount; the person's name is not a figure.
+    owe.forEach(x=>line(x.bookId?bookById(x.bookId).name:'Donation',
+                        cashFmt(changeOwed(x), changeCur(x))));
     if(owe.length) line('Total', owe.length);
     gap();
   }
 
   if(want('preorders')){
     const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
-    due.forEach(x=>line(bookById(x.bookId).name + (x.name?' · '+x.name:''),
-                        x.phone || 'to deliver'));
+    /* How many of each title are still to be handed over — a list of names and
+       phone numbers is a contact sheet, not a report. */
+    const byBook = {};
+    due.forEach(x=>{ const n=bookById(x.bookId).name; byBook[n]=(byBook[n]||0)+1; });
+    Object.keys(byBook).forEach(n=>line(n, byBook[n]));
     if(due.length) line('Total', due.length);
     gap();
   }
 
   if(want('log')){
-    const recent = s.slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts)).slice(0,25);
-    recent.forEach(x=>{
-      const what = x.bookId ? bookById(x.bookId).name : 'Donation';
-      line(what, legs(x).map(l=>cashFmt(l.amt,l.cur)).join(' + ') || 'gift');
+    /* A list of individual transactions with times is the app's own log, not
+       something to read on a phone. What is useful is how much each title
+       brought in, so that is what this reports. */
+    const byBook = {};
+    s.forEach(x=>{
+      if(!received(x)) return;
+      const n = x.bookId ? bookById(x.bookId).name : 'Donation';
+      legs(x).forEach(l=>{
+        if(!l.type || !l.amt) return;
+        (byBook[n] = byBook[n]||{})[l.cur] = (byBook[n][l.cur]||0) + l.amt;
+      });
     });
-    if(recent.length) line('Total', s.length);
+    Object.keys(byBook).forEach(n=>
+      line(n, Object.keys(byBook[n]).sort().map(c=>cashFmt(byBook[n][c],c)).join(' + ')));
     gap();
   }
 
