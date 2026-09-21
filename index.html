@@ -493,6 +493,23 @@ body.busy #busyLabel{opacity:1}
 .panel > h2{font-family:'Marcellus',serif;font-weight:400;font-size:18px;color:var(--plum);
   padding:12px 16px;border-bottom:1px solid var(--line);flex:none;
   background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+/* The book filter: a small checklist that drops down beside the sort buttons. */
+.log-filter-wrap{position:relative;display:inline-block;margin-left:6px}
+.log-filter{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:230px;max-width:300px;
+  max-height:360px;overflow:auto;background:var(--paper);border:1px solid var(--line-d);border-radius:10px;
+  box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px 4px;text-align:left}
+.log-filter[hidden]{display:none}
+.lf-row{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13.5px;font-weight:600;
+  color:var(--ink);cursor:pointer;border-radius:6px;text-transform:none;letter-spacing:0}
+.lf-row:hover{background:var(--paper2)}
+.lf-row input{width:16px;height:16px;flex:none}
+.lf-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lf-row.lf-kind{font-weight:800}
+.lf-row.aotm span{color:var(--gold)}
+.lf-row.other span{color:var(--teal)}
+.lf-sep{border-top:1px solid var(--line);margin:4px 8px}
+.lf-empty{padding:8px 10px;color:var(--muted);font-size:13px}
+.lf-foot{display:flex;justify-content:flex-end;gap:6px;padding:8px 8px 4px;border-top:1px solid var(--line);margin-top:4px}
 .sortbar{font-family:'Inter',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.5px;
   color:var(--muted);font-weight:700;display:flex;align-items:center;gap:4px;margin-left:auto}
 .sort-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;
@@ -927,7 +944,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b112</span>
+    <span class="build-tag" title="Which version of the page is loaded">b114</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -984,6 +1001,10 @@ body.busy #busyLabel{opacity:1}
             <button class="sort-btn" data-act="sortlog" data-sort="book">Book</button>
             <button class="sort-btn" data-act="sortlog" data-sort="pay">Payment</button>
             <button class="sort-btn" data-act="sortlog" data-sort="status">Status</button>
+          </span>
+          <span class="log-filter-wrap">
+            <button class="sort-btn" id="logFilterBtn" data-act="logfilter">Books ▾</button>
+            <div class="log-filter" id="logFilterPanel" hidden></div>
           </span>
           <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
         </h2>
@@ -2981,6 +3002,59 @@ function sortedSales(list){
    line whose payment and balance are the members summed. Non-bundle sales pass
    through untouched. The representative keeps the members so the dropdown can
    list them and actions can fan out across the whole bundle. */
+/* ---- Filtering the log by the books in each sale ----
+
+   A set of tokens: 'cat:big' / 'cat:aotm' / 'cat:other' for a whole kind, and
+   'book:<id>' for one title. A sale is shown if ANY of its books matches ANY
+   token — so ticking Adventures and Sri Radha shows every sale containing
+   either. A multiple-book sale is judged by all of its books, not just the
+   first. Empty means no filter at all. */
+let LOG_FILTER = new Set();
+
+function saleBookIds(x){
+  if(x._bundle) return (x._members||[]).map(m=>m.bookId).filter(Boolean);
+  return x.bookId ? [x.bookId] : [];
+}
+function passesLogFilter(x){
+  if(!LOG_FILTER.size) return true;
+  const ids = saleBookIds(x);
+  if(!ids.length) return false;            // a donation has no book to match
+  return ids.some(id=>
+    LOG_FILTER.has('book:'+id) || LOG_FILTER.has('cat:'+catOf(id)));
+}
+
+function renderLogFilter(){
+  const panel=$('#logFilterPanel'), btn=$('#logFilterBtn');
+  if(!panel || !btn) return;
+  const n = LOG_FILTER.size;
+  btn.textContent = n ? `Books (${n}) ▾` : 'Books ▾';
+  btn.classList.toggle('on', n>0);
+
+  // Only offer what actually appears in this log, so the list stays short.
+  const inLog = new Set();
+  scopedSales().forEach(x=>{ if(x.bookId) inLog.add(x.bookId); });
+  const books = shelfBooks().filter(b=>inLog.has(b.id));
+  inLog.forEach(id=>{ if(!books.some(b=>b.id===id)){ const b=bookById(id); if(b&&b.id) books.push(b); } });
+  const kinds = CATS.filter(k=>books.some(b=>catOfBook(b)===k));
+
+  const box = (token,label,cls) =>
+    `<label class="lf-row ${cls||''}"><input type="checkbox" data-lf="${esc(token)}"
+      ${LOG_FILTER.has(token)?'checked':''}> <span>${esc(label)}</span></label>`;
+  panel.innerHTML = `
+    ${kinds.map(k=>box('cat:'+k, CAT_SHORT[k], 'lf-kind')).join('')}
+    ${kinds.length && books.length ? '<div class="lf-sep"></div>' : ''}
+    ${books.map(b=>box('book:'+b.id, b.name, catOfBook(b))).join('')}
+    ${books.length ? '' : '<div class="lf-empty">No sales yet.</div>'}
+    <div class="lf-foot">
+      <button class="btn btn-ghost btn-sm" data-act="lfclear" ${n?'':'disabled'}>Clear</button>
+      <button class="btn btn-primary btn-sm" data-act="lfdone">Done</button>
+    </div>`;
+  panel.querySelectorAll('[data-lf]').forEach(cb=>cb.onchange=()=>{
+    cb.checked ? LOG_FILTER.add(cb.dataset.lf) : LOG_FILTER.delete(cb.dataset.lf);
+    renderLog();          // results follow each tick, panel stays open
+  });
+}
+
 function groupBundles(list){
   const byId={}, order=[], singles=[];
   list.forEach(x=>{
@@ -3022,8 +3096,13 @@ function groupBundles(list){
 }
 
 function renderLog(){
-  const s=sortedSales(groupBundles(scopedSales()));
-  $('#logCount').textContent = s.length ? `(${s.length})` : '';
+  const all=sortedSales(groupBundles(scopedSales()));
+  const s=all.filter(passesLogFilter);
+  // With a filter on, show "shown of total" so nothing looks mysteriously missing.
+  $('#logCount').textContent = LOG_FILTER.size
+    ? `(${s.length} of ${all.length})`
+    : (all.length ? `(${all.length})` : '');
+  renderLogFilter();
   document.querySelectorAll('.sort-btn').forEach(btn=>{
     const on = btn.dataset.sort===LOG_SORT.key;
     btn.classList.toggle('on', on);
@@ -3032,7 +3111,10 @@ function renderLog(){
     btn.textContent = (LABELS[btn.dataset.sort] || btn.dataset.sort)
       + (on ? (LOG_SORT.dir<0?' ↓':' ↑') : '');
   });
-  $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('') : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
+  $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('')
+    : LOG_FILTER.size
+      ? `<div class="empty">No sales include those books.<br><button class="btn btn-ghost btn-sm" data-act="lfclear" style="margin-top:8px">Clear the filter</button></div>`
+      : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
 }
 
 function renderBottom(){
@@ -3393,6 +3475,41 @@ function saleModal(opts){
    Books are picked with checkboxes; the total price fills in as you tick them.
    The one payment is split across the books on the server (proportional to list
    price). On submit each book's stock drops by one, exactly as if sold singly. */
+/* Edit a multi-book sale that has not finished saving yet.
+
+   Its id is still the temporary one the app gave it, which the server has
+   never heard of. Rather than sending an edit that is bound to fail, wait for
+   the save to land, find the same transaction under its real id, and open that. */
+async function openBundleEditWhenSaved(tmpId, btn){
+  const tmp = (STATE.sales||[]).filter(x=>x.bundle===tmpId);
+  const sig = tmp.map(x=>x.bookId).sort().join('|');
+  const when = tmp.length ? new Date(tmp[0].ts).getTime() : 0;
+  if(btn){ btn.disabled=true; btn.textContent='…'; }
+  toast('Just finishing saving that sale…');
+  for(let i=0;i<8;i++){
+    try{ await pull(); }catch(e){}
+    const groups = {};
+    (STATE.sales||[]).forEach(x=>{
+      if(!x.bundle || String(x.bundle).indexOf('tmpB_')===0) return;
+      (groups[x.bundle]=groups[x.bundle]||[]).push(x);
+    });
+    // The same books, sold within a minute of each other, is the same sale.
+    const match = Object.keys(groups).find(id=>{
+      const g=groups[id];
+      return g.map(x=>x.bookId).sort().join('|')===sig &&
+             Math.abs(new Date(g[0].ts).getTime()-when) < 60000;
+    });
+    if(match){
+      if(btn){ btn.disabled=false; btn.textContent='Edit'; }
+      bundleModal({bundle:match, members:groups[match]});
+      return;
+    }
+    await new Promise(r=>setTimeout(r,900));
+  }
+  if(btn){ btn.disabled=false; btn.textContent='Edit'; }
+  toast('That sale is still saving — try Edit again in a moment.', true);
+}
+
 function bundleModal(edit){
   /* The same titles, in the same order, as the shelf behind this dialog.
 
@@ -3709,7 +3826,10 @@ function bundleModal(edit){
     const items = buy.map(id=>({bookId:id,pre:false})).concat(pre.map(id=>({bookId:id,pre:true})));
     const n=items.length;
     const note = comments ? (n+' book sale · '+comments) : (n+' book sale');
-    const bundleId='tmpB_'+Math.random().toString(36).slice(2,9);
+    /* An edit keeps the transaction's real id on screen too, matching the
+       server. Only a brand-new transaction gets a temporary id, until the
+       server's real one arrives. */
+    const bundleId = edit ? edit.bundle : ('tmpB_'+Math.random().toString(36).slice(2,9));
 
     // Optimistic split, matching the server: proportional to list price (USD),
     // remainder on the first item.
@@ -7237,10 +7357,28 @@ function transferModal(mode){
 /* ============================================================
    EVENT DELEGATION
    ============================================================ */
+// Clicking anywhere outside the book filter closes it, like any dropdown.
+document.addEventListener('click',e=>{
+  const p=$('#logFilterPanel');
+  if(p && !p.hidden && !e.target.closest('.log-filter-wrap')) p.hidden=true;
+});
+
 document.addEventListener('click',e=>{
   if(e.target.closest('a')) return;              // let links open normally
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
+  if(a==='logfilter'){
+    const p=$('#logFilterPanel'); if(!p) return;
+    p.hidden = !p.hidden;
+    if(!p.hidden) renderLogFilter();
+    return;
+  }
+  if(a==='lfdone'){ const p=$('#logFilterPanel'); if(p) p.hidden=true; return; }
+  if(a==='lfclear'){
+    if(e && e.preventDefault) e.preventDefault();
+    LOG_FILTER.clear(); renderLog();
+    return;
+  }
   if(a==='sortlog'){
     const key=t.dataset.sort;
     if(LOG_SORT.key===key) LOG_SORT.dir*=-1;
@@ -7472,6 +7610,9 @@ document.addEventListener('click',e=>{
   }
   if(a==='editbundle'){
     const bundle=t.dataset.bundle;
+    // A transaction made moments ago still carries a temporary id; editing that
+    // would be refused by the server, so settle the real id first.
+    if(String(bundle).indexOf('tmpB_')===0){ openBundleEditWhenSaved(bundle, t); return; }
     const members=(STATE.sales||[]).filter(x=>x.bundle===bundle);
     if(!members.length) return;
     bundleModal({bundle, members});
