@@ -927,7 +927,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b111</span>
+    <span class="build-tag" title="Which version of the page is loaded">b112</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3400,7 +3400,22 @@ function bundleModal(edit){
      consignment titles — never reached the multi-book screen. Picking books
      here meant hunting through a different arrangement from the one you had
      just set. */
-  const bundleBooks = () => shelfBooks();
+  /* The shelf's titles, in the shelf's order — PLUS every title already in the
+     transaction being edited.
+
+     Since b100 this read the shelf alone. But a title can leave the shelf
+     precisely because this sale took its last copy, or because it sits outside
+     the region's chosen list. The edit then never saw that member, sent back a
+     smaller transaction, and the book was silently removed from the sale — and
+     if that left fewer than two books, the whole sale was lost. A member of the
+     sale is always offered when editing it, wherever it now stands. */
+  const _mine = new Set(edit ? edit.members.map(m=>m.bookId).filter(Boolean) : []);
+  const bundleBooks = () => {
+    const list = shelfBooks();
+    const have = new Set(list.map(b=>b.id));
+    _mine.forEach(id=>{ if(!have.has(id)){ const b=bookById(id); if(b && b.id) list.push(b); } });
+    return list;
+  };
 
   const loc = edit ? edit.members[0].location : CUR_LOC;
   // When editing, a book's own stock still shows what's on the shelf now, but the
@@ -3518,7 +3533,8 @@ function bundleModal(edit){
   bundleBooks().forEach(b=>counts[b.id]={buy:0,pre:0});
   if(edit){
     edit.members.forEach(m=>{
-      if(!counts[m.bookId]) return;
+      // Every member must be counted; never skip one silently.
+      if(!counts[m.bookId]) counts[m.bookId]={buy:0,pre:0};
       if(m.type==='PREORDER' && !m.delivered) counts[m.bookId].pre++;
       else counts[m.bookId].buy++;   // a delivered pre-order counts as bought
     });
