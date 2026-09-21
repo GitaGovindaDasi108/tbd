@@ -173,21 +173,29 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* ---- Stat cards: the shelf language reused for sales and stock ---- */
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px}
 .stat-card{border:1.5px solid var(--line-d);border-radius:12px;padding:10px 11px;
-  background:var(--paper2);display:flex;flex-direction:column;gap:2px;min-height:92px}
+  background:var(--paper2);display:flex;flex-direction:column;justify-content:flex-start;gap:2px;min-height:92px}
 .stat-card.dim{opacity:.55}
 .stat-card.consign{background:var(--consign-l);border-color:var(--consign-b)}
 .stat-card.aotm-card{background:var(--aotm-l);border-color:var(--aotm-b)}
 .sc-name.aotm{color:var(--plum)}
 .sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
-.sc-name.aotm{color:var(--gold)}
 .sc-name.other{color:var(--teal)}
-.sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:auto}
+/* Top-justified. This was margin-top:auto, which pushed the number to the
+   bottom whenever a taller neighbour stretched the row — so numbers sat at a
+   different height in every card. Now each card reads top-down: title, number,
+   then its notes. */
+.sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:4px}
 .sc-big{font-family:'Marcellus',serif;font-size:26px;line-height:1;color:var(--green)}
 .sc-big.zero{color:var(--muted)}
 .sc-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .sc-sub{display:flex;flex-wrap:wrap;gap:6px;min-height:14px}
 .sc-pre{font-size:10.5px;color:var(--saffron-d);font-weight:700}
 .sc-gift{font-size:10.5px;color:var(--gold);font-weight:700}
+/* Gifts beside a place's figure: small and quiet, so the sold number leads. */
+.chip-gift{font-size:10.5px;font-weight:700;color:var(--gold);margin-left:2px}
+/* "sold" set small beside the big number in the totals bar. */
+.tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
+  letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-left:7px}
 .sc-none{font-size:10.5px;color:var(--muted)}
 .stat-card .wo-chips{margin-top:6px}
 
@@ -948,7 +956,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b116</span>
+    <span class="build-tag" title="Which version of the page is loaded">b118</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2400,15 +2408,13 @@ function renderSalesByRegion(){
 
     // Mini cards — same language as the shelf, sized to sit inside a dropdown.
     const perBook = (STATE.books||[]).map(b=>{
-      const sold=allHere.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
-      const pre =allHere.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
-      const gift=allHere.filter(x=>x.bookId===b.id && isGift(x)).length;
+      const {sold, pre, gift} = bookCounts(allHere.filter(x=>x.bookId===b.id));
       if(!sold && !pre && !gift) return '';
       return `<div class="mini-card${b.partnerId?' consign':''}">
         <div class="mc-name ${catOfBook(b)}">${esc(b.name)}${
           b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
         <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
-        <div class="mc-sub">${pre?`${pre} pre`:''}${(pre&&gift)?' · ':''}${gift?`${gift} gift`:''}${(!pre&&!gift)?'&nbsp;':''}</div>
+        <div class="mc-sub">${countNote({pre,gift}, true) || '&nbsp;'}</div>
       </div>`;
     }).filter(Boolean).join('');
     const perBookWrap = perBook
@@ -2420,8 +2426,16 @@ function renderSalesByRegion(){
         <span class="tw">▸</span>
         <span class="sbr-name">${esc(r.name)}</span>
         <span class="sbr-sum">
-          <span class="sbr-line">${bs+bp+bg} Big Books <span class="muted">(${bs} sold / ${bp} pre-ordered${bg?` / ${bg} gift`:''})</span></span>
-          <span class="sbr-line">${as+ap+ag} AoTM <span class="muted">(${as} sold / ${ap} pre-ordered${ag?` / ${ag} gift`:''})</span></span>
+          ${(function(){
+            const line = (label, cat) => {
+              const c = bookCounts(sales.filter(x=>catOf(x.bookId)===cat));
+              if(!c.sold && !c.gift) return '';
+              const note = countNote(c);
+              return `<span class="sbr-line"><b>${c.sold}</b> ${label} sold${
+                note?` <span class="muted">(${note})</span>`:''}</span>`;
+            };
+            return line('Big Books','big') + line('AoTM','aotm') + line('Other','other');
+          })()}
           ${(function(){
             // Consignment shown per region too, so it reads the same at every level.
             const con = (STATE.sales||[]).filter(x=>locs.includes(x.location) && isPartnerSale(x));
@@ -2473,18 +2487,16 @@ function renderTotals(){
       // Delivered pre-orders are already inside the sold count, so the headline
       // adds only the ones still outstanding — the breakdown still reports every
       // pre-order taken.
-      const bigOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='big' && !isGift(x)).length;
-      const aotmOut = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='aotm' && !isGift(x)).length;
-      const othOut  = s.filter(x=>x.type==='PREORDER' && x.bookId && catOf(x.bookId)==='other' && !isGift(x)).length;
-      return `
-    <div class="tcard"><div class="label">Big Books Total</div><div class="value">${bigSold+bigOut+bigGift}</div>
-      <div class="sub"><b>${bigSold}</b> sold${bigGift?` · (<b>${bigGift}</b> gift${bigGift===1?'':'s'})`:''}${bigPre?` · (<b>${bigPre}</b> of ${bigSold+bigOut+bigGift} pre-ordered)`:''}</div></div>
-    ${(othSold+othOut+othGift) ? `<div class="tcard other"><div class="label">Other Total</div>
-      <div class="value">${othSold+othOut+othGift}</div>
-      <div class="sub"><b>${othSold}</b> sold${othGift?` · (<b>${othGift}</b> gift${othGift===1?'':'s'})`:''}${
-        othPre?` · (<b>${othPre}</b> of ${othSold+othOut+othGift} pre-ordered)`:''}</div></div>` : ''}
-    <div class="tcard aotm"><div class="label">AoTM Total</div><div class="value">${aotmSold+aotmOut+aotmGift}</div>
-      <div class="sub"><b>${aotmSold}</b> sold${aotmGift?` · (<b>${aotmGift}</b> gift${aotmGift===1?'':'s'})`:''}${aotmPre?` · (<b>${aotmPre}</b> of ${aotmSold+aotmOut+aotmGift} pre-ordered)`:''}</div></div>`;
+      // Same rule as everywhere else: the big number is sold for money.
+      const cnt = cat => bookCounts(s.filter(x=>x.bookId && catOf(x.bookId)===cat));
+      const tile = (cls, label, c) => `
+    <div class="tcard${cls?' '+cls:''}"><div class="label">${label}</div>
+      <div class="value">${c.sold}<span class="value-lbl">sold</span></div>
+      <div class="sub">${countNote(c) || '&nbsp;'}</div></div>`;
+      const big=cnt('big'), aotm=cnt('aotm'), oth=cnt('other');
+      return tile('', 'Big Books', big)
+        + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '')
+        + tile('aotm', 'AoTM', aotm);
     })()}
     ${hideMoney() ? '' : `
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
@@ -2571,6 +2583,29 @@ function renderInventory(){
 
 /* Sales by title as cards, echoing the warehouse shelf so the eye reads them the
    same way: the big number is what matters, the small print qualifies it. */
+/* How a count of books reads, everywhere.
+
+   The big number is books SOLD FOR MONEY. A gift is never in it — a gift is a
+   book that left without payment, and folding it into the headline made the
+   figure look like sales it was not. A paid pre-order does count: the money is
+   in, the book is simply still to be handed over. Gifts and pre-orders are then
+   shown in small print beneath. */
+function bookCounts(list){
+  const books = (list||[]).filter(x=>x.bookId);
+  return {
+    sold: books.filter(x=>(x.type==='SALE'||x.type==='PREORDER') && !isGift(x)).length,
+    pre:  books.filter(x=>!isGift(x) && (x.type==='PREORDER' || wasPreorderSale(x))).length,
+    gift: books.filter(x=>isGift(x)).length
+  };
+}
+/** The small-print line: pre-orders are part of the sold figure, gifts are on top of it. */
+function countNote(c, short){
+  const bits=[];
+  if(c.pre)  bits.push(short ? `${c.pre} pre` : `${c.pre} pre-ordered`);
+  if(c.gift) bits.push(`+${c.gift} gift${c.gift===1?'':'s'}`);
+  return bits.join(' · ');
+}
+
 function renderTitleList(target){
   const s=scopedSales();
   // Inside a region, show where each title actually sold — the same chips as the
@@ -2584,14 +2619,15 @@ function renderTitleList(target){
 
   const h=shelfBooks().map(b=>{
     const mine = s.filter(x=>x.bookId===b.id);
-    const sold=mine.filter(x=>x.type==='SALE').length;
-    const pre =mine.filter(x=>x.type==='PREORDER'||wasPreorderSale(x)).length;
-    const gift=mine.filter(x=>isGift(x)).length;
+    const {sold, pre, gift} = bookCounts(mine);
     const dim = (!sold && !pre && !gift) ? ' dim' : '';
+    // Each place shows what it sold for money, with its gifts beside it.
     const chips = places.map(pl=>{
-      const n = mine.filter(x=>x.location===pl.id && x.type==='SALE').length;
-      return n ? `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
-        title="Go to ${esc(pl.name)}"><b>${n}</b> ${esc(pl.name)}</button>` : '';
+      const c = bookCounts(mine.filter(x=>x.location===pl.id));
+      if(!c.sold && !c.gift) return '';
+      return `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
+        title="Go to ${esc(pl.name)}"><b>${c.sold}</b> ${esc(pl.name)}${
+        c.gift?` <span class="chip-gift">+${c.gift} gift${c.gift===1?'':'s'}</span>`:''}</button>`;
     }).filter(Boolean).join('');
     return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}">
       <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
@@ -2602,7 +2638,7 @@ function renderTitleList(target){
       </div>
       <div class="sc-sub">
         ${pre?`<span class="sc-pre">${pre} pre-ordered</span>`:''}
-        ${gift?`<span class="sc-gift">${gift} gift${gift===1?'':'s'}</span>`:''}
+        ${gift?`<span class="sc-gift">+${gift} gift${gift===1?'':'s'}</span>`:''}
         ${(!pre&&!gift)?'<span class="sc-none">&nbsp;</span>':''}
       </div>
       ${chips?`<div class="wo-chips">${chips}</div>`:''}
