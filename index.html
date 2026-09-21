@@ -948,7 +948,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b115</span>
+    <span class="build-tag" title="Which version of the page is loaded">b116</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1004,7 +1004,7 @@ body.busy #busyLabel{opacity:1}
             <button class="sort-btn" data-act="sortlog" data-sort="time">Date</button>
           </span>
           <span class="sortbar">Filter
-            <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="book">Book ▾</button>
+            <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="book">Books ▾</button>
               <div class="log-filter" data-panel="book" hidden></div></span>
             <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="status">Status ▾</button>
               <div class="log-filter" data-panel="status" hidden></div></span>
@@ -2984,22 +2984,9 @@ function statusRank(x){
   return 2;                                          // settled
 }
 function sortedSales(list){
+  // Date is the only sort. Book, payment and status are filters now.
   const d=LOG_SORT.dir;
-  const bookName=x=> x._bundle ? (x._count+' Books')
-    : x.type==='DONATION' ? '~Donation' : bookById(x.bookId).name;
-  /* How a sale was paid for, for sorting. A split payment sorts under its first
-     leg, which is the larger one in practice and the one you'd look for. */
-  const payName=x=>{
-    const l=legs(x).filter(v=>v.type);
-    return l.length ? l.map(v=>v.type).join(' + ') : '~';
-  };
-  const cmp={
-    time:  (a,b)=> new Date(a.ts)-new Date(b.ts),
-    book:  (a,b)=> bookName(a).localeCompare(bookName(b)) || (new Date(b.ts)-new Date(a.ts)),
-    status:(a,b)=> (statusRank(a)-statusRank(b)) || (new Date(b.ts)-new Date(a.ts)),
-    pay:   (a,b)=> payName(a).localeCompare(payName(b)) || (new Date(b.ts)-new Date(a.ts))
-  }[LOG_SORT.key];
-  return list.slice().sort((a,b)=> d*cmp(a,b));
+  return list.slice().sort((a,b)=> d*(new Date(a.ts)-new Date(b.ts)));
 }
 
 /* Collapse the members of a multi-book transaction into a single row for
@@ -3015,13 +3002,14 @@ function sortedSales(list){
    A multiple-book sale is judged by every book in it. An empty filter does
    nothing. */
 const LOG_FILTERS = { book:new Set(), status:new Set(), pay:new Set() };
-const FACET_LABEL = { book:'Book', status:'Status', pay:'Payment' };
+const FACET_LABEL = { book:'Books', status:'Status', pay:'Payment' };
 const STATUS_OPTS = [
-  ['paid',    'Paid'],
-  ['pending', 'Pending'],
-  ['part',    'Part paid'],
-  ['todeliver','Pre-order to deliver'],
-  ['gift',    'Gift'],
+  ['todeliver','Pre-Order'],
+  ['change',   'Change Owed'],
+  ['pending',  'Payment Pending'],
+  ['part',     'Part Paid'],
+  ['gift',     'Gift'],
+  ['paid',     'Paid'],
 ];
 
 function saleBookIds(x){
@@ -3036,6 +3024,9 @@ function saleStatusTags(x){
   const awaiting = x._bundle ? (x._preCount>0) : (x.type==='PREORDER' && !x.delivered);
   if(awaiting) tags.add('todeliver');
   if(isGift(x)) tags.add('gift');
+  // Change owed back to the customer — on any line of a multiple-book sale.
+  const owe = x._bundle ? (x._members||[]).some(m=>changeOwed(m)>0) : changeOwed(x)>0;
+  if(owe) tags.add('change');
   return tags;
 }
 function salePayTypes(x){
@@ -7447,8 +7438,8 @@ document.addEventListener('click',e=>{
   }
   if(a==='sortlog'){
     const key=t.dataset.sort;
-    if(LOG_SORT.key===key) LOG_SORT.dir*=-1;
-    else LOG_SORT={key, dir: key==='time'?-1:1};
+    // Only Date remains, so a tap just flips newest-first and oldest-first.
+    LOG_SORT={key:'time', dir: LOG_SORT.dir*-1};
     renderLog();
     return;
   }
