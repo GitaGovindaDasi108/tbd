@@ -494,7 +494,11 @@ body.busy #busyLabel{opacity:1}
   padding:12px 16px;border-bottom:1px solid var(--line);flex:none;
   background:linear-gradient(180deg,var(--paper2),transparent);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 /* The book filter: a small checklist that drops down beside the sort buttons. */
-.log-filter-wrap{position:relative;display:inline-block;margin-left:6px}
+.log-filter-wrap{position:relative;display:inline-block}
+.flt-btn{font-family:inherit;font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;cursor:pointer;
+  border:1.5px solid var(--line-d);background:var(--paper);color:var(--ink);text-transform:none;letter-spacing:0}
+.flt-btn:hover{border-color:var(--plum)}
+.flt-btn.on{background:var(--plum);color:#fff;border-color:var(--plum)}
 .log-filter{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:230px;max-width:300px;
   max-height:360px;overflow:auto;background:var(--paper);border:1px solid var(--line-d);border-radius:10px;
   box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px 4px;text-align:left}
@@ -944,7 +948,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b114</span>
+    <span class="build-tag" title="Which version of the page is loaded">b115</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -998,13 +1002,14 @@ body.busy #busyLabel{opacity:1}
         <h2 class="sec-h2">Active Sales Log <span class="hint" id="logCount"></span>
           <span class="sortbar">Sort
             <button class="sort-btn" data-act="sortlog" data-sort="time">Date</button>
-            <button class="sort-btn" data-act="sortlog" data-sort="book">Book</button>
-            <button class="sort-btn" data-act="sortlog" data-sort="pay">Payment</button>
-            <button class="sort-btn" data-act="sortlog" data-sort="status">Status</button>
           </span>
-          <span class="log-filter-wrap">
-            <button class="sort-btn" id="logFilterBtn" data-act="logfilter">Books ▾</button>
-            <div class="log-filter" id="logFilterPanel" hidden></div>
+          <span class="sortbar">Filter
+            <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="book">Book ▾</button>
+              <div class="log-filter" data-panel="book" hidden></div></span>
+            <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="status">Status ▾</button>
+              <div class="log-filter" data-panel="status" hidden></div></span>
+            <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="pay">Payment ▾</button>
+              <div class="log-filter" data-panel="pay" hidden></div></span>
           </span>
           <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
         </h2>
@@ -2971,7 +2976,7 @@ function logItemHTML(x, opts){
 
 /* Sales log sort. 'key' is the field, 'dir' flips on a second tap of the same
    header. Date defaults newest-first, the others A→Z / most-urgent-first. */
-let LOG_SORT = { key:'time', dir:-1 };
+let LOG_SORT = { key:'time', dir:-1 };   // Date is the only sort; filters do the rest
 /* Lower rank = higher up: money owed first, then books owed, then done. */
 function statusRank(x){
   if(!isPaid(x)) return 0;                          // pending / part paid
@@ -3002,56 +3007,110 @@ function sortedSales(list){
    line whose payment and balance are the members summed. Non-bundle sales pass
    through untouched. The representative keeps the members so the dropdown can
    list them and actions can fan out across the whole bundle. */
-/* ---- Filtering the log by the books in each sale ----
+/* ---- Filtering the log ----
 
-   A set of tokens: 'cat:big' / 'cat:aotm' / 'cat:other' for a whole kind, and
-   'book:<id>' for one title. A sale is shown if ANY of its books matches ANY
-   token — so ticking Adventures and Sri Radha shows every sale containing
-   either. A multiple-book sale is judged by all of its books, not just the
-   first. Empty means no filter at all. */
-let LOG_FILTER = new Set();
+   Three filters — Book, Status, Payment. Within one filter, ticking several
+   widens it (any of them); across filters, each narrows it (all of them). So
+   "Adventures" + "Pending" + "Card" shows pending Adventures sales paid by card.
+   A multiple-book sale is judged by every book in it. An empty filter does
+   nothing. */
+const LOG_FILTERS = { book:new Set(), status:new Set(), pay:new Set() };
+const FACET_LABEL = { book:'Book', status:'Status', pay:'Payment' };
+const STATUS_OPTS = [
+  ['paid',    'Paid'],
+  ['pending', 'Pending'],
+  ['part',    'Part paid'],
+  ['todeliver','Pre-order to deliver'],
+  ['gift',    'Gift'],
+];
 
 function saleBookIds(x){
   if(x._bundle) return (x._members||[]).map(m=>m.bookId).filter(Boolean);
   return x.bookId ? [x.bookId] : [];
 }
-function passesLogFilter(x){
-  if(!LOG_FILTER.size) return true;
-  const ids = saleBookIds(x);
-  if(!ids.length) return false;            // a donation has no book to match
-  return ids.some(id=>
-    LOG_FILTER.has('book:'+id) || LOG_FILTER.has('cat:'+catOf(id)));
+function saleStatusTags(x){
+  const tags = new Set();
+  if(pendingFlag(x)) tags.add('pending');
+  else if(dueAmt(x)>0) tags.add('part');
+  else tags.add('paid');
+  const awaiting = x._bundle ? (x._preCount>0) : (x.type==='PREORDER' && !x.delivered);
+  if(awaiting) tags.add('todeliver');
+  if(isGift(x)) tags.add('gift');
+  return tags;
 }
+function salePayTypes(x){
+  return new Set(legs(x).filter(l=>l.type && (l.amt || l.type==='Gift')).map(l=>l.type));
+}
+function passesLogFilter(x){
+  const F = LOG_FILTERS;
+  if(F.book.size){
+    const ids = saleBookIds(x);
+    if(!ids.some(id=>F.book.has('book:'+id) || F.book.has('cat:'+catOf(id)))) return false;
+  }
+  if(F.status.size){
+    const tags = saleStatusTags(x);
+    if(![...F.status].some(t=>tags.has(t))) return false;
+  }
+  if(F.pay.size){
+    const types = salePayTypes(x);
+    if(![...F.pay].some(t=>types.has(t))) return false;
+  }
+  return true;
+}
+function logFilterCount(){ return LOG_FILTERS.book.size + LOG_FILTERS.status.size + LOG_FILTERS.pay.size; }
 
 function renderLogFilter(){
-  const panel=$('#logFilterPanel'), btn=$('#logFilterBtn');
-  if(!panel || !btn) return;
-  const n = LOG_FILTER.size;
-  btn.textContent = n ? `Books (${n}) ▾` : 'Books ▾';
-  btn.classList.toggle('on', n>0);
+  const log = groupBundles(scopedSales());
+  document.querySelectorAll('.flt-btn[data-facet]').forEach(btn=>{
+    const f = btn.dataset.facet, n = LOG_FILTERS[f].size;
+    btn.textContent = FACET_LABEL[f] + (n ? ` (${n})` : '') + ' ▾';
+    btn.classList.toggle('on', n>0);
+  });
 
-  // Only offer what actually appears in this log, so the list stays short.
-  const inLog = new Set();
-  scopedSales().forEach(x=>{ if(x.bookId) inLog.add(x.bookId); });
-  const books = shelfBooks().filter(b=>inLog.has(b.id));
-  inLog.forEach(id=>{ if(!books.some(b=>b.id===id)){ const b=bookById(id); if(b&&b.id) books.push(b); } });
-  const kinds = CATS.filter(k=>books.some(b=>catOfBook(b)===k));
+  const box = (facet,token,label,cls) =>
+    `<label class="lf-row ${cls||''}"><input type="checkbox" data-facet="${facet}" data-lf="${esc(token)}"
+      ${LOG_FILTERS[facet].has(token)?'checked':''}> <span>${esc(label)}</span></label>`;
+  const foot = f => `<div class="lf-foot">
+      <button class="btn btn-ghost btn-sm" data-act="lfclear" data-facet="${f}" ${LOG_FILTERS[f].size?'':'disabled'}>Clear</button>
+      <button class="btn btn-primary btn-sm" data-act="lfdone">Done</button></div>`;
 
-  const box = (token,label,cls) =>
-    `<label class="lf-row ${cls||''}"><input type="checkbox" data-lf="${esc(token)}"
-      ${LOG_FILTER.has(token)?'checked':''}> <span>${esc(label)}</span></label>`;
-  panel.innerHTML = `
-    ${kinds.map(k=>box('cat:'+k, CAT_SHORT[k], 'lf-kind')).join('')}
-    ${kinds.length && books.length ? '<div class="lf-sep"></div>' : ''}
-    ${books.map(b=>box('book:'+b.id, b.name, catOfBook(b))).join('')}
-    ${books.length ? '' : '<div class="lf-empty">No sales yet.</div>'}
-    <div class="lf-foot">
-      <button class="btn btn-ghost btn-sm" data-act="lfclear" ${n?'':'disabled'}>Clear</button>
-      <button class="btn btn-primary btn-sm" data-act="lfdone">Done</button>
-    </div>`;
-  panel.querySelectorAll('[data-lf]').forEach(cb=>cb.onchange=()=>{
-    cb.checked ? LOG_FILTER.add(cb.dataset.lf) : LOG_FILTER.delete(cb.dataset.lf);
-    renderLog();          // results follow each tick, panel stays open
+  // Only offer what actually appears in this log, so each list stays short.
+  const panels = {
+    book(){
+      const inLog = new Set();
+      log.forEach(x=>saleBookIds(x).forEach(id=>inLog.add(id)));
+      const books = shelfBooks().filter(b=>inLog.has(b.id));
+      inLog.forEach(id=>{ if(!books.some(b=>b.id===id)){ const b=bookById(id); if(b&&b.id) books.push(b); } });
+      const kinds = CATS.filter(k=>books.some(b=>catOfBook(b)===k));
+      if(!books.length) return '<div class="lf-empty">No books sold yet.</div>';
+      return kinds.map(k=>box('book','cat:'+k, CAT_SHORT[k], 'lf-kind')).join('')
+        + '<div class="lf-sep"></div>'
+        + books.map(b=>box('book','book:'+b.id, b.name, catOfBook(b))).join('');
+    },
+    status(){
+      const present = new Set(); log.forEach(x=>saleStatusTags(x).forEach(t=>present.add(t)));
+      const opts = STATUS_OPTS.filter(([k])=>present.has(k));
+      return opts.length ? opts.map(([k,l])=>box('status',k,l)).join('')
+                         : '<div class="lf-empty">No sales yet.</div>';
+    },
+    pay(){
+      const present = new Set(); log.forEach(x=>salePayTypes(x).forEach(t=>present.add(t)));
+      const order = (STATE.payTypes||[]).concat([...present].filter(t=>!(STATE.payTypes||[]).includes(t)));
+      const opts = order.filter(t=>present.has(t));
+      return opts.length ? opts.map(t=>box('pay',t,t)).join('')
+                         : '<div class="lf-empty">No payments yet.</div>';
+    }
+  };
+
+  document.querySelectorAll('.log-filter[data-panel]').forEach(panel=>{
+    if(panel.hidden) return;                 // only draw the one that is open
+    const f = panel.dataset.panel;
+    panel.innerHTML = panels[f]() + foot(f);
+    panel.querySelectorAll('[data-lf]').forEach(cb=>cb.onchange=()=>{
+      const set = LOG_FILTERS[cb.dataset.facet];
+      cb.checked ? set.add(cb.dataset.lf) : set.delete(cb.dataset.lf);
+      renderLog();                           // results follow each tick
+    });
   });
 }
 
@@ -3099,21 +3158,22 @@ function renderLog(){
   const all=sortedSales(groupBundles(scopedSales()));
   const s=all.filter(passesLogFilter);
   // With a filter on, show "shown of total" so nothing looks mysteriously missing.
-  $('#logCount').textContent = LOG_FILTER.size
+  $('#logCount').textContent = logFilterCount()
     ? `(${s.length} of ${all.length})`
     : (all.length ? `(${all.length})` : '');
   renderLogFilter();
-  document.querySelectorAll('.sort-btn').forEach(btn=>{
+  // Sort buttons only — the filter buttons carry their own labels.
+  document.querySelectorAll('.sort-btn[data-sort]').forEach(btn=>{
     const on = btn.dataset.sort===LOG_SORT.key;
     btn.classList.toggle('on', on);
     // Every sort button needs a label here, or it renders as "undefined".
-    const LABELS = {time:'Date', book:'Book', pay:'Payment', status:'Status'};
+    const LABELS = {time:'Date'};
     btn.textContent = (LABELS[btn.dataset.sort] || btn.dataset.sort)
       + (on ? (LOG_SORT.dir<0?' ↓':' ↑') : '');
   });
   $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('')
-    : LOG_FILTER.size
-      ? `<div class="empty">No sales include those books.<br><button class="btn btn-ghost btn-sm" data-act="lfclear" style="margin-top:8px">Clear the filter</button></div>`
+    : logFilterCount()
+      ? `<div class="empty">No sales match those filters.<br><button class="btn btn-ghost btn-sm" data-act="lfclear" style="margin-top:8px">Clear the filter</button></div>`
       : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
 }
 
@@ -7359,8 +7419,8 @@ function transferModal(mode){
    ============================================================ */
 // Clicking anywhere outside the book filter closes it, like any dropdown.
 document.addEventListener('click',e=>{
-  const p=$('#logFilterPanel');
-  if(p && !p.hidden && !e.target.closest('.log-filter-wrap')) p.hidden=true;
+  if(!e.target.closest('.log-filter-wrap'))
+    document.querySelectorAll('.log-filter[data-panel]').forEach(p=>{ if(!p.hidden) p.hidden=true; });
 });
 
 document.addEventListener('click',e=>{
@@ -7368,15 +7428,21 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='logfilter'){
-    const p=$('#logFilterPanel'); if(!p) return;
-    p.hidden = !p.hidden;
-    if(!p.hidden) renderLogFilter();
+    // One panel open at a time.
+    const f=t.dataset.facet;
+    document.querySelectorAll('.log-filter[data-panel]').forEach(p=>{
+      p.hidden = (p.dataset.panel===f) ? !p.hidden : true;
+    });
+    renderLogFilter();
     return;
   }
-  if(a==='lfdone'){ const p=$('#logFilterPanel'); if(p) p.hidden=true; return; }
+  if(a==='lfdone'){ document.querySelectorAll('.log-filter[data-panel]').forEach(p=>p.hidden=true); return; }
   if(a==='lfclear'){
-    if(e && e.preventDefault) e.preventDefault();
-    LOG_FILTER.clear(); renderLog();
+    // Clear one filter from inside its panel, or all of them from the empty log.
+    const f=t.dataset.facet;
+    if(f) LOG_FILTERS[f].clear();
+    else Object.values(LOG_FILTERS).forEach(set=>set.clear());
+    renderLog();
     return;
   }
   if(a==='sortlog'){
