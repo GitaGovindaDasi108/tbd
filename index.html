@@ -194,6 +194,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* Gifts beside a place's figure: small and quiet, so the sold number leads. */
 .chip-gift{font-size:10.5px;font-weight:700;color:var(--gold);margin-left:2px}
 /* "sold" set small beside the big number in the totals bar. */
+.tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);margin-left:6px}
 .tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
   letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-left:7px}
 .sc-none{font-size:10.5px;color:var(--muted)}
@@ -415,6 +416,10 @@ body.busy #busyLabel{opacity:1}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.rep-picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:2px 10px;
+  margin:4px 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper2)}
+.rep-pick{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink);padding:4px 0;cursor:pointer}
+.rep-pick input{width:16px;height:16px;flex:none}
 .rep-box{width:100%;border:1px solid var(--line-d);border-radius:8px;padding:9px;
   font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;
   background:var(--paper2);color:var(--ink);resize:vertical}
@@ -956,7 +961,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b118</span>
+    <span class="build-tag" title="Which version of the page is loaded">b119</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1137,6 +1142,14 @@ function fromLocalInput(str){
 
 const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
+/* A sale's real name, chosen here and adopted by the server.
+
+   A temporary name had to be swapped for the server's once the save came back,
+   and until then the sale could not be edited or deleted — the app had to wait,
+   polling, and show "…". Naming it here means the name on screen is the name
+   on the server from the first moment. */
+const newSaleId   = () => 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const newBundleId = () => 'B' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
 function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';
   clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',isErr?5000:2600);}
@@ -1678,7 +1691,10 @@ function derive(){
   /* If an unsaved change cannot be applied, say so. Swallowing the error left
      the record on the server but absent from the screen — it looked exactly
      like the transaction had been lost. */
+  const here = (BASE && BASE.activeSeason) || '';
   OPS.forEach(op=>{
+    // A change made in another season waits there; it is not applied here.
+    if(op.season && here && op.season!==here) return;
     try{ op.apply(st); }
     catch(e){
       op.broken = true;
@@ -1728,8 +1744,12 @@ async function pull(){
   BASE = d.state; REV = d.rev;
   // Only retire ops that existed when this read began; anything committed while
   // it was in flight is not represented in what came back.
+  const pulledSeason = (BASE && BASE.activeSeason) || '';
   OPS = OPS.filter(o=>{
     if(!startOps.includes(o)) return true;              // newer than this snapshot
+    // Only this season's data can confirm this season's change; another
+    // season's refresh says nothing about it.
+    if(o.season && pulledSeason && o.season!==pulledSeason) return true;
     return o.rev===undefined || o.rev>REV;              // still not in the server's copy
   });
   // Keep the current position valid: fall back sensibly if a region or event
@@ -1902,16 +1922,70 @@ function saveProgress(){
     : (saveDone ? 'Almost there…' : 'Saving…');
 }
 
+/* ---- Saves are kept on this device until the server has them ----
+
+   Two faults, one mechanism.
+
+   Saves were sent all at once and existed only in the page's memory. So an
+   edit could reach the server before the sale it edited, and closing or
+   leaving the page mid-save threw the save away — the sale simply vanished.
+
+   Now every save is written to the device FIRST, then sent one at a time, in
+   the order it was made, and only removed once the server has confirmed it.
+   If the page closes first, it is sent again when the app next opens. The
+   server recognises a sale it already has by its name, so a resend can never
+   record it twice. */
+const OUTBOX_KEY = 'tbs_outbox_v1';
+function outboxLoad(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]'); }catch(e){ return []; } }
+function outboxSave(l){ try{ localStorage.setItem(OUTBOX_KEY, JSON.stringify(l)); }catch(e){} }
+function outboxAdd(payload){
+  if(NEVER_QUEUE[payload && payload.action]) return;
+  const l=outboxLoad();
+  if(!l.some(x=>x.opId===payload.opId)){ l.push(payload); outboxSave(l); }
+}
+function outboxDone(opId){ outboxSave(outboxLoad().filter(x=>x.opId!==opId)); }
+
+let SEND_CHAIN = Promise.resolve();
+/** Send after everything sent before it has finished — never overtaking. */
+function sendInOrder(payload){
+  const p = SEND_CHAIN.then(()=>postWrite(payload));
+  SEND_CHAIN = p.catch(()=>{});
+  return p;
+}
+
+/** On opening: anything left from a page that closed mid-save goes out again. */
+function outboxRecover(){
+  const left = outboxLoad();
+  if(!left.length) return;
+  left.forEach(payload=>{
+    if(!PENDING.some(x=>x.payload && x.payload.opId===payload.opId))
+      PENDING.push({payload, at:Date.now()});
+  });
+  outboxSave([]);                  // the offline queue owns them now
+  pendingSave(); showPending();
+  toast(left.length===1 ? 'Sending a change that was still saving when the app closed'
+                        : 'Sending '+left.length+' changes that were still saving when the app closed');
+}
+
+/* Leaving while something is still saving: ask first. The outbox would resend
+   it later anyway, but saying so is better than a silent surprise. */
+window.addEventListener('beforeunload', e=>{
+  if(inflight || outboxLoad().length){ e.preventDefault(); e.returnValue=''; return ''; }
+});
+
 function commit(payload, apply, okMsg){
   payload.opId = payload.opId || newOpId();   // fixed now, survives any retry
-  const op = { apply };
+  outboxAdd(payload);                          // on the device before it is sent
+  // Belongs to the season it was made in, so switching seasons does not lose it.
+  const op = { apply, season: (BASE && BASE.activeSeason) || '' };
   OPS.push(op);
   STATE = derive(); renderAll(); closeModal();
   if(okMsg) toast(okMsg);
 
   inflight++; saveTotal++; setStatus('load','Saving…'); saveProgress();
-  postWrite(payload).then(d=>{
+  sendInOrder(payload).then(d=>{
     op.rev = d.rev;
+    outboxDone(payload.opId);      // the server has it
     scheduleSync();
   }).catch(err=>{
     if(err.unreadable){
@@ -1926,11 +2000,13 @@ function commit(payload, apply, okMsg){
     if(isOffline(err)){
       // No signal. Keep the change on screen and the request on the device.
       op.rev = -1;                       // never dropped by a sync it never saw
+      outboxDone(payload.opId);          // the offline queue carries it from here
       queueOffline(payload);
       toast('No signal — saved on this device, it will send itself');
       return;
     }
     OPS = OPS.filter(o=>o!==op);
+    outboxDone(payload.opId);            // refused by the server: resending cannot help
     STATE = derive(); renderAll();
     // Name the action, so a failure is traceable rather than a bare apology.
     toast('Not saved (' + (payload.action||'change') + ') — ' + err.message, true);
@@ -1957,7 +2033,8 @@ async function commitSync(payload, okMsg){
   try{
     /* One round trip, not two: the save brings the new state back with it.
        Falls back to a separate fetch if the server is an older deployment. */
-    const d = await postWrite(Object.assign({wantState:true}, payload));
+    // In line behind any sale still being sent, so nothing overtakes it.
+    const d = await sendInOrder(Object.assign({wantState:true}, payload));
     if(d && d.state){ BASE=d.state; REV=d.rev; STATE=derive(); renderAll(); }
     else await pull();
     closeModal();
@@ -2414,7 +2491,7 @@ function renderSalesByRegion(){
         <div class="mc-name ${catOfBook(b)}">${esc(b.name)}${
           b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
         <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
-        <div class="mc-sub">${countNote({pre,gift}, true) || '&nbsp;'}</div>
+        <div class="mc-sub">${countNote({sold,pre,gift}) || '&nbsp;'}</div>
       </div>`;
     }).filter(Boolean).join('');
     const perBookWrap = perBook
@@ -2430,9 +2507,9 @@ function renderSalesByRegion(){
             const line = (label, cat) => {
               const c = bookCounts(sales.filter(x=>catOf(x.bookId)===cat));
               if(!c.sold && !c.gift) return '';
-              const note = countNote(c);
               return `<span class="sbr-line"><b>${c.sold}</b> ${label} sold${
-                note?` <span class="muted">(${note})</span>`:''}</span>`;
+                c.pre?` <span class="muted">${preNote(c)}</span>`:''}${
+                c.gift?` <span class="muted">· ${giftNote(c)}</span>`:''}</span>`;
             };
             return line('Big Books','big') + line('AoTM','aotm') + line('Other','other');
           })()}
@@ -2491,8 +2568,9 @@ function renderTotals(){
       const cnt = cat => bookCounts(s.filter(x=>x.bookId && catOf(x.bookId)===cat));
       const tile = (cls, label, c) => `
     <div class="tcard${cls?' '+cls:''}"><div class="label">${label}</div>
-      <div class="value">${c.sold}<span class="value-lbl">sold</span></div>
-      <div class="sub">${countNote(c) || '&nbsp;'}</div></div>`;
+      <div class="value">${c.sold}<span class="value-lbl">sold</span>${
+        c.pre?`<span class="value-pre">${preNote(c)}</span>`:''}</div>
+      <div class="sub">${giftNote(c) || '&nbsp;'}</div></div>`;
       const big=cnt('big'), aotm=cnt('aotm'), oth=cnt('other');
       return tile('', 'Big Books', big)
         + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '')
@@ -2598,12 +2676,22 @@ function bookCounts(list){
     gift: books.filter(x=>isGift(x)).length
   };
 }
-/** The small-print line: pre-orders are part of the sold figure, gifts are on top of it. */
-function countNote(c, short){
-  const bits=[];
-  if(c.pre)  bits.push(short ? `${c.pre} pre` : `${c.pre} pre-ordered`);
-  if(c.gift) bits.push(`+${c.gift} gift${c.gift===1?'':'s'}`);
-  return bits.join(' · ');
+/* How a count reads, in two parts:
+
+     17 (1 pre-order)
+     +2 gifts = 19 distributed
+
+   Each part appears only when there is something to say — no pre-orders, no
+   bracket; no gifts, no second line. */
+function preNote(c){
+  return c.pre ? `(${c.pre} pre-order${c.pre===1?'':'s'})` : '';
+}
+function giftNote(c){
+  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} = ${c.sold+c.gift} distributed` : '';
+}
+/** Both parts on one line, for places too tight for two. */
+function countNote(c){
+  return [preNote(c), giftNote(c)].filter(Boolean).join(' · ');
 }
 
 function renderTitleList(target){
@@ -2635,11 +2723,10 @@ function renderTitleList(target){
       <div class="sc-figs">
         <span class="sc-big ${sold?'':'zero'}">${sold}</span>
         <span class="sc-lbl">sold</span>
+        ${pre?`<span class="sc-pre">${preNote({pre})}</span>`:''}
       </div>
       <div class="sc-sub">
-        ${pre?`<span class="sc-pre">${pre} pre-ordered</span>`:''}
-        ${gift?`<span class="sc-gift">+${gift} gift${gift===1?'':'s'}</span>`:''}
-        ${(!pre&&!gift)?'<span class="sc-none">&nbsp;</span>':''}
+        ${gift?`<span class="sc-gift">${giftNote({sold,gift})}</span>`:'<span class="sc-none">&nbsp;</span>'}
       </div>
       ${chips?`<div class="wo-chips">${chips}</div>`:''}
     </div>`;
@@ -3543,8 +3630,8 @@ function saleModal(opts){
                  changeamt,changecur,ts:tsVal||s.ts}); },
         moved ? 'Moved to '+locName(newLoc) : 'Sale updated');
     }else{
-      const id=tmpId();
-      commit({action:'sell',location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
+      const id=newSaleId();
+      commit({action:'sell',saleId:id,location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
               pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true},
         st=>{
           st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,
@@ -3916,7 +4003,7 @@ function bundleModal(edit){
     /* An edit keeps the transaction's real id on screen too, matching the
        server. Only a brand-new transaction gets a temporary id, until the
        server's real one arrives. */
-    const bundleId = edit ? edit.bundle : ('tmpB_'+Math.random().toString(36).slice(2,9));
+    const bundleId = edit ? edit.bundle : newBundleId();
 
     // Optimistic split, matching the server: proportional to list price (USD),
     // remainder on the first item.
@@ -3943,7 +4030,7 @@ function bundleModal(edit){
     const payload = edit
       ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true,
          ts:tsVal}
-      : {action:'sellBundle',location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
+      : {action:'sellBundle',keepBundleId:bundleId,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
          ts:tsVal,changeamt,changecur,override:true};
 
     commit(payload,
@@ -4357,60 +4444,63 @@ async function shareKeySet(kind, id, clear){
    timestamp, no section headings repeating what the numbers already say, and no
    figure stated twice in different words. Anything a reader would skip is
    noise, and noise is what stops these being read at all. */
-function buildReport(part){
+/* The full report (top button) takes a set of chosen sections and adds a
+   heading to each, plus the place and time at the top. A single section's
+   report stays bare figures — heading and date would only repeat what the
+   person tapping that section already knows. */
+const REPORT_SECTIONS = [
+  ['books',     'SALES BY TITLE'],
+  ['inventory', 'ON THE SHELF'],
+  ['stock',     'STOCK IN THE REGION'],
+  ['preorders', 'PRE-ORDERS TO DELIVER'],
+  ['pending',   'PAYMENTS PENDING'],
+  ['change',    'CHANGE OWED'],
+  ['log',       'COLLECTED BY TITLE'],
+  ['cash',      'COLLECTIONS BY PAYMENT'],
+];
+function buildReport(part, opts){
   const L = [];
-  const want = k => !part || part===k;
+  const full = !part;
+  const chosen = (opts && opts.sections) || null;
+  const want = k => part ? part===k : (!chosen || chosen.has(k));
+  const TITLE = Object.fromEntries(REPORT_SECTIONS);
+  /* Run one section; in the full report, put its heading above whatever it
+     wrote. A section with nothing to say gets no heading either. */
+  const section = (key, fn) => {
+    if(!want(key)) return;
+    const at = L.length;
+    fn();
+    while(L.length>at && L[L.length-1]==='') L.pop();
+    if(full && L.length>at) L.splice(at, 0, '*' + TITLE[key] + '*');
+    if(L.length>at) L.push('');
+  };
   const s = scopedSales();
   const money = !hideMoney();
   const nf = n => fmt(n);
   const line = (label, value) => L.push(label + ' - ' + value);
   const gap = () => { if(L.length && L[L.length-1] !== '') L.push(''); };
 
-  if(want('books')){
-    const sold = b => s.filter(x=>x.bookId===b.id && x.type==='SALE' && !isGift(x)).length;
-    const pre  = b => s.filter(x=>x.bookId===b.id && x.type==='PREORDER' && !isGift(x)).length;
-    const gift = b => s.filter(x=>x.bookId===b.id && isGift(x)).length;
-
-    /* Each kind gets its own block and its own total.
-
-       A single running list put a pamphlet next to a Big Book and gave one
-       figure covering both, which is not a number anyone can act on — the kinds
-       are counted, reported and compared separately everywhere else, so the
-       report follows suit. */
-    let grand=0, gPre=0, gGift=0, blocks=0;
+  section('books', ()=>{
+    /* Same rule and wording as the screen, so a report never disagrees with
+       the app: the figure is sold for money (a paid pre-order counts), then
+       the pre-orders in brackets, then gifts on top. Each kind totals itself;
+       a single title needs no total of its own. */
+    const figure = c => [String(c.sold), preNote(c), giftNote(c)].filter(Boolean).join(' ');
     CATS.forEach(kind=>{
-      const books = shelfBooks().filter(b=>catOfBook(b)===kind);
-      let tSold=0, tPre=0, tGift=0; const lines=[];
-      books.forEach(b=>{
-        const bs=sold(b), bp=pre(b), bg=gift(b);
-        if(!bs && !bp && !bg) return;
-        tSold+=bs; tPre+=bp; tGift+=bg;
-        const extra=[];
-        if(bp) extra.push(bp+' pre');
-        if(bg) extra.push(bg+' gift');
-        lines.push([b.name, bs + (extra.length?' ('+extra.join(', ')+')':'')]);
-      });
-      if(!lines.length) return;
-      if(blocks) gap();
-      blocks++;
-      lines.forEach(([a,b])=>line(a,b));
-      /* A total under a single title just repeats that title's own figure, so
-         it only appears once there are two or more to add up. */
-      if(lines.length>1){
-        const foot=[];
-        if(tPre) foot.push(tPre+' pre');
-        if(tGift) foot.push(tGift+' gift');
-        line(CAT_SHORT[kind] + ' total', tSold + (foot.length?' ('+foot.join(', ')+')':''));
+      const rows = shelfBooks().filter(b=>catOfBook(b)===kind)
+        .map(b=>({b, c:bookCounts(s.filter(x=>x.bookId===b.id))}))
+        .filter(r=>r.c.sold || r.c.gift);
+      if(!rows.length) return;
+      rows.forEach(r=>line(r.b.name, figure(r.c)));
+      if(rows.length>1){
+        const t = rows.reduce((a,r)=>({sold:a.sold+r.c.sold, pre:a.pre+r.c.pre, gift:a.gift+r.c.gift}), {sold:0,pre:0,gift:0});
+        line(CAT_SHORT[kind] + ' total', figure(t));
       }
-      grand+=tSold; gPre+=tPre; gGift+=tGift;
+      gap();
     });
-    /* No total across the kinds. Adding a pamphlet to a Big Book gives a
-       number nobody acts on, and it invited the two to be compared as if they
-       were the same thing. Each kind totals itself. */
-    gap();
-  }
+  });
 
-  if(want('inventory')){
+  section('inventory', ()=>{
     // Same split as the sales report: a count per kind, then the whole shelf.
     let grand=0, blocks=0;
     CATS.forEach(kind=>{
@@ -4424,9 +4514,9 @@ function buildReport(part){
       grand+=t;
     });
     gap();
-  }
+  });
 
-  if(want('stock')){
+  section('stock', ()=>{
     const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
     const held = b => regions.reduce((t,r)=>
       t + locsInRegion(r.regionId).reduce((u,l)=>u+invQty(l,b.id), 0), 0);
@@ -4442,9 +4532,9 @@ function buildReport(part){
       grand+=t;
     });
     gap();
-  }
+  });
 
-  if(want('pending')){
+  section('pending', ()=>{
     // The title and what is owed on it — no customer name, no date.
     const owed = s.filter(x=>pendingFlag(x) || dueParts(x).length);
     owed.forEach(x=>{
@@ -4455,18 +4545,18 @@ function buildReport(part){
     });
     if(owed.length) line('Total', owed.length);
     gap();
-  }
+  });
 
-  if(want('change')){
+  section('change', ()=>{
     const owe = s.filter(x=>changeOwed(x)>0);
     // The book it relates to and the amount; the person's name is not a figure.
     owe.forEach(x=>line(x.bookId?bookById(x.bookId).name:'Donation',
                         cashFmt(changeOwed(x), changeCur(x))));
     if(owe.length) line('Total', owe.length);
     gap();
-  }
+  });
 
-  if(want('preorders')){
+  section('preorders', ()=>{
     const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
     /* How many of each title are still to be handed over — a list of names and
        phone numbers is a contact sheet, not a report. */
@@ -4475,9 +4565,9 @@ function buildReport(part){
     Object.keys(byBook).forEach(n=>line(n, byBook[n]));
     if(due.length) line('Total', due.length);
     gap();
-  }
+  });
 
-  if(want('log')){
+  section('log', ()=>{
     /* A list of individual transactions with times is the app's own log, not
        something to read on a phone. What is useful is how much each title
        brought in, so that is what this reports. */
@@ -4493,9 +4583,9 @@ function buildReport(part){
     Object.keys(byBook).forEach(n=>
       line(n, Object.keys(byBook[n]).sort().map(c=>cashFmt(byBook[n][c],c)).join(' + ')));
     gap();
-  }
+  });
 
-  if(money && want('cash')){
+  if(money) section('cash', ()=>{
     const byType={}, grand={};
     s.forEach(x=>{
       if(!received(x)) return;
@@ -4513,8 +4603,14 @@ function buildReport(part){
     });
     if(curs(grand).length) line('Total', text(grand) + ' ≈ $' + nf(usd(grand)));
     gap();
-  }
+  });
 
+  if(full && L.length){
+    const where = CUR_LEVEL==='season' ? (STATE.seasonName||'Season')
+      : [ (currentRegion()||{}).name, CUR_LEVEL==='event' ? locName(CUR_LOC) : '' ].filter(Boolean).join(' — ');
+    const when = new Date().toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    L.unshift('*' + where + '*', when, '');
+  }
   return L.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 
@@ -4524,18 +4620,42 @@ function buildReport(part){
    on a desktop it can reject silently, and because this runs asynchronously the
    failure disappeared without a word. Showing the text first means the button
    always does something visible, and copying or sharing is one more tap. */
+/* Which sections the full report includes, remembered on this device so the
+   usual choice does not have to be made every time. */
+const REP_PICK_KEY = 'tbs_report_sections';
+function reportPicks(){
+  try{
+    const v = JSON.parse(localStorage.getItem(REP_PICK_KEY)||'null');
+    if(Array.isArray(v)) return new Set(v);
+  }catch(e){}
+  return new Set(REPORT_SECTIONS.map(x=>x[0]));      // everything, the first time
+}
+function saveReportPicks(set){ try{ localStorage.setItem(REP_PICK_KEY, JSON.stringify([...set])); }catch(e){} }
+
 function shareReport(part){
+  const full = !part;
+  const picks = full ? reportPicks() : null;
+  const make = () => buildReport(part, full ? {sections:picks} : null);
   let text;
   try{
-    text = buildReport(part);
+    text = make();
   }catch(err){
     toast('Could not build the report — ' + err.message, true);
     return;
   }
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  // Money sections are left off the list where money is not shown at all.
+  const offered = REPORT_SECTIONS.filter(([k])=>!(k==='cash' && hideMoney()));
+  const chooser = full ? `
+      <div class="rep-picks">${offered.map(([k,t])=>`
+        <label class="rep-pick"><input type="checkbox" data-rp="${k}" ${picks.has(k)?'checked':''}>
+          <span>${esc(t.charAt(0)+t.slice(1).toLowerCase())}</span></label>`).join('')}
+      </div>` : '';
   openModal(`
-    ${mHead('Report')}
+    ${mHead(full ? 'Full report' : 'Report')}
     <div class="m-body">
+      ${full ? '<div class="hint">Choose what to include.</div>' : ''}
+      ${chooser}
       <div class="hint">Copy this and paste it into WhatsApp${canShare?', or send it straight there':''}.</div>
       <textarea id="repText" class="rep-box" rows="14" readonly>${esc(text)}</textarea>
       <div class="err" id="modalErr"></div>
@@ -4547,6 +4667,12 @@ function shareReport(part){
     </div>`, true);
 
   const box = $('#repText');
+  // Ticking a section rewrites the report straight away, and is remembered.
+  if(full) document.querySelectorAll('#modal [data-rp]').forEach(cb=>cb.onchange=()=>{
+    cb.checked ? picks.add(cb.dataset.rp) : picks.delete(cb.dataset.rp);
+    saveReportPicks(picks);
+    try{ box.value = make() || '(nothing chosen)'; }catch(err){ box.value = 'Could not build the report — ' + err.message; }
+  });
   $('#repCopy').addEventListener('click', async ()=>{
     try{
       if(navigator.clipboard){ await navigator.clipboard.writeText(text); toast('Report copied'); return; }
@@ -5369,8 +5495,8 @@ function donationModal(edit){
               Object.assign(d, legFields(L), {pending:false,paid:true,dueamt:0,duecur:'',name,phone,comments,ts:tsVal||d.ts}); },
         'Donation updated');
     }else{
-      const id=tmpId(), loc=CUR_LOC;
-      commit({action:'donate',location:loc,legs:L,name,phone,comments,ts:tsVal,changeamt,changecur},
+      const id=newSaleId(), loc=CUR_LOC;
+      commit({action:'donate',saleId:id,location:loc,legs:L,name,phone,comments,ts:tsVal,changeamt,changecur},
         st=>{ st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,type:'DONATION',
                 bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
         'Donation recorded');
@@ -6027,7 +6153,9 @@ function seasonCacheLoad(id){
 
 function showSeason(state, rev, id){
   BASE = state; REV = rev;
-  OPS = [];                        // the previous season's pending edits do not apply here
+  /* Unsaved changes are no longer thrown away on switching season — that is
+     how a sale made moments before could vanish. Each belongs to its own
+     season and simply waits there, still being sent, until confirmed. */
   CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON;
   STATE = derive(); savePos(); cacheSave(); renderAll();
 }
@@ -7703,9 +7831,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='editbundle'){
     const bundle=t.dataset.bundle;
-    // A transaction made moments ago still carries a temporary id; editing that
-    // would be refused by the server, so settle the real id first.
-    if(String(bundle).indexOf('tmpB_')===0){ openBundleEditWhenSaved(bundle, t); return; }
+    // Its name is already the server's name, so it can be edited straight away.
     const members=(STATE.sales||[]).filter(x=>x.bundle===bundle);
     if(!members.length) return;
     bundleModal({bundle, members});
@@ -7729,7 +7855,7 @@ document.addEventListener('click',e=>{
   // Pick up where you left off — before the first paint, so the page never
   // flashes the wrong region on the way to the right one.
   loadPos();
-  pendingLoad(); pendingPrune(); showPending(); flushPending();
+  pendingLoad(); pendingPrune(); outboxRecover(); showPending(); flushPending();
   // A share link asks who is holding it before anything gets recorded.
   if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
   // Draw last session's data straight away so the page is usable on open.
