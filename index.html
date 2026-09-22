@@ -375,6 +375,14 @@ body.busy #busyLabel{opacity:1}
 .cash-agg .cash-sub-row>th{padding-left:20px;font-weight:600;color:var(--ink);font-size:12.5px}
 .cash-agg .cash-sub-row>td{font-size:12.5px;color:var(--ink)}
 .cash-agg tfoot th,.cash-agg tfoot td{font-weight:800;border-top:2px solid var(--line-d)}
+.cash-reg{border-bottom:1px solid var(--line)}
+.cash-reg>summary{display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:9px 2px;cursor:pointer;font-weight:800;list-style:revert}
+.cash-reg-name{color:var(--plum);text-decoration:none;font-weight:800}
+.cash-reg-name:hover{text-decoration:underline}
+.cash-reg-tot{font-weight:800;text-align:right}
+.cash-reg .cash-tbl{margin:0 0 8px}
+.cash-coll-row.cash-global{color:var(--green);font-weight:800}
 .cash-tbl td.neg{color:var(--clay);font-weight:700}
 .cash-cell{cursor:pointer;border-radius:4px}
 .cash-cell:hover{background:#FBF3E4;box-shadow:inset 0 0 0 1.5px var(--gold)}
@@ -1001,7 +1009,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b133</span>
+    <span class="build-tag" title="Which version of the page is loaded">b134</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5487,46 +5495,41 @@ function cashFmt(n,cur){
 function cashReopen(){ setTimeout(()=>{ try{ cashModal(); }catch(e){} },0); }
 
 function seasonCashModal(){
-  /* The season view is an aggregator: every place beneath it, each region's
-     coordinator, the Global Coordinator, what was collected, and EVERY
-     movement across the tour. It used to show two summary columns per region,
-     which hid where money actually sat and hid transfers entirely. */
+  /* The season view gathers everything beneath it. Each region is a line you
+     can open to see its own places, and its name takes you there to move the
+     money — cash is only ever moved inside the region that holds it. */
   const curs = curAllCurrencies();
   const money = o => {
     const parts = Object.keys(o).filter(c=>Math.abs(o[c])>0.005).sort().map(c=>cashFmt(o[c],c));
     return parts.length ? parts.map(x=>`<span class="cur-line">${x}</span>`).join('') : '—';
   };
   const balOf = id => { const o={}; curs.forEach(c=>{ const v=cashBalance(id,c); if(Math.abs(v)>0.005) o[c]=v; }); return o; };
+  const add = (into,o) => { Object.keys(o).forEach(c=>into[c]=(into[c]||0)+o[c]); };
 
-  let body='', totAll={};
-  const add=(into,o)=>{ Object.keys(o).forEach(c=>into[c]=(into[c]||0)+o[c]); };
-  regionsList().forEach(r=>{
+  const regions = regionsList().map(r=>{
     const places=[{id:r.whLoc, name:r.name+' — Warehouse'}]
       .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name})))
       .concat(holdersOf(r.regionId).map(h=>({id:h.holderId,name:h.name+' (storing books)'})));
-    let regTot={}, rowsHtml='';
-    places.forEach(pl=>{
-      const b=balOf(pl.id); add(regTot,b);
-      rowsHtml += `<tr class="cash-sub-row"><th>${esc(pl.name)}</th><td>${money(b)}</td></tr>`;
-    });
-    const rb=balOf(regionBankId(r.regionId)); add(regTot,rb);
-    rowsHtml += `<tr class="cash-sub-row"><th>Regional Coordinator</th><td>${money(rb)}</td></tr>`;
-    add(totAll, regTot);
-    body += `<tr class="cash-reg-row"><th>${esc(r.name)}</th><td>${money(regTot)}</td></tr>` + rowsHtml;
+    const tot={}, rows=[];
+    places.forEach(pl=>{ const b=balOf(pl.id); add(tot,b); rows.push({name:pl.name, bal:b}); });
+    const rb=balOf(regionBankId(r.regionId)); add(tot,rb);
+    rows.push({name:'Regional Coordinator', bal:rb});
+    return {r, tot, rows};
   });
-  const gb = balOf('BANK'); add(totAll, gb);
 
-  // Collected across the tour, and how much of it belongs to consignment groups.
-  const coll={}, con={};
+  const gb = balOf('BANK');
+
+  /* What was collected, split the way it is owed: our own sales, and the money
+     held for consignment groups. */
+  const sales={}, con={};
   (STATE.sales||[]).forEach(x=>{
     if(!x || pendingFlag(x)) return;
     legs(x).forEach(l=>{ if(l.type!=='Cash') return;
-      coll[l.cur]=(coll[l.cur]||0)+l.amt;
       if(isPartnerSale(x)) con[l.cur]=(con[l.cur]||0)+l.amt;
+      else sales[l.cur]=(sales[l.cur]||0)+l.amt;
     });
   });
 
-  // Every movement, everywhere.
   const entries=(STATE.cash||[]).filter(c=>c && typeof c==='object')
     .slice().sort((a,b)=>{ try{ return new Date(b.ts||0)-new Date(a.ts||0); }catch(e){ return 0; } });
   const logRows = entries.map(c=>{
@@ -5544,22 +5547,29 @@ function seasonCashModal(){
   }).join('') || '<div class="cash-empty">No movements yet.</div>';
 
   openModal(`
-    ${mHead('Cash across the tour')}
+    ${mHead('Cash Tracking')}
     <div class="m-body">
-      <div class="cash-sub">Cash Location and Amount</div>
-      <div class="cash-lede">Everything below this season. To move money, go to the region that holds it.</div>
-      <table class="cash-tbl cash-agg">
-        <tbody>
-          ${body || '<tr><td colspan="2">No regions yet.</td></tr>'}
-          <tr class="cash-reg-row"><th>Global Coordinator</th><td>${money(gb)}</td></tr>
-        </tbody>
-        <tfoot><tr><th>All cash</th><td>${money(totAll)}</td></tr></tfoot>
-      </table>
+      <div class="cash-lede">Click region to move cash</div>
+
+      ${regions.length ? regions.map(g=>`
+        <details class="cash-reg">
+          <summary>
+            <a class="cash-reg-name" data-act="cashregion" data-id="${esc(g.r.regionId)}" href="#">${esc(g.r.name)}</a>
+            <span class="cash-reg-tot">${money(g.tot)}</span>
+          </summary>
+          <table class="cash-tbl cash-agg"><tbody>
+            ${g.rows.map(row=>`<tr class="cash-sub-row"><th>${esc(row.name)}</th><td>${money(row.bal)}</td></tr>`).join('')}
+          </tbody></table>
+        </details>`).join('') : '<div class="cash-empty">No regions yet.</div>'}
+
+      <div class="cash-coll" style="margin-top:10px">
+        <div class="cash-coll-row cash-global"><span>Global Coordinator</span><span>${money(gb)}</span></div>
+      </div>
 
       <div class="cash-sub">Collection Record</div>
       <div class="cash-coll">
-        <div class="cash-coll-row"><span>Collected across the tour</span><span>${money(coll)}</span></div>
-        ${Object.keys(con).length?`<div class="cash-coll-row con-line"><span>Consignment (held for the groups)</span><span>${money(con)}</span></div>`:''}
+        <div class="cash-coll-row"><span>Cash for Sales</span><span>${money(sales)}</span></div>
+        <div class="cash-coll-row con-line"><span>Consignment Cash</span><span>${money(con)}</span></div>
       </div>
 
       <div class="cash-sub">Movement log</div>
@@ -8063,6 +8073,10 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='report'){ shareReport(t.dataset.part||''); return; }
+  if(a==='cashregion'){
+    e.preventDefault();          // the name navigates; the row itself opens the list
+    closeModal(); goTo('region', t.dataset.id); cashModal(); return;
+  }
   if(a==='drivefolder'){ driveFolderModal(); return; }
   if(a==='dfroot'){ driveFolderChange({action:'setDriveFolder'}, 'all the spreadsheets'); return; }
   if(a==='dfchange'){ driveFolderChange({action:'setSeasonFolder', seasonId:t.dataset.season, which:t.dataset.which},
