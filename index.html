@@ -417,6 +417,7 @@ body.busy #busyLabel{opacity:1}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.df-now{font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper2);margin-bottom:12px;overflow-wrap:anywhere}
 .cost-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
 .cost-amt-row{display:flex;gap:8px}
 .cost-amt-row input{flex:1;min-width:0}
@@ -973,7 +974,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b122</span>
+    <span class="build-tag" title="Which version of the page is loaded">b124</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2351,6 +2352,8 @@ function renderAdmin(){
   // 1 — money, people, access
   if(admin) cols[0].push(`<button class="btn" data-act="cash">💵 Cash</button>`);
   cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
+  // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
+  if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folder</button>`);
   // Costs are money matters, so only for those who see the money.
   if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
     scopedCosts().length?` (${scopedCosts().length})`:''}</button>`);
@@ -4587,6 +4590,36 @@ function costsModal(editId){
   });
 }
 
+/* Choose the Google Drive folder the spreadsheets are filed in. */
+function driveFolderModal(){
+  const now = STATE.driveFolder || 'Transcendental Book Sales (in My Drive)';
+  openModal(`
+    ${mHead('Spreadsheet folder')}
+    <div class="m-body">
+      <div class="hint">The generated spreadsheets are filed here, with a folder for each season
+        inside it, and consignment files in a Consignment folder within each season.</div>
+      <div class="cash-sub">Currently</div>
+      <div class="df-now">📁 ${esc(now)}</div>
+      <div class="field"><label>Use a different folder</label>
+        <input id="dfLink" type="text" placeholder="Paste the link to a Google Drive folder">
+        <div class="muted-note">Open the folder in Google Drive and copy the address from the browser.
+          The account that owns this app must be able to edit it.</div></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" id="dfSave">Use this folder</button>
+    </div>`);
+  $('#dfSave').addEventListener('click', async ()=>{
+    const folder = $('#dfLink').value.trim();
+    if(!folder){ $('#modalErr').textContent='Paste the link to a Google Drive folder.'; return; }
+    // Waits for the answer: the server has to check the folder can be opened.
+    const ok = await commitSync({action:'setDriveFolder', folder},
+      'Spreadsheets will be filed there from the next sync');
+    if(ok) driveFolderModal();
+  });
+}
+
 async function shareKeySet(kind, id, clear){
   const keys = STATE.keys || {regions:{},events:{}};
   const existing = (kind==='region'?keys.regions:keys.events)[id] || '';
@@ -4677,7 +4710,11 @@ function buildReport(part, opts){
         .filter(r=>r.c.sold || r.c.gift);
       if(!rows.length) return;
       rows.forEach(r=>line(r.b.name, item(r.c)));
-      if(rows.length>1){
+      /* A total whenever it adds something: several titles to add up, or gifts
+         — even under a single title, since only the total gives the number
+         distributed. One title with no gifts would just repeat its own line. */
+      const giftsHere = rows.some(r=>r.c.gift);
+      if(rows.length>1 || giftsHere){
         const t = rows.reduce((a,r)=>({sold:a.sold+r.c.sold, gift:a.gift+r.c.gift}), {sold:0,gift:0});
         L.push('');
         L.push(CAT_SHORT[kind] + ' Total = ' + t.sold + ' Sold' +
@@ -4820,10 +4857,10 @@ function buildReport(part, opts){
     REPORT_SECTIONS.forEach(([k])=>{ if(chunks[k]) L.push(...chunks[k]); });
   }
   if(full && L.length){
+    // Just the place and "Totals" — e.g. "London Totals".
     const where = CUR_LEVEL==='season' ? (STATE.seasonName||'Season')
       : [ (currentRegion()||{}).name, CUR_LEVEL==='event' ? locName(CUR_LOC) : '' ].filter(Boolean).join(' — ');
-    const when = new Date().toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
-    L.unshift('*' + where + '*', when, '');
+    L.unshift('*' + where + ' Totals*', '');
   }
   return L.join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
@@ -7957,6 +7994,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='report'){ shareReport(t.dataset.part||''); return; }
+  if(a==='drivefolder'){ driveFolderModal(); return; }
   if(a==='costs'){ costsModal(); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }
   if(a==='costdel'){
