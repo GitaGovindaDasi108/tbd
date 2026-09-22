@@ -194,6 +194,9 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .sc-pre{font-size:10.5px;color:var(--saffron-d);font-weight:700}
 .sc-gift{font-size:10.5px;color:var(--gold);font-weight:700}
 /* Gifts beside a place's figure: small and quiet, so the sold number leads. */
+/* Warehouse Overview: what is on the shelf, in orange; what is on the way, in blue beneath. */
+.sc-big.wo-big{color:var(--saffron-d)}
+.sc-big.wo-big.zero{color:var(--muted)}
 .chip-gift{font-size:10.5px;font-weight:700;color:var(--gold);margin-left:2px}
 /* "sold" set small beside the big number in the totals bar. */
 .tcard .sub-cost{color:var(--clay);font-weight:700}
@@ -370,6 +373,7 @@ body.busy #busyLabel{opacity:1}
 .cash-tbl td.neg{color:var(--clay);font-weight:700}
 .cash-cell{cursor:pointer;border-radius:4px}
 .cash-cell:hover{background:#FBF3E4;box-shadow:inset 0 0 0 1.5px var(--gold)}
+.cash-lede{font-style:italic;font-size:13px;color:var(--muted);margin:2px 0 10px}
 .cash-diag{font-size:10.5px;color:var(--muted);margin:-4px 0 4px;opacity:.8}
 .cash-sub{font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);margin:16px 0 7px;border-top:1px solid var(--line);padding-top:13px}
 .cash-seg{margin:8px 0}
@@ -991,7 +995,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b129</span>
+    <span class="build-tag" title="Which version of the page is loaded">b131</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2552,15 +2556,15 @@ function renderWarehouseOverview(){
     const chips = per.map(x=>
       `<button class="wo-chip" data-act="goregion" data-region="${esc(x.r.regionId)}"
          title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
-      + (transit?`<span class="wo-chip transit"><b>${transit}</b> in transit</span>`:'');
+;   // in transit is shown once, beneath the number — no separate bubble
     return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}">
       <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
-        <span class="sc-big ${total?'':'zero'}">${total}</span>
+        <span class="sc-big wo-big ${total?'':'zero'}">${total}</span>
         <span class="sc-lbl">in stock</span>
       </div>
-      ${transit?`<div class="sc-sub"><span class="sc-transit">${total+transit} incl. ${transit} in transit</span></div>`:''}
+      ${transit?`<div class="sc-sub"><span class="sc-transit">+${transit} in transit</span></div>`:''}
       <div class="wo-chips">${chips||'<span class="sc-none">nowhere yet</span>'}</div>
     </div>`;
   }).join('');
@@ -5322,10 +5326,11 @@ function cashCurs(){ return curCurrencies(); }
 function regionBankId(regionId){ return 'BANK_'+regionId; }
 function isRegionBank(acct){ return String(acct).indexOf('BANK_')===0; }
 function bankLabel(acct){
-  if(acct==='BANK') return 'Global bank';
+  // The money is held by people, not by a bank: named for the role that holds it.
+  if(acct==='BANK') return 'Global Coordinator';
   if(isRegionBank(acct)){
     const r=(STATE.regions||[]).find(x=>x.regionId===String(acct).slice(5));
-    return (r && (r.bankName||'').trim()) || ((r?r.name:'Region')+' bank');
+    return (r && (r.bankName||'').trim()) || 'Regional Coordinator';
   }
   return '';
 }
@@ -5345,7 +5350,7 @@ function cashAccounts(){
     regionsList().forEach(r=>list.push({id:r.whLoc,name:r.name}));
   }
   // The global account is where money finally lands, so it appears everywhere.
-  if(!hideBank()) list.push({id:'BANK',name:'Global bank'});
+  if(!hideBank()) list.push({id:'BANK',name:'Global Coordinator'});
   return list;
 }
 function hideBank(){ return !!(STATE && STATE.hideBank); }
@@ -5353,18 +5358,6 @@ function hideBank(){ return !!(STATE && STATE.hideBank); }
 /* A change float is bank money sitting in the box to make change with. It looks
    like takings until it goes back, so the app says plainly how much is still
    out. */
-function floatOut(){
-  const mine = CUR_REGION ? locsInRegion(CUR_REGION) : [CUR_LOC];
-  const out = {};
-  (STATE.cash||[]).forEach(c=>{
-    if(!c) return;
-    const amt = Number(c.amt)||0;
-    if(c.purpose==='FLOAT' && mine.includes(c.toAcct)) out[c.cur]=(out[c.cur]||0)+amt;
-    if(c.purpose==='FLOAT_BACK' && mine.includes(c.fromAcct)) out[c.cur]=(out[c.cur]||0)-amt;
-  });
-  Object.keys(out).forEach(c=>{ if(Math.abs(out[c])<0.005) delete out[c]; });
-  return out;
-}
 
 /* What this region has genuinely handed to the bank.
 
@@ -5407,7 +5400,9 @@ function cashByRegion(){
 }
 function curAllCurrencies(){ return STATE.currencies||['USD']; }
 function cashAcctName(id){
-  if(id==='BANK') return 'Bank';
+  // The coordinators' accounts, named as they are everywhere else — the log
+  // used to read "Bank" and raw ids like "BANK_rg_1ef6e2".
+  if(id==='BANK' || isRegionBank(id)) return bankLabel(id);
   // Every kind of place a book can sit needs a name here, or the movement log
   // reads out internal ids like "wh_64c0ee" or "sh_137998".
   const r=(STATE.regions||[]).find(x=>x.whLoc===id);
@@ -5424,7 +5419,7 @@ function cashAcctName(id){
       : (sp.carrier || 'a devotee');
     return 'In transit with ' + who;
   }
-  return id;
+  return locName(id);          // a place in another season, named with its season
 }
 // Physical cash collected at a location: Cash-type legs from received sales and
 // donations there. The same basis as Collections. Bank has no sales.
@@ -5507,15 +5502,15 @@ function seasonCashModal(){
   openModal(`
     ${mHead('Cash across the tour')}
     <div class="m-body">
-      <div class="hint">Cash is held and moved inside each region; the bank is shared by the whole
+      <div class="hint">Cash is held and moved inside each region; the Global Coordinator's account is shared by the whole
         tour. This is a read-only picture — to move money, go to the region that holds it.</div>
       <table class="cash-tbl">
-        <thead><tr><th></th><th>Held in region</th><th>Sent to bank</th></tr></thead>
+        <thead><tr><th></th><th>Held in region</th><th>Sent to Global Coordinator</th></tr></thead>
         <tbody>${body || '<tr><td colspan="3">No regions yet.</td></tr>'}</tbody>
         <tfoot><tr><th>All regions</th><td>${money(totHeld)}</td><td>${money(totBank)}</td></tr></tfoot>
       </table>
-      <div class="cash-sub">Bank balance</div>
-      <div class="cash-coll"><div class="cash-coll-row"><span>Bank (universal)</span><span>${money(bank)}</span></div></div>
+      <div class="cash-sub">Global Coordinator</div>
+      <div class="cash-coll"><div class="cash-coll-row"><span>Held for the whole tour</span><span>${money(bank)}</span></div></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
 }
@@ -5539,20 +5534,18 @@ function cashModal(){
        pooled balance belongs to the whole tour and would mix in money from
        places that have nothing to do with here. At season level, where it does
        mean something, it is the real balance. */
+    /* Amounts are read-only. Setting a figure by hand created money that came
+       from nowhere and left the other side of the transfer untouched, so a
+       correction now belongs in the records themselves, not here. */
     const isBank = a.id==='BANK';
     const seasonWide = (CUR_LEVEL==='season') || !CUR_REGION;
-    const hasManual = !isBank && entries.some(c=>c.fromAcct===a.id || c.toAcct===a.id);
     let cells='';
     cashCurs().forEach(cur=>{
       const v = isBank ? (seasonWide ? cashBalance('BANK',cur) : (sent[cur]||0))
                        : cashBalance(a.id,cur);
-      cells += (isBank && !seasonWide)
-        ? `<td class="cash-cell ${v===0?'zero':''}">${v===0?'—':cashFmt(v,cur)}</td>`
-        : `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}" data-setacct="${esc(a.id)}" data-setcur="${cur}" title="Tap to set">${v===0?'—':cashFmt(v,cur)}</td>`;
+      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}">${v===0?'—':cashFmt(v,cur)}</td>`;
     });
-    const reset = hasManual ? `<button class="cash-mini" data-resetacct="${esc(a.id)}" title="Reset to collected">↺</button>` : '';
-    const label = isBank ? 'Global bank' : esc(a.name);
-    balRows += `<tr><th>${label} ${reset}</th>${cells}</tr>`;
+    balRows += `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
   });
 
   // ---------- cash collected (plain loop, always shows) ----------
@@ -5571,7 +5564,10 @@ function cashModal(){
   // whole log, and a plain-text fallback guarantees the movement is always visible.
   /* Only movements that touch this region. The bank is shared by the whole tour,
      so without this filter a region's log listed other regions' deposits. */
-  const here = CUR_REGION ? locsInRegion(CUR_REGION) : [];
+  /* The region's own coordinator account belongs here too. Listing only its
+     PLACES meant a transfer into the regional account showed in the balance
+     while appearing nowhere in the log — money seemingly from nothing. */
+  const here = CUR_REGION ? locsInRegion(CUR_REGION).concat([regionBankId(CUR_REGION)]) : [];
   const mineOnly = here.length
     ? entries.filter(c=>here.includes(c.fromAcct) || here.includes(c.toAcct))
     : entries;
@@ -5595,10 +5591,9 @@ function cashModal(){
           <span class="cash-logamt">${sign}${amtStr}</span>
         </div>
         <div class="cash-logbot">
-          <span class="cash-logwhen">${esc(when)}${c.note?' · '+esc(c.note):''}</span>
+          <span class="cash-logwhen">${esc(when)}${c.by?' · '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</span>
           <span class="cash-logacts">
-            ${id?`<button class="cash-mini" data-editentry="${esc(id)}" title="Edit">✎</button>
-            <button class="cash-mini danger" data-delentry="${esc(id)}" title="Delete">✕</button>`:''}
+            ${id?`<button class="cash-mini danger" data-delentry="${esc(id)}" title="Remove this movement">✕</button>`:''}
           </span>
         </div>
       </div>`;
@@ -5615,8 +5610,8 @@ function cashModal(){
   openModal(`
     ${mHead('Cash tracking')}
     <div class="m-body">
-      <div class="hint">Balances start from the cash <b>collected</b> at each place, then follow your moves. <b>Tap any amount to set it.</b></div>
-      <div class="cash-diag">Tracking ${(STATE.sales||[]).length} sales · ${entries.length} movement${entries.length===1?'':'s'}.</div>
+      <div class="cash-sub">Cash Location and Amount</div>
+      <div class="cash-lede">Use “Move cash” below to move funds.</div>
 
       <table class="cash-tbl">
         <thead><tr><th></th>${cashCurs().map(c=>`<th>${esc(CUR_SYM[c]||'')} ${esc(c)}</th>`).join('')}</tr></thead>
@@ -5640,49 +5635,13 @@ function cashModal(){
         // A link sees what it has sent onward, never the bank's own balance.
         const sent = sentToBank();
         const parts = Object.keys(sent).filter(c=>sent[c]).sort().map(c=>cashFmt(sent[c],c));
-        return `<div class="cash-sub">Sent to the global bank from here</div>
+        return `<div class="cash-sub">Sent to the Global Coordinator from here</div>
           <div class="cash-coll"><div class="cash-coll-row">
             <span>Handed over so far</span><span>${parts.length?parts.join(' · '):'—'}</span>
           </div></div>`;
       })() : ''}
 
-      ${(function(){
-        // Bank money out on loan for making change.
-        const out = floatOut();
-        const curs = Object.keys(out).filter(c=>Math.abs(out[c])>0.005).sort();
-        return `<div class="cash-sub">Change from the bank</div>
-
-          <div class="cash-coll"><div class="cash-coll-row">
-            <span>Still withdrawn</span>
-            <span class="${curs.length?'float-out':''}">${curs.length?curs.map(c=>cashFmt(out[c],c)).join(' · '):'nothing withdrawn'}</span>
-          </div></div>
-          <div class="sh-acts" style="margin:7px 0 4px">
-            <button class="btn btn-ghost btn-sm" data-act="floatout">Withdraw change</button>
-            ${curs.length?`<button class="btn btn-primary btn-sm" data-act="floatback">Deposit change</button>`:''}
-          </div>`;
-      })()}
-
-      ${(function(){
-        /* Their notes are in the box and counted above, so the box total is
-           physically true. This says how much of it is not ours. */
-        const owed = {};
-        (STATE.partners||[]).forEach(pt=>{
-          const bm = (pt.byMethod||{}).Cash;
-          if(!bm) return;
-          Object.keys(bm.owed||{}).forEach(c=>{
-            if(Math.abs(bm.owed[c])>0.005) owed[c]=(owed[c]||0)+bm.owed[c];
-          });
-        });
-        const curs = Object.keys(owed).filter(c=>Math.abs(owed[c])>0.005).sort();
-        if(!curs.length) return '';
-        return `<div class="cash-sub">Consignment</div>
-          <div class="cash-coll"><div class="cash-coll-row">
-            <span>Owed</span>
-            <span class="float-out">${curs.map(c=>cashFmt(owed[c],c)).join(' · ')}</span>
-          </div></div>`;
-      })()}
-
-      <div class="cash-sub">Cash collected in the system</div>
+      <div class="cash-sub">Collection Record</div>
       <div class="cash-coll">${collRows}</div>
 
       <div class="cash-sub">Movement log</div>
@@ -5720,90 +5679,21 @@ function cashModal(){
     cashReopen();
   });
 
+  /* Setting a balance by hand, resetting an account and editing a movement are
+     all gone: each changed one figure without a matching change on the other
+     side. Removing a wrong movement is what remains — it undoes both sides. */
   onModal('click','cash',e=>{
-    const setC=e.target.closest('[data-setacct]');
-    if(setC){
-      const acct=setC.dataset.setacct, cur=setC.dataset.setcur, now=cashBalance(acct,cur);
-      const raw=prompt(`Set the ${cur} balance for ${cashAcctName(acct)}:`, now);
-      if(raw===null) return;
-      const target=Math.round((Number(raw)||0)*100)/100;
-      if(target===now) return;
-      const delta=Math.round((target-now)*100)/100;
-      commit({action:'cashSet',toAcct:acct,cur,amt:target,note:'Set to '+target+' '+cur},
-        st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'ADJUST',fromAcct:'',toAcct:acct,cur,amt:delta,note:'Set to '+target+' '+cur}); },
-        'Balance set');
-      cashReopen(); return;
-    }
-    const rA=e.target.closest('[data-resetacct]');
-    if(rA){
-      const acct=rA.dataset.resetacct;
-      if(!confirm(`Reset ${cashAcctName(acct)} to what was collected?`)) return;
-      commit({action:'cashResetAcct',acct},
-        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.fromAcct!==acct && c.toAcct!==acct); }, 'Account reset');
-      cashReopen(); return;
-    }
     const dE=e.target.closest('[data-delentry]');
     if(dE){
       const id=dE.dataset.delentry;
-      if(!confirm('Delete this movement?')) return;
+      if(!confirm('Remove this movement?')) return;
       commit({action:'cashDelete',id},
-        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.id!==id); }, 'Movement deleted');
+        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.id!==id); }, 'Movement removed');
       cashReopen(); return;
     }
-    const eE=e.target.closest('[data-editentry]');
-    if(eE){ cashEditEntry(eE.dataset.editentry); return; }
   });
 }
 
-function cashEditEntry(id){
-  const c=(STATE.cash||[]).find(x=>x && x.id===id);
-  if(!c){ cashModal(); return; }
-  const accts=cashAccounts();
-  const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
-  const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
-  openModal(`
-    ${mHead('Edit movement')}
-    <div class="m-body">
-      <div class="seg cash-seg" id="ceKind">
-        <button type="button" data-k="MOVE" class="${isMove?'on':''}">Move</button>
-        <button type="button" data-k="ADJUST" class="${!isMove?'on':''}">Adjustment</button>
-      </div>
-      <div class="row2">
-        <div class="field" id="ceFromWrap" style="display:${isMove?'block':'none'}"><label>From</label><select id="ceFrom">${acctOpts(c.fromAcct)}</select></div>
-        <div class="field"><label id="ceToLbl">${isMove?'To':'Account'}</label><select id="ceTo">${acctOpts(c.toAcct)}</select></div>
-      </div>
-      <div class="row2">
-        <div class="field"><label>Currency</label><select id="ceCur">${curOptions(c.cur)}</select></div>
-        <div class="field"><label>Amount</label><input id="ceAmt" type="number" step="0.01" inputmode="decimal" value="${Number(c.amt)||0}"></div>
-      </div>
-      <div class="field"><label>Note (optional)</label><input id="ceNote" type="text" value="${esc(c.note||'')}"></div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="cashModal()">Cancel</button>
-      <button class="btn btn-primary" id="ceSave">Save</button>
-    </div>
-  `);
-  let kind = isMove?'MOVE':'ADJUST';
-  $('#ceKind').addEventListener('click',e=>{
-    const b=e.target.closest('button[data-k]'); if(!b) return;
-    kind=b.dataset.k;
-    [...$('#ceKind').children].forEach(x=>x.classList.toggle('on',x===b));
-    $('#ceFromWrap').style.display = kind==='MOVE'?'block':'none';
-    $('#ceToLbl').textContent = kind==='MOVE'?'To':'Account';
-  });
-  $('#ceSave').addEventListener('click',()=>{
-    const from=$('#ceFrom').value, to=$('#ceTo').value, cur=$('#ceCur').value;
-    const amt=Math.round((Number($('#ceAmt').value)||0)*100)/100;
-    const note=$('#ceNote').value.trim();
-    if(kind==='MOVE'){ if(from===to){ $('#modalErr').textContent='Pick two different accounts.'; return; } if(amt<=0){ $('#modalErr').textContent='Enter an amount.'; return; } }
-    else if(!amt){ $('#modalErr').textContent='Enter an amount.'; return; }
-    commit({action:'cashEdit',id,kind,fromAcct:kind==='MOVE'?from:'',toAcct:to,cur,amt,note},
-      st=>{ const x=(st.cash||[]).find(e=>e && e.id===id); if(x){ x.kind=kind; x.fromAcct=kind==='MOVE'?from:''; x.toAcct=to; x.cur=cur; x.amt=amt; x.note=note; } },
-      'Movement updated');
-    cashReopen();
-  });
-}
 
 function donationModal(edit){
   openModal(`
@@ -7236,50 +7126,6 @@ function partnerEditModal(id){
    arrival, exactly like a pre-order filled from outside. */
 /* Taking a float out, or putting it back. Multi-currency, because a float is
    usually a handful of notes in each. */
-function floatModal(back){
-  const reg = currentRegion();
-  if(!reg) return;
-  const out = floatOut();
-  const accts = cashAccounts().filter(a=>a.id!=='BANK');
-  const curs = back
-    ? Object.keys(out).filter(c=>Math.abs(out[c])>0.005).sort()
-    : cashCurs();
-
-  openModal(`
-    ${mHead(back ? 'Deposit change' : 'Withdraw change')}
-    <div class="m-body">
-      <div class="hint">${back
-        ? 'Depositing the change money back into the bank. It never counted as takings.'
-        : 'Cash withdrawn from the bank to make change with. It sits in the box but belongs to the bank until it is deposited back.'}</div>
-      <div class="field"><label>${back?'Coming back from':'Going to'}</label>
-        <select id="flLoc">${accts.map(a=>`<option value="${esc(a.id)}">${esc(a.name)}</option>`).join('')}</select></div>
-      ${curs.length ? curs.map(c=>`<div class="cl-row">
-        <div class="cl-name">${esc(CUR_SYM[c]||c)} ${esc(c)}</div>
-        <div class="cl-exp">${back?('out: '+cashFmt(out[c]||0,c)):''}</div>
-        <input class="cl-in fl-q" type="number" step="0.01" min="0" inputmode="decimal"
-          data-cur="${esc(c)}" value="${back?(out[c]||''):''}" placeholder="0">
-        <div></div>
-      </div>`).join('') : `<div class="cash-empty">Nothing is out at the moment.</div>`}
-      <div class="field"><label>Note (optional)</label>
-        <input id="flNote" type="text" placeholder="${back?'e.g. returned after the festival':'e.g. change for the Skopje festival'}"></div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" data-act="cash">Back</button>
-      <button class="btn btn-primary" id="flGo">${back?'Record deposit':'Record withdrawal'}</button>
-    </div>`);
-
-  $('#flGo').addEventListener('click',async ()=>{
-    const loc=$('#flLoc').value, note=$('#flNote').value.trim();
-    const rows=[...document.querySelectorAll('#modal .fl-q')]
-      .map(i=>({cur:i.dataset.cur, amt:Number(i.value)||0})).filter(x=>x.amt>0);
-    if(!rows.length){ $('#modalErr').textContent='Enter an amount.'; return; }
-    // Sent as one request: asking per currency meant the dialog reappeared for
-    // each and the balances shifted underneath the checks.
-    if(await commitSync({action:'cashFloat', loc, items:rows,
-        back:back?'true':'false', note}, back?'Change deposited':'Change withdrawn')) cashModal();
-  });
-}
 
 
 /* Handing stock to another season. The books do not travel — they are already
@@ -8107,8 +7953,6 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='shoutside'){ shipOutsideModal(); return; }
-  if(a==='floatout'){ floatModal(false); return; }
-  if(a==='floatback'){ floatModal(true); return; }
   if(a==='seasonxfer'){ seasonTransferModal(); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
