@@ -1001,7 +1001,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b132</span>
+    <span class="build-tag" title="Which version of the page is loaded">b133</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5538,7 +5538,8 @@ function seasonCashModal(){
     return `<div class="cash-logrow">
       <div class="cash-logtop"><span class="cash-logdesc">${desc}</span>
         <span class="cash-logamt">${(!isMove&&amt<0)?'−':''}${esc(cashFmt(Math.abs(amt), c.cur||''))}</span></div>
-      <div class="cash-logbot"><span class="cash-logwhen">${esc(when)}${c.by?' · '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</span></div>
+      <div class="cash-logbot"><span class="cash-logwhen">${esc(when)}${c.by?' · '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</span>
+        <span class="cash-logacts">${c.id?`<button class="cash-mini danger" data-delentry="${esc(c.id)}" title="Remove this movement">✕</button>`:''}</span></div>
     </div>`;
   }).join('') || '<div class="cash-empty">No movements yet.</div>';
 
@@ -5565,6 +5566,8 @@ function seasonCashModal(){
       <div class="cash-log">${logRows}</div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+
+  bindCashLog();     // a wrong movement can be removed from here too
 }
 
 function cashModal(){
@@ -5742,9 +5745,16 @@ function cashModal(){
     cashReopen();
   });
 
-  /* Setting a balance by hand, resetting an account and editing a movement are
-     all gone: each changed one figure without a matching change on the other
-     side. Removing a wrong movement is what remains — it undoes both sides. */
+  bindCashLog();
+}
+
+/* Removing a wrong movement, from either view.
+
+   Setting a balance by hand, resetting an account and editing a movement are
+   all gone: each changed one figure without a matching change on the other
+   side. Removal undoes both sides, so it stays — and the season view, which
+   lists every movement on the tour, needs it as much as a region does. */
+function bindCashLog(){
   onModal('click','cash',e=>{
     const dE=e.target.closest('[data-delentry]');
     if(dE){
