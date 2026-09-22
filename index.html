@@ -417,6 +417,20 @@ body.busy #busyLabel{opacity:1}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.df-loading{padding:20px;text-align:center;color:var(--muted)}
+.df-folder,.df-file{display:flex;align-items:flex-start;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
+.df-folder{background:var(--paper2);border-radius:8px;padding:9px 8px;border-bottom:none;margin:4px 0}
+.df-fname{flex:1;min-width:0;font-size:13.5px}
+.df-fname a{color:var(--plum);text-decoration:none}
+.df-fname a:hover{text-decoration:underline}
+.df-url{font-size:11px;color:var(--muted);overflow-wrap:anywhere;margin-top:2px;user-select:all}
+.df-btns{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex:none;max-width:48%}
+.df-chosen{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--teal);
+  border:1px solid var(--teal-b);background:var(--teal-l);border-radius:999px;padding:1px 7px;margin-left:6px}
+.df-season{border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin:6px 0;background:var(--paper)}
+.df-season>summary,.df-sub>summary{cursor:pointer;font-weight:800;padding:4px 0;color:var(--plum)}
+.df-sub{margin:6px 0 0 14px}
+.df-inner{padding-left:14px}
 .df-now{font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper2);margin-bottom:12px;overflow-wrap:anywhere}
 .cost-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
 .cost-amt-row{display:flex;gap:8px}
@@ -974,7 +988,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b125</span>
+    <span class="build-tag" title="Which version of the page is loaded">b128</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1656,6 +1670,11 @@ function newOpId(){
 async function post(payload, opts){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
+  /* Say which season this device is looking at, so the server answers for
+     it — not for whichever season another device last opened. (A share link
+     is pinned to its own season by the server, so it sends nothing.) */
+  else if(!payload.season && BASE && BASE.activeSeason && payload.action!=='setSeason')
+    payload = Object.assign({season:BASE.activeSeason}, payload);
   /* If the request never reaches the server, say so in English — and mark it
      as a connection problem by WHAT happened, not by the wording.
 
@@ -2004,6 +2023,9 @@ window.addEventListener('beforeunload', e=>{
 
 function commit(payload, apply, okMsg, opts){
   payload.opId = payload.opId || newOpId();   // fixed now, survives any retry
+  // The season it was made in travels with it — a resend from another season
+  // must still land where it was made.
+  if(!SHARE_KEY && !payload.season && BASE && BASE.activeSeason) payload.season = BASE.activeSeason;
   outboxAdd(payload);                          // on the device before it is sent
   // Belongs to the season it was made in, so switching seasons does not lose it.
   const op = { apply, season: (BASE && BASE.activeSeason) || '' };
@@ -2353,7 +2375,7 @@ function renderAdmin(){
   if(admin) cols[0].push(`<button class="btn" data-act="cash">💵 Cash</button>`);
   cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
   // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
-  if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folder</button>`);
+  if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
   // Costs are money matters, so only for those who see the money.
   if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
     scopedCosts().length?` (${scopedCosts().length})`:''}</button>`);
@@ -4590,34 +4612,87 @@ function costsModal(editId){
   });
 }
 
-/* Choose the Google Drive folder the spreadsheets are filed in. */
+/* ---- Spreadsheet folder: a map of everything the app has filed ----
+
+   The top folder, each season's folder and its Consignment folder, and every
+   spreadsheet — each one a link that opens in a new tab, with its address
+   shown and a Copy button. Any folder can be pointed somewhere else. */
 function driveFolderModal(){
-  const now = STATE.driveFolder || 'Transcendental Book Sales (in My Drive)';
   openModal(`
-    ${mHead('Spreadsheet folder')}
-    <div class="m-body">
-      <div class="hint">The generated spreadsheets are filed here, with a folder for each season
-        inside it, and consignment files in a Consignment folder within each season.</div>
-      <div class="cash-sub">Currently</div>
-      <div class="df-now">📁 ${esc(now)}</div>
-      <div class="field"><label>Use a different folder</label>
-        <input id="dfLink" type="text" placeholder="Paste the link to a Google Drive folder">
-        <div class="muted-note">Open the folder in Google Drive and copy the address from the browser.
-          The account that owns this app must be able to edit it.</div></div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" id="dfSave">Use this folder</button>
-    </div>`);
-  $('#dfSave').addEventListener('click', async ()=>{
-    const folder = $('#dfLink').value.trim();
-    if(!folder){ $('#modalErr').textContent='Paste the link to a Google Drive folder.'; return; }
-    // Waits for the answer: the server has to check the folder can be opened.
-    const ok = await commitSync({action:'setDriveFolder', folder},
-      'Spreadsheets will be filed there from the next sync');
-    if(ok) driveFolderModal();
+    ${mHead('Spreadsheet folders')}
+    <div class="m-body"><div class="df-loading">Loading the folder map…</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  post({action:'driveMap'}).then(d=>renderDriveMap(d.result)).catch(err=>{
+    const b=$('#modal .m-body'); if(b) b.innerHTML=`<div class="err">Could not load the folder map — ${esc(err.message)}</div>`;
   });
+}
+
+function renderDriveMap(map){
+  const open = (url, label) => url
+    ? `<a class="btn btn-ghost btn-xs" href="${esc(url)}" target="_blank" rel="noopener">${label||'Open'}</a>` : '';
+  const copy = url => url
+    ? `<button class="btn btn-ghost btn-xs" data-act="dfcopy" data-url="${esc(url)}">Copy link</button>` : '';
+  const fileRow = f => `
+    <div class="df-file">
+      <div class="df-fname">📄 ${f.url
+        ? `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}</a>`
+        : `<span class="muted">${esc(f.name)}</span>`}
+        <div class="df-url">${f.url ? esc(f.url) : 'Not created yet — it appears after the next sync.'}</div></div>
+      <span class="df-btns">${open(f.url)}${copy(f.url)}</span>
+    </div>`;
+  const folderHead = (icon, name, url, chosen, changeAttrs) => `
+    <div class="df-folder">
+      <div class="df-fname">${icon} ${url
+        ? `<a href="${esc(url)}" target="_blank" rel="noopener"><b>${esc(name)}</b></a>`
+        : `<b>${esc(name)}</b> <span class="muted">— created on the next sync</span>`}
+        ${chosen?'<span class="df-chosen">chosen</span>':''}
+        ${url?`<div class="df-url">${esc(url)}</div>`:''}</div>
+      <span class="df-btns">${open(url)}${copy(url)}
+        <button class="btn btn-ghost btn-xs" ${changeAttrs}>Change</button>
+        ${chosen?`<button class="btn btn-ghost btn-xs" ${changeAttrs.replace('dfchange','dfreset')}>Default</button>`:''}</span>
+    </div>`;
+
+  const seasons = (map.seasons||[]).map(se=>`
+    <details class="df-season" ${se.seasonId===((STATE&&STATE.activeSeason)||'')?'open':''}>
+      <summary>${esc(se.name)} <span class="muted">· ${se.files.length+se.consignFiles.length} spreadsheet${
+        (se.files.length+se.consignFiles.length)===1?'':'s'}</span></summary>
+      ${folderHead('📁', se.folder?se.folder.name:se.name, se.folder&&se.folder.url, se.folderChosen,
+        `data-act="dfchange" data-season="${esc(se.seasonId)}" data-which="season" data-label="${esc(se.name)}"`)}
+      <div class="df-inner">
+        ${se.files.map(fileRow).join('')}
+        ${se.consignFiles.length ? `
+        <details class="df-sub" open>
+          <summary>Consignment <span class="muted">· ${se.consignFiles.length}</span></summary>
+          ${folderHead('📁', se.consign?se.consign.name:'Consignment', se.consign&&se.consign.url, se.consignChosen,
+            `data-act="dfchange" data-season="${esc(se.seasonId)}" data-which="consign" data-label="${esc(se.name)} consignment"`)}
+          <div class="df-inner">${se.consignFiles.map(fileRow).join('')}</div>
+        </details>` : ''}
+      </div>
+    </details>`).join('');
+
+  const body = $('#modal .m-body'); if(!body) return;
+  body.innerHTML = `
+    <div class="hint">Every spreadsheet the app keeps, and where it is filed. Tap a name to open it.
+      Any folder can be pointed elsewhere; its spreadsheets move there on the next sync.</div>
+    ${map.driveOk ? '' : `<div class="warn">Google Drive access is not set up yet, so folders cannot be
+      shown or changed. The spreadsheet links below still work.</div>`}
+    <div class="cash-sub">Top folder</div>
+    ${map.root
+      ? folderHead('📁', map.root.name, map.root.url, false, 'data-act="dfroot"')
+      : `<div class="df-folder"><div class="df-fname">📁 <span class="muted">Not set up yet</span></div>
+           <span class="df-btns"><button class="btn btn-ghost btn-xs" data-act="dfroot">Change</button></span></div>`}
+    <div class="cash-sub">Seasons</div>
+    ${seasons || '<div class="cash-empty">No seasons yet.</div>'}
+    <div class="err" id="modalErr"></div>`;
+}
+
+/** Ask for a folder link, save it, and redraw the map. */
+async function driveFolderChange(payload, label){
+  const link = prompt('Paste the link to the Google Drive folder for ' + label + ':');
+  if(!link || !link.trim()) return;
+  const ok = await commitSync(Object.assign(payload, {folder:link.trim()}),
+    'Saved — spreadsheets move there on the next sync');
+  if(ok) driveFolderModal();
 }
 
 async function shareKeySet(kind, id, clear){
@@ -7995,6 +8070,21 @@ document.addEventListener('click',e=>{
   }
   if(a==='report'){ shareReport(t.dataset.part||''); return; }
   if(a==='drivefolder'){ driveFolderModal(); return; }
+  if(a==='dfroot'){ driveFolderChange({action:'setDriveFolder'}, 'all the spreadsheets'); return; }
+  if(a==='dfchange'){ driveFolderChange({action:'setSeasonFolder', seasonId:t.dataset.season, which:t.dataset.which},
+                        t.dataset.label); return; }
+  if(a==='dfreset'){
+    if(!confirm('Put this folder back to the default, inside the top folder?')) return;
+    commitSync({action:'setSeasonFolder', seasonId:t.dataset.season, which:t.dataset.which, reset:'true'},
+      'Back to the default — files move on the next sync').then(ok=>{ if(ok) driveFolderModal(); });
+    return;
+  }
+  if(a==='dfcopy'){
+    const url=t.dataset.url;
+    (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
+      .then(()=>toast('Link copied')).catch(()=>{ prompt('Copy this link:', url); });
+    return;
+  }
   if(a==='costs'){ costsModal(); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }
   if(a==='costdel'){
