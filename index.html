@@ -75,6 +75,8 @@ header.masthead{
   box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center}
 .deity img{height:84px;width:auto;display:block}
 .deity span{font-family:'Marcellus',serif;font-size:11px;line-height:1.15;color:#FCE9C6;padding:6px 10px}
+.season-line{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.2px;
+  text-transform:uppercase;color:#FDE7C2;opacity:.9;margin-bottom:2px}
 .title-block{text-align:center;min-width:0}
 .title-block h1{font-family:'Marcellus',serif;font-weight:400;letter-spacing:.5px;
   font-size:clamp(19px,3.2vw,32px);line-height:1.1;text-shadow:0 1px 0 rgba(0,0,0,.15)}
@@ -979,6 +981,7 @@ body.busy #busyLabel{opacity:1}
   <div class="masthead-inner">
     <div class="deity" id="imgLeft"><span>Śrīla<br>Prabhupāda</span></div>
     <div class="title-block">
+      <div class="season-line" id="seasonLine"></div>
       <h1>Transcendental Book Sales<span class="warehouse" id="whTitle"></span></h1>
       <div class="mantra">gopī-bhartuḥ pada-kamalayor dāsa-dāsānudāsaḥ</div>
     </div>
@@ -988,7 +991,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b128</span>
+    <span class="build-tag" title="Which version of the page is loaded">b129</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1319,8 +1322,10 @@ function locsInRegion(regionId){
 /** Human name for the page whose chart/settings we're editing. */
 function scopeLabel(){
   if(CUR_LEVEL==='season') return STATE.seasonName||'Season';
-  if(CUR_LEVEL==='region'){ const r=currentRegion(); return r?r.name:'Region'; }
-  return locName(CUR_LOC);
+  const r=currentRegion();
+  if(CUR_LEVEL==='region') return r?r.name:'Region';
+  // An event is named with its region, for clarity: "Madrid — Festival".
+  return (r ? r.name+' — ' : '') + locName(CUR_LOC);
 }
 function currentScope(){
   if(CUR_LEVEL==='season') return SEASON;
@@ -1472,6 +1477,10 @@ function locName(loc){
   // one original id — otherwise a new region shows its raw internal id.
   const r=(STATE.regions||[]).find(x=>x.whLoc===loc);
   if(r) return r.name+' — Warehouse';
+  // Another season's warehouse — checked before the original id below, which
+  // the first region still uses — is named with its season.
+  const arw=(STATE.allRegions||[]).find(x=>x.whLoc===loc);
+  if(arw) return arw.name+' — Warehouse ('+(arw.seasonName||'another season')+')';
   if(loc===WAREHOUSE) return (STATE.warehouseName||'')+' — Warehouse';
   if(loc===SEASON) return STATE.seasonName||'Season';
   const e=(STATE.events||[]).find(e=>e.eventId===loc);
@@ -1490,6 +1499,16 @@ function locName(loc){
   }
   if(loc==='BANK') return 'Bank';
   if(loc==='OUTSIDE') return 'Outside the tour';
+  /* A place in ANOTHER season — stock handed over from Europe Tour, say.
+     STATE only holds the current season, so these showed as raw ids like
+     "wh_35217d". Named with their season so it is clear where they are. */
+  const ar=(STATE.allRegions||[]).find(x=>x.whLoc===loc);
+  if(ar) return ar.name+' — Warehouse ('+(ar.seasonName||'another season')+')';
+  const ae=(STATE.allEvents||[]).find(x=>x.eventId===loc);
+  if(ae){
+    const er=(STATE.allRegions||[]).find(x=>x.regionId===ae.regionId);
+    return ae.name+(er?' ('+er.seasonName+')':'');
+  }
   return loc;
 }
 /* Everything sold at this scope, ours and any consignment. The log, the
@@ -1682,15 +1701,29 @@ async function post(payload, opts){
      used to recognise "no signal" only from English text, so on a phone set to
      Dutch a dropped connection read as a refusal: the sale was discarded
      instead of being kept to send later. */
+  /* A time limit, for saves. Saves go out one at a time, in order, so a single
+     request that hangs would hold up every save behind it until the browser
+     gave up — minutes, with "Saving…" stuck on screen. After the limit it is
+     treated like a dropped connection: kept on this device and sent again,
+     and the queue moves on. The server recognises a save it already has, so
+     a resend can never record it twice. (Sync and loading have no limit —
+     they can legitimately take much longer.) */
+  const limit = opts && opts.timeoutMs;
+  const ctl = (limit && typeof AbortController!=='undefined') ? new AbortController() : null;
+  const timer = ctl ? setTimeout(()=>ctl.abort(), limit) : null;
   let res, txt;
   try{
-    res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+    res = await fetch(CONFIG.APPS_SCRIPT_URL, Object.assign({method:'POST',body:JSON.stringify(payload)},
+                                                             ctl?{signal:ctl.signal}:{}));
     txt = await res.text();
   }catch(netErr){
-    const err = new Error('No connection to the server.');
+    const timedOut = ctl && ctl.signal.aborted;
+    const err = new Error(timedOut ? 'The server took too long to answer.' : 'No connection to the server.');
     err.network = true;
     err.detail = String(netErr && netErr.message || netErr);   // kept for diagnosis
     throw err;
+  }finally{
+    if(timer) clearTimeout(timer);
   }
   let d;
   try{ d=JSON.parse(txt); }
@@ -1719,11 +1752,12 @@ async function postWrite(payload){
      save could land twice. Stamped once here, every later attempt is recognised
      as the same request. */
   if(!payload.opId) payload.opId = newOpId();
-  try{ return await post(payload); }
+  const SAVE_LIMIT = {timeoutMs: 45000};   // well above a normal save, even behind the lock
+  try{ return await post(payload, SAVE_LIMIT); }
   catch(err){
     if(!err.unreadable) throw err;
     await new Promise(r=>setTimeout(r, 700));
-    return await post(payload);         // same id — the server will not redo it
+    return await post(payload, SAVE_LIMIT);   // same id — the server will not redo it
   }
 }
 
@@ -2177,6 +2211,12 @@ function renderAll(){
   if(!STATE) return;
   // The title names where you actually are, not just the warehouse.
   $('#whTitle').textContent = ': ' + scopeLabel();
+  /* And which season — the same region can exist in more than one (Croatia in
+     Europe Tour and in Year-Round), so the name alone left you guessing. Small,
+     above the title; at season level the title already names it. */
+  const seasonNm = ((STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason)||{}).name || STATE.seasonName || '';
+  const sl = $('#seasonLine');
+  if(sl){ sl.textContent = (CUR_LEVEL==='season') ? '' : seasonNm; sl.style.display = sl.textContent ? '' : 'none'; }
   // On a share link, show whose name is going on the sales — and let them fix it.
   $('#reportBtn').style.display = isAdmin() ? '' : 'none';
   const who = whoAmI();
@@ -2378,7 +2418,7 @@ function renderAdmin(){
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
   // Costs are money matters, so only for those who see the money.
   if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
-    scopedCosts().length?` (${scopedCosts().length})`:''}</button>`);
+    scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
   if(admin && !season)
     cols[0].push(`<button class="btn" data-act="paytypes">💳 Payments taken here</button>`);
   if(admin) cols[0].push(season
@@ -2520,7 +2560,7 @@ function renderWarehouseOverview(){
         <span class="sc-big ${total?'':'zero'}">${total}</span>
         <span class="sc-lbl">in stock</span>
       </div>
-      ${transit?`<div class="sc-sub"><span class="sc-transit">${total+transit} expected</span></div>`:''}
+      ${transit?`<div class="sc-sub"><span class="sc-transit">${total+transit} incl. ${transit} in transit</span></div>`:''}
       <div class="wo-chips">${chips||'<span class="sc-none">nowhere yet</span>'}</div>
     </div>`;
   }).join('');
@@ -2802,8 +2842,11 @@ function renderTitleList(target){
    them identical column widths automatically. (Nesting a second table inside a
    cell is what made the old version's numbers wander out of their columns.)
    Opening a type just unhides its rows; nothing reflows.                     */
-/** Costs recorded against the place being looked at. */
-function scopedCosts(){
+/** OUR costs at the place being looked at — a consignment group's costs come
+    off what the group is owed, never off our own net. */
+function scopedCosts(){ return scopedAllCosts().filter(c=>!c.partnerId); }
+/** Every cost at the place being looked at, a group's included (for the list). */
+function scopedAllCosts(){
   const all = STATE.costs || [];
   if(CUR_LEVEL==='season') return all;
   if(CUR_LEVEL==='event') return all.filter(c=>c.location===CUR_LOC);
@@ -2965,6 +3008,15 @@ function renderPayments(target){
   /* Costs come off what was kept, not off what was taken: the payment rows
      above stay as collected, and the costs follow the final total with a Net
      line beneath — which then carries the green, since it is now the answer. */
+  // Costs that belong to consignment groups: shown in their own section, and
+  // coming off what those groups are owed — not off our net below.
+  const conCostByCur = {};
+  scopedAllCosts().filter(c=>c.partnerId).forEach(c=>{
+    conCostByCur[c.cur]=(conCostByCur[c.cur]||0)+(Number(c.amt)||0); });
+  const conCostRow = Object.keys(conCostByCur).length ? `
+        <div class="ptg-t ptg-first ptg-cost">Consignment costs</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-cost">${conCostByCur[c] ? '−'+fmt(conCostByCur[c]) : num({},c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(conCostByCur))}</div>` : '';
   const costs = scopedCosts();
   const costByCur = {};
   costs.forEach(c=>{ costByCur[c.cur] = (costByCur[c.cur]||0) + (Number(c.amt)||0); });
@@ -2996,6 +3048,7 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
         ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
+        ${conCostRow}
         <div class="ptg-t ptg-first ${costRows?'':'ptg-net'}">Sales Total</div>
         ${curs.map(c=>`<div class="ptg-t ${costRows?'':'ptg-net'}">${num(netOf(grand,conGrand),c)}</div>`).join('')}
         <div class="ptg-t usd ${costRows?'':'ptg-net'}">$${fmt(usdOf(netOf(grand,conGrand)))}</div>` : ''}
@@ -4545,9 +4598,13 @@ function costPlaces(){
   });
   return out;
 }
-function costsModal(editId){
-  const list = scopedCosts().slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+function costsModal(editId, presetPartner){
+  const list = scopedAllCosts().slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   const edit = editId ? (STATE.costs||[]).find(c=>c.id===editId) : null;
+  // The consignment groups a cost here could belong to.
+  const regIds = CUR_LEVEL==='season' ? regionsList().map(r=>r.regionId) : [CUR_REGION];
+  const groups = (STATE.partners||[]).filter(pt=>regIds.includes(pt.regionId));
+  const owner = edit ? (edit.partnerId||'') : (presetPartner||'');
   const places = costPlaces();
   const curs = curCurrencies();
   const pays = (STATE.payTypes||[]).filter(t=>t!=='Gift');
@@ -4562,6 +4619,11 @@ function costsModal(editId){
       <div class="hint">Card-machine fees and other costs of selling. They show beneath the payment
         totals, taken off to give the net. They do not touch the cash box.</div>
       <div class="cost-form">
+        ${groups.length ? `<div class="field"><label>Belongs to</label>
+          <select id="cOwner">${opt('','Our own sales',!owner)}${groups.map(g=>opt(g.partnerId,
+            g.name+' (consignment)', owner===g.partnerId)).join('')}</select>
+          <div class="muted-note">A consignment group's cost comes off what the group is owed,
+            not off your own net.</div></div>` : ''}
         <div class="field"><label>What for</label>
           <select id="cCat">${COST_CATS.map(c=>opt(c,c,(edit?edit.category:'Card machine fee')===c)).join('')}</select></div>
         <div class="field"><label>Relates to payment type (optional)</label>
@@ -4585,7 +4647,8 @@ function costsModal(editId){
       <div class="cash-sub">Recorded here${totalText?` — ${esc(totalText)}`:''}</div>
       ${list.length ? list.map(c=>`
         <div class="cost-row">
-          <div class="cost-main"><b>${esc(c.category)}</b>${c.payType?` · ${esc(c.payType)}`:''}
+          <div class="cost-main"><b>${esc(c.category)}</b>${c.payType?` · ${esc(c.payType)}`:''}${
+            c.partnerId?` <span class="con-tag">${esc((partnerById(c.partnerId)||{}).name||'consignment')}</span>`:''}
             <span class="cost-where">${esc(locName(c.location))}${c.note?' · '+esc(c.note):''}</span></div>
           <div class="cost-amt-v">−${esc(cashFmt(c.amt,c.cur))}</div>
           <span class="cost-btns">
@@ -4601,7 +4664,8 @@ function costsModal(editId){
     const cost = { id: edit ? edit.id : ('C'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
       ts: edit ? edit.ts : new Date().toISOString(),
       location:$('#cLoc').value, category:$('#cCat').value, payType:$('#cPay').value,
-      cur:$('#cCur').value, amt, note:$('#cNote').value.trim() };
+      cur:$('#cCur').value, amt, note:$('#cNote').value.trim(),
+      partnerId: ($('#cOwner')||{}).value || '' };
     commit(Object.assign({action:'saveCost'}, cost),
       st=>{
         st.costs = st.costs || [];
@@ -6935,8 +6999,18 @@ function partnersModal(){
                data-id="${esc(p.partnerId)}" data-method="${esc(mth)}">Deliver ${esc(mth)}</button>`).join('');
         })()}
         <button class="btn btn-ghost btn-sm" data-act="conbook" data-id="${esc(p.partnerId)}">Add a title</button>
+        <button class="btn btn-ghost btn-sm" data-act="concost" data-id="${esc(p.partnerId)}">🧾 Record a cost</button>
         <button class="btn btn-ghost btn-sm" data-act="conedit" data-id="${esc(p.partnerId)}">Edit</button>
       </div>
+      ${(function(){
+        // Costs that belong to this group come off what it is owed.
+        const mine = (STATE.costs||[]).filter(c=>c.partnerId===p.partnerId);
+        if(!mine.length) return '';
+        return `<div class="sh-meta" style="margin-top:6px">Costs taken off what is owed</div>` +
+          mine.map(c=>`<div class="sh-top" style="font-size:12px">
+            <span>−${cashFmt(c.amt,c.cur)} · ${esc(c.category)}${c.payType?' · '+esc(c.payType):''}${c.note?' · '+esc(c.note):''}</span>
+            <button class="cash-mini" data-act="costedit" data-id="${esc(c.id)}" title="Edit this cost">✎</button></div>`).join('');
+      })()}
     </div>`;
   };
 
@@ -7286,6 +7360,9 @@ function seasonTransferModal(){
             items:items.map(x=>({bookId:x.bookId, qty:x.qty})), note:$('#xsNote').value.trim()},
       st=>{ items.forEach(it=>invAdd(st, fromLoc, it.bookId, -it.qty)); },
       'Handed over');
+    // The other season's saved copy predates this, so drop it: switching there
+    // then loads fresh instead of showing the books as not yet arrived.
+    try{ if(dest.seasonId) localStorage.removeItem(SEASON_CACHE+dest.seasonId); }catch(e){}
     closeModal();
   });
 }
@@ -8086,6 +8163,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='costs'){ costsModal(); return; }
+  if(a==='concost'){ costsModal(null, t.dataset.id); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }
   if(a==='costdel'){
     if(!confirm('Delete this cost?')) return;
