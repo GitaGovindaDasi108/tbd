@@ -1009,7 +1009,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b134</span>
+    <span class="build-tag" title="Which version of the page is loaded">b136</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2131,7 +2131,7 @@ function commit(payload, apply, okMsg, opts){
 /* Structural changes need an id from the server, so these do wait. */
 /* Returns true only if the write landed, so a caller that wants to carry on
    (reopening a panel, say) doesn't do so on top of a failure. */
-async function commitSync(payload, okMsg){
+async function commitSync(payload, okMsg, landed){
   payload.opId = payload.opId || newOpId();
   const btns=[...document.querySelectorAll('#modal .btn')]; btns.forEach(b=>b.disabled=true);
   setStatus('load','Saving…');
@@ -2147,17 +2147,26 @@ async function commitSync(payload, okMsg){
     setStatus('ok','Saved · '+clock());
     return true;
   }catch(err){
-    if(err.unreadable){
-      /* Unreadable is not the same as failed. Check what the server has before
-         telling anyone anything — this is what produced an error message for a
-         change that had in fact been made. */
+    /* Unreadable, or slower than the time limit, is not the same as failed.
+       Check what the server actually has before telling anyone anything —
+       reporting "the server took too long" for a change that HAD been made is
+       exactly what this avoids. */
+    if(err.unreadable || err.network){
       try{
         await pull();
-        closeModal();
-        if(okMsg) toast(okMsg);
-        setStatus('ok','Saved · '+clock());
-        return true;
+        if(typeof landed !== 'function' || landed()){
+          closeModal();
+          if(okMsg) toast(okMsg);
+          setStatus('ok','Saved · '+clock());
+          return true;
+        }
       }catch(e2){ /* fall through and report honestly */ }
+      // It really has not arrived: keep it on the device and send it again.
+      queueOffline(payload);
+      closeModal();
+      toast('Still saving — it will finish in the background.');
+      setStatus('load','Saving…');
+      return true;
     }
     btns.forEach(b=>b.disabled=false);
     const e=$('#modalErr'); if(e) e.textContent=err.message; else toast(err.message,true);
@@ -6260,10 +6269,16 @@ function regionModal(edit){
               if(r){ r.name=name; r.currencies=curList; r.books=books?books.split(','):[]; } },
         'Region updated');
     }else{
-      // The server assigns the real ids, so we just refresh once it lands.
-      commit({action:'createRegion',name,currencies:curList.join(','),books,prices},
-        st=>st, 'Region created');
-      setTimeout(pull,400);
+      /* Named here, so it appears at once and saves in the background. It used
+         to wait for the server to name it AND to send the whole tour's data
+         back — the slowest thing the app did. */
+      const regionId = 'rg_' + Math.random().toString(36).slice(2,8);
+      const whLoc    = 'wh_' + Math.random().toString(36).slice(2,8);
+      commit({action:'createRegion',regionId,whLoc,name,currencies:curList.join(','),books,prices},
+        st=>{ (st.regions=st.regions||[]).push({regionId,name,whLoc,currencies:curList,
+                books:books?books.split(','):[],counts:{},closedAt:'',bookOrder:'',
+                seasonId:st.activeSeason, sort:(st.regions||[]).length}); },
+        'Region created');
     }
   });
 }
@@ -6291,8 +6306,17 @@ function eventModal(edit){
   $('#saveEv').addEventListener('click',()=>{
     const name=$('#evname').value.trim();
     if(!name){$('#modalErr').textContent='Enter a name.';return;}
-    if(edit) commitSync({action:'renameEvent',eventId:edit,name},'Event renamed');
-    else commitSync({action:'createEvent',name,regionId:CUR_REGION},'Event created');
+    if(edit){ commitSync({action:'renameEvent',eventId:edit,name},'Event renamed',
+        ()=>locName(edit)===name); return; }
+    // Named here: it appears straight away and saves in the background.
+    if(eventsOfRegion(CUR_REGION).some(e=>String(e.name).toLowerCase()===name.toLowerCase())){
+      $('#modalErr').textContent='An event called "'+name+'" already exists in this region.'; return;
+    }
+    const eventId = 'ev_' + Math.random().toString(36).slice(2,8);
+    commit({action:'createEvent',eventId,name,regionId:CUR_REGION},
+      st=>{ (st.events=st.events||[]).push({eventId,name,regionId:CUR_REGION,closedAt:'',
+              createdAt:new Date().toISOString()}); },
+      'Event created');
   });
 }
 
