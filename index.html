@@ -973,7 +973,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b121</span>
+    <span class="build-tag" title="Which version of the page is loaded">b122</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -4619,31 +4619,36 @@ async function shareKeySet(kind, id, clear){
    heading to each, plus the place and time at the top. A single section's
    report stays bare figures — heading and date would only repeat what the
    person tapping that section already knows. */
+/* The full report offers these five, in this order. (The other sections still
+   have their own 📋 buttons on the page.) */
 const REPORT_SECTIONS = [
   ['books',     'SALES BY TITLE'],
-  ['inventory', 'ON THE SHELF'],
-  ['stock',     'STOCK IN THE REGION'],
-  ['preorders', 'PRE-ORDERS TO DELIVER'],
-  ['pending',   'PAYMENTS PENDING'],
-  ['change',    'CHANGE OWED'],
-  ['log',       'COLLECTED BY TITLE'],
   ['cash',      'COLLECTIONS BY PAYMENT'],
+  ['pending',   'PAYMENTS PENDING'],
+  ['preorders', 'PRE-ORDERS PENDING'],
+  ['stock',     'STOCK LEFT IN REGION'],
 ];
 function buildReport(part, opts){
   const L = [];
   const full = !part;
   const chosen = (opts && opts.sections) || null;
-  const want = k => part ? part===k : (!chosen || chosen.has(k));
+  const offeredKeys = new Set(REPORT_SECTIONS.map(x=>x[0]));
+  const want = k => part ? part===k : (offeredKeys.has(k) && (!chosen || chosen.has(k)));
   const TITLE = Object.fromEntries(REPORT_SECTIONS);
   /* Run one section; in the full report, put its heading above whatever it
      wrote. A section with nothing to say gets no heading either. */
+  // In the full report each section is collected separately, then laid out
+  // in the order listed above rather than the order it happens to be built.
+  const chunks = {};
   const section = (key, fn) => {
     if(!want(key)) return;
     const at = L.length;
     fn();
     while(L.length>at && L[L.length-1]==='') L.pop();
-    if(full && L.length>at) L.splice(at, 0, '*' + TITLE[key] + '*');
-    if(L.length>at) L.push('');
+    if(full){
+      const body = L.splice(at);
+      if(body.length) chunks[key] = ['*' + TITLE[key] + '*'].concat(body, ['']);
+    }else if(L.length>at) L.push('');
   };
   const s = scopedSales();
   const money = !hideMoney();
@@ -4784,9 +4789,36 @@ function buildReport(part, opts){
       if(curs(byType[t]).length) line(t, text(byType[t]));
     });
     if(curs(grand).length) line('Total', text(grand) + ' ≈ $' + nf(usd(grand)));
+
+    /* With costs recorded, finish with what was kept — worked out exactly as
+       the screen does: the total, less consignment money (it belongs to the
+       groups), less the costs. Each step is shown so the sum can be checked. */
+    const costs = scopedCosts();
+    if(costs.length){
+      const cost = {}, con = {};
+      costs.forEach(c=>{ cost[c.cur]=(cost[c.cur]||0)+(Number(c.amt)||0); });
+      s.forEach(x=>{
+        if(!received(x) || !isPartnerSale(x)) return;
+        legs(x).forEach(l=>{ if(l.type && l.amt) con[l.cur]=(con[l.cur]||0)+l.amt; });
+      });
+      const minus = o => curs(o).map(c=>'−'+cashFmt(o[c],c)).join(' + ');
+      const net = {};
+      new Set([...Object.keys(grand),...Object.keys(con),...Object.keys(cost)]).forEach(c=>{
+        net[c] = (grand[c]||0) - (con[c]||0) - (cost[c]||0);
+      });
+      if(curs(con).length) line('Consignment', minus(con));
+      line('Costs', minus(cost));
+      const netText = Object.keys(net).filter(c=>Math.abs(net[c])>0.005).sort()
+        .map(c=>cashFmt(net[c],c)).join(' + ') || '0';
+      line('Net after costs', netText + ' ≈ $' + nf(usd(net)));
+    }
     gap();
   });
 
+  if(full){
+    L.length = 0;
+    REPORT_SECTIONS.forEach(([k])=>{ if(chunks[k]) L.push(...chunks[k]); });
+  }
   if(full && L.length){
     const where = CUR_LEVEL==='season' ? (STATE.seasonName||'Season')
       : [ (currentRegion()||{}).name, CUR_LEVEL==='event' ? locName(CUR_LOC) : '' ].filter(Boolean).join(' — ');
@@ -4808,7 +4840,11 @@ const REP_PICK_KEY = 'tbs_report_sections';
 function reportPicks(){
   try{
     const v = JSON.parse(localStorage.getItem(REP_PICK_KEY)||'null');
-    if(Array.isArray(v)) return new Set(v);
+    if(Array.isArray(v)){
+      const ok = new Set(REPORT_SECTIONS.map(x=>x[0]));
+      const kept = v.filter(k=>ok.has(k));
+      if(kept.length) return new Set(kept);
+    }
   }catch(e){}
   return new Set(REPORT_SECTIONS.map(x=>x[0]));      // everything, the first time
 }
