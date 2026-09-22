@@ -370,6 +370,11 @@ body.busy #busyLabel{opacity:1}
 .cash-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
 .cash-tbl tbody th{text-align:left;font-weight:700;color:var(--ink);white-space:nowrap}
 .cash-tbl td.zero{color:var(--muted)}
+/* Season aggregator: each region as a heading row, its places indented beneath. */
+.cash-agg .cash-reg-row>th,.cash-agg .cash-reg-row>td{font-weight:800;border-top:1.5px solid var(--line-d);padding-top:9px}
+.cash-agg .cash-sub-row>th{padding-left:20px;font-weight:600;color:var(--ink);font-size:12.5px}
+.cash-agg .cash-sub-row>td{font-size:12.5px;color:var(--ink)}
+.cash-agg tfoot th,.cash-agg tfoot td{font-weight:800;border-top:2px solid var(--line-d)}
 .cash-tbl td.neg{color:var(--clay);font-weight:700}
 .cash-cell{cursor:pointer;border-radius:4px}
 .cash-cell:hover{background:#FBF3E4;box-shadow:inset 0 0 0 1.5px var(--gold)}
@@ -384,6 +389,7 @@ body.busy #busyLabel{opacity:1}
 .cash-logrow.undoing{opacity:.5;pointer-events:none}
 .cash-mini:disabled{opacity:.6;cursor:default}
 .cash-coll{border:1px solid var(--line);border-radius:9px;overflow:visible;flex:0 0 auto;height:auto}
+.cash-coll-row.con-line{color:var(--consign);font-weight:700}
 .cash-coll-row{flex:none;display:flex;justify-content:space-between;gap:8px;padding:7px 11px;font-size:12.5px;border-bottom:1px solid var(--line)}
 .cash-coll-row:last-child{border-bottom:none}
 .cash-coll-row span:first-child{font-weight:600;color:var(--ink)}
@@ -995,7 +1001,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b131</span>
+    <span class="build-tag" title="Which version of the page is loaded">b132</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1513,7 +1519,8 @@ function locName(loc){
     const er=(STATE.allRegions||[]).find(x=>x.regionId===ae.regionId);
     return ae.name+(er?' ('+er.seasonName+')':'');
   }
-  return loc;
+  // Nothing left to match: a place that has since been removed. Never a code.
+  return 'A place no longer listed';
 }
 /* Everything sold at this scope, ours and any consignment. The log, the
    pre-orders and the pending list all work from this, so a consignment sale can
@@ -5480,39 +5487,84 @@ function cashFmt(n,cur){
 function cashReopen(){ setTimeout(()=>{ try{ cashModal(); }catch(e){} },0); }
 
 function seasonCashModal(){
-  const rows = cashByRegion();
-  // One currency per line: on a phone a " · " run wraps mid-amount ("3228 / zł").
-  const money=o=>{
-    const parts=Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c));
+  /* The season view is an aggregator: every place beneath it, each region's
+     coordinator, the Global Coordinator, what was collected, and EVERY
+     movement across the tour. It used to show two summary columns per region,
+     which hid where money actually sat and hid transfers entirely. */
+  const curs = curAllCurrencies();
+  const money = o => {
+    const parts = Object.keys(o).filter(c=>Math.abs(o[c])>0.005).sort().map(c=>cashFmt(o[c],c));
     return parts.length ? parts.map(x=>`<span class="cur-line">${x}</span>`).join('') : '—';
   };
-  const totHeld={}, totBank={};
-  rows.forEach(r=>{
-    Object.keys(r.held).forEach(c=>totHeld[c]=(totHeld[c]||0)+r.held[c]);
-    Object.keys(r.toBank).forEach(c=>totBank[c]=(totBank[c]||0)+r.toBank[c]);
-  });
-  const bank={};
-  curAllCurrencies().forEach(c=>{ const v=cashBalance('BANK',c); if(v) bank[c]=v; });
+  const balOf = id => { const o={}; curs.forEach(c=>{ const v=cashBalance(id,c); if(Math.abs(v)>0.005) o[c]=v; }); return o; };
 
-  const body = rows.map(r=>`
-    <tr><th>${esc(r.region.name)}</th>
-        <td>${money(r.held)}</td>
-        <td>${money(r.toBank)}</td></tr>`).join('');
+  let body='', totAll={};
+  const add=(into,o)=>{ Object.keys(o).forEach(c=>into[c]=(into[c]||0)+o[c]); };
+  regionsList().forEach(r=>{
+    const places=[{id:r.whLoc, name:r.name+' — Warehouse'}]
+      .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name})))
+      .concat(holdersOf(r.regionId).map(h=>({id:h.holderId,name:h.name+' (storing books)'})));
+    let regTot={}, rowsHtml='';
+    places.forEach(pl=>{
+      const b=balOf(pl.id); add(regTot,b);
+      rowsHtml += `<tr class="cash-sub-row"><th>${esc(pl.name)}</th><td>${money(b)}</td></tr>`;
+    });
+    const rb=balOf(regionBankId(r.regionId)); add(regTot,rb);
+    rowsHtml += `<tr class="cash-sub-row"><th>Regional Coordinator</th><td>${money(rb)}</td></tr>`;
+    add(totAll, regTot);
+    body += `<tr class="cash-reg-row"><th>${esc(r.name)}</th><td>${money(regTot)}</td></tr>` + rowsHtml;
+  });
+  const gb = balOf('BANK'); add(totAll, gb);
+
+  // Collected across the tour, and how much of it belongs to consignment groups.
+  const coll={}, con={};
+  (STATE.sales||[]).forEach(x=>{
+    if(!x || pendingFlag(x)) return;
+    legs(x).forEach(l=>{ if(l.type!=='Cash') return;
+      coll[l.cur]=(coll[l.cur]||0)+l.amt;
+      if(isPartnerSale(x)) con[l.cur]=(con[l.cur]||0)+l.amt;
+    });
+  });
+
+  // Every movement, everywhere.
+  const entries=(STATE.cash||[]).filter(c=>c && typeof c==='object')
+    .slice().sort((a,b)=>{ try{ return new Date(b.ts||0)-new Date(a.ts||0); }catch(e){ return 0; } });
+  const logRows = entries.map(c=>{
+    let when=''; try{ when = c.ts ? new Date(c.ts).toLocaleString(LOCALE) : ''; }catch(e){}
+    const isMove = c.kind ? c.kind==='MOVE' : !!c.fromAcct;
+    const desc = isMove ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
+                        : `${esc(cashAcctName(c.toAcct))} · adjustment`;
+    const amt=Number(c.amt)||0;
+    return `<div class="cash-logrow">
+      <div class="cash-logtop"><span class="cash-logdesc">${desc}</span>
+        <span class="cash-logamt">${(!isMove&&amt<0)?'−':''}${esc(cashFmt(Math.abs(amt), c.cur||''))}</span></div>
+      <div class="cash-logbot"><span class="cash-logwhen">${esc(when)}${c.by?' · '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</span></div>
+    </div>`;
+  }).join('') || '<div class="cash-empty">No movements yet.</div>';
 
   openModal(`
     ${mHead('Cash across the tour')}
     <div class="m-body">
-      <div class="hint">Cash is held and moved inside each region; the Global Coordinator's account is shared by the whole
-        tour. This is a read-only picture — to move money, go to the region that holds it.</div>
-      <table class="cash-tbl">
-        <thead><tr><th></th><th>Held in region</th><th>Sent to Global Coordinator</th></tr></thead>
-        <tbody>${body || '<tr><td colspan="3">No regions yet.</td></tr>'}</tbody>
-        <tfoot><tr><th>All regions</th><td>${money(totHeld)}</td><td>${money(totBank)}</td></tr></tfoot>
+      <div class="cash-sub">Cash Location and Amount</div>
+      <div class="cash-lede">Everything below this season. To move money, go to the region that holds it.</div>
+      <table class="cash-tbl cash-agg">
+        <tbody>
+          ${body || '<tr><td colspan="2">No regions yet.</td></tr>'}
+          <tr class="cash-reg-row"><th>Global Coordinator</th><td>${money(gb)}</td></tr>
+        </tbody>
+        <tfoot><tr><th>All cash</th><td>${money(totAll)}</td></tr></tfoot>
       </table>
-      <div class="cash-sub">Global Coordinator</div>
-      <div class="cash-coll"><div class="cash-coll-row"><span>Held for the whole tour</span><span>${money(bank)}</span></div></div>
+
+      <div class="cash-sub">Collection Record</div>
+      <div class="cash-coll">
+        <div class="cash-coll-row"><span>Collected across the tour</span><span>${money(coll)}</span></div>
+        ${Object.keys(con).length?`<div class="cash-coll-row con-line"><span>Consignment (held for the groups)</span><span>${money(con)}</span></div>`:''}
+      </div>
+
+      <div class="cash-sub">Movement log</div>
+      <div class="cash-log">${logRows}</div>
     </div>
-    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 }
 
 function cashModal(){
@@ -5556,6 +5608,17 @@ function cashModal(){
     cashCurs().forEach(cur=>{ const v=cashCollected(a.id,cur); if(v>0) parts.push(cashFmt(v,cur)); });
     if(parts.length) collRows += `<div class="cash-coll-row"><span>${esc(a.name)}</span><span>${parts.join(' · ')}</span></div>`;
   });
+  /* Of the cash collected here, how much belongs to consignment groups. The
+     notes are in the box and counted above, so this says what is not ours —
+     for THIS region only. What each group is owed lives in Consignment. */
+  const conHere = {};
+  (STATE.sales||[]).forEach(x=>{
+    if(!x || !isPartnerSale(x) || pendingFlag(x)) return;
+    if(!accts.some(a=>a.id===x.location)) return;
+    legs(x).forEach(l=>{ if(l.type==='Cash') conHere[l.cur]=(conHere[l.cur]||0)+l.amt; });
+  });
+  const conParts = Object.keys(conHere).filter(c=>conHere[c]>0.005).sort().map(c=>cashFmt(conHere[c],c));
+  if(conParts.length) collRows += `<div class="cash-coll-row con-line"><span>Consignment (held for the groups)</span><span>${conParts.join(' · ')}</span></div>`;
   if(!collRows) collRows = `<div class="cash-coll-row"><span>No cash collected yet</span><span>—</span></div>`;
 
   // ---------- movement log (plain loop, shows EVERY entry) ----------
