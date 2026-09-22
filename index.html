@@ -194,6 +194,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* Gifts beside a place's figure: small and quiet, so the sold number leads. */
 .chip-gift{font-size:10.5px;font-weight:700;color:var(--gold);margin-left:2px}
 /* "sold" set small beside the big number in the totals bar. */
+.tcard .sub-cost{color:var(--clay);font-weight:700}
 .tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);margin-left:6px}
 .tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
   letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-left:7px}
@@ -416,6 +417,16 @@ body.busy #busyLabel{opacity:1}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.cost-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
+.cost-amt-row{display:flex;gap:8px}
+.cost-amt-row input{flex:1;min-width:0}
+.cost-amt-row select{flex:none;width:auto}
+.cost-acts{display:flex;justify-content:flex-end;gap:8px;margin-top:6px}
+.cost-row{display:flex;align-items:center;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line)}
+.cost-main{flex:1;min-width:0;font-size:13.5px}
+.cost-where{display:block;font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cost-amt-v{font-weight:800;color:var(--clay);white-space:nowrap}
+.cost-btns{display:flex;gap:6px;flex:none}
 .rep-picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:2px 10px;
   margin:4px 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper2)}
 .rep-pick{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink);padding:4px 0;cursor:pointer}
@@ -725,6 +736,7 @@ body.busy #busyLabel{opacity:1}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--donate)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
 .ptg-r.ptg-con,.ptg-s.ptg-con{color:var(--consign)}
+.ptg > .ptg-t.ptg-cost{color:var(--clay);font-weight:700;border-top:1px dashed var(--line-d)}
 /* Names are clipped rather than allowed to shove the numbers sideways. */
 .ptg-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .ptg-r.ptg-first{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden}
@@ -961,7 +973,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b119</span>
+    <span class="build-tag" title="Which version of the page is loaded">b121</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1643,8 +1655,23 @@ function newOpId(){
 async function post(payload, opts){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
-  const res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
-  const txt = await res.text();
+  /* If the request never reaches the server, say so in English — and mark it
+     as a connection problem by WHAT happened, not by the wording.
+
+     The browser writes its own message here, in the phone's language. The app
+     used to recognise "no signal" only from English text, so on a phone set to
+     Dutch a dropped connection read as a refusal: the sale was discarded
+     instead of being kept to send later. */
+  let res, txt;
+  try{
+    res = await fetch(CONFIG.APPS_SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
+    txt = await res.text();
+  }catch(netErr){
+    const err = new Error('No connection to the server.');
+    err.network = true;
+    err.detail = String(netErr && netErr.message || netErr);   // kept for diagnosis
+    throw err;
+  }
   let d;
   try{ d=JSON.parse(txt); }
   catch(e){
@@ -1824,6 +1851,7 @@ function pendingSave(){
    ever — the "waiting to send" badge that never cleared, with nothing saved. A
    server that answers, even to refuse, is not offline. */
 function isOffline(err){
+  if(err && err.network) return true;          // never reached the server, in any language
   return /Failed to fetch|NetworkError|Load failed|ERR_INTERNET|ERR_NETWORK|timed out/i
     .test(String(err && err.message || ''));
 }
@@ -1973,13 +2001,14 @@ window.addEventListener('beforeunload', e=>{
   if(inflight || outboxLoad().length){ e.preventDefault(); e.returnValue=''; return ''; }
 });
 
-function commit(payload, apply, okMsg){
+function commit(payload, apply, okMsg, opts){
   payload.opId = payload.opId || newOpId();   // fixed now, survives any retry
   outboxAdd(payload);                          // on the device before it is sent
   // Belongs to the season it was made in, so switching seasons does not lose it.
   const op = { apply, season: (BASE && BASE.activeSeason) || '' };
   OPS.push(op);
-  STATE = derive(); renderAll(); closeModal();
+  STATE = derive(); renderAll();
+  if(!(opts && opts.keepOpen)) closeModal();
   if(okMsg) toast(okMsg);
 
   inflight++; saveTotal++; setStatus('load','Saving…'); saveProgress();
@@ -2322,6 +2351,9 @@ function renderAdmin(){
   // 1 — money, people, access
   if(admin) cols[0].push(`<button class="btn" data-act="cash">💵 Cash</button>`);
   cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
+  // Costs are money matters, so only for those who see the money.
+  if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
+    scopedCosts().length?` (${scopedCosts().length})`:''}</button>`);
   if(admin && !season)
     cols[0].push(`<button class="btn" data-act="paytypes">💳 Payments taken here</button>`);
   if(admin) cols[0].push(season
@@ -2578,7 +2610,12 @@ function renderTotals(){
     })()}
     ${hideMoney() ? '' : `
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
-      <div class="sub">${money(got)||'nothing collected yet'}</div></div>
+      <div class="sub">${money(got)||'nothing collected yet'}${(function(){
+        // With costs recorded, show what was kept after them.
+        const cs = scopedCosts(); if(!cs.length) return '';
+        const cu = cs.reduce((t,c)=>t+toUSD(Number(c.amt)||0, c.cur), 0);
+        return `<br><span class="sub-cost">costs −$${fmt(cu)}</span> · <b>net $${fmt(totUsd-cu)}</b>`;
+      })()}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
       <div class="sub">${money(due)||'nothing outstanding'}</div></div>`}`;
 }
@@ -2740,6 +2777,15 @@ function renderTitleList(target){
    them identical column widths automatically. (Nesting a second table inside a
    cell is what made the old version's numbers wander out of their columns.)
    Opening a type just unhides its rows; nothing reflows.                     */
+/** Costs recorded against the place being looked at. */
+function scopedCosts(){
+  const all = STATE.costs || [];
+  if(CUR_LEVEL==='season') return all;
+  if(CUR_LEVEL==='event') return all.filter(c=>c.location===CUR_LOC);
+  const locs = locsInRegion(CUR_REGION);
+  return all.filter(c=>locs.includes(c.location));
+}
+
 function renderPayments(target){
   /* Every sale feeds this table, consignment included — the money really did
      come through these payment types. What keeps it honest is that consignment
@@ -2891,6 +2937,21 @@ function renderPayments(target){
     conBody += rowsFor(pt.name, tot, perGroup, 'con'+pt.partnerId.replace(/\W+/g,''), 'ptg-con');
   });
 
+  /* Costs come off what was kept, not off what was taken: the payment rows
+     above stay as collected, and the costs follow the final total with a Net
+     line beneath — which then carries the green, since it is now the answer. */
+  const costs = scopedCosts();
+  const costByCur = {};
+  costs.forEach(c=>{ costByCur[c.cur] = (costByCur[c.cur]||0) + (Number(c.amt)||0); });
+  const kept = conBody ? netOf(grand, conGrand) : grand;
+  const costRows = costs.length ? `
+        <div class="ptg-t ptg-first ptg-cost">Costs</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-cost">${costByCur[c] ? '−'+fmt(costByCur[c]) : num({},c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(costByCur))}</div>
+        <div class="ptg-t ptg-first ptg-net">Net after costs</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(kept,costByCur),c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(kept,costByCur)))}</div>` : '';
+
   /* Rendered as a CSS grid rather than a table. One column definition lives on
      the container and every row is a direct child of it, so the header, the type
      rows, the breakdown rows and the total all share the same column edges by
@@ -2910,9 +2971,10 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
         ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
-        <div class="ptg-t ptg-first ptg-net">Sales Total</div>
-        ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(grand,conGrand),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(grand,conGrand)))}</div>` : ''}
+        <div class="ptg-t ptg-first ${costRows?'':'ptg-net'}">Sales Total</div>
+        ${curs.map(c=>`<div class="ptg-t ${costRows?'':'ptg-net'}">${num(netOf(grand,conGrand),c)}</div>`).join('')}
+        <div class="ptg-t usd ${costRows?'':'ptg-net'}">$${fmt(usdOf(netOf(grand,conGrand)))}</div>` : ''}
+        ${costRows}
       </div>
     </div>`;
 }
@@ -4401,8 +4463,13 @@ function shareLinksModal(){
   const sc = $('#slScope');
   if(sc) sc.addEventListener('change',()=>{
     // Takes effect for everyone holding the link the moment it is saved.
-    commitSync({action:'sellerLink', regionId:reg.regionId, scope:sc.value}, 'Sellers now see '
-      + (sc.value==='ALL' ? 'every event' : locName(sc.value))).then(ok=>{ if(ok) shareLinksModal(); });
+    const rid = reg.regionId, scope = sc.value;
+    commit({action:'sellerLink', regionId:rid, scope},
+      st=>{
+        st.keys = st.keys || {regions:{},events:{},sellers:{}};
+        const sel = st.keys.sellers = st.keys.sellers || {};
+        sel[rid] = Object.assign({key:''}, sel[rid]||{}, {scope});
+      }, 'Sellers now see ' + (scope==='ALL' ? 'every event' : locName(scope)), {keepOpen:true});
   });
 }
 
@@ -4412,23 +4479,127 @@ async function sellerLinkSet(mode){
   if(!reg) return;
   if(mode==='off' && !confirm('Turn off the seller link? Everyone holding it loses access immediately.')) return;
   if(mode==='reset' && !confirm('Reset the seller link? The old one stops working immediately and everyone needs the new one.')) return;
-  const ok = await commitSync({action:'sellerLink', regionId:reg.regionId,
-    revoke: mode==='off' ? 'true' : '', regenerate: mode==='reset' ? 'true' : ''},
-    mode==='off' ? 'Link turned off' : 'Link ready');
-  if(ok) shareLinksModal();
+  const rid = reg.regionId;
+  const key = mode==='off' ? '' : newLinkKey('s');
+  commit({action:'sellerLink', regionId:rid, key,
+          revoke: mode==='off' ? 'true' : '', regenerate: mode==='reset' ? 'true' : ''},
+    st=>{
+      st.keys = st.keys || {regions:{},events:{},sellers:{}};
+      const sel = st.keys.sellers = st.keys.sellers || {};
+      const was = sel[rid] || {key:'',scope:''};
+      sel[rid] = { key, scope: was.scope || '' };
+    }, mode==='off' ? 'Link turned off' : 'Link ready', {keepOpen:true});
+  shareLinksModal();
 }
 
 /* Handled through the app's normal click routing (see the data-act switch), so
    these buttons work the same way every other button in the app does. */
+/* A link code picked here, from the browser's secure random source, so the
+   link appears the moment it is asked for. The server stores this exact code. */
+function newLinkKey(prefix){
+  const a = new Uint8Array(14);
+  (window.crypto || globalThis.crypto).getRandomValues(a);
+  return prefix + Array.from(a, b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b % 36]).join('');
+}
+
+/* All three link actions now apply at once and save behind the scenes, like a
+   sale. They used to wait for a full round trip to the server — and, since
+   saves were put in order, for any sale still queued ahead — then close and
+   redraw the dialog, though the server only has milliseconds of work to do. */
+/* ---- Costs ----
+   Record a card-machine fee (or any other cost of selling) against the place
+   it belongs to. It then shows beneath the payment totals, with the net. */
+const COST_CATS = ['Card machine fee', 'Bank fee', 'Other'];
+function costPlaces(){
+  if(CUR_LEVEL==='event') return [{id:CUR_LOC, name:locName(CUR_LOC)}];
+  const regs = CUR_LEVEL==='season' ? regionsList() : [currentRegion()].filter(Boolean);
+  const out=[];
+  regs.forEach(r=>{
+    out.push({id:r.whLoc, name:(regs.length>1?r.name+' — ':'')+'Warehouse'});
+    eventsOfRegion(r.regionId).forEach(e=>out.push({id:e.eventId, name:(regs.length>1?r.name+' — ':'')+e.name}));
+  });
+  return out;
+}
+function costsModal(editId){
+  const list = scopedCosts().slice().sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+  const edit = editId ? (STATE.costs||[]).find(c=>c.id===editId) : null;
+  const places = costPlaces();
+  const curs = curCurrencies();
+  const pays = (STATE.payTypes||[]).filter(t=>t!=='Gift');
+  const byCur = {};
+  list.forEach(c=>{ byCur[c.cur]=(byCur[c.cur]||0)+(Number(c.amt)||0); });
+  const totalText = Object.keys(byCur).sort().map(c=>cashFmt(byCur[c],c)).join(' + ');
+  const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+
+  openModal(`
+    ${mHead(edit ? 'Edit cost' : 'Costs')}
+    <div class="m-body">
+      <div class="hint">Card-machine fees and other costs of selling. They show beneath the payment
+        totals, taken off to give the net. They do not touch the cash box.</div>
+      <div class="cost-form">
+        <div class="field"><label>What for</label>
+          <select id="cCat">${COST_CATS.map(c=>opt(c,c,(edit?edit.category:'Card machine fee')===c)).join('')}</select></div>
+        <div class="field"><label>Relates to payment type (optional)</label>
+          <select id="cPay">${opt('','—',!(edit&&edit.payType))}${pays.map(t=>opt(t,t,edit&&edit.payType===t)).join('')}</select></div>
+        <div class="field"><label>Where</label>
+          <select id="cLoc">${places.map(pl=>opt(pl.id,pl.name,(edit?edit.location:CUR_LOC)===pl.id)).join('')}</select></div>
+        <div class="field cost-amt"><label>Amount</label>
+          <div class="cost-amt-row">
+            <input id="cAmt" type="number" min="0" step="0.01" value="${edit?esc(edit.amt):''}" placeholder="0.00">
+            <select id="cCur">${curs.map(c=>opt(c,c,(edit?edit.cur:curs[0])===c)).join('')}</select>
+          </div></div>
+        <div class="field"><label>Note (optional)</label>
+          <input id="cNote" type="text" value="${edit?esc(edit.note):''}" placeholder="e.g. SumUp monthly statement"></div>
+        <div class="err" id="modalErr"></div>
+        <div class="cost-acts">
+          ${edit?`<button class="btn btn-ghost btn-sm" data-act="costs">Cancel edit</button>`:''}
+          <button class="btn btn-primary btn-sm" id="cSave">${edit?'Save changes':'Add cost'}</button>
+        </div>
+      </div>
+      ${edit ? '' : `
+      <div class="cash-sub">Recorded here${totalText?` — ${esc(totalText)}`:''}</div>
+      ${list.length ? list.map(c=>`
+        <div class="cost-row">
+          <div class="cost-main"><b>${esc(c.category)}</b>${c.payType?` · ${esc(c.payType)}`:''}
+            <span class="cost-where">${esc(locName(c.location))}${c.note?' · '+esc(c.note):''}</span></div>
+          <div class="cost-amt-v">−${esc(cashFmt(c.amt,c.cur))}</div>
+          <span class="cost-btns">
+            <button class="btn btn-ghost btn-xs" data-act="costedit" data-id="${esc(c.id)}">Edit</button>
+            <button class="btn btn-danger btn-xs" data-act="costdel" data-id="${esc(c.id)}">Delete</button></span>
+        </div>`).join('') : '<div class="cash-empty">No costs recorded here yet.</div>'}`}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+
+  $('#cSave').addEventListener('click',()=>{
+    const amt = Number($('#cAmt').value);
+    if(!(amt>0)){ $('#modalErr').textContent='Give the cost an amount.'; return; }
+    const cost = { id: edit ? edit.id : ('C'+Date.now().toString(36)+Math.random().toString(36).slice(2,6)),
+      ts: edit ? edit.ts : new Date().toISOString(),
+      location:$('#cLoc').value, category:$('#cCat').value, payType:$('#cPay').value,
+      cur:$('#cCur').value, amt, note:$('#cNote').value.trim() };
+    commit(Object.assign({action:'saveCost'}, cost),
+      st=>{
+        st.costs = st.costs || [];
+        const i = st.costs.findIndex(c=>c.id===cost.id);
+        if(i>=0) st.costs[i]=Object.assign({}, st.costs[i], cost); else st.costs.push(cost);
+      }, edit ? 'Cost updated' : 'Cost added', {keepOpen:true});
+    costsModal();
+  });
+}
+
 async function shareKeySet(kind, id, clear){
   const keys = STATE.keys || {regions:{},events:{}};
   const existing = (kind==='region'?keys.regions:keys.events)[id] || '';
   if(clear && !confirm('Turn off this link? Anyone still holding it loses access immediately.')) return;
   if(!clear && existing && !confirm('Reset this link? The old one stops working immediately.')) return;
-  const done = await commitSync({action:'setKey',kind,id,clear:clear?'true':'false'},'Link updated');
-  if(done) shareLinksModal();   // reopen so the new link is visible straight away
-  // On failure the modal stays put with the reason showing, rather than being
-  // replaced by a fresh one that looks like nothing happened.
+  const key = clear ? '' : newLinkKey('k');
+  commit({action:'setKey', kind, id, clear:clear?'true':'false', key},
+    st=>{
+      st.keys = st.keys || {regions:{},events:{},sellers:{}};
+      const bag = kind==='region' ? (st.keys.regions=st.keys.regions||{}) : (st.keys.events=st.keys.events||{});
+      bag[id] = key;
+    }, clear ? 'Link turned off' : 'Link ready', {keepOpen:true});
+  shareLinksModal();
 }
 
 
@@ -4485,16 +4656,27 @@ function buildReport(part, opts){
        the app: the figure is sold for money (a paid pre-order counts), then
        the pre-orders in brackets, then gifts on top. Each kind totals itself;
        a single title needs no total of its own. */
-    const figure = c => [String(c.sold), preNote(c), giftNote(c)].filter(Boolean).join(' ');
+    /* Line items give the sold figure, pre-orders in brackets and gifts on top;
+       "distributed" belongs only to the total at the end of each kind:
+
+         Sri Radha (English) - 24 (5 pre-orders) +2 gifts
+         Western (English) - 3
+         Big Books Total = 27 Sold + 3 Gifts = 30 Distributed
+
+       Each part is left out when there is nothing to say. */
+    const item = c => [String(c.sold), preNote(c), c.gift ? `+${c.gift} gift${c.gift===1?'':'s'}` : '']
+      .filter(Boolean).join(' ');
     CATS.forEach(kind=>{
       const rows = shelfBooks().filter(b=>catOfBook(b)===kind)
         .map(b=>({b, c:bookCounts(s.filter(x=>x.bookId===b.id))}))
         .filter(r=>r.c.sold || r.c.gift);
       if(!rows.length) return;
-      rows.forEach(r=>line(r.b.name, figure(r.c)));
+      rows.forEach(r=>line(r.b.name, item(r.c)));
       if(rows.length>1){
-        const t = rows.reduce((a,r)=>({sold:a.sold+r.c.sold, pre:a.pre+r.c.pre, gift:a.gift+r.c.gift}), {sold:0,pre:0,gift:0});
-        line(CAT_SHORT[kind] + ' total', figure(t));
+        const t = rows.reduce((a,r)=>({sold:a.sold+r.c.sold, gift:a.gift+r.c.gift}), {sold:0,gift:0});
+        L.push('');
+        L.push(CAT_SHORT[kind] + ' Total = ' + t.sold + ' Sold' +
+          (t.gift ? ' + ' + t.gift + ' Gift' + (t.gift===1?'':'s') + ' = ' + (t.sold+t.gift) + ' Distributed' : ''));
       }
       gap();
     });
@@ -7739,6 +7921,16 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='report'){ shareReport(t.dataset.part||''); return; }
+  if(a==='costs'){ costsModal(); return; }
+  if(a==='costedit'){ costsModal(t.dataset.id); return; }
+  if(a==='costdel'){
+    if(!confirm('Delete this cost?')) return;
+    const id=t.dataset.id;
+    commit({action:'deleteCost', id}, st=>{ st.costs=(st.costs||[]).filter(c=>c.id!==id); },
+      'Cost deleted', {keepOpen:true});
+    costsModal();
+    return;
+  }
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
