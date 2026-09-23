@@ -457,6 +457,7 @@ body.busy #busyLabel{opacity:1}
 .radio-row input{width:18px;height:18px;flex:none;margin-top:2px}
 .chg-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
 .chg-main{flex:1;min-width:0;font-size:13.5px}
+.chg-acts{display:flex;align-items:center;gap:6px;flex:none}
 .chg-where{display:block;font-size:12px;color:var(--muted)}
 .cash-cell.has-change{color:var(--plum);font-weight:800}
 .cash-logamt.with-change{color:var(--plum)}
@@ -1017,7 +1018,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b139</span>
+    <span class="build-tag" title="Which version of the page is loaded">b140</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5866,12 +5867,22 @@ function cashModal(){
            log: how much, whose it is, where it is now, and a way to send it back. */
         const out = activeChange();
         if(!out.length) return '';
-        return `<div class="cash-sub">Withdrawn Change</div>` + out.map(c=>`
-          <div class="chg-row">
+        return `<div class="cash-sub">Withdrawn Change</div>` + out.map(c=>{
+          /* An entry whose movement no longer exists has nothing to give back —
+             it can only be removed. This is how change left over from before
+             movements and change records were linked shows itself. */
+          const orphan = !(STATE.cash||[]).some(x=>x && (x.changeRef===c.id ||
+            (x.purpose==='FLOAT' && x.toAcct===c.loc && x.cur===c.cur && Number(x.amt)===Number(c.amt))));
+          return `<div class="chg-row">
             <div class="chg-main"><b>${esc(cashFmt(c.amt,c.cur))}</b> from ${esc(changeSourceName(c))}
-              <span class="chg-where">now at ${esc(cashAcctName(c.loc))}</span></div>
-            <button class="btn btn-ghost btn-xs" data-act="chgback" data-id="${esc(c.id)}">Return Change</button>
-          </div>`).join('');
+              <span class="chg-where">now at ${esc(cashAcctName(c.loc))}${
+                orphan?' · no matching movement':''}</span></div>
+            <span class="chg-acts">
+              ${orphan?'':`<button class="btn btn-ghost btn-xs" data-act="chgback" data-id="${esc(c.id)}">Return Change</button>`}
+              <button class="cash-mini danger" data-act="chgdel" data-id="${esc(c.id)}" title="Remove this entry">✕</button>
+            </span>
+          </div>`;
+        }).join('');
       })()}
 
       ${hideBank() ? (function(){
@@ -8326,6 +8337,16 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='chgnew'){ changeModal(); return; }
+  if(a==='chgdel'){
+    const id=t.dataset.id;
+    const c=(STATE.change||[]).find(x=>x.id===id); if(!c) return;
+    if(!confirm(`Remove this record of ${cashFmt(c.amt,c.cur)} of change?\n\nNo cash moves — use Return Change for that.`)) return;
+    commit({action:'changeDelete', id},
+      st=>{ st.change=(st.change||[]).filter(x=>x.id!==id);
+            st.cash=(st.cash||[]).filter(x=>String(x.changeRef||'')!==id); },
+      'Change entry removed');
+    cashReopen(); return;
+  }
   if(a==='chgback'){
     const id=t.dataset.id;
     const c=(STATE.change||[]).find(x=>x.id===id); if(!c) return;
