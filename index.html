@@ -1017,7 +1017,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b138</span>
+    <span class="build-tag" title="Which version of the page is loaded">b139</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5417,8 +5417,9 @@ function sentToBank(){
     if(!c || c.kind!=='MOVE') return;
     if(c.purpose==='FLOAT' || c.purpose==='FLOAT_BACK') return;   // its own line below
     const amt = Number(c.amt)||0;
-    if(c.toAcct==='BANK' && mine.includes(c.fromAcct)) out[c.cur]=(out[c.cur]||0)+amt;
-    if(c.fromAcct==='BANK' && mine.includes(c.toAcct)) out[c.cur]=(out[c.cur]||0)-amt;
+    const own = amt - (Number(c.changeAmt)||0);       // change passing through is not ours
+    if(c.toAcct==='BANK' && mine.includes(c.fromAcct)) out[c.cur]=(out[c.cur]||0)+own;
+    if(c.fromAcct==='BANK' && mine.includes(c.toAcct)) out[c.cur]=(out[c.cur]||0)-own;
   });
   return out;
 }
@@ -5485,15 +5486,28 @@ function cashCollected(acct,cur){
   });
   return t;
 }
+/* What a place holds OF ITS OWN.
+
+   Change borrowed from a coordinator never belonged to the place holding it,
+   so it is left out of these figures entirely: taking it out does not raise a
+   region's total, carrying it along does not lower it, and giving it back does
+   not change anything. It stays visible in Withdrawn Change, in the movement
+   log, and by the marking on any figure that has change sitting beside it. */
 function cashBalance(acct,cur){
   let b=cashCollected(acct,cur);          // baseline from actual collections
   (STATE.cash||[]).forEach(c=>{
     if(!c || c.cur!==cur) return;
-    const a=Number(c.amt)||0;
+    if(c.purpose==='FLOAT' || c.purpose==='FLOAT_BACK') return;   // never the place's own money
+    const a=(Number(c.amt)||0) - (Number(c.changeAmt)||0);        // only the takings part travels
+    if(!a) return;
     if(c.kind==='MOVE'){ if(c.fromAcct===acct)b-=a; if(c.toAcct===acct)b+=a; }
     else if(c.toAcct===acct) b+=a;
   });
   return Math.round(b*100)/100;
+}
+/** What is physically in the box: its own money plus any change sitting there. */
+function cashPhysical(acct,cur){
+  return Math.round((cashBalance(acct,cur) + changeAt(acct,cur))*100)/100;
 }
 /* Money for any currency the tour picks up. Known symbols get their glyph;
    anything else falls back to the ISO code, so MKD/GBP/INR all read sensibly
@@ -5624,9 +5638,9 @@ function moveAllChangeModal(opts){
       <div class="chg-note">This amount includes <b>${esc(sum)}</b> of Withdrawn Change.</div>
       <div class="field"><label>What would you like to do with the change?</label>
         <label class="radio-row"><input type="radio" name="chgOpt" value="keep" checked>
-          <span><b>Do Not Transfer</b><br><span class="muted-note">The change stays where it is; only the takings move.</span></span></label>
+          <span><b>Do Not Transfer Change</b><br><span class="muted-note">Only cash collected at the event will move.</span></span></label>
         <label class="radio-row"><input type="radio" name="chgOpt" value="send">
-          <span><b>Transfer</b><br><span class="muted-note">The change travels too, and stays marked as change.</span></span></label>
+          <span><b>Transfer Change</b><br><span class="muted-note">Collected cash + change will move.</span></span></label>
       </div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -5697,10 +5711,11 @@ function changeModal(){
     if(source==='OTHER' && !sourceName){ $('#modalErr').textContent='Say who the change came from.'; return; }
     const cur=$('#chCur').value, loc=$('#chLoc').value;
     const id='CH'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-    commit({action:'changeWithdraw', id, amt, cur, source, sourceName, loc},
+    const cashId='CW'+id;
+    commit({action:'changeWithdraw', id, cashId, amt, cur, source, sourceName, loc},
       st=>{
         (st.change=st.change||[]).push({id,ts:new Date().toISOString(),amt,cur,source,sourceName,loc,returnedAt:''});
-        (st.cash=st.cash||[]).push({id:'c'+id, ts:new Date().toISOString(),
+        (st.cash=st.cash||[]).push({id:cashId, changeRef:id, ts:new Date().toISOString(),
           kind: source==='OTHER' ? 'ADJUST' : 'MOVE', fromAcct: source==='OTHER' ? '' : source,
           toAcct: loc, cur, amt, purpose:'FLOAT',
           note: source==='OTHER' ? ('Change from '+sourceName) : 'Change withdrawn'});
@@ -5739,9 +5754,11 @@ function cashModal(){
                        : cashBalance(a.id,cur);
       // A figure with change mixed into it is marked, so it is never mistaken
       // for money that is ours to move on.
-      const chg = isBank ? 0 : changeAt(a.id, cur);
+      /* The figure is the place's own money. A marking says change is sitting
+         here as well, and the tooltip gives what is physically in the box. */
+      const chg = changeAt(a.id, cur);
       cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')} ${chg?'has-change':''}"
-        ${chg?`title="Includes ${esc(cashFmt(chg,cur))} of withdrawn change"`:''}>${v===0?'—':cashFmt(v,cur)}</td>`;
+        ${chg?`title="Plus ${esc(cashFmt(chg,cur))} of withdrawn change held here — ${esc(cashFmt(v+chg,cur))} in the box"`:''}>${v===0?'—':cashFmt(v,cur)}</td>`;
     });
     balRows += `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
   });
@@ -5886,8 +5903,9 @@ function cashModal(){
     const cur=$('#cmCur').value, amt=Math.round((Number($('#cmAmt').value)||0)*100)/100;
     if(amt<=0){ err('Enter an amount greater than zero.'); return; }
     err('');
-    commit({action:'cashMove',fromAcct:from,toAcct:to,cur,amt,note},
-      st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
+    const cashId='CM'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    commit({action:'cashMove',cashId,fromAcct:from,toAcct:to,cur,amt,note},
+      st=>{ (st.cash=st.cash||[]).push({id:cashId,ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur,amt,note}); },
       'Cash moved');
     cashReopen();
   });
@@ -5895,8 +5913,8 @@ function cashModal(){
   $('#cmGoAll').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
+    // The takings; any change sitting there is added only if it is to travel.
     let moves=cashCurs().map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
-    if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
 
     /* Some of this may be change, which belongs to whoever lent it. Ask before
        sweeping it along with the takings. */
@@ -5906,37 +5924,46 @@ function cashModal(){
       moveAllChangeModal({
         fromName: cashAcctName(from), toName: cashAcctName(to),
         sum: Object.keys(chgBy).sort().map(c=>cashFmt(chgBy[c],c)).join(' · '),
-        lines: moves.map(m=>cashFmt(m.amt,m.cur)).join(' · '),
+        lines: moves.length ? moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ') : 'no takings here',
         onGo: take => doMoveAll(from, to, note, moves, here, chgBy, take)
       });
       return;
     }
+    if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
     if(!confirm(`Move ALL cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
     err('');
     doMoveAll(from, to, note, moves, [], {}, false);
   });
 
   /* Carrying out the move, once it is clear what should happen to any change. */
-  function doMoveAll(from, to, note, allMoves, here, chgBy, takeChange){
-    let moves = allMoves;
-    if(here.length && !takeChange){
-      moves = moves.map(m=>({cur:m.cur, amt:Math.round((m.amt-(chgBy[m.cur]||0))*100)/100}))
-                   .filter(m=>m.amt>0.005);
-      if(!moves.length){ toast('Everything there is withdrawn change, so there is nothing else to move.', true);
-                         cashReopen(); return; }
-    }
+  function doMoveAll(from, to, note, takings, here, chgBy, takeChange){
+    /* The takings are the place's own money. Change is added on top only when
+       it is to travel — and then the movement records how much of it was
+       change, so it keeps behaving as change at the other end. */
     const ids = takeChange ? here.map(c=>c.id) : [];
-    const stamp = m => takeChange ? (chgBy[m.cur]||0) : 0;
+    const curs = new Set(takings.map(m=>m.cur));
+    if(takeChange) Object.keys(chgBy).forEach(c=>curs.add(c));
+    const moves = [...curs].map(cur=>{
+      const own = (takings.find(m=>m.cur===cur)||{amt:0}).amt;
+      const chg = takeChange ? (chgBy[cur]||0) : 0;
+      return {cur, amt:Math.round((own+chg)*100)/100, chg};
+    }).filter(m=>m.amt>0.005);
+    if(!moves.length){
+      toast(takeChange ? 'There is nothing to move.' : 'Only withdrawn change is here, so nothing else moves.', true);
+      cashReopen(); return;
+    }
+    const prefix = 'CM'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
     if(takeChange && here.length){
-      commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note,changeIds:ids.join(',')},
-        st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',
-                fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,changeAmt:stamp(m),note:note||'Moved all cash'}));
+      commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note,changeIds:ids.join(','),idPrefix:prefix},
+        st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:prefix+'_'+m.cur,ts:new Date().toISOString(),kind:'MOVE',
+                fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,changeAmt:m.chg,changeIds:ids.join(','),
+                note:note||'Moved all cash'}));
               (st.change||[]).forEach(c=>{ if(ids.includes(c.id)){ c.loc=to; if(to===c.source) c.returnedAt=new Date().toISOString(); } }); },
         'All cash moved');
     }else{
       // Only the takings: each currency moved on its own, leaving the change behind.
-      moves.forEach(mv=>commit({action:'cashMove',fromAcct:from,toAcct:to,cur:mv.cur,amt:mv.amt,note},
-        st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',
+      moves.forEach(mv=>commit({action:'cashMove',cashId:prefix+'_'+mv.cur,fromAcct:from,toAcct:to,cur:mv.cur,amt:mv.amt,note},
+        st=>{ (st.cash=st.cash||[]).push({id:prefix+'_'+mv.cur,ts:new Date().toISOString(),kind:'MOVE',
                 fromAcct:from,toAcct:to,cur:mv.cur,amt:mv.amt,note:note||'Moved all cash'}); },
         null));
       if(here.length) toast('Cash moved — the change stays where it is');
@@ -8303,10 +8330,10 @@ document.addEventListener('click',e=>{
     const id=t.dataset.id;
     const c=(STATE.change||[]).find(x=>x.id===id); if(!c) return;
     if(!confirm('Return '+cashFmt(c.amt,c.cur)+' of change to '+changeSourceName(c)+'?')) return;
-    commit({action:'changeReturn', id},
+    commit({action:'changeReturn', id, cashId:'CR'+id},
       st=>{
         const r=(st.change||[]).find(x=>x.id===id); if(r) r.returnedAt=new Date().toISOString();
-        (st.cash=st.cash||[]).push({id:'r'+id, ts:new Date().toISOString(),
+        (st.cash=st.cash||[]).push({id:'CR'+id, changeRef:id, ts:new Date().toISOString(),
           kind: c.source==='OTHER' ? 'ADJUST' : 'MOVE', fromAcct: c.source==='OTHER' ? '' : c.loc,
           toAcct: c.source==='OTHER' ? c.loc : c.source, cur:c.cur,
           amt: c.source==='OTHER' ? -c.amt : c.amt, purpose:'FLOAT_BACK', note:'Change returned'});
