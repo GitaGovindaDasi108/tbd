@@ -459,7 +459,11 @@ body.busy #busyLabel{opacity:1}
 .chg-main{flex:1;min-width:0;font-size:13.5px}
 .chg-acts{display:flex;align-items:center;gap:6px;flex:none}
 .chg-where{display:block;font-size:12px;color:var(--muted)}
+/* Holding someone else's change: plum. Change lent out from here: clay, with
+   a dashed underline — a different look, for a different situation. */
 .cash-cell.has-change{color:var(--plum);font-weight:800}
+.cash-cell.change-out{color:var(--clay);font-weight:800;text-decoration:underline dashed 1px;text-underline-offset:3px}
+.cash-cell.change-out.has-change{color:var(--plum);text-decoration-color:var(--clay)}
 .cash-logamt.with-change{color:var(--plum)}
 .cost-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
 .cost-amt-row{display:flex;gap:8px}
@@ -1018,7 +1022,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b140</span>
+    <span class="build-tag" title="Which version of the page is loaded">b141</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5422,6 +5426,14 @@ function sentToBank(){
     if(c.toAcct==='BANK' && mine.includes(c.fromAcct)) out[c.cur]=(out[c.cur]||0)+own;
     if(c.fromAcct==='BANK' && mine.includes(c.toAcct)) out[c.cur]=(out[c.cur]||0)-own;
   });
+  /* Change the Global Coordinator has lent into this region is money they no
+     longer hold, so this region's figure with them is lower by exactly that
+     until it goes back — 110 € becomes 100 € while 10 € is out as change. */
+  (STATE.change||[]).forEach(c=>{
+    if(!c || c.returnedAt || c.source!=='BANK') return;
+    if(!mine.includes(c.loc)) return;
+    out[c.cur]=(out[c.cur]||0)-(Number(c.amt)||0);
+  });
   return out;
 }
 /** Season view: what each region holds and what it has sent to the bank. */
@@ -5504,6 +5516,7 @@ function cashBalance(acct,cur){
     if(c.kind==='MOVE'){ if(c.fromAcct===acct)b-=a; if(c.toAcct===acct)b+=a; }
     else if(c.toAcct===acct) b+=a;
   });
+  b -= changeLentBy(acct, cur);          // lent out as change: gone until it returns
   return Math.round(b*100)/100;
 }
 /** What is physically in the box: its own money plus any change sitting there. */
@@ -5665,6 +5678,15 @@ function changeAt(loc, cur){
   return (STATE.change||[]).filter(c=>c && !c.returnedAt && c.loc===loc && c.cur===cur)
     .reduce((t,c)=>t+(Number(c.amt)||0), 0);
 }
+/** Change this account has lent out and not yet got back.
+
+    A coordinator with 110 € who lends 10 € as change has 100 € until it comes
+    home — the money is really gone from them. Change lent by someone outside
+    the tour has no account here, so there is nothing to take it from. */
+function changeLentBy(acct, cur){
+  return (STATE.change||[]).filter(c=>c && !c.returnedAt && c.source===acct && c.source!=='OTHER' && c.cur===cur)
+    .reduce((t,c)=>t+(Number(c.amt)||0), 0);
+}
 /** Who the change came from, in words. */
 function changeSourceName(c){
   return c.source==='OTHER' ? (c.sourceName||'someone') : cashAcctName(c.source);
@@ -5755,11 +5777,16 @@ function cashModal(){
                        : cashBalance(a.id,cur);
       // A figure with change mixed into it is marked, so it is never mistaken
       // for money that is ours to move on.
-      /* The figure is the place's own money. A marking says change is sitting
-         here as well, and the tooltip gives what is physically in the box. */
-      const chg = changeAt(a.id, cur);
-      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')} ${chg?'has-change':''}"
-        ${chg?`title="Plus ${esc(cashFmt(chg,cur))} of withdrawn change held here — ${esc(cashFmt(v+chg,cur))} in the box"`:''}>${v===0?'—':cashFmt(v,cur)}</td>`;
+      /* Two different things can be true of a figure, and they look different:
+         change LENT OUT from here (already taken off the figure), and change
+         being HELD here (never added to it). */
+      const chg = changeAt(a.id, cur);          // held here, not theirs
+      const lent = changeLentBy(a.id, cur);     // out on loan, already deducted
+      const tips = [];
+      if(lent) tips.push(`${cashFmt(lent,cur)} is out as change — ${cashFmt(v+lent,cur)} before lending it`);
+      if(chg)  tips.push(`holding ${cashFmt(chg,cur)} of someone else's change — ${cashFmt(v+chg,cur)} in the box`);
+      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')} ${lent?'change-out':''} ${chg?'has-change':''}"
+        ${tips.length?`title="${esc(tips.join(' · '))}"`:''}>${v===0?'—':cashFmt(v,cur)}</td>`;
     });
     balRows += `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
   });
