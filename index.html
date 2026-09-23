@@ -461,6 +461,9 @@ body.busy #busyLabel{opacity:1}
 .chg-where{display:block;font-size:12px;color:var(--muted)}
 /* Holding someone else's change: plum. Change lent out from here: clay, with
    a dashed underline — a different look, for a different situation. */
+.chg-line{display:block;font-size:11px;font-weight:700;margin-top:2px;white-space:nowrap}
+.chg-here{color:var(--plum)}                 /* someone else's change, sitting here */
+.chg-gone{color:var(--clay)}                 /* our change, out on loan */
 .cash-cell.has-change{color:var(--plum);font-weight:800}
 .cash-cell.change-out{color:var(--clay);font-weight:800;text-decoration:underline dashed 1px;text-underline-offset:3px}
 .cash-cell.change-out.has-change{color:var(--plum);text-decoration-color:var(--clay)}
@@ -1022,7 +1025,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b141</span>
+    <span class="build-tag" title="Which version of the page is loaded">b142</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5562,15 +5565,18 @@ function seasonCashModal(){
   };
   const balOf = id => { const o={}; curs.forEach(c=>{ const v=cashBalance(id,c); if(Math.abs(v)>0.005) o[c]=v; }); return o; };
   const add = (into,o) => { Object.keys(o).forEach(c=>into[c]=(into[c]||0)+o[c]); };
+  // Change is visible here too: where it sits, and who it is out from.
+  const noteOf = id => curs.map(c=>changeNote(id,c)).filter(Boolean).join('');
+  const cell = (id,o) => `${money(o)}${noteOf(id)}`;
 
   const regions = regionsList().map(r=>{
     const places=[{id:r.whLoc, name:r.name+' — Warehouse'}]
       .concat(eventsOfRegion(r.regionId).map(e=>({id:e.eventId,name:e.name})))
       .concat(holdersOf(r.regionId).map(h=>({id:h.holderId,name:h.name+' (storing books)'})));
     const tot={}, rows=[];
-    places.forEach(pl=>{ const b=balOf(pl.id); add(tot,b); rows.push({name:pl.name, bal:b}); });
+    places.forEach(pl=>{ const b=balOf(pl.id); add(tot,b); rows.push({name:pl.name, bal:b, id:pl.id}); });
     const rb=balOf(regionBankId(r.regionId)); add(tot,rb);
-    rows.push({name:'Regional Coordinator', bal:rb});
+    rows.push({name:'Regional Coordinator', bal:rb, id:regionBankId(r.regionId)});
     return {r, tot, rows};
   });
 
@@ -5619,13 +5625,30 @@ function seasonCashModal(){
             <span class="cash-reg-tot">${money(g.tot)}</span>
           </summary>
           <table class="cash-tbl cash-agg"><tbody>
-            ${g.rows.map(row=>`<tr class="cash-sub-row"><th>${esc(row.name)}</th><td>${money(row.bal)}</td></tr>`).join('')}
+            ${g.rows.map(row=>`<tr class="cash-sub-row"><th>${esc(row.name)}</th><td>${cell(row.id,row.bal)}</td></tr>`).join('')}
           </tbody></table>
         </details>`).join('') : '<div class="cash-empty">No regions yet.</div>'}
 
       <div class="cash-coll" style="margin-top:10px">
-        <div class="cash-coll-row cash-global"><span>Global Coordinator</span><span>${money(gb)}</span></div>
+        <div class="cash-coll-row cash-global"><span>Global Coordinator</span>
+          <span>${money(gb)}${curs.map(c=>changeNote('BANK',c)).filter(Boolean).join('')}</span></div>
       </div>
+
+      ${(function(){
+        /* Every piece of change out across the tour, so it can be seen and
+           settled from here as well as inside a region. */
+        const out=(STATE.change||[]).filter(c=>c && !c.returnedAt);
+        if(!out.length) return '';
+        return `<div class="cash-sub">Withdrawn Change</div>` + out.map(c=>`
+          <div class="chg-row">
+            <div class="chg-main"><b>${esc(cashFmt(c.amt,c.cur))}</b> from ${esc(changeSourceName(c))}
+              <span class="chg-where">now at ${esc(cashAcctName(c.loc))}</span></div>
+            <span class="chg-acts">
+              <button class="btn btn-ghost btn-xs" data-act="chgback" data-id="${esc(c.id)}">Return Change</button>
+              <button class="cash-mini danger" data-act="chgdel" data-id="${esc(c.id)}" title="Remove this entry">✕</button>
+            </span>
+          </div>`).join('');
+      })()}
 
       <div class="cash-sub">Collection Record</div>
       <div class="cash-coll">
@@ -5678,6 +5701,26 @@ function changeAt(loc, cur){
   return (STATE.change||[]).filter(c=>c && !c.returnedAt && c.loc===loc && c.cur===cur)
     .reduce((t,c)=>t+(Number(c.amt)||0), 0);
 }
+/* A figure, with any change beside it.
+
+   The number is always the place's OWN money. Change is shown on its own line
+   underneath — held here, or out on loan from here — so it can be seen exactly
+   where it is without ever being counted as that place's takings. */
+function changeNote(acct, cur){
+  const chg = changeAt(acct, cur);          // sitting here, belongs to someone else
+  const lent = changeLentBy(acct, cur);     // lent from here, already off the figure
+  const bits = [];
+  if(chg)  bits.push(`<span class="chg-here">+${esc(cashFmt(chg,cur))} change held</span>`);
+  if(lent) bits.push(`<span class="chg-gone">−${esc(cashFmt(lent,cur))} change out</span>`);
+  return bits.length ? `<div class="chg-line">${bits.join(' ')}</div>` : '';
+}
+function changeCell(acct, cur, v){
+  const note = changeNote(acct, cur);
+  const zero = (v===0 && !note);
+  return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}">${
+    (v===0 && note) ? '<span class="muted">—</span>' : (zero ? '—' : cashFmt(v,cur))}${note}</td>`;
+}
+
 /** Change this account has lent out and not yet got back.
 
     A coordinator with 110 € who lends 10 € as change has 100 € until it comes
@@ -5780,13 +5823,7 @@ function cashModal(){
       /* Two different things can be true of a figure, and they look different:
          change LENT OUT from here (already taken off the figure), and change
          being HELD here (never added to it). */
-      const chg = changeAt(a.id, cur);          // held here, not theirs
-      const lent = changeLentBy(a.id, cur);     // out on loan, already deducted
-      const tips = [];
-      if(lent) tips.push(`${cashFmt(lent,cur)} is out as change — ${cashFmt(v+lent,cur)} before lending it`);
-      if(chg)  tips.push(`holding ${cashFmt(chg,cur)} of someone else's change — ${cashFmt(v+chg,cur)} in the box`);
-      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')} ${lent?'change-out':''} ${chg?'has-change':''}"
-        ${tips.length?`title="${esc(tips.join(' · '))}"`:''}>${v===0?'—':cashFmt(v,cur)}</td>`;
+      cells += changeCell(a.id, cur, v);
     });
     balRows += `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
   });
