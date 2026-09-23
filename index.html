@@ -452,6 +452,11 @@ body.busy #busyLabel{opacity:1}
 .df-sub{margin:6px 0 0 14px}
 .df-inner{padding-left:14px}
 .df-now{font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper2);margin-bottom:12px;overflow-wrap:anywhere}
+.chg-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
+.chg-main{flex:1;min-width:0;font-size:13.5px}
+.chg-where{display:block;font-size:12px;color:var(--muted)}
+.cash-cell.has-change{color:var(--plum);font-weight:800}
+.cash-logamt.with-change{color:var(--plum)}
 .cost-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
 .cost-amt-row{display:flex;gap:8px}
 .cost-amt-row input{flex:1;min-width:0}
@@ -1009,7 +1014,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b136</span>
+    <span class="build-tag" title="Which version of the page is loaded">b137</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -4876,12 +4881,19 @@ function buildReport(part, opts){
         .map(b=>({b, c:bookCounts(s.filter(x=>x.bookId===b.id))}))
         .filter(r=>r.c.sold || r.c.gift);
       if(!rows.length) return;
+      /* One title IS its own total, so it gets ONE line — in the total's form
+         when there are gifts to account for, otherwise the plain figure. Two
+         lines saying the same thing was just noise. */
+      if(rows.length===1){
+        const c = rows[0].c;
+        if(c.gift) L.push(rows[0].b.name + ' = ' + c.sold + ' Sold' + (c.pre?' '+preNote(c):'') +
+          ' + ' + c.gift + ' Gift' + (c.gift===1?'':'s') + ' = ' + (c.sold+c.gift) + ' Distributed');
+        else line(rows[0].b.name, item(c));
+        gap();
+        return;
+      }
       rows.forEach(r=>line(r.b.name, item(r.c)));
-      /* A total whenever it adds something: several titles to add up, or gifts
-         — even under a single title, since only the total gives the number
-         distributed. One title with no gifts would just repeat its own line. */
-      const giftsHere = rows.some(r=>r.c.gift);
-      if(rows.length>1 || giftsHere){
+      {
         const t = rows.reduce((a,r)=>({sold:a.sold+r.c.sold, gift:a.gift+r.c.gift}), {sold:0,gift:0});
         L.push('');
         L.push(CAT_SHORT[kind] + ' Total = ' + t.sold + ' Sold' +
@@ -5547,9 +5559,13 @@ function seasonCashModal(){
     const desc = isMove ? `${esc(cashAcctName(c.fromAcct))} → ${esc(cashAcctName(c.toAcct))}`
                         : `${esc(cashAcctName(c.toAcct))} · adjustment`;
     const amt=Number(c.amt)||0;
+    // A movement that carried change shows both parts: takings + change.
+    const chg=Number(c.changeAmt)||0;
+    const amtText = chg ? `${esc(cashFmt(Math.abs(amt)-chg, c.cur||''))} + ${esc(cashFmt(chg, c.cur||''))} change`
+                        : `${(!isMove&&amt<0)?'−':''}${esc(cashFmt(Math.abs(amt), c.cur||''))}`;
     return `<div class="cash-logrow">
       <div class="cash-logtop"><span class="cash-logdesc">${desc}</span>
-        <span class="cash-logamt">${(!isMove&&amt<0)?'−':''}${esc(cashFmt(Math.abs(amt), c.cur||''))}</span></div>
+        <span class="cash-logamt ${chg?'with-change':''}">${amtText}</span></div>
       <div class="cash-logbot"><span class="cash-logwhen">${esc(when)}${c.by?' · '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</span>
         <span class="cash-logacts">${c.id?`<button class="cash-mini danger" data-delentry="${esc(c.id)}" title="Remove this movement">✕</button>`:''}</span></div>
     </div>`;
@@ -5589,6 +5605,75 @@ function seasonCashModal(){
   bindCashLog();     // a wrong movement can be removed from here too
 }
 
+/** Change taken out and not yet back, at the places on view. */
+function activeChange(){
+  const accts = cashAccounts().map(a=>a.id);
+  return (STATE.change||[]).filter(c=>c && !c.returnedAt && accts.includes(c.loc));
+}
+/** Change sitting at one place, in one currency. */
+function changeAt(loc, cur){
+  return (STATE.change||[]).filter(c=>c && !c.returnedAt && c.loc===loc && c.cur===cur)
+    .reduce((t,c)=>t+(Number(c.amt)||0), 0);
+}
+/** Who the change came from, in words. */
+function changeSourceName(c){
+  return c.source==='OTHER' ? (c.sourceName||'someone') : cashAcctName(c.source);
+}
+
+/* Withdraw change: an amount, and where it came from. The places in this
+   region, the two coordinators, or anyone else — then the app does the rest. */
+function changeModal(){
+  const reg = currentRegion(); if(!reg) return;
+  const places = cashAccounts();
+  const curs = cashCurs();
+  const opt=(v,l,sel)=>`<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  const sources = eventsOfRegion(reg.regionId).map(e=>({id:e.eventId,name:e.name}))
+    .concat([{id:regionBankId(reg.regionId), name:bankLabel(regionBankId(reg.regionId))},
+             {id:'BANK', name:'Global Coordinator'}]);
+  openModal(`
+    ${mHead('Withdraw change')}
+    <div class="m-body">
+      <div class="hint">Money borrowed to give buyers their change. It stays marked as change
+        wherever it travels, until it goes back.</div>
+      <div class="row2">
+        <div class="field"><label>Amount</label>
+          <input id="chAmt" type="number" step="0.01" inputmode="decimal" placeholder="0.00"></div>
+        <div class="field"><label>Currency</label><select id="chCur">${curs.map(c=>opt(c,c,c===curs[0])).join('')}</select></div>
+      </div>
+      <div class="field"><label>Came from</label>
+        <select id="chSrc">${sources.map(x=>opt(x.id,x.name,false)).join('')}${opt('OTHER','Someone else…',false)}</select></div>
+      <div class="field" id="chWhoWrap" style="display:none"><label>Who</label>
+        <input id="chWho" type="text" placeholder="e.g. Rasika"></div>
+      <div class="field"><label>Kept at</label>
+        <select id="chLoc">${places.filter(p=>p.id!=='BANK' && !isRegionBank(p.id))
+          .map(p=>opt(p.id,p.name,p.id===CUR_LOC)).join('')}</select></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="chGo">Withdraw change</button>
+    </div>`);
+  const syncWho=()=>{ $('#chWhoWrap').style.display = $('#chSrc').value==='OTHER' ? '' : 'none'; };
+  $('#chSrc').addEventListener('change', syncWho); syncWho();
+  $('#chGo').addEventListener('click',()=>{
+    const amt=Number($('#chAmt').value);
+    if(!(amt>0)){ $('#modalErr').textContent='Give the change an amount.'; return; }
+    const source=$('#chSrc').value, sourceName=(($('#chWho')||{}).value||'').trim();
+    if(source==='OTHER' && !sourceName){ $('#modalErr').textContent='Say who the change came from.'; return; }
+    const cur=$('#chCur').value, loc=$('#chLoc').value;
+    const id='CH'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    commit({action:'changeWithdraw', id, amt, cur, source, sourceName, loc},
+      st=>{
+        (st.change=st.change||[]).push({id,ts:new Date().toISOString(),amt,cur,source,sourceName,loc,returnedAt:''});
+        (st.cash=st.cash||[]).push({id:'c'+id, ts:new Date().toISOString(),
+          kind: source==='OTHER' ? 'ADJUST' : 'MOVE', fromAcct: source==='OTHER' ? '' : source,
+          toAcct: loc, cur, amt, purpose:'FLOAT',
+          note: source==='OTHER' ? ('Change from '+sourceName) : 'Change withdrawn'});
+      }, 'Change withdrawn');
+    cashReopen();
+  });
+}
+
 function cashModal(){
   // At season level the bank is universal and the money physically lives in the
   // regions, so this is a read-only picture rather than somewhere to move cash.
@@ -5617,7 +5702,11 @@ function cashModal(){
     cashCurs().forEach(cur=>{
       const v = isBank ? (seasonWide ? cashBalance('BANK',cur) : (sent[cur]||0))
                        : cashBalance(a.id,cur);
-      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}">${v===0?'—':cashFmt(v,cur)}</td>`;
+      // A figure with change mixed into it is marked, so it is never mistaken
+      // for money that is ours to move on.
+      const chg = isBank ? 0 : changeAt(a.id, cur);
+      cells += `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')} ${chg?'has-change':''}"
+        ${chg?`title="Includes ${esc(cashFmt(chg,cur))} of withdrawn change"`:''}>${v===0?'—':cashFmt(v,cur)}</td>`;
     });
     balRows += `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
   });
@@ -5667,13 +5756,16 @@ function cashModal(){
       const desc = isMove ? `${esc(nmeFrom)} → ${esc(nmeTo)}` : `${esc(nmeTo)} · adjustment`;
       const amt = Number(c.amt)||0;
       const cur = c.cur||'PLN';
+      const chg = Number(c.changeAmt)||0;
       let amtStr=''; try{ amtStr=cashFmt(Math.abs(amt),cur); }catch(e){ amtStr=Math.abs(amt)+' '+cur; }
+      // A movement that carried change shows both parts: takings + change.
+      if(chg){ try{ amtStr = cashFmt(Math.abs(amt)-chg,cur)+' + '+cashFmt(chg,cur)+' change'; }catch(e){} }
       const sign = (!isMove && amt<0) ? '−' : '';
       const id = c.id || '';
       logRows += `<div class="cash-logrow">
         <div class="cash-logtop">
           <span class="cash-logdesc">${desc}</span>
-          <span class="cash-logamt">${sign}${amtStr}</span>
+          <span class="cash-logamt ${chg?'with-change':''}">${sign}${amtStr}</span>
         </div>
         <div class="cash-logbot">
           <span class="cash-logwhen">${esc(when)}${c.by?' · '+esc(c.by):''}${c.note?' · '+esc(c.note):''}</span>
@@ -5715,6 +5807,20 @@ function cashModal(){
       <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float, deposit"></div>
       <button class="btn btn-primary" id="cmGo">Record move</button>
       <button class="btn btn-plum cash-moveall" id="cmGoAll">↦ Move ALL cash (every currency) From → To</button>
+      <button class="btn btn-ghost cash-moveall" data-act="chgnew">↤ Withdraw change</button>
+
+      ${(function(){
+        /* Change that is out, listed the way change owed is listed in the sales
+           log: how much, whose it is, where it is now, and a way to send it back. */
+        const out = activeChange();
+        if(!out.length) return '';
+        return `<div class="cash-sub">Withdrawn Change</div>` + out.map(c=>`
+          <div class="chg-row">
+            <div class="chg-main"><b>${esc(cashFmt(c.amt,c.cur))}</b> from ${esc(changeSourceName(c))}
+              <span class="chg-where">now at ${esc(cashAcctName(c.loc))}</span></div>
+            <button class="btn btn-ghost btn-xs" data-act="chgback" data-id="${esc(c.id)}">Return Change</button>
+          </div>`).join('');
+      })()}
 
       ${hideBank() ? (function(){
         // A link sees what it has sent onward, never the bank's own balance.
@@ -5754,13 +5860,43 @@ function cashModal(){
   $('#cmGoAll').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
-    const moves=cashCurs().map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
+    let moves=cashCurs().map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
     if(!moves.length){ err(`${cashAcctName(from)} has no cash to move.`); return; }
-    if(!confirm(`Move ALL cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
+
+    /* Some of this may be change, which belongs to whoever lent it. Ask before
+       sweeping it along with the takings. */
+    const here=(STATE.change||[]).filter(c=>c && !c.returnedAt && c.loc===from);
+    const chgBy={}; here.forEach(c=>chgBy[c.cur]=(chgBy[c.cur]||0)+(Number(c.amt)||0));
+    let takeChange=true;
+    if(here.length){
+      const sum=Object.keys(chgBy).sort().map(c=>cashFmt(chgBy[c],c)).join(' · ');
+      takeChange = confirm(`This amount includes ${sum} of Withdrawn Change.\n\n`
+        + `What would you like to do with the change?\n\n`
+        + `OK — Transfer it too\nCancel — Do not transfer it`);
+      if(!takeChange){
+        moves = moves.map(m=>({cur:m.cur, amt:Math.round((m.amt-(chgBy[m.cur]||0))*100)/100}))
+                     .filter(m=>m.amt>0.005);
+        if(!moves.length){ err('Everything here is withdrawn change, so there is nothing else to move.'); return; }
+      }
+    }
+    if(!confirm(`Move ${here.length&&takeChange?'ALL cash (change included)':'cash'} from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
     err('');
-    commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note},
-      st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,note:note||'Moved all cash'})); },
-      'All cash moved');
+    const ids = takeChange ? here.map(c=>c.id) : [];
+    const stamp = m => takeChange ? (chgBy[m.cur]||0) : 0;
+    if(takeChange && here.length){
+      commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note,changeIds:ids.join(',')},
+        st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',
+                fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,changeAmt:stamp(m),note:note||'Moved all cash'}));
+              (st.change||[]).forEach(c=>{ if(ids.includes(c.id)){ c.loc=to; if(to===c.source) c.returnedAt=new Date().toISOString(); } }); },
+        'All cash moved');
+    }else{
+      // Only the takings: each currency moved on its own, leaving the change behind.
+      moves.forEach(mv=>commit({action:'cashMove',fromAcct:from,toAcct:to,cur:mv.cur,amt:mv.amt,note},
+        st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',
+                fromAcct:from,toAcct:to,cur:mv.cur,amt:mv.amt,note:note||'Moved all cash'}); },
+        null));
+      toast('Cash moved — the change stays where it is');
+    }
     cashReopen();
   });
 
@@ -8116,6 +8252,21 @@ document.addEventListener('click',e=>{
     (navigator.clipboard ? navigator.clipboard.writeText(url) : Promise.reject())
       .then(()=>toast('Link copied')).catch(()=>{ prompt('Copy this link:', url); });
     return;
+  }
+  if(a==='chgnew'){ changeModal(); return; }
+  if(a==='chgback'){
+    const id=t.dataset.id;
+    const c=(STATE.change||[]).find(x=>x.id===id); if(!c) return;
+    if(!confirm('Return '+cashFmt(c.amt,c.cur)+' of change to '+changeSourceName(c)+'?')) return;
+    commit({action:'changeReturn', id},
+      st=>{
+        const r=(st.change||[]).find(x=>x.id===id); if(r) r.returnedAt=new Date().toISOString();
+        (st.cash=st.cash||[]).push({id:'r'+id, ts:new Date().toISOString(),
+          kind: c.source==='OTHER' ? 'ADJUST' : 'MOVE', fromAcct: c.source==='OTHER' ? '' : c.loc,
+          toAcct: c.source==='OTHER' ? c.loc : c.source, cur:c.cur,
+          amt: c.source==='OTHER' ? -c.amt : c.amt, purpose:'FLOAT_BACK', note:'Change returned'});
+      }, 'Change returned');
+    cashReopen(); return;
   }
   if(a==='costs'){ costsModal(); return; }
   if(a==='concost'){ costsModal(null, t.dataset.id); return; }
