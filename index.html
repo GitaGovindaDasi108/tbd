@@ -452,6 +452,9 @@ body.busy #busyLabel{opacity:1}
 .df-sub{margin:6px 0 0 14px}
 .df-inner{padding-left:14px}
 .df-now{font-weight:700;padding:8px 10px;border:1px solid var(--line);border-radius:9px;background:var(--paper2);margin-bottom:12px;overflow-wrap:anywhere}
+.chg-note{background:var(--paper2);border:1px solid var(--line-d);border-radius:9px;padding:9px 11px;margin:6px 0 12px;font-size:13.5px}
+.radio-row{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;cursor:pointer;font-size:13.5px}
+.radio-row input{width:18px;height:18px;flex:none;margin-top:2px}
 .chg-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
 .chg-main{flex:1;min-width:0;font-size:13.5px}
 .chg-where{display:block;font-size:12px;color:var(--muted)}
@@ -1014,7 +1017,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b137</span>
+    <span class="build-tag" title="Which version of the page is loaded">b138</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5404,7 +5407,11 @@ function sentToBank(){
   // Always measured across the whole region, because that is the set of accounts
   // the cash panel shows — counting only one event would leave the figure not
   // matching the rows above it.
-  const mine = CUR_REGION ? locsInRegion(CUR_REGION) : [CUR_LOC];
+  /* The region's own coordinator counts as part of the region. Leaving them
+     out meant that banking the Regional Coordinator's cash onward to the
+     Global Coordinator took it off their row and added it to nothing — the
+     money simply disappeared from view. */
+  const mine = CUR_REGION ? locsInRegion(CUR_REGION).concat([regionBankId(CUR_REGION)]) : [CUR_LOC];
   const out = {};
   (STATE.cash||[]).forEach(c=>{
     if(!c || c.kind!=='MOVE') return;
@@ -5418,7 +5425,8 @@ function sentToBank(){
 /** Season view: what each region holds and what it has sent to the bank. */
 function cashByRegion(){
   return regionsList().map(r=>{
-    const locs=locsInRegion(r.regionId);
+    // The region's coordinator belongs to the region, here too.
+    const locs=locsInRegion(r.regionId).concat([regionBankId(r.regionId)]);
     const held={}, toBank={};
     curAllCurrencies().forEach(c=>{
       let h=0; locs.forEach(l=>{ h+=cashBalance(l,c); });
@@ -5603,6 +5611,33 @@ function seasonCashModal(){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 
   bindCashLog();     // a wrong movement can be removed from here too
+}
+
+/* Moving everything, when some of it is change: a plain question with two
+   choices, instead of a browser box whose OK/Cancel meant nothing obvious. */
+function moveAllChangeModal(opts){
+  const {fromName, toName, sum, lines, onGo} = opts;
+  openModal(`
+    ${mHead('Move all cash')}
+    <div class="m-body">
+      <div class="hint">From <b>${esc(fromName)}</b> to <b>${esc(toName)}</b> — ${esc(lines)}</div>
+      <div class="chg-note">This amount includes <b>${esc(sum)}</b> of Withdrawn Change.</div>
+      <div class="field"><label>What would you like to do with the change?</label>
+        <label class="radio-row"><input type="radio" name="chgOpt" value="keep" checked>
+          <span><b>Do Not Transfer</b><br><span class="muted-note">The change stays where it is; only the takings move.</span></span></label>
+        <label class="radio-row"><input type="radio" name="chgOpt" value="send">
+          <span><b>Transfer</b><br><span class="muted-note">The change travels too, and stays marked as change.</span></span></label>
+      </div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="chgGo">Move cash</button>
+    </div>`);
+  $('#chgGo').addEventListener('click',()=>{
+    const picked=[...document.querySelectorAll('#modal input[name="chgOpt"]')].find(r=>r.checked);
+    onGo((picked ? picked.value : 'keep') === 'send');
+  });
 }
 
 /** Change taken out and not yet back, at the places on view. */
@@ -5867,20 +5902,29 @@ function cashModal(){
        sweeping it along with the takings. */
     const here=(STATE.change||[]).filter(c=>c && !c.returnedAt && c.loc===from);
     const chgBy={}; here.forEach(c=>chgBy[c.cur]=(chgBy[c.cur]||0)+(Number(c.amt)||0));
-    let takeChange=true;
     if(here.length){
-      const sum=Object.keys(chgBy).sort().map(c=>cashFmt(chgBy[c],c)).join(' · ');
-      takeChange = confirm(`This amount includes ${sum} of Withdrawn Change.\n\n`
-        + `What would you like to do with the change?\n\n`
-        + `OK — Transfer it too\nCancel — Do not transfer it`);
-      if(!takeChange){
-        moves = moves.map(m=>({cur:m.cur, amt:Math.round((m.amt-(chgBy[m.cur]||0))*100)/100}))
-                     .filter(m=>m.amt>0.005);
-        if(!moves.length){ err('Everything here is withdrawn change, so there is nothing else to move.'); return; }
-      }
+      moveAllChangeModal({
+        fromName: cashAcctName(from), toName: cashAcctName(to),
+        sum: Object.keys(chgBy).sort().map(c=>cashFmt(chgBy[c],c)).join(' · '),
+        lines: moves.map(m=>cashFmt(m.amt,m.cur)).join(' · '),
+        onGo: take => doMoveAll(from, to, note, moves, here, chgBy, take)
+      });
+      return;
     }
-    if(!confirm(`Move ${here.length&&takeChange?'ALL cash (change included)':'cash'} from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
+    if(!confirm(`Move ALL cash from ${cashAcctName(from)} to ${cashAcctName(to)}?\n\n${moves.map(m=>cashFmt(m.amt,m.cur)).join(' · ')}`)) return;
     err('');
+    doMoveAll(from, to, note, moves, [], {}, false);
+  });
+
+  /* Carrying out the move, once it is clear what should happen to any change. */
+  function doMoveAll(from, to, note, allMoves, here, chgBy, takeChange){
+    let moves = allMoves;
+    if(here.length && !takeChange){
+      moves = moves.map(m=>({cur:m.cur, amt:Math.round((m.amt-(chgBy[m.cur]||0))*100)/100}))
+                   .filter(m=>m.amt>0.005);
+      if(!moves.length){ toast('Everything there is withdrawn change, so there is nothing else to move.', true);
+                         cashReopen(); return; }
+    }
     const ids = takeChange ? here.map(c=>c.id) : [];
     const stamp = m => takeChange ? (chgBy[m.cur]||0) : 0;
     if(takeChange && here.length){
@@ -5895,10 +5939,11 @@ function cashModal(){
         st=>{ (st.cash=st.cash||[]).push({id:tmpId(),ts:new Date().toISOString(),kind:'MOVE',
                 fromAcct:from,toAcct:to,cur:mv.cur,amt:mv.amt,note:note||'Moved all cash'}); },
         null));
-      toast('Cash moved — the change stays where it is');
+      if(here.length) toast('Cash moved — the change stays where it is');
+      else toast('All cash moved');
     }
     cashReopen();
-  });
+  }
 
   bindCashLog();
 }
