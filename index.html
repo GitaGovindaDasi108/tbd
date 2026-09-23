@@ -714,6 +714,7 @@ body.busy #busyLabel{opacity:1}
 
 /* Multiple-books entry point + modal */
 #invMulti{margin-top:10px}
+.multi-btn.ghost{background:var(--paper2);color:var(--plum);border:1.5px dashed var(--line-d);margin-top:8px}
 .multi-btn{width:100%;background:var(--plum);color:var(--gold-l);border:none;border-radius:9px;
   padding:9px;font-size:12.5px;font-weight:700;letter-spacing:.3px;cursor:pointer}
 .multi-btn:hover{filter:brightness(1.08)}
@@ -1025,7 +1026,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b142</span>
+    <span class="build-tag" title="Which version of the page is loaded">b145</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1423,7 +1424,68 @@ function shelfBooks(){
     if(have.has(b.id)) return;
     if(here.some(l=>invQty(l,b.id)>0)) list.push(b);
   });
-  return inRegionOrder(list);
+  /* Titles this event is not offering are kept off its shelf. Only at an
+     event, and only for selling — they are still reachable to pre-order. */
+  const off = hiddenHere();
+  return inRegionOrder(off.size ? list.filter(b=>!off.has(b.id)) : list);
+}
+
+/** The titles hidden at the event being looked at. */
+function hiddenHere(){
+  if(CUR_LEVEL!=='event') return new Set();
+  const ev=(STATE.events||[]).find(e=>e.eventId===CUR_LOC);
+  return new Set(String((ev&&ev.hidden)||'').split(',').map(x=>x.trim()).filter(Boolean));
+}
+/** Every title, hidden ones included — for pre-orders and for the hide dialog. */
+function allShelfBooks(){
+  const off=hiddenHere();
+  if(!off.size) return shelfBooks();
+  const shown=shelfBooks();
+  const seen=new Set(shown.map(b=>b.id));
+  return inRegionOrder(shown.concat((STATE.books||[]).filter(b=>off.has(b.id) && !seen.has(b.id))));
+}
+
+/* Choosing which titles an event offers. */
+function hideBooksModal(){
+  if(CUR_LEVEL!=='event') return;
+  const off=hiddenHere();
+  const books=allShelfBooks();
+  openModal(`
+    ${mHead('Titles offered here')}
+    <div class="m-body">
+      <div class="hint">Untick a title to keep it off this event's shelf. It can still be
+        pre-ordered — use “Pre-order another title” beneath the shelf.</div>
+      <div class="rep-picks">${books.map(b=>`
+        <label class="rep-pick"><input type="checkbox" data-hb="${esc(b.id)}" ${off.has(b.id)?'':'checked'}>
+          <span>${esc(b.name)}</span></label>`).join('')}</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="hbSave">Save</button>
+    </div>`, true);
+  $('#hbSave').addEventListener('click',()=>{
+    const hidden=[...document.querySelectorAll('#modal [data-hb]')].filter(c=>!c.checked).map(c=>c.dataset.hb);
+    const evId=CUR_LOC;
+    commit({action:'setEventHidden', eventId:evId, hidden:hidden.join(',')},
+      st=>{ const e=(st.events||[]).find(x=>x.eventId===evId); if(e) e.hidden=hidden.join(','); },
+      hidden.length ? `${hidden.length} title${hidden.length===1?'':'s'} hidden here` : 'All titles offered here');
+  });
+}
+
+/* Pre-ordering a title that is not on this event's shelf. */
+function hiddenPreorderModal(){
+  const off=hiddenHere();
+  const books=allShelfBooks().filter(b=>off.has(b.id));
+  if(!books.length) return;
+  openModal(`
+    ${mHead('Pre-order another title')}
+    <div class="m-body">
+      <div class="hint">Not offered at this event, but still available to order.</div>
+      ${books.map(b=>`<button class="btn btn-ghost btn-block" data-act="hbpre" data-id="${esc(b.id)}"
+         style="margin:4px 0">${esc(b.name)}</button>`).join('')}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
 }
 
 /* Put a list of books in the order the current region wants them.
@@ -2460,6 +2522,10 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
   // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
+  if(isAdmin()) cols[0].push(`<button class="btn" data-act="descsheet">📝 AI Descriptions</button>`);
+  // Which titles this event offers — an event's own business, so only here.
+  if(CUR_LEVEL==='event') cols[0].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
+    hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
   // Costs are money matters, so only for those who see the money.
   if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
     scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
@@ -2801,8 +2867,12 @@ function renderInventory(){
   </div>`;
   $('#invGrid').innerHTML=h;
   // One-line entry point for a multi-book transaction, under the grid.
+  /* Titles kept off this event's shelf are still one tap away to pre-order —
+     people ask for books that were never on the table. */
+  const offHere = hiddenHere().size;
   $('#invMulti').innerHTML =
-    `<button class="multi-btn" data-act="multi" data-mode="sale">＋ Multiple Books — one transaction</button>`;
+    `<button class="multi-btn" data-act="multi" data-mode="sale">＋ Multiple Books — one transaction</button>`
+    + (offHere ? `<button class="multi-btn ghost" data-act="hiddenpre">＋ Pre-order another title (${offHere} not offered here)</button>` : '');
 }
 
 /* Sales by title as cards, echoing the warehouse shelf so the eye reads them the
@@ -4725,6 +4795,62 @@ function costsModal(editId, presetPartner){
    The top folder, each season's folder and its Consignment folder, and every
    spreadsheet — each one a link that opens in a new tab, with its address
    shown and a Copy button. Any folder can be pointed somewhere else. */
+/* Every piece of wording the app shows, gathered from the app's own source so
+   the list can never drift from what is really on screen. */
+function collectDescriptions(){
+  let src='';
+  try{
+    [...document.scripts].forEach(sc=>{ if(!sc.src) src += '\n' + sc.textContent; });
+    src += '\n' + document.body.innerHTML;
+  }catch(e){ return []; }
+  const pats = [
+    ['Hint',        /<div class="hint">([^<`$]{12,400})<\/div>/g],
+    ['Note',        /<div class="muted-note">([^<`$]{12,400})<\/div>/g],
+    ['Lede',        /<div class="cash-lede">([^<`$]{8,400})<\/div>/g],
+    ['Empty state', /<div class="cash-empty">([^<`$]{8,400})<\/div>/g],
+    ['Heading',     /<div class="cash-sub">([^<`$]{3,120})<\/div>/g],
+    ['Field label', /<label>([^<`$]{3,120})<\/label>/g],
+    ['Placeholder', /placeholder="([^"`$]{4,160})"/g],
+    ['Tooltip',     /title="([^"`$]{8,200})"/g],
+  ];
+  // Which dialog or panel the wording belongs to, from the function it sits in.
+  const NAMES = {
+    cashModal:'Cash tracking', seasonCashModal:'Cash tracking (season)', changeModal:'Withdraw change',
+    moveAllChangeModal:'Move all cash — change', costsModal:'Costs', driveFolderModal:'Spreadsheet folders',
+    shareReport:'Reports', shareLinksModal:'Share links', hideBooksModal:'Titles offered here',
+    hiddenPreorderModal:'Pre-order another title', saleModal:'Record a sale', bundleModal:'Multiple books',
+    eventModal:'New event', regionModal:'Region settings', partnersModal:'Consignment',
+    transfersModal:'Stock movements', holdersModal:'Devotees storing books', qrModal:'Digital payment QRs',
+    orgModal:'Org chart', seasonsModal:'Seasons', shipModal:'Books in transit', payModal:'Payments taken here',
+  };
+  const where = at => {
+    const before = src.slice(0, at);
+    const m = [...before.matchAll(/function\s+([A-Za-z0-9_$]+)\s*\(/g)].pop();
+    const fn = m ? m[1] : '';
+    return NAMES[fn] || (fn ? fn.replace(/Modal$/,'') : 'Page');
+  };
+  const out=[], seen=new Set();
+  pats.forEach(([kind,re])=>{
+    let m; re.lastIndex=0;
+    while((m=re.exec(src))){
+      const text=m[1].replace(/\s+/g,' ').trim();
+      if(!text || seen.has(text) || !/[a-z]{3}/.test(text)) continue;
+      seen.add(text); out.push({where:where(m.index), kind, text});
+    }
+  });
+  return out.sort((a,b)=> a.where.localeCompare(b.where) || a.kind.localeCompare(b.kind));
+}
+
+/** Write that list to a spreadsheet in your Drive folder, called AI Descriptions. */
+async function descriptionsSheet(){
+  const rows = collectDescriptions();
+  if(!rows.length){ toast('Could not read the app\u2019s wording.', true); return; }
+  toast(`Writing ${rows.length} descriptions…`);
+  const url = await commitSync({action:'descriptionsSheet', rows: JSON.stringify(rows)},
+    null, ()=>true);
+  if(url) toast('AI Descriptions is in your spreadsheet folder');
+}
+
 function driveFolderModal(){
   openModal(`
     ${mHead('Spreadsheet folders')}
@@ -5701,6 +5827,17 @@ function changeAt(loc, cur){
   return (STATE.change||[]).filter(c=>c && !c.returnedAt && c.loc===loc && c.cur===cur)
     .reduce((t,c)=>t+(Number(c.amt)||0), 0);
 }
+/** What can be moved out of an account from where you are standing. */
+function movableFrom(acct, cur){
+  // Inside a region, the Global Coordinator holds money for the whole tour;
+  // only this region's own share of it is theirs to move.
+  if(acct==='BANK' && CUR_REGION && CUR_LEVEL!=='season'){
+    const mine = sentToBank()[cur] || 0;
+    return mine > 0 ? mine : 0;
+  }
+  return cashBalance(acct, cur);
+}
+
 /* A figure, with any change beside it.
 
    The number is always the place's OWN money. Change is shown on its own line
@@ -5709,9 +5846,11 @@ function changeAt(loc, cur){
 function changeNote(acct, cur){
   const chg = changeAt(acct, cur);          // sitting here, belongs to someone else
   const lent = changeLentBy(acct, cur);     // lent from here, already off the figure
+  /* A sign and a colour say the rest: plus means change is here, minus means
+     change of theirs is out. */
   const bits = [];
-  if(chg)  bits.push(`<span class="chg-here">+${esc(cashFmt(chg,cur))} change held</span>`);
-  if(lent) bits.push(`<span class="chg-gone">−${esc(cashFmt(lent,cur))} change out</span>`);
+  if(chg)  bits.push(`<span class="chg-here">Change: +${esc(cashFmt(chg,cur))}</span>`);
+  if(lent) bits.push(`<span class="chg-gone">Change: −${esc(cashFmt(lent,cur))}</span>`);
   return bits.length ? `<div class="chg-line">${bits.join(' ')}</div>` : '';
 }
 function changeCell(acct, cur, v){
@@ -5988,8 +6127,12 @@ function cashModal(){
   $('#cmGoAll').addEventListener('click',()=>{
     const from=$('#cmFrom').value, to=$('#cmTo').value, note=$('#cmNote').value.trim();
     if(from===to){ err('Pick two different accounts.'); return; }
-    // The takings; any change sitting there is added only if it is to travel.
-    let moves=cashCurs().map(cur=>({cur,amt:cashBalance(from,cur)})).filter(m=>m.amt>0.005);
+    /* The takings; any change sitting there is added only if it is to travel.
+
+       From the Global Coordinator, a region can only move what IT has with
+       them — never the tour's whole balance, which is no business of one
+       region and must not be swept by a single tap here. */
+    let moves=cashCurs().map(cur=>({cur,amt:movableFrom(from,cur)})).filter(m=>m.amt>0.005);
 
     /* Some of this may be change, which belongs to whoever lent it. Ask before
        sweeping it along with the takings. */
@@ -6028,7 +6171,9 @@ function cashModal(){
       cashReopen(); return;
     }
     const prefix = 'CM'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-    if(takeChange && here.length){
+    // Named amounts, not "everything you hold", when the source is the tour's own account.
+    const capped = (from==='BANK' && CUR_REGION && CUR_LEVEL!=='season');
+    if(takeChange && here.length && !capped){
       commit({action:'cashMoveAll',fromAcct:from,toAcct:to,note,changeIds:ids.join(','),idPrefix:prefix},
         st=>{ moves.forEach(m=>(st.cash=st.cash||[]).push({id:prefix+'_'+m.cur,ts:new Date().toISOString(),kind:'MOVE',
                 fromAcct:from,toAcct:to,cur:m.cur,amt:m.amt,changeAmt:m.chg,changeIds:ids.join(','),
@@ -6062,8 +6207,21 @@ function bindCashLog(){
     if(dE){
       const id=dE.dataset.delentry;
       if(!confirm('Remove this movement?')) return;
+      /* Undo everything the movement did, here and now — the change it carried,
+         the withdrawal it made, the return it recorded. Applying only the
+         movement left the change behind on screen until the next refresh. */
+      const row=(STATE.cash||[]).find(c=>c && c.id===id) || {};
+      const ref=String(row.changeRef||'');
+      const carried=String(row.changeIds||'').split(',').map(x=>x.trim()).filter(Boolean);
       commit({action:'cashDelete',id},
-        st=>{ st.cash=(st.cash||[]).filter(c=>c && c.id!==id); }, 'Movement removed');
+        st=>{
+          st.cash=(st.cash||[]).filter(c=>c && c.id!==id);
+          if(ref && row.purpose==='FLOAT') st.change=(st.change||[]).filter(c=>c.id!==ref);
+          (st.change||[]).forEach(c=>{
+            if(ref && c.id===ref && row.purpose==='FLOAT_BACK'){ c.returnedAt=''; c.loc=row.fromAcct||c.loc; }
+            if(carried.includes(c.id)){ c.loc=row.fromAcct||c.loc; c.returnedAt=''; }
+          });
+        }, 'Movement removed');
       cashReopen(); return;
     }
   });
@@ -8400,6 +8558,10 @@ document.addEventListener('click',e=>{
       .then(()=>toast('Link copied')).catch(()=>{ prompt('Copy this link:', url); });
     return;
   }
+  if(a==='descsheet'){ descriptionsSheet(); return; }
+  if(a==='hidebooks'){ hideBooksModal(); return; }
+  if(a==='hiddenpre'){ hiddenPreorderModal(); return; }
+  if(a==='hbpre'){ closeModal(); saleModal({bookId:t.dataset.id, isPreorder:true, loc:CUR_LOC}); return; }
   if(a==='chgnew'){ changeModal(); return; }
   if(a==='chgdel'){
     const id=t.dataset.id;
