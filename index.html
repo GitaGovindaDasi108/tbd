@@ -1026,7 +1026,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b153</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b154</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5065,10 +5065,10 @@ function buildReport(part, opts){
        Each part is left out when there is nothing to say. */
     const item = c => [String(c.sold), preNote(c), c.gift ? `+${c.gift} gift${c.gift===1?'':'s'}` : '']
       .filter(Boolean).join(' ');
-    CATS.forEach(kind=>{
-      const rows = shelfBooks().filter(b=>catOfBook(b)===kind)
-        .map(b=>({b, c:bookCounts(s.filter(x=>x.bookId===b.id))}))
-        .filter(r=>r.c.sold || r.c.gift);
+    /* Consignment is kept apart from our own titles — the books are not ours
+       and the money is not ours, so mixing them into Big Books or Adventures
+       overstated what the tour itself distributed. */
+    const group = (rows, label) => {
       if(!rows.length) return;
       /* One title IS its own total, so it gets ONE line — in the total's form
          when there are gifts to account for, otherwise the plain figure. Two
@@ -5085,11 +5085,23 @@ function buildReport(part, opts){
       {
         const t = rows.reduce((a,r)=>({sold:a.sold+r.c.sold, gift:a.gift+r.c.gift}), {sold:0,gift:0});
         L.push('');
-        L.push(CAT_SHORT[kind] + ' Total = ' + t.sold + ' Sold' +
+        L.push(label + ' Total = ' + t.sold + ' Sold' +
           (t.gift ? ' + ' + t.gift + ' Gift' + (t.gift===1?'':'s') + ' = ' + (t.sold+t.gift) + ' Distributed' : ''));
       }
       gap();
-    });
+    };
+    const counted = b => ({b, c:bookCounts(s.filter(x=>x.bookId===b.id))});
+    const shown = r => r.c.sold || r.c.gift;
+    // Our own titles, by kind.
+    CATS.forEach(kind=>group(
+      shelfBooks().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown),
+      CAT_SHORT[kind]));
+    // Then consignment, on its own.
+    const con = shelfBooks().filter(b=>isPartnerBook(b.id)).map(counted).filter(shown);
+    if(con.length){
+      L.push('— CONSIGNMENT —');
+      group(con, 'Consignment');
+    }
   });
 
   section('inventory', ()=>{
@@ -5170,10 +5182,19 @@ function buildReport(part, opts){
       legs(x).forEach(l=>{
         if(!l.type || !l.amt) return;
         (byBook[n] = byBook[n]||{})[l.cur] = (byBook[n][l.cur]||0) + l.amt;
+        if(isPartnerSale(x)) byBook[n].__con = true;      // held for a consignment group
       });
     });
-    Object.keys(byBook).forEach(n=>
-      line(n, Object.keys(byBook[n]).sort().map(c=>cashFmt(byBook[n][c],c)).join(' + ')));
+    const money = o => Object.keys(o).filter(c=>c!=='__con').sort().map(c=>cashFmt(o[c],c)).join(' + ');
+    const ours = Object.keys(byBook).filter(n=>!byBook[n].__con);
+    const theirs = Object.keys(byBook).filter(n=>byBook[n].__con);
+    ours.forEach(n=>line(n, money(byBook[n])));
+    // Consignment money is held for the groups, so it is listed apart.
+    if(theirs.length){
+      L.push('');
+      L.push('— CONSIGNMENT —');
+      theirs.forEach(n=>line(n, money(byBook[n])));
+    }
     gap();
   });
 
