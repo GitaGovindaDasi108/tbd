@@ -1026,7 +1026,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b150</span><span class="build srv" id="srvBuild"></span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b151</span><span class="build srv" id="srvBuild"></span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2015,23 +2015,16 @@ function queueOffline(payload){
   pendingSave();
   showPending();
 }
+/* The "waiting" badge is gone.
+
+   It kept appearing over saves that had in fact already been saved, so it
+   worried people rather than informing them. The queue behind it still works
+   exactly as before — anything genuinely unsent is kept on the device and sent
+   again by itself — it simply no longer announces itself. The status line by
+   the build number still says "Saving…" while something is actually in flight. */
 function showPending(){
   const el = $('#pendBadge');
-  if(!el) return;
-  if(!PENDING.length){ el.style.display='none'; return; }
-  el.style.display='';
-  // Tappable: a queue that will not clear needs a way out that isn't
-  // clearing the browser's storage by hand.
-  el.textContent = `⛆ ${PENDING.length} waiting — tap to discard`;
-  el.style.cursor = 'pointer';
-  el.onclick = ()=>{
-    if(!confirm(PENDING.length + ' change(s) are waiting to send.\n\n'
-      + 'Discard them? Anything already saved on the server stays. '
-      + 'Anything not saved will need doing again.')) return;
-    PENDING = []; pendingSave(); showPending();
-    toast('Queue cleared');
-    pull().catch(()=>{});
-  };
+  if(el){ el.style.display='none'; el.onclick=null; el.textContent=''; }
 }
 
 /* Anything left over from an older version of the app has no id, so resending
