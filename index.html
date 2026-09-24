@@ -448,6 +448,7 @@ body.busy #busyLabel{opacity:1}
 .pencil:hover{opacity:1}
 .lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
   margin:4px 0 12px;font-size:13.5px}
+.df-stale{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px}
 .df-loading{padding:20px;text-align:center;color:var(--muted)}
 .df-folder,.df-file{display:flex;align-items:flex-start;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
 .df-folder{background:var(--paper2);border-radius:8px;padding:9px 8px;border-bottom:none;margin:4px 0}
@@ -817,6 +818,8 @@ body.busy #busyLabel{opacity:1}
 .ptg-t.ptg-net.usd{border-top:2px solid var(--line-d);color:var(--green);font-weight:800}
 /* Written as `.ptg > .ptg-split` so it actually beats the base cell rule, which
    right-aligns every cell and was winning on specificity. */
+.contog{cursor:pointer}
+.con-rows .ptg-inner{display:grid;width:100%}
 .ptg > .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
   text-transform:uppercase;border-top:2px solid var(--line-d);
   /* Reads as a heading for the rows beneath it, so it sits where their labels do. */
@@ -1043,7 +1046,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b159</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b161</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3050,8 +3053,7 @@ function renderTitleList(target){
       ${chips?`<div class="wo-chips">${chips}</div>`:''}
     </div>`;
   }).join('');
-  // At season level, consignment follows as one total you can open by group.
-  $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>` + consignmentSummary();
+  $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
 }
 
 /* ============================ TOTALS BY PAYMENT TYPE ============================
@@ -3308,7 +3310,11 @@ function renderPayments(target){
         <div class="ptg-t ptg-first">${conBody ? 'Totals (w/Consignment)' : 'Totals'}</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
-        ${conBody ? `<div class="ptg-split" style="grid-column:1/-1">Consignment Total</div>${conBody}
+        ${conBody ? `<div class="ptg-t ptg-first ptg-con contog" data-act="contog">▸ Consignment Total</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-con">${num(conGrand,c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-con">$${fmt(usdOf(conGrand))}</div>
+        <div class="con-rows" style="display:none;grid-column:1/-1">
+          <div class="ptg ptg-inner" style="grid-template-columns:${template}">${conBody}</div></div>
         ${conCostRow}
         <div class="ptg-t ptg-first ${costRows?'':'ptg-net'}">Sales Total</div>
         ${curs.map(c=>`<div class="ptg-t ${costRows?'':'ptg-net'}">${num(netOf(grand,conGrand),c)}</div>`).join('')}
@@ -5104,17 +5110,32 @@ async function descriptionsSheet(){
   if(url) toast('AI Descriptions is in your spreadsheet folder');
 }
 
+/* The last map is kept on this device and drawn at once, with a fresh one
+   fetched behind it — reading Google Drive is slow however little work it is,
+   so there is no reason to stare at an empty dialog while it happens. */
+const DRIVE_MAP_KEY = 'tbs_drivemap';
+function driveMapCached(){
+  try{ return JSON.parse(localStorage.getItem(DRIVE_MAP_KEY)||'null'); }catch(e){ return null; }
+}
 function driveFolderModal(){
+  const seen = driveMapCached();
   openModal(`
     ${mHead('Spreadsheet folders')}
-    <div class="m-body"><div class="df-loading">Loading the folder map…</div></div>
+    <div class="m-body"><div class="df-loading">Spreadsheet map takes time to load. Thanks for your patience.</div></div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
-  post({action:'driveMap'}).then(d=>renderDriveMap(d.result)).catch(err=>{
-    const b=$('#modal .m-body'); if(b) b.innerHTML=`<div class="err">Could not load the folder map — ${esc(err.message)}</div>`;
+  // Last time's map, drawn at once, while the current one is fetched behind it.
+  if(seen) renderDriveMap(seen, 'Showing last time’s map while the current one loads…');
+  post({action:'driveMap'}).then(d=>{
+    try{ localStorage.setItem(DRIVE_MAP_KEY, JSON.stringify(d.result)); }catch(e){}
+    if($('#modal .m-body')) renderDriveMap(d.result);
+  }).catch(err=>{
+    const b=$('#modal .m-body'); if(!b) return;
+    if(seen) renderDriveMap(seen, 'Could not refresh the map — ' + err.message + '. This is last time’s.');
+    else b.innerHTML=`<div class="err">Could not load the folder map — ${esc(err.message)}</div>`;
   });
 }
 
-function renderDriveMap(map){
+function renderDriveMap(map, note){
   const open = (url, label) => url
     ? `<a class="btn btn-ghost btn-xs" href="${esc(url)}" target="_blank" rel="noopener">${label||'Open'}</a>` : '';
   const copy = url => url
@@ -5158,7 +5179,7 @@ function renderDriveMap(map){
     </details>`).join('');
 
   const body = $('#modal .m-body'); if(!body) return;
-  body.innerHTML = `
+  body.innerHTML = `${note?`<div class="df-stale">${esc(note)}</div>`:''}
     <div class="hint">Every spreadsheet the app keeps, and where it is filed. Tap a name to open it.
       Any folder can be pointed elsewhere; its spreadsheets move there on the next sync.</div>
     ${map.driveOk ? '' : `<div class="warn">Google Drive access is not set up yet, so folders cannot be
@@ -8926,6 +8947,13 @@ document.addEventListener('click',e=>{
   if(a==='hidebooks'){ hideBooksModal(); return; }
   if(a==='hiddenpre'){ hiddenPreorderModal(); return; }
   if(a==='hbpre'){ closeModal(); saleModal({bookId:t.dataset.id, isPreorder:true, loc:CUR_LOC}); return; }
+  if(a==='contog'){
+    // The consignment detail sits behind its total until asked for.
+    const box = t.parentNode.querySelector('.con-rows');
+    if(box){ const open = box.style.display!=='none'; box.style.display = open ? 'none' : '';
+             t.textContent = (open?'▸ ':'▾ ') + 'Consignment Total'; }
+    return;
+  }
   if(a==='chgnew'){ changeModal(); return; }
   if(a==='chgdel'){
     const id=t.dataset.id;
