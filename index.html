@@ -370,6 +370,11 @@ body.busy #busyLabel{opacity:1}
 .cash-tbl thead th{font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)}
 .cash-tbl tbody th{text-align:left;font-weight:700;color:var(--ink);white-space:nowrap}
 .cash-tbl td.zero{color:var(--muted)}
+.cbr tbody th{text-align:left}
+.cbr tbody th a{color:var(--plum);text-decoration:none;font-weight:800}
+.cbr tbody th a:hover{text-decoration:underline}
+.cbr td{text-align:right}
+.cbr td.usd{font-weight:800}
 /* Season aggregator: each region as a heading row, its places indented beneath. */
 .cash-agg .cash-reg-row>th,.cash-agg .cash-reg-row>td{font-weight:800;border-top:1.5px solid var(--line-d);padding-top:9px}
 .cash-agg .cash-sub-row>th{padding-left:20px;font-weight:600;color:var(--ink);font-size:12.5px}
@@ -1026,7 +1031,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b154</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b157</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1061,7 +1066,7 @@ body.busy #busyLabel{opacity:1}
       <div class="body"><div id="salesByRegion"></div></div>
     </section>
     <section class="panel">
-      <h2 class="sec-h2">Collections by Region <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Collections by Region <span class="hint">(what each region has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="collByRegion"></div>
     </section>
   </div>
@@ -1404,8 +1409,11 @@ function shelfBooks(){
   // A consignment title only belongs on the shelf while its group still exists.
   // Season used to list every partner book regardless, so titles left behind by
   // a removed group kept showing up there and nowhere else.
+  /* Consignment belongs to the region that took it on, and nowhere else. It
+     used to be listed tour-wide as well, which put another region's borrowed
+     titles into a view of what the tour itself carries. */
   const theirs = (CUR_LEVEL==='season')
-    ? (STATE.books||[]).filter(b=>b.partnerId && partnerById(b.partnerId))
+    ? []
     : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
   const seen = new Set(ours.map(b=>b.id));
   const list = ours.concat(theirs.filter(b=>!seen.has(b.id)));
@@ -1422,6 +1430,12 @@ function shelfBooks(){
     : locsInRegion(CUR_REGION).concat(CUR_LOC);
   (STATE.books||[]).forEach(b=>{
     if(have.has(b.id)) return;
+    // ...but a consignment title still stays with its own region.
+    if(b.partnerId){
+      const pt = partnerById(b.partnerId);
+      if(!pt) return;
+      if(CUR_LEVEL==='season' || String(pt.regionId)!==String(CUR_REGION)) return;
+    }
     if(here.some(l=>invQty(l,b.id)>0)) list.push(b);
   });
   /* Titles this event is not offering are kept off its shelf. Only at an
@@ -2039,6 +2053,17 @@ function pendingPrune(){
   }
 }
 /** Send anything held on the device, oldest first. */
+/* A queued save has landed: stop drawing the app's own copy of it.
+
+   A change held for sending was marked "never retire", so once its save finally
+   went through, the app kept showing its own copy for ever — beside the real
+   record that came back from the server. That is how one withdrawal of change
+   appeared twice: the nameless row was ours, the "main app" row was the record. */
+function retireOp(opId){
+  if(!opId) return;
+  OPS.forEach(o=>{ if(o.opId===opId && o.rev===-1) o.rev = REV; });
+}
+
 async function flushPending(){
   if(!PENDING.length || flushPending._busy) return;
   flushPending._busy = true;
@@ -2048,10 +2073,11 @@ async function flushPending(){
       /* Already applied? Then it is not waiting for anything — drop it, so the
          "waiting" badge never lingers over a save the server already has. */
       if(next.payload && next.payload.opId && await opApplied(next.payload.opId)){
+        retireOp(next.payload.opId);          // the server has it: stop showing our own copy
         PENDING.shift(); pendingSave(); showPending(); scheduleSync();
         continue;
       }
-      try{ await postWrite(next.payload); }
+      try{ await postWrite(next.payload); retireOp(next.payload && next.payload.opId); }
       catch(err){
         if(isOffline(err)){
           /* Still no signal. Give up after enough attempts and say so, rather
@@ -2173,8 +2199,9 @@ function commit(payload, apply, okMsg, opts){
   // must still land where it was made.
   if(!SHARE_KEY && !payload.season && BASE && BASE.activeSeason) payload.season = BASE.activeSeason;
   outboxAdd(payload);                          // on the device before it is sent
-  // Belongs to the season it was made in, so switching seasons does not lose it.
-  const op = { apply, season: (BASE && BASE.activeSeason) || '' };
+  /* Belongs to the season it was made in, and to its own save — the opId lets
+     it be retired once that save finally lands, however late. */
+  const op = { apply, opId: payload.opId, season: (BASE && BASE.activeSeason) || '' };
   OPS.push(op);
   STATE = derive(); renderAll();
   if(!(opts && opts.keepOpen)) closeModal();
@@ -2373,7 +2400,7 @@ function renderAll(){
     $('#whOverview').innerHTML    = renderWarehouseOverview();
     renderPayments('#seasonPayBody');
     // Same numbers, grouped by region — the season's "collections by region".
-    renderPayments('#collByRegion');
+    renderCollectionsByRegion('#collByRegion');
   }else{
     renderInventory(); renderTitleList('#titleList'); renderLog();
     if(money) renderPayments('#payBody');
@@ -2985,6 +3012,42 @@ function scopedAllCosts(){
   if(CUR_LEVEL==='event') return all.filter(c=>c.location===CUR_LOC);
   const locs = locsInRegion(CUR_REGION);
   return all.filter(c=>locs.includes(c.location));
+}
+
+/* Collections by Region, on the world-tour dashboard.
+
+   Region by region, what each has collected of ITS OWN — consignment money is
+   held for the groups and belongs in the consignment portal, not in a view of
+   what has come in to the tour. */
+function renderCollectionsByRegion(target){
+  const el = $(target); if(!el) return;
+  const curs = curAllCurrencies();
+  const rows = regionsList().map(r=>{
+    const locs = locsInRegion(r.regionId);
+    const got = {};
+    (STATE.sales||[]).forEach(x=>{
+      if(!x || !locs.includes(x.location)) return;
+      if(pendingFlag(x) || isPartnerSale(x)) return;        // not in hand, or not ours
+      legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
+    });
+    return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0)};
+  });
+  const tot = {}; let totUsd = 0;
+  rows.forEach(x=>{ Object.keys(x.got).forEach(c=>tot[c]=(tot[c]||0)+x.got[c]); totUsd += x.usd; });
+  const cell = (o,c) => o[c] ? fmt(o[c]) : '<span class="zero">—</span>';
+  el.innerHTML = `
+    <table class="cash-tbl cbr">
+      <thead><tr><th>Region</th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>USD EQ</th></tr></thead>
+      <tbody>${rows.map(x=>`<tr>
+        <th><a href="#" data-act="cashregion" data-id="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th>
+        ${curs.map(c=>`<td>${cell(x.got,c)}</td>`).join('')}
+        <td class="usd">$${fmt(x.usd)}</td></tr>`).join('') ||
+        `<tr><td colspan="${curs.length+2}">No regions yet.</td></tr>`}</tbody>
+      <tfoot><tr><th>All regions</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
+        <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
+    </table>
+    <div class="hint">What each region has collected of its own. Consignment money is held for the
+      groups and is shown in Consignment.</div>`;
 }
 
 function renderPayments(target){
@@ -5199,44 +5262,54 @@ function buildReport(part, opts){
   });
 
   if(money) section('cash', ()=>{
-    const byType={}, grand={};
+    /* Our money and the groups' money are counted separately, because they are
+       separate: consignment takings are held for the group, not earned by the
+       tour. Each side gets its own payment types and its own total. */
+    const ours={}, theirs={}, ourGrand={}, conGrand={};
     s.forEach(x=>{
       if(!received(x)) return;
+      const con = isPartnerSale(x);
       legs(x).forEach(l=>{
         if(!l.type || !l.amt) return;
-        (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
-        grand[l.cur] = (grand[l.cur]||0) + l.amt;
+        const bag = con ? theirs : ours, tot = con ? conGrand : ourGrand;
+        (bag[l.type] = bag[l.type]||{})[l.cur] = (bag[l.type][l.cur]||0) + l.amt;
+        tot[l.cur] = (tot[l.cur]||0) + l.amt;
       });
     });
     const curs = o => Object.keys(o).filter(c=>o[c]).sort();
     const text = o => curs(o).map(c=>cashFmt(o[c],c)).join(' + ');
     const usd  = o => Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
-    Object.keys(byType).filter(t=>t!=='Gift').sort().forEach(t=>{
-      if(curs(byType[t]).length) line(t, text(byType[t]));
-    });
-    if(curs(grand).length) line('Total', text(grand) + ' ≈ $' + nf(usd(grand)));
+    const types = bag => Object.keys(bag).filter(t=>t!=='Gift').sort();
 
-    /* With costs recorded, finish with what was kept — worked out exactly as
-       the screen does: the total, less consignment money (it belongs to the
-       groups), less the costs. Each step is shown so the sum can be checked. */
+    types(ours).forEach(t=>{ if(curs(ours[t]).length) line(t, text(ours[t])); });
+    if(curs(ourGrand).length) line('Total', text(ourGrand) + ' ≈ $' + nf(usd(ourGrand)));
+
+    // Costs come off our own takings; a group's costs come off what it is owed.
     const costs = scopedCosts();
     if(costs.length){
-      const cost = {}, con = {};
+      const cost = {};
       costs.forEach(c=>{ cost[c.cur]=(cost[c.cur]||0)+(Number(c.amt)||0); });
-      s.forEach(x=>{
-        if(!received(x) || !isPartnerSale(x)) return;
-        legs(x).forEach(l=>{ if(l.type && l.amt) con[l.cur]=(con[l.cur]||0)+l.amt; });
-      });
       const minus = o => curs(o).map(c=>'−'+cashFmt(o[c],c)).join(' + ');
       const net = {};
-      new Set([...Object.keys(grand),...Object.keys(con),...Object.keys(cost)]).forEach(c=>{
-        net[c] = (grand[c]||0) - (con[c]||0) - (cost[c]||0);
+      new Set([...Object.keys(ourGrand),...Object.keys(cost)]).forEach(c=>{
+        net[c] = (ourGrand[c]||0) - (cost[c]||0);
       });
-      if(curs(con).length) line('Consignment', minus(con));
       line('Costs', minus(cost));
       const netText = Object.keys(net).filter(c=>Math.abs(net[c])>0.005).sort()
         .map(c=>cashFmt(net[c],c)).join(' + ') || '0';
       line('Net after costs', netText + ' ≈ $' + nf(usd(net)));
+    }
+
+    if(curs(conGrand).length){
+      L.push('');
+      L.push('— CONSIGNMENT —');
+      types(theirs).forEach(t=>{ if(curs(theirs[t]).length) line(t, text(theirs[t])); });
+      line('Consignment Total', text(conGrand) + ' ≈ $' + nf(usd(conGrand)));
+      const conCosts = scopedAllCosts().filter(c=>c.partnerId);
+      if(conCosts.length){
+        const cc={}; conCosts.forEach(c=>{ cc[c.cur]=(cc[c.cur]||0)+(Number(c.amt)||0); });
+        line('Consignment costs', curs(cc).map(c=>'−'+cashFmt(cc[c],c)).join(' + '));
+      }
     }
     gap();
   });
@@ -5765,8 +5838,8 @@ function seasonCashModal(){
   const balOf = id => { const o={}; curs.forEach(c=>{ const v=cashBalance(id,c); if(Math.abs(v)>0.005) o[c]=v; }); return o; };
   const add = (into,o) => { Object.keys(o).forEach(c=>into[c]=(into[c]||0)+o[c]); };
   // Change is visible here too: where it sits, and who it is out from.
-  const noteOf = id => curs.map(c=>changeNote(id,c)).filter(Boolean).join('');
-  const cell = (id,o) => `${money(o)}${noteOf(id)}`;
+  const noteOf = (id,o) => curs.map(c=>changeNote(id,c,(o||{})[c]||0)).filter(Boolean).join('');
+  const cell = (id,o) => `${money(o)}${noteOf(id,o)}`;
 
   const regions = regionsList().map(r=>{
     const places=[{id:r.whLoc, name:r.name+' — Warehouse'}]
@@ -5830,7 +5903,7 @@ function seasonCashModal(){
 
       <div class="cash-coll" style="margin-top:10px">
         <div class="cash-coll-row cash-global"><span>Global Coordinator</span>
-          <span>${money(gb)}${curs.map(c=>changeNote('BANK',c)).filter(Boolean).join('')}</span></div>
+          <span>${money(gb)}${curs.map(c=>changeNote('BANK',c,gb[c]||0)).filter(Boolean).join('')}</span></div>
       </div>
 
       ${(function(){
@@ -5916,18 +5989,19 @@ function movableFrom(acct, cur){
    The number is always the place's OWN money. Change is shown on its own line
    underneath — held here, or out on loan from here — so it can be seen exactly
    where it is without ever being counted as that place's takings. */
-function changeNote(acct, cur){
+function changeNote(acct, cur, own){
   const chg = changeAt(acct, cur);          // sitting here, belongs to someone else
   const lent = changeLentBy(acct, cur);     // lent from here, already off the figure
-  /* A sign and a colour say the rest: plus means change is here, minus means
-     change of theirs is out. */
+  /* A sign and a colour say which way it goes; the total says what the figure
+     comes to with the change counted in, so the sum is never in doubt. */
+  const base = Number(own) || 0;
   const bits = [];
-  if(chg)  bits.push(`<span class="chg-here">Change: +${esc(cashFmt(chg,cur))}</span>`);
-  if(lent) bits.push(`<span class="chg-gone">Change: −${esc(cashFmt(lent,cur))}</span>`);
+  if(chg)  bits.push(`<span class="chg-here">Change: +${esc(cashFmt(chg,cur))} = ${esc(cashFmt(base+chg,cur))} Total</span>`);
+  if(lent) bits.push(`<span class="chg-gone">Change: −${esc(cashFmt(lent,cur))} = ${esc(cashFmt(base+lent,cur))} Total</span>`);
   return bits.length ? `<div class="chg-line">${bits.join(' ')}</div>` : '';
 }
 function changeCell(acct, cur, v){
-  const note = changeNote(acct, cur);
+  const note = changeNote(acct, cur, v);
   const zero = (v===0 && !note);
   return `<td class="cash-cell ${v<0?'neg':(v===0?'zero':'')}">${
     (v===0 && note) ? '<span class="muted">—</span>' : (zero ? '—' : cashFmt(v,cur))}${note}</td>`;
@@ -7342,11 +7416,14 @@ function makeSortable(container, onDrop){
 
 
 function reorderBooksModal(){
-  let list = (STATE.books||[]).map(b=>({
+  /* Only the titles actually on the shelf where you are standing. Listing the
+     whole catalogue meant ordering books that are not here — and, at a region,
+     consignment titles belonging to somewhere else. */
+  let list = shelfBooks().map(b=>({
     id:b.id, name:b.name, cat:catOfBook(b),
     partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
   }));
-  if(!list.length){ toast('No titles yet.', true); return; }
+  if(!list.length){ toast('No titles on this shelf yet.', true); return; }
 
   function draw(){
     $('#rbList').innerHTML = list.map((x,i)=>`
