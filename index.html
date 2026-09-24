@@ -1026,7 +1026,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b151</span><span class="build srv" id="srvBuild"></span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b152</span><span class="build srv" id="srvBuild"></span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -6972,8 +6972,16 @@ function stockModal(){
 
     // Sent as separate writes so each keeps its own meaning on the server.
     if(deltaItems.length){
-      commit({action:'adjustStockBulk',location:loc,items:deltaItems,note,override:true},
-        st=>deltaItems.forEach(it=>invAdd(st,loc,it.bookId,it.delta)),
+      // Logged here too, under the name the server will use.
+      const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      commit({action:'adjustStockBulk',location:loc,items:deltaItems,note,override:true,movePrefix},
+        st=>deltaItems.forEach(it=>{
+          const before=invQty(loc,it.bookId);
+          invAdd(st,loc,it.bookId,it.delta);
+          (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+it.bookId, ts:new Date().toISOString(),
+            kind:'ADJUST', fromLoc:'', toLoc:loc, bookId:it.bookId, qty:it.delta, note,
+            toBefore:before, toAfter:before+it.delta});
+        }),
         setItems.length?null:'Stock updated');
     }
     if(setItems.length){
@@ -8432,8 +8440,19 @@ function transferModal(mode){
     if(!items.length){$('#modalErr').textContent='Enter a quantity for at least one title.';return;}
     const bad=items.find(it=>it.qty>invQty(from,it.bookId));
     if(bad){$('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(from)+'.';return;}
-    commit({action:'transferBulk',from,to,items,override:true},
-      st=>items.forEach(it=>{invAdd(st,from,it.bookId,-it.qty);invAdd(st,to,it.bookId,it.qty);}),
+    /* The movement is written into the log here as well, under the name the
+       server will give it. Without that it only appeared after the next
+       refresh, so a transfer that had plainly worked seemed to be missing —
+       and could not be undone until the log caught up. */
+    const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    commit({action:'transferBulk',from,to,items,override:true,movePrefix},
+      st=>items.forEach(it=>{
+        const fB=invQty(from,it.bookId), tB=invQty(to,it.bookId);
+        invAdd(st,from,it.bookId,-it.qty); invAdd(st,to,it.bookId,it.qty);
+        (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+it.bookId, ts:new Date().toISOString(),
+          kind:'TRANSFER', fromLoc:from, toLoc:to, bookId:it.bookId, qty:it.qty, note:'',
+          fromBefore:fB, fromAfter:fB-it.qty, toBefore:tB, toAfter:tB+it.qty});
+      }),
       'Stock transferred');
   });
 }
