@@ -1026,7 +1026,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b149</span><span class="build srv" id="srvBuild"></span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b150</span><span class="build srv" id="srvBuild"></span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -4358,15 +4358,48 @@ function bundleModal(edit){
 function stockLocName(id){ return cashAcctName(id); }   // same lookup, different name for clarity here
 
 /* Undo one movement, keeping the button honest about what is happening. */
-async function undoMovement(id, btn, row){
-  const ok = await commitSync({action:'undoStockMove', id}, 'Movement undone');
-  if(ok){
-    transfersModal();               // redraw only once the change has landed
-  }else{
-    // Put it back the way it was so the row can be tried again.
-    if(btn){ btn.disabled=false; btn.textContent='↺'; btn.title='Undo this movement'; }
+/* Undoing a movement, at the speed of a sale.
+
+   Each undo used to wait for the server before the next could start, so
+   undoing several meant several round trips one after another — slow, and
+   rows that had been greyed out came back when the queue finally caught up.
+   It now applies here at once and saves in the background, exactly as a sale
+   does. The stock rules are checked here first, so an undo the server would
+   refuse is never shown as done. */
+function undoMovement(id, btn, row){
+  const mv = (STATE.stockMoves||[]).find(m=>m && String(m.id)===String(id));
+  if(!mv){ if(row) row.remove(); return; }
+  const kind=String(mv.kind||''), bookId=String(mv.bookId), qty=Math.round(Number(mv.qty)||0);
+  const from=String(mv.fromLoc||''), to=String(mv.toLoc||'');
+
+  // The same checks the server makes, so the answer is the same answer.
+  if(kind==='TRANSFER' && invQty(to,bookId) < qty){
+    toast(`Only ${invQty(to,bookId)} left at ${locName(to)} — not enough to undo a move of ${qty}.`, true);
+    if(btn){ btn.disabled=false; btn.textContent='↺'; }
     if(row) row.classList.remove('undoing');
+    return;
   }
+  if(kind==='ADJUST' && qty>0 && invQty(to,bookId) < qty){
+    toast(`Only ${invQty(to,bookId)} left at ${locName(to)} — not enough to undo adding ${qty}.`, true);
+    if(btn){ btn.disabled=false; btn.textContent='↺'; }
+    if(row) row.classList.remove('undoing');
+    return;
+  }
+  if(kind!=='TRANSFER' && kind!=='ADJUST'){
+    toast('A transfer out of the tour cannot be undone here — record a matching one back in instead.', true);
+    if(btn){ btn.disabled=false; btn.textContent='↺'; }
+    if(row) row.classList.remove('undoing');
+    return;
+  }
+
+  commit({action:'undoStockMove', id},
+    st=>{
+      st.stockMoves=(st.stockMoves||[]).filter(m=>m && String(m.id)!==String(id));
+      if(kind==='TRANSFER'){ invAdd(st,to,bookId,-qty); invAdd(st,from,bookId,qty); }
+      else { invAdd(st,to,bookId,-qty); }
+    }, null, {keepOpen:true});
+  if(row) row.remove();              // gone from the list at once
+  transfersModal();                  // redrawn from what is now true
 }
 
 function transfersModal(){
@@ -6261,8 +6294,9 @@ function bindCashLog(){
             if(carried.includes(c.id)){ c.loc=row.fromAcct||c.loc; c.returnedAt=''; }
           });
         }, 'Movement removed');
-      // Then take the server's word for it, so nothing can drift from the record.
-      setTimeout(()=>{ pull().then(()=>cashReopen()).catch(()=>{}); }, 600);
+      // The ordinary sync will confirm it; no extra round trip per removal, so
+      // several in a row are as quick as one.
+      scheduleSync();
       cashReopen(); return;
     }
   });
