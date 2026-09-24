@@ -806,7 +806,8 @@ body.busy #busyLabel{opacity:1}
 .ptg-r.pt-don,.ptg-r.pt-don.ptg-first{color:var(--donate)}
 .ptg-r.ptg-con,.ptg-r.ptg-con.ptg-first{color:#2F5C8A}
 .ptg-r.ptg-con,.ptg-s.ptg-con{color:var(--consign)}
-.ptg > .ptg-t.ptg-cost{color:var(--clay);font-weight:700;border-top:1px dashed var(--line-d)}
+.ptg > .ptg-t.ptg-cost{color:var(--clay)}
+.ptg > .ptg-t.ptg-sub{font-weight:500}
 /* Names are clipped rather than allowed to shove the numbers sideways. */
 .ptg-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .ptg-r.ptg-first{display:flex;align-items:center;gap:5px;min-width:0;overflow:hidden}
@@ -1046,7 +1047,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b161</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b162</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3280,9 +3281,13 @@ function renderPayments(target){
         <div class="ptg-t ptg-first ptg-cost">Consignment costs</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${conCostByCur[c] ? '−'+fmt(conCostByCur[c]) : num({},c)}</div>`).join('')}
         <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(conCostByCur))}</div>` : '';
+  /* Figures that come off the total are written as negatives, so the column
+     reads as a subtraction rather than a second pile of money. */
+  const minus = (o,c) => o[c] ? '−'+fmt(o[c]) : num({},c);
   const costs = scopedCosts();
   const costByCur = {};
   costs.forEach(c=>{ costByCur[c.cur] = (costByCur[c.cur]||0) + (Number(c.amt)||0); });
+  const costTotal = Object.keys(costByCur).some(c=>costByCur[c]);
   const kept = conBody ? netOf(grand, conGrand) : grand;
   const costRows = costs.length ? `
         <div class="ptg-t ptg-first ptg-cost">Costs</div>
@@ -3307,19 +3312,25 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">${conBody ? 'Totals (w/Consignment)' : 'Totals'}</div>
+        <div class="ptg-t ptg-first">Gross Sales Total</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
-        ${conBody ? `<div class="ptg-t ptg-first ptg-con contog" data-act="contog">▸ Consignment Total</div>
-        ${curs.map(c=>`<div class="ptg-t ptg-con">${num(conGrand,c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-con">$${fmt(usdOf(conGrand))}</div>
+
+        ${/* Two things come off the gross: the groups' money and our costs.
+              Both read as what they are — amounts taken away. */''}
+        ${conBody ? `<div class="ptg-t ptg-first ptg-con ptg-sub contog" data-act="contog">▸ Consignment</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-con ptg-sub">${minus(conGrand,c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-con ptg-sub">−$${fmt(usdOf(conGrand))}</div>
         <div class="con-rows" style="display:none;grid-column:1/-1">
-          <div class="ptg ptg-inner" style="grid-template-columns:${template}">${conBody}</div></div>
-        ${conCostRow}
-        <div class="ptg-t ptg-first ${costRows?'':'ptg-net'}">Sales Total</div>
-        ${curs.map(c=>`<div class="ptg-t ${costRows?'':'ptg-net'}">${num(netOf(grand,conGrand),c)}</div>`).join('')}
-        <div class="ptg-t usd ${costRows?'':'ptg-net'}">$${fmt(usdOf(netOf(grand,conGrand)))}</div>` : ''}
-        ${costRows}
+          <div class="ptg ptg-inner" style="grid-template-columns:${template}">${conBody}${conCostRow}</div></div>` : ''}
+
+        ${costTotal ? `<div class="ptg-t ptg-first ptg-cost ptg-sub">Costs</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-cost ptg-sub">${minus(costByCur,c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-cost ptg-sub">−$${fmt(usdOf(costByCur))}</div>` : ''}
+
+        <div class="ptg-t ptg-first ptg-net">Net Sales Total</div>
+        ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(netOf(grand,conGrand),costByCur),c)}</div>`).join('')}
+        <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(netOf(grand,conGrand),costByCur)))}</div>
       </div>
     </div>`;
 }
