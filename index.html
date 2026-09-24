@@ -254,6 +254,8 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .pt-row span:first-child{color:var(--ink);font-weight:600}
 .muted{color:var(--muted);font-weight:400}
 /* region price grid */
+.bk-move{cursor:pointer;font-size:9px;color:var(--muted);padding:0 1px;user-select:none}
+.bk-move:hover{color:var(--plum)}
 .rp-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
 .rp-row:last-child{border-bottom:none}
 .rp-name{flex:1 1 40%;font-size:13px;font-weight:600;color:var(--ink);min-width:0}
@@ -442,6 +444,10 @@ body.busy #busyLabel{opacity:1}
   text-transform:uppercase;letter-spacing:.5px}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
+.pencil{cursor:pointer;font-size:11px;margin-left:6px;opacity:.65;user-select:none}
+.pencil:hover{opacity:1}
+.lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
+  margin:4px 0 12px;font-size:13.5px}
 .df-loading{padding:20px;text-align:center;color:var(--muted)}
 .df-folder,.df-file{display:flex;align-items:flex-start;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
 .df-folder{background:var(--paper2);border-radius:8px;padding:9px 8px;border-bottom:none;margin:4px 0}
@@ -656,6 +662,12 @@ body.busy #busyLabel{opacity:1}
 .book.aotm-card{background:var(--aotm-l);border-color:var(--aotm-b)}
 .book .bname.aotm{color:var(--plum)}
 .con-tag.log{background:var(--consign-l);color:var(--consign);border-color:var(--consign-b)}
+.con-sum{border:1.5px solid var(--consign-b,var(--line-d));border-radius:12px;padding:8px 12px;margin-top:10px;background:var(--paper2)}
+.con-sum>summary{cursor:pointer;font-weight:800;color:var(--consign);display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.con-money{font-weight:800;color:var(--consign)}
+.con-grp{padding:6px 0 6px 10px;border-top:1px solid var(--line)}
+.con-grp-h{display:flex;justify-content:space-between;gap:10px;font-weight:800;font-size:13px}
+.con-title{font-size:12.5px;padding:2px 0 2px 8px;color:var(--ink)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle;
@@ -1031,7 +1043,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b157</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b159</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1508,8 +1520,11 @@ function hiddenPreorderModal(){
    without rearranging Macedonia. Anything the region has not placed keeps its
    natural position behind the ones it has. */
 function inRegionOrder(list){
+  /* A region's own order if it has one; otherwise the season's, so an order
+     set once at the top applies everywhere that has not chosen its own. */
   const r = currentRegion();
-  const raw = (r && r.bookOrder) || [];
+  let raw = (r && r.bookOrder) || [];
+  if(!(Array.isArray(raw) ? raw.length : String(raw).trim())) raw = STATE.seasonBookOrder || [];
   const order = Array.isArray(raw) ? raw : String(raw).split(',').map(x=>x.trim()).filter(Boolean);
   if(!order.length) return list;
   const rank = {}; order.forEach((id,i)=>{ rank[id]=i; });
@@ -2359,6 +2374,8 @@ function addTooltipsToClipped(){
 
 function renderAll(){
   if(!STATE) return;
+  // Whatever wording you have rewritten is put in place after every redraw.
+  setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 0);
   /* The server still reports its build in the data it sends, so it can be
      checked when something looks wrong — it is simply not shown in the bar. */
   // The title names where you actually are, not just the warehouse.
@@ -2568,7 +2585,7 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
   // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
-  if(isAdmin()) cols[0].push(`<button class="btn" data-act="descsheet">📝 AI Descriptions</button>`);
+  if(isAdmin()) cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done editing wording':'Edit wording'}</button>`);
   // Which titles this event offers — an event's own business, so only here.
   if(CUR_LEVEL==='event') cols[0].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
     hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
@@ -2635,7 +2652,7 @@ function renderAdmin(){
     cols[2].push(`<button class="btn" data-act="holders">🏠 Devotees storing books</button>`);
     const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
     cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
-    if(!season) cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order</button>`);
+    cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order${season?' (whole season)':''}</button>`);
   }
 
   // 4 — the region or event itself
@@ -2956,6 +2973,46 @@ function countNote(c){
   return [preNote(c), giftNote(c)].filter(Boolean).join(' · ');
 }
 
+/* Consignment at season level: one total, opening to the groups behind it.
+
+   The titles themselves belong to their own region, so listing them tour-wide
+   put another region's borrowed books among our own. This says what consignment
+   came to across the tour, and lets you open it group by group. */
+function consignmentSummary(){
+  if(CUR_LEVEL!=='season') return '';
+  const s = scopedSales();
+  const groups = (STATE.partners||[]).map(pt=>{
+    const books = (STATE.books||[]).filter(b=>b.partnerId===pt.partnerId);
+    const ids = new Set(books.map(b=>b.id));
+    const mine = s.filter(x=>x.bookId && ids.has(x.bookId));
+    const c = bookCounts(mine);
+    const money = {};
+    mine.forEach(x=>{ if(!received(x)) return;
+      legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) money[l.cur]=(money[l.cur]||0)+l.amt; }); });
+    const region = (STATE.regions||[]).find(r=>r.regionId===pt.regionId);
+    const titles = books.map(b=>({name:b.name, c:bookCounts(mine.filter(x=>x.bookId===b.id))}))
+      .filter(t=>t.c.sold||t.c.gift);
+    return {pt, region, c, money, titles};
+  }).filter(g=>g.c.sold || g.c.gift);
+  if(!groups.length) return '';
+  const tot = groups.reduce((a,g)=>({sold:a.sold+g.c.sold, gift:a.gift+g.c.gift}), {sold:0,gift:0});
+  const cash = {};
+  groups.forEach(g=>Object.keys(g.money).forEach(c=>cash[c]=(cash[c]||0)+g.money[c]));
+  const money = o => Object.keys(o).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ') || '—';
+  return `
+    <details class="con-sum">
+      <summary><b>Consignment</b> — ${tot.sold} sold${tot.gift?` · +${tot.gift} gift${tot.gift===1?'':'s'}`:''}
+        <span class="con-money">${esc(money(cash))}</span></summary>
+      ${groups.map(g=>`
+        <div class="con-grp">
+          <div class="con-grp-h">${esc(g.pt.name)}${g.region?` <span class="muted">· ${esc(g.region.name)}</span>`:''}
+            <span class="con-money">${esc(money(g.money))}</span></div>
+          ${g.titles.map(t=>`<div class="con-title">${esc(t.name)} <b>${t.c.sold}</b>${
+            t.c.gift?` <span class="sc-gift">+${t.c.gift} gift${t.c.gift===1?'':'s'}</span>`:''}</div>`).join('')}
+        </div>`).join('')}
+    </details>`;
+}
+
 function renderTitleList(target){
   const s=scopedSales();
   // Inside a region, show where each title actually sold — the same chips as the
@@ -2993,7 +3050,8 @@ function renderTitleList(target){
       ${chips?`<div class="wo-chips">${chips}</div>`:''}
     </div>`;
   }).join('');
-  $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
+  // At season level, consignment follows as one total you can open by group.
+  $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>` + consignmentSummary();
 }
 
 /* ============================ TOTALS BY PAYMENT TYPE ============================
@@ -3030,6 +3088,13 @@ function renderCollectionsByRegion(target){
       if(pendingFlag(x) || isPartnerSale(x)) return;        // not in hand, or not ours
       legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
     });
+    /* What the region actually brings in: its own takings, less what it spent
+       to make them. Consignment is already out — that money is the groups'. */
+    (STATE.costs||[]).forEach(c=>{
+      if(!c || c.partnerId) return;                        // a group's cost, not ours
+      if(!locs.includes(c.location)) return;
+      got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
+    });
     return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0)};
   });
   const tot = {}; let totUsd = 0;
@@ -3046,8 +3111,8 @@ function renderCollectionsByRegion(target){
       <tfoot><tr><th>All regions</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
         <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
     </table>
-    <div class="hint">What each region has collected of its own. Consignment money is held for the
-      groups and is shown in Consignment.</div>`;
+    <div class="hint">What each region has brought in: its own takings, less its costs.
+      Consignment money is held for the groups and is shown in Consignment.</div>`;
 }
 
 function renderPayments(target){
@@ -3658,6 +3723,8 @@ function changeCur(x){ return String((x && x.changecur) || ''); }
 function openModal(html,wide){
   const m=$('#modal'); m.className='modal'+(wide?' wide':''); m.innerHTML=html;
   $('#overlay').classList.add('show');
+  // Your own wording applies inside dialogs too, pencils included.
+  try{ applyLabels(m); }catch(e){}
   // Dialogs clip too, so they get the same treatment once laid out.
   try{ addTooltipsToClipped(); }catch(e){}
 }
@@ -4910,6 +4977,77 @@ function costsModal(editId, presetPartner){
    The top folder, each season's folder and its Consignment folder, and every
    spreadsheet — each one a link that opens in a new tab, with its address
    shown and a Copy button. Any folder can be pointed somewhere else. */
+/* ---- Rewriting the app's wording, in the app ----
+
+   Turn on "Edit wording" and a pencil appears beside every heading, hint and
+   label. Tap it, write your own words, and they are used from then on — keyed
+   by the words they replace, so anything you leave alone still reads as it
+   always did, and clearing the box puts the original back.
+
+   The text is swapped after each redraw rather than at every call site, so no
+   part of the app has to know about it. */
+const EDIT_SEL = '.hint, .cash-sub, .cash-lede, .muted-note, .sec-h2, .inv-h2, .m-head h3, label, .cash-empty, .chg-note';
+let EDIT_WORDING = false;
+try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
+
+/** The words as they are now, before any rewriting — the key for an override. */
+function labelKeyOf(el){
+  const k = el.getAttribute('data-orig');
+  if(k) return k;
+  const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
+  const text = (first ? first.textContent : el.textContent || '').replace(/\s+/g,' ').trim();
+  if(text) el.setAttribute('data-orig', text);
+  return text;
+}
+/** Put your wording in place of the original, wherever it appears. */
+function applyLabels(root){
+  const map = (STATE && STATE.labels) || {};
+  const scope = root || document;
+  scope.querySelectorAll(EDIT_SEL).forEach(el=>{
+    if(el.closest('.no-edit')) return;
+    const key = labelKeyOf(el);
+    if(!key) return;
+    const want = map[key];
+    const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
+    if(want && first && first.textContent.replace(/\s+/g,' ').trim() !== want) first.textContent = want;
+    if(!want && first && el.dataset.rewritten==='1'){ first.textContent = key; }
+    el.dataset.rewritten = want ? '1' : '';
+    if(EDIT_WORDING && !el.querySelector(':scope > .pencil')){
+      const p = document.createElement('span');
+      p.className = 'pencil'; p.textContent = '✏️'; p.title = 'Rewrite these words';
+      p.dataset.act = 'editlabel'; p.dataset.key = key;
+      el.appendChild(p);
+    }
+    if(!EDIT_WORDING){ const p = el.querySelector(':scope > .pencil'); if(p) p.remove(); }
+  });
+}
+
+/** Rewrite one piece of wording. */
+function editLabelModal(key){
+  const cur = ((STATE.labels||{})[key]) || '';
+  openModal(`
+    ${mHead('Rewrite these words')}
+    <div class="m-body no-edit">
+      <div class="hint">Shown in the app as:</div>
+      <div class="lbl-orig">${esc(key)}</div>
+      <div class="field"><label>Your wording</label>
+        <textarea id="lblText" rows="3" placeholder="Leave empty to use the original">${esc(cur)}</textarea></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="lblSave">Save</button>
+    </div>`);
+  $('#lblSave').addEventListener('click',()=>{
+    const text = $('#lblText').value.trim();
+    commit({action:'saveLabel', key, text},
+      st=>{ st.labels = st.labels || {}; if(text) st.labels[key]=text; else delete st.labels[key]; },
+      text ? 'Wording saved' : 'Original wording restored');
+    closeModal();
+    renderAll();
+  });
+}
+
 /* Every piece of wording the app shows, gathered from the app's own source so
    the list can never drift from what is really on screen. */
 function collectDescriptions(){
@@ -5283,6 +5421,28 @@ function buildReport(part, opts){
 
     types(ours).forEach(t=>{ if(curs(ours[t]).length) line(t, text(ours[t])); });
     if(curs(ourGrand).length) line('Total', text(ourGrand) + ' ≈ $' + nf(usd(ourGrand)));
+
+    /* At season level, the same picture region by region as the dashboard:
+       each region's own takings less its own costs, consignment apart. */
+    if(CUR_LEVEL==='season'){
+      const byRegion = regionsList().map(r=>{
+        const locs = locsInRegion(r.regionId), got = {};
+        (STATE.sales||[]).forEach(x=>{
+          if(!x || !locs.includes(x.location) || pendingFlag(x) || isPartnerSale(x)) return;
+          legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
+        });
+        (STATE.costs||[]).forEach(c=>{
+          if(!c || c.partnerId || !locs.includes(c.location)) return;
+          got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
+        });
+        return {name:r.name, got};
+      }).filter(x=>curs(x.got).length);
+      if(byRegion.length){
+        L.push('');
+        L.push('— BY REGION (after costs) —');
+        byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got))));
+      }
+    }
 
     // Costs come off our own takings; a group's costs come off what it is owed.
     const costs = scopedCosts();
@@ -6660,6 +6820,20 @@ function deleteRegionModal(){
 }
 
 
+/* Moving a title up or down in the region dialog: the rows' order becomes the
+   shelf's order, so it can be set as the region is made rather than after. */
+function bindBookMove(){
+  onModal('click','bkmove',e=>{
+    const mv = e.target.closest('.bk-move'); if(!mv) return;
+    const row = mv.closest('.bk-row'); if(!row) return;
+    const dir = mv.dataset.mv;
+    const sib = dir==='up' ? row.previousElementSibling : row.nextElementSibling;
+    if(!sib || !sib.classList.contains('bk-row')) return;     // stays within its kind
+    if(dir==='up') row.parentNode.insertBefore(row, sib);
+    else row.parentNode.insertBefore(sib, row);
+  });
+}
+
 function regionModal(edit){
   const isEdit = !!edit;
   const cur = isEdit ? (edit.currencies||['USD']).join(', ') : 'EUR, USD';
@@ -6691,8 +6865,10 @@ function regionModal(edit){
         `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
            step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
       ).join('');
+      // The order these rows sit in is the order the shelf will use.
       return `<div class="rp-row bk-row ${on?'':'off'}" data-row="${esc(b.id)}">
                 <label class="rp-name ${isAotm(b)?'aotm':''}">
+                  <span class="bk-move" data-mv="up" title="Move up">▲</span><span class="bk-move" data-mv="down" title="Move down">▼</span>
                   <input type="checkbox" class="bk-cb" value="${esc(b.id)}" ${on?'checked':''}>
                   <span>${esc(b.name)}</span></label>
                 <div class="rp-cells">${cells}</div></div>`;
@@ -6733,6 +6909,7 @@ function regionModal(edit){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="rgSave">${isEdit?'Save changes':'Create region'}</button>
     </div>`, true);
+  bindBookMove();     // the rows can be arranged into the order you want
 
   // Re-draw the price grid whenever the currency list changes, keeping anything typed.
   // Typing in a "fill all" box writes that price into every book of that kind.
@@ -6869,9 +7046,11 @@ function regionModal(edit){
          back — the slowest thing the app did. */
       const regionId = 'rg_' + Math.random().toString(36).slice(2,8);
       const whLoc    = 'wh_' + Math.random().toString(36).slice(2,8);
-      commit({action:'createRegion',regionId,whLoc,name,currencies:curList.join(','),books,prices},
+      // The order the titles were arranged into, kept with the new region.
+      const bookOrder = [...document.querySelectorAll('#modal .bk-row')].map(r=>r.dataset.row).join(',');
+      commit({action:'createRegion',regionId,whLoc,name,currencies:curList.join(','),books,prices,bookOrder},
         st=>{ (st.regions=st.regions||[]).push({regionId,name,whLoc,currencies:curList,
-                books:books?books.split(','):[],counts:{},closedAt:'',bookOrder:'',
+                books:books?books.split(','):[],counts:{},closedAt:'',bookOrder,
                 seasonId:st.activeSeason, sort:(st.regions||[]).length}); },
         'Region created');
     }
@@ -7469,8 +7648,11 @@ function reorderBooksModal(){
        to wait for: the new order is already known here, and the server has no
        answer we need. */
     const ids = list.map(x=>x.id);
-    commit({action:'reorderBooks', regionId:CUR_REGION, ids},
-      st=>{ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.bookOrder=ids; },
+    // At season level there is no region: the order belongs to the season.
+    const forSeason = (CUR_LEVEL==='season');
+    commit({action:'reorderBooks', regionId: forSeason ? '' : CUR_REGION, ids},
+      st=>{ if(forSeason){ st.seasonBookOrder = ids.join(','); }
+            else { const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.bookOrder=ids; } },
       'Order saved');
     closeModal();
   });
@@ -8734,7 +8916,13 @@ document.addEventListener('click',e=>{
       .then(()=>toast('Link copied')).catch(()=>{ prompt('Copy this link:', url); });
     return;
   }
-  if(a==='descsheet'){ descriptionsSheet(); return; }
+  if(a==='editwording'){
+    EDIT_WORDING = !EDIT_WORDING;
+    try{ localStorage.setItem('tbs_edit_wording', EDIT_WORDING?'1':'0'); }catch(e){}
+    toast(EDIT_WORDING ? 'Tap a pencil to rewrite any wording' : 'Finished editing wording');
+    renderAll(); return;
+  }
+  if(a==='editlabel'){ editLabelModal(t.dataset.key); return; }
   if(a==='hidebooks'){ hideBooksModal(); return; }
   if(a==='hiddenpre'){ hiddenPreorderModal(); return; }
   if(a==='hbpre'){ closeModal(); saleModal({bookId:t.dataset.id, isPreorder:true, loc:CUR_LOC}); return; }
