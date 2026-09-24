@@ -1026,7 +1026,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" title="Which version of the page is loaded">b146</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b148</span><span class="build srv" id="srvBuild"></span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2315,6 +2315,17 @@ function addTooltipsToClipped(){
 
 function renderAll(){
   if(!STATE) return;
+  /* What the SERVER is running. A mismatch means Code.gs was pasted but not
+     deployed as a new version, so the old script is still answering — which
+     looks exactly like a bug that will not go away. */
+  const sb=$('#srvBuild');
+  if(sb){
+    const mine=($('#bld')||{}).textContent||'';
+    const theirs=STATE.serverBuild||'';
+    sb.textContent = theirs ? (theirs===mine ? '' : 'server '+theirs) : 'server not updated';
+    sb.style.display = sb.textContent ? '' : 'none';
+    sb.title = sb.textContent ? 'The script deployed in Apps Script is not this build — Deploy → Manage deployments → New version' : '';
+  }
   // The title names where you actually are, not just the warehouse.
   $('#whTitle').textContent = ': ' + scopeLabel();
   /* And which season — the same region can exist in more than one (Croatia in
@@ -6206,7 +6217,11 @@ function bindCashLog(){
     const dE=e.target.closest('[data-delentry]');
     if(dE){
       const id=dE.dataset.delentry;
-      if(!confirm('Remove this movement?')) return;
+      const r0=(STATE.cash||[]).find(c=>c && c.id===id)||{};
+      const what = r0.fromAcct
+        ? `${cashAcctName(r0.fromAcct)} → ${cashAcctName(r0.toAcct)}, ${cashFmt(Math.abs(Number(r0.amt)||0), r0.cur||'')}`
+        : 'this movement';
+      if(!confirm('Remove '+what+'?')) return;
       /* Undo everything the movement did, here and now — the change it carried,
          the withdrawal it made, the return it recorded. Applying only the
          movement left the change behind on screen until the next refresh. */
@@ -6222,6 +6237,8 @@ function bindCashLog(){
             if(carried.includes(c.id)){ c.loc=row.fromAcct||c.loc; c.returnedAt=''; }
           });
         }, 'Movement removed');
+      // Then take the server's word for it, so nothing can drift from the record.
+      setTimeout(()=>{ pull().then(()=>cashReopen()).catch(()=>{}); }, 600);
       cashReopen(); return;
     }
   });
