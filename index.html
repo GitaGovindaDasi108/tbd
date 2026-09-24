@@ -1047,7 +1047,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b162</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b163</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5007,14 +5007,36 @@ const EDIT_SEL = '.hint, .cash-sub, .cash-lede, .muted-note, .sec-h2, .inv-h2, .
 let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
 
-/** The words as they are now, before any rewriting — the key for an override. */
+/** Where a piece of wording lives: the dialog or panel it belongs to. */
+function labelContextOf(el){
+  const m = el.closest('#modal');
+  if(m){
+    const h = m.querySelector('.m-head h3, .m-head');
+    const t = h ? h.textContent.replace(/\s+/g,' ').trim().replace(/✕\s*$/,'').trim() : '';
+    return t ? 'Dialog: '+t : 'Dialog';
+  }
+  const sec = el.closest('section');
+  if(sec){
+    const h = sec.querySelector('.sec-h2, .inv-h2, h2');
+    const t = h ? (h.childNodes[0] ? h.childNodes[0].textContent : h.textContent) : '';
+    const clean = String(t||'').replace(/\s+/g,' ').trim();
+    if(clean) return 'Panel: '+clean;
+  }
+  return 'Page';
+}
+/** The original words, and where they are — together they identify one label. */
 function labelKeyOf(el){
-  const k = el.getAttribute('data-orig');
+  const k = el.getAttribute('data-key');
   if(k) return k;
   const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
   const text = (first ? first.textContent : el.textContent || '').replace(/\s+/g,' ').trim();
-  if(text) el.setAttribute('data-orig', text);
-  return text;
+  if(!text) return '';
+  /* Keyed by place AND words, so the same sentence in two dialogs can be
+     rewritten separately — before, editing one changed both. */
+  const key = labelContextOf(el) + ' › ' + text;
+  el.setAttribute('data-orig', text);
+  el.setAttribute('data-key', key);
+  return key;
 }
 /** Put your wording in place of the original, wherever it appears. */
 function applyLabels(root){
@@ -5025,9 +5047,10 @@ function applyLabels(root){
     const key = labelKeyOf(el);
     if(!key) return;
     const want = map[key];
+    const orig = el.getAttribute('data-orig') || '';
     const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
     if(want && first && first.textContent.replace(/\s+/g,' ').trim() !== want) first.textContent = want;
-    if(!want && first && el.dataset.rewritten==='1'){ first.textContent = key; }
+    if(!want && first && el.dataset.rewritten==='1'){ first.textContent = orig; }
     el.dataset.rewritten = want ? '1' : '';
     if(EDIT_WORDING && !el.querySelector(':scope > .pencil')){
       const p = document.createElement('span');
@@ -5042,11 +5065,12 @@ function applyLabels(root){
 /** Rewrite one piece of wording. */
 function editLabelModal(key){
   const cur = ((STATE.labels||{})[key]) || '';
+  const at = key.split(' › ')[0], words = key.split(' › ').slice(1).join(' › ');
   openModal(`
     ${mHead('Rewrite these words')}
     <div class="m-body no-edit">
-      <div class="hint">Shown in the app as:</div>
-      <div class="lbl-orig">${esc(key)}</div>
+      <div class="hint">${esc(at)} — currently reads:</div>
+      <div class="lbl-orig">${esc(words)}</div>
       <div class="field"><label>Your wording</label>
         <textarea id="lblText" rows="3" placeholder="Leave empty to use the original">${esc(cur)}</textarea></div>
       <div class="err" id="modalErr"></div>
