@@ -1047,7 +1047,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b163</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b164</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -7389,6 +7389,26 @@ function showSeason(state, rev, id){
   STATE = derive(); savePos(); cacheSave(); renderAll();
 }
 
+/* An empty shell of a season, so the screen can change the moment you ask.
+
+   Without it, the first switch to a season sat on the old one until the server
+   answered — which reads as the app ignoring you. The shell carries the names
+   and settings we already know; the season's own records arrive a moment later. */
+function blankSeasonState(id){
+  const seasons = STATE.seasons || [];
+  const name = (seasons.find(x=>x.seasonId===id)||{}).name || 'Season';
+  return {
+    seasonName:name, activeSeason:id, seasons, role:STATE.role||'admin',
+    books:STATE.books||[], payTypes:STATE.payTypes||[], currencies:STATE.currencies||[],
+    rates:STATE.rates||{perUsd:{USD:1}}, warehouseName:name,
+    regions:[], events:[], holders:[], shipments:[], partners:[], payouts:[], prices:{},
+    inventory:[], sales:[], cash:[], change:[], costs:[], stockMoves:[], org:[],
+    outstanding:{}, qr:[], keys:{regions:{},events:{},sellers:{}},
+    allRegions:STATE.allRegions||[], allEvents:STATE.allEvents||[], labels:STATE.labels||{},
+    loading:true
+  };
+}
+
 async function switchSeason(id){
   if(!id || id===STATE.activeSeason) return;
   // Keep where we are, so coming back is instant too.
@@ -7399,24 +7419,39 @@ async function switchSeason(id){
     showSeason(cached.state, cached.rev, id);
     setStatus('load','Refreshing…');
   }else{
+    // Change now, fill in when the records arrive.
+    showSeason(blankSeasonState(id), REV, id);
     setStatus('load','Opening…');
   }
   try{
     const d = await post({action:'setSeason', seasonId:id});
     if(d.state){
       seasonCacheSave(id, d.state, d.rev);
-      if(!cached) showSeason(d.state, d.rev, id);
-      else { BASE = d.state; REV = d.rev; STATE = derive(); renderAll(); }
+      BASE = d.state; REV = d.rev; STATE = derive(); renderAll();
       setStatus('ok','Saved · '+clock());
       if(!cached) toast('Now showing ' + ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name);
     }
   }catch(err){
     setStatus('bad','Error');
-    if(!cached){
-      toast('Could not switch — ' + err.message, true);
-      renderTabs();                // put the picker back where it was
-    }
+    toast('Could not load that season — ' + err.message, true);
   }
+}
+
+/* Quietly fetch the other seasons once, so switching to them is instant too.
+   One at a time, well after the app has settled, and never in the way. */
+function prefetchSeasons(){
+  const list = (STATE.seasons||[]).map(x=>x.seasonId).filter(id=>id && id!==STATE.activeSeason);
+  let i = 0;
+  const next = () => {
+    if(i >= list.length) return;
+    const id = list[i++];
+    if(seasonCacheLoad(id)) return next();          // already have it
+    post({action:'getState', season:id})
+      .then(d=>{ if(d && d.state) seasonCacheSave(id, d.state, d.rev); })
+      .catch(()=>{})
+      .then(()=>setTimeout(next, 1500));
+  };
+  setTimeout(next, 4000);
 }
 
 function newSeasonModal(){
@@ -9142,6 +9177,7 @@ document.addEventListener('click',e=>{
   // flashes the wrong region on the way to the right one.
   loadPos();
   pendingLoad(); pendingPrune(); outboxRecover(); showPending();
+  setTimeout(()=>{ try{ prefetchSeasons(); }catch(e){} }, 0);
   // flushPending checks each one against the server first, so anything already
   // saved is cleared rather than shown as waiting.
   flushPending();
