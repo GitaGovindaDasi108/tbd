@@ -1047,7 +1047,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b164</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b166</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1570,15 +1570,35 @@ function goTo(level, loc){
 }
 /* Remember where you were standing, so a refresh (or a reopened tab) puts you
    back there instead of dumping you at the first region's warehouse. */
+/* Where you are is remembered PER TAB.
+
+   It used to be remembered per device, which both tabs share: working in one
+   tab overwrote the other's position, so refreshing the second jumped to
+   whatever the first was showing. Each tab now keeps its own place (and its own
+   season), and the device-wide copy is only the starting point for a brand-new
+   tab. */
+const POS_KEY = 'tbs_pos';
+/** The season THIS tab is showing, kept apart from any other tab's. */
+let TAB_SEASON = '';
+/** Bumped on every season change, so replies from before it can be recognised. */
+let SEASON_EPOCH = 0;
+function posKey(){ return POS_KEY + (SHARE_KEY?'_'+SHARE_KEY:''); }
 function savePos(){
-  try{ localStorage.setItem('tbs_pos'+(SHARE_KEY?'_'+SHARE_KEY:''), JSON.stringify({l:CUR_LEVEL,r:CUR_REGION,c:CUR_LOC})); }catch(e){}
+  const here = JSON.stringify({l:CUR_LEVEL, r:CUR_REGION, c:CUR_LOC,
+                               s:(BASE && BASE.activeSeason) || ''});
+  try{ sessionStorage.setItem(posKey(), here); }catch(e){}   // this tab
+  try{ localStorage.setItem(posKey(), here); }catch(e){}     // and where a new tab starts
 }
 function loadPos(){
   try{
-    const p=JSON.parse(localStorage.getItem('tbs_pos'+(SHARE_KEY?'_'+SHARE_KEY:''))||'null');
-    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||WAREHOUSE; }
+    let raw = null;
+    try{ raw = sessionStorage.getItem(posKey()); }catch(e){}  // this tab's own place first
+    if(!raw) raw = localStorage.getItem(posKey());            // a new tab: where you last were
+    const p = JSON.parse(raw||'null');
+    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||WAREHOUSE; TAB_SEASON=p.s||''; }
   }catch(e){}
 }
+
 /** Soft background + accent cue for the level you're on (not the individual item). */
 function applyLevelTheme(){
   const b=document.body;
@@ -1822,8 +1842,11 @@ async function post(payload, opts){
   /* Say which season this device is looking at, so the server answers for
      it — not for whichever season another device last opened. (A share link
      is pinned to its own season by the server, so it sends nothing.) */
-  else if(!payload.season && BASE && BASE.activeSeason && payload.action!=='setSeason')
-    payload = Object.assign({season:BASE.activeSeason}, payload);
+  else if(!payload.season && payload.action!=='setSeason'){
+    // This tab's season — before the first reply arrives, the one it was left on.
+    const mine = (BASE && BASE.activeSeason) || TAB_SEASON;
+    if(mine) payload = Object.assign({season:mine}, payload);
+  }
   /* If the request never reaches the server, say so in English — and mark it
      as a connection problem by WHAT happened, not by the wording.
 
@@ -1951,7 +1974,20 @@ async function pull(){
      (its spreadsheet is being created), so the window was wide enough to hit. */
   if(inflight){ scheduleSync(); return; }
   const startOps = OPS.slice();
+  /* Which season this read is about, and which switch it belongs to.
+
+     A refresh already on its way when you change season used to land afterwards
+     and overwrite the screen with the season you had just left — the app
+     flicking to the new season and then back, and, on the ordinary poll,
+     yanking you away mid-edit. A reply that no longer matches where you are is
+     now discarded. */
+  const askedSeason = (BASE && BASE.activeSeason) || TAB_SEASON || '';
+  const askedEpoch  = SEASON_EPOCH;
   const d = await post({action:'getState'});
+  const gotSeason = (d.state && d.state.activeSeason) || '';
+  if(askedEpoch !== SEASON_EPOCH || (askedSeason && gotSeason && gotSeason !== askedSeason)){
+    return;                       // stale: you have moved on since this was asked for
+  }
   BASE = d.state; REV = d.rev;
   // Only retire ops that existed when this read began; anything committed while
   // it was in flight is not represented in what came back.
@@ -5606,9 +5642,14 @@ function shareReport(part){
     saveReportPicks(picks);
     try{ box.value = make() || '(nothing chosen)'; }catch(err){ box.value = 'Could not build the report — ' + err.message; }
   });
+  /* What is copied is what you are looking at.
+
+     Both of these used to send the report as it was when the dialog opened, so
+     ticking sections changed the box on screen but not what was copied. */
+  const shown = () => (box && box.value) || '';
   $('#repCopy').addEventListener('click', async ()=>{
     try{
-      if(navigator.clipboard){ await navigator.clipboard.writeText(text); toast('Report copied'); return; }
+      if(navigator.clipboard){ await navigator.clipboard.writeText(shown()); toast('Report copied'); return; }
       throw new Error('no clipboard');
     }catch(e){
       // Select it so a manual copy is one keystroke away.
@@ -5618,7 +5659,7 @@ function shareReport(part){
   });
   const sb = $('#repShare');
   if(sb) sb.addEventListener('click', async ()=>{
-    try{ await navigator.share({ text }); }
+    try{ await navigator.share({ text: shown() }); }
     catch(e){ if(e && e.name!=='AbortError') $('#modalErr').textContent='Sharing was not available — copy it instead.'; }
   });
 }
@@ -7411,6 +7452,7 @@ function blankSeasonState(id){
 
 async function switchSeason(id){
   if(!id || id===STATE.activeSeason) return;
+  SEASON_EPOCH++;                 // anything already in flight is now out of date
   // Keep where we are, so coming back is instant too.
   seasonCacheSave(STATE.activeSeason, BASE, REV);
 
@@ -7423,8 +7465,10 @@ async function switchSeason(id){
     showSeason(blankSeasonState(id), REV, id);
     setStatus('load','Opening…');
   }
+  const myEpoch = SEASON_EPOCH;
   try{
     const d = await post({action:'setSeason', seasonId:id});
+    if(myEpoch !== SEASON_EPOCH) return;      // you have switched again since
     if(d.state){
       seasonCacheSave(id, d.state, d.rev);
       BASE = d.state; REV = d.rev; STATE = derive(); renderAll();
@@ -7446,8 +7490,9 @@ function prefetchSeasons(){
     if(i >= list.length) return;
     const id = list[i++];
     if(seasonCacheLoad(id)) return next();          // already have it
+    // Cached only — a season you are not looking at never touches the screen.
     post({action:'getState', season:id})
-      .then(d=>{ if(d && d.state) seasonCacheSave(id, d.state, d.rev); })
+      .then(d=>{ if(d && d.state && d.state.activeSeason===id) seasonCacheSave(id, d.state, d.rev); })
       .catch(()=>{})
       .then(()=>setTimeout(next, 1500));
   };
