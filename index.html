@@ -348,17 +348,14 @@ body.busy .spin{display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* A real measure of progress rather than a spinner: the bar fills as saves
    complete, so a slow burst visibly moves rather than just sitting there. */
-#busyBar{position:fixed;left:0;top:0;height:4px;width:100%;z-index:90;
-  background:rgba(138,74,18,.12);opacity:0;transition:opacity .25s;pointer-events:none}
+#busyBar{position:fixed;left:0;top:0;height:2px;width:100%;z-index:90;
+  background:rgba(138,74,18,.10);opacity:0;transition:opacity .3s;pointer-events:none}
 body.busy #busyBar{opacity:1}
-#busyFill{height:100%;width:0;border-radius:0 3px 3px 0;
+/* Saffron while there is work left, green as it completes. */
+#busyFill{height:100%;width:0;
   background:linear-gradient(90deg,var(--saffron),var(--gold));
-  transition:width .3s ease}
-#busyLabel{position:fixed;top:10px;right:14px;z-index:91;
-  background:var(--plum);color:var(--gold-l);font-size:11.5px;font-weight:700;
-  padding:4px 11px;border-radius:999px;opacity:0;transition:opacity .25s;
-  pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.18)}
-body.busy #busyLabel{opacity:1}
+  transition:width .35s ease, background .5s ease}
+#busyFill[data-done="1"]{background:linear-gradient(90deg,var(--gold),var(--green))}
 /* Held on the device because there was no signal. */
 #pendBadge{position:fixed;left:14px;bottom:14px;z-index:91;background:var(--clay);color:#fff;
   font-size:11.5px;font-weight:700;padding:5px 12px;border-radius:999px;
@@ -1047,7 +1044,7 @@ body.busy #busyLabel{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b166</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b167</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1156,7 +1153,6 @@ body.busy #busyLabel{opacity:1}
 </main>
 
 <div id="busyBar"><div id="busyFill"></div></div>
-<div id="busyLabel"></div>
 <div id="pendBadge" style="display:none"></div>
 <div class="overlay" id="overlay"><div class="modal" id="modal"></div></div>
 <div id="toast"></div>
@@ -1959,6 +1955,15 @@ function cacheLoad(){
       const wantRole = SHARE_KEY ? cachedRole : 'admin';
       if(SHARE_KEY ? cachedRole==='admin' : cachedRole!=='admin') return false;
       if(cachedRole!==wantRole) return false;
+      /* The quick copy is shared by every tab on this device, so it carries
+         whichever season was last looked at ANYWHERE. If this tab was left on
+         another one, take that season's own copy, or wait for the server —
+         never adopt the other tab's. */
+      if(TAB_SEASON && c.state.activeSeason && c.state.activeSeason !== TAB_SEASON){
+        const mine = seasonCacheLoad(TAB_SEASON);
+        if(!mine) return false;                       // wait; the pull asks for OUR season
+        BASE=mine.state; REV=mine.rev; STATE=derive(); renderAll(); return true;
+      }
       BASE=c.state; REV=c.rev; STATE=derive(); renderAll(); return true;
     }
   }catch(e){}
@@ -2168,17 +2173,17 @@ async function flushPending(){
 if(typeof window!=='undefined'){
   window.addEventListener('online', ()=>{ toast('Back online — sending what was waiting'); flushPending(); });
 }
+/* A hair-thin line across the top, filling and warming from saffron to green
+   as the saving finishes. The running commentary — "2 of 6", "Almost there" —
+   said less than the line does and asked to be read. */
 function saveProgress(){
   const bar = $('#busyFill');
   if(!bar) return;
-  if(!saveTotal){ document.body.classList.remove('busy'); return; }
+  if(!saveTotal){ document.body.classList.remove('busy'); bar.style.width='0%'; return; }
   document.body.classList.add('busy');
-  const pct = Math.round((saveDone / saveTotal) * 100);
-  bar.style.width = pct + '%';
-  const label = $('#busyLabel');
-  if(label) label.textContent = saveTotal>1
-    ? `Saving ${saveDone} of ${saveTotal}…`
-    : (saveDone ? 'Almost there…' : 'Saving…');
+  const pct = saveTotal ? Math.round((saveDone / saveTotal) * 100) : 0;
+  bar.style.width = Math.max(8, pct) + '%';     // always visible once it starts
+  bar.dataset.done = pct >= 100 ? '1' : '';
 }
 
 /* ---- Saves are kept on this device until the server has them ----
@@ -3348,7 +3353,7 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">Gross Sales Total</div>
+        <div class="ptg-t ptg-first">Gross Sales</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
 
@@ -3364,7 +3369,7 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-t ptg-cost ptg-sub">${minus(costByCur,c)}</div>`).join('')}
         <div class="ptg-t usd ptg-cost ptg-sub">−$${fmt(usdOf(costByCur))}</div>` : ''}
 
-        <div class="ptg-t ptg-first ptg-net">Net Sales Total</div>
+        <div class="ptg-t ptg-first ptg-net">Net Sales</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(netOf(grand,conGrand),costByCur),c)}</div>`).join('')}
         <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(netOf(grand,conGrand),costByCur)))}</div>
       </div>
@@ -3742,7 +3747,7 @@ function renderLog(){
   $('#log').innerHTML = s.length? s.map(x=>logItemHTML(x)).join('')
     : logFilterCount()
       ? `<div class="empty">No sales match those filters.<br><button class="btn btn-ghost btn-sm" data-act="lfclear" style="margin-top:8px">Clear the filter</button></div>`
-      : `<div class="empty">No sales yet. Tap a book to record the first one.</div>`;
+      : `<div class="empty">No sales yet.</div>`;
 }
 
 function renderBottom(){
