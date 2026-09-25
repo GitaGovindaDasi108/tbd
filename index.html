@@ -967,7 +967,17 @@ body.busy #busyBar{opacity:1}
 .bulk{display:flex;flex-direction:column}
 .bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 58px 148px 58px;gap:10px;align-items:center}
 /* Five columns where adding and setting are separate things. */
-.bulk-head.five,.bulk-row.five{grid-template-columns:1fr 54px 104px 62px 58px;gap:8px}
+.bulk-head.five,.bulk-row.five{grid-template-columns:1fr 62px 118px 74px 62px;gap:10px}
+/* Every cell sits under its own title, and the boxes are wide enough to type in. */
+.bulk-head.five span:not(:first-child),.bulk-row.five>div:not(:first-child){text-align:center}
+.bulk-row.five .delta-wrap{display:flex;align-items:center;justify-content:center;gap:6px}
+.bulk-row.five .d-delta{width:62px}
+.bulk-row.five .d-set{width:66px;margin:0 auto;display:block}
+/* The browser's own tiny spinners crowd a narrow box; the count is typed. */
+.bulk-row .d-delta::-webkit-outer-spin-button,.bulk-row .d-delta::-webkit-inner-spin-button,
+.bulk-row .d-set::-webkit-outer-spin-button,.bulk-row .d-set::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.bulk-row .d-delta,.bulk-row .d-set{-moz-appearance:textfield;appearance:textfield;
+  padding:7px 8px;font-size:14px;text-align:center}
 .how-to{margin:2px 0 12px 0;padding-left:20px;font-size:13px;color:var(--muted);line-height:1.55}
 .how-to b{color:var(--muted)}
 .how-to li{margin:3px 0}
@@ -1049,7 +1059,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b169</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b170</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5067,19 +5077,30 @@ let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
 
 /** Where a piece of wording lives: the dialog or panel it belongs to. */
+/* Where a label lives, by the heading's ORIGINAL words.
+
+   Taking the heading as it currently reads meant that rewriting a heading
+   renamed the place, so every key in that dialog changed and the wording you
+   had saved could never be found again — saved, but never shown. The original
+   words never move. */
+function headingWords(h){
+  if(!h) return '';
+  const orig = h.getAttribute && h.getAttribute('data-orig');
+  if(orig) return orig.replace(/\s+/g,' ').trim();
+  const first = [...h.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
+  const t = first ? first.textContent : (h.textContent || '');
+  return String(t).replace(/\s+/g,' ').trim().replace(/✕\s*$/,'').trim();
+}
 function labelContextOf(el){
   const m = el.closest('#modal');
   if(m){
-    const h = m.querySelector('.m-head h3, .m-head');
-    const t = h ? h.textContent.replace(/\s+/g,' ').trim().replace(/✕\s*$/,'').trim() : '';
+    const t = headingWords(m.querySelector('.m-head h3, .m-head'));
     return t ? 'Dialog: '+t : 'Dialog';
   }
   const sec = el.closest('section');
   if(sec){
-    const h = sec.querySelector('.sec-h2, .inv-h2, h2');
-    const t = h ? (h.childNodes[0] ? h.childNodes[0].textContent : h.textContent) : '';
-    const clean = String(t||'').replace(/\s+/g,' ').trim();
-    if(clean) return 'Panel: '+clean;
+    const t = headingWords(sec.querySelector('.sec-h2, .inv-h2, h2'));
+    if(t) return 'Panel: '+t;
   }
   return 'Page';
 }
@@ -5101,6 +5122,15 @@ function labelKeyOf(el){
 function applyLabels(root){
   const map = (STATE && STATE.labels) || {};
   const scope = root || document;
+  // Headings first: everything else is keyed by where it sits, and that comes
+  // from the heading's original words.
+  scope.querySelectorAll('.m-head h3, .sec-h2, .inv-h2').forEach(h=>{
+    if(!h.getAttribute('data-orig')){
+      const first=[...h.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
+      const t=(first?first.textContent:h.textContent||'').replace(/\s+/g,' ').trim().replace(/✕\s*$/,'').trim();
+      if(t) h.setAttribute('data-orig', t);
+    }
+  });
   scope.querySelectorAll(EDIT_SEL).forEach(el=>{
     if(el.closest('.no-edit')) return;
     const key = labelKeyOf(el);
