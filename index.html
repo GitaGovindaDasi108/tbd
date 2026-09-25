@@ -967,17 +967,17 @@ body.busy #busyBar{opacity:1}
 .bulk{display:flex;flex-direction:column}
 .bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 58px 148px 58px;gap:10px;align-items:center}
 /* Five columns where adding and setting are separate things. */
-.bulk-head.five,.bulk-row.five{grid-template-columns:1fr 62px 132px 82px 62px;gap:10px}
+.bulk-head.five,.bulk-row.five{grid-template-columns:1fr 56px 104px 58px 56px;gap:8px}
 /* Every cell sits under its own title, and the boxes are wide enough to type in. */
 .bulk-head.five span:not(:first-child),.bulk-row.five>div:not(:first-child){text-align:center}
 .bulk-row.five .delta-wrap{display:flex;align-items:center;justify-content:center;gap:7px;width:100%}
-.bulk-row.five .d-delta{width:74px}
-.bulk-row.five .d-set{width:74px;margin:0 auto;display:block}
+.bulk-row.five .d-delta{width:50px}
+.bulk-row.five .d-set{width:50px;margin:0 auto;display:block}
 /* The browser's own tiny spinners crowd a narrow box; the count is typed. */
 .bulk-row .d-delta::-webkit-outer-spin-button,.bulk-row .d-delta::-webkit-inner-spin-button,
 .bulk-row .d-set::-webkit-outer-spin-button,.bulk-row .d-set::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .bulk-row .d-delta,.bulk-row .d-set{-moz-appearance:textfield;appearance:textfield;
-  padding:7px 8px;font-size:14px;text-align:center}
+  padding:7px 4px;font-size:14px;text-align:center}   /* wide enough for "200" */
 .how-to{margin:2px 0 12px 0;padding-left:20px;font-size:13px;color:var(--muted);line-height:1.55}
 .how-to b{color:var(--muted)}
 .how-to li{margin:3px 0}
@@ -1059,7 +1059,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b171</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b172</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5076,6 +5076,15 @@ const EDIT_SEL = '.hint, .cash-sub, .cash-lede, .muted-note, .sec-h2, .inv-h2, .
 let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
 
+/* Your wording, with the little formatting the app understands:
+   **bold** for bold, and a new line where you put one. Everything else is
+   shown exactly as typed. */
+function labelHtml(text){
+  return esc(String(text))
+    .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+    .replace(/\n/g, '<br>');
+}
+
 /** Where a piece of wording lives: the dialog or panel it belongs to. */
 /* Where a label lives, by the heading's ORIGINAL words.
 
@@ -5157,8 +5166,22 @@ function applyLabels(root){
     const want = map[normLabelKey(key)];
     const orig = el.getAttribute('data-orig') || '';
     const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
-    if(want && first && first.textContent.replace(/\s+/g,' ').trim() !== want) first.textContent = want;
-    if(!want && first && el.dataset.rewritten==='1'){ first.textContent = orig; }
+    /* Your wording may carry simple formatting. That can only be drawn where
+       the element holds nothing but text (and its pencil) — a label wrapped
+       around a checkbox keeps its plain text instead of losing the checkbox. */
+    const plainOnly = [...el.childNodes].every(n=>
+      n.nodeType===3 || (n.nodeType===1 && n.classList && n.classList.contains('pencil')));
+    if(want){
+      if(plainOnly && /\*\*|\n/.test(want)) el.innerHTML = labelHtml(want);
+      else if(first){
+        // No room for formatting here: show the words without their markers.
+        const flat = String(want).replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\n+/g,' ');
+        if(first.textContent.replace(/\s+/g,' ').trim() !== flat) first.textContent = flat;
+      }
+    }
+    if(!want && el.dataset.rewritten==='1'){
+      if(plainOnly) el.innerHTML = esc(orig); else if(first) first.textContent = orig;
+    }
     el.dataset.rewritten = want ? '1' : '';
     if(EDIT_WORDING && !el.querySelector(':scope > .pencil')){
       const p = document.createElement('span');
@@ -5181,7 +5204,9 @@ function editLabelModal(key){
       <div class="hint">${esc(at)} — currently reads:</div>
       <div class="lbl-orig">${esc(words)}</div>
       <div class="field"><label>Your wording</label>
-        <textarea id="lblText" rows="3" placeholder="Leave empty to use the original">${esc(cur)}</textarea></div>
+        <textarea id="lblText" rows="4" placeholder="Leave empty to use the original">${esc(cur)}</textarea>
+        <div class="muted-note">Put <b>**stars**</b> around words to make them <b>bold</b>, and press Enter
+          for a new line.</div></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
