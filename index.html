@@ -966,7 +966,10 @@ body.busy #busyBar{opacity:1}
 .seg button.on{background:var(--plum);color:var(--gold-l)}
 .bulk{display:flex;flex-direction:column}
 .bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 58px 148px 58px;gap:10px;align-items:center}
-.how-to{margin:2px 0 12px 0;padding-left:20px;font-size:13px;color:var(--ink);line-height:1.55}
+/* Five columns where adding and setting are separate things. */
+.bulk-head.five,.bulk-row.five{grid-template-columns:1fr 54px 104px 62px 58px;gap:8px}
+.how-to{margin:2px 0 12px 0;padding-left:20px;font-size:13px;color:var(--muted);line-height:1.55}
+.how-to b{color:var(--muted)}
 .how-to li{margin:3px 0}
 .bulk-head{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;
   padding:0 2px 6px;border-bottom:1px solid var(--line)}
@@ -1046,7 +1049,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b168</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b169</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -5059,7 +5062,7 @@ function costsModal(editId, presetPartner){
 
    The text is swapped after each redraw rather than at every call site, so no
    part of the app has to know about it. */
-const EDIT_SEL = '.hint, .cash-sub, .cash-lede, .muted-note, .sec-h2, .inv-h2, .m-head h3, label, .cash-empty, .chg-note';
+const EDIT_SEL = '.hint, .cash-sub, .cash-lede, .muted-note, .sec-h2, .inv-h2, .m-head h3, label, .cash-empty, .chg-note, .how-to b, .how-to .how-rest';
 let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
 
@@ -7218,10 +7221,13 @@ function bulkRows(cols){
   const other=shelfBooks().filter(isOther);
   const row=b=>{
     const c=cols(b);
-    return `<div class="bulk-row">
+    // A second input, where a dialog has two separate things to enter.
+    const five = c.input2 !== undefined;
+    return `<div class="bulk-row${five?' five':''}">
       <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
       <div class="num">${c.left}</div>
       <div>${c.input}</div>
+      ${five?`<div>${c.input2}</div>`:''}
       <div class="num next" data-next="${b.id}">${c.right}</div>
     </div>`;
   };
@@ -7241,8 +7247,8 @@ function stockModal(){
   const body = bulkRows(b=>({
     left: invQty(loc,b.id),
     input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${b.id}" title="Adding — tap to subtract instead">＋</button>`
-         +`<input class="d-delta" type="number" step="1" data-book="${b.id}" inputmode="numeric" min="0"></span>`
-         +`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" inputmode="numeric">`,
+         +`<input class="d-delta" type="number" step="1" data-book="${b.id}" inputmode="numeric" min="0"></span>`,
+    input2:`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" inputmode="numeric">`,
     right: invQty(loc,b.id)
   }));
 
@@ -7250,11 +7256,11 @@ function stockModal(){
     ${mHead('Adjust stock — '+where)}
     <div class="m-body">
       <ol class="how-to">
-        <li><b>To add stock</b> to existing inventory, enter the amount to be added in the field next to the “+” sign.</li>
-        <li><b>To subtract stock</b> click the “+” sign (it will become a “−” sign) and then enter the number to be subtracted.</li>
-        <li><b>To manually change stock</b>, enter number in the “Set” column.</li>
+        <li><b>To add stock</b><span class="how-rest"> to existing inventory, enter the amount to be added in the field next to the “+” sign.</span></li>
+        <li><b>To subtract stock</b><span class="how-rest"> click the “+” sign (it will become a “−” sign) and then enter the number to be subtracted.</span></li>
+        <li><b>To manually change stock</b><span class="how-rest">, enter number in the “Set” column.</span></li>
       </ol>
-      <div class="bulk-head"><span>Title</span><span>Current</span><span>Add/Subtract &nbsp;/&nbsp; Set</span><span>Updated</span></div>
+      <div class="bulk-head five"><span>Title</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
       ${body}
       <div class="bulk-foot totals3">
         <div><span class="tl">Big Books</span><b id="footBig">0</b></div>
