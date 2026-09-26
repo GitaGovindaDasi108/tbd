@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b178**.
+Handover notes. Current build: **b179**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -153,7 +153,7 @@ install. See `test/README.md`.
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
 `dutchtest`, `reptest`, `payusd`).
 
-`node test/browser-buttons.js` and `node test/browser-addstock.js` are optional:
+`node test/browser-buttons.js`, `browser-addstock.js` and `browser-transit.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -201,6 +201,18 @@ narrowly, and Node's `navigator` is read-only — override it with
   your destination?". `regionModal(edit, after)` and `eventModal(edit, after)`
   take a callback so the user is brought back to Add Stock with it chosen.
 - Phone layout: the five-column stock table now fits a 390px screen.
+
+## Done in b179 — Books in Transit on the main screen
+
+- A **Books in Transit** section sits with Pending Payments / Pre-Orders
+  (`transitHere`, `shipCardHTML`): every batch at the season, the region's
+  incoming and outgoing batches, or the batches aimed at an event.
+- **Full Delivery Arrived** (`shipArriveAll`) confirms, then receives
+  everything to `shipLandsAt(x)` (its `toLoc`, else the warehouse).
+  **Partial Delivery Arrived** is the old receive dialog, renamed.
+- Regional links see their own region's batches (the server now filters
+  `shipments` and includes the batches' inventory in a link's state) and may
+  `receiveShipment` for their region only. Edit / Correct / Delete stay admin.
 
 ## Still to do (agreed plan)
 

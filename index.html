@@ -937,6 +937,9 @@ body.busy #busyBar{opacity:1}
 /* Change we owe is the mirror of a pending payment, so it is titled the same way. */
 .change-panel{border-color:#E3C089}
 .change-panel > h2{background:linear-gradient(180deg,#FDF3E2,transparent);color:#8A5A12;font-size:16px;padding:9px 14px}
+.transit-panel{border-color:#B9D2EC}
+.transit-panel > h2{background:linear-gradient(180deg,#E7F0FA,transparent);color:#2F6FB5;font-size:16px;padding:9px 14px}
+.transit-panel .sh-card{margin-bottom:0}
 .bottom-panels .body{padding:10px 12px}
 .bottom-panels .log{gap:5px}
 
@@ -1124,7 +1127,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b178</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b179</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1207,6 +1210,10 @@ body.busy #busyBar{opacity:1}
     <section class="panel pre-panel" id="prePanel" style="display:none">
       <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
+    </section>
+    <section class="panel transit-panel" id="transitPanel" style="display:none">
+      <h2 class="sec-h2">Books in Transit</h2>
+      <div class="body"><div class="log" id="transitList"></div></div>
     </section>
     <section class="panel change-panel" id="changePanel" style="display:none">
       <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
@@ -2765,6 +2772,7 @@ function renderAdmin(){
        </div>${coord ? `<div class="adm-col">
          <div class="adm-lbl">Books</div>
          <button class="btn adm-c3-1" data-act="addstock">＋ Add Stock</button>
+         <button class="btn adm-c3-2" data-act="shipments">🚚 Books in transit</button>
        </div>` : ''}</div>`;
     return;
   }
@@ -4019,10 +4027,14 @@ function renderBottom(){
   // The reverse of a pending payment: they overpaid and we could not break it.
   const change=g.filter(x=>changeOwed(x)>0).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow'), chg=$('#changePanel');
+  // Books on the road: shown in full, to be received from right here.
+  const road = transitHere();
+  $('#transitPanel').style.display = road.length?'':'none';
+  if(road.length) $('#transitList').innerHTML = road.map(r=>shipCardHTML(r.x, r.incoming)).join('');
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
   chg.style.display = change.length?'':'none';
-  const showing = [owed.length, unpaid.length, change.length].filter(Boolean).length;
+  const showing = [owed.length, unpaid.length, change.length, road.length].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
   // These panels exist to be acted on, so they show their details up front.
@@ -9223,6 +9235,74 @@ function seasonTransferModal(){
 }
 
 
+/* One batch on the road, as a card. Used in the Books in transit dialog and in
+   the Books in Transit section on the main screen, so both read the same.
+   Where it is heading, the two arrival buttons: all of it came, or only some. */
+function shipCardHTML(x, incoming){
+  const books = shipBooks(x);
+  const eta = x.eta ? new Date(x.eta).toLocaleDateString(LOCALE,{day:'numeric',month:'short'}) : '';
+  const admin = isAdmin();
+  return `<div class="sh-card ${x.status==='PARTIAL'?'part':''}">
+    <div class="sh-top">
+      <span class="sh-route">${esc(shipLabel(x))}</span>
+      <span class="sh-count">${shipTotal(x)} still coming${
+        shipSentTotal(x)>shipTotal(x) ? ` <span class="sh-of">of ${shipSentTotal(x)}</span>` : ''}</span>
+    </div>
+    <div class="sh-who">${esc(shipWho(x))}${x.phone?` · ${waLink(x.phone)}`:''}</div>
+    ${x.trackingUrl?`<div class="sh-who"><a href="${esc(x.trackingUrl)}" target="_blank" rel="noopener">Track it</a></div>`:''}
+    <div class="sh-meta">${eta?`Expected ${esc(eta)}`:'No arrival date yet'}
+      ${x.status==='PARTIAL'?'<span class="sh-tag">partly delivered</span>':''}
+      ${x.note?' · '+esc(x.note):''}</div>
+    <div class="sh-books">${books.map(r=>
+      `<span class="sh-chip ${r.left?'':'done'}">${esc(r.b.name)}:
+        ${r.arrived?`<b>${r.arrived} of ${r.sent}</b> arrived${r.left?` · ${r.left} coming`:''}`
+                   : `<b>${r.left}</b> coming`}</span>`).join('')}</div>
+    <div class="sh-acts">
+      ${incoming?`<button class="btn btn-green btn-sm" data-act="sharriveall" data-id="${esc(x.shipId)}">Full Delivery Arrived</button>
+      <button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Partial Delivery Arrived</button>`:''}
+      ${admin?`<button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit details</button>
+      <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct contents</button>
+      <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>`:''}
+    </div>
+  </div>`;
+}
+
+/* Where a batch lands when all of it has come: the place it was aimed at, or
+   the region's warehouse. */
+function shipLandsAt(x){
+  const reg = regionById(x.toRegion);
+  const ok = x.toLoc && (x.toLoc===(reg||{}).whLoc || eventsOfRegion(x.toRegion).some(e=>e.eventId===x.toLoc && !e.closedAt));
+  return ok ? x.toLoc : (reg||{}).whLoc;
+}
+/** Full delivery: every book still travelling goes onto the shelf in one go. */
+function shipArriveAll(id){
+  const x = (STATE.shipments||[]).find(v=>v.shipId===id);
+  if(!x) return;
+  const items = shipBooks(x).filter(r=>r.left>0).map(r=>({bookId:r.b.id, qty:r.left}));
+  const n = items.reduce((t,i)=>t+i.qty,0);
+  if(!n){ toast('Everything in this batch has already arrived.'); return; }
+  const toLoc = shipLandsAt(x);
+  if(!confirm(`Mark all ${n} book${n===1?'':'s'} as arrived at ${locName(toLoc)}?`)) return;
+  commit({action:'receiveShipment', shipId:id, toLoc, items, note:'Full delivery'},
+    st=>{
+      items.forEach(it=>{ invAdd(st, id, it.bookId, -it.qty); invAdd(st, toLoc, it.bookId, it.qty); });
+      const ship=(st.shipments||[]).find(v=>v.shipId===id);
+      if(ship) ship.status='ARRIVED';
+    }, 'Arrived — '+n+' book'+(n===1?'':'s')+' added at '+locName(toLoc), {keepOpen:true});
+  // In the dialog, show the list again without it; on the main screen, nothing to reopen.
+  if($('#overlay').classList.contains('show')) setTimeout(shipmentsModal, 0);
+}
+
+/* The batches that belong on the screen you are looking at: everything on the
+   road at the season; coming to or leaving the region; aimed at this event. */
+function transitHere(){
+  const live = (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && shipTotal(x)>0);
+  if(CUR_LEVEL==='season') return live.map(x=>({x, incoming:true}));
+  if(CUR_LEVEL==='event') return live.filter(x=>x.toLoc===CUR_LOC).map(x=>({x, incoming:true}));
+  return live.filter(x=>x.toRegion===CUR_REGION).map(x=>({x, incoming:true}))
+    .concat(live.filter(x=>x.fromRegion===CUR_REGION && x.toRegion!==CUR_REGION).map(x=>({x, incoming:false})));
+}
+
 function shipmentsModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
@@ -9233,32 +9313,7 @@ function shipmentsModal(){
     : inboundShipments(reg.regionId);
   const out = season ? [] : outboundShipments(reg.regionId);
 
-  const card = (x, incoming) => {
-    const books = shipBooks(x);
-    const eta = x.eta ? new Date(x.eta).toLocaleDateString(LOCALE,{day:'numeric',month:'short'}) : '';
-    return `<div class="sh-card ${x.status==='PARTIAL'?'part':''}">
-      <div class="sh-top">
-        <span class="sh-route">${esc(shipLabel(x))}</span>
-        <span class="sh-count">${shipTotal(x)} still coming${
-          shipSentTotal(x)>shipTotal(x) ? ` <span class="sh-of">of ${shipSentTotal(x)}</span>` : ''}</span>
-      </div>
-      <div class="sh-who">${esc(shipWho(x))}${x.phone?` · ${waLink(x.phone)}`:''}</div>
-      ${x.trackingUrl?`<div class="sh-who"><a href="${esc(x.trackingUrl)}" target="_blank" rel="noopener">Track it</a></div>`:''}
-      <div class="sh-meta">${eta?`Expected ${esc(eta)}`:'No arrival date yet'}
-        ${x.status==='PARTIAL'?'<span class="sh-tag">partly delivered</span>':''}
-        ${x.note?' · '+esc(x.note):''}</div>
-      <div class="sh-books">${books.map(r=>
-        `<span class="sh-chip ${r.left?'':'done'}">${esc(r.b.name)}:
-          ${r.arrived?`<b>${r.arrived} of ${r.sent}</b> arrived${r.left?` · ${r.left} coming`:''}`
-                     : `<b>${r.left}</b> coming`}</span>`).join('')}</div>
-      <div class="sh-acts">
-        ${incoming?`<button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Mark arrived…</button>`:''}
-        <button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit details</button>
-        <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct contents</button>
-        <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>
-      </div>
-    </div>`;
-  };
+  const card = (x, incoming) => shipCardHTML(x, incoming);
 
   openModal(`
     ${mHead('Books in transit')}
@@ -9386,7 +9441,7 @@ function shipCountModal(id){
   });
 }
 
-function shipReceiveModal(id){
+function shipReceiveModal(id, fromPanel){
   const x = (STATE.shipments||[]).find(v=>v.shipId===id);
   if(!x) return;
   const reg = regionById(x.toRegion);
@@ -9398,7 +9453,7 @@ function shipReceiveModal(id){
   const books = shipBooks(x);
 
   openModal(`
-    ${mHead('Mark as arrived')}
+    ${mHead('Partial Delivery Arrived')}
     <div class="m-body">
       <div class="hint">${esc(shipWho(x))} · ${esc(shipLabel(x))}.
         <b>Enter how many of each actually arrived.</b> Anything less than the full amount
@@ -9417,7 +9472,8 @@ function shipReceiveModal(id){
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
-      <button class="btn btn-ghost" data-act="shipments">Back</button>
+      ${fromPanel ? `<button class="btn btn-ghost" onclick="closeModal()">Cancel</button>`
+                  : `<button class="btn btn-ghost" data-act="shipments">Back</button>`}
       <button class="btn btn-primary" id="rcGo">Confirm arrival</button>
     </div>`, true);
 
@@ -9446,7 +9502,7 @@ function shipReceiveModal(id){
           ship.status = left>0 ? 'PARTIAL' : 'ARRIVED';
         }
       }, 'Arrival recorded');
-    setTimeout(shipmentsModal, 0);      // straight back to the list, already updated
+    if(!fromPanel) setTimeout(shipmentsModal, 0);      // straight back to the list, already updated
   });
 }
 
@@ -9919,7 +9975,8 @@ document.addEventListener('click',e=>{
     commitSync({action:'deletePayout', id:t.dataset.id}, 'Removed').then(ok=>{ if(ok) partnersModal(); });
     return;
   }
-  if(a==='shreceive'){ shipReceiveModal(t.dataset.id); return; }
+  if(a==='shreceive'){ shipReceiveModal(t.dataset.id, !!t.closest('#transitPanel')); return; }
+  if(a==='sharriveall'){ shipArriveAll(t.dataset.id); return; }
   if(a==='holders'){ holdersModal(); return; }
   if(a==='holderedit'){ holderEditModal(t.dataset.id); return; }
   if(a==='sharelinks'){ shareLinksModal(); return; }

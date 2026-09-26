@@ -192,7 +192,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b178';
+var SERVER_BUILD = 'b179';
 
 function doPost(e) { return handle(e); }
 
@@ -525,6 +525,13 @@ function scopedStateBuild_(who) {
   var myEvents = isSeller ? (who.eventIds || [who.eventId]).filter(Boolean) : [];
   var locs = isSeller ? myEvents : locsInRegion_(regionId);
   var mine = {}; locs.forEach(function (l) { mine[l] = 1; });
+  /* A regional link sees the batches coming to or leaving its region — and
+     what is in them, since a batch's books are held under its own id. A sales
+     link sees none. */
+  full.shipments = isSeller ? [] : (full.shipments || []).filter(function (x) {
+    return String(x.toRegion) === String(regionId) || String(x.fromRegion) === String(regionId);
+  });
+  var shipLocs = {}; full.shipments.forEach(function (x) { shipLocs[x.shipId] = 1; });
 
   full.role = who.role;
   full.lockedRegion = regionId;
@@ -536,7 +543,7 @@ function scopedStateBuild_(who) {
   full.events  = (full.events  || []).filter(function (e) {
     return isSeller ? myEvents.indexOf(e.eventId) >= 0 : String(e.regionId || '') === regionId;
   });
-  full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location]; });
+  full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location] || shipLocs[i.location]; });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
   full.costs     = isSeller ? [] : (full.costs || []).filter(function (c) { return mine[c.location]; });
   full.change    = isSeller ? [] : (full.change || []).filter(function (c) {
@@ -1717,7 +1724,9 @@ var SELLER_ACTIONS = {
 var COORD_EXTRA = {
   transferBulk:1, createEvent:1, adjustStockBulk:1, setStockBulk:1, closeLocation:1,
   // Add Stock: books on their way in, and switching on an existing title here.
-  sendShipment:1, regionAddBooks:1
+  sendShipment:1, regionAddBooks:1,
+  // Books in transit: marking their own region's deliveries as arrived.
+  receiveShipment:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -1824,6 +1833,14 @@ function assertAllowed_(who, action, params) {
       (String(params.fromRegion) !== OUTSIDE_ORIGIN || String(params.toRegion) !== String(who.regionId) ||
        (params.toLoc && !allowed[String(params.toLoc)]))) {
     throw new Error('This link can only bring books into its own region.');
+  }
+  /* Receiving: only a batch heading for this link's region, onto one of its own shelves. */
+  if (action === 'receiveShipment') {
+    var sh = shipmentById_(String(params.shipId || ''));
+    if (!sh || String(sh.toRegion) !== String(who.regionId) ||
+        (params.toLoc && !allowed[String(params.toLoc)])) {
+      throw new Error('This link can only receive books arriving in its own region.');
+    }
   }
   if (action === 'regionAddBooks' && String(params.regionId) !== String(who.regionId)) {
     throw new Error('This link can only change its own region.');
