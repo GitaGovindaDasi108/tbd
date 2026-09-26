@@ -12,7 +12,8 @@ const root = fs.existsSync(path.join(here, '..', 'index.html'))
   ? path.join(here, '..') : here;
 
 const SCRIPTS = ['simtest.js', 'bundle.js', 'chg2.js', 'verify.js',
-                 'stale.js', 'createtest.js', 'dutchtest.js', 'reptest.js'];
+                 'stale.js', 'createtest.js', 'dutchtest.js', 'reptest.js',
+                 'payusd.js'];
 
 let bad = 0;
 

@@ -1079,7 +1079,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b176</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b177</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2628,7 +2628,8 @@ function renderTabs(){
       </select>
     </span>`;
   }else{
-    h += `<button class="crumb-btn ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
+    // no-edit: this is the season's name, changed by renaming the season, not wording.
+    h += `<button class="crumb-btn no-edit ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
             title="The whole tour">${esc(STATE.seasonName||'Season')}</button>`;
   }
 
@@ -3280,6 +3281,12 @@ function renderPayments(target){
   const byType={}, byTypeGroup={}, grand={}, don={}, donGroup={};
   // Dollars actually received, and the estimates they stand in for.
   const usdEst={}, usdAct={}, conUsdEst={}, conUsdAct={};
+  /* The same correction again, for the lines inside a row's dropdown:
+     usdAdj[row label][place | 'don' | 'con'] = dollars to add to the estimate.
+     Without it those lines showed estimates while the row above them showed
+     what was really received, and the two did not add up. */
+  const usdAdj={};
+  const addAdj=(label,where,v)=>{ const r=(usdAdj[label]=usdAdj[label]||{}); r[where]=(r[where]||0)+v; };
   // The consignment share of each of those, so a row can show both.
   const conType={}, conTypeGroup={}, conGrand={};
   // And the donation share, shown the same way.
@@ -3338,6 +3345,12 @@ function renderPayments(target){
         const one = toUSD(l.amt, l.cur);
         (usdEst[l.type] = usdEst[l.type]||{})[l.cur] = (usdEst[l.type][l.cur]||0) + one;
         (usdAct[l.type] = usdAct[l.type]||{})[l.cur] = (usdAct[l.type][l.cur]||0) + one*factor;
+        /* Filed under the dropdown line this money appears on: a place's line
+           leaves out donations and consignment, which have lines of their own. */
+        const d = one*(factor-1);
+        if(isCon) addAdj(l.type, 'con', d);
+        if(isDonation) addAdj(l.type, 'don', d);
+        if(!isCon && !isDonation && g) addAdj(l.type, 'g:'+g.id, d);
         /* Consignment's own adjustment follows whose book it is — not the place
            grouping, which is what `g` means here. */
         if(isPartnerSale(x)){
@@ -3351,6 +3364,8 @@ function renderPayments(target){
           if(own){
             (usdEst[own] = usdEst[own]||{})[l.cur] = (usdEst[own][l.cur]||0) + one;
             (usdAct[own] = usdAct[own]||{})[l.cur] = (usdAct[own][l.cur]||0) + one*factor;
+            // The group's own dropdown lists its places, so the correction goes there.
+            if(g) addAdj(own, 'g:'+g.id, d);
           }
         }
       }
@@ -3399,6 +3414,7 @@ function renderPayments(target){
        than counting the same notes twice. */
     const conG = conOfGroup ? (conOfGroup[label]||{}) : {};
     const donG = donOfGroup ? (donOfGroup[label]||{}) : {};
+    const adj = where => ((usdAdj[label]||{})[where]||0);
     const kids = groups.map(g=>{
       const row = (perGroup||{})[g.id];
       if(!row) return '';
@@ -3406,14 +3422,14 @@ function renderPayments(target){
       if(!Object.keys(mine).some(c=>Math.abs(mine[c])>0.005)) return '';
       return `<div class="ptg-s ptg-first ${rowId}" hidden>${esc(g.name)}</div>`
         + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(mine,c)}</div>`).join('')
-        + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(mine))}</div>`;
+        + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(mine) + adj('g:'+g.id))}</div>`;
     }).filter(Boolean).join('');
 
     const donRow = donOf ? donOf[label] : null;
     const donKids = (donRow && Object.keys(donRow).some(c=>Math.abs(donRow[c])>0.005))
       ? `<div class="ptg-s ptg-first ptg-don ${rowId}" hidden>Donations</div>`
         + curs.map(c=>`<div class="ptg-s ptg-don ${rowId}" hidden>${num(donRow,c)}</div>`).join('')
-        + `<div class="ptg-s usd ptg-don ${rowId}" hidden>$${fmt(usdOf(donRow))}</div>`
+        + `<div class="ptg-s usd ptg-don ${rowId}" hidden>$${fmt(usdOf(donRow) + adj('don'))}</div>`
       : '';
     /* How much of this row is consignment, in blue beneath its places — so the
        figure above is the true amount that came through this payment type, and
@@ -3422,7 +3438,7 @@ function renderPayments(target){
     const conKids = (conRow && Object.keys(conRow).length)
       ? `<div class="ptg-s ptg-first ptg-con ${rowId}" hidden>Consignment</div>`
         + curs.map(c=>`<div class="ptg-s ptg-con ${rowId}" hidden>${num(conRow,c)}</div>`).join('')
-        + `<div class="ptg-s usd ptg-con ${rowId}" hidden>$${fmt(usdOf(conRow))}</div>`
+        + `<div class="ptg-s usd ptg-con ${rowId}" hidden>$${fmt(usdOf(conRow) + adj('con'))}</div>`
       : '';
     return out + kids + donKids + conKids;
   }
@@ -5299,10 +5315,11 @@ function costsModal(editId, presetPartner){
 
    The text is swapped after each redraw rather than at every call site, so no
    part of the app has to know about it. */
-/* Everything the editor can reach. Text-carrying elements only: a pencil on a
-   button would fire the button when you tapped it, so button wording is left
-   for a later pass. */
+/* Everything the editor can reach. Buttons are included: a tap on a pencil is
+   caught before the button hears it (see the capture listener below), so the
+   pencil can sit inside a button without firing it. */
 const EDIT_SEL = [
+  'button',              // plain-text buttons only — see buttonEditable()
   '.hint', '.cash-sub', '.cash-lede', '.muted-note', '.sec-h2', '.inv-h2', '.m-head h3',
   'label', '.cash-empty', '.chg-note', '.how-to b', '.how-to .how-rest',
   '.adm-lbl',            // the admin column names
@@ -5338,6 +5355,15 @@ function labelTextOf(el){
 /** Can its whole content be replaced without destroying something? */
 function labelReplaceable(el){
   return !el.querySelector('input, select, textarea, button');
+}
+/* A button is offered for rewording only when it is words and nothing else.
+   One carrying a badge or icon element would lose it when replaced whole, and
+   symbol-only buttons (✕, ‹, +) have no wording to change. */
+function buttonEditable(el){
+  // Bold and line breaks are what your own wording produces, so they still count as words.
+  const wordsOnly = c => /^(B|BR)$/.test(c.tagName) || (c.classList && c.classList.contains('pencil'));
+  if(![...el.children].every(wordsOnly)) return false;
+  return /[A-Za-z]{2}/.test(labelTextOf(el));
 }
 
 /** Where a piece of wording lives: the dialog or panel it belongs to. */
@@ -5420,6 +5446,7 @@ function applyLabels(root){
   });
   scope.querySelectorAll(EDIT_SEL).forEach(el=>{
     if(el.closest('.no-edit')) return;
+    if(el.tagName==='BUTTON' && !buttonEditable(el)) return;
     const key = labelKeyOf(el);
     if(!key) return;
     const want = map[normLabelKey(key)];
@@ -5483,7 +5510,7 @@ function editLabelModal(key){
         <span><b>Don't show this at all</b><br><span class="muted-note">Takes the text off the screen.</span></span></label>
       <div class="err" id="modalErr"></div>
     </div>
-    <div class="m-foot">
+    <div class="m-foot no-edit">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="lblSave">Save</button>
     </div>`);
@@ -9286,6 +9313,16 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.log-filter-wrap'))
     document.querySelectorAll('.log-filter[data-panel]').forEach(p=>{ if(!p.hidden) p.hidden=true; });
 });
+
+/* A pencil is answered here, in the capture phase, before the click reaches
+   whatever the pencil sits in. Inside a button, handling it on the way back up
+   was too late: the button's own action had already run. */
+document.addEventListener('click',e=>{
+  const p = e.target && e.target.closest && e.target.closest('.pencil');
+  if(!p) return;
+  e.preventDefault(); e.stopPropagation();
+  editLabelModal(p.dataset.key);
+}, true);
 
 document.addEventListener('click',e=>{
   if(e.target.closest('a')) return;              // let links open normally
