@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b187**.
+Handover notes. Current build: **b188**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -379,6 +379,31 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
   halves); the edit box opens with the current words (`labelAsTyped`); a
   rewording applies wherever the same words appear (`byWords` in
   `applyLabels`), and restoring the original clears the other copies.
+
+## Done in b188
+
+- **Pencils everywhere.** `applyLabels` now takes every piece of text on
+  screen (`lblTargets`: the `EDIT_SEL` list plus a text-node walk; bold inside
+  a sentence belongs to the sentence), including dialog headings (`#modal > h3`
+  was never matched before). A `MutationObserver` re-applies wording and
+  pencils to anything drawn later. With pencils off, elements whose words have
+  no saved wording are skipped, so long logs stay quick.
+- **Numbers**: a label is keyed with each number as `#` ("# still coming");
+  your wording's #s are filled with the numbers of the moment (`lblFill`).
+  The editor explains the #.
+- **Working parts survive a rewording**: only bold/line breaks count as part
+  of the words (`lblIsFormatting`). Anything else inside (a spinner, a button,
+  a link) is kept; only the text nodes change (`lblPut`), and are put back
+  exactly (`lblRestore`, originals in `LBL_ORIG`). When the app itself changes
+  a label's text, the label is re-keyed (`data-shown`).
+- **Activity log**: a delete made while the log was still loading came back
+  when the older copy arrived. Deletes are held in `ACT_PENDING` and laid over
+  every fetched copy until the server's own copy shows them; the log refetches
+  once the delete lands (`commit` now takes `opts.onDone`).
+- **Errors in dialogs** scroll into view and flash (`#modalErr` watcher).
+- **Shipment details**: "Coming From" (the `origin` of outside books) is
+  editable; `doEditShipment` accepts `origin`.
+- Admin: Share Links above Spreadsheet Links.
 
 ## Open items
 
