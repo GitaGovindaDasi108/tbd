@@ -1079,7 +1079,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b175</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b176</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1540,14 +1540,15 @@ function allShelfBooks(){
 
 /* Choosing which titles an event offers. */
 function hideBooksModal(){
-  if(CUR_LEVEL!=='event') return;
+  // A region sets this for its warehouse just as an event does for its table.
+  if(CUR_LEVEL!=='event' && CUR_LEVEL!=='region') return;
   const off=hiddenHere();
   const books=allShelfBooks();
   openModal(`
     ${mHead('Titles offered here')}
     <div class="m-body">
-      <div class="hint">Untick a title to keep it off this event's shelf. It can still be
-        pre-ordered — use “Pre-order another title” beneath the shelf.</div>
+      <div class="hint">Untick a title to keep it off the shelf ${CUR_LEVEL==='region'?'in this region':'at this event'}.
+        It can still be pre-ordered — use “Pre-order another title” beneath the shelf.</div>
       <div class="rep-picks">${books.map(b=>`
         <label class="rep-pick"><input type="checkbox" data-hb="${esc(b.id)}" ${off.has(b.id)?'':'checked'}>
           <span>${esc(b.name)}</span></label>`).join('')}</div>
@@ -2726,12 +2727,6 @@ function renderAdmin(){
   // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done editing wording':'Edit wording'}</button>`);
-  /* Which titles are offered where you are — a region can set this for its
-     warehouse just as an event does for its table. It belongs with the other
-     book settings, not with the admin tools. */
-  if(CUR_LEVEL==='event' || CUR_LEVEL==='region')
-    cols[2].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
-      hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
   // Costs are money matters, so only for those who see the money.
   if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
     scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
@@ -2796,6 +2791,12 @@ function renderAdmin(){
     const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
     cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
     cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order${season?' (whole season)':''}</button>`);
+  /* Which titles are offered where you are — the last word on the shelf, so it
+     sits at the foot of the book settings. A region sets this for its
+     warehouse just as an event does for its table. */
+  if(CUR_LEVEL==='event' || CUR_LEVEL==='region')
+    cols[2].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
+      hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
   }
 
   // 4 — the region or event itself
