@@ -356,6 +356,10 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
   animation:spin .7s linear infinite}
 body.busy .spin{display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* The same ring for use inside dialogs and buttons, on a light background or a dark button. */
+.spin-d{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-2px;margin-right:5px;
+  border:2px solid rgba(128,110,90,.3);border-top-color:currentColor;animation:spin .7s linear infinite}
+.sp-loading{display:flex;align-items:center;gap:4px}
 /* A real measure of progress rather than a spinner: the bar fills as saves
    complete, so a slow burst visibly moves rather than just sitting there. */
 #busyBar{position:fixed;left:0;top:0;height:2px;width:100%;z-index:90;
@@ -1127,7 +1131,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b179</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b180</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -7763,24 +7767,26 @@ function bindPlacePicker(id, places, value, onPick){
   // Pressing on the list must not blur the box first, or the tap is lost.
   list.addEventListener('mousedown', e=>e.preventDefault());
   list.addEventListener('click', e=>{ const r=e.target.closest('.pp-row'); if(r) pick(r.dataset.loc); });
-  inp.addEventListener('blur', ()=>setTimeout(()=>{ list.hidden = true; inp.value = placeLabel(cur); }, 150));
+  /* Closed a moment after leaving the box, so a tap on the list still lands —
+     but only if you really have left it: tapping straight back in used to have
+     this late close snap the list shut and wipe what you had typed. */
+  inp.addEventListener('blur', ()=>setTimeout(()=>{
+    if(document.activeElement===inp) return;
+    list.hidden = true; inp.value = placeLabel(cur);
+  }, 150));
   return { get value(){ return cur; } };
 }
 
-/* The place's season, as data. The season on screen is used as it stands;
-   another season is fetched fresh, so its counts are the real ones. */
-async function stockCtxFor(place){
-  if(place.seasonId===STATE.activeSeason) return makeStockCtx(place, null);
-  const d = await post({action:'getState', season:place.seasonId});
-  if(!d || !d.state) throw new Error('Could not open that season.');
-  seasonCacheSave(place.seasonId, d.state, d.rev);
-  return makeStockCtx(place, d.state);
-}
+/* The place's season, as data. The season on screen is used as it stands.
+   Another season comes from the copy already kept on this device — so the form
+   opens at once — and is refreshed from the server behind it (see choose()). */
 function makeStockCtx(place, other){
-  const ctx = { place, here: !other, seasonId: place.seasonId, loc: place.loc, regionId: place.regionId,
+  const ctx = { place, here: place.seasonId===STATE.activeSeason, seasonId: place.seasonId,
+    loc: place.loc, regionId: place.regionId, fresh: true,
     extra: new Set(),
+    setOther(st){ other = st; },
     // The live state while it is this season, so a refresh underneath is seen.
-    get st(){ return other || STATE; },
+    get st(){ return this.here ? STATE : (other || {}); },
     get region(){ return (this.st.regions||[]).find(r=>r.regionId===place.regionId) || {regionId:place.regionId}; },
     qty(loc, bookId){
       const row = (this.st.inventory||[]).find(i=>i.location===loc && i.bookId===bookId);
@@ -7826,7 +7832,7 @@ function stockRows(ctx, books, cols){
     return `<div class="bulk-row${five?' five':''}">
       <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}${isNew
         ? ` <span class="sp-new-tag">new here</span><button type="button" class="sp-x" data-unpick="${esc(b.id)}" title="Take it off this list">✕</button>`:''}</div>
-      <div class="num">${c.left}</div>
+      <div class="num" data-now="${esc(b.id)}">${c.left}</div>
       <div>${c.input}</div>
       ${five?`<div>${c.input2}</div>`:''}
       <div class="num next" data-next="${esc(b.id)}">${c.right}</div>
@@ -7879,20 +7885,51 @@ function addStockModal(opts){
     </div>`, true);
 
   const picker = bindPlacePicker('spPlace', places, startLoc, p=>choose(p));
+  warmSeasons();
   $('#spWhere').addEventListener('change', ()=>{ where = $('#spWhere').value; draw(); });
 
+  /* This season: straight from what is on screen. Another season: from the copy
+     kept on this device, so the form appears at once, while the latest counts
+     are fetched behind it. Save waits only for those counts, not the form. */
   async function choose(p){
     $('#modalErr').textContent = '';
-    ctx = null; draw();
     const mine = ++loadToken;
-    try{
-      const c = await stockCtxFor(p);
-      if(mine!==loadToken) return;                // another place was chosen meanwhile
-      ctx = c;
-    }catch(err){
-      if(mine===loadToken) $('#modalErr').textContent = err.message || 'Could not open that place.';
-    }
+    ctx = null;
+    if(p.seasonId===STATE.activeSeason){ ctx = makeStockCtx(p, null); draw(); return; }
+    const cached = seasonCacheLoad(p.seasonId);
+    if(cached && cached.state){ ctx = makeStockCtx(p, cached.state); ctx.fresh = false; }
     draw();
+    try{
+      const d = await post({action:'getState', season:p.seasonId});
+      if(mine!==loadToken) return;                // another place was chosen meanwhile
+      if(!d || !d.state) throw new Error('Could not open that season.');
+      seasonCacheSave(p.seasonId, d.state, d.rev);
+      if(ctx){ ctx.setOther(d.state); ctx.fresh = true; refreshCounts(); }
+      else { ctx = makeStockCtx(p, d.state); draw(); }
+    }catch(err){
+      if(mine!==loadToken) return;
+      if(ctx){ ctx.fresh = true; refreshCounts(); }  // the saved copy will have to do
+      else $('#modalErr').textContent = err.message || 'Could not open that place.';
+    }
+  }
+  /* Newer counts arrived: put them in place without rebuilding the form, so
+     nothing being typed loses its place. A different list of titles (rare)
+     does need the form redrawn. */
+  function refreshCounts(){
+    if(!ctx || !where){ draw(); return; }
+    const want = stockBooks(ctx).map(b=>b.id).join(',');
+    const have = [...document.querySelectorAll('#spBody [data-now]')].map(c=>c.dataset.now).join(',');
+    if(want!==have){ draw(); return; }
+    document.querySelectorAll('#spBody [data-now]').forEach(c=>{ c.textContent = ctx.qty(ctx.loc, c.dataset.now); });
+    recalc(); saveState();
+  }
+  function saveState(){
+    const save = $('#spSave');
+    if(!ctx || !where){ save.disabled = true; save.textContent = 'Save'; return; }
+    // Only a count on the shelf depends on the latest figures; books on the way do not.
+    if(!ctx.fresh && where==='there'){ save.disabled = true; save.innerHTML = '<span class="spin-d"></span> Checking counts…'; return; }
+    save.disabled = false;
+    save.textContent = where==='there' ? 'Add to stock' : 'Mark in transit';
   }
 
   function keepTyped(){
@@ -7912,7 +7949,7 @@ function addStockModal(opts){
     const save = $('#spSave');
     $('#spWhereWrap').hidden = !picker.value;
     if(!picker.value){ $('#spBody').innerHTML=''; save.disabled=true; save.textContent='Save'; return; }
-    if(!ctx){ $('#spBody').innerHTML = `<div class="hint">Opening ${esc(placeLabel(picker.value))}…</div>`;
+    if(!ctx){ $('#spBody').innerHTML = `<div class="hint sp-loading"><span class="spin-d"></span> Opening ${esc(placeLabel(picker.value))}…</div>`;
               save.disabled=true; return; }
     if(!where){ $('#spBody').innerHTML=''; save.disabled=true; save.textContent='Save'; return; }
     $('#spBody').innerHTML = (where==='there' ? thereHTML() : transitHTML()) + extrasHTML()
@@ -7920,8 +7957,7 @@ function addStockModal(opts){
           <input type="text" data-k="note" placeholder="${where==='there'
             ? 'e.g. carton from Kraków, damaged copies removed' : 'e.g. two boxes, one bag'}"></div>`;
     restoreTyped();
-    save.disabled = false;
-    save.textContent = where==='there' ? 'Add to stock' : 'Mark in transit';
+    saveState();
     if(where==='transit') syncCourier();
     recalc();
   }
@@ -8135,11 +8171,9 @@ function addStockModal(opts){
       const r=(st.regions||[]).find(x=>x.regionId===ctx.regionId);
       if(r && asIdList(r.books).length) r.books = asIdList(r.books).concat(extras.filter(id=>!asIdList(r.books).includes(id)));
     };
-    const elsewhere = ()=>{
-      if(here) return;
-      // That season's saved copy is now out of date: drop it so it loads fresh.
-      try{ localStorage.removeItem(SEASON_CACHE+season); }catch(e){}
-    };
+    /* Another season's saved copy is kept, so the next visit still opens at
+       once; its counts are refreshed every time it is opened anyway. */
+    const elsewhere = ()=>{};
 
     if(where==='there'){
       const setItems=[], deltaItems=[];
@@ -8206,6 +8240,21 @@ function addStockModal(opts){
   else draw();
 }
 
+/* Make sure every other open season has a copy on this device, so choosing a
+   place there opens at once. Quiet, one at a time, and only what is missing. */
+function warmSeasons(){
+  if(!isAdmin()) return;
+  const want = (STATE.seasons||[]).filter(s=>!s.closedAt && s.seasonId!==STATE.activeSeason
+    && !seasonCacheLoad(s.seasonId)).map(s=>s.seasonId);
+  const next = ()=>{
+    const id = want.shift(); if(!id) return;
+    post({action:'getState', season:id})
+      .then(d=>{ if(d && d.state && d.state.activeSeason===id) seasonCacheSave(id, d.state, d.rev); })
+      .catch(()=>{}).then(next);
+  };
+  next();
+}
+
 /* Kept under their old names: other parts of the app still open these. */
 function stockModal(){ addStockModal(); }
 function shipOutsideModal(){
@@ -8264,10 +8313,13 @@ function addNewPlaceModal(then){
         const name = $('#anSeason').value.trim();
         if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
         const had = new Set((STATE.seasons||[]).map(s=>s.seasonId));
-        if(!await commitSync({action:'saveSeason', name}, 'Season created')) return;
+        // The one step that has to wait for the server, so it says so.
+        const go = $('#anGo'); go.innerHTML = '<span class="spin-d"></span> Creating season…';
+        if(!await commitSync({action:'saveSeason', name}, 'Season created')){ go.textContent='Create season'; return; }
         const made = (STATE.seasons||[]).find(s=>!had.has(s.seasonId));
         alert('In order to add stock or transfer books, please create a region on the next page.');
-        if(made){ await switchSeason(made.seasonId); CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll(); }
+        // Switches the screen at once; the season's records follow behind.
+        if(made) switchSeason(made.seasonId);
         regionModal(null, afterRegion);
       });
     }
@@ -8279,10 +8331,9 @@ function addNewPlaceModal(then){
         <button type="button" class="btn btn-primary" id="anGo">Continue</button>`;
       $('#anGo').addEventListener('click', async ()=>{
         const sid = $('#anSeasonPick').value;
-        if(sid && sid!==STATE.activeSeason){
-          closeModal(); await switchSeason(sid);
-          CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
-        }
+        /* Switching changes the screen straight away (from the saved copy); the
+           new region needs nothing more than that, so its dialog opens at once. */
+        if(sid && sid!==STATE.activeSeason) switchSeason(sid);
         regionModal(null, afterRegion);
       });
     }
@@ -8295,8 +8346,16 @@ function addNewPlaceModal(then){
       $('#anGo').addEventListener('click', async ()=>{
         const p = pick.value;
         if(!p){ $('#modalErr').textContent='Choose the region first.'; return; }
-        closeModal();
-        if(p.seasonId!==STATE.activeSeason) await switchSeason(p.seasonId);
+        if(p.seasonId!==STATE.activeSeason){
+          const cached = seasonCacheLoad(p.seasonId);
+          const known = cached && cached.state && (cached.state.regions||[]).some(r=>r.regionId===p.regionId);
+          if(known) switchSeason(p.seasonId);        // on screen at once from the saved copy
+          else {
+            // Nothing saved for that season yet: say so while it loads.
+            const go = $('#anGo'); go.disabled = true; go.innerHTML = '<span class="spin-d"></span> Opening season…';
+            await switchSeason(p.seasonId);
+          }
+        }
         goTo('region', p.regionId);
         eventModal(null, afterEvent);
       });
@@ -8434,7 +8493,14 @@ async function switchSeason(id){
 
 /* Quietly fetch the other seasons once, so switching to them is instant too.
    One at a time, well after the app has settled, and never in the way. */
-function prefetchSeasons(){
+function prefetchSeasons(tries){
+  /* Which seasons, decided once the tour's data has actually arrived. Deciding
+     at start-up found no seasons on a device that had never opened the app,
+     so nothing was fetched and the first visit to another season always waited. */
+  if(!STATE || !(STATE.seasons||[]).length || STATE.loading){
+    if((tries||0) < 10) setTimeout(()=>prefetchSeasons((tries||0)+1), 3000);
+    return;
+  }
   const list = (STATE.seasons||[]).map(x=>x.seasonId).filter(id=>id && id!==STATE.activeSeason);
   let i = 0;
   const next = () => {
@@ -10187,7 +10253,7 @@ document.addEventListener('click',e=>{
   // flashes the wrong region on the way to the right one.
   loadPos();
   pendingLoad(); pendingPrune(); outboxRecover(); showPending();
-  setTimeout(()=>{ try{ prefetchSeasons(); }catch(e){} }, 0);
+  setTimeout(()=>{ try{ prefetchSeasons(); }catch(e){} }, 3000);
   // flushPending checks each one against the server first, so anything already
   // saved is cleared rather than shown as waiting.
   flushPending();
