@@ -153,7 +153,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   /* What actually landed in the account, in USD, for a digital payment.
      A transfer arrives already converted and skimmed of fees, so the app uses
      this figure instead of estimating one from an exchange rate. */
-  'usdActual'];
+  'usdActual',
+  /* A pre-order another region delivers: which region is asked (any season),
+     the shelf the copy came off, and when. */
+  'fulfilBy','fulfilLoc','fulfilAt'];
 
 // Sheet theme — mirrors the colours used in index.html.
 var TH = {
@@ -192,7 +195,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b183';
+var SERVER_BUILD = 'b184';
 
 function doPost(e) { return handle(e); }
 
@@ -277,6 +280,11 @@ function handle(e) {
     if (action === 'getState') {
       return raw(consistentStateReply_(who));
     }
+    // Every pre-order still waiting, in any season — to take one on for another region.
+    if (action === 'openPreorders') {
+      if (who.role === 'seller') throw new Error('That action is not available on this link.');
+      return raw(JSON.stringify({ ok: true, result: openPreorders_() }));
+    }
     // The activity log, fetched when it is opened rather than with every refresh.
     if (action === 'activity') {
       if (who.role === 'seller') throw new Error('That action is not available on this link.');
@@ -336,6 +344,7 @@ function handle(e) {
       activityBefore_(action, params);
       switch (action) {
         case 'undoActivity':     result = doUndoActivity(params, who); break;
+        case 'undoActivityPart': result = doUndoActivityPart(params, who); break;
         case 'setStockBulk':     doSetStockBulk(params);     break;
         case 'adjustStockBulk':  doAdjustStockBulk(params);  break;
         case 'sell':             doSell(params);             break;
@@ -353,6 +362,8 @@ function handle(e) {
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
         case 'transferMulti':    doTransferMulti(params);    break;
+        case 'setFulfilBy':      result = doSetFulfilBy(params, who); break;
+        case 'fulfilRemote':     result = doFulfilRemote(params, who); break;
         case 'transferExternal':  doTransferExternal(params);  break;
         case 'editSale':         doEditSale(params);         break;
         case 'deleteSale':       doDeleteSale(params);       break;
@@ -556,6 +567,7 @@ function scopedStateBuild_(who) {
     return isSeller ? myEvents.indexOf(e.eventId) >= 0 : String(e.regionId || '') === regionId;
   });
   full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location] || shipLocs[i.location]; });
+  full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return String(x.fulfilBy) === String(regionId); });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
   full.costs     = isSeller ? [] : (full.costs || []).filter(function (c) { return mine[c.location]; });
   full.change    = isSeller ? [] : (full.change || []).filter(function (c) {
@@ -621,6 +633,8 @@ function scopeToSeason_(st) {
         || String(c.fromAcct) === 'BANK' || String(c.toAcct) === 'BANK';
   });
   st.costs = (st.costs || []).filter(function (c) { return mine[String(c.location)]; });
+  // Requests this season's regions were asked to fulfil, wherever they came from.
+  st.remote = (st.remote || []).filter(function (x) { return regionOk[String(x.fulfilBy)]; });
   /* Change follows the money, so it can be sitting with a coordinator rather
      than at a place. Keeping only the places made it disappear from the app
      the moment it was banked — while still being owed to whoever lent it. */
@@ -1137,7 +1151,7 @@ var MUTATING_ACTIONS = {
   sell:1, sellBundle:1, donate:1, editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1,
   transferBulk:1, transferExternal:1, adjustStockBulk:1, setStockBulk:1,
-  undoStockMove:1, transferMulti:1
+  undoStockMove:1, transferMulti:1, fulfilRemote:1
 };
 
 /* Except these. Closing a place means no NEW business — but the promises it
@@ -1854,7 +1868,9 @@ var COORD_EXTRA = {
   // Transfer Existing Stock: moves within the region, and its sub-warehouses.
   transferMulti:1, saveHolder:1,
   // Activity log: undo, limited inside to this link's own region.
-  undoActivity:1
+  undoActivity:1, undoActivityPart:1,
+  // Pre-orders fulfilled by another region (checked inside).
+  setFulfilBy:1, fulfilRemote:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -3113,7 +3129,8 @@ function readState() {
       dueamt: Number(s.dueamt) || 0,
       duecur: String(s.duecur || ''),
       name: String(s.name || ''), phone: phoneRead_(s.phone), comments: String(s.comments || ''),
-      bundle: String(s.bundle || '')
+      bundle: String(s.bundle || ''),
+      fulfilBy: String(s.fulfilBy || ''), fulfilLoc: String(s.fulfilLoc || ''), fulfilAt: s.fulfilAt || ''
     };
   });
   return {
@@ -3235,6 +3252,13 @@ function readState() {
     events: events,
     inventory: inv,
     sales: sales,
+    /* Pre-orders another region was asked to deliver, from any season, with a
+       readable "where it was ordered". Trimmed to the fulfilling season below. */
+    remote: sales.filter(function (x) { return x.fulfilBy; }).map(function (x) {
+      var o = {}; Object.keys(x).forEach(function (k) { o[k] = x[k]; });
+      o.origin = placePath_(x.location); o.fulfilLabel = x.fulfilLoc ? locLabel_(x.fulfilLoc) : '';
+      return o;
+    }),
     // NOTE: everything above and below is trimmed to the active season by
     // scopeToSeason_() before it leaves. Regions are already filtered; the rest
     // hangs off locations, which is what that pass uses.
@@ -3305,9 +3329,10 @@ function isDelivered_(s) { return s.delivered === true || s.delivered === 'true'
    the older values are still recognised when reading. */
 var DSRC_WAREHOUSE = 'Regional warehouse';
 var DSRC_OUTSIDE   = 'Outside the region';
+var DSRC_REMOTE    = 'Another region';
 function fromOutside_(s) {
   var v = String(s.dsource || '');
-  return v === DSRC_OUTSIDE || v === 'Other warehouse';
+  return v === DSRC_OUTSIDE || v === 'Other warehouse' || v === DSRC_REMOTE;
 }
 function isDelivery_(s) { return !!String(s.dsource || ''); }
 
@@ -4596,7 +4621,10 @@ function doSell(p) {
     pending: !!p.pending,
     dueamt: p.dueamt, duecur: p.duecur,
     name: p.name, phone: p.phone, comments: p.comments,
-    ts: p.ts
+    ts: p.ts,
+    // Another region asked to deliver it — a region that exists and is not this one.
+    fulfilBy: (isPreorder && p.fulfilBy && regionById_(String(p.fulfilBy)) &&
+               String(p.fulfilBy) !== regionOfAnyLoc_(loc)) ? String(p.fulfilBy) : ''
   });
   markDirty_(loc);
 }
@@ -4948,7 +4976,8 @@ function appendSale_(o) {
     dueamt: pending ? 0 : Math.max(0, Number(o.dueamt) || 0),
     duecur: pending ? '' : String(o.duecur || ''),
     name: o.name || '', phone: o.phone || '', comments: o.comments || '',
-    bundle: o.bundle || ''
+    bundle: o.bundle || '',
+    fulfilBy: String(o.fulfilBy || ''), fulfilLoc: '', fulfilAt: ''
   };
   /* Written by position, so the sheet must carry every column first. */
   ensureHeaders_('_sales', SALES_HEADERS);
@@ -6967,12 +6996,13 @@ function logRows_(scoped, type) {
    so nothing can slip past because a screen forgot to log it — and, where it
    is safe, carries what is needed to undo it. "Delete" in the log means undo. */
 
-var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions','moves','undo','undoneAt','undoneBy'];
+var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions','moves','undo','undoneAt','undoneBy',
+                        'parts','undoneParts'];
 /* Sales have their own log; these are not repeated here. */
 var ACTIVITY_SKIP = {
   sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
   donate:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
-  settle:1, deliver:1, undoActivity:1
+  settle:1, deliver:1, undoActivity:1, undoActivityPart:1
 };
 var _cashIds = [];            // cash rows written by the current request
 var _activityBefore = null;   // what a change replaced, noted just before it runs
@@ -7028,6 +7058,12 @@ function movesText_(moves) {
   });
   var s = out.join('; ');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+/* One movement in words, for the lines inside a multi-line entry. */
+function moveLine_(m) {
+  if (m.kind === 'ADJUST') return (m.qty > 0 ? 'Added ' : 'Removed ') + Math.abs(m.qty) + ' × ' + bookName_(m.bookId) + ' at ' + locLabel_(m.to);
+  return m.qty + ' × ' + bookName_(m.bookId) + ': ' + locLabel_(m.from) + ' → ' + locLabel_(m.to);
 }
 
 /* Noted just before a change runs, for the few things whose undo needs it. */
@@ -7086,6 +7122,24 @@ function describe_(action, p, result, moves) {
       d = { text: 'Books arrived: ' + (mv || 'nothing') + note, undo: ids.length ? { type: 'receive', shipId: String(p.shipId), ids: ids } : null }; break;
     case 'adjustShipment': d = { text: 'Corrected what a shipment holds: ' + (mv || 'no change') + note }; break;
     case 'deleteShipment': d = { text: 'Deleted a shipment' + (mv ? ': ' + mv : '') }; break;
+    case 'setFulfilBy': {
+      var fs = saleRowById_(p.remoteSaleId), fo = fs ? fs.o : {};
+      var what = bookName_(String(fo.bookId || '')) + (fo.name ? ' for ' + fo.name : '') + ', ordered at ' + placePath_(fo.location);
+      d = { text: p.fulfilBy ? ('Asked ' + placePath_((regionById_(p.fulfilBy) || {}).whLoc) + ' to fulfil a pre-order: ' + what)
+                             : ('Withdrew the request to fulfil a pre-order: ' + what) };
+      if (fo.location) locs[String(fo.location)] = 1;
+      if (p.fulfilBy) regions[String(p.fulfilBy)] = 1;
+      break;
+    }
+    case 'fulfilRemote': {
+      var fr = saleRowById_(p.remoteSaleId), fro = fr ? fr.o : {};
+      d = { text: 'Fulfilled a pre-order for ' + placePath_(fro.location) + ': ' + bookName_(String(fro.bookId || '')) +
+                  (fro.name ? ' for ' + fro.name : '') + ', from ' + locLabel_(p.fromLoc) +
+                  ' (not counted in this region’s sales or cash)',
+            undo: { type: 'fulfil', saleId: String(p.remoteSaleId), ids: ids } };
+      if (fro.location) locs[String(fro.location)] = 1;
+      break;
+    }
     case 'editShipment':   d = { text: 'Changed a shipment’s details' }; break;
     case 'createEvent':
       d = { text: 'Created event “' + p.name + '” in ' + reg(p.regionId), undo: { type: 'event', eventId: String(result || p.eventId) } };
@@ -7180,7 +7234,11 @@ function activityRecord_(action, p, result, who) {
       season: String(p.season || activeSeasonId_()), who: _cashBy || '', action: action,
       text: String(d.text).slice(0, 900), locs: d.locs.join(','), regions: d.regions.join(','),
       moves: moves.map(function (m) { return m.id; }).join(','),
-      undo: d.undo ? JSON.stringify(d.undo) : '', undoneAt: '', undoneBy: '' };
+      undo: d.undo ? JSON.stringify(d.undo) : '', undoneAt: '', undoneBy: '',
+      // Several movements in one change: each line kept, so each can be undone on its own.
+      parts: (d.undo && d.undo.type === 'moves' && moves.length > 1)
+        ? JSON.stringify(moves.map(function (m) { return { id: m.id, text: moveLine_(m) }; })) : '',
+      undoneParts: '' };
     sh.appendRow(hs.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
     sheetMemoClear_();
   } catch (e) { /* the log must never cost anyone their change */ }
@@ -7201,7 +7259,12 @@ function activityList_(who, seasonId) {
     out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''),
       text: String(r.text || ''), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
       moves: String(r.moves || '').split(',').filter(Boolean),
-      canUndo: !!String(r.undo || '') && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || '') });
+      canUndo: !!String(r.undo || '') && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || ''),
+      parts: (function () {
+        var gone = String(r.undoneParts || '').split(',').filter(Boolean);
+        var list = []; try { list = JSON.parse(String(r.parts || '[]')) || []; } catch (e) { list = []; }
+        return list.map(function (x) { return { id: String(x.id), text: String(x.text), undone: gone.indexOf(String(x.id)) >= 0 }; });
+      })() });
   });
   return out.reverse().slice(0, 1500);
 }
@@ -7239,6 +7302,49 @@ function undoMoves_(ids) {
   markDirtyAll_();
 }
 
+/* Undo one line of a multi-line entry. When the last line goes, the entry
+   itself counts as undone. */
+function doUndoActivityPart(p, who) {
+  var id = String(p.id || ''), part = String(p.part || '');
+  var sh = getSheet_('_activity');
+  if (!sh) throw new Error('That entry is no longer in the log.');
+  var rows = rowsOf_('_activity'), hs = rows.headers.map(String);
+  var at = -1, e = null;
+  rows.data.forEach(function (row, i) {
+    if (String(row[hs.indexOf('id')]) === id) { at = i; e = {}; hs.forEach(function (h, j) { e[h] = row[j]; }); }
+  });
+  if (!e) throw new Error('That entry is no longer in the log.');
+  if (e.undoneAt) return 'already';
+  var parts = []; try { parts = JSON.parse(String(e.parts || '[]')) || []; } catch (x) { parts = []; }
+  var line = parts.filter(function (x) { return String(x.id) === part; })[0];
+  if (!line) throw new Error('That line is no longer in this entry.');
+  var gone = String(e.undoneParts || '').split(',').filter(Boolean);
+  if (gone.indexOf(part) >= 0) return 'already';
+  if (who.role !== 'admin') {
+    var regs = String(e.regions || '').split(',').filter(Boolean);
+    if (!regs.length || regs.some(function (r) { return r !== String(who.regionId); })) {
+      throw new Error('This link can only undo stock changes in its own region.');
+    }
+  }
+  undoMoves_([part]);
+  gone.push(part);
+  var iP = hs.indexOf('undoneParts');
+  if (iP < 0) { ensureHeaders_('_activity', ACTIVITY_HEADERS); rows = rowsOf_('_activity'); hs = rows.headers.map(String); iP = hs.indexOf('undoneParts'); }
+  sh.getRange(at + 2, iP + 1).setValue(gone.join(','));
+  if (gone.length >= parts.length) {
+    sh.getRange(at + 2, hs.indexOf('undoneAt') + 1).setValue(new Date());
+    sh.getRange(at + 2, hs.indexOf('undoneBy') + 1).setValue(_cashBy || '');
+  }
+  var ah = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+  var nrow = { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
+    season: String(e.season || ''), who: _cashBy || '', action: 'undoActivity',
+    text: 'Undid one line: ' + String(line.text), locs: String(e.locs || ''), regions: String(e.regions || ''),
+    moves: '', undo: '', undoneAt: '', undoneBy: '', parts: '', undoneParts: '' };
+  sh.appendRow(ah.map(function (h) { return nrow[h] === undefined ? '' : nrow[h]; }));
+  sheetMemoClear_();
+  return 'undone';
+}
+
 function doUndoActivity(p, who) {
   var id = String(p.id || '');
   var sh = getSheet_('_activity');
@@ -7256,12 +7362,13 @@ function doUndoActivity(p, who) {
   if (who.role !== 'admin') {
     var regs = String(e.regions || '').split(',').filter(Boolean);
     if (!regs.length || regs.some(function (r) { return r !== String(who.regionId); }) ||
-        ['moves', 'ship', 'receive', 'holder', 'event', 'regionBooks'].indexOf(u.type) < 0) {
+        ['moves', 'ship', 'receive', 'holder', 'event', 'regionBooks', 'fulfil'].indexOf(u.type) < 0) {
       throw new Error('This link can only undo stock changes in its own region.');
     }
   }
 
-  if (u.type === 'moves') undoMoves_(u.ids || []);
+  var goneParts = String(e.undoneParts || '').split(',').filter(Boolean);
+  if (u.type === 'moves') undoMoves_((u.ids || []).filter(function (x) { return goneParts.indexOf(String(x)) < 0; }));
   else if (u.type === 'ship') {
     var s = shipmentById_(u.shipId);
     if (!s) throw new Error('That shipment is already gone.');
@@ -7284,6 +7391,14 @@ function doUndoActivity(p, who) {
         return o;
       }));
     }
+  }
+  else if (u.type === 'fulfil') {
+    // The copy goes back on the fulfilling shelf; the pre-order is waiting again.
+    var fh = saleRowById_(u.saleId);
+    if (!fh) throw new Error('That pre-order is no longer in the log.');
+    undoMoves_(u.ids || []);
+    setSaleFields_(fh, { type: 'PREORDER', delivered: false, dsource: '', fulfilLoc: '', fulfilAt: '' });
+    markDirty_(fh.o.location);
   }
   else if (u.type === 'cash') (u.ids || []).forEach(function (cid) { doCashDelete({ id: cid }); });
   else if (u.type === 'cost') doDeleteCost({ id: u.id });
@@ -7327,4 +7442,110 @@ function doUndoActivity(p, who) {
   sh.appendRow(ah.map(function (h) { return nrow[h] === undefined ? '' : nrow[h]; }));
   sheetMemoClear_();
   return 'undone';
+}
+
+/* ============================ PRE-ORDERS FULFILLED BY ANOTHER REGION ============================
+   A pre-order taken in one region (say Europe Tour › Italy) can be delivered by
+   another, in any season (Year-Round › Barcelona). The copy comes off the
+   fulfilling region's stock — as if transferred out — and the pre-order is
+   marked delivered where it was sold, where it still counts as that region's
+   sale and money. The fulfilling region's sales log gets a note, never a sale. */
+
+/* "Europe Tour › Italy › Mela — Day 2": where something is, in words, any season. */
+function placePath_(loc) {
+  loc = String(loc || '');
+  var regs = allRegionsEverywhere_();
+  var rid = regionOfAnyLoc_(loc);
+  var r = regs.filter(function (x) { return x.regionId === rid; })[0];
+  if (!r) return locLabel_(loc);
+  var parts = [r.seasonName || '', r.name];
+  if (loc !== r.whLoc) {
+    var ev = objectsOf_('_events').filter(function (e) { return String(e.eventId) === loc; })[0];
+    parts.push(ev ? String(ev.name) : locLabel_(loc));
+  }
+  return parts.filter(Boolean).join(' › ');
+}
+
+function saleRowById_(id) {
+  var r = rowsOf_('_sales'), hs = r.headers.map(String);
+  for (var i = 0; i < r.data.length; i++) {
+    if (String(r.data[i][hs.indexOf('saleId')]) === String(id)) {
+      var o = {}; hs.forEach(function (h, j) { o[h] = r.data[i][j]; });
+      return { at: i, o: o, hs: hs, sheet: r.sheet };
+    }
+  }
+  return null;
+}
+function setSaleFields_(hit, fields) {
+  ensureHeaders_('_sales', SALES_HEADERS);
+  var sh = getSheet_('_sales');
+  var hs = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+  Object.keys(fields).forEach(function (k) {
+    var c = hs.indexOf(k);
+    if (c >= 0) sh.getRange(hit.at + 2, c + 1).setValue(fields[k]);
+  });
+  sheetMemoClear_();
+}
+function isOpenPreorder_(o) {
+  return String(o.type) === 'PREORDER' && !(o.delivered === true || String(o.delivered).toUpperCase() === 'TRUE');
+}
+
+function openPreorders_() {
+  return objectsOf_('_sales').filter(isOpenPreorder_).map(function (o) {
+    return { saleId: String(o.saleId), ts: o.ts, location: String(o.location), bookId: String(o.bookId),
+      bookName: bookName_(String(o.bookId)), name: String(o.name || ''), phone: phoneRead_(o.phone),
+      comments: String(o.comments || ''), soldBy: String(o.soldBy || ''),
+      fulfilBy: String(o.fulfilBy || ''), origin: placePath_(o.location),
+      originRegion: regionOfAnyLoc_(o.location) };
+  }).reverse();
+}
+
+/* Ask another region to deliver a pre-order — or, with no region, withdraw the
+   request (the fulfilling region declining it, or the seller changing plans). */
+function doSetFulfilBy(p, who) {
+  var hit = saleRowById_(p.remoteSaleId);
+  if (!hit) throw new Error('That pre-order is no longer in the log.');
+  if (!isOpenPreorder_(hit.o)) throw new Error('That pre-order has already been delivered.');
+  var to = String(p.fulfilBy || '');
+  var home = regionOfAnyLoc_(hit.o.location);
+  if (to && !regionById_(to)) throw new Error('That region is no longer listed.');
+  if (to && to === home) throw new Error('That is the region it was ordered in.');
+  if (who.role !== 'admin') {
+    var mine = String(who.regionId);
+    var ok = (home === mine) || (!to && String(hit.o.fulfilBy) === mine);
+    if (!ok) throw new Error('This link can only change its own region’s pre-orders.');
+  }
+  setSaleFields_(hit, { fulfilBy: to });
+  markDirty_(hit.o.location);
+  return to;
+}
+
+/* Deliver a pre-order from another region's shelf. */
+function doFulfilRemote(p, who) {
+  var hit = saleRowById_(p.remoteSaleId);
+  if (!hit) throw new Error('That pre-order is no longer in the log.');
+  if (!isOpenPreorder_(hit.o)) throw new Error('That pre-order has already been delivered.');
+  var from = String(p.fromLoc || '');
+  var region = regionOfAnyLoc_(from);
+  if (!region) throw new Error('Choose where the copy comes from.');
+  if (region === regionOfAnyLoc_(hit.o.location)) {
+    throw new Error('That shelf is in the region it was ordered in — use Deliver there instead.');
+  }
+  if (who.role !== 'admin' && region !== String(who.regionId)) {
+    throw new Error('This link can only fulfil from its own region.');
+  }
+  var bookId = String(hit.o.bookId);
+  var map = loadInvMap_();
+  var have = getQty_(map, from, bookId);
+  if (have < 1) throw new Error('There are no copies of ' + bookName_(bookId) + ' at ' + locLabel_(from) + '.');
+  addQty_(map, from, bookId, -1);
+  saveInvMap_(map);
+  stockMoveAppend_({ kind: 'ADJUST', toLoc: from, bookId: bookId, qty: -1,
+    note: 'Fulfilled a pre-order for ' + placePath_(hit.o.location) + (hit.o.name ? ' (' + hit.o.name + ')' : ''),
+    toBefore: have, toAfter: have - 1 });
+  setSaleFields_(hit, { type: 'SALE', delivered: true, dsource: DSRC_REMOTE,
+    fulfilBy: region, fulfilLoc: from, fulfilAt: new Date() });
+  markDirty_(from); markDirty_(hit.o.location);
+  markDirtyRegions_([region, regionOfAnyLoc_(hit.o.location)]);
+  return String(hit.o.saleId);
 }

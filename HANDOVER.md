@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b183**.
+Handover notes. Current build: **b184**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -153,7 +153,7 @@ install. See `test/README.md`.
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
 `dutchtest`, `reptest`, `payusd`).
 
-`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -281,9 +281,30 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
 - "📦 Transfer record" button replaced by "🗒 Activity Log" (the old
   `transfersModal` is still in the code, unused).
 
-## Still to do
+## Done in b184
 
-The agreed stock-protocol plan is complete.
+- **Version warning** (`checkServerBuild`): if the Apps Script reports a
+  different `serverBuild` from the page's build tag, a red banner tells the
+  owner to deploy a new version. (An undeployed Code.gs caused "Unknown action:
+  transferMulti" after b183.)
+- Transfer: the count reminder only on "Transfer everything"; "Transfer" asks
+  "Are you 108% sure you’ve counted everything correctly?".
+- Place lists put the current season first, and the current region first in it.
+- Activity log: entries with several stock lines keep them (`parts`); a
+  dropdown lists them, each with its own Delete (`undoActivityPart`); "Delete
+  all" undoes whatever is left.
+- "# Arrived" heading on Partial Delivery; region prices with more than three
+  currencies label every box (`rp-cell`); spacing in Add something new; a new
+  region or event opens straight away; the wording pencil returns to the
+  dialog it was tapped in (`LABEL_BACK`).
+- **Pre-orders fulfilled by another region** (any season): `fulfilBy`,
+  `fulfilLoc`, `fulfilAt` on sales; `setFulfilBy`, `fulfilRemote`,
+  `openPreorders`; state carries `remote` (requests for this season's
+  regions). The copy comes off the fulfilling shelf (ADJUST move), the sale is
+  delivered where it was sold (`dsource` 'Another region'), and the fulfilling
+  region's log shows a note, never a sale. Undo from the activity log.
+- **List view** toggle in the top bar (`setViewMode`, `body.list-view`),
+  remembered per device.
 
 ## Open items
 
