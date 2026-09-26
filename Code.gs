@@ -192,7 +192,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b181';
+var SERVER_BUILD = 'b182';
 
 function doPost(e) { return handle(e); }
 
@@ -1528,6 +1528,35 @@ function doSendShipment(p) {
    couple of copies never make it in, someone adds a few more. Rather than
    pretend the manifest was right, this sets the true contents and records the
    difference against the sending region, so nothing simply evaporates. */
+/* Where a batch's copies of one title came from, so copies that never travel
+   go back to the very shelf they left — a sub-warehouse included — rather than
+   all landing on the warehouse shelf. Read from the movement record: every
+   send into the batch was logged with its source. Most recent sends are
+   unwound first; anything not traceable, or whose shelf is gone, goes to
+   `fallback`. Returns [{loc, qty}]. */
+function shipReturnPlan_(shipId, fromRegion, bookId, qty, fallback) {
+  var live = {};
+  if (fromRegion) locsInRegion_(fromRegion).forEach(function (l) { live[l] = 1; });
+  var sent = objectsOf_('_stockmoves').filter(function (m) {
+    return String(m.toLoc) === String(shipId) && String(m.bookId) === String(bookId) &&
+           String(m.kind) === 'TRANSFER' && m.fromLoc && live[String(m.fromLoc)];
+  });
+  var plan = [], left = qty;
+  for (var i = sent.length - 1; i >= 0 && left > 0; i--) {
+    var take = Math.min(left, Math.max(0, Math.round(Number(sent[i].qty) || 0)));
+    if (!take) continue;
+    var loc = String(sent[i].fromLoc);
+    var hit = plan.filter(function (x) { return x.loc === loc; })[0];
+    if (hit) hit.qty += take; else plan.push({ loc: loc, qty: take });
+    left -= take;
+  }
+  if (left > 0 && fallback) {
+    var fb = plan.filter(function (x) { return x.loc === fallback; })[0];
+    if (fb) fb.qty += left; else plan.push({ loc: fallback, qty: left });
+  }
+  return plan;
+}
+
 function doAdjustShipment(p) {
   var id = String(p.shipId || '');
   var ship = shipmentById_(id);
@@ -1550,14 +1579,22 @@ function doAdjustShipment(p) {
     setQty_(map, id, bookId, want);
     // Copies that never travelled go back where they came from; extras that
     // turned up are taken from there, so the sending region stays truthful.
-    if (backTo) {
+    if (backTo && delta < 0) {
+      shipReturnPlan_(id, ship.fromRegion, bookId, -delta, backTo).forEach(function (r) {
+        var rB = getQty_(map, r.loc, bookId);
+        addQty_(map, r.loc, bookId, r.qty);
+        stockMoveAppend_({ kind: 'TRANSFER', fromLoc: id, toLoc: r.loc, bookId: bookId, qty: r.qty,
+          note: 'Shipment contents corrected' + (p.note ? ' — ' + p.note : ''),
+          toBefore: rB, toAfter: rB + r.qty });
+        markDirty_(r.loc);
+      });
+    } else if (backTo) {
       var bB = getQty_(map, backTo, bookId);
       addQty_(map, backTo, bookId, -delta);
-      stockMoveAppend_({ kind: 'TRANSFER',
-        fromLoc: delta > 0 ? backTo : id, toLoc: delta > 0 ? id : backTo,
+      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: backTo, toLoc: id,
         bookId: bookId, qty: Math.abs(delta),
         note: 'Shipment contents corrected' + (p.note ? ' — ' + p.note : ''),
-        toBefore: delta > 0 ? have : bB, toAfter: delta > 0 ? want : bB + Math.abs(delta) });
+        toBefore: have, toAfter: want });
     } else {
       stockMoveAppend_({ kind: 'ADJUST', toLoc: id, bookId: bookId, qty: delta,
         note: 'Shipment contents corrected' + (p.note ? ' — ' + p.note : ''),
@@ -1612,11 +1649,16 @@ function doDeleteShipment(p) {
     returned += q;
     setQty_(map, id, b.id, 0);
     if (backTo) {
-      var tB = getQty_(map, backTo, b.id);
-      addQty_(map, backTo, b.id, q);
-      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: id, toLoc: backTo, bookId: b.id, qty: q,
-        note: 'Shipment deleted — books returned', fromBefore: q, fromAfter: 0,
-        toBefore: tB, toAfter: tB + q });
+      var was = q;
+      shipReturnPlan_(id, ship.fromRegion, b.id, q, backTo).forEach(function (r) {
+        var tB = getQty_(map, r.loc, b.id);
+        addQty_(map, r.loc, b.id, r.qty);
+        stockMoveAppend_({ kind: 'TRANSFER', fromLoc: id, toLoc: r.loc, bookId: b.id, qty: r.qty,
+          note: 'Shipment deleted — books returned', fromBefore: was, fromAfter: was - r.qty,
+          toBefore: tB, toAfter: tB + r.qty });
+        was -= r.qty;
+        markDirty_(r.loc);
+      });
     } else {
       stockMoveAppend_({ kind: 'ADJUST', toLoc: id, bookId: b.id, qty: -q,
         note: 'Shipment deleted', toBefore: q, toAfter: 0 });

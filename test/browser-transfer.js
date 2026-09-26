@@ -183,6 +183,24 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     t.push(['a batch is in transit to Yoga Studio', !!sh && sh.toLoc === 'ev_yoga' && sh.fromRegion === pl.regionId]);
     t.push(['…and the 3 left SW1 straight away', qty('hd_radha1', B0) === 10]);
 
+    // Correcting, then deleting, that batch: the copies go back to SW1, not the shelf.
+    await page.evaluate(() => closeModal());
+    await page.evaluate(id => shipCountModal(id), sh.shipId); await page.waitForTimeout(300);
+    await page.fill(`#modal .sc-q[data-book="${B0}"]`, '1'); await page.click('#scGo'); await page.waitForTimeout(1500);
+    t.push(['correcting the batch 3 → 1 returns 2 to SW1 (not the shelf)', qty('hd_radha1', B0) === 12 && qty(pl.whLoc, B0) === 13]);
+    await page.evaluate(() => shipmentsModal()); await page.waitForTimeout(300);
+    page.__dialogs = [];
+    await page.click(`#modal .sh-card:has-text("Narada") [data-act="shdel"]`); await page.waitForTimeout(1500);
+    t.push(['deleting the batch returns the last copy to SW1 too', qty('hd_radha1', B0) === 13 && qty(pl.whLoc, B0) === 13]);
+    await page.evaluate(() => closeModal());
+    // Send 3 again, for the rest of the test.
+    await openXfer(page);
+    await pick(page, 'xfTo', 'Yoga', 'Yoga Studio');
+    await page.selectOption('#xfTravel', 'travel'); await page.waitForTimeout(200);
+    await page.fill('#xfBody [data-k="carrier"]', 'Narada Muni');
+    await setMove(page, 'hd_radha1', B0, 3);
+    await go(page);
+
     // 4. Into another season.
     await openXfer(page);
     await pick(page, 'xfTo', 'Krakow', 'Krakow');
@@ -191,6 +209,20 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     d = await go(page);
     t.push(['another season: "leaving this season" warning', d.some(x => /leaving this season\. They will no longer be available for sale in this season, the region, or the region’s events/.test(x))]);
     t.push(['4 moved to Krakow (Year-Round Sales)', qty('wh_kr', B0) === 4 && qty(pl.whLoc, B0) === 9]);
+
+    // Multiple books at the warehouse: one title only with SW2 — it asks which, once.
+    await page.evaluate(() => pull()); await page.waitForTimeout(800);
+    await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
+    await page.click(`#modal .mb-plus[data-book="${B0}"][data-kind="buy"]`);
+    await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
+    await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
+    await page.click('#saveBundle'); await page.waitForTimeout(300);
+    const askSw = await page.evaluate(() => { const b = document.querySelector('#mbSw'); return b ? b.textContent.replace(/\s+/g, ' ') : ''; });
+    t.push(['Multiple Books asks which sub-warehouse the short title comes from', /Which sub-warehouse/.test(askSw) && /SW2 — Gopal/.test(askSw)]);
+    await page.screenshot({ path: shot('7-bundle-ask') });
+    await page.click('#saveBundle'); await page.waitForTimeout(1500);
+    t.push(['…then 2 leave SW2 and the 3-book sale is recorded', qty('hd_gopal1', B1) === 1 &&
+      (m.call({ action: 'getState', season: SA }).state.sales || []).filter(x => x.bundle && x.location === pl.whLoc).length === 3]);
 
     // Selling when the shelf is empty but a sub-warehouse has copies.
     // (Title 2 was never on the warehouse shelf itself — only with SW2.)

@@ -966,6 +966,10 @@ body.busy #busyBar{opacity:1}
 .field input,.field select,.field textarea{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink)}
 .field textarea{resize:vertical;min-height:52px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* Side-by-side boxes share the row: without this a long placeholder pushed a
+   box past the edge of the dialog. */
+.row2>*,.row3>*{min-width:0}
+.row2 .field input,.row2 .field select,.row3 .field input,.row3 .field select{width:100%;min-width:0}
 .row3{display:grid;grid-template-columns:1.1fr .9fr 1fr;gap:8px}
 .checkline{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
 .checkline input{width:18px;height:18px}
@@ -1180,7 +1184,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b181</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b182</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -4511,8 +4515,10 @@ function bundleModal(edit){
 
   // Each book has a Buy count and a Pre-order count. A single transaction can
   // mix the two — buy the ones in stock, pre-order the ones that aren't.
+  // At a warehouse, copies with its sub-warehouses are stock too (see the save step).
+  const subsAt = id => (!edit && isWarehouseLoc(loc)) ? swHoldingsHere(id) : [];
   const rows = bundleBooks().map(b=>{
-    const stock = invQty(loc,b.id) + (backIn[b.id]||0);
+    const stock = invQty(loc,b.id) + (backIn[b.id]||0) + subsAt(b.id).reduce((t,x)=>t+x.n,0);
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
       <div class="mb-main">
@@ -4790,6 +4796,43 @@ function bundleModal(edit){
     if(payMode==='part' && dueamt<=0){ $('#modalErr').textContent='Enter how much is still owed, or choose "Paid in Full".'; return; }
     if((pre.length>0 || payMode!=='full') && !name){ $('#modalErr').textContent='Add a name so the pre-order or balance can be traced.'; return; }
 
+    /* Copies bought at a warehouse whose shelf is short: say which sub-warehouse
+       each comes from (asked right here, once), then they move to the shelf and
+       the sale is recorded as usual — one step for the person selling. */
+    const swMoves = [];
+    if(!edit && isWarehouseLoc(loc)){
+      const want = {}; buy.forEach(id=>{ want[id]=(want[id]||0)+1; });
+      const short = Object.keys(want).map(id=>({id, n:want[id]-invQty(loc,id)}))
+        .filter(x=>x.n>0 && subsAt(x.id).length);
+      if(short.length){
+        let box = $('#mbSw');
+        if(!box){
+          box = document.createElement('div'); box.id = 'mbSw'; box.className = 'sp-group mb-sw';
+          $('#modalErr').parentNode.insertBefore(box, $('#modalErr'));
+          box.innerHTML = `<div class="warn warn-pre">Some of these copies are not on the warehouse shelf itself.
+              Which sub-warehouse is each coming from? Then press ${esc(($('#saveBundle')||{}).textContent||'Save')} again.</div>`
+            + short.map(x=>{
+              const subs = subsAt(x.id), b = bookById(x.id);
+              const single = subs.filter(s=>s.n>=x.n);
+              return `<div class="field"><label>${esc(b.name)} — ${x.n} cop${x.n===1?'y':'ies'}</label>
+                <select data-swfor="${esc(x.id)}">
+                  ${single.map(s=>`<option value="${esc(s.h.holderId)}">${esc(s.label)} — ${esc(s.h.name)} (${s.n} there)</option>`).join('')}
+                  ${single.length<subs.length || !single.length ? `<option value="split">Several sub-warehouses (${subs.map(s=>esc(s.label)).join(', ')})</option>` : ''}
+                </select></div>`;
+            }).join('');
+          box.scrollIntoView({block:'center'});
+          return;
+        }
+        short.forEach(x=>{
+          const sel = box.querySelector(`select[data-swfor="${x.id}"]`);
+          const pickd = sel ? sel.value : 'split';
+          if(pickd && pickd!=='split'){ swMoves.push({from:pickd, to:loc, bookId:x.id, qty:x.n}); return; }
+          let left = x.n;
+          subsAt(x.id).forEach(s=>{ const q = Math.min(left, s.n); if(q>0){ swMoves.push({from:s.h.holderId, to:loc, bookId:x.id, qty:q}); left -= q; } });
+        });
+      }
+    }
+
     // Server takes a per-copy list: {bookId, pre} entries.
     const items = buy.map(id=>({bookId:id,pre:false})).concat(pre.map(id=>({bookId:id,pre:true})));
     const n=items.length;
@@ -4826,6 +4869,14 @@ function bundleModal(edit){
          ts:tsVal}
       : {action:'sellBundle',keepBundleId:bundleId,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
          ts:tsVal,changeamt,changecur,override:true};
+
+    // Copies from sub-warehouses reach the shelf first, in the same order the server sees.
+    if(swMoves.length){
+      const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      commit({action:'transferMulti', moves:swMoves, note:'Taken for a sale', movePrefix},
+        st=>swMoves.forEach(m=>{ invAdd(st, m.from, m.bookId, -m.qty); invAdd(st, m.to, m.bookId, m.qty); }),
+        null, {keepOpen:true});
+    }
 
     commit(payload,
       st=>{
@@ -9462,7 +9513,14 @@ function shipCountModal(id){
           const have=cur?cur.qty:0, want=counts[bid];
           if(want===have) return;
           invSet(st, id, bid, want);
-          if(backTo) invAdd(st, backTo, bid, have-want);
+          if(backTo && want<have){
+            // Back to the shelves they left, most recent first — as the server does.
+            let left = have-want;
+            const live = new Set(locsInRegion(x.fromRegion));
+            (st.stockMoves||[]).filter(m=>m.toLoc===id && m.bookId===bid && m.kind==='TRANSFER' && live.has(m.fromLoc))
+              .reverse().forEach(m=>{ const q=Math.min(left, Number(m.qty)||0); if(q>0){ invAdd(st, m.fromLoc, bid, q); left-=q; } });
+            if(left>0) invAdd(st, backTo, bid, left);
+          } else if(backTo) invAdd(st, backTo, bid, have-want);
           const ship=(st.shipments||[]).find(v=>v.shipId===id);
           if(ship && ship.manifest) ship.manifest[bid]=Math.max(0,(Number(ship.manifest[bid])||0)+(want-have));
         });

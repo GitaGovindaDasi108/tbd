@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b181**.
+Handover notes. Current build: **b182**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -251,9 +251,11 @@ narrowly, and Node's `navigator` is read-only — override it with
   confirms the leaving message for the kind plus "Are you sure you have
   counted everything correctly?" in one pop-up.
 
-Known gaps: "Multiple Books — one transaction" at a warehouse does not yet ask
-which sub-warehouse; deleting a shipment returns its books to the sending
-warehouse's shelf, not to the sub-warehouse they left.
+Closed in b182: "Multiple Books" at a warehouse asks which sub-warehouse a
+short title comes from (moves it to the shelf with `transferMulti`, then sells);
+deleting or correcting a shipment returns copies to the shelves they left
+(`shipReturnPlan_`, read from the movement record), the warehouse shelf only as
+a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
 
 ## Still to do (agreed plan)
 
