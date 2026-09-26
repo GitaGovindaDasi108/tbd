@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b184**.
+Handover notes. Current build: **b186**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -8,7 +8,7 @@ Live app: https://gitagovindadasi108.github.io/tbd/
 
 ## What it is
 
-A multi-user book-distribution tracker for a travelling book-distribution tour.
+A multi-user book-distribution tracker for a traveling book-distribution tour.
 Coordinators and sellers record sales, stock, cash and consignment across
 several regions and events, in several currencies, over multiple seasons.
 
@@ -59,7 +59,7 @@ useful when a bug refuses to go away.
   `syncEverySeason_()`.
 - Writes take a script lock; reads do not.
 - `rememberOp_(opId, reply)` caches replies for 6 hours so a re-sent save is
-  recognised rather than applied twice.
+  recognized rather than applied twice.
 
 ---
 
@@ -305,6 +305,46 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
   region's log shows a note, never a sale. Undo from the activity log.
 - **List view** toggle in the top bar (`setViewMode`, `body.list-view`),
   remembered per device.
+
+## Done in b185
+
+- The version warning gave a false alarm right after a successful deploy: the
+  server's cached state (kept up to an hour, keyed by data revision) still
+  carried the old `serverBuild`. Now the cache key includes `SERVER_BUILD`,
+  every state reply carries `"build"` stamped at reply time, and the app only
+  trusts the build from a live reply (`LIVE_BUILD`), never the device's copy.
+
+## Done in b186
+
+- **Admin panel** regrouped into four columns: Admin (Activity Log, App and
+  Sales Support, Spreadsheet Links, Edit Wording, Share Links), Money (Cash
+  Tracker, Record Costs, Edit Payment Types), Books (Add New Stock, Transfer
+  Existing Stock, Consignment Books, Edit Book Display), Location (Change
+  Event Order and Change Regional Order everywhere, plus the
+  Rename/Close/Delete buttons for the current level). Removed: Books in
+  transit, Devotee storage, Fulfill for another region (now a "＋ Fulfill
+  another" button in that panel's header).
+- **Edit Book Display** (`bookDisplayModal`) merges Change book order and
+  Titles offered here: tick to show, drag to reorder.
+- **Close / Reopen Season** (`closeSeason`, `reopenSeason`): a checklist (all
+  regions closed? no books left?). On close the season's exchange rates are
+  frozen (`frozenRates`), so its USD figures stop moving, on screen and in
+  its sheets (`getRates_` returns the snapshot, with `frozen: true`).
+- **Activity log per title**: a multi-title transfer is one entry ("15 books
+  transferred") with a dropdown of one line per title, each with its own
+  Delete (`undoActivityPart` undoes that line's move ids).
+- **Quantities are typed only**: arrow keys and the mouse wheel no longer
+  change number fields; spinners are hidden.
+- **Sub-warehouses** get their own colors and a "Stored At:" title on the
+  warehouse cards; Sell asks "Selling from where?" (Warehouse, SW1, SW2…)
+  whenever a sub-warehouse holds the title.
+- **Remote pre-orders**: the badge reads "Being Fulfilled By: …"; a region
+  with no copies refuses the request up front (`checkCanFulfill_`); a declined
+  request shows a red "Pre-order fulfillment declined" on the pre-order
+  (`fulfilDeclined` column).
+- **Consignment titles** show only in the region their group belongs to
+  (`bookBelongsIn`); `allPartnerIds` stops other seasons calling them orphans.
+- American spelling throughout (fulfill, color…).
 
 ## Open items
 

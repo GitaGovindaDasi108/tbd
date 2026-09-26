@@ -74,10 +74,10 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   // ---- Owner, standing at the season ----
   page = await open('');
   const btns = await page.evaluate(() => [...document.querySelectorAll('#adminActions button')].map(b => b.textContent.trim()));
-  t.push(['"＋ Add Stock" is on the admin panel', btns.includes('＋ Add Stock')]);
+  t.push(['"＋ Add Stock" is on the admin panel', btns.includes('＋ Add New Stock')]);
   t.push(['old "Add / subtract stock" button is gone', !btns.some(x => /Add \/ subtract/.test(x))]);
 
-  await page.click('#adminActions button:has-text("Add Stock")'); await page.waitForTimeout(300);
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
   await page.click('#spPlace .pp-in'); await page.waitForTimeout(200);
   const all = await listText(page);
   console.log('   list:', all.join(' | '));
@@ -109,7 +109,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   t.push(['that title is now switched on for Italy (as in Edit region)', itBooks.includes(other.id)]);
 
   // Subtracting warns, twice: on screen and in a pop-up.
-  await page.click('#adminActions button:has-text("Add Stock")'); await page.waitForTimeout(300);
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
   await pickPlace(page, 'Italy', 'Italy');
   await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
   await page.click(`#spBody .sign-btn[data-sign="${books[0].id}"]`);
@@ -122,7 +122,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   t.push(['after confirming, 2 were taken off (5 → 3)', qty('wh_it', books[0].id) === 3]);
 
   // Not there yet, heading for an event.
-  await page.click('#adminActions button:has-text("Add Stock")'); await page.waitForTimeout(300);
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
   await pickPlace(page, 'Festival', 'Festival');
   await page.selectOption('#spWhere', 'transit'); await page.waitForTimeout(200);
   const hasOrigin = await page.$('#soOrigin');
@@ -148,7 +148,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   await page.evaluate(() => closeModal());
 
   // Another season.
-  await page.click('#adminActions button:has-text("Add Stock")'); await page.waitForTimeout(300);
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
   await pickPlace(page, 'Krakow', 'Krakow');
   await page.waitForTimeout(800);
   await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
@@ -157,7 +157,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   t.push(['stock can be added in another season (Krakow, Year-Round Sales)', qty('wh_kr', books[0].id) === 4]);
 
   // "Add a new one": an event, then straight back with it chosen.
-  await page.click('#adminActions button:has-text("Add Stock")'); await page.waitForTimeout(300);
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
   await page.click('#modal .linkish'); await page.waitForTimeout(300);
   const optTitles = await page.evaluate(() => [...document.querySelectorAll('#modal .opt b')].map(b => b.textContent));
   t.push(['"Add something new" offers Season, Region, Event', optTitles.join(',') === 'Season,Region,Event']);
@@ -175,14 +175,14 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   // Standing at an event: that event is chosen already.
   await page.evaluate(() => { goTo('region', 'rg_it'); goTo('event', 'ev_yoga'); });
   await page.waitForTimeout(400);
-  await page.click('#adminActions button:has-text("Add Stock")'); await page.waitForTimeout(400);
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(400);
   const pre = await page.inputValue('#spPlace .pp-in');
   t.push(['at an event, that event is already chosen', /Yoga Studio/.test(pre)]);
   await page.close();
 
   // ---- Phone width: nothing hangs off the edge ----
   const phone = await open('', 390);
-  await phone.click('#adminActions button:has-text("Add Stock")'); await phone.waitForTimeout(300);
+  await phone.click('#adminActions button:has-text("Add New Stock")'); await phone.waitForTimeout(300);
   await pickPlace(phone, 'Italy', 'Italy');
   await phone.selectOption('#spWhere', 'there'); await phone.waitForTimeout(300);
   await phone.screenshot({ path: shot('4-phone-there'), fullPage: false });
@@ -199,8 +199,8 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   // ---- Regional link (Italy): its own region only, no new titles ----
   const coord = await open('?k=' + coordKey);
   const cbtns = await coord.evaluate(() => [...document.querySelectorAll('#adminActions button')].map(b => b.textContent.trim()));
-  t.push(['regional link sees "＋ Add Stock"', cbtns.includes('＋ Add Stock')]);
-  await coord.click('#adminActions button:has-text("Add Stock")'); await coord.waitForTimeout(300);
+  t.push(['regional link sees "＋ Add Stock"', cbtns.includes('＋ Add New Stock')]);
+  await coord.click('#adminActions button:has-text("Add New Stock")'); await coord.waitForTimeout(300);
   await coord.click('#spPlace .pp-in'); await coord.waitForTimeout(200);
   const clist = await listText(coord);
   t.push(['regional link: only Italy and its events', clist.every(x => /^S:|Italy|Yoga|Temple/.test(x)) && clist.includes('R:Italy')]);
