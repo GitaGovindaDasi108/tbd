@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b179**.
+Handover notes. Current build: **b180**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -153,7 +153,7 @@ install. See `test/README.md`.
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
 `dutchtest`, `reptest`, `payusd`).
 
-`node test/browser-buttons.js`, `browser-addstock.js` and `browser-transit.js` are optional:
+`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -213,6 +213,20 @@ narrowly, and Node's `navigator` is read-only — override it with
 - Regional links see their own region's batches (the server now filters
   `shipments` and includes the batches' inventory in a link's state) and may
   `receiveShipment` for their region only. Edit / Correct / Delete stay admin.
+
+## Done in b180 — no waiting
+
+- Picking a place in another season uses that season's copy saved on the
+  device (`seasonCacheLoad`) and refreshes it behind the form
+  (`refreshCounts` updates counts in place). Only "Already at the destination"
+  Save waits for the fresh counts ("Checking counts…").
+- "Add something new" no longer awaits `switchSeason`; the region/event dialog
+  opens at once. Creating a season still waits for the server and says so.
+- `prefetchSeasons` now waits until the season list has arrived; before, on a
+  fresh device it found no seasons and fetched nothing.
+- Place finder: a late close from an earlier blur no longer shuts the list
+  when you tap straight back in.
+- `test/browser-speed.js` checks each step with a 2-second server delay.
 
 ## Still to do (agreed plan)
 
