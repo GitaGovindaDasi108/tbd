@@ -123,6 +123,7 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     const third = await page.inputValue('#mixLegs [data-mix="amt"][data-i="2"]');
     t.push(['a third payment can be added, and it is the one that fills', Number(third) > 0]);
     await page.screenshot({ path: shot('2-mixed') });
+    await page.click('#specBox > summary');        // the name lives under Specialized Sales
     await page.fill('#cname', 'Three Ways');
     await page.click('#saveSale'); await page.waitForTimeout(1500);
     const sale = (state().sales || []).find(x => x.name === 'Three Ways');

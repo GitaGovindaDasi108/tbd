@@ -207,7 +207,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b188';
+var SERVER_BUILD = 'b189';
 
 function doPost(e) { return handle(e); }
 
@@ -2249,6 +2249,25 @@ function doSaveLabel(p) {
    The sale still counts in the currency it was made in — nothing about the
    local totals changes. Only the USD column uses this figure in place of a
    converted estimate, so the tour's dollar figure is what the bank shows. */
+/** The dollars received as typed: empty means "use the estimate". */
+function usdActualIn_(v) {
+  return (v === '' || v === null || v === undefined) ? '' : Math.round((Number(v) || 0) * 100) / 100;
+}
+/* One figure for a whole transaction, shared out over its books in proportion
+   to what each was estimated at, so the parts always add up to it. */
+function splitUsdActual_(total, perItemLegs) {
+  if (total === '') return perItemLegs.map(function () { return ''; });
+  var est = perItemLegs.map(function (L) { var t = 0; (L || []).forEach(function (l) { if (l.type !== 'Gift') t += toUSD_(l.amt, l.cur); }); return t; });
+  var sum = est.reduce(function (a, b) { return a + b; }, 0);
+  var out = [], running = 0;
+  for (var i = 1; i < est.length; i++) {
+    var share = Math.round((sum ? total * est[i] / sum : total / est.length) * 100) / 100;
+    out[i] = share; running += share;
+  }
+  out[0] = Math.round((total - running) * 100) / 100;
+  return out;
+}
+
 function doSetUsdActual(p) {
   var saleId = String(p.saleId || '');
   var rows = objectsOf_('_sales');
@@ -4650,6 +4669,7 @@ function doSell(p) {
     dueamt: p.dueamt, duecur: p.duecur,
     name: p.name, phone: p.phone, comments: p.comments,
     ts: p.ts,
+    usdActual: p.usdActual,
     // Another region asked to deliver it — one that exists, is not this one, and has a copy.
     fulfilBy: (isPreorder && p.fulfilBy) ? checkCanFulfill_(String(p.fulfilBy), bookId, loc) : ''
   });
@@ -4751,6 +4771,7 @@ function doSellBundle(p) {
 
   var n = items.length;
   var noteBase = n + ' book sale';   // one label for the whole transaction
+  var usdParts = splitUsdActual_(usdActualIn_(p.usdActual), perItem);
 
   items.forEach(function (it, i) {
     appendSale_({
@@ -4773,7 +4794,8 @@ function doSellBundle(p) {
       duecur: i === 0 ? p.duecur : '',
       name: p.name, phone: p.phone,
       comments: p.comments ? (noteBase + ' \u00b7 ' + p.comments) : noteBase,
-      bundle: bundleId
+      bundle: bundleId,
+      usdActual: usdParts[i]
     });
   });
   markDirty_(loc);
@@ -4837,6 +4859,11 @@ function doEditBundle(p) {
      the second try once the screen had caught up. */
   p.keepBundleId = String(p.bundle);
   p.isEdit = true;
+  // The dollars received survive an edit that does not speak to them.
+  if (p.usdActual === undefined) {
+    var had = members.filter(function (m) { return usdActualIn_(m.usdActual) !== ''; });
+    p.usdActual = had.length ? had.reduce(function (t, m) { return t + (Number(m.usdActual) || 0); }, 0) : '';
+  }
 
   _rebuilding = true;                         // these deletions are part of the edit
   try {
@@ -5005,7 +5032,8 @@ function appendSale_(o) {
     duecur: pending ? '' : String(o.duecur || ''),
     name: o.name || '', phone: o.phone || '', comments: o.comments || '',
     bundle: o.bundle || '',
-    fulfilBy: String(o.fulfilBy || ''), fulfilLoc: '', fulfilAt: ''
+    fulfilBy: String(o.fulfilBy || ''), fulfilLoc: '', fulfilAt: '',
+    usdActual: usdActualIn_(o.usdActual)
   };
   /* Written by position, so the sheet must carry every column first. */
   ensureHeaders_('_sales', SALES_HEADERS);
@@ -5441,7 +5469,8 @@ function doEditSale(p) {
     // Who originally recorded it stays put — an edit shouldn't rewrite history.
     soldBy: old.soldBy || '',
     changeamt: p.changeamt !== undefined ? (Number(p.changeamt) || 0) : (Number(old.changeamt) || 0),
-    changecur: p.changecur !== undefined ? String(p.changecur) : String(old.changecur || '')
+    changecur: p.changecur !== undefined ? String(p.changecur) : String(old.changecur || ''),
+    usdActual: p.usdActual !== undefined ? usdActualIn_(p.usdActual) : old.usdActual
   };
   /* Written against the sheet's OWN column order, adding any it lacks. Writing
      by position here would scramble a sheet whose columns differ — the same

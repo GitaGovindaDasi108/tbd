@@ -1003,6 +1003,14 @@ body.busy #busyBar{opacity:1}
 .warn-detail b{font-weight:700}
 .note{background:#EAF1F9;border:1px solid #C7D6E8;color:var(--blue);border-radius:9px;padding:10px 12px;font-size:13px}
 .leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
+.spec{margin:0;border:1px solid var(--line-d);border-radius:10px;background:var(--paper2)}
+.spec > summary{cursor:pointer;list-style:none;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
+.spec > summary::-webkit-details-marker{display:none}
+.spec > summary .spec-t{font-weight:700;color:var(--plum);font-size:14px}
+.spec > summary .spec-t::after{content:' ▾';color:var(--saffron-d)}
+.spec[open] > summary .spec-t::after{content:' ▴'}
+.spec > summary .spec-h{font-size:12px;color:var(--muted)}
+.spec-body{padding:2px 12px 12px;display:flex;flex-direction:column;gap:12px}
 .mix-add{margin-top:8px}
 .mix-left{margin-top:8px;font-size:13px;color:var(--ink)}
 .mix-left.ok{color:var(--green,#2f7a4a);font-weight:600}
@@ -1277,7 +1285,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b188</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b189</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3773,14 +3781,18 @@ function digitalSale(x){
 }
 
 /** Enter, change or clear the dollars actually received for a sale. */
-function usdActualModal(saleId){
-  const x=(STATE.sales||[]).find(v=>v.saleId===saleId); if(!x) return;
-  const cur = hasUsdActual(x) ? String(Number(x.usdActual)) : '';
-  const est = legs(x).reduce((t,l)=>t + ((l.type && l.type!=='Gift' && l.amt) ? toUSD(l.amt,l.cur) : 0), 0);
+function usdActualModal(saleId, bundle){
+  // One sale, or every book of a multi-book transaction taken together.
+  const members = bundle ? (STATE.sales||[]).filter(v=>v.bundle===bundle) : [(STATE.sales||[]).find(v=>v.saleId===saleId)].filter(Boolean);
+  if(!members.length) return;
+  const x = members[0];
+  const had = members.filter(hasUsdActual);
+  const cur = had.length ? String(Math.round(had.reduce((t,m)=>t+Number(m.usdActual),0)*100)/100) : '';
+  const est = members.reduce((tt,m)=>tt + legs(m).reduce((t,l)=>t + ((l.type && l.type!=='Gift' && l.amt) ? toUSD(l.amt,l.cur) : 0), 0), 0);
   openModal(`
     ${mHead('Dollars received')}
     <div class="m-body">
-      <div class="hint">The sale stays ${esc(totalLabel(x))} in every total. This is only what
+      <div class="hint">${bundle ? 'These '+members.length+' books keep their own amounts' : 'The sale stays '+esc(totalLabel(x))} in every total. This is only what
         the account actually received, used in place of an estimate when dollars are worked out.</div>
       <div class="field"><label>Dollars received</label>
         <input id="uaVal" type="number" step="0.01" min="0" inputmode="decimal" value="${esc(cur)}"
@@ -3796,9 +3808,10 @@ function usdActualModal(saleId){
   $('#uaSave').addEventListener('click',()=>{
     const raw=$('#uaVal').value.trim();
     const usd = raw==='' ? '' : Math.round((Number(raw)||0)*100)/100;
-    commit({action:'setUsdActual', saleId, usd},
-      st=>{ const t=(st.sales||[]).find(v=>v.saleId===saleId); if(t) t.usdActual = usd; },
-      raw==='' ? 'Back to the estimate' : 'Recorded');
+    const parts = splitUsdActual(usd, members.map(m=>legs(m)));
+    members.forEach((m,i)=>commit({action:'setUsdActual', saleId:m.saleId, usd:parts[i]},
+      st=>{ const t=(st.sales||[]).find(v=>v.saleId===m.saleId); if(t) t.usdActual = parts[i]; },
+      i===members.length-1 ? (raw==='' ? 'Back to the estimate' : 'Recorded') : null));
     closeModal();
   });
 }
@@ -3881,7 +3894,19 @@ function logItemHTML(x, opts){
   const owedBack = changeOwed(x);
   if(owedBack>0) bits.push(`<span class="badge chg">${cashFmt(owedBack, changeCur(x))} change owed</span>`);
   // What actually arrived, beside the sale's own figure.
-  if(hasUsdActual(x)) bits.push(`<span class="usd-actual">($${fmt(Number(x.usdActual))} received)</span>`);
+  if(x._bundle){
+    const had = (x._members||[]).filter(hasUsdActual);
+    if(had.length) bits.push(`<span class="usd-actual">($${fmt(had.reduce((t,m)=>t+Number(m.usdActual),0))} received)</span>`);
+  } else if(hasUsdActual(x)) bits.push(`<span class="usd-actual">($${fmt(Number(x.usdActual))} received)</span>`);
+
+  /* Paid by card or transfer: once the money has landed, what actually arrived
+     in dollars is entered right here on the sale — one figure for a
+     multi-book transaction, as for one book. */
+  const digital = x._bundle ? (x._members||[]).some(digitalSale) : digitalSale(x);
+  const usdBtn = (digital && !isDon && !hideMoney() && !pendingFlag(x))
+    ? `<button class="btn btn-ghost btn-xs usd-btn" data-act="usdactual" ${x._bundle
+        ? `data-bundle="${esc(x.bundle||(x._members[0]||{}).bundle||'')}"` : `data-id="${esc(x.saleId)}"`}
+        title="Enter the dollars that actually arrived">$ Received</button>` : '';
 
   const r2=[];
   if(needsRow2){
@@ -3916,6 +3941,14 @@ function logItemHTML(x, opts){
       hasUsdActual(x)
         ? `$${fmt(Number(x.usdActual))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Change</button>`
         : `<button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Enter what arrived</button>`]);
+  }
+  // A multi-book transaction: one figure for the whole of it, as for one book.
+  if(x._bundle && (x._members||[]).some(digitalSale)){
+    const had = x._members.filter(hasUsdActual);
+    det.push(['Dollars received',
+      had.length
+        ? `$${fmt(had.reduce((t,m)=>t+Number(m.usdActual),0))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-bundle="${esc(x.bundle||x._members[0].bundle)}">Change</button>`
+        : `<button class="btn btn-ghost btn-sm" data-act="usdactual" data-bundle="${esc(x.bundle||x._members[0].bundle)}">Enter what arrived</button>`]);
   }
   if(pending){
     if(partial) det.push(['Already paid', esc(payLabel(x))]);
@@ -3959,6 +3992,7 @@ function logItemHTML(x, opts){
         ${pending?`<button class="btn btn-primary btn-xs" data-act="markpaid" ${idAttr}>${partial?'Settle':'Paid'}</button>`:''}
         ${owedBack>0?`<button class="btn btn-gold btn-xs" data-act="gavechange" data-id="${esc(x.saleId)}">Gave change</button>`:''}
         ${awaiting?`<button class="btn btn-green btn-xs" data-act="deliver" ${idAttr}>Deliver</button>`:''}
+        ${usdBtn}
         ${x._bundle
           ? `<button class="btn btn-ghost btn-xs" data-act="editbundle" data-bundle="${x.bundle}">Edit</button>`
           : `<button class="btn btn-ghost btn-xs" data-act="editsale" data-id="${x.saleId}">Edit</button>`}
@@ -4440,6 +4474,18 @@ function saleLocOptions(current){
   return out.map(x=>`<option value="${esc(x.id)}" ${x.id===current?'selected':''}>${esc(x.name)}</option>`).join('');
 }
 
+/* A transaction's figure shared out over its books by their estimated dollars,
+   exactly as the server does, so the parts always add up to it. */
+function splitUsdActual(total, perItem){
+  if(total==='') return perItem.map(()=>'');
+  const est = perItem.map(L=>(L||[]).reduce((t,l)=>t + (l.type!=='Gift' ? toUSD(l.amt, l.cur) : 0), 0));
+  const sum = est.reduce((a,b)=>a+b, 0);
+  const out = []; let running = 0;
+  for(let i=1;i<est.length;i++){ const sh = Math.round((sum ? total*est[i]/sum : total/est.length)*100)/100; out[i] = sh; running += sh; }
+  out[0] = Math.round((total-running)*100)/100;
+  return out;
+}
+
 function saleModal(opts){
   const book=bookById(opts.bookId);
   const loc=opts.loc||CUR_LOC;
@@ -4450,6 +4496,12 @@ function saleModal(opts){
   const title = edit?'Edit sale':(isPre?'Pre-order':'Record sale');
   // A pre-order hands over nothing today, so "book given now" would be wrong.
   const noneHint = isPre ? 'payment not yet delivered' : 'book given now, paid later';
+  /* A plain sale — they pay, we hand over the book — needs only how and how
+     much. Everything else waits under "Specialized Sales", open from the start
+     only when it is needed: a pre-order (a name is required) or an edit of a
+     sale that already uses it. */
+  const specOpen = isPre || !!(edit && (pendingFlag(edit) || isPartial(edit) || edit.name || edit.phone
+    || edit.comments || Number(edit.changeamt)));
 
   openModal(`
     ${mHead(title+' — '+book.name)}
@@ -4475,6 +4527,10 @@ function saleModal(opts){
 
       ${mixedPayHTML()}
 
+      <details class="spec" id="specBox" ${specOpen?'open':''}>
+        <summary><span class="spec-t">Specialized Sales</span>
+          <span class="spec-h">Part or pending payment, name and phone, change owed, comments, date</span></summary>
+        <div class="spec-body">
       <div class="field">
         <label>Payment status</label>
         <div class="seg" id="paySeg">
@@ -4520,6 +4576,8 @@ function saleModal(opts){
         <select id="csLoc">${saleLocOptions(edit.location)}</select>
         <div class="muted-note">Moving it also moves the copy — it goes back on the old
           shelf and comes off the new one.</div></div>` : ''}
+        </div>
+      </details>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -4783,6 +4841,9 @@ function bundleModal(edit){
   // mix the two — buy the ones in stock, pre-order the ones that aren't.
   // At a warehouse, copies with its sub-warehouses are stock too (see the save step).
   const stockAt = id => invQty(loc,id) + (backIn[id]||0);
+  // As for one book: the rest waits under "Specialized Sales" unless this sale already uses it.
+  const bSpecOpen = !!(edit && edit.members.some(m=>(m.type==='PREORDER' && !m.delivered) || (m.pending && !m.paid)
+    || Number(m.dueamt) || m.name || m.phone || Number(m.changeamt) || /·/.test(String(m.comments||''))));
   const rows = bundleBooks().map(b=>{
     const stock = stockAt(b.id);
     return `<div class="mb-row" data-book="${b.id}"
@@ -4832,6 +4893,10 @@ function bundleModal(edit){
       </div>
       ${mixedPayHTML()}
 
+      <details class="spec" id="specBox" ${bSpecOpen?'open':''}>
+        <summary><span class="spec-t">Specialized Sales</span>
+          <span class="spec-h">Part or pending payment, name and phone, change owed, comments, date</span></summary>
+        <div class="spec-body">
       <div class="field">
         <label>Payment status</label>
         <div class="seg" id="paySeg">
@@ -4864,6 +4929,8 @@ function bundleModal(edit){
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
       <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.members[0].ts:new Date()))}"></div>
+        </div>
+      </details>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -4943,6 +5010,8 @@ function bundleModal(edit){
     // The name box is always visible now — just flag when it's genuinely
     // needed (a pre-order or an unpaid balance) versus a nice-to-have.
     const needName = np>0 || payMode!=='full';
+    // A pre-order needs a name, which lives under "Specialized Sales": show it.
+    if(np>0 && $('#specBox') && !$('#specBox').open) $('#specBox').open = true;
     const nl=$('#nameLbl'), pl=$('#phoneLbl');
     if(nl) nl.textContent = needName ? 'Name' : 'Name (optional)';
     if(pl) pl.textContent = needName ? 'Phone' : 'Phone (optional)';
@@ -4990,6 +5059,7 @@ function bundleModal(edit){
 
   // Mixed payments fill up to the list total, except as a part payment.
   const mix = bindMixedPay(c=>payMode==='part' ? 0 : listTotal(c), ()=>updateCount());
+
   if($('#mbFrom')) $('#mbFrom').addEventListener('change', ()=>{
     loc = $('#mbFrom').value;
     bundleBooks().forEach(b=>{
@@ -5110,6 +5180,11 @@ function bundleModal(edit){
     // Field is pre-filled with the original time on edit, so leaving it untouched
     // preserves the transaction time; changing it re-dates the whole bundle.
     const tsVal = fromLocalInput($('#csTs').value);
+    /* Dollars received are entered from the sales log, after the sale. An edit
+       keeps whatever was entered, shared out again over the books as they now
+       are — the server does the same. */
+    const hadUsd = edit ? edit.members.filter(hasUsdActual) : [];
+    const usdParts = splitUsdActual(hadUsd.length ? Math.round(hadUsd.reduce((t,m)=>t+Number(m.usdActual),0)*100)/100 : '', perItem);
     const payload = edit
       ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true,
          ts:tsVal}
@@ -5130,7 +5205,7 @@ function bundleModal(edit){
           st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:(tsVal||new Date().toISOString()),location:loc,
             type:it.pre?'PREORDER':'SALE',bookId:it.bookId,qty:1,
             pending,paid:!pending&&(i>0||dueamt<=0),dueamt:i===0?dueamt:0,duecur:i===0?duecur:'',
-            delivered:!it.pre,name,phone,comments:note,bundle:bundleId}, legFields(perItem[i])));
+            delivered:!it.pre,name,phone,comments:note,bundle:bundleId,usdActual:usdParts[i]}, legFields(perItem[i])));
           if(!it.pre) invAdd(st,loc,it.bookId,-1);
         });
       },
@@ -11295,7 +11370,7 @@ document.addEventListener('click',e=>{
   if(a==='editlabel'){ editLabelModal(t.dataset.key); return; }
   if(a==='hidebooks'){ hideBooksModal(); return; }
   if(a==='hiddenpre'){ hiddenPreorderModal(); return; }
-  if(a==='usdactual'){ usdActualModal(t.dataset.id); return; }
+  if(a==='usdactual'){ usdActualModal(t.dataset.id, t.dataset.bundle); return; }
   if(a==='hbpre'){
     /* Ordering a hidden title puts it back on the shelf: someone here wants it,
        so hiding it no longer reflects what is being sold. */
