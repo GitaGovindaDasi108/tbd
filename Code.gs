@@ -195,7 +195,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b184';
+var SERVER_BUILD = 'b185';
 
 function doPost(e) { return handle(e); }
 
@@ -670,7 +670,8 @@ function consistentStateReply_(who) {
   try {
     var rev = getRev_();
     var body = (who.role === 'admin') ? stateJson_() : JSON.stringify(scopedState_(who));
-    return '{"ok":true,"rev":' + rev + ',"state":' + body + '}';
+    // The running version, stamped on the reply itself — never read from a saved copy.
+    return '{"ok":true,"rev":' + rev + ',"build":"' + SERVER_BUILD + '","state":' + body + '}';
   } finally {
     if (held) lock.releaseLock();
   }
@@ -714,6 +715,10 @@ function stateJson_() {
   // Cached per season as well as per revision: two seasons at the same revision
   // are different states.
   var rev = getRev_() + '_' + activeSeasonId_();   // includes any link's pinned season
+  /* And per version of this code: a copy made by an older deployment must never
+     be served by a newer one — it carried the old version number, so the app
+     warned "not updated" straight after a successful deploy. */
+  rev += '_' + SERVER_BUILD;
   var hit = cacheGet_(rev);
   if (hit) return hit;
   var str = JSON.stringify(scopeToSeason_(readState()));

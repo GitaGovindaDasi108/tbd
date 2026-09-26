@@ -68,10 +68,16 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
   let page;
   try {
     // 1. Version warning.
-    const old = await open('', 1100, out => { if (out && out.state) out.state.serverBuild = 'b180'; });
+    // A genuinely older Apps Script: it has no version stamp of its own, and its data says b180.
+    const old = await open('', 1100, out => { if (out && out.state) { out.state.serverBuild = 'b180'; delete out.build; } });
     const warn = await old.evaluate(() => (document.getElementById('buildWarn') || {}).textContent || '');
-    t.push(['older Apps Script: a red warning names both versions and what to do', /running b180/.test(warn) && /b184/.test(warn) && /New version/.test(warn)]);
+    const pageBuild = await old.evaluate(() => document.getElementById('bld').textContent);
+    t.push(['older Apps Script: a red warning names both versions and what to do', /running b180/.test(warn) && warn.includes(pageBuild) && /New version/.test(warn)]);
     await old.close();
+    // Today's case: the new Apps Script is running, but hands out a copy saved by the old one.
+    const stale = await open('', 1100, out => { if (out && out.state) out.state.serverBuild = 'b180'; });
+    t.push(['new Apps Script with an old saved copy: no false warning', !(await stale.$('#buildWarn'))]);
+    await stale.close();
     page = await open('');
     t.push(['matching versions: no warning', !(await page.$('#buildWarn'))]);
 

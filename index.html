@@ -1252,7 +1252,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b184</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b185</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2279,6 +2279,8 @@ async function pull(){
     return;                       // stale: you have moved on since this was asked for
   }
   BASE = d.state; REV = d.rev;
+  // What the server says it is running, from this reply — not from a saved copy.
+  LIVE_BUILD = d.build || (d.state && d.state.serverBuild) || LIVE_BUILD;
   // Only retire ops that existed when this read began; anything committed while
   // it was in flight is not represented in what came back.
   const pulledSeason = (BASE && BASE.activeSeason) || '';
@@ -2709,10 +2711,13 @@ function addTooltipsToClipped(){
 /* If the Google side is running a different version from this page, new
    features fail with "Unknown action" — which is what a missed Apps Script
    deploy looks like. Say so plainly, with what to do. */
+/* The server's version as it answered this session. Never taken from the copy
+   saved on the device, which can be older than the server now is. */
+let LIVE_BUILD = '';
 function checkServerBuild(){
   let bar = document.getElementById('buildWarn');
   const page = ($('#bld')||{}).textContent || '';
-  const server = STATE && STATE.serverBuild;
+  const server = LIVE_BUILD;
   const off = isAdmin() && server && page && server!==page;
   if(!off){ if(bar) bar.remove(); return; }
   if(!bar){

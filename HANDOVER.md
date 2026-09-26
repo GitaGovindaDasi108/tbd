@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b184**.
+Handover notes. Current build: **b185**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -305,6 +305,14 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
   region's log shows a note, never a sale. Undo from the activity log.
 - **List view** toggle in the top bar (`setViewMode`, `body.list-view`),
   remembered per device.
+
+## Done in b185
+
+- The version warning gave a false alarm right after a successful deploy: the
+  server's cached state (kept up to an hour, keyed by data revision) still
+  carried the old `serverBuild`. Now the cache key includes `SERVER_BUILD`,
+  every state reply carries `"build"` stamped at reply time, and the app only
+  trusts the build from a live reply (`LIVE_BUILD`), never the device's copy.
 
 ## Open items
 
