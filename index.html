@@ -25,7 +25,7 @@
   --blue:#2F5D8A;
   /* Consignment reads in the tour's own blue, donations in its gold, and the
      third book category in its teal — so nothing new is introduced and the two
-     money categories are never the same colour. */
+     money categories are never the same color. */
   --consign:#2F5D8A; --consign-l:#E4EDF6; --consign-b:#B9CFE6;
   --teal:#1F6B5A; --teal-l:#E3F0EC; --teal-b:#B4D5CB;
   /* Donations had been sharing gold with AoTM, so the two read as one thing.
@@ -191,7 +191,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .sc-name{font-weight:700;font-size:13px;color:var(--plum);line-height:1.2}
 .sc-name.other{color:var(--teal)}
 /* Top-justified. This was margin-top:auto, which pushed the number to the
-   bottom whenever a taller neighbour stretched the row — so numbers sat at a
+   bottom whenever a taller neighbor stretched the row — so numbers sat at a
    different height in every card. Now each card reads top-down: title, number,
    then its notes. */
 .sc-figs{display:flex;align-items:baseline;gap:6px;margin-top:4px}
@@ -645,7 +645,7 @@ body.busy #busyBar{opacity:1}
 .book .bname{font-weight:700;font-size:14.5px;color:var(--plum);line-height:1.2}
 /* A third kind of title reads as its own thing rather than a Big Book. */
 .book .bname.other, .bname.other{color:var(--teal)}
-/* The shelf colours a title by its kind, the same as every other list does. */
+/* The shelf colors a title by its kind, the same as every other list does. */
 .book .bname.aotm, .bname.aotm{color:var(--gold)}
 .bulk-row .bk-name.other{color:var(--teal)}
 .book .price{font-size:11.5px;color:var(--muted);margin-top:2px}
@@ -684,7 +684,7 @@ body.busy #busyBar{opacity:1}
 /* Consignment: someone else's book on our table. Marked so it is never mistaken
    for ours, but sold exactly the same way. */
 .book.consign{background:var(--consign-l);border-color:var(--consign-b)}
-/* The card carries the colour, so the title reads in the ordinary ink — the
+/* The card carries the color, so the title reads in the ordinary ink — the
    same arrangement consignment and donations already use. */
 .book.aotm-card{background:var(--aotm-l);border-color:var(--aotm-b)}
 .book .bname.aotm{color:var(--plum)}
@@ -709,9 +709,9 @@ body.busy #busyBar{opacity:1}
 .inv-h2{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .qr-btn{flex:none;font-size:12px;padding:5px 11px;margin-left:auto;margin-right:auto}
 .admin-panel{margin-top:18px}
-/* App Admin: four labelled columns, each button its own colour so it becomes a
+/* App Admin: four labeled columns, each button its own color so it becomes a
    shape you reach for. Hues stay inside the saffron/plum/teal family the rest
-   of the app uses, spread across it rather than repeating three colours. */
+   of the app uses, spread across it rather than repeating three colors. */
 .admin-panel .actions{display:block}
 .adm-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .adm-col{display:flex;flex-direction:column;gap:7px;min-width:0}
@@ -817,7 +817,7 @@ body.busy #busyBar{opacity:1}
 /* Every USD equivalent above the final line is a working figure, so it reads in
    the same quiet ink as the rest. Green is kept for the one number that answers
    the question — what the tour actually took. */
-/* Working figures read in a quiet grey; only the final line carries colour. */
+/* Working figures read in a quiet grey; only the final line carries color. */
 .ptg-r{color:#616161}
 /* The dollar column is a derived total, not another currency, so it gets a
    little more room to its left. Without it the gap depended on how wide the
@@ -866,7 +866,7 @@ body.busy #busyBar{opacity:1}
 .log::-webkit-scrollbar-thumb:hover{background:var(--gold)}
 .log-item{border:1px solid var(--line);border-radius:9px;padding:6px 9px;background:var(--paper2);flex:none}
 /* Two states worth spotting from across a table: money still owed, and a copy
-   still to hand over. Each gets a tint and a coloured edge so they read at a
+   still to hand over. Each gets a tint and a colored edge so they read at a
    glance rather than needing the badge to be studied. */
 .log-item.pending{border-color:#E3A98B;background:#FDF0E8;border-left:4px solid var(--clay)}
 .log-item.awaiting{border-color:#C7D6E8;background:#F4F8FC;border-left:4px solid #5B7FA6}
@@ -954,6 +954,13 @@ body.busy #busyBar{opacity:1}
 .rq-panel > h2{background:linear-gradient(180deg,#F1EBF8,transparent);color:#5B3F86;font-size:16px;padding:9px 14px}
 .rq-panel .sh-card{margin-bottom:0}
 .rq-note{font-size:12.5px;color:var(--ink);font-style:italic;margin-top:4px}
+.badge.declined{background:var(--clay-l);color:var(--clay);border:1px solid #EEC0B8;margin-left:4px}
+.bd-cb{width:17px;height:17px;flex:none;margin:0}
+#bdList .ro-row{justify-content:flex-start}
+#bdList .ro-name{flex:1;min-width:0;text-align:left}
+.ro-row.bd-off .ro-name{color:var(--muted)}
+.cl-check{display:flex;gap:10px;align-items:flex-start;font-size:13.5px;padding:8px 2px}
+.cl-check input{width:18px;height:18px;flex:none;margin-top:2px}
 .badge.rq{background:#F1EBF8;color:#5B3F86;border:1px solid #D5C6EA;margin-left:4px}
 .log-item.rq-log{display:block;background:#F7F3FB;border:1px dashed #C9B8E0;border-radius:10px;padding:8px 11px}
 .rq-log-t{font-size:13px;color:#4A3470}
@@ -1021,6 +1028,9 @@ body.busy #busyBar{opacity:1}
 .bulk-row.five .d-delta{width:50px}
 .bulk-row.five .d-set{width:50px;margin:0 auto;display:block}
 /* The browser's own tiny spinners crowd a narrow box; the count is typed. */
+/* No spinner arrows on any number box: a count is typed, never nudged. */
+input[type=number]{-moz-appearance:textfield;appearance:textfield}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .bulk-row .d-delta::-webkit-outer-spin-button,.bulk-row .d-delta::-webkit-inner-spin-button,
 .bulk-row .d-set::-webkit-outer-spin-button,.bulk-row .d-set::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .bulk-row .d-delta,.bulk-row .d-set{-moz-appearance:textfield;appearance:textfield;
@@ -1143,7 +1153,8 @@ body.busy #busyBar{opacity:1}
 #xfAddSw{align-self:flex-start}
 /* Sub-warehouse bubbles on a warehouse card. */
 .sw-bubs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
-.sw-bub{border:1px solid #B9D2EC;background:#EAF1F9;color:#2F6FB5;border-radius:999px;padding:1px 8px;
+.sw-title{font-size:9.5px;text-transform:uppercase;letter-spacing:.4px;font-weight:700;color:var(--muted);margin-top:5px}
+.sw-bub{border:1px solid #B9D2EC;background:#EAF1F9;color:var(--plum);border-radius:999px;padding:1px 8px;
   font-size:11px;font-weight:700;cursor:pointer;line-height:1.6}
 .sw-bub:hover{background:#DCE9F7}
 .sw-who{font-size:11.5px;color:var(--ink);margin-top:3px}
@@ -1252,7 +1263,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b185</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b186</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1338,7 +1349,8 @@ body.list-view .mc-name{min-height:0}
       <div class="body"><div class="log" id="preList"></div></div>
     </section>
     <section class="panel rq-panel" id="remotePanel" style="display:none">
-      <h2 class="sec-h2">Pre-Orders to Fulfil for Other Regions</h2>
+      <h2 class="sec-h2">Pre-Orders to Fulfill for Other Regions
+        <button class="btn btn-ghost btn-sm sec-rep" data-act="fulfilother" title="Take on a pre-order from any other region">＋ Fulfill another</button></h2>
       <div class="body"><div class="log" id="remoteList"></div></div>
     </section>
     <section class="panel transit-panel" id="transitPanel" style="display:none">
@@ -1537,7 +1549,7 @@ function saleUsd(sale){
   legs(sale).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) t += toUSD(l.amt, l.cur); });
   return t;
 }
-/** Dollars for a set of sales, honouring every entered figure. */
+/** Dollars for a set of sales, honoring every entered figure. */
 function salesUsd(list){
   return (list||[]).reduce((t,x)=>t + (received(x) ? saleUsd(x) : 0), 0);
 }
@@ -1641,6 +1653,13 @@ function currentScope(){
    list: a title with copies on the shelf is shown whether or not it was chosen,
    because stock you cannot see is stock you cannot count, sell or move. That is
    how books added to a region could vanish after being saved. */
+/* A consignment title belongs to the one region its group was set up in, and
+   is shown nowhere else — not in other regions, and not in other seasons. */
+function bookBelongsIn(b, regionId){
+  if(!b || !b.partnerId) return true;
+  const p = partnerById(b.partnerId);
+  return !!p && !!regionId && String(p.regionId)===String(regionId);
+}
 function regionBooks(regionId){
   const all = STATE.books||[];
   const r = regionById(regionId||CUR_REGION);
@@ -1722,41 +1741,6 @@ function allShelfBooks(){
 }
 
 /* Choosing which titles an event offers. */
-function hideBooksModal(){
-  // A region sets this for its warehouse just as an event does for its table.
-  if(CUR_LEVEL!=='event' && CUR_LEVEL!=='region') return;
-  const off=hiddenHere();
-  const books=allShelfBooks();
-  openModal(`
-    ${mHead('Titles offered here')}
-    <div class="m-body">
-      <div class="hint">Untick a title to keep it off the shelf ${CUR_LEVEL==='region'?'in this region':'at this event'}.
-        It can still be pre-ordered — use “Pre-order another title” beneath the shelf.</div>
-      <div class="rep-picks">${books.map(b=>`
-        <label class="rep-pick"><input type="checkbox" data-hb="${esc(b.id)}" ${off.has(b.id)?'':'checked'}>
-          <span>${esc(b.name)}</span></label>`).join('')}</div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="hbSave">Save</button>
-    </div>`, true);
-  $('#hbSave').addEventListener('click',()=>{
-    const hidden=[...document.querySelectorAll('#modal [data-hb]')].filter(c=>!c.checked).map(c=>c.dataset.hb);
-    const evId=CUR_LOC;
-    // A region keeps this on the region; an event on the event.
-    const forRegion = (CUR_LEVEL==='region');
-    commit(forRegion
-        ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
-        : {action:'setEventHidden', eventId:evId, hidden:hidden.join(',')},
-      st=>{
-        if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
-        else { const e=(st.events||[]).find(x=>x.eventId===evId); if(e) e.hidden=hidden.join(','); }
-      },
-      hidden.length ? `${hidden.length} title${hidden.length===1?'':'s'} hidden here` : 'All titles offered here');
-  });
-}
-
 /* Pre-ordering a title that is not on this event's shelf. */
 /** Put a title back on the shelf where you are. */
 function unhideTitle(bookId){
@@ -1851,7 +1835,7 @@ function goTo(level, loc){
 const POS_KEY = 'tbs_pos';
 /** The season THIS tab is showing, kept apart from any other tab's. */
 let TAB_SEASON = '';
-/** Bumped on every season change, so replies from before it can be recognised. */
+/** Bumped on every season change, so replies from before it can be recognized. */
 let SEASON_EPOCH = 0;
 function posKey(){ return POS_KEY + (SHARE_KEY?'_'+SHARE_KEY:''); }
 function savePos(){
@@ -1966,7 +1950,7 @@ function inboundShipments(regionId){
 function outboundShipments(regionId){
   return (STATE.shipments||[]).filter(x=>x.fromRegion===(regionId||CUR_REGION) && x.status!=='ARRIVED');
 }
-/** Copies of a title still travelling towards this region. */
+/** Copies of a title still traveling towards this region. */
 function inTransitQty(bookId, regionId){
   return inboundShipments(regionId).reduce((t,x)=>t+invQty(x.shipId,bookId),0);
 }
@@ -2026,7 +2010,7 @@ function shownQty(bookId){return invQty(CUR_LOC,bookId);}
    so there is never event stock to hold back. */
 function reservedQty(loc,bookId){
   /* Every region's warehouse holds back copies for its own undelivered
-     pre-orders — this only recognised the original one, so a hold in Madrid
+     pre-orders — this only recognized the original one, so a hold in Madrid
      counted for nothing. Each region answers for its own. */
   if(!isWarehouseLoc(loc)) return 0;
   const regionId = regionOfLoc(loc);
@@ -2057,7 +2041,7 @@ function preorderWarning(lines,verbs){
   const one=lines.length===1;
   return `<div class="warn warn-pre">⚠ There are currently pre-orders for `
        + `${one?'this book':'these books'} that you would no longer be able to `
-       + `fulfil if you ${one?verbs[0]:verbs[1]}.<div class="warn-detail">${lines.join(' ')}</div></div>`;
+       + `fulfill if you ${one?verbs[0]:verbs[1]}.<div class="warn-detail">${lines.join(' ')}</div></div>`;
 }
 
 /* ============================================================
@@ -2109,7 +2093,7 @@ function isSeller(){ return STATE && STATE.role==='seller'; }
 function hideMoney(){ return !!(STATE && STATE.hideMoney); }
 
 /* Every write carries a one-off id, so if it has to be sent again the server
-   recognises it and does the work only once. */
+   recognizes it and does the work only once. */
 let opCounter = 0;
 function newOpId(){
   opCounter++;
@@ -2132,14 +2116,14 @@ async function post(payload, opts){
      as a connection problem by WHAT happened, not by the wording.
 
      The browser writes its own message here, in the phone's language. The app
-     used to recognise "no signal" only from English text, so on a phone set to
+     used to recognize "no signal" only from English text, so on a phone set to
      Dutch a dropped connection read as a refusal: the sale was discarded
      instead of being kept to send later. */
   /* A time limit, for saves. Saves go out one at a time, in order, so a single
      request that hangs would hold up every save behind it until the browser
      gave up — minutes, with "Saving…" stuck on screen. After the limit it is
      treated like a dropped connection: kept on this device and sent again,
-     and the queue moves on. The server recognises a save it already has, so
+     and the queue moves on. The server recognizes a save it already has, so
      a resend can never record it twice. (Sync and loading have no limit —
      they can legitimately take much longer.) */
   const limit = opts && opts.timeoutMs;
@@ -2183,7 +2167,7 @@ async function postWrite(payload){
      It used to be minted afresh on every send, so a change waiting in the
      offline queue got a new id each time it was retried and the server treated
      it as brand new — which is how something deleted could come back, and how a
-     save could land twice. Stamped once here, every later attempt is recognised
+     save could land twice. Stamped once here, every later attempt is recognized
      as the same request. */
   if(!payload.opId) payload.opId = newOpId();
   const SAVE_LIMIT = {timeoutMs: 45000};   // well above a normal save, even behind the lock
@@ -2488,7 +2472,7 @@ function saveProgress(){
    Now every save is written to the device FIRST, then sent one at a time, in
    the order it was made, and only removed once the server has confirmed it.
    If the page closes first, it is sent again when the app next opens. The
-   server recognises a sale it already has by its name, so a resend can never
+   server recognizes a sale it already has by its name, so a resend can never
    record it twice. */
 const OUTBOX_KEY = 'tbs_outbox_v1';
 function outboxLoad(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY)||'[]'); }catch(e){ return []; } }
@@ -2761,7 +2745,7 @@ function renderAll(){
   const wb = $('#whoBtn');
   if(SHARE_KEY && who){ wb.style.display=''; wb.textContent = '👤 ' + who; }
   else wb.style.display='none';
-  // The tab is how the app is recognised among a dozen others — it keeps its
+  // The tab is how the app is recognized among a dozen others — it keeps its
   // own name rather than whichever warehouse happens to be open.
   document.title = 'Transcendental Book Sales';
   renderTabs(); renderContextActions(); renderTotals();
@@ -2941,108 +2925,77 @@ function renderAdmin(){
     $('#adminActions').innerHTML =
       `<div class="adm-grid"><div class="adm-col">
          <div class="adm-lbl">Admin</div>
-         <button class="btn adm-c1-1" data-act="org">👥 Org chart</button>
+         ${coord ? `<button class="btn adm-c1-1" data-act="activity">🗒 Activity Log</button>` : ''}
+         <button class="btn adm-c1-${coord?2:1}" data-act="org">👥 App and Sales Support</button>
        </div>${coord ? `<div class="adm-col">
          <div class="adm-lbl">Books</div>
-         <button class="btn adm-c3-1" data-act="addstock">＋ Add Stock</button>
+         <button class="btn adm-c3-1" data-act="addstock">＋ Add New Stock</button>
          <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
-         <button class="btn adm-c3-3" data-act="shipments">🚚 Books in transit</button>
-         <button class="btn adm-c3-4" data-act="activity">🗒 Activity Log</button>
-         <button class="btn adm-c3-5" data-act="fulfilother">📬 Fulfil a pre-order for another region</button>
        </div>` : ''}</div>`;
     return;
   }
   $('#adminPanel').style.display='';
 
-  /* Grouped so the eye can find things: money and people, stock, movement,
-     then the region itself. Each button keeps its own colour so it becomes a
-     shape you reach for rather than a label you read. */
+  /* Four families, in this order: Admin, Money, Books, Location. The Location
+     column follows where you are standing — an event's own actions at an event,
+     a region's at a region, the season's at the season — with the event and
+     region order available everywhere. */
   const cols = [[], [], [], []];
 
-  // 1 — money, people, access
-  if(admin) cols[0].push(`<button class="btn" data-act="cash">💵 Cash</button>`);
-  cols[0].push(`<button class="btn" data-act="org">👥 Org chart</button>`);
-  // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
-  if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
-  if(isAdmin()) cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done editing wording':'Edit wording'}</button>`);
-  // Costs are money matters, so only for those who see the money.
-  if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
-    scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
-  if(admin && !season)
-    cols[0].push(`<button class="btn" data-act="paytypes">💳 Payments taken here</button>`);
-  if(admin) cols[0].push(season
-    ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share links…</button>`
-    : (isWarehouseLoc(CUR_LOC) ? `<button class="btn" data-act="sharelinks">🔗 Share links</button>` : ''));
-  // Payment QRs live in the inventory header — one home is enough.
-  if(admin && season)
-    cols[0].push(`<button class="btn" data-act="reorder" data-kind="region">↕ Change region order</button>`);
-  else if(admin && isWarehouseLoc(CUR_LOC))
-    cols[0].push(`<button class="btn" data-act="reorder" data-kind="event">↕ Change event order</button>`);
-  // An event holds nothing that needs ordering, so no button there.
+  // Admin
+  cols[0].push(`<button class="btn" data-act="activity">🗒 Activity Log</button>`);
+  cols[0].push(`<button class="btn" data-act="org">👥 App and Sales Support</button>`);
+  cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
+  cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
+  cols[0].push(season
+    ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share Links…</button>`
+    : `<button class="btn" data-act="sharelinks">🔗 Share Links</button>`);
 
-  // 2 — moving them
-  /* One way to move books already in the system, from anywhere: the dialog asks
-     where from and where to, and works out which kind of transfer it is. */
-  cols[1].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
-  // Every change in one place (sales keep their own log).
-  cols[1].push(`<button class="btn" data-act="activity">🗒 Activity Log</button>`);
-
-  // 3 — where the books are
-  const shipCount = season
-    ? (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').length
-    : inboundShipments(CUR_REGION).length + outboundShipments(CUR_REGION).length;
-  /* Adjustable wherever you are standing — an event shelf included.
-
-     I had this limited to warehouses, on the reasoning that an event's stock
-     should only ever be what was carried to it. In practice books do turn up at
-     an event by other means, and a count that cannot be corrected where it is
-     wrong is worse than a slightly looser audit trail. Every adjustment is
-     still recorded in the movement log with whatever note you give it. */
-  /* One way to add stock, from anywhere: the dialog asks where the books are
-     going, so it no longer matters where you are standing. */
-  cols[2].push(`<button class="btn" data-act="addstock">＋ Add Stock</button>`);
-  if(!season) cols[2].push(`<button class="btn" data-act="fulfilother">📬 Fulfil a pre-order for another region</button>`);
-  /* Where the books came from, who is holding them and whose they are is the
-     owner's business. A regional coordinator sells and moves stock; they do not
-     need the tour's logistics or anyone else's money. */
-  if(admin){
-    cols[2].push(`<button class="btn" data-act="shipments">🚚 Books in transit${shipCount?` (${shipCount})`:''}</button>`);
-    cols[2].push(`<button class="btn" data-act="holders">🏠 Devotees storing books</button>`);
-    const conCount = (CUR_LEVEL==='season' ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
-    cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment${conCount?` (${conCount})`:''}</button>`);
-    cols[2].push(`<button class="btn" data-act="reorderbooks">↕ Change book order${season?' (whole season)':''}</button>`);
-  /* Which titles are offered where you are — the last word on the shelf, so it
-     sits at the foot of the book settings. A region sets this for its
-     warehouse just as an event does for its table. */
-  if(CUR_LEVEL==='event' || CUR_LEVEL==='region')
-    cols[2].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
-      hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
+  // Money
+  if(!hideMoney()){
+    cols[1].push(`<button class="btn" data-act="cash">💵 Cash Tracker</button>`);
+    cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs${
+      scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
+    if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
   }
 
-  // 4 — the region or event itself
-  if(admin){
-    if(season){
-      cols[3].push(`<button class="btn" data-act="pick" data-then="editregion">Edit region…</button>`);
-      cols[3].push(`<button class="btn" data-act="pick" data-then="closehere">Close region…</button>`);
-      cols[3].push(`<button class="btn" data-act="pick" data-then="deleteregion">Delete region…</button>`);
-    }else if(isWarehouseLoc(CUR_LOC)){
-      cols[3].push(`<button class="btn" data-act="editregion">Edit region</button>`);
-      cols[3].push(regionClosure(CUR_REGION)
-        ? `<button class="btn" data-act="reopenhere">Reopen region</button>`
-        : `<button class="btn" data-act="closehere">Close region</button>`);
-      cols[3].push(`<button class="btn" data-act="deleteregion">Delete region</button>`);
-    }else{
-      cols[3].push(`<button class="btn" data-act="renameevent">Rename event</button>`);
-      cols[3].push(closureOf(CUR_LOC)
-        ? `<button class="btn" data-act="reopenhere">Reopen event</button>`
-        : `<button class="btn" data-act="closehere">Close event</button>`);
-      cols[3].push(`<button class="btn" data-act="deleteevent">Delete event</button>`);
-    }
+  // Books
+  cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
+  cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
+  const conCount = (season ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
+  cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books${conCount?` (${conCount})`:''}</button>`);
+  cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
+    (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
+
+  // Location
+  cols[3].push(season
+    ? `<button class="btn" data-act="pick" data-then="eventorder">↕ Change Event Order…</button>`
+    : `<button class="btn" data-act="reorder" data-kind="event">↕ Change Event Order</button>`);
+  cols[3].push(`<button class="btn" data-act="reorder" data-kind="region">↕ Change Regional Order</button>`);
+  if(season){
+    const sn = (STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason) || {};
+    cols[3].push(`<button class="btn" data-act="seasonedit" data-id="${esc(STATE.activeSeason)}">Edit Season</button>`);
+    cols[3].push(sn.closedAt
+      ? `<button class="btn" data-act="seasonreopen">Reopen Season</button>`
+      : `<button class="btn" data-act="seasonclose">Close Season</button>`);
+    cols[3].push(`<button class="btn" data-act="seasondel" data-id="${esc(STATE.activeSeason)}">Delete Season</button>`);
+  }else if(isWarehouseLoc(CUR_LOC)){
+    cols[3].push(`<button class="btn" data-act="editregion">Edit Region</button>`);
+    cols[3].push(regionClosure(CUR_REGION)
+      ? `<button class="btn" data-act="reopenhere">Reopen Region</button>`
+      : `<button class="btn" data-act="closehere">Close Region</button>`);
+    cols[3].push(`<button class="btn" data-act="deleteregion">Delete Region</button>`);
+  }else{
+    cols[3].push(`<button class="btn" data-act="renameevent">Rename Event</button>`);
+    cols[3].push(closureOf(CUR_LOC)
+      ? `<button class="btn" data-act="reopenhere">Reopen Event</button>`
+      : `<button class="btn" data-act="closehere">Close Event</button>`);
+    cols[3].push(`<button class="btn" data-act="deleteevent">Delete Event</button>`);
   }
 
-  const labels = ['Admin', 'Transfers', 'Books', 'Region'];
+  const labels = ['Admin', 'Money', 'Books', 'Location'];
   /* Each column is a family, and each button sits a shade deeper than the one
-     above it — so the panel reads as a gradient rather than a bag of colours. */
+     above it — so the panel reads as a gradient rather than a bag of colors. */
   $('#adminActions').innerHTML = `<div class="adm-grid">${
     cols.map((c,i)=>{
       const live = c.filter(Boolean);
@@ -3058,6 +3011,7 @@ function rateNote(){
   const r=STATE.rates||{};
   const pln=r.plnPerUsd?Number(r.plnPerUsd).toFixed(2):'—';
   const eur=r.eurPerUsd?Number(r.eurPerUsd).toFixed(2):'—';
+  if(r.frozen) return `Rates fixed when the season closed · $1 = ${pln} zł / ${eur} €`;
   if(r.live) return `Live rates · $1 = ${pln} zł / ${eur} €${r.asOf?' · '+esc(r.asOf):''}`;
   return `Rates $1 = ${pln} zł / ${eur} €`;
 }
@@ -3077,7 +3031,8 @@ function regionStockOf(regionId, bookId){
    region is a tappable chip that takes you straight there. */
 function renderWarehouseOverview(){
   const regions = regionsList();
-  const cards = (STATE.books||[]).map(b=>{
+  // The tour's own titles; consignment stays in its own region's view.
+  const cards = (STATE.books||[]).filter(b=>!b.partnerId).map(b=>{
     const per = regions.map(r=>({r, n:regionStockOf(r.regionId,b.id)})).filter(x=>x.n>0);
     const total = per.reduce((t,x)=>t+x.n,0);
     /* Copies on the road belong to no region yet, so summing the regions alone
@@ -3118,7 +3073,7 @@ function renderSalesByRegion(){
     const as=count('aotm','SALE'), ap=count('aotm','PREORDER'), ag=gcount('aotm');
 
     // Mini cards — same language as the shelf, sized to sit inside a dropdown.
-    const perBook = (STATE.books||[]).map(b=>{
+    const perBook = (STATE.books||[]).filter(b=>bookBelongsIn(b, r.regionId)).map(b=>{
       const {sold, pre, gift} = bookCounts(allHere.filter(x=>x.bookId===b.id));
       if(!sold && !pre && !gift) return '';
       return `<div class="mini-card${b.partnerId?' consign':''}">
@@ -3260,13 +3215,14 @@ function renderInventory(){
               const atEvents = eventsOfRegion(CUR_REGION).reduce((t,e)=>t+invQty(e.eventId,b.id),0);
               const transit = inTransitQty(b.id);
               const lines=[];
-              if(subs.length) lines.push(`<div class="sw-bubs no-edit">${subs.map(x=>
+              if(subs.length) lines.push(`<div class="sw-title">Stored At:</div><div class="sw-bubs no-edit">${subs.map(x=>
                 `<button type="button" class="sw-bub" data-act="swbub" data-holder="${esc(x.h.holderId)}"
+                   style="background:${swTint(x.label)};border-color:${swEdge(x.label)}"
                    title="${esc(x.h.name)}">${esc(x.label)} · ${x.n}</button>`).join('')}</div>
                 <div class="sw-who" hidden></div>`);
               if(atEvents) lines.push(`<div class="region">At events: ${atEvents}</div>`);
               if(atEvents) lines.push(`<div class="region total">Total stock: ${q+atEvents}</div>`);
-              // Books still travelling are not stock yet, so they get their own colour.
+              // Books still traveling are not stock yet, so they get their own color.
               if(transit) lines.push(`<div class="region transit">In transit: ${transit}</div>
                 <div class="region transit">Expected total: ${q+atEvents+transit}</div>`);
               return lines.join('');
@@ -3580,7 +3536,7 @@ function renderPayments(target){
         if(isPartnerSale(x)){
           conUsdEst[l.cur]=(conUsdEst[l.cur]||0)+one;
           conUsdAct[l.cur]=(conUsdAct[l.cur]||0)+one*factor;
-          /* The group's own row is labelled with its name, so record the
+          /* The group's own row is labeled with its name, so record the
              adjustment under that too — otherwise the line inside the dropdown
              shows an estimate while the Consignment line above shows the real
              figure, and the two appear to disagree. */
@@ -3856,12 +3812,13 @@ function logItemHTML(x, opts){
 
      An ordinary sale needs no label — it is what every row is unless told
      otherwise. What a row IS (Adventures, consignment, a donation) is carried
-     by the colour of the row itself now, which reads faster than a bubble and
+     by the color of the row itself now, which reads faster than a bubble and
      stops a crowded row wrapping onto two lines. */
   const badge = x.type==='SALE'
       ? (wasPreorder?'<span class="badge filled">Pre-order filled</span>':'')
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
-      + (x.fulfilBy ? `<span class="badge rq">For ${esc(anyRegionName(x.fulfilBy))}</span>` : '')
+      + (x.fulfilBy ? `<span class="badge rq">Being Fulfilled By: ${esc(anyRegionName(x.fulfilBy))}</span>`
+         : (x.fulfilDeclined ? `<span class="badge declined">Pre-order fulfillment declined</span>` : ''))
     : '';
   const cat = '';
   // The row's own kind, used to tint it below.
@@ -4242,6 +4199,12 @@ function changeCur(x){ return String((x && x.changecur) || ''); }
    Resting the pointer over a number box while scrolling the page used to
    change the figure underneath it — silently, and usually unnoticed until the
    totals were wrong. Counts change by the arrows or by typing, and only so. */
+/* Nor can the arrow keys: Up/Down on a number box would quietly add or take one.
+   Typing is the only way a count changes. */
+document.addEventListener('keydown', e=>{
+  const el = e.target;
+  if(el && el.tagName==='INPUT' && el.type==='number' && (e.key==='ArrowUp' || e.key==='ArrowDown')) e.preventDefault();
+});
 document.addEventListener('wheel', e=>{
   const el = e.target;
   if(!el || el.tagName!=='INPUT' || el.type!=='number') return;
@@ -4423,7 +4386,7 @@ function saleModal(opts){
       ${(isPre && !edit) ? `<div class="field"><label>Who will deliver this book?</label>
         <select id="fulSel">
           <option value="">This region will deliver it</option>
-          <option value="other">Another region will fulfil it</option>
+          <option value="other">Another region will fulfill it</option>
         </select>
         <div id="fulPick" class="sp-group" hidden>${placePickerHTML('fulReg')}
           <div class="hint">That region sees a request — with the name, number and comments — and delivers
@@ -4576,8 +4539,16 @@ function saleModal(opts){
     }else{
       const id=newSaleId();
       const other = $('#fulSel') && $('#fulSel').value==='other';
-      if(other && !(fulPick && fulPick.value)){ $('#modalErr').textContent='Choose the region that will fulfil it.'; return; }
+      if(other && !(fulPick && fulPick.value)){ $('#modalErr').textContent='Choose the region that will fulfill it.'; return; }
       const fulfilBy = other ? fulPick.value.regionId : '';
+      /* Asking another region: wait for the server, so a region without the book
+         is refused here, with the dialog still open — never after it closed. */
+      if(fulfilBy){
+        commitSync({action:'sell',saleId:id,location:loc,bookId:opts.bookId,isPreorder:true,legs:L,
+          pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy},
+          'Pre-order recorded — request sent to '+fulPick.value.name);
+        return;
+      }
       commit({action:'sell',saleId:id,location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
               pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy},
         st=>{
@@ -4634,7 +4605,7 @@ async function openBundleEditWhenSaved(tmpId, btn){
 function bundleModal(edit){
   /* The same titles, in the same order, as the shelf behind this dialog.
 
-     It read the raw catalogue instead, so a region's own book order — and its
+     It read the raw catalog instead, so a region's own book order — and its
      consignment titles — never reached the multi-book screen. Picking books
      here meant hunting through a different arrangement from the one you had
      just set. */
@@ -6978,7 +6949,7 @@ function movableFrom(acct, cur){
 function changeNote(acct, cur, own){
   const chg = changeAt(acct, cur);          // sitting here, belongs to someone else
   const lent = changeLentBy(acct, cur);     // lent from here, already off the figure
-  /* A sign and a colour say which way it goes; the total says what the figure
+  /* A sign and a color say which way it goes; the total says what the figure
      comes to with the change counted in, so the sum is never in doubt. */
   const base = Number(own) || 0;
   const bits = [];
@@ -7503,7 +7474,7 @@ function deliverModal(id, bundle){
           .map(c=>`<button class="opt" disabled>
             <b>${esc(c.name)}</b><span>Has some, but not enough to cover all of them.</span></button>`).join('')}
         ${bundle ? '' : `<button class="opt" data-ask="1">
-          <b>Another region will fulfil it</b>
+          <b>Another region will fulfill it</b>
           <span>Sends them a request with the name, number and comments. They deliver it from their own stock;
             the sale stays here.</span>
         </button>`}
@@ -7700,7 +7671,8 @@ function regionModal(edit, after){
     /* Three kinds, as everywhere else in the app. Splitting only on
        "is it Adventures?" filed every Other title under Big Books, so the
        Other group never appeared here at all. */
-    const all=(STATE.books||[]);
+    // Consignment titles only in the region whose group they belong to.
+    const all=(STATE.books||[]).filter(b=>bookBelongsIn(b, isEdit ? edit.regionId : ''));
     const big  = all.filter(b=>catOfBook(b)==='big');
     const other= all.filter(b=>catOfBook(b)==='other');
     const aotm = all.filter(b=>catOfBook(b)==='aotm');
@@ -7770,7 +7742,7 @@ function regionModal(edit, after){
     if(all){
       const cat=all.dataset.cat, cur=all.dataset.cur, v=all.value;
       (STATE.books||[]).forEach(b=>{
-        if(catOfBook(b)!==cat) return;
+        if(catOfBook(b)!==cat || !bookBelongsIn(b, isEdit ? edit.regionId : '')) return;
         const box=document.querySelector(`#modal .rp[data-book="${b.id}"][data-cur="${cur}"]`);
         if(box){ box.value=v; if(cur===localCur()) spreadFrom(b.id, cur, v); }
       });
@@ -7850,7 +7822,7 @@ function regionModal(edit, after){
     const name=$('#rgName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the region a name.'; return; }
     const curList=parseCurs($('#rgCur').value);
-    const allBooks=(STATE.books||[]).map(b=>b.id);
+    const allBooks=[...document.querySelectorAll('#modal .bk-cb')].map(c=>c.value);
     const picked=[...document.querySelectorAll('#modal .bk-cb')].filter(c=>c.checked).map(c=>c.value);
     if(!picked.length){ $('#modalErr').textContent='Keep at least one title.'; return; }
     // All ticked = "carries everything", stored as blank so adding a new title later
@@ -8424,7 +8396,7 @@ function addStockModal(opts){
       await pull();
       const nb = (STATE.books||[]).find(b=>b.name.toLowerCase()===name.toLowerCase());
       if(nb){
-        // Another season's copy of the catalogue learns of it too.
+        // Another season's copy of the catalog learns of it too.
         if(!ctx.here && !(ctx.st.books||[]).some(b=>b.id===nb.id)) (ctx.st.books=ctx.st.books||[]).push(nb);
         ctx.extra.add(nb.id);
       }
@@ -8645,7 +8617,7 @@ function addNewPlaceModal(then){
 /* ---- Transfer ---- */
 /* ---- Sending or receiving stock from a warehouse outside this system ----
    Simple for now: no shared inventory with the other warehouse, just a
-   labelled record of what left or arrived here. */
+   labeled record of what left or arrived here. */
 /* ---- Sending stock to another region ----
    Direct arrives at once. The other two put the books on the road, where they
    belong to neither region until someone confirms they landed. */
@@ -8679,6 +8651,7 @@ function runPicked(act){
   if(act==='deleteregion'){ deleteRegionModal(); return; }
   if(act==='closehere'){ closeModalFor('region'); return; }
   if(act==='newevent'){ eventModal(); return; }
+  if(act==='eventorder'){ reorderModal('event'); return; }
   if(act==='seasonxfer'){ transferStockModal(); return; }
 }
 
@@ -8688,7 +8661,7 @@ function runPicked(act){
 /* ---- Seasons ----
    One tour per season. Switching swaps the whole app over: its regions, events,
    stock, sales and money. Nothing is shared between them except the book
-   catalogue itself. */
+   catalog itself. */
 /* Switching tours: one request that both sets the season and brings back its
    data, so it is as quick as moving between regions.
 
@@ -8954,19 +8927,19 @@ function seasonEditModal(id){
   const x=(STATE.seasons||[]).find(v=>v.seasonId===id);
   if(!x) return;
   openModal(`
-    ${mHead('Rename season')}
+    ${mHead('Edit Season')}
     <div class="m-body">
       <div class="field"><label>Name</label><input id="seName" type="text" value="${esc(x.name)}"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
-      <button class="btn btn-ghost" data-act="seasons">Back</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="seSave">Save</button>
     </div>`);
   $('#seSave').addEventListener('click',async ()=>{
     const name=$('#seName').value.trim();
     if(!name){ $('#modalErr').textContent='Give it a name.'; return; }
-    if(await commitSync({action:'saveSeason', seasonId:id, name},'Saved')) seasonsModal();
+    await commitSync({action:'saveSeason', seasonId:id, name},'Season renamed');
   });
 }
 
@@ -9045,70 +9018,6 @@ function makeSortable(container, onDrop){
   container.addEventListener('pointerdown', onDown);
 }
 
-
-function reorderBooksModal(){
-  /* Only the titles actually on the shelf where you are standing. Listing the
-     whole catalogue meant ordering books that are not here — and, at a region,
-     consignment titles belonging to somewhere else. */
-  let list = shelfBooks().map(b=>({
-    id:b.id, name:b.name, cat:catOfBook(b),
-    partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
-  }));
-  if(!list.length){ toast('No titles on this shelf yet.', true); return; }
-
-  function draw(){
-    $('#rbList').innerHTML = list.map((x,i)=>`
-      <div class="ro-row" data-id="${esc(x.id)}">
-        <span class="ro-grip" title="Drag to move">⠿</span>
-        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
-          ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}</span>
-        <span class="ro-btns">
-          <button class="cash-mini" data-rb-up="${i}" ${i===0?'disabled':''}>↑</button>
-          <button class="cash-mini" data-rb-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
-        </span>
-      </div>`).join('');
-    [...document.querySelectorAll('#modal [data-rb-up]')].forEach(b=>b.onclick=()=>{
-      const i=+b.dataset.rbUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw();
-    });
-    [...document.querySelectorAll('#modal [data-rb-dn]')].forEach(b=>b.onclick=()=>{
-      const i=+b.dataset.rbDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw();
-    });
-    // Dragging rearranges the DOM; take the new order from it and redraw so the
-    // arrows agree with what is now on screen.
-    makeSortable($('#rbList'), order=>{
-      list = order.map(id=>list.find(x=>x.id===id)).filter(Boolean);
-      draw();
-    });
-  }
-
-  openModal(`
-    ${mHead('Change book order')}
-    <div class="m-body">
-      <div class="hint">Drag a row by its handle, or use the arrows. This is the order titles
-        appear on every shelf and in every list, everywhere on the tour.</div>
-      <div id="rbList"></div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="rbSave">Save order</button>
-    </div>`, true);
-  draw();
-
-  $('#rbSave').addEventListener('click',async ()=>{
-    /* Applied on screen at once and saved behind, like a sale. There is nothing
-       to wait for: the new order is already known here, and the server has no
-       answer we need. */
-    const ids = list.map(x=>x.id);
-    // At season level there is no region: the order belongs to the season.
-    const forSeason = (CUR_LEVEL==='season');
-    commit({action:'reorderBooks', regionId: forSeason ? '' : CUR_REGION, ids},
-      st=>{ if(forSeason){ st.seasonBookOrder = ids.join(','); }
-            else { const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.bookOrder=ids; } },
-      'Order saved');
-    closeModal();
-  });
-}
 
 function reorderModal(kind){
   const isEvent = kind==='event';
@@ -9260,7 +9169,10 @@ function partnersModal(){
       ${(function(){
         /* Titles whose group has gone. They belong to nothing now, so they get
            listed here plainly with a way to remove them. */
-        const orphans = (STATE.books||[]).filter(b=>b.partnerId && !partnerById(b.partnerId));
+        // Truly left over: its group exists in no season at all (not merely in another season).
+        const known = new Set(STATE.allPartnerIds||[]);
+        const orphans = (STATE.books||[]).filter(b=>b.partnerId && !partnerById(b.partnerId) && !known.has(b.partnerId)
+          && (STATE.allPartnerIds || null));
         if(!orphans.length) return '';
         return `<div class="cash-sub">Left over from removed groups</div>
           <div class="hint">These titles belonged to a consignment group that no longer exists.</div>
@@ -9538,7 +9450,7 @@ function shipLandsAt(x){
   const ok = x.toLoc && (x.toLoc===(reg||{}).whLoc || eventsOfRegion(x.toRegion).some(e=>e.eventId===x.toLoc && !e.closedAt));
   return ok ? x.toLoc : (reg||{}).whLoc;
 }
-/** Full delivery: every book still travelling goes onto the shelf in one go. */
+/** Full delivery: every book still traveling goes onto the shelf in one go. */
 function shipArriveAll(id){
   const x = (STATE.shipments||[]).find(v=>v.shipId===id);
   if(!x) return;
@@ -9642,7 +9554,7 @@ function shipCountModal(id){
   const rows = shelfBooks().map(b=>({b, n:invQty(id,b.id)}));
 
   openModal(`
-    ${mHead('Correct what is travelling')}
+    ${mHead('Correct what is traveling')}
     <div class="m-body">
       <div class="hint">${esc(shipWho(x))} · ${esc(shipLabel(x))}. Set what is actually in the
         batch. The difference goes back to <b>${esc((from||{}).name||'the sending region')}</b>,
@@ -9728,7 +9640,7 @@ function shipReceiveModal(id, fromPanel){
     <div class="m-body">
       <div class="hint">${esc(shipWho(x))} · ${esc(shipLabel(x))}.
         <b>Enter how many of each actually arrived.</b> Anything less than the full amount
-        stays recorded as still travelling, so a batch that came in pieces stays honest.</div>
+        stays recorded as still traveling, so a batch that came in pieces stays honest.</div>
       <div class="field"><label>Arriving at</label>
         <select id="rcTo">${dests.map(d=>`<option value="${esc(d.id)}" ${d.id===aim?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
       ${books.some(r=>r.left>0) ? `<div class="cl-row cl-head"><div>Title</div><div class="cl-exp">Still coming</div><div class="cl-hn"># Arrived</div><div></div></div>` : ''}
@@ -9873,7 +9785,7 @@ function holderEditModal(id){
    One dialog for every move of books already in the system: warehouse to
    event, event to event, event back to its warehouse (onto one shelf or split
    between sub-warehouses), region to region, and into another season — either
-   arriving at once or travelling with a devotee or a shipping company. */
+   arriving at once or traveling with a devotee or a shipping company. */
 
 const COUNT_MSG = 'If you did not count the physical stock of books before clicking this button, please do so now.';
 const LEAVING_MSG = {
@@ -9883,6 +9795,10 @@ const LEAVING_MSG = {
 };
 /* Sub-warehouse columns are tinted, a different shade each, so a row reads across. */
 const SW_TINTS = ['#EAF1F9','#F1EBF8','#E6F3EC','#FBEFDD','#F8E7EE','#ECEFE0'];
+const SW_EDGES = ['#B9D2EC','#D5C6EA','#A9D3BC','#EBCB97','#E7B8CB','#C8CDA6'];
+const swIndex = label => { const n = /^SW(\d+)$/.exec(label||''); return n ? (Number(n[1])-1) % SW_TINTS.length : 0; };
+const swTint = label => SW_TINTS[swIndex(label)];
+const swEdge = label => SW_EDGES[swIndex(label)];
 
 /* Sub-warehouses are the region's devotee storage, numbered in their own order:
    SW1, SW2… — the same numbers wherever they appear. */
@@ -10115,7 +10031,7 @@ function transferStockModal(opts){
     const multiDst = kind()==='store' && storage==='multi';
     const multiSrc = srcs.length>1;
     if(!list.length) return `<div class="cash-empty">Nothing in stock at ${esc(placeLabel(fromPick.value))}.</div>`;
-    /* A sub-warehouse keeps its own colour everywhere (SW1 always the first
+    /* A sub-warehouse keeps its own color everywhere (SW1 always the first
        shade); the warehouse shelf itself is plain. */
     const tintOf = label => { const n = /^SW(\d+)$/.exec(label||''); return n ? SW_TINTS[(Number(n[1])-1)%SW_TINTS.length] : '#F3EFE6'; };
     const tint = i => tintOf(multiSrc ? srcs[i].label : (sws[i]||{}).label);
@@ -10281,7 +10197,7 @@ function transferStockModal(opts){
     const season = f.seasonId, fromHere = f.seasonId===STATE.activeSeason, toHere = toCtxHere();
     const done = 'Transferred to '+placeLabel(t);
 
-    // Travelling between regions: one batch in transit, each title from its own shelf.
+    // Traveling between regions: one batch in transit, each title from its own shelf.
     if(travel==='travel' && (k==='region'||k==='season')){
       const mode = v('courier')==='shipping' ? 'shipping' : 'devotee';
       const items = ins.map(i=>({bookId:i.dataset.book, qty:val(i), fromLoc:i.dataset.src}));
@@ -10481,7 +10397,7 @@ function regionPlacesAll(exceptRegion){
   return out;
 }
 
-/* Requests this place was asked to fulfil, still waiting. */
+/* Requests this place was asked to fulfill, still waiting. */
 function remoteHere(){
   const list = (STATE.remote||[]).filter(x=>x.type==='PREORDER' && !x.delivered);
   return CUR_LEVEL==='season' ? list : list.filter(x=>x.fulfilBy===CUR_REGION);
@@ -10501,7 +10417,7 @@ function remoteCardHTML(x){
     <div class="sh-meta">Ordered at ${esc(x.origin||'another region')}${when?' · '+esc(when):''}${x.soldBy?' · taken by '+esc(x.soldBy):''}</div>
     ${x.comments?`<div class="rq-note">“${esc(x.comments)}”</div>`:''}
     <div class="sh-acts">
-      <button class="btn btn-green btn-sm" data-act="rqfulfil" data-id="${esc(x.saleId)}">Fulfil</button>
+      <button class="btn btn-green btn-sm" data-act="rqfulfil" data-id="${esc(x.saleId)}">Fulfill</button>
       <button class="btn btn-ghost btn-sm" data-act="rqdecline" data-id="${esc(x.saleId)}">Decline</button>
     </div>
   </div>`;
@@ -10516,19 +10432,19 @@ function remoteNoteHTML(x){
   </div>`;
 }
 
-/* Fulfil: which shelf in this region the copy comes off. */
+/* Fulfill: which shelf in this region the copy comes off. */
 function remoteFulfilModal(x){
   if(!x) return;
   const b = bookById(x.bookId) || {name:'a title', id:x.bookId};
   const reg = currentRegion();
-  if(!reg){ toast('Open the region that will fulfil it first.', true); return; }
+  if(!reg){ toast('Open the region that will fulfill it first.', true); return; }
   const shelves = [{id:reg.whLoc, name:reg.name+' — Warehouse'}]
     .concat(holdersOf(reg.regionId).map(h=>({id:h.holderId, name:swLabel(h.holderId)+' — '+h.name})))
     .concat(eventsOfRegion(reg.regionId).filter(e=>!e.closedAt).map(e=>({id:e.eventId, name:e.name})))
     .map(s=>({...s, n:invQty(s.id, x.bookId)}));
   const have = shelves.filter(s=>s.n>0);
   openModal(`
-    ${mHead('Fulfil a pre-order')}
+    ${mHead('Fulfill a pre-order')}
     <div class="m-body">
       <div class="note"><b>${esc(b.name)}</b>${x.name?' for '+esc(x.name):''}${x.phone?' · '+esc(x.phone):''}<br>
         Ordered at ${esc(x.origin||'another region')}.${x.comments?`<br>“${esc(x.comments)}”`:''}</div>
@@ -10558,19 +10474,19 @@ function remoteFulfilModal(x){
 }
 function remoteDecline(x){
   if(!x || !confirm('Decline this request? It goes back to the region that took the pre-order, to deliver another way.')) return;
-  commit({action:'setFulfilBy', remoteSaleId:x.saleId, fulfilBy:''}, st=>{
+  commit({action:'setFulfilBy', remoteSaleId:x.saleId, fulfilBy:'', declined:true}, st=>{
     st.remote = (st.remote||[]).filter(v=>v.saleId!==x.saleId);
-    const own = (st.sales||[]).find(v=>v.saleId===x.saleId); if(own) own.fulfilBy = '';
+    const own = (st.sales||[]).find(v=>v.saleId===x.saleId); if(own){ own.fulfilDeclined = own.fulfilBy; own.fulfilBy = ''; }
   }, 'Request declined');
 }
 
 /* From the fulfilling region: take on any open pre-order anywhere, flagged or not. */
 function fulfilOtherModal(){
   const reg = currentRegion();
-  if(!reg){ toast('Open the region that will fulfil it first.', true); return; }
+  if(!reg){ toast('Open the region that will fulfill it first.', true); return; }
   let list = null;
   openModal(`
-    ${mHead('Fulfil a pre-order for another region')}
+    ${mHead('Fulfill a pre-order for another region')}
     <div class="m-body">
       <div class="hint">Every pre-order still waiting in another region, in any season. Choose one to deliver
         from ${esc(reg.name)}’s stock.</div>
@@ -10589,7 +10505,7 @@ function fulfilOtherModal(){
         <div class="sh-meta">Ordered at ${esc(x.origin)}${x.ts?' · '+esc(new Date(x.ts).toLocaleDateString(LOCALE,{day:'numeric',month:'short'})):''}${
           x.fulfilBy?' · <b>already asked of '+esc(anyRegionName(x.fulfilBy))+'</b>':''}</div>
         ${x.comments?`<div class="rq-note">“${esc(x.comments)}”</div>`:''}
-        <div class="sh-acts"><button class="btn btn-green btn-sm" data-fo="${esc(x.saleId)}">Fulfil from ${esc(reg.name)}</button></div>
+        <div class="sh-acts"><button class="btn btn-green btn-sm" data-fo="${esc(x.saleId)}">Fulfill from ${esc(reg.name)}</button></div>
       </div>`).join('')
       : `<div class="cash-empty">${q?'Nothing matches that search.':'No other region has a pre-order waiting.'}</div>`;
   }
@@ -10607,7 +10523,7 @@ function askRegionModal(saleId){
   const x = (STATE.sales||[]).find(s=>s.saleId===saleId); if(!x) return;
   const home = regionOfLoc(x.location);
   openModal(`
-    ${mHead('Another region will fulfil it')}
+    ${mHead('Another region will fulfill it')}
     <div class="m-body">
       <div class="hint">Choose the region that will deliver <b>${esc((bookById(x.bookId)||{}).name||'this book')}</b>${
         x.name?' to '+esc(x.name):''}. They will see the request — with the name, number and comments — and deliver it from their stock.</div>
@@ -10620,9 +10536,122 @@ function askRegionModal(saleId){
   $('#arGo').addEventListener('click', ()=>{
     const p = pick.value;
     if(!p){ $('#modalErr').textContent='Choose the region first.'; return; }
-    commit({action:'setFulfilBy', remoteSaleId:saleId, fulfilBy:p.regionId}, st=>{
-      const s = (st.sales||[]).find(v=>v.saleId===saleId); if(s) s.fulfilBy = p.regionId;
-    }, 'Request sent to '+p.name);
+    // Waits for the answer: a region without the book says so here.
+    commitSync({action:'setFulfilBy', remoteSaleId:saleId, fulfilBy:p.regionId}, 'Request sent to '+p.name);
+  });
+}
+
+/* ---- Edit Book Display ----
+   Which titles are shown where you are, and in what order, in one place:
+   tick to show, untick to hide, drag (or the arrows) to reorder. At the season
+   there is no shelf of its own, so only the order is set — for the whole season. */
+function bookDisplayModal(){
+  const season = CUR_LEVEL==='season';
+  const off = season ? new Set() : hiddenHere();
+  let list = (season ? shelfBooks() : allShelfBooks()).map(b=>({
+    id:b.id, name:b.name, cat:catOfBook(b), on:!off.has(b.id),
+    partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
+  }));
+  if(!list.length){ toast('No titles here yet.', true); return; }
+  const where = season ? 'this season' : (CUR_LEVEL==='region' ? 'this region' : 'this event');
+
+  function draw(){
+    $('#bdList').innerHTML = list.map((x,i)=>`
+      <div class="ro-row${x.on?'':' bd-off'}" data-id="${esc(x.id)}">
+        <span class="ro-grip" title="Drag to move">⠿</span>
+        ${season ? '' : `<input type="checkbox" class="bd-cb" data-bd="${esc(x.id)}" ${x.on?'checked':''} title="Show this title">`}
+        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
+          ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}
+          ${x.on?'':'<span class="ro-tag">hidden</span>'}</span>
+        <span class="ro-btns">
+          <button class="cash-mini" data-bd-up="${i}" ${i===0?'disabled':''}>↑</button>
+          <button class="cash-mini" data-bd-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
+        </span>
+      </div>`).join('');
+    document.querySelectorAll('#modal [data-bd-up]').forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.bdUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw(); });
+    document.querySelectorAll('#modal [data-bd-dn]').forEach(b=>b.onclick=()=>{
+      const i=+b.dataset.bdDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw(); });
+    document.querySelectorAll('#modal [data-bd]').forEach(c=>c.onchange=()=>{
+      const x=list.find(v=>v.id===c.dataset.bd); if(x){ x.on=c.checked; draw(); } });
+    makeSortable($('#bdList'), order=>{ list = order.map(id=>list.find(x=>x.id===id)).filter(Boolean); draw(); });
+  }
+  openModal(`
+    ${mHead('Edit Book Display')}
+    <div class="m-body">
+      <ol class="how-to">
+        ${season ? '' : `<li>Select which books should be displayed ${CUR_LEVEL==='region'?'in the warehouse in this region':'at this event'}.</li>`}
+        <li>Drag and drop to change the order in which books are displayed${season?' across the whole season':''}.</li>
+      </ol>
+      <div id="bdList"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="bdSave">Save</button>
+    </div>`, true);
+  draw();
+  $('#bdSave').addEventListener('click', ()=>{
+    const ids = list.map(x=>x.id);
+    const hidden = list.filter(x=>!x.on).map(x=>x.id);
+    if(!season && hidden.length===list.length){ $('#modalErr').textContent='Show at least one title.'; return; }
+    commit({action:'reorderBooks', regionId: season ? '' : CUR_REGION, ids},
+      st=>{ if(season){ st.seasonBookOrder = ids.join(','); }
+            else { const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.bookOrder=ids; } }, null);
+    if(!season){
+      const evId = CUR_LOC, forRegion = CUR_LEVEL==='region';
+      commit(forRegion
+          ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
+          : {action:'setEventHidden', eventId:evId, hidden:hidden.join(',')},
+        st=>{
+          if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
+          else { const e=(st.events||[]).find(x=>x.eventId===evId); if(e) e.hidden=hidden.join(','); }
+        }, null);
+    }
+    toast('Book display saved' + (hidden.length ? ' — ' + hidden.length + ' hidden in ' + where : ''));
+    closeModal();
+  });
+}
+function hideBooksModal(){ bookDisplayModal(); }
+function reorderBooksModal(){ bookDisplayModal(); }
+
+/* ---- Closing a season ----
+   Two questions, both checked against the records: every region closed, and
+   every book moved somewhere else. Then the dollar figures freeze at today's
+   exchange rates. */
+function closeSeasonModal(){
+  const sn = (STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason) || {};
+  const regs = regionsList();
+  const open = regs.filter(r=>!r.closedAt);
+  let left = 0;
+  regs.forEach(r=>locsInRegion(r.regionId).forEach(l=>(STATE.books||[]).forEach(b=>{ left += invQty(l,b.id); })));
+  (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').forEach(x=>(STATE.books||[]).forEach(b=>{ left += invQty(x.shipId,b.id); }));
+  const q1ok = !open.length, q2ok = !left;
+  openModal(`
+    ${mHead('Close Season — '+(sn.name||''))}
+    <div class="m-body">
+      <div class="hint">Closing finishes the season. Its dollar figures are then fixed at today’s exchange
+        rates, on screen and in its spreadsheets, so the result stops moving.</div>
+      <label class="cl-check"><input type="checkbox" id="csQ1" ${q1ok?'':'disabled'}>
+        <span><b>Have all regions been closed?</b><br>
+        <span class="${q1ok?'cl-ok':'cl-bad'}">${q1ok ? 'Yes — every region is closed.'
+          : 'Not yet — still open: '+esc(open.map(r=>r.name).join(', '))+'.'}</span></span></label>
+      <label class="cl-check"><input type="checkbox" id="csQ2" ${q2ok?'':'disabled'}>
+        <span><b>Have all books from all regions been relocated elsewhere and accounted for?</b><br>
+        <span class="${q2ok?'cl-ok':'cl-bad'}">${q2ok ? 'Yes — no books are left in this season.'
+          : 'Not yet — '+left+' book'+(left===1?' is':'s are')+' still here (on shelves or in transit). Transfer them to another season first.'}</span></span></label>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="csGo" disabled>Close Season</button>
+    </div>`);
+  const sync = ()=>{ $('#csGo').disabled = !($('#csQ1').checked && $('#csQ2').checked); };
+  $('#csQ1').addEventListener('change', sync); $('#csQ2').addEventListener('change', sync);
+  $('#csGo').addEventListener('click', async ()=>{
+    if(await commitSync({action:'closeSeason', seasonId:STATE.activeSeason}, 'Season closed — dollar figures fixed at today’s rates')){
+      try{ pull(); }catch(e){}
+    }
   });
 }
 
@@ -10637,14 +10666,16 @@ function swHoldingsHere(bookId){
 function sellFromWarehouse(bookId){
   const shelf = invQty(CUR_LOC, bookId);
   const subs = swHoldingsHere(bookId);
-  if(shelf>0 || !subs.length){ saleModal({bookId, isPreorder:false, loc:CUR_LOC}); return; }
+  if(!subs.length){ saleModal({bookId, isPreorder:false, loc:CUR_LOC}); return; }
   const b = bookById(bookId);
+  // Books sold from someone's home are fine — just say which shelf it came off.
   openModal(`
-    ${mHead('Which sub-warehouse?')}
+    ${mHead('Selling from where?')}
     <div class="m-body">
-      <div class="hint">There are no copies of <b>${esc(b.name)}</b> on the warehouse shelf itself.
-        Which sub-warehouse is this copy coming from?</div>
-      <div class="opts">${subs.map(x=>`<button type="button" class="opt" data-sellsw="${esc(x.h.holderId)}">
+      <div class="hint">Where is this copy of <b>${esc(b.name)}</b> coming from?</div>
+      <div class="opts">${shelf>0 ? `<button type="button" class="opt" data-sellsw="${esc(CUR_LOC)}">
+          <b>Warehouse</b><span>${shelf} on the warehouse shelf</span></button>` : ''}
+        ${subs.map(x=>`<button type="button" class="opt" data-sellsw="${esc(x.h.holderId)}" style="background:${swTint(x.label)};border-color:${swEdge(x.label)}">
         <b>${esc(x.label)} — ${esc(x.h.name)}</b><span>${x.n} in stock${x.h.phone?' · '+esc(x.h.phone):''}</span></button>`).join('')}</div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
@@ -10772,10 +10803,16 @@ document.addEventListener('click',e=>{
       +'permanently.\n\nType the season name exactly to confirm:');
     if(typed===null) return;
     commitSync({action:'deleteSeason', seasonId:x.seasonId, confirmName:typed}, 'Season deleted')
-      .then(ok=>{ if(ok){ CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); seasonsModal(); } });
+      .then(ok=>{ if(ok){ CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll(); } });
     return;
   }
-  if(a==='reorderbooks'){ reorderBooksModal(); return; }
+  if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
+  if(a==='seasonclose'){ closeSeasonModal(); return; }
+  if(a==='seasonreopen'){
+    if(!confirm('Reopen this season? Its dollar figures will follow live exchange rates again.')) return;
+    commitSync({action:'reopenSeason', seasonId:STATE.activeSeason}, 'Season reopened').then(ok=>{ if(ok) pull(); });
+    return;
+  }
   if(a==='reorder'){ reorderModal(t.dataset.kind); return; }
   if(a==='partners'){ partnersModal(); return; }
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
@@ -10789,7 +10826,7 @@ document.addEventListener('click',e=>{
         +'Delete those first if you really mean to remove the title.');
       return;
     }
-    if(!confirm('Remove '+b.name+' from the catalogue? This cannot be undone.')) return;
+    if(!confirm('Remove '+b.name+' from the catalog? This cannot be undone.')) return;
     commitSync({action:'deleteBook', bookId:id}, 'Title removed').then(ok=>{ if(ok) partnersModal(); });
     return;
   }

@@ -74,6 +74,15 @@ function fxGet_(url) {
 }
 
 function getRates_() {
+  /* A closed season keeps the rates of the day it closed, so its dollar
+     figures stop moving — on screen and in its spreadsheets alike. */
+  try {
+    var ss = seasonById_(activeSeasonId_());
+    if (ss && ss.closedAt && ss.frozenRates) {
+      var fr = JSON.parse(ss.frozenRates);
+      if (fr && fr.RATES) { fr.frozen = true; fr.live = false; return fr; }
+    }
+  } catch (e) {}
   if (_fxMemo) return _fxMemo;
   var wanted = allCurrencies_();
   var key = 'fx_v4_' + wanted.join('-');
@@ -155,10 +164,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
      this figure instead of estimating one from an exchange rate. */
   'usdActual',
   /* A pre-order another region delivers: which region is asked (any season),
-     the shelf the copy came off, and when. */
-  'fulfilBy','fulfilLoc','fulfilAt'];
+     the shelf the copy came off, and when — and which region declined it. */
+  'fulfilBy','fulfilLoc','fulfilAt','fulfilDeclined'];
 
-// Sheet theme — mirrors the colours used in index.html.
+// Sheet theme — mirrors the colors used in index.html.
 var TH = {
   plum:   '#3B2A46',
   gold:   '#E9CE86',
@@ -195,7 +204,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b185';
+var SERVER_BUILD = 'b186';
 
 function doPost(e) { return handle(e); }
 
@@ -204,7 +213,7 @@ function doPost(e) { return handle(e); }
    Apps Script occasionally answers a perfectly good write with something the
    app cannot read — a redirect or an error page rather than JSON. The write has
    happened; the app just cannot tell. Pressing the button again then did the
-   work a second time. Now the second attempt is recognised and given the
+   work a second time. Now the second attempt is recognized and given the
    original answer back, so a retry is always safe. */
 function opSeen_(opId) {
   if (!opId) return null;
@@ -215,7 +224,7 @@ function rememberOp_(opId, reply) {
   if (!opId) return;
   // Ten minutes is far longer than anyone keeps pressing a button.
   // Six hours — the most the cache allows — so a save re-sent long after a
-  // closed page is still recognised rather than applied a second time.
+  // closed page is still recognized rather than applied a second time.
   try { CacheService.getScriptCache().put('op_' + opId, reply, 21600); } catch (e) {}
 }
 
@@ -235,6 +244,7 @@ function handle(e) {
     sheetMemoClear_();                   // never serve rows read before this request
     _moveBuffer = [];                    // nothing carried over from a previous call
     _cashIds = [];                       // nor cash rows
+    _movesById = null;
     setSeasonContext_('');               // no season carried over from a previous call
     _cashBy = '';                        // nor who was asking
 
@@ -392,6 +402,8 @@ function handle(e) {
         case 'deleteRegion':     doDeleteRegion(params);     break;
         case 'saveSeason':       result = doSaveSeason(params); break;
         case 'deleteSeason':     doDeleteSeason(params);      break;
+        case 'closeSeason':      result = doCloseSeason(params); break;
+        case 'reopenSeason':     doReopenSeason(params);      break;
         case 'setKey':           result = doSetKey(params);  break;
         case 'setUsdActual':     result = doSetUsdActual(params); break;
         case 'saveLabel':        result = doSaveLabel(params); break;
@@ -633,7 +645,7 @@ function scopeToSeason_(st) {
         || String(c.fromAcct) === 'BANK' || String(c.toAcct) === 'BANK';
   });
   st.costs = (st.costs || []).filter(function (c) { return mine[String(c.location)]; });
-  // Requests this season's regions were asked to fulfil, wherever they came from.
+  // Requests this season's regions were asked to fulfill, wherever they came from.
   st.remote = (st.remote || []).filter(function (x) { return regionOk[String(x.fulfilBy)]; });
   /* Change follows the money, so it can be sitting with a coordinator rather
      than at a place. Keeping only the places made it disappear from the app
@@ -682,7 +694,7 @@ function consistentStateReply_(who) {
    The app's own errors are written in English. But errors raised by Google's
    services — a lock that timed out, a spreadsheet that could not be reached —
    arrive in the language of the Google account, which is how a Dutch message
-   turned up in an English app. Those are recognised and replaced with an
+   turned up in an English app. Those are recognized and replaced with an
    English explanation; the original is kept in the log for diagnosis. */
 function englishError_(err) {
   var msg = String(err && err.message ? err.message : err || '');
@@ -1390,7 +1402,7 @@ function doSaveHolder(p) {
 
    Books outlive a tour: what is left in Macedonia at the end of the Europe Tour
    is the same stock that starts the year-round selling there. This hands it
-   over directly — no transit, because nothing is travelling; the books are
+   over directly — no transit, because nothing is traveling; the books are
    already where they are, they just belong to a different tour now. */
 function doSeasonTransfer(p) {
   var from = regionById_(String(p.fromRegion || ''));
@@ -1518,7 +1530,7 @@ function doSendShipment(p) {
 
   /* In transit: the books live in the shipment until it is received.
      The app names the batch, as it does everything else, so it shows as on its
-     way the moment it is sent and a resend is recognised rather than doubled. */
+     way the moment it is sent and a resend is recognized rather than doubled. */
   var shipId = /^sh_[a-z0-9]{4,16}$/.test(String(p.shipId || '')) ? String(p.shipId)
              : 'sh_' + Utilities.getUuid().slice(0, 6);
   if (isDeleted_(shipId)) return shipId;
@@ -1619,7 +1631,7 @@ function doAdjustShipment(p) {
     if (want === have) return;
     var delta = want - have;
     setQty_(map, id, bookId, want);
-    // Copies that never travelled go back where they came from; extras that
+    // Copies that never traveled go back where they came from; extras that
     // turned up are taken from there, so the sending region stays truthful.
     if (backTo && delta < 0) {
       shipReturnPlan_(id, ship.fromRegion, bookId, -delta, backTo).forEach(function (r) {
@@ -1674,7 +1686,7 @@ function doAdjustShipment(p) {
 /* Delete a shipment outright.
 
    A batch created by mistake had no way out — you could correct its contents but
-   not remove it. Anything still travelling in it goes back where it came from,
+   not remove it. Anything still traveling in it goes back where it came from,
    so the books are never lost along with the record. */
 function doDeleteShipment(p) {
   var id = String(p.shipId || '');
@@ -1885,7 +1897,7 @@ var COORD_EXTRA = {
    Monday's festival to Tuesday's, and can be widened to the whole region at
    reconciliation time without reissuing anything.
 
-   Per-event keys are still honoured, so links already handed out keep working. */
+   Per-event keys are still honored, so links already handed out keep working. */
 function sellerScopeFor_(reg) {
   var scope = String(reg.sellerScope || '').trim();
   var events = objectsOf_('_events').filter(function (e) {
@@ -2185,7 +2197,7 @@ function doChangeDelete(p) {
   return id;
 }
 
-/** The change travelled with the money. If it reached its source, it is home. */
+/** The change traveled with the money. If it reached its source, it is home. */
 function doChangeMove(p) {
   var ids = p.ids || [];
   if (!ids.length) return '';
@@ -2298,7 +2310,7 @@ function appendRegion_(row) {
 
 function seasonsAll_() {
   /* Create the sheet if it isn't there. Without this, every request on a tour
-     that hasn't been re-initialised failed at the first mention of a season —
+     that hasn't been re-initialized failed at the first mention of a season —
      and a failure this early comes back as a page, not a message, which is why
      it read as "the server sent something unreadable". */
   if (!getSheet_('_seasons')) {
@@ -2334,7 +2346,9 @@ function seasonsAll_() {
   }
   return rows.map(function (x, i) {
     return { seasonId: String(x.seasonId), name: String(x.name || ''),
-             sort: Number(x.sort) || 0, closedAt: x.closedAt || '', _i: i };
+             sort: Number(x.sort) || 0, closedAt: x.closedAt || '', _i: i,
+             // The exchange rates on the day it closed; its dollar figures stay at these.
+             frozenRates: String(x.frozenRates || '') };
   }).sort(function (a, b) { return (a.sort - b.sort) || (a._i - b._i); });
 }
 
@@ -2389,7 +2403,7 @@ function doSaveSeason(p) {
   sheetMemoClear_();
 
   /* A new season is a genuinely blank slate: no regions, no events, no stock,
-     no money, no prices carried over. Only the book catalogue is shared, since
+     no money, no prices carried over. Only the book catalog is shared, since
      the titles themselves don't belong to any one tour. Everything else is
      built fresh, which is the point of starting a season. */
 
@@ -2440,7 +2454,7 @@ function regionsOrdered_(seasonId) {
    USD is always present — it's the common translation currency every region
    reports back in, even once PLN and EUR disappear from the tour. */
 /* Which titles a region carries. Empty means "all of them" — so every existing
-   region keeps its full catalogue without needing to be edited. */
+   region keeps its full catalog without needing to be edited. */
 function parseBookList_(raw) {
   var list = String(raw || '').split(',')
     .map(function (b) { return b.trim(); })
@@ -2564,7 +2578,7 @@ function regionOfLoc_(loc) {
 
    Both are ordinary inventory locations, so selling, transferring and counting
    all work on them without special cases. What differs is only how they're
-   totalled up, which is the point of holdersOfRegion_ / shipmentsInbound_.   */
+   totaled up, which is the point of holdersOfRegion_ / shipmentsInbound_.   */
 /* One devotee who is storing books, by id.
 
    This was being called from the cash checks but never existed, so every cash
@@ -3135,7 +3149,8 @@ function readState() {
       duecur: String(s.duecur || ''),
       name: String(s.name || ''), phone: phoneRead_(s.phone), comments: String(s.comments || ''),
       bundle: String(s.bundle || ''),
-      fulfilBy: String(s.fulfilBy || ''), fulfilLoc: String(s.fulfilLoc || ''), fulfilAt: s.fulfilAt || ''
+      fulfilBy: String(s.fulfilBy || ''), fulfilLoc: String(s.fulfilLoc || ''), fulfilAt: s.fulfilAt || '',
+      fulfilDeclined: String(s.fulfilDeclined || '')
     };
   });
   return {
@@ -3150,11 +3165,14 @@ function readState() {
     rates: (function () { var r = getRates_();
       var R = r.RATES || {};
       return { perUsd: R, plnPerUsd: R.PLN || RATE_PLN_PER_USD, eurPerUsd: R.EUR || RATE_EUR_PER_USD,
-               live: !!r.live, asOf: r.asOf || '' }; })(),
+               live: !!r.live, asOf: r.asOf || '', frozen: !!r.frozen }; })(),
     seasonName: (seasonById_(activeSeasonId_()) || {}).name || getSeasonName_(),
     seasons: seasonsAll_().map(function (x) {
       return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt };
     }),
+    // Every consignment group in every season, so a title is only "left over"
+    // when its group is truly gone — not merely in another season.
+    allPartnerIds: partnersAll_().map(function (pt) { return pt.partnerId; }),
     activeSeason: activeSeasonId_(),
     allRegions: allRegionsEverywhere_(),
     // Every season's events, only so that a place in another season can be named.
@@ -3331,7 +3349,7 @@ function saveInvMap_(map) {
 function isDelivered_(s) { return s.delivered === true || s.delivered === 'true' || s.delivered === 'TRUE'; }
 
 /* Where a delivered pre-order's copy came from. The wording changed once, so
-   the older values are still recognised when reading. */
+   the older values are still recognized when reading. */
 var DSRC_WAREHOUSE = 'Regional warehouse';
 var DSRC_OUTSIDE   = 'Outside the region';
 var DSRC_REMOTE    = 'Another region';
@@ -3698,7 +3716,7 @@ function cashRows_() {
 }
 function cashWrite_(headers, rows) { writeObjects_('_cash', headers, rows); }
 
-/* 'by' records who made the entry. Without it, a movement nobody recognised
+/* 'by' records who made the entry. Without it, a movement nobody recognized
    could not be traced to a person or a link — which is exactly the position a
    transfer into a regional account left us in. */
 var CASH_HEADERS = ['id','ts','kind','fromAcct','toAcct','cur','amt','note','purpose','by','changeAmt','changeIds','changeRef'];
@@ -3710,7 +3728,7 @@ var _cashBy = '';
    re-sent on opening. If it arrives AFTER the thing was deleted, the id is free
    again and the row would be written a second time: a deleted movement
    reappearing, and its money counted twice. These ids are remembered so a late
-   arrival is recognised as something already dealt with. */
+   arrival is recognized as something already dealt with. */
 var TOMB_KEY = 'deletedIds';
 function tombstones_() {
   try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(TOMB_KEY) || '[]'); }
@@ -3757,7 +3775,7 @@ function cashAppend_(o) {
     note: String(o.note || ''),
     by: String(o.by || _cashBy || ''),
     changeAmt: Number(o.changeAmt) || 0,     // how much of this movement was change
-    changeIds: String(o.changeIds || ''),    // which change travelled with it
+    changeIds: String(o.changeIds || ''),    // which change traveled with it
     changeRef: String(o.changeRef || ''),    // the change this row withdrew or returned
     purpose: String(o.purpose || '')
   };
@@ -4512,7 +4530,7 @@ function warnPreorders_(p, loc, items, afterFn, verbs) {
   if (warnings.length) {
     var one = warnings.length === 1;
     throw new Error('There are currently pre-orders for ' + (one ? 'this book' : 'these books') +
-      ' that you would no longer be able to fulfil if you ' + (one ? verbs[0] : verbs[1]) + '. ' +
+      ' that you would no longer be able to fulfill if you ' + (one ? verbs[0] : verbs[1]) + '. ' +
       warnings.join(' '));
   }
 }
@@ -4607,7 +4625,7 @@ function doSell(p) {
       var why = breaksPreorders_(bookId, onHand - 1, rmap);
       if (why) {
         throw new Error('There are currently pre-orders for this book that you would no longer ' +
-          'be able to fulfil if you sell it. ' + why);
+          'be able to fulfill if you sell it. ' + why);
       }
     }
     addQty_(map, loc, bookId, -1);
@@ -4627,9 +4645,8 @@ function doSell(p) {
     dueamt: p.dueamt, duecur: p.duecur,
     name: p.name, phone: p.phone, comments: p.comments,
     ts: p.ts,
-    // Another region asked to deliver it — a region that exists and is not this one.
-    fulfilBy: (isPreorder && p.fulfilBy && regionById_(String(p.fulfilBy)) &&
-               String(p.fulfilBy) !== regionOfAnyLoc_(loc)) ? String(p.fulfilBy) : ''
+    // Another region asked to deliver it — one that exists, is not this one, and has a copy.
+    fulfilBy: (isPreorder && p.fulfilBy) ? checkCanFulfill_(String(p.fulfilBy), bookId, loc) : ''
   });
   markDirty_(loc);
 }
@@ -4685,7 +4702,7 @@ function doSellBundle(p) {
       var why = breaksPreorders_(id, onHand - need[id], rmap);
       if (why) {
         throw new Error('There are currently pre-orders for these books that you would no ' +
-          'longer be able to fulfil if you sell them. ' + why);
+          'longer be able to fulfill if you sell them. ' + why);
       }
     }
   });
@@ -4718,7 +4735,7 @@ function doSellBundle(p) {
 
   /* An edit keeps the transaction's own id. Minting a new one on every edit meant
      the id on screen went stale the moment the edit landed — open Edit again
-     before the screen caught up and the server no longer recognised it ("no
+     before the screen caught up and the server no longer recognized it ("no
      longer in the log"), which is why the second attempt always worked. */
   var bundleId = String(p.keepBundleId || '') || ('B' + Utilities.getUuid().slice(0, 7));
   /* The app now names a new transaction itself, so that what it shows and what
@@ -4842,7 +4859,7 @@ function validateBundle_(p, releases) {
   if (items.length < 2) throw new Error('A multiple-book transaction needs at least two books.');
   items.forEach(function (it) {
     if (!it || !it.bookId || !bookById_(String(it.bookId)))
-      throw new Error('One of those titles is no longer in the catalogue.');
+      throw new Error('One of those titles is no longer in the catalog.');
   });
 
   /* Enough books to do it? Checked HERE, before the original is touched.
@@ -5241,7 +5258,7 @@ function doTransferBulk(p) {
     if (warnings.length) {
       var oneT = warnings.length === 1;
       throw new Error('There are currently pre-orders for ' + (oneT ? 'this book' : 'these books') +
-        ' that you would no longer be able to fulfil if you ' +
+        ' that you would no longer be able to fulfill if you ' +
         (oneT ? 'transfer it' : 'transfer them') + '. ' + warnings.join(' '));
     }
   }
@@ -5262,7 +5279,7 @@ function doTransferBulk(p) {
 
 /* Send stock out of THIS warehouse to another warehouse outside the system, or
    receive stock back in from one — before those warehouses are connected here,
-   this is just a labelled entry/exit against our own stock. Only this
+   this is just a labeled entry/exit against our own stock. Only this
    warehouse's inventory changes; there is no bucket for the other warehouse
    to add to (or subtract from) yet. */
 function doTransferExternal(p) {
@@ -5549,7 +5566,7 @@ function doMarkPaid(p) {
    sales must stay out of every tour total, and their share of the takings has to
    be tracked until it is handed over.
 
-   Modelled as ownership on the title itself, so a seller taps the book exactly
+   Modeled as ownership on the title itself, so a seller taps the book exactly
    as they would any other and the separation happens behind them. */
 function partnersAll_() {
   return objectsOf_('_partners')
@@ -5655,7 +5672,7 @@ function doPartnerPayout(p) {
   var isCash = String(p.method || 'Cash') === 'Cash';
 
   /* Named by the app where it gave a name, so a hand-over re-sent after a slow
-     reply is recognised rather than paid a second time. */
+     reply is recognized rather than paid a second time. */
   var payBase = String(p.payoutId || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40);
   clean.forEach(function (it, i) {
     var rowId = payBase ? (payBase + '_' + i) : ('P' + Utilities.getUuid().slice(0, 7));
@@ -5770,17 +5787,17 @@ function customBooks_() {
                partnerId: String(b.partnerId || '') };
     });
 }
-/* The catalogue, built once per request and looked up by id.
+/* The catalog, built once per request and looked up by id.
 
    It used to be rebuilt on every single lookup, and every lookup then scanned
    it from the start. Consignment made that expensive: working out what a group
-   is owed asks "whose book is this?" for every sale, so the whole catalogue was
+   is owed asks "whose book is this?" for every sale, so the whole catalog was
    reassembled once per sale per group. An index turns that into one build and a
    direct lookup. */
 var _bookMemo = null, _bookIndex = null;
 function bookMemoClear_() { _bookMemo = null; _bookIndex = null; _tallyMemo = null; }
 
-/* The catalogue in the order it should be shown.
+/* The catalog in the order it should be shown.
 
    A book carries a 'sort' if it has been placed by hand; anything unplaced
    keeps its natural order behind the placed ones, so adding a title puts it at
@@ -5801,7 +5818,7 @@ function allBooks_() {
   return _bookMemo;
 }
 
-/* The catalogue as a given region wants it shown.
+/* The catalog as a given region wants it shown.
 
    Order lives on the region, so Poland can lead with what sells in Poland
    without rearranging Macedonia. A title the region has not placed keeps its
@@ -5892,7 +5909,7 @@ function doQrSave(p) {
   markDirtyAll_();
 }
 
-/* Remove a title from the catalogue.
+/* Remove a title from the catalog.
 
    Only ever a custom or consignment title — the eight standard books stay. A
    title that has been sold is kept, because deleting it would orphan the sales
@@ -6008,7 +6025,7 @@ function doAddBook(p) {
 }
 
 function bookById_(id) { return bookIndex_()[id] || null; }
-/* The tour's own catalogue. A consignment title is left out of these, so it
+/* The tour's own catalog. A consignment title is left out of these, so it
    never appears in our stock tables or sales blocks — it has its own sheet.
    allBooks_() still carries everything, so lookups by id always resolve. */
 function tourBooks_()  { return allBooks_().filter(function (b) { return !b.partnerId; }); }
@@ -6624,7 +6641,7 @@ function renderView_(loc, regionId, ssOverride) {
   function invBlock(label, list, withTotal) {
     band.push(put([label]));
     if (isSummary) {
-      // "In Transit" is what is still travelling here — expected, not yet stock.
+      // "In Transit" is what is still traveling here — expected, not yet stock.
       head.push(put(['Book', 'In Warehouse', 'At Events', 'With Devotees',
                      'Total Unsold', 'In Transit', 'Expected Total', 'Total Sold', 'Total']));
       var sWh = 0, sEv = 0, sHold = 0, sUnsold = 0, sTransit = 0, sSold = 0, sAll = 0;
@@ -6792,7 +6809,7 @@ function renderView_(loc, regionId, ssOverride) {
   /* ---- Costs, and what was kept after them (Summary only) ----
 
      Card-machine fees and other costs of selling, recorded in the app against
-     a place in this region. Listed one by one, totalled by currency, then set
+     a place in this region. Listed one by one, totaled by currency, then set
      against what was collected to give the net. Consignment money is not ours,
      so — as in the collections above — it is not part of the net either. */
   if (isSummary) {
@@ -7059,10 +7076,30 @@ function movesText_(moves) {
     var froms = Object.keys(from);
     var src = froms.length === 1 ? locLabel_(froms[0])
       : froms.map(function (f) { return locLabel_(f) + ' ' + from[f]; }).join(', ');
-    out.push('moved ' + plural_(total, 'book') + ' (' + titlesText_(books) + ') from ' + src + ' → ' + locLabel_(to));
+    out.push(plural_(total, 'book') + ' transferred (' + titlesText_(books) + ') from ' + src + ' → ' + locLabel_(to));
   });
   var s = out.join('; ');
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+/* The lines inside an entry: one per title, gathering every movement of that
+   title (a title may have come from several shelves). Only when there is more
+   than one title — a single title is the entry itself. */
+function partsJson_(moves) {
+  var by = {}, order = [];
+  moves.forEach(function (m) {
+    if (!by[m.bookId]) { by[m.bookId] = []; order.push(m.bookId); }
+    by[m.bookId].push(m);
+  });
+  if (order.length < 2) return '';
+  return JSON.stringify(order.map(function (b) {
+    var ms = by[b], n = ms.reduce(function (t, m) { return t + Math.abs(m.qty); }, 0);
+    var tos = {}; ms.forEach(function (m) { tos[m.to] = 1; });
+    var kind = ms[0].kind === 'ADJUST' ? (ms[0].qty > 0 ? 'added' : 'removed') : 'transferred';
+    return { id: 'b:' + b, ids: ms.map(function (m) { return m.id; }),
+             text: bookName_(b) + ' ×' + n + ' ' + kind + (kind === 'transferred'
+               ? ' → ' + Object.keys(tos).map(locLabel_).join(', ') : ' at ' + Object.keys(tos).map(locLabel_).join(', ')) };
+  }));
 }
 
 /* One movement in words, for the lines inside a multi-line entry. */
@@ -7092,7 +7129,8 @@ function activityBefore_(action, p) {
 }
 
 /* What was done, in words; where; and how to undo it (null = not safely). */
-function describe_(action, p, result, moves) {
+function describe_(action, p, result, moves, who) {
+  who = who || { role: 'admin' };
   var mv = movesText_(moves);
   var ids = moves.map(function (m) { return m.id; });
   var locs = {};
@@ -7130,8 +7168,8 @@ function describe_(action, p, result, moves) {
     case 'setFulfilBy': {
       var fs = saleRowById_(p.remoteSaleId), fo = fs ? fs.o : {};
       var what = bookName_(String(fo.bookId || '')) + (fo.name ? ' for ' + fo.name : '') + ', ordered at ' + placePath_(fo.location);
-      d = { text: p.fulfilBy ? ('Asked ' + placePath_((regionById_(p.fulfilBy) || {}).whLoc) + ' to fulfil a pre-order: ' + what)
-                             : ('Withdrew the request to fulfil a pre-order: ' + what) };
+      d = { text: p.fulfilBy ? ('Asked ' + placePath_((regionById_(p.fulfilBy) || {}).whLoc) + ' to fulfill a pre-order: ' + what)
+                             : ((p.declined || who.role !== 'admin' ? 'Declined' : 'Withdrew') + ' the request to fulfill a pre-order: ' + what) };
       if (fo.location) locs[String(fo.location)] = 1;
       if (p.fulfilBy) regions[String(p.fulfilBy)] = 1;
       break;
@@ -7141,7 +7179,7 @@ function describe_(action, p, result, moves) {
       d = { text: 'Fulfilled a pre-order for ' + placePath_(fro.location) + ': ' + bookName_(String(fro.bookId || '')) +
                   (fro.name ? ' for ' + fro.name : '') + ', from ' + locLabel_(p.fromLoc) +
                   ' (not counted in this region’s sales or cash)',
-            undo: { type: 'fulfil', saleId: String(p.remoteSaleId), ids: ids } };
+            undo: { type: 'fulfill', saleId: String(p.remoteSaleId), ids: ids } };
       if (fro.location) locs[String(fro.location)] = 1;
       break;
     }
@@ -7161,6 +7199,8 @@ function describe_(action, p, result, moves) {
       d = { text: 'Switched on ' + (added.length ? added.map(bookName_).join(', ') : 'titles') + ' for ' + reg(p.regionId),
             undo: added.length ? { type: 'regionBooks', regionId: String(p.regionId), ids: added } : null }; break;
     case 'saveSeason':   d = { text: p.seasonId ? 'Renamed a season to “' + p.name + '”' : 'Created season “' + p.name + '”' }; break;
+    case 'closeSeason':  d = { text: 'Closed season ' + ((seasonById_(p.seasonId) || {}).name || '') + ' — its dollar figures are now fixed at that day’s exchange rates' }; break;
+    case 'reopenSeason': d = { text: 'Reopened season ' + ((seasonById_(p.seasonId) || {}).name || '') }; break;
     case 'deleteSeason': d = { text: 'Deleted a season' }; break;
     case 'closeLocation':  d = { text: 'Closed ' + (p.kind === 'region' ? reg(p.id) : locLabel_(p.id)) + (mv ? ' — ' + mv : '') }; break;
     case 'reopenLocation': d = { text: 'Reopened ' + (p.kind === 'region' ? reg(p.id) : locLabel_(p.id)) }; break;
@@ -7230,7 +7270,7 @@ function activityRecord_(action, p, result, who) {
       return { id: String(r[0]), kind: String(r[2]), from: String(r[3] || ''), to: String(r[4] || ''),
                bookId: String(r[5]), qty: Number(r[6]) || 0 };
     });
-    var d = describe_(action, p, result, moves);
+    var d = describe_(action, p, result, moves, who);
     if (!d || !d.text) return;
     var sh = activitySheet_();
     ensureHeaders_('_activity', ACTIVITY_HEADERS);
@@ -7240,9 +7280,8 @@ function activityRecord_(action, p, result, who) {
       text: String(d.text).slice(0, 900), locs: d.locs.join(','), regions: d.regions.join(','),
       moves: moves.map(function (m) { return m.id; }).join(','),
       undo: d.undo ? JSON.stringify(d.undo) : '', undoneAt: '', undoneBy: '',
-      // Several movements in one change: each line kept, so each can be undone on its own.
-      parts: (d.undo && d.undo.type === 'moves' && moves.length > 1)
-        ? JSON.stringify(moves.map(function (m) { return { id: m.id, text: moveLine_(m) }; })) : '',
+      // Several titles in one change: one line per title, so each can be undone on its own.
+      parts: (d.undo && d.undo.type === 'moves') ? partsJson_(moves) : '',
       undoneParts: '' };
     sh.appendRow(hs.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
     sheetMemoClear_();
@@ -7268,10 +7307,37 @@ function activityList_(who, seasonId) {
       parts: (function () {
         var gone = String(r.undoneParts || '').split(',').filter(Boolean);
         var list = []; try { list = JSON.parse(String(r.parts || '[]')) || []; } catch (e) { list = []; }
+        /* Entries written before lines were grouped by title: rebuild them from
+           the movements still on record, so every transfer gets its dropdown. */
+        var ids = String(r.moves || '').split(',').filter(Boolean);
+        var older = !list.length || list.some(function (x) { return !x.ids; });
+        if (older && ids.length > 1 && String(r.undo || '').indexOf('"moves"') >= 0) {
+          var rec = movesById_();
+          var ms = ids.map(function (i) { return rec[i]; }).filter(Boolean);
+          var rebuilt = ms.length ? partsJson_(ms) : '';
+          if (rebuilt) {
+            list = JSON.parse(rebuilt);
+            // A line counts as undone once every movement in it has been undone.
+            list.forEach(function (x) { if (x.ids.every(function (i) { return gone.indexOf(i) >= 0 || !rec[i]; })) gone.push(x.id); });
+          }
+        }
         return list.map(function (x) { return { id: String(x.id), text: String(x.text), undone: gone.indexOf(String(x.id)) >= 0 }; });
       })() });
   });
   return out.reverse().slice(0, 1500);
+}
+
+/* The movement record by id, in the shape the log uses — read once per request. */
+var _movesById = null;
+function movesById_() {
+  if (_movesById) return _movesById;
+  _movesById = {};
+  objectsOf_('_stockmoves').forEach(function (m) {
+    if (!m || !m.id) return;
+    _movesById[String(m.id)] = { id: String(m.id), kind: String(m.kind), from: String(m.fromLoc || ''),
+      to: String(m.toLoc || ''), bookId: String(m.bookId), qty: Number(m.qty) || 0 };
+  });
+  return _movesById;
 }
 
 /* Reverse a set of stock movements together: all checked first, then all done,
@@ -7321,6 +7387,13 @@ function doUndoActivityPart(p, who) {
   if (!e) throw new Error('That entry is no longer in the log.');
   if (e.undoneAt) return 'already';
   var parts = []; try { parts = JSON.parse(String(e.parts || '[]')) || []; } catch (x) { parts = []; }
+  // Older entries: their lines are rebuilt the same way the log shows them.
+  if (!parts.length || parts.some(function (x) { return !x.ids; })) {
+    var rec = movesById_();
+    var ms = String(e.moves || '').split(',').filter(Boolean).map(function (i) { return rec[i]; }).filter(Boolean);
+    var rb = ms.length ? partsJson_(ms) : '';
+    if (rb) parts = JSON.parse(rb);
+  }
   var line = parts.filter(function (x) { return String(x.id) === part; })[0];
   if (!line) throw new Error('That line is no longer in this entry.');
   var gone = String(e.undoneParts || '').split(',').filter(Boolean);
@@ -7331,12 +7404,14 @@ function doUndoActivityPart(p, who) {
       throw new Error('This link can only undo stock changes in its own region.');
     }
   }
-  undoMoves_([part]);
+  var gonePrev = gone.slice();
+  undoMoves_((line.ids || [part]).filter(function (i) { return gonePrev.indexOf(i) < 0; }));
   gone.push(part);
+  (line.ids || []).forEach(function (i) { if (gone.indexOf(i) < 0) gone.push(i); });
   var iP = hs.indexOf('undoneParts');
   if (iP < 0) { ensureHeaders_('_activity', ACTIVITY_HEADERS); rows = rowsOf_('_activity'); hs = rows.headers.map(String); iP = hs.indexOf('undoneParts'); }
   sh.getRange(at + 2, iP + 1).setValue(gone.join(','));
-  if (gone.length >= parts.length) {
+  if (parts.every(function (x) { return gone.indexOf(String(x.id)) >= 0; })) {
     sh.getRange(at + 2, hs.indexOf('undoneAt') + 1).setValue(new Date());
     sh.getRange(at + 2, hs.indexOf('undoneBy') + 1).setValue(_cashBy || '');
   }
@@ -7367,7 +7442,7 @@ function doUndoActivity(p, who) {
   if (who.role !== 'admin') {
     var regs = String(e.regions || '').split(',').filter(Boolean);
     if (!regs.length || regs.some(function (r) { return r !== String(who.regionId); }) ||
-        ['moves', 'ship', 'receive', 'holder', 'event', 'regionBooks', 'fulfil'].indexOf(u.type) < 0) {
+        ['moves', 'ship', 'receive', 'holder', 'event', 'regionBooks', 'fulfill'].indexOf(u.type) < 0) {
       throw new Error('This link can only undo stock changes in its own region.');
     }
   }
@@ -7397,7 +7472,7 @@ function doUndoActivity(p, who) {
       }));
     }
   }
-  else if (u.type === 'fulfil') {
+  else if (u.type === 'fulfill') {
     // The copy goes back on the fulfilling shelf; the pre-order is waiting again.
     var fh = saleRowById_(u.saleId);
     if (!fh) throw new Error('That pre-order is no longer in the log.');
@@ -7513,16 +7588,34 @@ function doSetFulfilBy(p, who) {
   if (!isOpenPreorder_(hit.o)) throw new Error('That pre-order has already been delivered.');
   var to = String(p.fulfilBy || '');
   var home = regionOfAnyLoc_(hit.o.location);
-  if (to && !regionById_(to)) throw new Error('That region is no longer listed.');
-  if (to && to === home) throw new Error('That is the region it was ordered in.');
+  if (to) checkCanFulfill_(to, String(hit.o.bookId), hit.o.location);
   if (who.role !== 'admin') {
     var mine = String(who.regionId);
     var ok = (home === mine) || (!to && String(hit.o.fulfilBy) === mine);
     if (!ok) throw new Error('This link can only change its own region’s pre-orders.');
   }
-  setSaleFields_(hit, { fulfilBy: to });
+  /* Declined by the region that was asked: remembered, so the region that took
+     the pre-order sees it in red. A new request clears it. */
+  var declined = (!to && String(hit.o.fulfilBy) && (who.role === 'admin' ? !!p.declined : String(hit.o.fulfilBy) === String(who.regionId)))
+    ? String(hit.o.fulfilBy) : '';
+  setSaleFields_(hit, { fulfilBy: to, fulfilDeclined: to ? '' : declined });
   markDirty_(hit.o.location);
   return to;
+}
+
+/* A request may only go to a region that exists, is not where it was ordered,
+   and has at least one copy of the title on any of its shelves. */
+function checkCanFulfill_(regionId, bookId, fromLoc) {
+  var r = regionById_(regionId);
+  if (!r) throw new Error('That region is no longer listed.');
+  if (regionId === regionOfAnyLoc_(fromLoc)) throw new Error('That is the region it was ordered in.');
+  var map = loadInvMap_(), have = 0;
+  locsInRegion_(regionId).forEach(function (l) { have += getQty_(map, l, bookId); });
+  if (have < 1) {
+    throw new Error(r.name + ' has no copies of ' + bookName_(bookId) +
+      ', so it cannot fulfill this pre-order. Choose a region that has it in stock.');
+  }
+  return regionId;
 }
 
 /* Deliver a pre-order from another region's shelf. */
@@ -7537,7 +7630,7 @@ function doFulfilRemote(p, who) {
     throw new Error('That shelf is in the region it was ordered in — use Deliver there instead.');
   }
   if (who.role !== 'admin' && region !== String(who.regionId)) {
-    throw new Error('This link can only fulfil from its own region.');
+    throw new Error('This link can only fulfill from its own region.');
   }
   var bookId = String(hit.o.bookId);
   var map = loadInvMap_();
@@ -7553,4 +7646,55 @@ function doFulfilRemote(p, who) {
   markDirty_(from); markDirty_(hit.o.location);
   markDirtyRegions_([region, regionOfAnyLoc_(hit.o.location)]);
   return String(hit.o.saleId);
+}
+
+/* ============================ CLOSING A SEASON ============================
+   Only once every region in it is closed and every book has been moved
+   somewhere else. From then on its dollar figures use the exchange rates of the
+   day it closed (see getRates_), so the tour's result stops moving. */
+function doCloseSeason(p) {
+  var id = String(p.seasonId || '');
+  var season = seasonById_(id);
+  if (!season) throw new Error('That season is no longer listed.');
+  if (season.closedAt) return 'already';
+  var regs = allRegionsEverywhere_().filter(function (r) { return r.seasonId === id; });
+  var open = regs.filter(function (r) { return !r.closedAt; });
+  if (open.length) {
+    throw new Error('Close every region first — still open: ' + open.map(function (r) { return r.name; }).join(', ') + '.');
+  }
+  var map = loadInvMap_(), left = 0;
+  regs.forEach(function (r) {
+    locsInRegion_(r.regionId).forEach(function (l) { allBooks_().forEach(function (b) { left += getQty_(map, l, b.id); }); });
+  });
+  shipmentsAll_().forEach(function (x) {
+    if (x.status === 'ARRIVED') return;
+    if (regs.some(function (r) { return r.regionId === x.toRegion || r.regionId === x.fromRegion; })) {
+      allBooks_().forEach(function (b) { left += getQty_(map, x.shipId, b.id); });
+    }
+  });
+  if (left) throw new Error(plural_(left, 'book') + ' still belong to this season. Move them to another season or region first.');
+  // Rates as they are today, frozen with it.
+  var ctx = _seasonOverride;
+  setSeasonContext_('');
+  var live = null;
+  try { _fxMemo = null; live = getRates_(); } finally { setSeasonContext_(ctx); }
+  ensureHeaders_('_seasons', ['seasonId','name','sort','createdAt','closedAt','frozenRates']);
+  var rows = rowsOf_('_seasons'), hs = rows.headers.map(String);
+  rows.data.forEach(function (row, i) {
+    if (String(row[hs.indexOf('seasonId')]) !== id) return;
+    rows.sheet.getRange(i + 2, hs.indexOf('closedAt') + 1).setValue(new Date());
+    rows.sheet.getRange(i + 2, hs.indexOf('frozenRates') + 1).setValue(JSON.stringify(live || {}));
+  });
+  sheetMemoClear_(); cacheClear_(); markDirtyAll_();
+  return 'closed';
+}
+function doReopenSeason(p) {
+  var id = String(p.seasonId || '');
+  var rows = rowsOf_('_seasons'), hs = rows.headers.map(String);
+  rows.data.forEach(function (row, i) {
+    if (String(row[hs.indexOf('seasonId')]) !== id) return;
+    rows.sheet.getRange(i + 2, hs.indexOf('closedAt') + 1).setValue('');
+    var f = hs.indexOf('frozenRates'); if (f >= 0) rows.sheet.getRange(i + 2, f + 1).setValue('');
+  });
+  sheetMemoClear_(); cacheClear_(); markDirtyAll_();
 }

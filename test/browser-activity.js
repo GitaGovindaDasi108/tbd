@@ -78,7 +78,7 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
     await openLog(page);
     let r = await rows(page);
     console.log('   log:\n     ' + r.map(x => (x.undo ? '[Delete] ' : '         ') + x.text).join('\n     '));
-    const moved = r.find(x => /Moved 6 books/.test(x.text));
+    const moved = r.find(x => /6 books transferred/.test(x.text));
     t.push(['the transfer reads in plain words, with titles and places', !!moved && /Sri Radha|×6/.test(moved.text) && /Poland \(Warehouse\) → Summer Festival/.test(moved.text)]);
     t.push(['…with who did it', !!moved && /main app/.test(moved.meta)]);
     t.push(['stock added, with its note', r.some(x => /Added .*×20.*Poland \(Warehouse\).*carton from the printer/.test(x.text))]);
@@ -97,13 +97,13 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
 
     // Delete = undo.
     page.__dialogs = [];
-    await page.click('#alList .al-row:has-text("Moved 6 books") [data-alundo]'); await page.waitForTimeout(1800);
-    t.push(['Delete asks first, naming what will be undone', (page.__dialogs || []).some(x => /This undoes it:[\s\S]*Moved 6 books/.test(x))]);
+    await page.click('#alList .al-row:has-text("6 books transferred") [data-alundo]'); await page.waitForTimeout(1800);
+    t.push(['Delete asks first, naming what will be undone', (page.__dialogs || []).some(x => /This undoes it:[\s\S]*6 books transferred/.test(x))]);
     t.push(['the books went back (Festival 0, warehouse 19)', qty('ev_fest', B0) === 0 && qty(pl.whLoc, B0) === 19]);
     r = await rows(page);
-    const und = r.find(x => /Moved 6 books/.test(x.text) && !/^Undid/.test(x.text));
+    const und = r.find(x => /6 books transferred/.test(x.text) && !/^Undid/.test(x.text));
     t.push(['the entry stays, crossed out as "Undone", with no Delete', !!und && und.undone && /Undone by/.test(und.meta) && !und.undo]);
-    t.push(['the undo is itself recorded', r.some(x => /^Undid: Moved 6 books/.test(x.text))]);
+    t.push(['the undo is itself recorded', r.some(x => /^Undid: 6 books transferred/.test(x.text))]);
 
     // Undo a cost.
     await page.click('#alList .al-row:has-text("Recorded a cost") [data-alundo]'); await page.waitForTimeout(1800);

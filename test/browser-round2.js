@@ -105,15 +105,15 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
 
     // 4. Activity log: one entry, its lines in a dropdown, each undoable.
     await page.evaluate(() => activityModal()); await page.waitForTimeout(1000);
-    const entry = '#alList .al-row:has-text("Moved 6 books")';
+    const entry = '#alList .al-row:has-text("6 books transferred")';
     t.push(['the transfer is one entry with "▸ 2 lines"', /2 lines/.test(await page.textContent(`${entry} .al-tog`))]);
     await page.click(`${entry} .al-tog`); await page.waitForTimeout(200);
     const lines = (await page.locator(entry + ' .al-part').allTextContents()).map(x => x.replace(/\s+/g, ' ').trim());
-    t.push(['the dropdown lists each line', lines.length === 2 && lines.some(x => /4 × /.test(x)) && lines.some(x => /2 × /.test(x))]);
+    t.push(['the dropdown lists each line', lines.length === 2 && lines.some(x => /×4 transferred/.test(x)) && lines.some(x => /×2 transferred/.test(x))]);
     await page.screenshot({ path: shot('1-activity-lines') });
-    await page.locator(entry + ' .al-part').filter({ hasText: '2 × ' }).locator('[data-alpart]').click(); await page.waitForTimeout(1800);
+    await page.locator(entry + ' .al-part').filter({ hasText: '×2 transferred' }).locator('[data-alpart]').click(); await page.waitForTimeout(1800);
     t.push(['deleting one line undoes just that line', qty('ev_fest', B1) === 0 && qty('ev_fest', B0) === 4]);
-    const row = page.locator('#alList .al-row').filter({ hasText: 'Moved 6 books' }).filter({ hasNotText: 'Undid' }).first();
+    const row = page.locator('#alList .al-row').filter({ hasText: '6 books transferred' }).filter({ hasNotText: 'Undid' }).first();
     const after = { meta: await row.locator('.al-meta').textContent(),
       gone: await row.locator('.al-part.undone').count(), all: (await row.locator('[data-alundo]').count()) > 0 };
     t.push(['…the entry reads "Partly undone", that line crossed out', /Partly undone/.test(after.meta) && after.gone === 1 && after.all]);
@@ -172,7 +172,7 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     const pre = (m.call({ action: 'getState', season: SA }).state.sales || []).find(x => x.name === 'Maria');
     t.push(['the pre-order asks Barcelona (Year-Round) to fulfil it', !!pre && pre.fulfilBy === 'rg_bcn' && pre.type === 'PREORDER']);
     const tag = await page.evaluate(() => document.querySelector('#prePanel') && document.querySelector('#prePanel').textContent);
-    t.push(['in Italy it reads "For Barcelona"', /For Barcelona/.test(tag || '')]);
+    t.push(['in Italy it reads "Being Fulfilled By: Barcelona"', /Being Fulfilled By: Barcelona/.test(tag || '')]);
 
     await page.evaluate(sb => switchSeason(sb), SB); await page.waitForTimeout(1500);
     await page.evaluate(() => goTo('region', 'rg_bcn')); await page.waitForTimeout(500);
@@ -193,7 +193,7 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
 
     // 11. Fulfil one nobody flagged.
     c({ action: 'sell', saleId: 's_open2', location: 'wh_it', bookId: B0, isPreorder: true, legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }], name: 'Jaya' });
-    await page.click('#adminActions button:has-text("Fulfil a pre-order for another region")'); await page.waitForTimeout(1200);
+    await page.evaluate(() => fulfilOtherModal()); await page.waitForTimeout(1200);
     const listed = await page.textContent('#foList');
     t.push(['"Fulfil a pre-order for another region" lists open pre-orders elsewhere', /Jaya/.test(listed) && /Europe Tour › Italy/.test(listed)]);
     await page.click('#foList [data-fo="s_open2"]'); await page.waitForTimeout(300);
@@ -206,7 +206,7 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     c({ action: 'sell', saleId: 's_open3', location: 'wh_it', bookId: B0, isPreorder: true, legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }], name: 'Ravi' });
     await page.evaluate(() => pull()); await page.waitForTimeout(800);
     await page.evaluate(() => { goTo('region', 'rg_it'); deliverModal('s_open3'); }); await page.waitForTimeout(300);
-    t.push(['Deliver offers "Another region will fulfil it"', /Another region will fulfil it/.test(await page.textContent('#modal .opts'))]);
+    t.push(['Deliver offers "Another region will fulfill it"', /Another region will fulfill it/.test(await page.textContent('#modal .opts'))]);
     await page.evaluate(() => closeModal());
 
     // 13. List view.

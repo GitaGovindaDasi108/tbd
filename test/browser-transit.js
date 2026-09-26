@@ -107,7 +107,7 @@ const ship = id => (m.call({ action: 'getState', season: SA }).state.shipments |
     t.push(['regional link sees its own region\'s batch', c.length === 1 && /Gamma/.test(c[0])]);
     t.push(['regional link: no Edit / Delete on it', !/Edit details|Delete/.test(c[0])]);
     const cb = await coord.evaluate(() => [...document.querySelectorAll('#adminActions button')].map(b => b.textContent.trim()));
-    t.push(['regional link has the "Books in transit" button', cb.includes('🚚 Books in transit')]);
+    t.push(['regional link: no separate "Books in transit" button (it is on the main screen)', !cb.includes('🚚 Books in transit')]);
     await coord.click('#transitPanel [data-act="sharriveall"]'); await coord.waitForTimeout(1500);
     t.push(['regional link can mark a full delivery', qty('wh_it', books[2].id) === 4 && ship('sh_gamma3').status === 'ARRIVED']);
     await coord.close();

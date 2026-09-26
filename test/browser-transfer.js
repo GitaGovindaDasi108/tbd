@@ -230,7 +230,7 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     await page.click(`.book:has([data-book="${B1}"]) .sell-btn`); await page.waitForTimeout(300);
     const ask = await page.evaluate(() => ({ h: (document.querySelector('#modal h3') || {}).textContent || '',
       opts: [...document.querySelectorAll('#modal [data-sellsw]')].map(b => b.textContent.replace(/\s+/g, ' ').trim()) }));
-    t.push(['selling with an empty shelf asks "Which sub-warehouse?"', /Which sub-warehouse/.test(ask.h) && ask.opts.length === 1 && /SW2 — Gopal/.test(ask.opts[0])]);
+    t.push(['selling at a warehouse with sub-warehouses asks where the copy comes from', /Selling from where/.test(ask.h) && ask.opts.length === 1 && /SW2 — Gopal/.test(ask.opts[0])]);
     await page.click('#modal [data-sellsw]'); await page.waitForTimeout(300);
     t.push(['…then the sale opens for that copy', /Record sale/.test(await page.textContent('#modal h3'))]);
     await page.evaluate(() => closeModal());
