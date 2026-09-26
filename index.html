@@ -145,6 +145,11 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .cl-in{width:78px;border:1px solid var(--line-d);border-radius:7px;padding:6px 8px;font-size:13px;text-align:right}
 .cl-diff{font-size:12px;font-weight:800;text-align:right}
 .cl-diff.ok{color:var(--green)} .cl-diff.bad{color:var(--clay)}
+.cl-checks{display:flex;flex-direction:column;gap:7px;margin:4px 0 8px}
+.cl-check{display:flex;gap:9px;align-items:flex-start;font-size:13px;line-height:1.45;cursor:pointer}
+.cl-check input{margin-top:2px;flex:none}
+.cl-checkleft{font-size:12px;font-weight:700;color:var(--clay);margin-bottom:6px}
+.cl-checkleft.ok{color:var(--green)}
 .cl-sum{margin:10px 0 4px;font-size:12.5px;color:var(--muted)}
 .cl-ok{color:var(--green);font-weight:700} .cl-bad{color:var(--clay);font-weight:700}
 @media (max-width:560px){ .cl-row{grid-template-columns:1fr 68px 38px} .cl-exp{display:none} }
@@ -409,7 +414,7 @@ body.busy #busyBar{opacity:1}
 .cur-line{display:block;white-space:nowrap}
 .cash-tbl td{white-space:nowrap}
 .cash-log{border:1px solid var(--line);border-radius:9px;overflow:visible;flex:0 0 auto;height:auto}
-.cash-logrow{flex:none;padding:8px 11px;border-bottom:1px solid var(--line)}
+.mv-row,.cash-logrow{flex:none;padding:8px 11px;border-bottom:1px solid var(--line)}
 .cash-logrow:last-child{border-bottom:none}
 .cash-logtop{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .cash-logdesc{font-weight:600;font-size:13px;color:var(--ink);
@@ -425,7 +430,12 @@ body.busy #busyBar{opacity:1}
   flex-wrap:wrap}
 .cash-logwhen{font-size:10.5px;color:var(--muted);flex:1 1 auto;min-width:0;
   overflow-wrap:anywhere}
-.mv-counts{font-size:10.5px;color:var(--lvl,var(--plum));font-weight:700;white-space:nowrap}
+.mv-counts{font-size:10.5px;color:var(--lvl,var(--plum));font-weight:700;
+  white-space:normal;overflow-wrap:anywhere;min-width:0}
+/* A long line wraps inside the row; the undo button stays within the border. */
+.cash-logbot{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;min-width:0}
+.cash-logwhen,.cash-logdesc{min-width:0;overflow-wrap:anywhere}
+.cash-logacts{flex:none;display:flex;align-items:center;gap:6px;margin-left:auto;max-width:100%;flex-wrap:wrap;justify-content:flex-end}
 .cash-logacts{display:inline-flex;gap:2px;flex:none}
 @media (max-width:640px){
   .cash-logbot{flex-direction:column;align-items:flex-start;gap:3px}
@@ -464,6 +474,7 @@ body.busy #busyBar{opacity:1}
 .chg-note{background:var(--paper2);border:1px solid var(--line-d);border-radius:9px;padding:9px 11px;margin:6px 0 12px;font-size:13.5px}
 .radio-row{display:flex;gap:10px;align-items:flex-start;padding:8px 2px;cursor:pointer;font-size:13.5px}
 .radio-row input{width:18px;height:18px;flex:none;margin-top:2px}
+.chg-btn{margin-top:2px}
 .chg-row{display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line)}
 .chg-main{flex:1;min-width:0;font-size:13.5px}
 .chg-acts{display:flex;align-items:center;gap:6px;flex:none}
@@ -598,6 +609,9 @@ body.busy #busyBar{opacity:1}
 .lf-sep{border-top:1px solid var(--line);margin:4px 8px}
 .lf-empty{padding:8px 10px;color:var(--muted);font-size:13px}
 .lf-foot{display:flex;justify-content:flex-end;gap:6px;padding:8px 8px 4px;border-top:1px solid var(--line);margin-top:4px}
+.log-tools{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;
+  padding:7px 14px 0;border-bottom:1px solid var(--line)}
+.log-tools .sortbar{margin:0 0 7px}
 .sortbar{font-family:'Inter',sans-serif;font-size:10px;text-transform:uppercase;letter-spacing:.5px;
   color:var(--muted);font-weight:700;display:flex;align-items:center;gap:4px;margin-left:auto}
 .sort-btn{font-family:'Inter',sans-serif;font-size:11px;font-weight:600;text-transform:none;letter-spacing:0;
@@ -903,6 +917,7 @@ body.busy #busyBar{opacity:1}
 .log-item.kind-don{background:var(--donate-l);border-color:var(--donate-b)}
 .log-item.kind-other{background:var(--teal-l);border-color:var(--teal-b)}
 .badge.don{background:var(--donate-l);color:var(--donate);border:1px solid var(--donate-b)}
+.usd-actual{font-size:11px;font-weight:700;color:var(--green)}
 .badge.chg{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
 .badge.pend{background:var(--clay-l);color:var(--clay)}
 .badge.part{background:#FDEBD0;color:#9C5A12}
@@ -1059,7 +1074,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b172</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b174</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1111,6 +1126,11 @@ body.busy #busyBar{opacity:1}
     <div class="log-col">
       <section class="panel">
         <h2 class="sec-h2">Active Sales Log <span class="hint" id="logCount"></span>
+          <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
+        </h2>
+        <!-- Sorting and filtering get their own line, so the heading stays a heading
+             and the report button sits where every other section keeps it. -->
+        <div class="log-tools">
           <span class="sortbar">Sort
             <button class="sort-btn" data-act="sortlog" data-sort="time">Date</button>
           </span>
@@ -1122,8 +1142,7 @@ body.busy #busyBar{opacity:1}
             <span class="log-filter-wrap"><button class="flt-btn" data-act="logfilter" data-facet="pay">Payment ▾</button>
               <div class="log-filter" data-panel="pay" hidden></div></span>
           </span>
-          <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
-        </h2>
+        </div>
         <div class="body"><div class="log" id="log"></div></div>
       </section>
     </div>
@@ -1314,6 +1333,32 @@ function convertCur(amt,from,to){
   return fromUSD(toUSD(amt,from), to);
 }
 
+/* The dollar value of a sale.
+
+   Local-currency totals never change: 20 £ of sales stays 20 £. What changes is
+   the DOLLAR column. Where a digital payment has arrived already converted, the
+   figure entered — what the account actually received — is used instead of an
+   estimate from today's rate. Sales without one are converted as before, so
+   nothing is counted twice and nothing is counted from the wrong side. */
+function saleUsd(sale){
+  if(!sale) return 0;
+  const actual = Number(sale.usdActual);
+  if(sale.usdActual!=='' && sale.usdActual!==null && sale.usdActual!==undefined && !isNaN(actual) && actual>0)
+    return actual;
+  let t=0;
+  legs(sale).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) t += toUSD(l.amt, l.cur); });
+  return t;
+}
+/** Dollars for a set of sales, honouring every entered figure. */
+function salesUsd(list){
+  return (list||[]).reduce((t,x)=>t + (received(x) ? saleUsd(x) : 0), 0);
+}
+/** Is a figure entered for this sale? */
+function hasUsdActual(sale){
+  return !!sale && sale.usdActual!=='' && sale.usdActual!==null && sale.usdActual!==undefined
+    && !isNaN(Number(sale.usdActual)) && Number(sale.usdActual)>0;
+}
+
 function toUSD(amt,cur){
   amt=Number(amt)||0; if(!amt) return 0;
   cur=String(cur||'').toUpperCase();
@@ -1472,10 +1517,12 @@ function shelfBooks(){
 }
 
 /** The titles hidden at the event being looked at. */
+/* Titles not offered where you are — an event's table, or a region's warehouse. */
 function hiddenHere(){
-  if(CUR_LEVEL!=='event') return new Set();
-  const ev=(STATE.events||[]).find(e=>e.eventId===CUR_LOC);
-  return new Set(String((ev&&ev.hidden)||'').split(',').map(x=>x.trim()).filter(Boolean));
+  const raw = (CUR_LEVEL==='event')
+    ? ((STATE.events||[]).find(e=>e.eventId===CUR_LOC)||{}).hidden
+    : (CUR_LEVEL==='region' ? ((STATE.regions||[]).find(r=>r.regionId===CUR_REGION)||{}).hidden : '');
+  return new Set(String(raw||'').split(',').map(x=>x.trim()).filter(Boolean));
 }
 /** Every title, hidden ones included — for pre-orders and for the hide dialog. */
 function allShelfBooks(){
@@ -1508,13 +1555,36 @@ function hideBooksModal(){
   $('#hbSave').addEventListener('click',()=>{
     const hidden=[...document.querySelectorAll('#modal [data-hb]')].filter(c=>!c.checked).map(c=>c.dataset.hb);
     const evId=CUR_LOC;
-    commit({action:'setEventHidden', eventId:evId, hidden:hidden.join(',')},
-      st=>{ const e=(st.events||[]).find(x=>x.eventId===evId); if(e) e.hidden=hidden.join(','); },
+    // A region keeps this on the region; an event on the event.
+    const forRegion = (CUR_LEVEL==='region');
+    commit(forRegion
+        ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
+        : {action:'setEventHidden', eventId:evId, hidden:hidden.join(',')},
+      st=>{
+        if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
+        else { const e=(st.events||[]).find(x=>x.eventId===evId); if(e) e.hidden=hidden.join(','); }
+      },
       hidden.length ? `${hidden.length} title${hidden.length===1?'':'s'} hidden here` : 'All titles offered here');
   });
 }
 
 /* Pre-ordering a title that is not on this event's shelf. */
+/** Put a title back on the shelf where you are. */
+function unhideTitle(bookId){
+  const off = hiddenHere();
+  if(!off.has(bookId)) return;
+  off.delete(bookId);
+  const hidden = [...off];
+  const forRegion = (CUR_LEVEL==='region');
+  commit(forRegion
+      ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
+      : {action:'setEventHidden', eventId:CUR_LOC, hidden:hidden.join(',')},
+    st=>{
+      if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
+      else { const e=(st.events||[]).find(x=>x.eventId===CUR_LOC); if(e) e.hidden=hidden.join(','); }
+    }, null, {keepOpen:true});
+}
+
 function hiddenPreorderModal(){
   const off=hiddenHere();
   const books=allShelfBooks().filter(b=>off.has(b.id));
@@ -1522,7 +1592,8 @@ function hiddenPreorderModal(){
   openModal(`
     ${mHead('Pre-order another title')}
     <div class="m-body">
-      <div class="hint">Not offered at this event, but still available to order.</div>
+      <div class="hint">Not offered here, but still available to order. Ordering one puts it
+        back on the shelf.</div>
       ${books.map(b=>`<button class="btn btn-ghost btn-block" data-act="hbpre" data-id="${esc(b.id)}"
          style="margin:4px 0">${esc(b.name)}</button>`).join('')}
     </div>
@@ -2046,6 +2117,10 @@ async function pull(){
       return;
     }
     if(CUR_LEVEL==='season'){ CUR_LOC=SEASON; CUR_REGION=''; return; }
+    /* A season still loading has no regions YET — that is not the same as the
+       region being gone. Judging it then threw you back to the season view (or
+       into another region) the moment a refresh landed mid-load. */
+    if(BASE && BASE.loading) return;
     let reg = regs.find(r=>r.regionId===CUR_REGION) || regs[0];
     if(!reg){ CUR_LEVEL='season'; CUR_LOC=SEASON; CUR_REGION=''; return; }
     CUR_REGION = reg.regionId;
@@ -2646,9 +2721,12 @@ function renderAdmin(){
   // Where the Google spreadsheets are filed — a tour-wide setting for the owner.
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet folders</button>`);
   if(isAdmin()) cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done editing wording':'Edit wording'}</button>`);
-  // Which titles this event offers — an event's own business, so only here.
-  if(CUR_LEVEL==='event') cols[0].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
-    hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
+  /* Which titles are offered where you are — a region can set this for its
+     warehouse just as an event does for its table. It belongs with the other
+     book settings, not with the admin tools. */
+  if(CUR_LEVEL==='event' || CUR_LEVEL==='region')
+    cols[2].push(`<button class="btn" data-act="hidebooks">👁 Titles offered here${
+      hiddenHere().size?` (${hiddenHere().size} hidden)`:''}</button>`);
   // Costs are money matters, so only for those who see the money.
   if(!hideMoney()) cols[0].push(`<button class="btn" data-act="costs">🧾 Costs${
     scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
@@ -3194,6 +3272,8 @@ function renderPayments(target){
   // Tally: type -> currency, and type -> group -> currency. Donations run in
   // parallel so they can behave like any other row.
   const byType={}, byTypeGroup={}, grand={}, don={}, donGroup={};
+  // Dollars actually received, and the estimates they stand in for.
+  const usdEst={}, usdAct={}, conUsdEst={}, conUsdAct={};
   // The consignment share of each of those, so a row can show both.
   const conType={}, conTypeGroup={}, conGrand={};
   // And the donation share, shown the same way.
@@ -3232,6 +3312,14 @@ function renderPayments(target){
         }
       });
     }
+    /* Where dollars actually received have been entered for this sale, note both
+       the estimate they replace and the figure itself, per payment type and
+       currency. The local-currency buckets are untouched: only the dollar
+       column swaps an estimate for what the account really got. */
+    const est0 = legs(x).reduce((t,l)=>t + ((l.type && l.type!=='Gift' && l.amt) ? toUSD(l.amt,l.cur) : 0), 0);
+    const useActual = hasUsdActual(x) && est0 > 0;
+    const factor = useActual ? (Number(x.usdActual) / est0) : 1;
+
     legs(x).forEach(l=>{
       if(!l.type || !l.amt) return;
       (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
@@ -3240,12 +3328,45 @@ function renderPayments(target){
         (t[g.id] = t[g.id]||{})[l.cur] = (t[g.id][l.cur]||0) + l.amt;
       }
       grand[l.cur] = (grand[l.cur]||0) + l.amt;
+      if(useActual && l.type!=='Gift'){
+        const one = toUSD(l.amt, l.cur);
+        (usdEst[l.type] = usdEst[l.type]||{})[l.cur] = (usdEst[l.type][l.cur]||0) + one;
+        (usdAct[l.type] = usdAct[l.type]||{})[l.cur] = (usdAct[l.type][l.cur]||0) + one*factor;
+        /* Consignment's own adjustment follows whose book it is — not the place
+           grouping, which is what `g` means here. */
+        if(isPartnerSale(x)){
+          conUsdEst[l.cur]=(conUsdEst[l.cur]||0)+one;
+          conUsdAct[l.cur]=(conUsdAct[l.cur]||0)+one*factor;
+          /* The group's own row is labelled with its name, so record the
+             adjustment under that too — otherwise the line inside the dropdown
+             shows an estimate while the Consignment line above shows the real
+             figure, and the two appear to disagree. */
+          const own = (partnerById((bookById(x.bookId)||{}).partnerId)||{}).name;
+          if(own){
+            (usdEst[own] = usdEst[own]||{})[l.cur] = (usdEst[own][l.cur]||0) + one;
+            (usdAct[own] = usdAct[own]||{})[l.cur] = (usdAct[own][l.cur]||0) + one*factor;
+          }
+        }
+      }
     });
   });
 
   // Gift is always zero by definition, so it only adds noise.
   const types = Object.keys(byType).filter(t=>t!=='Gift').sort();
   const usdOf = o => Object.keys(o||{}).reduce((t,c)=>t+toUSD(o[c],c),0);
+  /* The dollar figure for one payment type: converted as usual, except where a
+     received amount was entered — those swap the estimate for the real figure. */
+  const usdOfType = (t,o) => Object.keys(o||{}).reduce((sum,c)=>
+    sum + toUSD(o[c],c) - ((usdEst[t]||{})[c]||0) + ((usdAct[t]||{})[c]||0), 0);
+  const sumAll = m => Object.keys(m).reduce((t,k)=>
+    t + Object.keys(m[k]).reduce((u,c)=>u+m[k][c],0), 0);
+  /* Only the payment types count toward the whole: the group entries are the
+     same money under another label, and counting both would adjust twice. */
+  const sumTypes = m => Object.keys(m).filter(k=>byType[k])
+    .reduce((t,k)=>t + Object.keys(m[k]).reduce((u,c)=>u+m[k][c],0), 0);
+  const usdWhole = o => usdOf(o) - sumTypes(usdEst) + sumTypes(usdAct);
+  const usdCon = o => usdOf(o) - Object.keys(conUsdEst).reduce((t,c)=>t+conUsdEst[c],0)
+                                + Object.keys(conUsdAct).reduce((t,c)=>t+conUsdAct[c],0);
   const num   = (o,c) => { const v=(o&&o[c])||0; return v ? fmt(v) : '<span class="z">0</span>'; };
 
   // One type: its summary row plus a hidden row per group. All siblings.
@@ -3263,7 +3384,7 @@ function renderPayments(target){
     let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
         ><span class="tw">▸</span> <span class="ptg-label" title="${esc(label)}">${esc(label)}</span></div>`
       + curs.map(c=>`<div class="ptg-r ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">${num(totals,c)}</div>`).join('')
-      + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">$${fmt(usdOf(totals))}</div>`;
+      + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">$${fmt(usdOfType(label, totals))}</div>`;
     /* A place's line shows what was ours there — the consignment share has its
        own line below. Otherwise the two lines double-count the same notes and
        the breakdown adds up to more than the row above it. */
@@ -3351,7 +3472,7 @@ function renderPayments(target){
         <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(costByCur))}</div>
         <div class="ptg-t ptg-first ptg-net">Net after costs</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(kept,costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(kept,costByCur)))}</div>` : '';
+        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - usdOf(costByCur))}</div>` : '';
 
   /* Rendered as a CSS grid rather than a table. One column definition lives on
      the container and every row is a direct child of it, so the header, the type
@@ -3370,13 +3491,13 @@ function renderPayments(target){
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
         <div class="ptg-t ptg-first">Gross Sales</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
-        <div class="ptg-t usd">$${fmt(usdOf(grand))}</div>
+        <div class="ptg-t usd">$${fmt(usdWhole(grand))}</div>
 
         ${/* Two things come off the gross: the groups' money and our costs.
               Both read as what they are — amounts taken away. */''}
         ${conBody ? `<div class="ptg-t ptg-first ptg-con ptg-sub contog" data-act="contog">▸ Consignment</div>
         ${curs.map(c=>`<div class="ptg-t ptg-con ptg-sub">${minus(conGrand,c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-con ptg-sub">−$${fmt(usdOf(conGrand))}</div>
+        <div class="ptg-t usd ptg-con ptg-sub">−$${fmt(usdCon(conGrand))}</div>
         <div class="con-rows" style="display:none;grid-column:1/-1">
           <div class="ptg ptg-inner" style="grid-template-columns:${template}">${conBody}${conCostRow}</div></div>` : ''}
 
@@ -3386,7 +3507,7 @@ function renderPayments(target){
 
         <div class="ptg-t ptg-first ptg-net">Net Sales</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(netOf(grand,conGrand),costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdOf(netOf(netOf(grand,conGrand),costByCur)))}</div>
+        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - usdOf(costByCur))}</div>
       </div>
     </div>`;
 }
@@ -3422,6 +3543,43 @@ function totalLabel(x){ const p=totalParts(x); return p.length?p.join(' + '):'�
 /* opts.showOwed — in the Pending Payments panel the headline figure must be the
    money still outstanding, not the value of the sale. Showing the total there
    is what made a 5 € balance look like it had gone missing behind a 35 € sale. */
+/* A payment that arrives as dollars rather than as notes in a box: anything
+   that is not cash. Those are the ones worth recording a received amount for. */
+function digitalSale(x){
+  return legs(x).some(l=>l.type && l.type!=='Cash' && l.type!=='Gift' && l.amt);
+}
+
+/** Enter, change or clear the dollars actually received for a sale. */
+function usdActualModal(saleId){
+  const x=(STATE.sales||[]).find(v=>v.saleId===saleId); if(!x) return;
+  const cur = hasUsdActual(x) ? String(Number(x.usdActual)) : '';
+  const est = legs(x).reduce((t,l)=>t + ((l.type && l.type!=='Gift' && l.amt) ? toUSD(l.amt,l.cur) : 0), 0);
+  openModal(`
+    ${mHead('Dollars received')}
+    <div class="m-body">
+      <div class="hint">The sale stays ${esc(totalLabel(x))} in every total. This is only what
+        the account actually received, used in place of an estimate when dollars are worked out.</div>
+      <div class="field"><label>Dollars received</label>
+        <input id="uaVal" type="number" step="0.01" min="0" inputmode="decimal" value="${esc(cur)}"
+          placeholder="${fmt(est)}"></div>
+      <div class="muted-note">At today's rate this would be about $${fmt(est)}. Leave it empty to go back
+        to using that estimate.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="uaSave">Save</button>
+    </div>`);
+  $('#uaSave').addEventListener('click',()=>{
+    const raw=$('#uaVal').value.trim();
+    const usd = raw==='' ? '' : Math.round((Number(raw)||0)*100)/100;
+    commit({action:'setUsdActual', saleId, usd},
+      st=>{ const t=(st.sales||[]).find(v=>v.saleId===saleId); if(t) t.usdActual = usd; },
+      raw==='' ? 'Back to the estimate' : 'Recorded');
+    closeModal();
+  });
+}
+
 function logItemHTML(x, opts){
   opts = opts || {};
   const pending=!isPaid(x);
@@ -3496,6 +3654,8 @@ function logItemHTML(x, opts){
   // Money we owe back, shown wherever the sale appears.
   const owedBack = changeOwed(x);
   if(owedBack>0) bits.push(`<span class="badge chg">${cashFmt(owedBack, changeCur(x))} change owed</span>`);
+  // What actually arrived, beside the sale's own figure.
+  if(hasUsdActual(x)) bits.push(`<span class="usd-actual">($${fmt(Number(x.usdActual))} received)</span>`);
 
   const r2=[];
   if(needsRow2){
@@ -3521,6 +3681,16 @@ function logItemHTML(x, opts){
     if(x.phone) det.push(['Phone', waLink(x.phone)]);
   }
   if(!isDon && !partial) det.push(['Paid with', esc(payLabel(x))]);
+  /* Money that arrives already converted — a transfer, a card settlement — lands
+     as dollars, minus fees. Entering what actually arrived keeps the tour's
+     dollar figure honest while the sale itself still counts in the currency it
+     was made in. */
+  if(!x._bundle && digitalSale(x)){
+    det.push(['Dollars received',
+      hasUsdActual(x)
+        ? `$${fmt(Number(x.usdActual))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Change</button>`
+        : `<button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Enter what arrived</button>`]);
+  }
   if(pending){
     if(partial) det.push(['Already paid', esc(payLabel(x))]);
     det.push([showOwed?'Sale total':'Still to collect',
@@ -4738,6 +4908,41 @@ function isClosedHere(){
        : CUR_LEVEL==='region' ? !!regionClosure(CUR_REGION) : false;
 }
 
+/* What has to be true before a place is closed.
+
+   Closing is the last moment anyone looks at these things; afterwards the
+   discrepancies are someone's memory. Each is ticked deliberately, and the
+   close button stays out of reach until they all are. */
+const CLOSE_CHECKS = {
+  event: [
+    'Do all collections recorded match book sales?',
+    'Does cash in hand match cash on record?',
+    'Have all digital payment totals been verified?',
+    'Has all physical cash been handed to the regional coordinator?',
+    'Have all costs been logged?',
+    'Do we know the destination for all books leaving the event?',
+    'Has that destination been logged in the system?'
+  ],
+  region: [
+    'Does the current stock listed in the warehouse match the physical inventory?',
+    'Has all physical cash been handed to the global coordinator?',
+    'Have all costs been logged?',
+    'Has all consignment cash/card payment been delivered?',
+    'Do we know the destination for all books left in this region?',
+    'Has that destination been logged in the system?'
+  ]
+};
+function closeChecklist(kind){
+  const list = CLOSE_CHECKS[kind] || [];
+  return `
+    <div class="cash-sub">Before closing</div>
+    <div class="cl-checks" id="clChecks">
+      ${list.map((q,i)=>`<label class="cl-check"><input type="checkbox" class="cl-q" data-i="${i}">
+        <span>${esc(q)}</span></label>`).join('')}
+    </div>
+    <div class="cl-checkleft" id="clLeft"></div>`;
+}
+
 function closeModalFor(kind){
   const isEvent = kind==='event';
   const id = isEvent ? CUR_LOC : CUR_REGION;
@@ -4778,13 +4983,14 @@ function closeModalFor(kind){
         You can still close it — it will be marked <b>pending closure</b> until those are settled.</div>` : ''}
       <div id="clRows">${body}</div>
       <div id="clSummary" class="cl-sum"></div>
+      ${closeChecklist(kind)}
       <div class="field"><label>Note (optional)</label>
         <input id="clNote" type="text" placeholder="e.g. counted with Tulasi, 2 copies water damaged"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-danger" id="clGo">Close ${isEvent?'event':'region'}</button>
+      <button class="btn btn-danger" id="clGo" disabled>Close ${isEvent?'event':'region'}</button>
     </div>`, true);
 
   function recount(){
@@ -4807,6 +5013,19 @@ function closeModalFor(kind){
   }
   $('#clRows').addEventListener('input',e=>{ if(e.target.closest('.cl-in')) recount(); });
   recount();
+
+  // The close button waits for the checklist.
+  function checksDone(){
+    const qs=[...document.querySelectorAll('#modal .cl-q')];
+    const left=qs.filter(q=>!q.checked).length;
+    const btn=$('#clGo'); if(btn) btn.disabled = left>0;
+    const note=$('#clLeft');
+    if(note) note.textContent = left ? `${left} still to confirm.` : 'All confirmed.';
+    if(note) note.className = 'cl-checkleft' + (left?'':' ok');
+  }
+  const cbox=$('#clChecks');
+  if(cbox) cbox.addEventListener('change', checksDone);
+  checksDone();
 
   $('#clGo').addEventListener('click',()=>{
     const counts={};
@@ -5072,7 +5291,21 @@ function costsModal(editId, presetPartner){
 
    The text is swapped after each redraw rather than at every call site, so no
    part of the app has to know about it. */
-const EDIT_SEL = '.hint, .cash-sub, .cash-lede, .muted-note, .sec-h2, .inv-h2, .m-head h3, label, .cash-empty, .chg-note, .how-to b, .how-to .how-rest';
+/* Everything the editor can reach. Text-carrying elements only: a pencil on a
+   button would fire the button when you tapped it, so button wording is left
+   for a later pass. */
+const EDIT_SEL = [
+  '.hint', '.cash-sub', '.cash-lede', '.muted-note', '.sec-h2', '.inv-h2', '.m-head h3',
+  'label', '.cash-empty', '.chg-note', '.how-to b', '.how-to .how-rest',
+  '.adm-lbl',            // the admin column names
+  '.ptg-h',              // payment table headings
+  '.bulk-head span',     // stock dialog column names
+  '.empty', '.lf-empty', '.sbr-book',   // empty-state messages
+  '.warn',               // warnings before closing
+  '.cl-check span',      // the closing checklist questions
+  '.df-stale',           // the folder map's freshness note
+  '.stat-lbl', '.stat-label', '.wo-lbl', '.con-grp-h', '.adm-note'
+].join(', ');
 let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
 
@@ -5171,7 +5404,14 @@ function applyLabels(root){
        around a checkbox keeps its plain text instead of losing the checkbox. */
     const plainOnly = [...el.childNodes].every(n=>
       n.nodeType===3 || (n.nodeType===1 && n.classList && n.classList.contains('pencil')));
+    if(want==='\u0000hide'){                     // you asked for this one to go
+      el.style.display='none'; el.dataset.rewritten='1'; return;
+    }
+    if(el.dataset.rewritten==='1') el.style.display='';
     if(want){
+      /* Your capitals, not the app's: a heading styled in capitals shows your
+         words exactly as typed once you have rewritten it. */
+      el.style.textTransform='none';
       if(plainOnly && /\*\*|\n/.test(want)) el.innerHTML = labelHtml(want);
       else if(first){
         // No room for formatting here: show the words without their markers.
@@ -5180,6 +5420,7 @@ function applyLabels(root){
       }
     }
     if(!want && el.dataset.rewritten==='1'){
+      el.style.textTransform=''; el.style.display='';     // back to the app's own styling
       if(plainOnly) el.innerHTML = esc(orig); else if(first) first.textContent = orig;
     }
     el.dataset.rewritten = want ? '1' : '';
@@ -5204,9 +5445,11 @@ function editLabelModal(key){
       <div class="hint">${esc(at)} — currently reads:</div>
       <div class="lbl-orig">${esc(words)}</div>
       <div class="field"><label>Your wording</label>
-        <textarea id="lblText" rows="4" placeholder="Leave empty to use the original">${esc(cur)}</textarea>
-        <div class="muted-note">Put <b>**stars**</b> around words to make them <b>bold</b>, and press Enter
-          for a new line.</div></div>
+        <textarea id="lblText" rows="4" placeholder="Leave empty to use the original">${esc(cur==='\u0000hide'?'':cur)}</textarea>
+        <div class="muted-note">Put <b>**stars**</b> around words to make them <b>bold</b>, press Enter for a
+          new line, and type capitals exactly as you want them.</div></div>
+      <label class="radio-row"><input type="checkbox" id="lblHide" ${cur==='\u0000hide'?'checked':''}>
+        <span><b>Don't show this at all</b><br><span class="muted-note">Takes the text off the screen.</span></span></label>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -5214,7 +5457,8 @@ function editLabelModal(key){
       <button class="btn btn-primary" id="lblSave">Save</button>
     </div>`);
   $('#lblSave').addEventListener('click',()=>{
-    const text = $('#lblText').value.trim();
+    // Hidden is stored as its own mark, so it can always be brought back.
+    const text = (($('#lblHide')||{}).checked) ? '\u0000hide' : $('#lblText').value.trim();
     const saveKey = normLabelKey(key);          // the form it will be looked up by
     commit({action:'saveLabel', key:saveKey, text},
       st=>{ st.labels = st.labels || {}; if(text) st.labels[saveKey]=text; else delete st.labels[saveKey]; },
@@ -5362,6 +5606,8 @@ function renderDriveMap(map, note){
     <div class="cash-sub">Seasons</div>
     ${seasons || '<div class="cash-empty">No seasons yet.</div>'}
     <div class="err" id="modalErr"></div>`;
+  // Drawn after the dialog opened, so its wording needs its pencils adding now.
+  try{ applyLabels($('#modal')); }catch(e){}
 }
 
 /** Ask for a folder link, save it, and redraw the map. */
@@ -6564,9 +6810,11 @@ function cashModal(){
         <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
       </div>
       <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float, deposit"></div>
-      <button class="btn btn-primary" id="cmGo">Record move</button>
       <button class="btn btn-plum cash-moveall" id="cmGoAll">↦ Move ALL cash (every currency) From → To</button>
-      <button class="btn btn-ghost cash-moveall" data-act="chgnew">↤ Withdraw change</button>
+      <button class="btn btn-primary" id="cmGo">Record move</button>
+
+      <div class="cash-sub">Change</div>
+      <button class="btn btn-ghost cash-moveall chg-btn" data-act="chgnew">↤ Withdraw change</button>
 
       ${(function(){
         /* Change that is out, listed the way change owed is listed in the sales
@@ -8118,8 +8366,27 @@ function partnerPayModal(id, method){
       .map(i=>({cur:i.dataset.cur, amt:Number(i.value)||0})).filter(x=>x.amt>0);
     if(!rows.length){ $('#modalErr').textContent='Enter an amount.'; return; }
     const note=$('#conNote').value.trim();
-    if(await commitSync({action:'partnerPayout', partnerId:id, items:rows,
-        method:mth, note}, 'Recorded')) partnersModal();
+    /* Handing money over is recorded here at once and saved in the background,
+       like a sale — it used to wait for the whole tour's data to come back
+       before the dialog would even close. */
+    const payId = 'P'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    commit({action:'partnerPayout', payoutId:payId, partnerId:id, items:rows, method:mth, note},
+      st=>{
+        const pt=(st.partners||[]).find(x=>x.partnerId===id);
+        if(pt){
+          rows.forEach(r=>{
+            const cur=r.cur, amt=Number(r.amt)||0;
+            pt.paid = pt.paid||{}; pt.paid[cur]=(pt.paid[cur]||0)+amt;
+            pt.owed = pt.owed||{}; pt.owed[cur]=(pt.owed[cur]||0)-amt;
+            if(mth && pt.byMethod && pt.byMethod[mth]){
+              const mm=pt.byMethod[mth];
+              mm.paid=mm.paid||{}; mm.paid[cur]=(mm.paid[cur]||0)+amt;
+              mm.owed=mm.owed||{}; mm.owed[cur]=(mm.owed[cur]||0)-amt;
+            }
+          });
+        }
+      }, 'Recorded');
+    partnersModal();
   });
 }
 
@@ -9167,7 +9434,13 @@ document.addEventListener('click',e=>{
   if(a==='editlabel'){ editLabelModal(t.dataset.key); return; }
   if(a==='hidebooks'){ hideBooksModal(); return; }
   if(a==='hiddenpre'){ hiddenPreorderModal(); return; }
-  if(a==='hbpre'){ closeModal(); saleModal({bookId:t.dataset.id, isPreorder:true, loc:CUR_LOC}); return; }
+  if(a==='usdactual'){ usdActualModal(t.dataset.id); return; }
+  if(a==='hbpre'){
+    /* Ordering a hidden title puts it back on the shelf: someone here wants it,
+       so hiding it no longer reflects what is being sold. */
+    unhideTitle(t.dataset.id);
+    closeModal(); saleModal({bookId:t.dataset.id, isPreorder:true, loc:CUR_LOC}); return;
+  }
   if(a==='contog'){
     // The consignment detail sits behind its total until asked for.
     const box = t.parentNode.querySelector('.con-rows');
