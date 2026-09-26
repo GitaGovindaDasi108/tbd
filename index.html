@@ -142,6 +142,9 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .cl-name.other{color:var(--teal)}
 .cl-loc{display:block;font-size:10.5px;color:var(--muted);font-weight:400}
 .cl-exp{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.cl-head{font-size:10px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);border-bottom:1px solid var(--line-d)}
+.cl-head .cl-exp{font-size:10px}
+.cl-head .cl-hn{text-align:center;white-space:nowrap}
 .cl-in{width:78px;border:1px solid var(--line-d);border-radius:7px;padding:6px 8px;font-size:13px;text-align:right}
 .cl-diff{font-size:12px;font-weight:800;text-align:right}
 .cl-diff.ok{color:var(--green)} .cl-diff.bad{color:var(--clay)}
@@ -294,6 +297,9 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .rp-auto{background:#F4F8F4;color:#2E6B4F}
 .rp-local{color:var(--saffron-d,#8A4A12)}
 .rp-loc-tag{font-size:8.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;opacity:.75}
+.rp-cell{display:flex;flex-direction:column;gap:2px;align-items:stretch}
+.rp-cur-m{font-size:9.5px;font-weight:800;letter-spacing:.3px;color:var(--muted);text-align:center;white-space:nowrap}
+.rp-cur-m.rp-local{color:var(--saffron-d,#8A4A12)}
 .rp{width:82px;border:1px solid var(--line-d);border-radius:7px;padding:6px 7px;font-size:12.5px}
 .muted-note{font-weight:400;color:var(--muted);font-size:11px}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -944,7 +950,17 @@ body.busy #busyBar{opacity:1}
 .transit-panel{border-color:#B9D2EC}
 .transit-panel > h2{background:linear-gradient(180deg,#E7F0FA,transparent);color:#2F6FB5;font-size:16px;padding:9px 14px}
 .transit-panel .sh-card{margin-bottom:0}
+.rq-panel{border-color:#C9B8E0}
+.rq-panel > h2{background:linear-gradient(180deg,#F1EBF8,transparent);color:#5B3F86;font-size:16px;padding:9px 14px}
+.rq-panel .sh-card{margin-bottom:0}
+.rq-note{font-size:12.5px;color:var(--ink);font-style:italic;margin-top:4px}
+.badge.rq{background:#F1EBF8;color:#5B3F86;border:1px solid #D5C6EA;margin-left:4px}
+.log-item.rq-log{display:block;background:#F7F3FB;border:1px dashed #C9B8E0;border-radius:10px;padding:8px 11px}
+.rq-log-t{font-size:13px;color:#4A3470}
+.rq-log-m{font-size:11.5px;color:var(--muted);margin-top:2px}
 .bottom-panels .body{padding:10px 12px}
+.build-warn{background:var(--clay-l);border:1.5px solid #E7A89E;color:var(--clay);border-radius:12px;
+  padding:11px 14px;font-size:13.5px;line-height:1.5;margin-bottom:12px}
 .bottom-panels .log{gap:5px}
 
 /* ---------- Modal ---------- */
@@ -1079,6 +1095,10 @@ body.busy #busyBar{opacity:1}
 /* An empty warning slot takes no room, so the spacing stays even. */
 .sp-group > div:empty{display:none}
 .opt.on{border-color:var(--saffron);background:#FFF3E4}
+/* The step under the choices: its field and its button, evenly spaced. */
+#anStep{display:flex;flex-direction:column;gap:14px}
+#anStep:empty{display:none}
+#anStep > .btn{align-self:flex-start}
 
 /* ---------- Transfer Existing Stock ---------- */
 /* The table scrolls sideways inside itself when there are many sub-warehouse
@@ -1143,6 +1163,12 @@ body.busy #busyBar{opacity:1}
 .al-row.undone .al-text{text-decoration:line-through;color:var(--muted)}
 .al-undone{color:var(--clay);font-weight:700}
 .al-act .btn{white-space:nowrap}
+.al-tog{background:none;border:none;padding:4px 0 0;color:var(--saffron-d);font-weight:700;font-size:12px;cursor:pointer;box-shadow:none}
+.al-parts{margin-top:5px;border-left:2px solid var(--line-d);padding-left:9px;display:flex;flex-direction:column;gap:4px}
+.al-parts[hidden]{display:none}
+.al-part{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12.5px;color:var(--ink)}
+.al-part.undone .al-part-t{text-decoration:line-through;color:var(--muted)}
+.al-part-t{min-width:0;overflow-wrap:anywhere}
 
 /* toast */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
@@ -1179,6 +1205,33 @@ body.busy #busyBar{opacity:1}
   .li-row{flex-wrap:wrap;row-gap:4px}
   .li-btns{width:100%;justify-content:flex-end}
 }
+/* ---------- List view: every card grid as compact rows ---------- */
+body.list-view .inv-grid{grid-template-columns:1fr;gap:6px}
+body.list-view .book{flex-direction:row;align-items:center;min-height:0;padding:8px 10px;gap:12px}
+body.list-view .book .top{order:1;flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(120px,1fr) auto;
+  align-items:center;gap:14px}
+body.list-view .book .qtyrow{margin-top:0;gap:16px;justify-content:flex-end}
+body.list-view .book .qty-label{white-space:nowrap}
+body.list-view .book .qtyrow>div{white-space:nowrap}
+body.list-view .book .qtyrow .region{white-space:normal}
+/* A red 0 and a greyed-out Sell already say it in a row. */
+body.list-view .book .sold-tag{display:none}
+body.list-view .book .bk-btns{order:3;margin-top:0;flex:0 0 196px}
+body.list-view .book .bk-btns>button{white-space:nowrap}
+body.list-view .book .bk-btns>button{min-height:34px;padding:6px 8px}
+body.list-view .stat-grid{grid-template-columns:1fr;gap:5px}
+body.list-view .stat-card{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;
+  min-height:0;padding:7px 11px;column-gap:14px;row-gap:2px}
+body.list-view .stat-card .sc-name{flex:1 1 180px}
+body.list-view .mini-grid{grid-template-columns:1fr;gap:4px}
+body.list-view .mini-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+body.list-view .mc-name{min-height:0}
+@media (max-width:560px){
+  body.list-view .book{flex-wrap:wrap}
+  body.list-view .book .top{grid-template-columns:1fr;gap:4px;flex-basis:100%}
+  body.list-view .book .bk-btns{flex:1 1 100%}
+}
+
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
 </style>
 </head>
@@ -1199,9 +1252,10 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b183</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b184</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
+    <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
     <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
@@ -1283,6 +1337,10 @@ body.busy #busyBar{opacity:1}
       <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
     </section>
+    <section class="panel rq-panel" id="remotePanel" style="display:none">
+      <h2 class="sec-h2">Pre-Orders to Fulfil for Other Regions</h2>
+      <div class="body"><div class="log" id="remoteList"></div></div>
+    </section>
     <section class="panel transit-panel" id="transitPanel" style="display:none">
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
@@ -1337,7 +1395,8 @@ const WAREHOUSE = 'WAREHOUSE';
 /* Must match Code.gs. Older records used the previous wording. */
 const DSRC_WAREHOUSE = 'Regional warehouse';
 const DSRC_OUTSIDE   = 'Outside the region';
-const fromOutside = s => s.dsource===DSRC_OUTSIDE || s.dsource==='Other warehouse';
+const DSRC_REMOTE = 'Another region';
+const fromOutside = s => s.dsource===DSRC_OUTSIDE || s.dsource==='Other warehouse' || s.dsource===DSRC_REMOTE;
 /* A delivered pre-order is filed as a SALE; only the delivery stamps dsource,
    so that is what marks a sale as having started life as a pre-order. */
 const wasPreorderSale = x => x.type==='SALE' && !!x.dsource;
@@ -2647,12 +2706,42 @@ function addTooltipsToClipped(){
   });
 }
 
+/* If the Google side is running a different version from this page, new
+   features fail with "Unknown action" — which is what a missed Apps Script
+   deploy looks like. Say so plainly, with what to do. */
+function checkServerBuild(){
+  let bar = document.getElementById('buildWarn');
+  const page = ($('#bld')||{}).textContent || '';
+  const server = STATE && STATE.serverBuild;
+  const off = isAdmin() && server && page && server!==page;
+  if(!off){ if(bar) bar.remove(); return; }
+  if(!bar){
+    bar = document.createElement('div'); bar.id = 'buildWarn'; bar.className = 'build-warn no-edit';
+    const main = document.querySelector('main'); main.insertBefore(bar, main.firstChild);
+  }
+  bar.innerHTML = `<b>The Google Sheets side is running ${esc(server)}, but this page is ${esc(page)}.</b>
+    Some changes will be refused until it is updated: in Apps Script, paste the latest Code.gs, Save, then
+    <b>Deploy → Manage deployments → ✏️ → Version: New version → Deploy</b>.`;
+}
+
+/* Cards or a compact list, for every card view at once. Only the layout changes —
+   the same numbers and the same buttons — and the choice is kept on this device. */
+function setViewMode(mode){
+  const list = mode==='list';
+  document.body.classList.toggle('list-view', list);
+  const b = document.getElementById('viewBtn');
+  if(b) b.textContent = list ? '▦ Card view' : '☰ List view';
+  try{ localStorage.setItem('tbs_view', list ? 'list' : 'cards'); }catch(e){}
+}
+try{ if(localStorage.getItem('tbs_view')==='list') setTimeout(()=>setViewMode('list'), 0); }catch(e){}
+
 function renderAll(){
   if(!STATE) return;
   // Whatever wording you have rewritten is put in place after every redraw.
   setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 0);
-  /* The server still reports its build in the data it sends, so it can be
-     checked when something looks wrong — it is simply not shown in the bar. */
+  /* The server reports its build in the data it sends. Normally unseen; when it
+     differs from this page, a banner says the Apps Script needs deploying. */
+  try{ checkServerBuild(); }catch(e){}
   // The title names where you actually are, not just the warehouse.
   $('#whTitle').textContent = ': ' + scopeLabel();
   /* And which season — the same region can exist in more than one (Croatia in
@@ -2854,6 +2943,7 @@ function renderAdmin(){
          <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
          <button class="btn adm-c3-3" data-act="shipments">🚚 Books in transit</button>
          <button class="btn adm-c3-4" data-act="activity">🗒 Activity Log</button>
+         <button class="btn adm-c3-5" data-act="fulfilother">📬 Fulfil a pre-order for another region</button>
        </div>` : ''}</div>`;
     return;
   }
@@ -2906,6 +2996,7 @@ function renderAdmin(){
   /* One way to add stock, from anywhere: the dialog asks where the books are
      going, so it no longer matters where you are standing. */
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add Stock</button>`);
+  if(!season) cols[2].push(`<button class="btn" data-act="fulfilother">📬 Fulfil a pre-order for another region</button>`);
   /* Where the books came from, who is holding them and whose they are is the
      owner's business. A regional coordinator sells and moves stock; they do not
      need the tour's logistics or anyone else's money. */
@@ -3734,6 +3825,7 @@ function usdActualModal(saleId){
 
 function logItemHTML(x, opts){
   opts = opts || {};
+  if(x._remoteNote) return remoteNoteHTML(x);
   const pending=!isPaid(x);
   const isDon=x.type==='DONATION';
   const awaiting = (x.type==='PREORDER' && !x.delivered) || (x._bundle && x._preCount>0);
@@ -3764,6 +3856,7 @@ function logItemHTML(x, opts){
   const badge = x.type==='SALE'
       ? (wasPreorder?'<span class="badge filled">Pre-order filled</span>':'')
     : x.type==='PREORDER'?'<span class="badge pre">Pre-order</span>'
+      + (x.fulfilBy ? `<span class="badge rq">For ${esc(anyRegionName(x.fulfilBy))}</span>` : '')
     : '';
   const cat = '';
   // The row's own kind, used to tint it below.
@@ -3857,9 +3950,14 @@ function logItemHTML(x, opts){
   det.push(['Sold at', esc(locNameFull(x.location))]);
   if(conOwner) det.push(['Belongs to', esc(conOwner.name) + ' (consignment)']);
   if(x.soldBy) det.push(['Recorded by', esc(x.soldBy)]);
+  if(x.type==='PREORDER' && x.fulfilBy){
+    det.push(['Delivery', 'Requested from '+esc(anyRegionName(x.fulfilBy))
+      + ` <button class="btn btn-ghost btn-sm" data-act="rqwithdraw" data-id="${esc(x.saleId)}">Withdraw request</button>`]);
+  }
   if(wasPreorder){
     det.push(['Pre-order', 'Fulfilled — copy came from '
-      + (fromOutside(x) ? 'outside the region'
+      + (x.dsource===DSRC_REMOTE ? esc(anyRegionName(x.fulfilBy)) + ' (another region)'
+         : fromOutside(x) ? 'outside the region'
                         : esc(String(STATE.warehouseName||'the')+' warehouse'))]);
   }
 
@@ -4066,7 +4164,18 @@ function groupBundles(list){
 
 function renderLog(){
   const all=sortedSales(groupBundles(scopedSales()));
-  const s=all.filter(passesLogFilter);
+  let s=all.filter(passesLogFilter);
+  /* Pre-orders fulfilled here for another region: a note in the log, never a
+     sale, so nothing is counted. Shown when no filter is narrowing the list. */
+  if(!logFilterCount()){
+    const notes = remoteNotesHere().map(x=>Object.assign({}, x, {_remoteNote:true, ts:x.fulfilAt||x.ts}));
+    if(notes.length){
+      const t = v => new Date(v.ts).getTime()||0;
+      s = LOG_SORT.key==='time'
+        ? s.concat(notes).sort((a,b)=> LOG_SORT.dir<0 ? t(b)-t(a) : t(a)-t(b))
+        : s.concat(notes);
+    }
+  }
   // With a filter on, show "shown of total" so nothing looks mysteriously missing.
   $('#logCount').textContent = logFilterCount()
     ? `(${s.length} of ${all.length})`
@@ -4098,12 +4207,16 @@ function renderBottom(){
   const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow'), chg=$('#changePanel');
   // Books on the road: shown in full, to be received from right here.
   const road = transitHere();
+  // Requests from other regions to deliver their pre-orders from here.
+  const asks = remoteHere();
+  $('#remotePanel').style.display = asks.length?'':'none';
+  if(asks.length) $('#remoteList').innerHTML = asks.map(remoteCardHTML).join('');
   $('#transitPanel').style.display = road.length?'':'none';
   if(road.length) $('#transitList').innerHTML = road.map(r=>shipCardHTML(r.x, r.incoming)).join('');
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
   chg.style.display = change.length?'':'none';
-  const showing = [owed.length, unpaid.length, change.length, road.length].filter(Boolean).length;
+  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
   // These panels exist to be acted on, so they show their details up front.
@@ -4302,6 +4415,14 @@ function saleModal(opts){
           <select id="chgcur">${curOptions()}</select>
         </div></div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
+      ${(isPre && !edit) ? `<div class="field"><label>Who will deliver this book?</label>
+        <select id="fulSel">
+          <option value="">This region will deliver it</option>
+          <option value="other">Another region will fulfil it</option>
+        </select>
+        <div id="fulPick" class="sp-group" hidden>${placePickerHTML('fulReg')}
+          <div class="hint">That region sees a request — with the name, number and comments — and delivers
+            it from their own stock. The sale stays here.</div></div></div>` : ''}
       <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
       ${edit ? `<div class="field"><label>Where it was sold</label>
@@ -4320,6 +4441,9 @@ function saleModal(opts){
 
   const ptype=$('#ptype'), pcur=$('#pcur'), pamt=$('#pamt');
   const basePrice = c => priceFor(book,c);
+  // Pre-order handed to another region to deliver.
+  const fulPick = $('#fulSel') ? bindPlacePicker('fulReg', regionPlacesAll(regionOfLoc(loc)), '', ()=>{}) : null;
+  if($('#fulSel')) $('#fulSel').addEventListener('change', ()=>{ $('#fulPick').hidden = $('#fulSel').value!=='other'; });
 
   function syncSingleAmount(){
     if(ptype.value==='Gift'){pamt.value=0;pamt.disabled=true;}
@@ -4446,13 +4570,16 @@ function saleModal(opts){
         moved ? 'Moved to '+locName(newLoc) : 'Sale updated');
     }else{
       const id=newSaleId();
+      const other = $('#fulSel') && $('#fulSel').value==='other';
+      if(other && !(fulPick && fulPick.value)){ $('#modalErr').textContent='Choose the region that will fulfil it.'; return; }
+      const fulfilBy = other ? fulPick.value.regionId : '';
       commit({action:'sell',saleId:id,location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
-              pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true},
+              pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy},
         st=>{
           st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,
             type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,
             pending,paid:!pending&&dueamt<=0,dueamt,duecur,changeamt,changecur,
-            delivered:!isPre,name,phone,comments}, legFields(L)));
+            delivered:!isPre,name,phone,comments,fulfilBy}, legFields(L)));
           if(!isPre) invAdd(st,loc,opts.bookId,-1);
         },
         isPre?'Pre-order recorded':'Sale recorded');
@@ -5672,12 +5799,28 @@ function applyLabels(root){
 }
 
 /** Rewrite one piece of wording. */
+/* The dialog you were in when you tapped a pencil, set aside whole — its own
+   elements, so everything typed and every button still works — and put back
+   when you finish, instead of dropping you on the main screen. */
+let LABEL_BACK = null;
+function labelEditBack(){
+  const b = LABEL_BACK; LABEL_BACK = null;
+  if(!b){ closeModal(); renderAll(); return; }
+  const m = $('#modal');
+  m.className = b.cls; m.replaceChildren(...b.nodes);
+  $('#overlay').classList.add('show');
+  try{ applyLabels(m); }catch(e){}
+  renderAll();
+}
 function editLabelModal(key){
   const labels = STATE.labels||{};
   const cur = labels[key] || labels[normLabelKey(key)] || '';
   const at = key.split(' › ')[0], words = key.split(' › ').slice(1).join(' › ');
+  const m0 = $('#modal');
+  LABEL_BACK = $('#overlay').classList.contains('show')
+    ? { cls: m0.className, nodes: [...m0.childNodes] } : null;
   openModal(`
-    ${mHead('Rewrite these words')}
+    <h3>Rewrite these words<button class="x" onclick="labelEditBack()" aria-label="Back">×</button></h3>
     <div class="m-body no-edit">
       <div class="hint">${esc(at)} — currently reads:</div>
       <div class="lbl-orig">${esc(words)}</div>
@@ -5690,7 +5833,7 @@ function editLabelModal(key){
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot no-edit">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-ghost" onclick="labelEditBack()">Cancel</button>
       <button class="btn btn-primary" id="lblSave">Save</button>
     </div>`);
   $('#lblSave').addEventListener('click',()=>{
@@ -5699,9 +5842,8 @@ function editLabelModal(key){
     const saveKey = normLabelKey(key);          // the form it will be looked up by
     commit({action:'saveLabel', key:saveKey, text},
       st=>{ st.labels = st.labels || {}; if(text) st.labels[saveKey]=text; else delete st.labels[saveKey]; },
-      text ? 'Wording saved' : 'Original wording restored');
-    closeModal();
-    renderAll();
+      text ? 'Wording saved' : 'Original wording restored', {keepOpen:true});
+    labelEditBack();                      // back to where the pencil was tapped
   });
 }
 
@@ -7355,6 +7497,11 @@ function deliverModal(id, bundle){
         ${candidates.filter(c=>!covers(c.id) && Object.keys(need).some(bid=>invQty(c.id,bid)>0))
           .map(c=>`<button class="opt" disabled>
             <b>${esc(c.name)}</b><span>Has some, but not enough to cover all of them.</span></button>`).join('')}
+        ${bundle ? '' : `<button class="opt" data-ask="1">
+          <b>Another region will fulfil it</b>
+          <span>Sends them a request with the name, number and comments. They deliver it from their own stock;
+            the sale stays here.</span>
+        </button>`}
         <button class="opt" data-src="outside">
           <b>From outside the tour</b>
           <span>Sourced from beyond this system entirely. Nothing comes off a shelf, and the
@@ -7369,6 +7516,7 @@ function deliverModal(id, bundle){
 
   $('#modal').querySelectorAll('.opt').forEach(btn=>{
     btn.addEventListener('click',()=>{
+      if(btn.dataset.ask){ askRegionModal(id); return; }
       const src = btn.dataset.src;
       if(!src) return;
       const fromStock = src!=='outside';
@@ -7512,10 +7660,16 @@ function regionModal(edit, after){
   };
 
   function priceRows(curList){
+    const many = curList.length > 3;
+    // One price box; with many currencies it carries its own label above it.
+    const box = (c, i, attrs, value) => many
+      ? `<label class="rp-cell"><span class="rp-cur-m ${i===0?'rp-local':''}">${esc(CUR_SYM[c]||'')} ${esc(c)}${i===0?' · local':''}</span>
+           <input ${attrs} type="number" step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(value||'')}"></label>`
+      : `<input ${attrs} type="number" step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(value||'')}">`;
     // Header naming each currency column, so it's never a guess which box is which.
     /* The first currency is the local one and drives the others, so it is
        marked — otherwise the rule is invisible and surprising. */
-    const head = `<div class="rp-row rp-head"><div class="rp-name"></div>
+    const head = many ? '' : `<div class="rp-row rp-head"><div class="rp-name"></div>
       <div class="rp-cells">${curList.map((c,i)=>
         `<span class="rp-cur ${i===0?'rp-local':''}">${esc(CUR_SYM[c]||'')} ${esc(c)}${
           i===0?'<br><span class="rp-loc-tag">local</span>':''}</span>`).join('')}</div></div>`;
@@ -7523,15 +7677,13 @@ function regionModal(edit, after){
     // Most regions price every big book the same, so fill them in one go.
     const fill = (label,cat)=>`<div class="rp-row rp-fill"><div class="rp-name">${label}
         <span class="muted-note">fill all</span></div>
-      <div class="rp-cells">${curList.map(c=>
-        `<input class="rp rp-all" data-cat="${cat}" data-cur="${esc(c)}" type="number"
-           step="0.01" inputmode="decimal" placeholder="${esc(c)}">`).join('')}</div></div>`;
+      <div class="rp-cells">${curList.map((c,i)=>
+        box(c, i, `class="rp rp-all" data-cat="${cat}" data-cur="${esc(c)}"`, '')).join('')}</div></div>`;
 
     const rowsFor = list => list.map(b=>{
       const on = !isEdit || !edit.books || !edit.books.length || edit.books.includes(b.id);
-      const cells=curList.map(c=>
-        `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
-           step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
+      const cells=curList.map((c,i)=>
+        box(c, i, `class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}"`, priceOf(b.id,c))
       ).join('');
       return `<div class="rp-row bk-row ${on?'':'off'}" data-row="${esc(b.id)}">
                 <label class="rp-name ${isAotm(b)?'aotm':''}">
@@ -7724,6 +7876,8 @@ function regionModal(edit, after){
                 books:books?books.split(','):[],counts:{},closedAt:'',bookOrder,
                 seasonId:st.activeSeason, sort:(st.regions||[]).length}); },
         'Region created');
+      // A new region is where you want to be next.
+      goTo('region', regionId);
       // Came here from "Add something new": carry on where they left off.
       if(after) setTimeout(()=>after(regionId, whLoc), 0);
     }
@@ -7764,6 +7918,7 @@ function eventModal(edit, after){
       st=>{ (st.events=st.events||[]).push({eventId,name,regionId:CUR_REGION,closedAt:'',
               createdAt:new Date().toISOString()}); },
       'Event created');
+    goTo('event', eventId);                 // straight to the new event
     if(after) setTimeout(()=>after(eventId), 0);
   });
 }
@@ -7803,13 +7958,19 @@ function stockPlaces(){
   const out = [];
   if(!STATE || isSeller()) return out;
   const coord = !isAdmin();
+  /* Where you are comes first: this season at the top, and within it the region
+     you are standing in (or whose event you are at), then everything else. */
   const seasons = coord
     ? [{seasonId:STATE.activeSeason, name:STATE.seasonName}]
-    : (STATE.seasons||[]).filter(s=>!s.closedAt);
+    : (STATE.seasons||[]).filter(s=>!s.closedAt)
+        .map((s,i)=>({s,i})).sort((a,b)=>(b.s.seasonId===STATE.activeSeason)-(a.s.seasonId===STATE.activeSeason) || a.i-b.i)
+        .map(x=>x.s);
   seasons.forEach(s=>{
     const here = s.seasonId===STATE.activeSeason;
     const regs = (here ? regionsList() : (STATE.allRegions||[]).filter(r=>r.seasonId===s.seasonId))
-      .filter(r=>!r.closedAt);
+      .filter(r=>!r.closedAt)
+      .map((r,i)=>({r,i})).sort((a,b)=>(here && CUR_REGION ? (b.r.regionId===CUR_REGION)-(a.r.regionId===CUR_REGION) : 0) || a.i-b.i)
+      .map(x=>x.r);
     if(!regs.length) return;
     out.push({kind:'season', seasonId:s.seasonId, name:s.name||'Season'});
     regs.forEach(r=>{
@@ -9565,6 +9726,7 @@ function shipReceiveModal(id, fromPanel){
         stays recorded as still travelling, so a batch that came in pieces stays honest.</div>
       <div class="field"><label>Arriving at</label>
         <select id="rcTo">${dests.map(d=>`<option value="${esc(d.id)}" ${d.id===aim?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
+      ${books.some(r=>r.left>0) ? `<div class="cl-row cl-head"><div>Title</div><div class="cl-exp">Still coming</div><div class="cl-hn"># Arrived</div><div></div></div>` : ''}
       ${books.filter(r=>r.left>0).map(r=>`<div class="cl-row">
         <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}
           ${r.arrived?`<span class="cl-loc">${r.arrived} of ${r.sent} already arrived</span>`:''}</div>
@@ -10107,7 +10269,8 @@ function transferStockModal(opts){
     }
     if(travel==='travel' && (k==='region'||k==='season') && v('courier')!=='shipping' && !v('carrier'))
       return err('Who is bringing them? Enter the devotee’s name.');
-    const msg = (LEAVING_MSG[k] ? LEAVING_MSG[k]+'\n\n' : '') + COUNT_MSG + '\n\nAre you sure you have counted everything correctly?';
+    // The count reminder already came with "Transfer everything"; this is the last check.
+    const msg = (LEAVING_MSG[k] ? LEAVING_MSG[k]+'\n\n' : '') + 'Are you 108% sure you’ve counted everything correctly?';
     if(!confirm(msg)) return;
     err('');
     const season = f.seasonId, fromHere = f.seasonId===STATE.activeSeason, toHere = toCtxHere();
@@ -10177,6 +10340,7 @@ function transferStockModal(opts){
    are standing. Delete means undo — offered only where the undo is safe; an
    undone entry stays, crossed out, and the undo is itself recorded. */
 const ACT_CACHE = 'tbs_activity_' + (SHARE_KEY ? SHARE_KEY + '_' : '');
+const OPEN_ACT = new Set();          // entries whose lines are showing
 function activityCacheLoad(sid){ try{ return JSON.parse(localStorage.getItem(ACT_CACHE+sid) || 'null'); }catch(e){ return null; } }
 function activityCacheSave(sid, list){ try{ localStorage.setItem(ACT_CACHE+sid, JSON.stringify(list.slice(0,600))); }catch(e){} }
 
@@ -10233,13 +10397,26 @@ function activityModal(){
       const d = new Date(e.ts), dk = isNaN(d) ? '' : day(d);
       if(dk!==last){ h += `<div class="al-day">${esc(dk)}</div>`; last = dk; }
       const undone = !!e.undoneAt;
+      /* A change made of several lines (a transfer of many titles, say) is one
+         entry with its lines beneath: Delete on the entry undoes what is left of
+         it, and each line can be undone on its own. */
+      const parts = e.parts || [];
+      const someGone = parts.some(x=>x.undone);
+      const open = OPEN_ACT.has(e.id);
       h += `<div class="al-row${undone?' undone':''}">
         <div class="al-time">${isNaN(d)?'':esc(time(d))}</div>
         <div class="al-main"><div class="al-text">${esc(e.text)}</div>
           <div class="al-meta">${esc(e.who||'')}${undone
-            ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>` : ''}</div></div>
+            ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>`
+            : (someGone ? `${e.who?' · ':''}<span class="al-undone">Partly undone</span>` : '')}</div>
+          ${parts.length>1 ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length} lines</button>
+            <div class="al-parts" ${open?'':'hidden'}>${parts.map(x=>`<div class="al-part${x.undone?' undone':''}">
+              <span class="al-part-t">${esc(x.text)}</span>
+              ${x.undone ? '<span class="al-undone">Undone</span>'
+                : (e.canUndo && !undone ? `<button type="button" class="btn btn-danger btn-xs" data-alpart="${esc(x.id)}" data-entry="${esc(e.id)}">Delete</button>` : '')}
+            </div>`).join('')}</div>` : ''}</div>
         <div class="al-act">${(e.canUndo && !undone)
-          ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">Delete</button>` : ''}</div>
+          ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">${parts.length>1?'Delete all':'Delete'}</button>` : ''}</div>
       </div>`;
     });
     $('#alList').innerHTML = h || `<div class="cash-empty">${q ? 'Nothing matches that search.' : 'Nothing recorded here yet.'}</div>`;
@@ -10247,6 +10424,17 @@ function activityModal(){
   }
   $('#alSearch').addEventListener('input', draw);
   $('#alList').addEventListener('click', async e=>{
+    const tog = e.target.closest('[data-altog]');
+    if(tog){ const id = tog.dataset.altog; OPEN_ACT.has(id) ? OPEN_ACT.delete(id) : OPEN_ACT.add(id); draw(); return; }
+    const pb = e.target.closest('[data-alpart]');
+    if(pb){
+      const entry = list.find(x=>x.id===pb.dataset.entry);
+      const line = entry && (entry.parts||[]).find(x=>x.id===pb.dataset.alpart);
+      if(!line || !confirm('Delete this line? This undoes it:\n\n' + line.text)) return;
+      OPEN_ACT.add(entry.id);
+      if(await commitSync({action:'undoActivityPart', id:entry.id, part:line.id}, 'Undone')) activityModal();
+      return;
+    }
     const b = e.target.closest('[data-alundo]'); if(!b) return;
     const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
     if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
@@ -10261,6 +10449,175 @@ function activityModal(){
     list = d.result; fresh = true; activityCacheSave(sid, list); draw();
   }).catch(err=>{
     const s = $('#alState'); if(s){ s.hidden = false; s.textContent = 'Could not check for the latest — showing what this device last saw.'; }
+  });
+}
+
+/* ============================ PRE-ORDERS FULFILLED BY ANOTHER REGION ============================
+   A pre-order can be handed to another region — in any season — to deliver
+   from its own stock. The request shows there with everything needed; fulfilling
+   it takes the copy off that region's shelf (as if transferred out), marks the
+   pre-order delivered where it was sold (still that region's sale and money),
+   and leaves a note — never a sale — in the fulfilling region's log. */
+
+/* Every open region in every season, as a place list (seasons and regions only). */
+function regionPlacesAll(exceptRegion){
+  const out = [];
+  const seasons = (STATE.seasons && STATE.seasons.length) ? STATE.seasons.filter(s=>!s.closedAt)
+    : [{seasonId:STATE.activeSeason, name:STATE.seasonName}];
+  const ordered = seasons.map((s,i)=>({s,i}))
+    .sort((a,b)=>(b.s.seasonId===STATE.activeSeason)-(a.s.seasonId===STATE.activeSeason) || a.i-b.i).map(x=>x.s);
+  ordered.forEach(s=>{
+    const regs = (STATE.allRegions||[]).filter(r=>r.seasonId===s.seasonId && !r.closedAt && r.regionId!==exceptRegion);
+    if(!regs.length) return;
+    out.push({kind:'season', seasonId:s.seasonId, name:s.name||'Season'});
+    regs.forEach(r=>out.push({kind:'region', seasonId:s.seasonId, seasonName:s.name, regionId:r.regionId,
+      loc:r.whLoc, name:r.name, regionName:r.name}));
+  });
+  return out;
+}
+
+/* Requests this place was asked to fulfil, still waiting. */
+function remoteHere(){
+  const list = (STATE.remote||[]).filter(x=>x.type==='PREORDER' && !x.delivered);
+  return CUR_LEVEL==='season' ? list : list.filter(x=>x.fulfilBy===CUR_REGION);
+}
+/* Ones fulfilled from here: notes for this place's sales log. */
+function remoteNotesHere(){
+  const locs = CUR_LEVEL==='season' ? null : new Set(CUR_LEVEL==='event' ? [CUR_LOC] : locsInRegion(CUR_REGION));
+  return (STATE.remote||[]).filter(x=>x.delivered && x.fulfilLoc && (!locs || locs.has(x.fulfilLoc)));
+}
+function remoteCardHTML(x){
+  const b = bookById(x.bookId) || {name:'a title'};
+  const when = x.ts ? new Date(x.ts).toLocaleDateString(LOCALE,{day:'numeric',month:'short'}) : '';
+  return `<div class="sh-card rq-card">
+    <div class="sh-top"><span class="sh-route">${esc(b.name)}</span>
+      <span class="sh-count">${x.name?'for '+esc(x.name):''}</span></div>
+    ${x.phone?`<div class="sh-who">${waLink(x.phone)}</div>`:''}
+    <div class="sh-meta">Ordered at ${esc(x.origin||'another region')}${when?' · '+esc(when):''}${x.soldBy?' · taken by '+esc(x.soldBy):''}</div>
+    ${x.comments?`<div class="rq-note">“${esc(x.comments)}”</div>`:''}
+    <div class="sh-acts">
+      <button class="btn btn-green btn-sm" data-act="rqfulfil" data-id="${esc(x.saleId)}">Fulfil</button>
+      <button class="btn btn-ghost btn-sm" data-act="rqdecline" data-id="${esc(x.saleId)}">Decline</button>
+    </div>
+  </div>`;
+}
+function remoteNoteHTML(x){
+  const b = bookById(x.bookId) || {name:'a title'};
+  const when = x.fulfilAt ? new Date(x.fulfilAt).toLocaleString(LOCALE,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+  return `<div class="log-item rq-log">
+    <div class="rq-log-t">📦 Fulfilled a pre-order for another region: <b>${esc(b.name)}</b>${x.name?' for '+esc(x.name):''}</div>
+    <div class="rq-log-m">Ordered at ${esc(x.origin||'another region')} · from ${esc(x.fulfilLabel||locName(x.fulfilLoc))}${when?' · '+esc(when):''}
+      · not counted in this region’s sales or cash</div>
+  </div>`;
+}
+
+/* Fulfil: which shelf in this region the copy comes off. */
+function remoteFulfilModal(x){
+  if(!x) return;
+  const b = bookById(x.bookId) || {name:'a title', id:x.bookId};
+  const reg = currentRegion();
+  if(!reg){ toast('Open the region that will fulfil it first.', true); return; }
+  const shelves = [{id:reg.whLoc, name:reg.name+' — Warehouse'}]
+    .concat(holdersOf(reg.regionId).map(h=>({id:h.holderId, name:swLabel(h.holderId)+' — '+h.name})))
+    .concat(eventsOfRegion(reg.regionId).filter(e=>!e.closedAt).map(e=>({id:e.eventId, name:e.name})))
+    .map(s=>({...s, n:invQty(s.id, x.bookId)}));
+  const have = shelves.filter(s=>s.n>0);
+  openModal(`
+    ${mHead('Fulfil a pre-order')}
+    <div class="m-body">
+      <div class="note"><b>${esc(b.name)}</b>${x.name?' for '+esc(x.name):''}${x.phone?' · '+esc(x.phone):''}<br>
+        Ordered at ${esc(x.origin||'another region')}.${x.comments?`<br>“${esc(x.comments)}”`:''}</div>
+      <div class="hint">Which shelf in ${esc(reg.name)} does the copy come from? It comes off that stock as if
+        transferred out. The sale stays with the region that took it — nothing is added to ${esc(reg.name)}’s
+        sales or cash.</div>
+      <div class="opts">${have.map(s=>`<button type="button" class="opt" data-rqfrom="${esc(s.id)}">
+          <b>From ${esc(s.name)}</b><span>${s.n} in stock</span></button>`).join('')
+        || `<div class="cash-empty">No copies of ${esc(b.name)} in ${esc(reg.name)}. Add or transfer stock first.</div>`}</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
+  document.querySelectorAll('#modal [data-rqfrom]').forEach(btn=>btn.addEventListener('click', ()=>{
+    const from = btn.dataset.rqfrom;
+    commit({action:'fulfilRemote', remoteSaleId:x.saleId, fromLoc:from}, st=>{
+      invAdd(st, from, x.bookId, -1);
+      const now = new Date().toISOString();
+      let r = (st.remote=st.remote||[]).find(v=>v.saleId===x.saleId);
+      if(!r){ r = Object.assign({}, x); st.remote.push(r); }
+      Object.assign(r, {type:'SALE', delivered:true, dsource:DSRC_REMOTE, fulfilBy:reg.regionId,
+        fulfilLoc:from, fulfilAt:now, fulfilLabel:locName(from)});
+      // The same pre-order, if its own region is on screen too (same season).
+      const own = (st.sales||[]).find(v=>v.saleId===x.saleId);
+      if(own) Object.assign(own, {type:'SALE', delivered:true, dsource:DSRC_REMOTE, fulfilBy:reg.regionId, fulfilLoc:from, fulfilAt:now});
+    }, 'Pre-order fulfilled — '+b.name);
+  }));
+}
+function remoteDecline(x){
+  if(!x || !confirm('Decline this request? It goes back to the region that took the pre-order, to deliver another way.')) return;
+  commit({action:'setFulfilBy', remoteSaleId:x.saleId, fulfilBy:''}, st=>{
+    st.remote = (st.remote||[]).filter(v=>v.saleId!==x.saleId);
+    const own = (st.sales||[]).find(v=>v.saleId===x.saleId); if(own) own.fulfilBy = '';
+  }, 'Request declined');
+}
+
+/* From the fulfilling region: take on any open pre-order anywhere, flagged or not. */
+function fulfilOtherModal(){
+  const reg = currentRegion();
+  if(!reg){ toast('Open the region that will fulfil it first.', true); return; }
+  let list = null;
+  openModal(`
+    ${mHead('Fulfil a pre-order for another region')}
+    <div class="m-body">
+      <div class="hint">Every pre-order still waiting in another region, in any season. Choose one to deliver
+        from ${esc(reg.name)}’s stock.</div>
+      <input id="foSearch" class="al-search" type="search" placeholder="Search — a title, a name, a place">
+      <div id="foList"><div class="hint sp-loading"><span class="spin-d"></span> Looking for open pre-orders…</div></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  function draw(){
+    if(!list || !$('#foList')) return;
+    const q = ($('#foSearch').value||'').trim().toLowerCase();
+    const rows = list.filter(x=>x.originRegion!==reg.regionId)
+      .filter(x=>!q || [x.bookName, x.name, x.origin, x.comments].join(' ').toLowerCase().includes(q));
+    $('#foList').innerHTML = rows.length ? rows.map(x=>`<div class="sh-card rq-card">
+        <div class="sh-top"><span class="sh-route">${esc(x.bookName)}</span><span class="sh-count">${x.name?'for '+esc(x.name):''}</span></div>
+        <div class="sh-meta">Ordered at ${esc(x.origin)}${x.ts?' · '+esc(new Date(x.ts).toLocaleDateString(LOCALE,{day:'numeric',month:'short'})):''}${
+          x.fulfilBy?' · <b>already asked of '+esc(anyRegionName(x.fulfilBy))+'</b>':''}</div>
+        ${x.comments?`<div class="rq-note">“${esc(x.comments)}”</div>`:''}
+        <div class="sh-acts"><button class="btn btn-green btn-sm" data-fo="${esc(x.saleId)}">Fulfil from ${esc(reg.name)}</button></div>
+      </div>`).join('')
+      : `<div class="cash-empty">${q?'Nothing matches that search.':'No other region has a pre-order waiting.'}</div>`;
+  }
+  $('#foSearch').addEventListener('input', draw);
+  $('#foList').addEventListener('click', e=>{
+    const b = e.target.closest('[data-fo]'); if(!b) return;
+    remoteFulfilModal(list.find(x=>x.saleId===b.dataset.fo));
+  });
+  post({action:'openPreorders'}).then(d=>{ list = (d && d.result) || []; draw(); })
+    .catch(err=>{ const f=$('#foList'); if(f) f.innerHTML = `<div class="err">${esc(err.message||'Could not load the pre-orders.')}</div>`; });
+}
+
+/* On an existing pre-order: hand it to another region. */
+function askRegionModal(saleId){
+  const x = (STATE.sales||[]).find(s=>s.saleId===saleId); if(!x) return;
+  const home = regionOfLoc(x.location);
+  openModal(`
+    ${mHead('Another region will fulfil it')}
+    <div class="m-body">
+      <div class="hint">Choose the region that will deliver <b>${esc((bookById(x.bookId)||{}).name||'this book')}</b>${
+        x.name?' to '+esc(x.name):''}. They will see the request — with the name, number and comments — and deliver it from their stock.</div>
+      <div class="field"><label>Region</label>${placePickerHTML('arReg')}</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="arGo">Send the request</button></div>`);
+  const pick = bindPlacePicker('arReg', regionPlacesAll(home), '', ()=>{});
+  $('#arGo').addEventListener('click', ()=>{
+    const p = pick.value;
+    if(!p){ $('#modalErr').textContent='Choose the region first.'; return; }
+    commit({action:'setFulfilBy', remoteSaleId:saleId, fulfilBy:p.regionId}, st=>{
+      const s = (st.sales||[]).find(v=>v.saleId===saleId); if(s) s.fulfilBy = p.regionId;
+    }, 'Request sent to '+p.name);
   });
 }
 
@@ -10434,6 +10791,17 @@ document.addEventListener('click',e=>{
   if(a==='shoutside'){ shipOutsideModal(); return; }
   if(a==='seasonxfer' || a==='xfer'){ transferStockModal(); return; }
   if(a==='activity'){ activityModal(); return; }
+  if(a==='viewmode'){ setViewMode(document.body.classList.contains('list-view') ? 'cards' : 'list'); return; }
+  if(a==='rqfulfil'){ remoteFulfilModal((STATE.remote||[]).find(x=>x.saleId===t.dataset.id)); return; }
+  if(a==='rqdecline'){ remoteDecline((STATE.remote||[]).find(x=>x.saleId===t.dataset.id)); return; }
+  if(a==='rqwithdraw'){
+    if(!confirm('Withdraw the request? The other region will no longer see it.')) return;
+    const id=t.dataset.id;
+    commit({action:'setFulfilBy', remoteSaleId:id, fulfilBy:''}, st=>{ const s=(st.sales||[]).find(v=>v.saleId===id); if(s) s.fulfilBy=''; }, 'Request withdrawn');
+    return;
+  }
+  if(a==='fulfilother'){ fulfilOtherModal(); return; }
+  if(a==='askregion'){ askRegionModal(t.dataset.id); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }

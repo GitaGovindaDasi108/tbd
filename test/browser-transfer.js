@@ -110,7 +110,7 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     t.push(['Left shows 40 − 25 = 15', (await page.textContent(`#xfBody [data-left="${B0}"]`)).trim() === '15']);
     await page.screenshot({ path: shot('2-multisource') });
     let d = await go(page);
-    t.push(['Transfer asks "counted everything correctly?"', d.some(x => /Are you sure you have counted everything correctly/.test(x))]);
+    t.push(['Transfer asks "Are you 108% sure…"', d.some(x => /108% sure you’ve counted everything correctly/.test(x))]);
     t.push(['each shelf gave its share (WH 5, SW1 5, SW2 5 left)', qty(pl.whLoc, B0) === 5 && qty('hd_radha1', B0) === 5 && qty('hd_gopal1', B0) === 5]);
     t.push(['Festival received 25', qty('ev_fest', B0) === 25]);
 
