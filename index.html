@@ -1033,6 +1033,42 @@ body.busy #busyBar{opacity:1}
 .bulk-foot.totals3 .all{border-left:1px solid var(--line-d)}
 .bulk-foot.totals3 .all b{color:var(--saffron-d)}
 
+/* ---------- Add Stock ---------- */
+/* The place finder: a search box over an indented season › region › event list.
+   The list sits in the flow of the dialog rather than floating, so it can never
+   be clipped by the dialog's own scrolling. */
+.pp{display:flex;flex-direction:column;gap:6px}
+.pp-list{border:1.5px solid var(--line-d);border-radius:9px;background:#fff;max-height:250px;overflow:auto;padding:4px 0}
+.pp-season{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);
+  padding:9px 12px 4px}
+.pp-row{padding:8px 12px;font-size:13.5px;cursor:pointer;color:var(--ink);line-height:1.3}
+.pp-row.pp-region{padding-left:24px;font-weight:700;color:var(--plum)}
+.pp-row.pp-event{padding-left:44px}
+.pp-row:hover{background:#FFF3E4}
+.pp-row.on{background:var(--plum);color:var(--gold-l)}
+.pp-row.on .pp-tag{color:var(--gold-l)}
+.pp-tag{font-size:10.5px;color:var(--muted);margin-left:7px;font-weight:500}
+.pp-empty{padding:10px 12px;color:var(--muted);font-size:12.5px}
+.sp-addnew{font-size:12px;color:var(--muted);line-height:1.55}
+.linkish{background:none;border:none;padding:0;color:var(--saffron-d);font-weight:700;font-size:inherit;
+  text-decoration:underline;cursor:pointer;box-shadow:none}
+.sp-new-tag{display:inline-block;font-family:'Inter',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.4px;
+  text-transform:uppercase;color:var(--teal);background:var(--teal-l);border:1px solid var(--teal-b);
+  border-radius:999px;padding:1px 6px;vertical-align:middle}
+.bulk-row .sp-x{border:none;background:none;color:var(--muted);font-size:12px;padding:0 3px;margin-left:2px;
+  cursor:pointer;vertical-align:middle;width:auto}
+.sp-notlisted{border:1px dashed var(--line-d);border-radius:10px;padding:9px 12px;background:var(--paper2)}
+.sp-notlisted summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--plum);text-transform:uppercase;letter-spacing:.5px}
+.sp-notlisted[open] summary{margin-bottom:8px}
+.sp-notlisted .rp-add{margin-top:8px}
+/* A group of fields shown together keeps the same spacing as the dialog around it. */
+.sp-group{display:flex;flex-direction:column;gap:12px}
+.sp-group[hidden]{display:none}
+.sp-group > .how-to{margin:0}
+/* An empty warning slot takes no room, so the spacing stays even. */
+.sp-group > div:empty{display:none}
+.opt.on{border-color:var(--saffron);background:#FFF3E4}
+
 /* toast */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
   background:var(--plum);color:#FFF3DE;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
@@ -1054,8 +1090,17 @@ body.busy #busyBar{opacity:1}
   .row3{grid-template-columns:1fr 1fr}
   .inv-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   main{padding:12px 12px 60px}
-  .bulk-head,.bulk-row{grid-template-columns:1fr 42px 116px 44px;gap:6px}
+  .bulk-head,.bulk-row{grid-template-columns:1fr 42px 104px 54px;gap:6px}
+  .bulk-head{font-size:9px;letter-spacing:.2px}
+  /* The five-column stock table has to fit a phone too: the title keeps what is
+     left once four narrow number columns (room for "208") are placed. */
+  .bulk-head.five,.bulk-row.five{grid-template-columns:1fr 44px 86px 44px 44px;gap:5px}
+  .bulk-row.five .delta-wrap{gap:4px}
+  .bulk-row.five .d-delta{width:48px}
+  .bulk-row.five .d-set{width:42px}
   .bulk-row .bn{font-size:13.5px}
+  .overlay{padding:10px}
+  .modal .m-body{padding:14px 13px}
   .li-row{flex-wrap:wrap;row-gap:4px}
   .li-btns{width:100%;justify-content:flex-end}
 }
@@ -1079,7 +1124,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b177</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b178</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1793,7 +1838,10 @@ function withHoldersQty(bookId, regionId){
 }
 const OUTSIDE_ORIGIN = 'OUTSIDE';
 function shipLabel(x){
-  const to = (regionById(x.toRegion)||{}).name || x.toRegion;
+  let to = (regionById(x.toRegion)||{}).name || x.toRegion;
+  // Heading for one of the region's events rather than its warehouse: say which.
+  if(x.toLoc && !isWarehouseLoc(x.toLoc) && eventsOfRegion(x.toRegion).some(e=>e.eventId===x.toLoc))
+    to += ' › ' + locName(x.toLoc);
   // A batch from beyond the tour is named by where it actually came from.
   const from = x.fromRegion===OUTSIDE_ORIGIN
     ? (x.origin || 'Outside the tour')
@@ -2708,11 +2756,16 @@ function renderAdmin(){
      would fail. */
   if(!admin){
     $('#adminPanel').style.display='';
+    /* A regional link may add stock within its own region; a sales link may not. */
+    const coord = STATE && STATE.role==='coordinator';
     $('#adminActions').innerHTML =
       `<div class="adm-grid"><div class="adm-col">
          <div class="adm-lbl">Admin</div>
          <button class="btn adm-c1-1" data-act="org">👥 Org chart</button>
-       </div></div>`;
+       </div>${coord ? `<div class="adm-col">
+         <div class="adm-lbl">Books</div>
+         <button class="btn adm-c3-1" data-act="addstock">＋ Add Stock</button>
+       </div>` : ''}</div>`;
     return;
   }
   $('#adminPanel').style.display='';
@@ -2778,11 +2831,9 @@ function renderAdmin(){
      an event by other means, and a count that cannot be corrected where it is
      wrong is worse than a slightly looser audit trail. Every adjustment is
      still recorded in the movement log with whatever note you give it. */
-  if(season){
-    if(admin) cols[2].push(`<button class="btn" data-act="pick" data-then="stock">＋ Add / subtract stock…</button>`);
-  }else if(!shut){
-    cols[2].push(`<button class="btn" data-act="stock">＋ Add / subtract stock</button>`);
-  }
+  /* One way to add stock, from anywhere: the dialog asks where the books are
+     going, so it no longer matters where you are standing. */
+  cols[2].push(`<button class="btn" data-act="addstock">＋ Add Stock</button>`);
   /* Where the books came from, who is holding them and whose they are is the
      owner's business. A regional coordinator sells and moves stock; they do not
      need the tour's logistics or anyone else's money. */
@@ -7323,7 +7374,7 @@ function deleteRegionModal(){
 
 
 
-function regionModal(edit){
+function regionModal(edit, after){
   const isEdit = !!edit;
   const cur = isEdit ? (edit.currencies||['USD']).join(', ') : 'EUR, USD';
   const priceOf = (bookId,c)=>{
@@ -7545,6 +7596,8 @@ function regionModal(edit){
                 books:books?books.split(','):[],counts:{},closedAt:'',bookOrder,
                 seasonId:st.activeSeason, sort:(st.regions||[]).length}); },
         'Region created');
+      // Came here from "Add something new": carry on where they left off.
+      if(after) setTimeout(()=>after(regionId, whLoc), 0);
     }
   });
 }
@@ -7556,7 +7609,7 @@ function parseCurs(raw){
 }
 
 
-function eventModal(edit){
+function eventModal(edit, after){
   openModal(`
     ${mHead(edit?'Rename event':'New event')}
     <div class="m-body">
@@ -7583,6 +7636,7 @@ function eventModal(edit){
       st=>{ (st.events=st.events||[]).push({eventId,name,regionId:CUR_REGION,closedAt:'',
               createdAt:new Date().toISOString()}); },
       'Event created');
+    if(after) setTimeout(()=>after(eventId), 0);
   });
 }
 
@@ -7609,150 +7663,633 @@ function bulkRows(cols){
   return h+'</div>';
 }
 
-/* ---- Adjust stock ---- */
-function stockModal(){
-  const loc=CUR_LOC;
-  const where=loc===WAREHOUSE?(STATE.warehouseName||'')+' warehouse':locName(loc);
+/* ============================ ADD STOCK ============================
+   One way in for every book that is new to a place: counted onto a shelf that
+   already has them, or on their way from a printer or from anywhere the app
+   does not track. Reachable from anywhere in the app, for any open region or
+   event the person may touch — not only the place they happen to be standing. */
 
-  // Two ways in, side by side, always available: nudge a count by ±, or state
-  // the flat number you just counted on the shelf. Whichever you fill wins.
-  const body = bulkRows(b=>({
-    left: invQty(loc,b.id),
-    input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${b.id}" title="Adding — tap to subtract instead">＋</button>`
-         +`<input class="d-delta" type="number" step="1" data-book="${b.id}" inputmode="numeric" min="0"></span>`,
-    input2:`<input class="d-set" type="number" min="0" step="1" data-set="${b.id}" inputmode="numeric">`,
-    right: invQty(loc,b.id)
-  }));
+/* Every place books can be put, as one indented list: season › region › event.
+   Closed places are left out. A regional link sees only its own region. */
+function stockPlaces(){
+  const out = [];
+  if(!STATE || isSeller()) return out;
+  const coord = !isAdmin();
+  const seasons = coord
+    ? [{seasonId:STATE.activeSeason, name:STATE.seasonName}]
+    : (STATE.seasons||[]).filter(s=>!s.closedAt);
+  seasons.forEach(s=>{
+    const here = s.seasonId===STATE.activeSeason;
+    const regs = (here ? regionsList() : (STATE.allRegions||[]).filter(r=>r.seasonId===s.seasonId))
+      .filter(r=>!r.closedAt);
+    if(!regs.length) return;
+    out.push({kind:'season', seasonId:s.seasonId, name:s.name||'Season'});
+    regs.forEach(r=>{
+      out.push({kind:'region', seasonId:s.seasonId, seasonName:s.name, regionId:r.regionId,
+                loc:r.whLoc, name:r.name, regionName:r.name});
+      const evs = here ? eventsOfRegion(r.regionId)
+                       : (STATE.allEvents||[]).filter(e=>e.regionId===r.regionId);
+      evs.filter(e=>!e.closedAt).forEach(e=>out.push({kind:'event', seasonId:s.seasonId,
+        seasonName:s.name, regionId:r.regionId, loc:e.eventId, name:e.name, regionName:r.name}));
+    });
+  });
+  return out;
+}
+function placeLabel(p){
+  if(!p) return '';
+  const season = (STATE.seasons||[]).length>1 && p.seasonName ? ' ('+p.seasonName+')' : '';
+  return (p.kind==='event' ? p.name+' — '+p.regionName : p.name) + season;
+}
+
+/* A searchable, indented list of places. Typing narrows it; a season or region
+   that matches keeps everything beneath it, so "Italy" shows Italy's events. */
+function placePickerHTML(id){
+  return `<div class="pp" id="${id}">
+    <input class="pp-in" type="text" autocomplete="off" spellcheck="false"
+      placeholder="Search for region or event name">
+    <div class="pp-list" hidden></div>
+  </div>`;
+}
+function bindPlacePicker(id, places, value, onPick){
+  const box = document.getElementById(id);
+  const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
+  let cur = places.find(p=>p.kind!=='season' && p.loc===value) || null;
+  inp.value = placeLabel(cur);
+
+  function shown(q){
+    q = q.trim().toLowerCase();
+    if(!q) return places;
+    const hit = s => String(s||'').toLowerCase().includes(q);
+    return places.filter(p=>{
+      if(p.kind==='season') return places.some(c=>c.seasonId===p.seasonId && c.kind!=='season'
+        && (hit(p.name) || hit(c.name) || hit(c.regionName)));
+      return hit(p.name) || hit(p.regionName) || hit(p.seasonName)
+        || (p.kind==='region' && places.some(c=>c.regionId===p.regionId && hit(c.name)));
+    });
+  }
+  function draw(q){
+    const rows = shown(q);
+    list.innerHTML = rows.length ? rows.map(p=> p.kind==='season'
+      ? `<div class="pp-season">${esc(p.name)}</div>`
+      : `<div class="pp-row pp-${p.kind}${cur&&cur.loc===p.loc?' on':''}" data-loc="${esc(p.loc)}">${esc(p.name)}${
+          p.kind==='region'?'<span class="pp-tag">warehouse</span>':''}</div>`).join('')
+      : `<div class="pp-empty">Nothing matches. Add it with the link below.</div>`;
+    list.hidden = false;
+  }
+  function pick(loc){
+    const p = places.find(x=>x.kind!=='season' && x.loc===loc);
+    if(!p) return;
+    cur = p; inp.value = placeLabel(p); list.hidden = true; inp.blur();
+    onPick(p);
+  }
+  inp.addEventListener('focus', ()=>{ inp.select(); draw(''); });
+  inp.addEventListener('input', ()=>draw(inp.value));
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); const first=list.querySelector('.pp-row'); if(first) pick(first.dataset.loc); }
+    if(e.key==='Escape'){ inp.blur(); }
+  });
+  // Pressing on the list must not blur the box first, or the tap is lost.
+  list.addEventListener('mousedown', e=>e.preventDefault());
+  list.addEventListener('click', e=>{ const r=e.target.closest('.pp-row'); if(r) pick(r.dataset.loc); });
+  inp.addEventListener('blur', ()=>setTimeout(()=>{ list.hidden = true; inp.value = placeLabel(cur); }, 150));
+  return { get value(){ return cur; } };
+}
+
+/* The place's season, as data. The season on screen is used as it stands;
+   another season is fetched fresh, so its counts are the real ones. */
+async function stockCtxFor(place){
+  if(place.seasonId===STATE.activeSeason) return makeStockCtx(place, null);
+  const d = await post({action:'getState', season:place.seasonId});
+  if(!d || !d.state) throw new Error('Could not open that season.');
+  seasonCacheSave(place.seasonId, d.state, d.rev);
+  return makeStockCtx(place, d.state);
+}
+function makeStockCtx(place, other){
+  const ctx = { place, here: !other, seasonId: place.seasonId, loc: place.loc, regionId: place.regionId,
+    extra: new Set(),
+    // The live state while it is this season, so a refresh underneath is seen.
+    get st(){ return other || STATE; },
+    get region(){ return (this.st.regions||[]).find(r=>r.regionId===place.regionId) || {regionId:place.regionId}; },
+    qty(loc, bookId){
+      const row = (this.st.inventory||[]).find(i=>i.location===loc && i.bookId===bookId);
+      return row ? Number(row.qty)||0 : 0;
+    }
+  };
+  return ctx;
+}
+const asIdList = v => Array.isArray(v) ? v : String(v||'').split(',').map(x=>x.trim()).filter(Boolean);
+
+/* The titles this place carries: the region's chosen list (or every title when
+   it has none), its consignment groups' titles, anything already on the shelf,
+   and anything picked from "Other Books" in this dialog. */
+function stockBooks(ctx){
+  const st = ctx.st, reg = ctx.region;
+  const chosen = asIdList(reg.books);
+  const groups = new Set((st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
+  const list = (st.books||[]).filter(b=> b.partnerId
+    ? groups.has(b.partnerId)
+    : (!chosen.length || chosen.includes(b.id) || ctx.extra.has(b.id) || ctx.qty(ctx.loc,b.id)>0));
+  let order = asIdList(reg.bookOrder);
+  if(!order.length) order = asIdList(st.seasonBookOrder);
+  if(!order.length) return list;
+  const rank = {}; order.forEach((id,i)=>{ rank[id]=i; });
+  return list.map((b,i)=>({b,i})).sort((x,y)=>{
+    const a=rank[x.b.id], c=rank[y.b.id];
+    if(a!==undefined && c!==undefined && a!==c) return a-c;
+    if(a!==undefined && c===undefined) return -1;
+    if(a===undefined && c!==undefined) return 1;
+    return x.i-y.i;
+  }).map(x=>x.b);
+}
+function otherBooks(ctx){
+  const on = new Set(stockBooks(ctx).map(b=>b.id));
+  return (ctx.st.books||[]).filter(b=>!b.partnerId && !on.has(b.id));
+}
+/* Rows grouped as everywhere else: Big Books, Adventures, Other. */
+function stockRows(ctx, books, cols){
+  const row = b=>{
+    const c = cols(b);
+    const five = c.input2 !== undefined;
+    const isNew = ctx.extra.has(b.id);
+    return `<div class="bulk-row${five?' five':''}">
+      <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}${isNew
+        ? ` <span class="sp-new-tag">new here</span><button type="button" class="sp-x" data-unpick="${esc(b.id)}" title="Take it off this list">✕</button>`:''}</div>
+      <div class="num">${c.left}</div>
+      <div>${c.input}</div>
+      ${five?`<div>${c.input2}</div>`:''}
+      <div class="num next" data-next="${esc(b.id)}">${c.right}</div>
+    </div>`;
+  };
+  const groups = [['big','Big Books'],['aotm','AoTM — Adventures'],['other','Other']];
+  return '<div class="bulk">' + groups.map(([cat,label])=>{
+    const mine = books.filter(b=>catOfBook(b)===cat);
+    return mine.length ? `<div class="bulk-sec">${label}</div>` + mine.map(row).join('') : '';
+  }).join('') + '</div>';
+}
+
+const SUBTRACT_WARNING = 'Subtracting is only for correcting a data entry mistake. '
+  + 'If you are moving books, please use “Transfer Existing Stock” instead of subtracting '
+  + 'here or lowering the stock numbers by hand.';
+
+function addStockModal(opts){
+  opts = opts || {};
+  if(isSeller()) return;
+  const places = stockPlaces();
+  const reg = currentRegion();
+  const startLoc = opts.loc
+    || (CUR_LEVEL==='event' ? CUR_LOC : (CUR_LEVEL==='region' && reg ? reg.whLoc : ''));
+  let ctx = null, where = opts.where || '', loadToken = 0;
+  const typed = {};           // what has been typed, kept across redraws
 
   openModal(`
-    ${mHead('Adjust stock — '+where)}
-    <div class="m-body">
-      <ol class="how-to">
-        <li><b>To add stock</b><span class="how-rest"> to existing inventory, enter the amount to be added in the field next to the “+” sign.</span></li>
-        <li><b>To subtract stock</b><span class="how-rest"> click the “+” sign (it will become a “−” sign) and then enter the number to be subtracted.</span></li>
-        <li><b>To manually change stock</b><span class="how-rest">, enter number in the “Set” column.</span></li>
-      </ol>
-      <div class="bulk-head five"><span>Title</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
-      ${body}
-      <div class="bulk-foot totals3">
-        <div><span class="tl">Big Books</span><b id="footBig">0</b></div>
-        <div><span class="tl">Other</span><b id="footOther">0</b></div>
-        <div><span class="tl">Adventures</span><b id="footAotm">0</b></div>
-        <div class="all"><span class="tl">All titles</span><b id="footValue">0</b></div>
+    ${mHead('Add Stock')}
+    <div class="m-body sp">
+      <div class="field"><label>Destination for Books</label>
+        <div class="hint">Search for the region or event where you’d like to add inventory. If you do not see
+          your region or event, please add it first.</div>
+        ${placePickerHTML('spPlace')}
+        <div class="sp-addnew">Can’t find your destination?
+          <button type="button" class="linkish" data-act="addnewplace" data-then="stock">Add a new one by clicking here.</button>
+          Once done adding your destination, return to this page to add stock.</div>
       </div>
-      <div id="preWarn"></div>
-      <div class="field"><label>Note (optional)</label>
-        <input id="stockNote" type="text" placeholder="e.g. carton from Kraków, damaged copies removed"></div>
+      <div class="field" id="spWhereWrap" hidden><label>Where are the books right now?</label>
+        <select id="spWhere">
+          <option value="" disabled ${where?'':'selected'}>Choose one…</option>
+          <option value="there" ${where==='there'?'selected':''}>Already at the destination</option>
+          <option value="transit" ${where==='transit'?'selected':''}>Not there yet</option>
+        </select></div>
+      <div id="spBody" class="sp-group"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-plum" id="saveStock">Save stock</button>
+      <button class="btn btn-plum" id="spSave" disabled>Save</button>
     </div>`, true);
 
-  const deltas=[...document.querySelectorAll('#modal input[data-book]')];
-  const sets=[...document.querySelectorAll('#modal input[data-set]')];
-  const setFor=id=>document.querySelector(`#modal input[data-set="${id}"]`);
-  const deltaFor=id=>document.querySelector(`#modal input[data-book="${id}"]`);
-  const signBtn=id=>document.querySelector(`#modal .sign-btn[data-sign="${id}"]`);
-  /* The typed number is always a magnitude; the ± button carries the direction.
-     Rewriting the field mid-keystroke (the old behaviour) made digits appear to
-     change themselves as you typed. */
-  function signedDelta(id){
-    const inp=deltaFor(id);
-    if(!inp || inp.value==='') return null;
-    const mag=Math.abs(Math.round(Number(inp.value)||0));
-    if(!mag) return 0;
-    const b=signBtn(id);
-    return (b && b.dataset.dir==='-1') ? -mag : mag;
+  const picker = bindPlacePicker('spPlace', places, startLoc, p=>choose(p));
+  $('#spWhere').addEventListener('change', ()=>{ where = $('#spWhere').value; draw(); });
+
+  async function choose(p){
+    $('#modalErr').textContent = '';
+    ctx = null; draw();
+    const mine = ++loadToken;
+    try{
+      const c = await stockCtxFor(p);
+      if(mine!==loadToken) return;                // another place was chosen meanwhile
+      ctx = c;
+    }catch(err){
+      if(mine===loadToken) $('#modalErr').textContent = err.message || 'Could not open that place.';
+    }
+    draw();
   }
 
+  function keepTyped(){
+    document.querySelectorAll('#spBody input[data-k], #spBody select[data-k]').forEach(i=>{ typed[i.dataset.k] = i.value; });
+    document.querySelectorAll('#spBody .sign-btn').forEach(b=>{ typed['sign:'+b.dataset.sign] = b.dataset.dir; });
+  }
+  function restoreTyped(){
+    document.querySelectorAll('#spBody input[data-k], #spBody select[data-k]').forEach(i=>{
+      if(typed[i.dataset.k]!==undefined) i.value = typed[i.dataset.k]; });
+    document.querySelectorAll('#spBody .sign-btn').forEach(b=>{
+      if(typed['sign:'+b.dataset.sign]==='-1'){ b.dataset.dir='-1'; b.classList.add('on');
+        b.textContent='−'; b.title='Subtracting — tap to add instead'; } });
+  }
+
+  function draw(){
+    keepTyped();
+    const save = $('#spSave');
+    $('#spWhereWrap').hidden = !picker.value;
+    if(!picker.value){ $('#spBody').innerHTML=''; save.disabled=true; save.textContent='Save'; return; }
+    if(!ctx){ $('#spBody').innerHTML = `<div class="hint">Opening ${esc(placeLabel(picker.value))}…</div>`;
+              save.disabled=true; return; }
+    if(!where){ $('#spBody').innerHTML=''; save.disabled=true; save.textContent='Save'; return; }
+    $('#spBody').innerHTML = (where==='there' ? thereHTML() : transitHTML()) + extrasHTML()
+      + `<div class="field"><label>Note (optional)</label>
+          <input type="text" data-k="note" placeholder="${where==='there'
+            ? 'e.g. carton from Kraków, damaged copies removed' : 'e.g. two boxes, one bag'}"></div>`;
+    restoreTyped();
+    save.disabled = false;
+    save.textContent = where==='there' ? 'Add to stock' : 'Mark in transit';
+    if(where==='transit') syncCourier();
+    recalc();
+  }
+
+  /* 3A — already there: the count as it stands, what to add, or the number on the shelf. */
+  function thereHTML(){
+    const books = stockBooks(ctx);
+    return `<ol class="how-to">
+        <li><b>To add stock</b><span class="how-rest"> to existing inventory, enter the amount to be added in the field next to the “+” sign.</span></li>
+        <li><b>To subtract stock</b><span class="how-rest"> click the “+” sign (it will become a “−” sign) and then enter the number to be subtracted.</span></li>
+        <li><b>To manually change stock</b><span class="how-rest">, enter number in the “Set” column.</span></li>
+      </ol>
+      <div class="sp-table"><div class="bulk-head five"><span>Title</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
+      ${stockRows(ctx, books, b=>({
+        left: ctx.qty(ctx.loc,b.id),
+        input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${esc(b.id)}" data-dir="1" title="Adding — tap to subtract instead">＋</button>`
+             +`<input class="d-delta" type="number" step="1" min="0" inputmode="numeric" data-book="${esc(b.id)}" data-k="d:${esc(b.id)}"></span>`,
+        input2:`<input class="d-set" type="number" min="0" step="1" inputmode="numeric" data-set="${esc(b.id)}" data-k="s:${esc(b.id)}">`,
+        right: ctx.qty(ctx.loc,b.id)
+      }))}</div>
+      ${totalsHTML()}
+      <div id="spSubWarn"></div>
+      <div id="preWarn"></div>`;
+  }
+
+  /* 3B — not there yet: who is bringing them, and what is coming. */
+  function transitHTML(){
+    const books = stockBooks(ctx);
+    return `<div class="field"><label>Courier for Books</label>
+        <select id="spCourier" data-k="courier">
+          <option value="devotee">Devotee</option>
+          <option value="shipping">Shipping Company</option>
+        </select></div>
+      <div id="spDevotee" class="sp-group">
+        <div class="field"><label>Name of Devotee Courier</label>
+          <input type="text" data-k="carrier" placeholder="Narada Muni"></div>
+        <div class="field"><label>WhatsApp Number</label>
+          <input type="tel" data-k="phone" placeholder="+11081728108"></div>
+        <div class="field"><label>Expected Arrival (if known)</label>
+          <input type="date" data-k="etaD"></div>
+      </div>
+      <div id="spShipping" class="sp-group" hidden>
+        <div class="field"><label>Tracking Number</label><input type="text" data-k="tracking"></div>
+        <div class="field"><label>Tracking Website</label><input type="url" data-k="trackingUrl" placeholder="https://…"></div>
+        <div class="field"><label>Expected Arrival (Please fill when known)</label>
+          <input type="date" data-k="etaS"></div>
+      </div>
+      <div class="hint">Nothing is added to the shelf yet. The books show as <b>in transit</b> to
+        ${esc(placeLabel(ctx.place))} until someone marks them arrived in “Books in transit”.</div>
+      <div class="sp-table"><div class="bulk-head"><span>Title</span><span>Now</span><span>Coming</span><span>Expected</span></div>
+      ${stockRows(ctx, books, b=>({
+        left: ctx.qty(ctx.loc,b.id),
+        input:`<input class="sp-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+                 data-book="${esc(b.id)}" data-k="q:${esc(b.id)}">`,
+        right: ctx.qty(ctx.loc,b.id)
+      }))}</div>
+      ${totalsHTML()}`;
+  }
+  function totalsHTML(){
+    return `<div class="bulk-foot totals3">
+        <div><span class="tl">Big Books</span><b id="footBig">0</b></div>
+        <div><span class="tl">Other</span><b id="footOther">0</b></div>
+        <div><span class="tl">Adventures</span><b id="footAotm">0</b></div>
+        <div class="all"><span class="tl">${where==='there'?'All titles':'Coming'}</span><b id="footValue">0</b></div>
+      </div>`;
+  }
+
+  /* 3A1/3B1 and 3A2/3B2 — a title this region does not carry yet, or one the app has never heard of. */
+  function extrasHTML(){
+    const others = otherBooks(ctx);
+    const regName = ctx.region.name || ctx.place.regionName;
+    return `<div class="field"><label>Other Books</label>
+        <div class="hint">Titles ${esc(regName)} does not offer yet. Choosing one switches it on for the region
+          with the region’s price — the same as ticking it in Edit region.</div>
+        <select id="spOther" ${others.length?'':'disabled'}>
+          <option value="">${others.length?'Choose a title to add…':'Every title is already listed'}</option>
+          ${others.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}
+        </select></div>
+      ${isAdmin() ? `<details class="sp-notlisted"><summary>My Book Is Not Listed</summary>
+        <div class="hint">Please look carefully at the “Other Books” list before using this function.</div>
+        <div class="rp-add">
+          <input id="spNewName" type="text" placeholder="Add a title — e.g. Sri Radha (Spanish)">
+          <select id="spNewCat">
+            <option value="big">Big Book</option>
+            <option value="aotm">Adventures</option>
+            <option value="other">Other</option>
+          </select>
+          <button type="button" class="btn btn-ghost btn-sm" id="spNewAdd">Add</button>
+        </div></details>` : ''}`;
+  }
+
+  function syncCourier(){
+    const c = $('#spCourier'); if(!c) return;
+    $('#spDevotee').hidden = c.value!=='devotee';
+    $('#spShipping').hidden = c.value!=='shipping';
+  }
+  function signedDelta(id){
+    const inp = document.querySelector(`#spBody input[data-book="${id}"].d-delta`);
+    if(!inp || inp.value==='') return null;
+    const mag = Math.abs(Math.round(Number(inp.value)||0));
+    if(!mag) return 0;
+    const b = document.querySelector(`#spBody .sign-btn[data-sign="${id}"]`);
+    return (b && b.dataset.dir==='-1') ? -mag : mag;
+  }
+  function setValue(id){
+    const inp = document.querySelector(`#spBody input[data-set="${id}"]`);
+    return (!inp || inp.value==='') ? null : Math.max(0, Math.round(Number(inp.value)||0));
+  }
   function nextFor(id){
-    const now=invQty(loc,id);
-    const sv=setFor(id).value, d=signedDelta(id);
-    if(sv!=='') return Math.max(0, Math.round(Number(sv)));       // an exact count wins
+    const now = ctx.qty(ctx.loc,id), sv = setValue(id), d = signedDelta(id);
+    if(sv!==null) return sv;                 // an exact count wins
     if(d!==null) return now + d;
     return now;
   }
-  function recalc(){
-    let total=0, big=0, aotm=0, other=0;
-    deltas.forEach(i=>{
-      const id=i.dataset.book;
-      const next=Math.max(0,nextFor(id));
-      total+=next;
-      // Three buckets now, so a pamphlet is not counted as a Big Book.
-      const c=catOfBook(bookById(id));
-      if(c==='aotm') aotm+=next; else if(c==='other') other+=next; else big+=next;
-      const cell=document.querySelector(`#modal [data-next="${id}"]`);
-      cell.textContent=next;
-      cell.classList.toggle('zero', next===0);
-      // Only one of the pair can apply, so grey the other out rather than
-      // leaving two numbers that seem to disagree.
-      const sv=setFor(id).value!=='' , dv=i.value!=='';
-      setFor(id).classList.toggle('dim', dv && !sv);
-      i.classList.toggle('dim', sv);
-    });
-    $('#footValue').textContent=total;
-    $('#footBig').textContent=big;
-    $('#footAotm').textContent=aotm;
-    if($('#footOther')) $('#footOther').textContent=other;
-
-    const lines = loc===WAREHOUSE
-      ? deltas.map(i=>shortfallLine(i.dataset.book, nextFor(i.dataset.book))).filter(Boolean)
-      : [];
-    $('#preWarn').innerHTML = preorderWarning(lines,['reduce this count','reduce these counts']);
-    $('#saveStock').textContent = lines.length ? 'Save anyway' : 'Save stock';
+  function comingFor(id){
+    const inp = document.querySelector(`#spBody input.sp-q[data-book="${id}"]`);
+    return inp ? Math.max(0, Math.round(Number(inp.value)||0)) : 0;
   }
-  deltas.concat(sets).forEach(i=>i.addEventListener('input',recalc));
-  // The ± button only flips a direction; it never edits what you typed.
-  [...document.querySelectorAll('#modal .sign-btn')].forEach(btn=>{
-    btn.dataset.dir = '1';
-    btn.addEventListener('click',()=>{
-      const minus = btn.dataset.dir !== '-1';
-      btn.dataset.dir = minus ? '-1' : '1';
-      btn.classList.toggle('on', minus);
-      btn.textContent = minus ? '\u2212' : '\uFF0B';
-      btn.title = minus ? 'Subtracting — tap to add instead' : 'Adding — tap to subtract instead';
-      recalc();
+  function recalc(){
+    if(!ctx || !where) return;
+    let big=0, aotm=0, other=0, lowered=false;
+    stockBooks(ctx).forEach(b=>{
+      const now = ctx.qty(ctx.loc,b.id);
+      let shown, count;
+      if(where==='there'){
+        const next = Math.max(0, nextFor(b.id));
+        shown = next; count = next;
+        if(next < now) lowered = true;
+        const dIn = document.querySelector(`#spBody input[data-book="${b.id}"].d-delta`);
+        const sIn = document.querySelector(`#spBody input[data-set="${b.id}"]`);
+        if(dIn && sIn){ sIn.classList.toggle('dim', dIn.value!=='' && sIn.value==='');
+                        dIn.classList.toggle('dim', sIn.value!==''); }
+      }else{
+        const q = comingFor(b.id);
+        shown = now + q; count = q;
+      }
+      const cell = document.querySelector(`#spBody [data-next="${b.id}"]`);
+      if(cell){ cell.textContent = shown; cell.classList.toggle('zero', where==='there' && shown===0); }
+      const c = catOfBook(b);
+      if(c==='aotm') aotm+=count; else if(c==='other') other+=count; else big+=count;
     });
+    $('#footValue').textContent = big+aotm+other;
+    $('#footBig').textContent = big; $('#footAotm').textContent = aotm; $('#footOther').textContent = other;
+    const w = $('#spSubWarn');
+    if(w) w.innerHTML = lowered ? `<div class="warn warn-pre">${esc(SUBTRACT_WARNING)}</div>` : '';
+    // Taking stock off a warehouse can strand pre-orders; only this season's own shelf is known here.
+    const pw = $('#preWarn');
+    if(pw){
+      const lines = (where==='there' && ctx.here && ctx.place.kind==='region' && ctx.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC))
+        ? stockBooks(ctx).map(b=>shortfallLine(b.id, nextFor(b.id))).filter(Boolean) : [];
+      pw.innerHTML = preorderWarning(lines, ['reduce this count','reduce these counts']);
+    }
+  }
+
+  // Everything inside the body is redrawn, so listen once on the body itself.
+  const body = $('#spBody');
+  body.addEventListener('input', recalc);
+  body.addEventListener('click', e=>{
+    const sb = e.target.closest('.sign-btn');
+    if(sb){
+      const minus = sb.dataset.dir !== '-1';
+      sb.dataset.dir = minus ? '-1' : '1';
+      sb.classList.toggle('on', minus);
+      sb.textContent = minus ? '−' : '＋';
+      sb.title = minus ? 'Subtracting — tap to add instead' : 'Adding — tap to subtract instead';
+      recalc(); return;
+    }
+    const x = e.target.closest('[data-unpick]');
+    if(x){ ctx.extra.delete(x.dataset.unpick); draw(); return; }
+    if(e.target.closest('#spNewAdd')) addTitle();
   });
-  recalc();
-
-  $('#saveStock').addEventListener('click',()=>{
-    const setItems=[], deltaItems=[];
-    deltas.forEach(i=>{
-      const id=i.dataset.book, sv=setFor(id).value, dv=i.value;
-      if(sv!=='') setItems.push({bookId:id, qty:Math.max(0,Math.round(Number(sv)))});
-      else { const d=signedDelta(id); if(d) deltaItems.push({bookId:id, delta:d}); }
-    });
-    if(!setItems.length && !deltaItems.length){
-      $('#modalErr').textContent='Enter a change or a count for at least one title.';return;
-    }
-    const short=deltaItems.find(it=>it.delta<0 && invQty(loc,it.bookId)+it.delta<0);
-    if(short){$('#modalErr').textContent='Cannot remove more '+bookById(short.bookId).name+' than are in stock.';return;}
-
-    // The note travels with the movement, so the transfer log says why.
-    const note = ($('#stockNote') && $('#stockNote').value.trim()) || '';
-
-    // Sent as separate writes so each keeps its own meaning on the server.
-    if(deltaItems.length){
-      // Logged here too, under the name the server will use.
-      const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-      commit({action:'adjustStockBulk',location:loc,items:deltaItems,note,override:true,movePrefix},
-        st=>deltaItems.forEach(it=>{
-          const before=invQty(loc,it.bookId);
-          invAdd(st,loc,it.bookId,it.delta);
-          (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+it.bookId, ts:new Date().toISOString(),
-            kind:'ADJUST', fromLoc:'', toLoc:loc, bookId:it.bookId, qty:it.delta, note,
-            toBefore:before, toAfter:before+it.delta});
-        }),
-        setItems.length?null:'Stock updated');
-    }
-    if(setItems.length){
-      commit({action:'setStockBulk',location:loc,items:setItems,note,override:true},
-        st=>setItems.forEach(it=>invSet(st,loc,it.bookId,it.qty)), 'Stock updated');
-    }
+  body.addEventListener('change', e=>{
+    if(e.target.id==='spCourier'){ syncCourier(); return; }
+    if(e.target.id==='spOther' && e.target.value){ ctx.extra.add(e.target.value); draw(); }
   });
+
+  async function addTitle(){
+    const btn = $('#spNewAdd'), name = $('#spNewName').value.trim();
+    if(!name){ $('#modalErr').textContent='Type the title first.'; return; }
+    if((STATE.books||[]).some(b=>b.name.toLowerCase()===name.toLowerCase())){
+      $('#modalErr').textContent='There is already a title with that name — look for it under Other Books.'; return;
+    }
+    $('#modalErr').textContent=''; btn.disabled=true; btn.textContent='Adding…';
+    try{
+      await postWrite({action:'addBook', name, cat:$('#spNewCat').value});
+      await pull();
+      const nb = (STATE.books||[]).find(b=>b.name.toLowerCase()===name.toLowerCase());
+      if(nb){
+        // Another season's copy of the catalogue learns of it too.
+        if(!ctx.here && !(ctx.st.books||[]).some(b=>b.id===nb.id)) (ctx.st.books=ctx.st.books||[]).push(nb);
+        ctx.extra.add(nb.id);
+      }
+      toast('Added ' + name);
+      draw();
+    }catch(err){
+      $('#modalErr').textContent = err.message || 'Could not add that title.';
+      btn.disabled=false; btn.textContent='Add';
+    }
+  }
+
+  $('#spSave').addEventListener('click', ()=>{
+    if(!ctx || !where) return;
+    const err = m=>{ $('#modalErr').textContent = m; };
+    const place = ctx.place, season = ctx.seasonId, here = ctx.here;
+    const books = stockBooks(ctx);
+    const note = ((document.querySelector('#spBody input[data-k="note"]')||{}).value||'').trim();
+    const extras = [...ctx.extra].filter(id=>books.some(b=>b.id===id));
+    const switchOn = extras.length && asIdList(ctx.region.books).length
+      ? {action:'regionAddBooks', regionId:ctx.regionId, bookIds:extras.join(','), season} : null;
+    const applyOn = st=>{
+      const r=(st.regions||[]).find(x=>x.regionId===ctx.regionId);
+      if(r && asIdList(r.books).length) r.books = asIdList(r.books).concat(extras.filter(id=>!asIdList(r.books).includes(id)));
+    };
+    const elsewhere = ()=>{
+      if(here) return;
+      // That season's saved copy is now out of date: drop it so it loads fresh.
+      try{ localStorage.removeItem(SEASON_CACHE+season); }catch(e){}
+    };
+
+    if(where==='there'){
+      const setItems=[], deltaItems=[];
+      books.forEach(b=>{
+        const sv=setValue(b.id), d=signedDelta(b.id);
+        if(sv!==null) setItems.push({bookId:b.id, qty:sv});
+        else if(d) deltaItems.push({bookId:b.id, delta:d});
+      });
+      if(!setItems.length && !deltaItems.length) return err('Enter a change or a count for at least one title.');
+      const short = deltaItems.find(it=>it.delta<0 && ctx.qty(ctx.loc,it.bookId)+it.delta<0);
+      if(short) return err('Cannot remove more '+((books.find(b=>b.id===short.bookId)||{}).name||'copies')+' than are in stock.');
+      const lowers = deltaItems.some(it=>it.delta<0) || setItems.some(it=>it.qty<ctx.qty(ctx.loc,it.bookId));
+      if(lowers && !confirm(SUBTRACT_WARNING+'\n\nSave anyway?')) return;
+      err('');
+      const loc = ctx.loc;
+      const before = {}; books.forEach(b=>{ before[b.id]=ctx.qty(loc,b.id); });
+      if(switchOn) commit(switchOn, here?applyOn:()=>{}, null);
+      if(deltaItems.length){
+        const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+        commit({action:'adjustStockBulk', location:loc, items:deltaItems, note, override:true, movePrefix, season},
+          here ? st=>deltaItems.forEach(it=>{
+            invAdd(st,loc,it.bookId,it.delta);
+            (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+it.bookId, ts:new Date().toISOString(),
+              kind:'ADJUST', fromLoc:'', toLoc:loc, bookId:it.bookId, qty:it.delta, note,
+              toBefore:before[it.bookId], toAfter:before[it.bookId]+it.delta});
+          }) : ()=>{},
+          setItems.length ? null : 'Stock updated — '+placeLabel(place));
+      }
+      if(setItems.length){
+        commit({action:'setStockBulk', location:loc, items:setItems, note, override:true, season},
+          here ? st=>setItems.forEach(it=>invSet(st,loc,it.bookId,it.qty)) : ()=>{},
+          'Stock updated — '+placeLabel(place));
+      }
+      elsewhere();
+      return;
+    }
+
+    // Not there yet: a batch in transit, which becomes stock when marked arrived.
+    const items = books.map(b=>({bookId:b.id, qty:comingFor(b.id)})).filter(x=>x.qty>0);
+    if(!items.length) return err('Enter how many of at least one title are coming.');
+    const v = k => ((document.querySelector(`#spBody [data-k="${k}"]`)||{}).value||'').trim();
+    const mode = v('courier')==='shipping' ? 'shipping' : 'devotee';
+    if(mode==='devotee' && !v('carrier')) return err('Who is bringing them? Enter the devotee’s name.');
+    err('');
+    const shipId = 'sh_' + Math.random().toString(36).slice(2,10);
+    const payload = {action:'sendShipment', mode, fromRegion:OUTSIDE_ORIGIN, toRegion:ctx.regionId,
+      toLoc:ctx.loc, shipId, season,
+      carrier: mode==='devotee' ? v('carrier') : '', phone: mode==='devotee' ? v('phone') : '',
+      tracking: mode==='shipping' ? v('tracking') : '', trackingUrl: mode==='shipping' ? v('trackingUrl') : '',
+      eta: mode==='devotee' ? v('etaD') : v('etaS'), note, items};
+    if(switchOn) commit(switchOn, here?applyOn:()=>{}, null);
+    commit(payload, here ? st=>{
+      const manifest={}; items.forEach(it=>{ manifest[it.bookId]=it.qty; });
+      (st.shipments=st.shipments||[]).push({shipId, fromRegion:OUTSIDE_ORIGIN, toRegion:ctx.regionId,
+        toLoc:ctx.loc, mode, carrier:payload.carrier, phone:payload.phone, tracking:payload.tracking,
+        trackingUrl:payload.trackingUrl, eta:payload.eta, note, status:'IN_TRANSIT',
+        createdAt:new Date().toISOString(), arrivedAt:'', manifest, origin:''});
+      items.forEach(it=>invAdd(st, shipId, it.bookId, it.qty));
+    } : ()=>{}, 'In transit to '+placeLabel(place));
+    elsewhere();
+  });
+
+  if(picker.value) choose(picker.value);
+  else draw();
+}
+
+/* Kept under their old names: other parts of the app still open these. */
+function stockModal(){ addStockModal(); }
+function shipOutsideModal(){
+  const reg = currentRegion();
+  addStockModal({loc: reg ? reg.whLoc : '', where:'transit'});
+}
+
+/* ============================ ADD SOMETHING NEW ============================
+   Reached from "Can't find your destination?". Creating the place takes you
+   out of the stock dialog; once it exists you are brought straight back, with
+   the new place already chosen. */
+function addNewPlaceModal(then){
+  const admin = isAdmin();
+  const back = loc => {
+    if(then==='stock') addStockModal({loc});
+  };
+  openModal(`
+    ${mHead('Add something new')}
+    <div class="m-body">
+      <div class="hint">I would like to create a new:</div>
+      <div class="opts">
+        ${admin?`<button type="button" class="opt" data-new="season"><b>Season</b>
+          <span>A season is a period of time where Gurudeva’s events are happening (i.e. Book Tour)</span></button>
+        <button type="button" class="opt" data-new="region"><b>Region</b>
+          <span>Regions exist within a season (i.e. Mumbai is a region within Book Tour)</span></button>`:''}
+        <button type="button" class="opt" data-new="event"><b>Event</b>
+          <span>An event happens within a region (i.e. ‘Juhu Temple Event’ happens in Mumbai)</span></button>
+      </div>
+      <div id="anStep"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" id="anBack">Back</button>
+    </div>`);
+  $('#anBack').addEventListener('click', ()=>back(''));
+
+  const afterRegion = (regionId, whLoc)=>{
+    alert('You can return to adding or transferring stock on the next page.');
+    back(whLoc);
+  };
+  const afterEvent = eventId=>{
+    alert('You can return to adding or transferring stock on the next page.');
+    back(eventId);
+  };
+
+  document.querySelectorAll('#modal .opt[data-new]').forEach(b=>b.addEventListener('click', ()=>{
+    document.querySelectorAll('#modal .opt[data-new]').forEach(x=>x.classList.toggle('on', x===b));
+    $('#modalErr').textContent='';
+    const kind = b.dataset.new, step = $('#anStep');
+    if(kind==='season'){
+      step.innerHTML = `<div class="field"><label>Season name</label>
+          <input id="anSeason" type="text" placeholder="e.g. Book Tour 2027"></div>
+        <button type="button" class="btn btn-primary" id="anGo">Create season</button>`;
+      $('#anSeason').focus();
+      $('#anGo').addEventListener('click', async ()=>{
+        const name = $('#anSeason').value.trim();
+        if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+        const had = new Set((STATE.seasons||[]).map(s=>s.seasonId));
+        if(!await commitSync({action:'saveSeason', name}, 'Season created')) return;
+        const made = (STATE.seasons||[]).find(s=>!had.has(s.seasonId));
+        alert('In order to add stock or transfer books, please create a region on the next page.');
+        if(made){ await switchSeason(made.seasonId); CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll(); }
+        regionModal(null, afterRegion);
+      });
+    }
+    if(kind==='region'){
+      const open = (STATE.seasons||[]).filter(s=>!s.closedAt);
+      step.innerHTML = `<div class="field"><label>Which season is the region in?</label>
+          <select id="anSeasonPick">${open.map(s=>`<option value="${esc(s.seasonId)}" ${
+            s.seasonId===STATE.activeSeason?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
+        <button type="button" class="btn btn-primary" id="anGo">Continue</button>`;
+      $('#anGo').addEventListener('click', async ()=>{
+        const sid = $('#anSeasonPick').value;
+        if(sid && sid!==STATE.activeSeason){
+          closeModal(); await switchSeason(sid);
+          CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
+        }
+        regionModal(null, afterRegion);
+      });
+    }
+    if(kind==='event'){
+      const regions = stockPlaces().filter(p=>p.kind!=='event');
+      step.innerHTML = `<div class="field"><label>Which region is the event in?</label>
+          ${placePickerHTML('anRegion')}</div>
+        <button type="button" class="btn btn-primary" id="anGo">Continue</button>`;
+      const pick = bindPlacePicker('anRegion', regions, CUR_REGION ? (currentRegion()||{}).whLoc : '', ()=>{});
+      $('#anGo').addEventListener('click', async ()=>{
+        const p = pick.value;
+        if(!p){ $('#modalErr').textContent='Choose the region first.'; return; }
+        closeModal();
+        if(p.seasonId!==STATE.activeSeason) await switchSeason(p.seasonId);
+        goTo('region', p.regionId);
+        eventModal(null, afterEvent);
+      });
+    }
+  }));
 }
 
 /* ---- Transfer ---- */
@@ -7785,7 +8322,7 @@ function pickRegionThen(act){
 }
 function runPicked(act){
   if(act==='transfer'){ transferModal('toevent'); return; }
-  if(act==='stock'){ stockModal(); return; }
+  if(act==='stock'){ addStockModal(); return; }
   if(act==='externaltransfer'){ externalTransferModal(); return; }
   if(act==='sharelinks'){ shareLinksModal(); return; }
   if(act==='editregion'){ regionModal(currentRegion()); return; }
@@ -8686,96 +9223,6 @@ function seasonTransferModal(){
 }
 
 
-function shipOutsideModal(){
-  const reg = currentRegion();
-  if(!reg) return;
-  openModal(`
-    ${mHead('Books coming from outside the tour')}
-    <div class="m-body">
-      <div class="hint">For books sent from somewhere the app doesn't track — a printer,
-        a temple, another country. Nothing is deducted from any shelf; they become
-        stock in <b>${esc(reg.name)}</b> when you mark them arrived.</div>
-
-      <div class="field"><label>Where are they coming from</label>
-        <input id="soOrigin" type="text" placeholder="e.g. India"></div>
-
-      <div class="field"><label>How are they travelling?</label>
-        <select id="soMode">
-          <option value="devotee">With a devotee — in transit</option>
-          <option value="shipping">Shipping company — in transit</option>
-          <option value="direct">They are already here — add straight to stock</option>
-        </select></div>
-
-      <div id="soDevotee">
-        <div class="field"><label>Who is carrying them</label>
-          <input id="soCarrier" type="text" placeholder="e.g. Radha Chandra"></div>
-        <div class="field"><label>WhatsApp number</label><input id="soPhone" type="tel"></div>
-      </div>
-      <div id="soShipping" style="display:none">
-        <div class="field"><label>Tracking number <span class="muted-note">(optional)</span></label>
-          <input id="soTracking" type="text"></div>
-        <div class="field"><label>Tracking website <span class="muted-note">(optional)</span></label>
-          <input id="soUrl" type="url" placeholder="https://…"></div>
-      </div>
-      <div class="field" id="soEtaWrap">
-        <label>Expected arrival <span class="muted-note">(optional)</span></label>
-        <input id="soEta" type="date"></div>
-
-      <div class="cash-sub">Which books</div>
-      <div id="soRows">${shelfBooks().map(b=>`
-        <div class="cl-row">
-          <div class="cl-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
-          <div class="cl-exp"></div>
-          <input class="cl-in so-q" type="number" min="0" inputmode="numeric"
-            data-book="${esc(b.id)}" placeholder="0">
-          <div></div>
-        </div>`).join('')}</div>
-      <div class="field"><label>Note (optional)</label><input id="soNote" type="text"></div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" data-act="shipments">Back</button>
-      <button class="btn btn-primary" id="soGo">Record</button>
-    </div>`, true);
-
-  function syncMode(){
-    const m=$('#soMode').value;
-    $('#soDevotee').style.display  = m==='devotee'?'block':'none';
-    $('#soShipping').style.display = m==='shipping'?'block':'none';
-    $('#soEtaWrap').style.display  = m==='direct'?'none':'block';
-    $('#soGo').textContent = m==='direct' ? 'Add to stock' : 'Mark in transit';
-  }
-  $('#soMode').addEventListener('change',syncMode);
-  syncMode();
-
-  $('#soGo').addEventListener('click',()=>{
-    const origin=$('#soOrigin').value.trim();
-    if(!origin){ $('#modalErr').textContent='Say where they are coming from.'; return; }
-    const mode=$('#soMode').value;
-    const items=[...document.querySelectorAll('#modal .so-q')]
-      .map(i=>({bookId:i.dataset.book, qty:Math.max(0,Math.round(Number(i.value)||0))}))
-      .filter(x=>x.qty>0);
-    if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
-
-    const payload = {action:'sendShipment', mode, fromRegion:OUTSIDE_ORIGIN,
-      toRegion:reg.regionId, origin,
-      carrier: mode==='devotee' ? $('#soCarrier').value.trim() : '',
-      phone:   mode==='devotee' ? $('#soPhone').value.trim() : '',
-      tracking: mode==='shipping' ? $('#soTracking').value.trim() : '',
-      trackingUrl: mode==='shipping' ? $('#soUrl').value.trim() : '',
-      eta: mode==='direct' ? '' : $('#soEta').value,
-      note: $('#soNote').value.trim(), items};
-
-    // Straight to stock if they have already landed; otherwise they wait in the
-    // batch until someone confirms arrival.
-    commit(payload, st=>{
-      if(mode==='direct') items.forEach(it=>invAdd(st, reg.whLoc, it.bookId, it.qty));
-    }, mode==='direct' ? 'Added to stock' : 'Marked in transit');
-    closeModal();
-  });
-}
-
-
 function shipmentsModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
@@ -8944,7 +9391,10 @@ function shipReceiveModal(id){
   if(!x) return;
   const reg = regionById(x.toRegion);
   const dests = [{id:(reg||{}).whLoc, name:(reg||{}).name+' — Warehouse'}]
+    .concat(eventsOfRegion(x.toRegion).filter(e=>!e.closedAt).map(e=>({id:e.eventId, name:e.name})))
     .concat(holdersOf(x.toRegion).map(h=>({id:h.holderId, name:h.name+' (devotee storage)'})));
+  // Where it was meant to land, if that was said when it was sent.
+  const aim = dests.some(d=>d.id===x.toLoc) ? x.toLoc : (reg||{}).whLoc;
   const books = shipBooks(x);
 
   openModal(`
@@ -8954,7 +9404,7 @@ function shipReceiveModal(id){
         <b>Enter how many of each actually arrived.</b> Anything less than the full amount
         stays recorded as still travelling, so a batch that came in pieces stays honest.</div>
       <div class="field"><label>Arriving at</label>
-        <select id="rcTo">${dests.map(d=>`<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('')}</select></div>
+        <select id="rcTo">${dests.map(d=>`<option value="${esc(d.id)}" ${d.id===aim?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
       ${books.filter(r=>r.left>0).map(r=>`<div class="cl-row">
         <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}
           ${r.arrived?`<span class="cl-loc">${r.arrived} of ${r.sent} already arrived</span>`:''}</div>
@@ -9569,7 +10019,8 @@ document.addEventListener('click',e=>{
   if(a==='newregion'){ regionModal(); return; }
   if(a==='editregion'){ regionModal(currentRegion()); return; }
   if(a==='deleteregion'){ deleteRegionModal(); return; }
-  if(a==='stock'){ stockModal(); return; }
+  if(a==='stock' || a==='addstock'){ addStockModal(); return; }
+  if(a==='addnewplace'){ addNewPlaceModal(t.dataset.then); return; }
   if(a==='transfer'){ transferModal(t.dataset.mode); return; }
   if(a==='externaltransfer'){ externalTransferModal(); return; }
   // A closed place is read-only: refuse before anything is attempted, so the

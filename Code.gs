@@ -192,7 +192,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b177';
+var SERVER_BUILD = 'b178';
 
 function doPost(e) { return handle(e); }
 
@@ -391,6 +391,7 @@ function handle(e) {
         case 'savePartner':      result = doSavePartner(params);  break;
         case 'partnerPayout':    doPartnerPayout(params);         break;
         case 'saveHolder':       result = doSaveHolder(params);   break;
+        case 'regionAddBooks':   doRegionAddBooks(params);        break;
         case 'sendShipment':     result = doSendShipment(params); break;
         case 'seasonTransfer':   result = doSeasonTransfer(params); break;
         case 'editShipment':     doEditShipment(params);          break;
@@ -1342,7 +1343,8 @@ function allRegionsEverywhere_() {
     .map(function (r) {
       return { regionId: String(r.regionId), name: String(r.name),
                whLoc: String(r.whLoc || ''), seasonId: String(r.seasonId || ''),
-               seasonName: seasons[String(r.seasonId || '')] || '' };
+               seasonName: seasons[String(r.seasonId || '')] || '',
+               closedAt: r.closedAt ? String(r.closedAt) : '' };
     });
 }
 
@@ -1406,16 +1408,31 @@ function doSendShipment(p) {
     return '';
   }
 
-  // In transit: the books live in the shipment until it is received.
-  var shipId = 'sh_' + Utilities.getUuid().slice(0, 6);
+  /* In transit: the books live in the shipment until it is received.
+     The app names the batch, as it does everything else, so it shows as on its
+     way the moment it is sent and a resend is recognised rather than doubled. */
+  var shipId = /^sh_[a-z0-9]{4,16}$/.test(String(p.shipId || '')) ? String(p.shipId)
+             : 'sh_' + Utilities.getUuid().slice(0, 6);
+  if (isDeleted_(shipId)) return shipId;
+  if (shipmentById_(shipId)) return shipId;
   var manifest = {};
   items.forEach(function (it) { manifest[it.bookId] = (manifest[it.bookId] || 0) + it.qty; });
-  getSheet_('_shipments').appendRow([shipId, fromRegion, toRegion, mode,
-    String(p.carrier || '').trim(), String(p.phone || '').trim(),
-    String(p.tracking || '').trim(), String(p.trackingUrl || '').trim(),
-    p.eta ? new Date(p.eta) : '', String(p.note || '').trim(),
-    'IN_TRANSIT', new Date(), '', JSON.stringify(manifest),
-    String(p.origin || '').trim()]);
+  /* Where in the region they are meant to land — an event as well as the
+     warehouse. Written by header name, so the column can be added here the
+     first time without anyone having to re-run initialize. */
+  var toLoc = String(p.toLoc || '');
+  if (toLoc && locsInRegion_(toRegion).indexOf(toLoc) < 0) toLoc = '';
+  ensureColumn_('_shipments', 'toLoc');
+  var shS = getSheet_('_shipments');
+  var hsS = shS.getRange(1, 1, 1, Math.max(shS.getLastColumn(), 1)).getValues()[0].map(String);
+  var rowS = { shipId: shipId, fromRegion: fromRegion, toRegion: toRegion, mode: mode,
+    carrier: String(p.carrier || '').trim(), phone: String(p.phone || '').trim(),
+    tracking: String(p.tracking || '').trim(), trackingUrl: String(p.trackingUrl || '').trim(),
+    eta: p.eta ? new Date(p.eta) : '', note: String(p.note || '').trim(),
+    status: 'IN_TRANSIT', createdAt: new Date(), arrivedAt: '', manifest: JSON.stringify(manifest),
+    origin: String(p.origin || '').trim(), toLoc: toLoc };
+  shS.appendRow(hsS.map(function (h) { return rowS[h] === undefined ? '' : rowS[h]; }));
+  sheetMemoClear_();
 
   items.forEach(function (it) {
     addQty_(map, shipId, it.bookId, it.qty);
@@ -1698,7 +1715,9 @@ var SELLER_ACTIONS = {
   settle:1, deliver:1, markPaid:1
 };
 var COORD_EXTRA = {
-  transferBulk:1, createEvent:1, adjustStockBulk:1, setStockBulk:1, closeLocation:1
+  transferBulk:1, createEvent:1, adjustStockBulk:1, setStockBulk:1, closeLocation:1,
+  // Add Stock: books on their way in, and switching on an existing title here.
+  sendShipment:1, regionAddBooks:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -1798,6 +1817,16 @@ function assertAllowed_(who, action, params) {
   });
   if (action === 'createEvent' && who.role === 'coordinator') {
     params.regionId = who.regionId;          // never another region's
+  }
+  /* A regional link may bring books in from outside, into its own region only.
+     Sending its stock to another region is the owner's call. */
+  if (action === 'sendShipment' &&
+      (String(params.fromRegion) !== OUTSIDE_ORIGIN || String(params.toRegion) !== String(who.regionId) ||
+       (params.toLoc && !allowed[String(params.toLoc)]))) {
+    throw new Error('This link can only bring books into its own region.');
+  }
+  if (action === 'regionAddBooks' && String(params.regionId) !== String(who.regionId)) {
+    throw new Error('This link can only change its own region.');
   }
   if (action === 'orgSave') {
     // They may keep their own page's contacts, not another level's.
@@ -2405,6 +2434,7 @@ function shipmentsAll_() {
                // What was handed over at the start, so a part-delivered batch can
                // still say "4 of the 5 arrived" rather than only "1 left".
                manifest: parseManifest_(x.manifest),
+               toLoc: String(x.toLoc || ''),
                // Where a batch came from when it started outside the tour — a
                // printer, a temple, another country we don't track as a region.
                origin: String(x.origin || '') };
@@ -2946,7 +2976,8 @@ function readState() {
     allRegions: allRegionsEverywhere_(),
     // Every season's events, only so that a place in another season can be named.
     allEvents: objectsOf_('_events').filter(function (e) { return e && e.eventId; })
-      .map(function (e) { return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || '') }; }),
+      .map(function (e) { return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || ''),
+                                   closedAt: e.closedAt ? String(e.closedAt) : '' }; }),
     holders: objectsOf_('_holders').filter(function (h) { return h && h.holderId && !truthyCell_(h.archived); })
       .map(function (h) {
         return { holderId: String(h.holderId), regionId: String(h.regionId),
@@ -4054,6 +4085,29 @@ function doEditRegion(p) {
   });
   if (p.prices) savePrices_(regionId, p.prices);
   markDirtyAll_();
+}
+
+/* Switch existing titles on for a region — what ticking them in Edit region
+   does, and nothing else: names, currencies and prices are left alone, so the
+   title picks up whatever price the region already has for it. A region whose
+   list is blank already carries every title, so there is nothing to add. */
+function doRegionAddBooks(p) {
+  var regionId = String(p.regionId || '');
+  if (!regionById_(regionId)) throw new Error('That region no longer exists.');
+  var add = parseBookList_(p.bookIds).filter(function (id) { return bookById_(id); });
+  if (!add.length) return;
+  var rows = rowsOf_('_regions');
+  var hs = rows.headers.map(String);
+  var iId = hs.indexOf('regionId'), iBooks = hs.indexOf('books');
+  if (iBooks < 0) return;
+  rows.data.forEach(function (row, i) {
+    if (String(row[iId]) !== regionId) return;
+    var have = parseBookList_(row[iBooks]);
+    if (!have.length) return;                       // blank = every title already
+    add.forEach(function (id) { if (have.indexOf(id) < 0) have.push(id); });
+    rows.sheet.getRange(i + 2, iBooks + 1).setValue(have.join(','));
+  });
+  markDirtyRegions_([regionId]);
 }
 
 /* Delete a whole region: its warehouse, its events, and every record attached to

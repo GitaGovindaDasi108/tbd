@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b177**.
+Handover notes. Current build: **b178**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -153,8 +153,9 @@ install. See `test/README.md`.
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
 `dutchtest`, `reptest`, `payusd`).
 
-`node test/browser-buttons.js` is optional: it drives the real app in Chromium
-(Playwright), with every Apps Script request answered by `mini.js`.
+`node test/browser-buttons.js` and `node test/browser-addstock.js` are optional:
+they drive the real app in Chromium (Playwright), with every Apps Script request
+answered by `mini.js`. Screenshots land in the system temp folder.
 
 Before publishing, always: run `test/run-all.js`, run `m.sync(true)` to confirm
 sheets still render.
@@ -176,6 +177,40 @@ narrowly, and Node's `navigator` is read-only — override it with
   lines inside a payment type's dropdown now use `usdActual` too (`usdAdj` in
   `renderPayments`), so they add up to the row above. Covered by
   `test/payusd.js`.
+
+## Done in b178 — Stock protocol, part 1: Add Stock
+
+- **One "＋ Add Stock" button** on every page (admin, and regional links), in
+  place of "Add / subtract stock" and "Books coming from outside the tour".
+  Sales links do not get it.
+- **Destination picker** (`stockPlaces`, `placePickerHTML`/`bindPlacePicker`):
+  searchable, indented season › region › event; closed places left out; a
+  regional link sees only its region. Reused for Transfer in part 2.
+- **Another season** works: `stockCtxFor` fetches that season's state, writes
+  carry `season`, and nothing is applied locally (its cache is dropped instead).
+- **Already at the destination** = the old adjust-stock table, plus a warning
+  (on screen and a confirm) whenever a count goes down.
+- **Not there yet** = a batch in transit (`sendShipment` from `OUTSIDE`). The
+  app now names the batch (`shipId`), and it records `toLoc`, so a batch can be
+  aimed at an event; "Mark as arrived" defaults there. The `toLoc` column is
+  added on first use — no need to re-run initialize.
+- **Other Books** switches a title on for the region via the new
+  `regionAddBooks` action (regional links allowed, own region only).
+  **My Book Is Not Listed** (admin only) is the Edit-region add-a-title.
+- **Add something new** (Season / Region / Event), reached from "Can't find
+  your destination?". `regionModal(edit, after)` and `eventModal(edit, after)`
+  take a callback so the user is brought back to Add Stock with it chosen.
+- Phone layout: the five-column stock table now fits a 390px screen.
+
+## Still to do (agreed plan)
+
+2. **Transfer Existing Stock** — one dialog for all four kinds of transfer,
+   sub-warehouse columns (devotee storage = sub-warehouses), confirmation
+   messages, "transfer everything". Replaces the remaining transfer buttons.
+   Decided: when the warehouse shelf itself has none, a sale asks which
+   sub-warehouse the book came from.
+3. **One activity log** for everything. Decided: "Delete" on an entry undoes
+   the action where that is safe; entries that cannot be undone have no Delete.
 
 ## Open items
 
