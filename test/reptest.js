@@ -1,5 +1,4 @@
 const {T,store}=require(__dirname+'/clientsim.js');
-const code=require('fs').readFileSync('/home/claude/tbs/index.html','utf8');
 // extra functions for this test
 const extra = new Function('return 0');
 const bk=(id,n,cat)=>({id,name:n,cat,usd:40,pln:150,eur:35,partnerId:''});
