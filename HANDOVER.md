@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b188**.
+Handover notes. Current build: **b189**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -404,6 +404,28 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
 - **Shipment details**: "Coming From" (the `origin` of outside books) is
   editable; `doEditShipment` accepts `origin`.
 - Admin: Share Links above Spreadsheet Links.
+
+## Done in b189
+
+- **Default sale vs Specialized Sales.** Single and multi-book sale dialogs
+  show only Payment type, Currency and Amount received; everything else
+  (payment status, name/phone, change owed, comments, date, where it was sold,
+  who delivers a pre-order) sits in a closed `<details id="specBox">`
+  "Specialized Sales". It opens by itself for a pre-order, when editing a sale
+  that already uses any of it, and in Multiple Books as soon as a pre-order
+  count is set (a name is then required).
+- **Dollars actually received** is entered from the **sales log, after the
+  sale** — not in the sale dialogs (the owner's decision). A "$ Received"
+  button sits on every digital (non-cash, non-gift), non-pending row, single
+  and multi-book; the drawer keeps its "Dollars received" line too. For a
+  multi-book transaction it is one figure, shared out over the books by their
+  estimated dollars (`splitUsdActual` / `splitUsdActual_`), and the row shows
+  the total.
+- Edits keep it: `doEditSale` falls back to the stored value, and
+  `doEditBundle` carries the old total over and shares it out again over the
+  new rows (it used to be lost, as the rows are rewritten).
+- **Owner's standing rule:** whatever is added to single sales is added to
+  multi-book transactions too, unless they say otherwise.
 
 ## Open items
 
