@@ -1002,6 +1002,13 @@ body.busy #busyBar{opacity:1}
 .warn-detail b{font-weight:700}
 .note{background:#EAF1F9;border:1px solid #C7D6E8;color:var(--blue);border-radius:9px;padding:10px 12px;font-size:13px}
 .leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
+.mix-add{margin-top:8px}
+.mix-left{margin-top:8px;font-size:13px;color:var(--ink)}
+.mix-left.ok{color:var(--green,#2f7a4a);font-weight:600}
+.mix-left.over{color:var(--clay)}
+.mix-est{font-size:11.5px;color:var(--muted);margin-top:2px}
+.mix-est:empty{display:none}
+.mix-x{float:right;border:0;background:none;color:var(--muted);font-size:16px;line-height:1;cursor:pointer;padding:0 2px}
 .leg-box .lg-title{font-size:11px;font-weight:700;color:var(--saffron-d);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
 .hint{font-size:12px;color:var(--muted)}
 .opts{display:grid;gap:9px}
@@ -1013,6 +1020,10 @@ body.busy #busyBar{opacity:1}
 .opt span{font-size:12px;color:var(--muted);line-height:1.4}
 .opt[disabled]{opacity:.45;pointer-events:none}
 .err{color:var(--clay);font-size:13px;font-weight:600}
+.err-box{background:var(--clay-l);border:1px solid #EEC0b8;color:var(--clay);border-radius:9px;padding:10px 12px;font-size:13.5px;font-weight:600;margin-bottom:10px}
+.err-box .btn{margin-top:8px;display:block}
+.mb-from{margin:4px 0 10px}
+.xf-return{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 
 /* ---------- Bulk grid ---------- */
 .seg{display:flex;border:1.5px solid var(--line-d);border-radius:10px;overflow:hidden}
@@ -1263,7 +1274,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b186</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b187</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1590,7 +1601,9 @@ function isGift(x){
   return L.length>0 && L.every(l=>l.type==='Gift');
 }
 function legs(s){const a=[];if(!s)return a;if(s.p1type)a.push({type:s.p1type,cur:s.p1cur,amt:Number(s.p1amt)||0});
-  if(s.p2type)a.push({type:s.p2type,cur:s.p2cur,amt:Number(s.p2amt)||0});return a;}
+  if(s.p2type)a.push({type:s.p2type,cur:s.p2cur,amt:Number(s.p2amt)||0});
+  (Array.isArray(s.pmore)?s.pmore:[]).forEach(l=>{ if(l&&l.type) a.push({type:l.type,cur:l.cur,amt:Number(l.amt)||0}); });
+  return a;}
 function legsUSD(s){return legs(s).reduce((t,l)=>t+toUSD(l.amt,l.cur),0);}
 function payLabel(s){const L=legs(s);if(!L.length)return '—';
   return L.map(l=>`${l.type} ${fmt(l.amt)} ${CUR_SYM[l.cur]||l.cur}`).join(' + ');}
@@ -2570,6 +2583,7 @@ function commit(payload, apply, okMsg, opts){
     OPS = OPS.filter(o=>o!==op);
     outboxDone(payload.opId);            // refused by the server: resending cannot help
     STATE = derive(); renderAll();
+    if(opts && typeof opts.onFail==='function') opts.onFail(err);
     // Name the action, so a failure is traceable rather than a bare apology.
     toast('Not saved (' + (payload.action||'change') + ') — ' + err.message, true);
     console.error('Failed to save', payload, err);
@@ -2664,7 +2678,8 @@ function invSet(st,loc,bookId,qty){
 const findSale=(st,id)=>st.sales.find(x=>x.saleId===id);
 function legFields(L){
   return {p1type:L[0]?L[0].type:'',p1cur:L[0]?L[0].cur:'',p1amt:L[0]?L[0].amt:0,
-          p2type:L[1]?L[1].type:'',p2cur:L[1]?L[1].cur:'',p2amt:L[1]?L[1].amt:0};
+          p2type:L[1]?L[1].type:'',p2cur:L[1]?L[1].cur:'',p2amt:L[1]?L[1].amt:0,
+          pmore:L.slice(2)};
 }
 
 /* ============================================================
@@ -4265,8 +4280,125 @@ function curPayTypes(){
 function payTypeOptions(includeMixed,includeGift){
   const base=curPayTypes().filter(t=>includeGift||t!=='Gift');
   let opts=base.map(t=>`<option value="${t}">${t}</option>`).join('');
-  if(includeMixed) opts+=`<option value="Mixed">Mixed (two payments)</option>`;
+  if(includeMixed) opts+=`<option value="Mixed">Mixed (several payments)</option>`;
   return opts;
+}
+
+/* ---- Mixed payments: as many as it takes, and the rest fills itself ----
+   Type one payment and the next one still blank fills with what is left of the
+   total. When the currencies differ, what is left is worked out with today's
+   exchange rates and marked as an estimate. Two payments to start; more can be
+   added (it is rare, but it happens). */
+function mixedPayHTML(){
+  return `<div id="mixedPay" style="display:none">
+      <div id="mixLegs"></div>
+      <button type="button" class="btn btn-ghost btn-sm mix-add" id="mixAdd">＋ Add another payment</button>
+      <div class="mix-left" id="mixLeft"></div>
+    </div>`;
+}
+function convCur(amt, from, to){ return from===to ? amt : fromUSD(toUSD(amt, from), to); }
+/* totalIn(cur): what is to be collected, in that currency (0 = nothing to fill). */
+function bindMixedPay(totalIn, onChange, opts){
+  const gift = !(opts && opts.noGift);
+  const curs = curCurrencies();
+  const types = curPayTypes().filter(t=>t!=='Gift');
+  let L = [{type:types[0]||'Cash', cur:curs[0]||'USD', amt:'', touched:false},
+           {type:types[1]||types[0]||'Cash', cur:curs.includes('USD')&&curs[0]!=='USD'?'USD':(curs[1]||curs[0]||'USD'), amt:'', touched:false}];
+  const r2 = n => Math.round(n*100)/100;
+  function totalFor(cur){
+    const t = Number(totalIn(cur))||0; if(t) return t;
+    // No price set in that currency: carry one over from a currency that has one.
+    for(const c of curs){ const x = Number(totalIn(c))||0; if(x) return convCur(x, c, cur); }
+    return 0;
+  }
+  // The payment that fills itself: the last one not typed by hand.
+  const autoLeg = () => { for(let i=L.length-1;i>=0;i--) if(!L[i].touched && L[i].type!=='Gift') return i; return -1; };
+  function fill(){
+    L.forEach(l=>{ l.est=false; });
+    const typed = L.some(l=>l.touched);
+    const a = autoLeg();
+    /* One total, in the first payment's currency — each currency's own price
+       need not match the exchange rate, so mixing two totals would never add up. */
+    const base = L[0].cur, total = totalFor(base);
+    if(typed && a>=0){
+      const cur = L[a].cur; let paid = 0, mixedCur = cur!==base;
+      L.forEach((l,i)=>{ if(i===a) return; const v = Number(l.amt)||0; if(!v) return; if(l.cur!==base) mixedCur = true; paid += convCur(v, l.cur, base); });
+      const left = total - paid;
+      L[a].amt = (total && left>0.004) ? r2(convCur(left, base, cur)) : '';
+      L[a].est = mixedCur && left>0.004;
+    }
+    // What is still to pay, or over, in the first payment's currency.
+    const c0 = base, tot = total;
+    const mixedAll = new Set(L.filter(l=>Number(l.amt)).map(l=>l.cur)).size>1;
+    let paid = 0; L.forEach(l=>{ paid += convCur(Number(l.amt)||0, l.cur, c0); });
+    const left = tot - paid, ap = mixedAll ? '≈ ' : '';
+    const money = (n,c)=> fmt(r2(n))+' '+(CUR_SYM[c]||c);
+    const box = $('#mixLeft');
+    if(box){
+      box.className = 'mix-left' + (Math.abs(left)<0.01 ? ' ok' : left<0 ? ' over' : '');
+      box.innerHTML = !tot || !L.some(l=>Number(l.amt)) ? ''
+        : Math.abs(left) < (mixedAll ? Math.max(0.01, tot*0.005) : 0.01) ? '✓ Adds up to the total ('+money(tot,c0)+').'
+        : left>0 ? `Still to pay: <b>${ap}${money(left,c0)}</b>${c0!=='USD'?` (${ap}${money(toUSD(left,c0),'USD')})`:''}`
+        : `That is <b>${ap}${money(-left,c0)}</b> more than the total.`;
+    }
+  }
+  function draw(){
+    const box = $('#mixLegs'); if(!box) return;
+    box.innerHTML = L.map((l,i)=>`<div class="leg-box" style="${i?'margin-top:8px':''}">
+        <div class="lg-title">Payment ${i+1}${i>1?`<button type="button" class="mix-x" data-mixx="${i}" title="Remove this payment">×</button>`:''}</div>
+        <div class="row3">
+          <div class="field"><label>Type</label><select data-mix="type" data-i="${i}">${payTypeOptions(false,gift)}</select></div>
+          <div class="field"><label>Curr.</label><select data-mix="cur" data-i="${i}">${curOptions(l.cur)}</select></div>
+          <div class="field"><label>Amount</label><input data-mix="amt" data-i="${i}" type="number" step="0.01" inputmode="decimal"></div>
+        </div>
+        <div class="mix-est" data-mixest="${i}"></div>
+      </div>`).join('');
+    L.forEach((l,i)=>{ const t = box.querySelector(`[data-mix="type"][data-i="${i}"]`); if(t) t.value = l.type; });
+    show();
+  }
+  // Put the numbers in without redrawing, so the box being typed in keeps its place.
+  function show(){
+    fill();
+    L.forEach((l,i)=>{
+      const inp = document.querySelector(`#mixLegs [data-mix="amt"][data-i="${i}"]`);
+      if(inp && document.activeElement!==inp) inp.value = l.amt===''?'':l.amt;
+      if(inp) inp.disabled = l.type==='Gift';
+      const e = document.querySelector(`#mixLegs [data-mixest="${i}"]`);
+      if(e) e.textContent = l.est ? '≈ estimated from today’s exchange rate' : '';
+    });
+    if(onChange) onChange();
+  }
+  const root = $('#mixedPay');
+  root.addEventListener('input', e=>{
+    const el = e.target.closest('[data-mix="amt"]'); if(!el) return;
+    const l = L[+el.dataset.i]; l.amt = el.value; l.touched = el.value!==''; show();
+  });
+  root.addEventListener('change', e=>{
+    const el = e.target.closest('[data-mix]'); if(!el || el.dataset.mix==='amt') return;
+    const l = L[+el.dataset.i]; l[el.dataset.mix] = el.value;
+    if(l.type==='Gift'){ l.amt = 0; l.touched = true; }
+    show();
+  });
+  root.addEventListener('click', e=>{
+    const x = e.target.closest('[data-mixx]');
+    if(x){ L.splice(+x.dataset.mixx, 1); draw(); return; }
+    if(e.target.closest('#mixAdd')){
+      // What is on screen now stays; the new payment is the one that fills.
+      L.forEach(l=>{ if(l.amt!=='') l.touched = true; });
+      L.push({type:types[0]||'Cash', cur:L[0].cur, amt:'', touched:false});
+      draw();
+      const n = document.querySelector(`#mixLegs [data-mix="amt"][data-i="${L.length-1}"]`); if(n) n.focus();
+    }
+  });
+  draw();
+  return {
+    legs: ()=>L.map(l=>({type:l.type, cur:l.cur, amt:Number(l.amt)||0})).filter(l=>l.amt>0 || l.type==='Gift'),
+    set: legs=>{ L = legs.map(l=>({type:l.type, cur:l.cur, amt:l.amt, touched:true})); while(L.length<2) L.push({type:types[0]||'Cash', cur:curs[0]||'USD', amt:'', touched:false}); draw(); },
+    // Everything entered, converted into one currency.
+    paidIn: cur=>L.reduce((t,l)=>t + convCur(Number(l.amt)||0, l.cur, cur), 0),
+    firstCur: ()=>L[0].cur,
+    refresh: show
+  };
 }
 /* The currency list follows the region you're standing in: Poland offers PLN/EUR/USD,
    Macedonia offers MKD/USD, and a future region offers whatever it was set up with. */
@@ -4318,6 +4450,8 @@ function saleModal(opts){
   openModal(`
     ${mHead(title+' — '+book.name)}
     <div class="m-body">
+      ${(!isPre && !edit && onHand<=0) ? `<div class="err-box" id="noStock">There are no copies of <b>${esc(book.name)}</b> at
+        ${esc(locName(loc))} to sell. <button type="button" class="btn btn-ghost btn-sm" id="preInstead">Pre-order it instead</button></div>` : ''}
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
       ${(!isPre && !edit && loc===WAREHOUSE)
         ? preorderWarning([shortfallLine(opts.bookId, onHand-1)].filter(Boolean), ['sell it','sell them'])
@@ -4335,22 +4469,7 @@ function saleModal(opts){
         </div>
       </div>
 
-      <div id="mixedPay" style="display:none">
-        <div class="leg-box"><div class="lg-title">Payment 1</div>
-          <div class="row3">
-            <div class="field"><label>Type</label><select id="m1type">${payTypeOptions(false,true)}</select></div>
-            <div class="field"><label>Curr.</label><select id="m1cur">${curOptions('PLN')}</select></div>
-            <div class="field"><label>Amount</label><input id="m1amt" type="number" step="0.01" inputmode="decimal"></div>
-          </div>
-        </div>
-        <div class="leg-box" style="margin-top:8px"><div class="lg-title">Payment 2</div>
-          <div class="row3">
-            <div class="field"><label>Type</label><select id="m2type">${payTypeOptions(false,true)}</select></div>
-            <div class="field"><label>Curr.</label><select id="m2cur">${curOptions('USD')}</select></div>
-            <div class="field"><label>Amount</label><input id="m2amt" type="number" step="0.01" inputmode="decimal"></div>
-          </div>
-        </div>
-      </div>
+      ${mixedPayHTML()}
 
       <div class="field">
         <label>Payment status</label>
@@ -4409,6 +4528,22 @@ function saleModal(opts){
 
   const ptype=$('#ptype'), pcur=$('#pcur'), pamt=$('#pamt');
   const basePrice = c => priceFor(book,c);
+  // Nothing on the shelf: said now, with the way forward, and Save stays off.
+  if($('#noStock')){
+    $('#saveSale').disabled = true;
+    $('#preInstead').addEventListener('click', ()=>saleModal({bookId:opts.bookId, isPreorder:true, loc}));
+  }
+  /* Moving a sale to another place takes the copy off that shelf instead — so
+     that shelf has to have one, and says so as soon as it is picked. */
+  function checkMoveStock(){
+    const sel = $('#csLoc'); if(!sel || !edit || edit.type!=='SALE' || !edit.bookId) return true;
+    const to = sel.value;
+    const ok = to===edit.location || invQty(to, edit.bookId) > 0;
+    $('#modalErr').textContent = ok ? '' : 'There are no copies of '+book.name+' at '+locName(to)+' — it cannot be moved there.';
+    $('#saveSale').disabled = !ok;
+    return ok;
+  }
+  if($('#csLoc')) $('#csLoc').addEventListener('change', checkMoveStock);
   // Pre-order handed to another region to deliver.
   const fulPick = $('#fulSel') ? bindPlacePicker('fulReg', regionPlacesAll(regionOfLoc(loc)), '', ()=>{}) : null;
   if($('#fulSel')) $('#fulSel').addEventListener('change', ()=>{ $('#fulPick').hidden = $('#fulSel').value!=='other'; });
@@ -4421,12 +4556,16 @@ function saleModal(opts){
     const mixed=ptype.value==='Mixed';
     $('#singlePay').style.display=mixed?'none':'block';
     $('#mixedPay').style.display=mixed?'block':'none';
-    if(!mixed) syncSingleAmount();
+    if(!mixed) syncSingleAmount(); else mix.refresh();
   }
   ptype.addEventListener('change',togglePay);
   pcur.addEventListener('change',()=>{pamt.dataset.touched='';syncSingleAmount();});
   pamt.addEventListener('input',()=>{pamt.dataset.touched='1';});
   let payMode='full';
+  /* In "Partial payment" the amounts are what was handed over, so they are not
+     filled up to the full price — the balance goes in "Still owed" instead. */
+  const mix = bindMixedPay(c=>payMode==='part' ? 0 : basePrice(c),
+    ()=>{ if(payMode==='part'){ const d=$('#dueamt'); if(d) d.dataset.touched=''; suggestDue(); } });
   /* The amount on the payment fields means different things in each mode:
      in "full" and "part" it is money received, in "none" it is money expected. */
   function applyPayMode(){
@@ -4438,6 +4577,7 @@ function saleModal(opts){
     // name box stays visible for every sale now; nothing to toggle here
     const lab = payMode==='none' ? 'Amount expected' : 'Amount received';
     const l1=$('#amtLabel'); if(l1) l1.textContent=lab;
+    if(ptype.value==='Mixed') mix.refresh();
     if(payMode==='part') suggestDue();
   }
   /* If they paid 30 of a 35 book, the balance is obvious — fill it in, but let
@@ -4446,19 +4586,13 @@ function saleModal(opts){
     const d=$('#dueamt'); if(!d || d.dataset.touched) return;
     const cur=$('#duecur').value;
     const paid = ptype.value==='Mixed'
-      ? legsInCur(cur)
-      : (pcur.value===cur ? (Number(pamt.value)||0) : 0);
+      ? mix.paidIn(cur)
+      : convCur(Number(pamt.value)||0, pcur.value, cur);
     const bal = basePrice(cur) - paid;
     d.value = bal>0 ? Math.round(bal*100)/100 : '';
     $('#dueHint').textContent = bal>0
       ? `Full price is ${basePrice(cur)} ${cur}, so ${Math.round(bal*100)/100} ${cur} is left over.`
       : 'Enter whatever is still outstanding.';
-  }
-  function legsInCur(cur){
-    let t=0;
-    if($('#m1cur').value===cur) t+=Number($('#m1amt').value)||0;
-    if($('#m2cur').value===cur) t+=Number($('#m2amt').value)||0;
-    return t;
   }
   $('#paySeg').addEventListener('click',e=>{
     const b=e.target.closest('button[data-pay]'); if(!b) return;
@@ -4472,9 +4606,7 @@ function saleModal(opts){
 
   if(edit){
     const L=legs(edit);
-    if(L.length>1){ ptype.value='Mixed'; togglePay();
-      $('#m1type').value=L[0].type;$('#m1cur').value=L[0].cur;$('#m1amt').value=L[0].amt;
-      $('#m2type').value=L[1].type;$('#m2cur').value=L[1].cur;$('#m2amt').value=L[1].amt;
+    if(L.length>1){ ptype.value='Mixed'; mix.set(L); togglePay();
     }else if(L.length===1){ ptype.value=L[0].type; togglePay(); pcur.value=L[0].cur; pamt.value=L[0].amt; pamt.dataset.touched='1';
       if(L[0].type==='Gift') pamt.disabled=true;
     }
@@ -4498,8 +4630,8 @@ function saleModal(opts){
   $('#saveSale').addEventListener('click',()=>{
     let L=[];
     if(ptype.value==='Mixed'){
-      L=[{type:$('#m1type').value,cur:$('#m1cur').value,amt:Number($('#m1amt').value)||0},
-         {type:$('#m2type').value,cur:$('#m2cur').value,amt:Number($('#m2amt').value)||0}];
+      L=mix.legs();
+      if(!L.length){ $('#modalErr').textContent='Enter the amount of each payment.'; return; }
     }else if(ptype.value==='Gift'){
       L=[{type:'Gift',cur:pcur.value,amt:0}];
     }else{
@@ -4520,6 +4652,7 @@ function saleModal(opts){
 
     const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
+      if(!checkMoveStock()) return;
       const newLoc = ($('#csLoc')||{}).value || edit.location;
       const moved = newLoc !== edit.location;
       commit({action:'editSale',saleId:edit.saleId,type:edit.type,
@@ -4537,6 +4670,11 @@ function saleModal(opts){
                  changeamt,changecur,ts:tsVal||s.ts}); },
         moved ? 'Moved to '+locName(newLoc) : 'Sale updated');
     }else{
+      // The shelf may have emptied while the dialog was open (another device's sale).
+      if(!isPre && invQty(loc, opts.bookId)<=0){
+        $('#modalErr').textContent='There are no copies of '+book.name+' left at '+locName(loc)+' — it may have just been sold. Pre-order it instead.';
+        return;
+      }
       const id=newSaleId();
       const other = $('#fulSel') && $('#fulSel').value==='other';
       if(other && !(fulPick && fulPick.value)){ $('#modalErr').textContent='Choose the region that will fulfill it.'; return; }
@@ -4626,7 +4764,11 @@ function bundleModal(edit){
     return list;
   };
 
-  const loc = edit ? edit.members[0].location : CUR_LOC;
+  let loc = edit ? edit.members[0].location : CUR_LOC;
+  /* Selling from the warehouse or one of its sub-warehouses: chosen up front, so
+     each title shows what is actually at that place, and a title that is not
+     there says so the moment you try to add it — never after saving. */
+  const swChoices = (!edit && isWarehouseLoc(CUR_LOC)) ? holdersOf(CUR_REGION).map(h=>({id:h.holderId, label:swLabel(h.holderId), name:h.name})) : [];
   // When editing, a book's own stock still shows what's on the shelf now, but the
   // copies already in THIS bundle are not really gone yet — they'll be rewritten.
   // So show stock as if this bundle's bought copies were returned first.
@@ -4636,14 +4778,14 @@ function bundleModal(edit){
   // Each book has a Buy count and a Pre-order count. A single transaction can
   // mix the two — buy the ones in stock, pre-order the ones that aren't.
   // At a warehouse, copies with its sub-warehouses are stock too (see the save step).
-  const subsAt = id => (!edit && isWarehouseLoc(loc)) ? swHoldingsHere(id) : [];
+  const stockAt = id => invQty(loc,id) + (backIn[id]||0);
   const rows = bundleBooks().map(b=>{
-    const stock = invQty(loc,b.id) + (backIn[b.id]||0) + subsAt(b.id).reduce((t,x)=>t+x.n,0);
+    const stock = stockAt(b.id);
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
       <div class="mb-main">
         <span class="mb-name">${esc(b.name)}</span>
-        <span class="mb-stock ${stock<=0?'none':''}">${stock} in stock</span>
+        <span class="mb-stock ${stock<=0?'none':''}" data-stockfor="${esc(b.id)}">${stock} in stock</span>
       </div>
       <div class="mb-steppers">
         <div class="mb-step" data-kind="buy">
@@ -4666,7 +4808,11 @@ function bundleModal(edit){
     ${mHead((edit?'Edit — ':'Multiple books — ')+esc(locName(loc)))}
     <div class="m-body">
       <div class="hint">Set how many of each book are being <b>bought</b> (from stock) and how many <b>pre-ordered</b>. You can do both in one sale. The total fills in as you go.</div>
+      ${swChoices.length ? `<div class="field mb-from"><label>Selling from</label>
+        <select id="mbFrom"><option value="${esc(CUR_LOC)}">Warehouse</option>
+          ${swChoices.map(x=>`<option value="${esc(x.id)}">${esc(x.label)} — ${esc(x.name)}</option>`).join('')}</select></div>` : ''}
       <div class="mb-list">${rows}</div>
+      <div id="mbWarn" class="warn" hidden></div>
       <div id="preWarn"></div>
       <div class="mb-count" id="mbCount">Nothing selected yet.</div>
 
@@ -4680,22 +4826,7 @@ function bundleModal(edit){
           <div class="field"><label id="amtLabel">Amount received</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
         </div>
       </div>
-      <div id="mixedPay" style="display:none">
-        <div class="leg-box"><div class="lg-title">Payment 1</div>
-          <div class="row3">
-            <div class="field"><label>Type</label><select id="m1type">${payTypeOptions(false,true)}</select></div>
-            <div class="field"><label>Curr.</label><select id="m1cur">${curOptions('PLN')}</select></div>
-            <div class="field"><label>Amount</label><input id="m1amt" type="number" step="0.01" inputmode="decimal"></div>
-          </div>
-        </div>
-        <div class="leg-box" style="margin-top:8px"><div class="lg-title">Payment 2</div>
-          <div class="row3">
-            <div class="field"><label>Type</label><select id="m2type">${payTypeOptions(false,true)}</select></div>
-            <div class="field"><label>Curr.</label><select id="m2cur">${curOptions('USD')}</select></div>
-            <div class="field"><label>Amount</label><input id="m2amt" type="number" step="0.01" inputmode="decimal"></div>
-          </div>
-        </div>
-      </div>
+      ${mixedPayHTML()}
 
       <div class="field">
         <label>Payment status</label>
@@ -4754,7 +4885,7 @@ function bundleModal(edit){
   // an edited bundle opened with every stepper showing 0.
   function refreshAll(){ bundleBooks().forEach(b=>refreshRow(b.id)); }
 
-  const priceCur = ()=> ptype.value==='Mixed' ? 'PLN' : pcur.value;
+  const priceCur = ()=> ptype.value==='Mixed' ? mix.firstCur() : pcur.value;
   const unit = (bookId,cur)=>{ const b=bookById(bookId);
     /* The REGION's price, not the built-in default.
        This read the fallback figures baked into the app (35 € for a big book,
@@ -4790,7 +4921,7 @@ function bundleModal(edit){
   function fillTotal(){
     if(payMode==='none') return;
     if(ptype.value==='Gift'){ pamt.value=0; return; }
-    if(ptype.value==='Mixed') return;
+    if(ptype.value==='Mixed'){ mix.refresh(); return; }
     if(pamt.dataset.touched) return;
     pamt.value = listTotal(pcur.value) || '';
   }
@@ -4841,10 +4972,35 @@ function bundleModal(edit){
     const plus=e.target.closest('.mb-plus'), minus=e.target.closest('.mb-minus');
     const btn=plus||minus; if(!btn) return;
     const id=btn.dataset.book, kind=btn.dataset.kind;
+    // Buying takes a copy off this shelf, so it cannot go past what is here.
+    if(plus && kind==='buy' && counts[id].buy + 1 > stockAt(id)){
+      const have = stockAt(id), w = $('#mbWarn');
+      w.innerHTML = `${have ? 'Only <b>'+have+'</b>' : '<b>No</b>'} × ${esc((bookById(id)||{}).name||'')} at ${esc(locName(loc))}.
+        ${swChoices.length ? 'Choose where it is being sold from above, or pre-order it.' : 'Pre-order it instead.'}`;
+      w.hidden = false; return;
+    }
+    $('#mbWarn').hidden = true;
     counts[id][kind]=Math.max(0, counts[id][kind] + (plus?1:-1));
     refreshRow(id); pamt.dataset.touched=''; fillTotal(); updateCount();
   });
 
+  // Mixed payments fill up to the list total, except as a part payment.
+  const mix = bindMixedPay(c=>payMode==='part' ? 0 : listTotal(c), ()=>updateCount());
+  if($('#mbFrom')) $('#mbFrom').addEventListener('change', ()=>{
+    loc = $('#mbFrom').value;
+    bundleBooks().forEach(b=>{
+      const el = document.querySelector(`#modal [data-stockfor="${b.id}"]`), n = stockAt(b.id);
+      if(el){ el.textContent = n+' in stock'; el.classList.toggle('none', n<=0); }
+    });
+    // Anything already chosen that is not at the new place is flagged at once.
+    const short = bundleBooks().filter(b=>counts[b.id].buy > stockAt(b.id));
+    const w = $('#mbWarn');
+    if(short.length){
+      w.innerHTML = 'Not enough at '+esc(locName(loc))+': '+short.map(b=>`${esc(b.name)} (${stockAt(b.id)} here, ${counts[b.id].buy} chosen)`).join(', ')+'. Lower the count, pre-order them, or choose another place.';
+      w.hidden = false;
+    } else w.hidden = true;
+    updateCount();
+  });
   ptype.addEventListener('change',togglePay);
   pcur.addEventListener('change',()=>{ pamt.dataset.touched=''; fillTotal(); updateCount(); });
   pamt.addEventListener('input',()=>{ pamt.dataset.touched='1'; });
@@ -4862,9 +5018,7 @@ function bundleModal(edit){
     edit.members.forEach(m=>legs(m).forEach(l=>{ if(l.amt){ const k=l.type+'|'+l.cur; legSum[k]=(legSum[k]||0)+l.amt; } }));
     const merged=Object.keys(legSum).map(k=>{ const [type,cur]=k.split('|'); return {type,cur,amt:Math.round(legSum[k]*100)/100}; });
     if(merged.length>1){
-      ptype.value='Mixed'; togglePay();
-      $('#m1type').value=merged[0].type; $('#m1cur').value=merged[0].cur; $('#m1amt').value=merged[0].amt;
-      $('#m2type').value=merged[1].type; $('#m2cur').value=merged[1].cur; $('#m2amt').value=merged[1].amt;
+      ptype.value='Mixed'; mix.set(merged); togglePay();
     } else if(merged.length===1){
       ptype.value=merged[0].type; togglePay();
       $('#pcur').value=merged[0].cur; $('#pamt').value=merged[0].amt; pamt.dataset.touched='1';
@@ -4897,9 +5051,8 @@ function bundleModal(edit){
 
     let L=[];
     if(ptype.value==='Mixed'){
-      L=[{type:$('#m1type').value,cur:$('#m1cur').value,amt:Number($('#m1amt').value)||0},
-         {type:$('#m2type').value,cur:$('#m2cur').value,amt:Number($('#m2amt').value)||0}]
-        .filter(l=>l.amt>0);
+      L=mix.legs().filter(l=>l.amt>0);
+      if(!L.length){ $('#modalErr').textContent='Enter the amount of each payment.'; return; }
     }else if(ptype.value==='Gift'){
       L=[{type:'Gift',cur:pcur.value,amt:0}];
     }else{
@@ -4916,42 +5069,11 @@ function bundleModal(edit){
     if(payMode==='part' && dueamt<=0){ $('#modalErr').textContent='Enter how much is still owed, or choose "Paid in Full".'; return; }
     if((pre.length>0 || payMode!=='full') && !name){ $('#modalErr').textContent='Add a name so the pre-order or balance can be traced.'; return; }
 
-    /* Copies bought at a warehouse whose shelf is short: say which sub-warehouse
-       each comes from (asked right here, once), then they move to the shelf and
-       the sale is recorded as usual — one step for the person selling. */
-    const swMoves = [];
-    if(!edit && isWarehouseLoc(loc)){
-      const want = {}; buy.forEach(id=>{ want[id]=(want[id]||0)+1; });
-      const short = Object.keys(want).map(id=>({id, n:want[id]-invQty(loc,id)}))
-        .filter(x=>x.n>0 && subsAt(x.id).length);
-      if(short.length){
-        let box = $('#mbSw');
-        if(!box){
-          box = document.createElement('div'); box.id = 'mbSw'; box.className = 'sp-group mb-sw';
-          $('#modalErr').parentNode.insertBefore(box, $('#modalErr'));
-          box.innerHTML = `<div class="warn warn-pre">Some of these copies are not on the warehouse shelf itself.
-              Which sub-warehouse is each coming from? Then press ${esc(($('#saveBundle')||{}).textContent||'Save')} again.</div>`
-            + short.map(x=>{
-              const subs = subsAt(x.id), b = bookById(x.id);
-              const single = subs.filter(s=>s.n>=x.n);
-              return `<div class="field"><label>${esc(b.name)} — ${x.n} cop${x.n===1?'y':'ies'}</label>
-                <select data-swfor="${esc(x.id)}">
-                  ${single.map(s=>`<option value="${esc(s.h.holderId)}">${esc(s.label)} — ${esc(s.h.name)} (${s.n} there)</option>`).join('')}
-                  ${single.length<subs.length || !single.length ? `<option value="split">Several sub-warehouses (${subs.map(s=>esc(s.label)).join(', ')})</option>` : ''}
-                </select></div>`;
-            }).join('');
-          box.scrollIntoView({block:'center'});
-          return;
-        }
-        short.forEach(x=>{
-          const sel = box.querySelector(`select[data-swfor="${x.id}"]`);
-          const pickd = sel ? sel.value : 'split';
-          if(pickd && pickd!=='split'){ swMoves.push({from:pickd, to:loc, bookId:x.id, qty:x.n}); return; }
-          let left = x.n;
-          subsAt(x.id).forEach(s=>{ const q = Math.min(left, s.n); if(q>0){ swMoves.push({from:s.h.holderId, to:loc, bookId:x.id, qty:q}); left -= q; } });
-        });
-      }
-    }
+    // The last word on stock, in case it changed while the dialog was open.
+    { const need={}; buy.forEach(id=>{ need[id]=(need[id]||0)+1; });
+      const short = Object.keys(need).filter(id=>need[id] > stockAt(id));
+      if(short.length){ $('#modalErr').textContent = 'Not enough at '+locName(loc)+': '+
+        short.map(id=>(bookById(id)||{}).name+' ('+stockAt(id)+' here, '+need[id]+' chosen)').join(', ')+'.'; return; } }
 
     // Server takes a per-copy list: {bookId, pre} entries.
     const items = buy.map(id=>({bookId:id,pre:false})).concat(pre.map(id=>({bookId:id,pre:true})));
@@ -4989,14 +5111,6 @@ function bundleModal(edit){
          ts:tsVal}
       : {action:'sellBundle',keepBundleId:bundleId,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
          ts:tsVal,changeamt,changecur,override:true};
-
-    // Copies from sub-warehouses reach the shelf first, in the same order the server sees.
-    if(swMoves.length){
-      const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-      commit({action:'transferMulti', moves:swMoves, note:'Taken for a sale', movePrefix},
-        st=>swMoves.forEach(m=>{ invAdd(st, m.from, m.bookId, -m.qty); invAdd(st, m.to, m.bookId, m.qty); }),
-        null, {keepOpen:true});
-    }
 
     commit(payload,
       st=>{
@@ -5363,8 +5477,15 @@ function reopenHere(){
   const isEvent = CUR_LEVEL==='event';
   const name = isEvent ? locName(CUR_LOC) : (currentRegion()||{}).name;
   if(!confirm('Reopen '+name+'? Selling and stock changes become possible again.')) return;
-  commitSync({action:'reopenLocation',kind:isEvent?'event':'region',
-              id:isEvent?CUR_LOC:CUR_REGION},'Reopened');
+  /* Instant: clearing the closed mark is all it does, so show it now and
+     save behind (the outbox retries if the network is slow). */
+  const id = isEvent ? CUR_LOC : CUR_REGION;
+  commit({action:'reopenLocation',kind:isEvent?'event':'region',id},
+    st=>{
+      (isEvent ? (st.events||[]).filter(v=>v.eventId===id)
+               : (st.regions||[]).concat(st.allRegions||[]).filter(v=>v.regionId===id))
+        .forEach(x=>{ x.closedAt=''; });
+    },'Reopened');
 }
 
 
@@ -5603,7 +5724,9 @@ function costsModal(editId, presetPartner){
 const EDIT_SEL = [
   'button',              // plain-text buttons only — see buttonEditable()
   '.hint', '.cash-sub', '.cash-lede', '.muted-note', '.sec-h2', '.inv-h2', '.m-head h3',
-  'label', '.cash-empty', '.chg-note', '.how-to b', '.how-to .how-rest',
+  // Each numbered instruction is one piece of wording, bold start and all —
+  // split in two, rewriting one half left the other behind.
+  'label', '.cash-empty', '.chg-note', '.how-to li',
   '.adm-lbl',            // the admin column names
   '.ptg-h',              // payment table headings
   '.bulk-head span',     // stock dialog column names
@@ -5714,8 +5837,14 @@ function applyLabels(root){
   /* Looked up on the steady form of the key, so wording saved before — under a
      heading that has since changed — is still found. */
   const raw = (STATE && STATE.labels) || {};
-  const map = {};
-  Object.keys(raw).forEach(k=>{ map[normLabelKey(k)] = raw[k]; });
+  const map = {}, byWords = {};
+  Object.keys(raw).forEach(k=>{
+    map[normLabelKey(k)] = raw[k];
+    /* The same words, wherever else they appear, take the new wording too —
+       rewrite "Cash Tracker" once and it changes everywhere. Hiding stays
+       where it was asked for. */
+    if(raw[k] && raw[k]!=='\u0000hide') byWords[String(k).split(' › ').slice(1).join(' › ')] = raw[k];
+  });
   const scope = root || document;
   // Headings first: everything else is keyed by where it sits, and that comes
   // from the heading's original words.
@@ -5731,8 +5860,9 @@ function applyLabels(root){
     if(el.tagName==='BUTTON' && !buttonEditable(el)) return;
     const key = labelKeyOf(el);
     if(!key) return;
-    const want = map[normLabelKey(key)];
     const orig = el.getAttribute('data-orig') || '';
+    const own = map[normLabelKey(key)];
+    const want = own!==undefined ? own : byWords[orig];
     const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
     /* Your wording replaces everything the label said — bold words and all —
        so long as nothing inside it is a control. A label wrapped around a
@@ -5788,10 +5918,24 @@ function labelEditBack(){
   try{ applyLabels(m); }catch(e){}
   renderAll();
 }
+/* The wording as it stands, in the form the box takes: **bold**, new lines. */
+function labelAsTyped(html){
+  const d = document.createElement('div');
+  d.innerHTML = String(html||'').replace(/<br\s*\/?>/gi, '\n').replace(/<\/?b>/gi, '**');
+  d.querySelectorAll('.pencil').forEach(x=>x.remove());
+  return d.textContent.replace(/\*\*\s*\*\*/g,'').replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').trim();
+}
 function editLabelModal(key){
   const labels = STATE.labels||{};
-  const cur = labels[key] || labels[normLabelKey(key)] || '';
   const at = key.split(' › ')[0], words = key.split(' › ').slice(1).join(' › ');
+  const byWords = Object.keys(labels).find(k=>k.split(' › ').slice(1).join(' › ')===words && labels[k]!=='\u0000hide');
+  const cur = labels[key] || labels[normLabelKey(key)] || (byWords ? labels[byWords] : '');
+  /* Opens with the words as they read now, ready to change — not an empty box to
+     retype from nothing. */
+  let el = null;
+  try{ el = document.querySelector('[data-key="'+CSS.escape(key)+'"]'); }catch(e){}
+  const origTyped = el ? labelAsTyped(el.getAttribute('data-orightml') || esc(words)) : words;
+  const startText = (cur && cur!=='\u0000hide') ? cur : origTyped;
   const m0 = $('#modal');
   LABEL_BACK = $('#overlay').classList.contains('show')
     ? { cls: m0.className, nodes: [...m0.childNodes] } : null;
@@ -5801,7 +5945,7 @@ function editLabelModal(key){
       <div class="hint">${esc(at)} — currently reads:</div>
       <div class="lbl-orig">${esc(words)}</div>
       <div class="field"><label>Your wording</label>
-        <textarea id="lblText" rows="4" placeholder="Leave empty to use the original">${esc(cur==='\u0000hide'?'':cur)}</textarea>
+        <textarea id="lblText" rows="4" placeholder="Leave empty to use the original">${esc(startText)}</textarea>
         <div class="muted-note">Put <b>**stars**</b> around words to make them <b>bold</b>, press Enter for a
           new line, and type capitals exactly as you want them.</div></div>
       <label class="radio-row"><input type="checkbox" id="lblHide" ${cur==='\u0000hide'?'checked':''}>
@@ -5814,11 +5958,17 @@ function editLabelModal(key){
     </div>`);
   $('#lblSave').addEventListener('click',()=>{
     // Hidden is stored as its own mark, so it can always be brought back.
-    const text = (($('#lblHide')||{}).checked) ? '\u0000hide' : $('#lblText').value.trim();
+    let text = (($('#lblHide')||{}).checked) ? '\u0000hide' : $('#lblText').value.trim();
+    if(text===origTyped) text = '';              // left as the original: nothing to store
     const saveKey = normLabelKey(key);          // the form it will be looked up by
+    /* Back to the original means back everywhere those words appear, so any
+       copy saved from another screen goes too. */
+    const others = text ? [] : Object.keys(labels).filter(k=>k!==saveKey && labels[k]!=='\u0000hide'
+      && k.split(' › ').slice(1).join(' › ')===words);
     commit({action:'saveLabel', key:saveKey, text},
       st=>{ st.labels = st.labels || {}; if(text) st.labels[saveKey]=text; else delete st.labels[saveKey]; },
       text ? 'Wording saved' : 'Original wording restored', {keepOpen:true});
+    others.forEach(k=>commit({action:'saveLabel', key:k, text:''}, st=>{ if(st.labels) delete st.labels[k]; }, null, {keepOpen:true}));
     labelEditBack();                      // back to where the pencil was tapped
   });
 }
@@ -7351,18 +7501,7 @@ function donationModal(edit){
         <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
         <div class="field"><label>Amount</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
       </div></div>
-      <div id="mixedPay" style="display:none">
-        <div class="leg-box"><div class="lg-title">Payment 1</div><div class="row3">
-          <div class="field"><label>Type</label><select id="m1type">${payTypeOptions(false,false)}</select></div>
-          <div class="field"><label>Curr.</label><select id="m1cur">${curOptions('PLN')}</select></div>
-          <div class="field"><label>Amount</label><input id="m1amt" type="number" step="0.01"></div>
-        </div></div>
-        <div class="leg-box" style="margin-top:8px"><div class="lg-title">Payment 2</div><div class="row3">
-          <div class="field"><label>Type</label><select id="m2type">${payTypeOptions(false,false)}</select></div>
-          <div class="field"><label>Curr.</label><select id="m2cur">${curOptions('USD')}</select></div>
-          <div class="field"><label>Amount</label><input id="m2amt" type="number" step="0.01"></div>
-        </div></div>
-      </div>
+      ${mixedPayHTML()}
       <div class="row2">
         <div class="field"><label>Name (optional)</label><input id="cname" type="text"></div>
         <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789 (include the +)"></div>
@@ -7383,15 +7522,14 @@ function donationModal(edit){
     </div>
   `);
   const ptype=$('#ptype');
+  const mix = bindMixedPay(()=>0, null, {noGift:true});   // a donation has no total to fill up to
   const togglePay=()=>{const m=ptype.value==='Mixed';
     $('#singlePay').style.display=m?'none':'block';$('#mixedPay').style.display=m?'block':'none';};
   ptype.addEventListener('change',togglePay);
 
   if(edit){
     const L=legs(edit);
-    if(L.length>1){ ptype.value='Mixed'; togglePay();
-      $('#m1type').value=L[0].type;$('#m1cur').value=L[0].cur;$('#m1amt').value=L[0].amt;
-      $('#m2type').value=L[1].type;$('#m2cur').value=L[1].cur;$('#m2amt').value=L[1].amt;
+    if(L.length>1){ ptype.value='Mixed'; mix.set(L); togglePay();
     }else if(L.length===1){ ptype.value=L[0].type; togglePay();
       $('#pcur').value=L[0].cur; $('#pamt').value=L[0].amt;
     }
@@ -7407,8 +7545,7 @@ function donationModal(edit){
   $('#saveDon').addEventListener('click',()=>{
     let L=[];
     if(ptype.value==='Mixed'){
-      L=[{type:$('#m1type').value,cur:$('#m1cur').value,amt:Number($('#m1amt').value)||0},
-         {type:$('#m2type').value,cur:$('#m2cur').value,amt:Number($('#m2amt').value)||0}];
+      L=mix.legs();
     }else{
       L=[{type:ptype.value,cur:$('#pcur').value,amt:Number($('#pamt').value)||0}];
     }
@@ -8024,7 +8161,7 @@ function bindPlacePicker(id, places, value, onPick){
     if(document.activeElement===inp) return;
     list.hidden = true; inp.value = placeLabel(cur);
   }, 150));
-  return { get value(){ return cur; } };
+  return { get value(){ return cur; }, set(loc){ pick(loc); } };
 }
 
 /* The place's season, as data. The season on screen is used as it stands.
@@ -8112,13 +8249,14 @@ function addStockModal(opts){
   openModal(`
     ${mHead('Add Stock')}
     <div class="m-body sp">
+      <div class="field"><label>Coming From</label>
+        <div class="hint">Where are these books coming from? (For example: the printer, a temple, a devotee.)</div>
+        <input id="spSource" type="text" placeholder="Source"></div>
       <div class="field"><label>Destination for Books</label>
-        <div class="hint">Search for the region or event where you’d like to add inventory. If you do not see
-          your region or event, please add it first.</div>
+        <div class="hint">Search for the region or event where you’d like to add inventory.</div>
         ${placePickerHTML('spPlace')}
         <div class="sp-addnew">Can’t find your destination?
-          <button type="button" class="linkish" data-act="addnewplace" data-then="stock">Add a new one by clicking here.</button>
-          Once done adding your destination, return to this page to add stock.</div>
+          <button type="button" class="linkish" data-act="addnewplace" data-then="stock">Click here to add it.</button></div>
       </div>
       <div class="field" id="spWhereWrap" hidden><label>Where are the books right now?</label>
         <select id="spWhere">
@@ -8413,7 +8551,10 @@ function addStockModal(opts){
     const err = m=>{ $('#modalErr').textContent = m; };
     const place = ctx.place, season = ctx.seasonId, here = ctx.here;
     const books = stockBooks(ctx);
-    const note = ((document.querySelector('#spBody input[data-k="note"]')||{}).value||'').trim();
+    const typedNote = ((document.querySelector('#spBody input[data-k="note"]')||{}).value||'').trim();
+    const source = (($('#spSource')||{}).value||'').trim();
+    // Where they came from leads the note, so the log reads "From the printer — …".
+    const note = source ? ('From ' + source + (typedNote ? ' — ' + typedNote : '')) : typedNote;
     const extras = [...ctx.extra].filter(id=>books.some(b=>b.id===id));
     const switchOn = extras.length && asIdList(ctx.region.books).length
       ? {action:'regionAddBooks', regionId:ctx.regionId, bookIds:extras.join(','), season} : null;
@@ -8473,14 +8614,14 @@ function addStockModal(opts){
       toLoc:ctx.loc, shipId, season,
       carrier: mode==='devotee' ? v('carrier') : '', phone: mode==='devotee' ? v('phone') : '',
       tracking: mode==='shipping' ? v('tracking') : '', trackingUrl: mode==='shipping' ? v('trackingUrl') : '',
-      eta: mode==='devotee' ? v('etaD') : v('etaS'), note, items};
+      eta: mode==='devotee' ? v('etaD') : v('etaS'), note:typedNote, origin:source, items};
     if(switchOn) commit(switchOn, here?applyOn:()=>{}, null);
     commit(payload, here ? st=>{
       const manifest={}; items.forEach(it=>{ manifest[it.bookId]=it.qty; });
       (st.shipments=st.shipments||[]).push({shipId, fromRegion:OUTSIDE_ORIGIN, toRegion:ctx.regionId,
         toLoc:ctx.loc, mode, carrier:payload.carrier, phone:payload.phone, tracking:payload.tracking,
-        trackingUrl:payload.trackingUrl, eta:payload.eta, note, status:'IN_TRANSIT',
-        createdAt:new Date().toISOString(), arrivedAt:'', manifest, origin:''});
+        trackingUrl:payload.trackingUrl, eta:payload.eta, note:typedNote, status:'IN_TRANSIT',
+        createdAt:new Date().toISOString(), arrivedAt:'', manifest, origin:source});
       items.forEach(it=>invAdd(st, shipId, it.bookId, it.qty));
     } : ()=>{}, 'In transit to '+placeLabel(place));
     elsewhere();
@@ -9857,10 +9998,12 @@ function transferStockModal(opts){
   openModal(`
     ${mHead('Transfer Existing Stock')}
     <div class="m-body sp">
+      <div class="xf-return"><button type="button" class="btn btn-gold btn-sm" id="xfReturn">↩ Return all to warehouse</button>
+        <span class="muted-note">Everything at an event, back to its own warehouse.</span></div>
       <div class="field"><label>Transfer From</label>${placePickerHTML('xfFrom')}</div>
       <div class="field"><label>Transfer To</label>${placePickerHTML('xfTo')}
         <div class="sp-addnew">Can’t find your destination?
-          <button type="button" class="linkish" data-act="addnewplace" data-then="transfer">Add a new one by clicking here.</button></div>
+          <button type="button" class="linkish" data-act="addnewplace" data-then="transfer">Click here to add it.</button></div>
       </div>
       <div id="xfBody" class="sp-group"></div>
       <div class="err" id="modalErr"></div>
@@ -9885,6 +10028,23 @@ function transferStockModal(opts){
 
   const kind = ()=>transferKind(fromPick.value, toPick.value);
   const toCtxHere = ()=>toPick.value && toPick.value.seasonId===STATE.activeSeason;
+
+  /* The routine one, in a single tap: the event chosen (or the one you are at)
+     back to its own warehouse, as one destination, with every copy filled in —
+     ready to check and send. */
+  let returnAll = false;
+  $('#xfReturn').addEventListener('click', ()=>{
+    let f = fromPick.value;
+    if((!f || f.kind==='region') && CUR_LEVEL==='event'){ fromPick.set(CUR_LOC); f = fromPick.value; }
+    if(!f || f.kind==='region'){
+      $('#modalErr').textContent = 'Choose the event the books are coming back from in “Transfer From”, then press this again.';
+      return;
+    }
+    const wh = places.find(p=>p.kind==='region' && p.regionId===f.regionId && p.seasonId===f.seasonId);
+    if(!wh){ $('#modalErr').textContent = 'Could not find that event’s warehouse.'; return; }
+    storage = 'one'; returnAll = true;
+    toPick.set(wh.loc);
+  });
 
   /* Where the books come from: one shelf, or — leaving a warehouse whose stock
      is spread across sub-warehouses — the warehouse and each sub-warehouse that
@@ -9973,6 +10133,10 @@ function transferStockModal(opts){
     restoreTyped();
     bindTop();
     if(travel==='travel' && (k==='region'||k==='season')) syncCourier();
+    if(returnAll && k==='store'){
+      returnAll = false;
+      document.querySelectorAll('#xfBody .xf-in[data-src]').forEach(i=>{ i.value = fromCtx.qty(i.dataset.src, i.dataset.book) || ''; });
+    }
     recalc();
   }
   function bindTop(){
@@ -10287,6 +10451,42 @@ function activityHere(list){
   return list.filter(e=>(e.regions||[]).includes(CUR_REGION) || (e.locs||[]).some(l=>mine.has(l)));
 }
 
+// Who this device is, as the log names it.
+function meLabel(){ return whoAmI() || (SHARE_KEY ? (isSeller() ? 'seller link' : 'coordinator link') : 'main app'); }
+/* Undoing stock movements on this device: each goes back where it came from
+   and leaves the record. */
+function undoMovesLocal(st, ids){
+  const want = new Set((ids||[]).map(String));
+  if(!want.size) return;
+  (st.stockMoves||[]).forEach(m=>{
+    if(!want.has(String(m.id))) return;
+    const q = Number(m.qty)||0;
+    invAdd(st, m.toLoc, m.bookId, -q);
+    if(m.kind==='TRANSFER') invAdd(st, m.fromLoc, m.bookId, q);
+  });
+  st.stockMoves = (st.stockMoves||[]).filter(m=>!want.has(String(m.id)));
+}
+/* The same check the server makes, asked first so a refusal is instant: the
+   books must still be where they were put. */
+function undoMovesFit(ids){
+  const want = new Set((ids||[]).map(String)), need = {};
+  (STATE.stockMoves||[]).forEach(m=>{
+    if(!want.has(String(m.id))) return;
+    const q = Number(m.qty)||0;
+    if(m.kind==='ADJUST' && q<=0) return;
+    const k = m.toLoc+'|'+m.bookId; need[k] = (need[k]||0) + q;
+  });
+  for(const k of Object.keys(need)){
+    const [loc, b] = k.split('|'), have = invQty(loc, b);
+    if(have < need[k]){
+      alert('Only ' + have + ' × ' + ((bookById(b)||{}).name||'that title') + ' left at ' + locName(loc) +
+        ' — not enough to undo this. Nothing was changed.');
+      return false;
+    }
+  }
+  return true;
+}
+
 function activityModal(){
   if(isSeller()) return;
   const sid = STATE.activeSeason;
@@ -10331,9 +10531,9 @@ function activityModal(){
             ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>`
             : (someGone ? `${e.who?' · ':''}<span class="al-undone">Partly undone</span>` : '')}</div>
           ${parts.length>1 ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length} lines</button>
-            <div class="al-parts" ${open?'':'hidden'}>${parts.map(x=>`<div class="al-part${x.undone?' undone':''}">
+            <div class="al-parts" ${open?'':'hidden'}>${parts.map(x=>`<div class="al-part${(x.undone||undone)?' undone':''}">
               <span class="al-part-t">${esc(x.text)}</span>
-              ${x.undone ? '<span class="al-undone">Undone</span>'
+              ${(x.undone || undone) ? '<span class="al-undone">Undone</span>'
                 : (e.canUndo && !undone ? `<button type="button" class="btn btn-danger btn-xs" data-alpart="${esc(x.id)}" data-entry="${esc(e.id)}">Delete</button>` : '')}
             </div>`).join('')}</div>` : ''}</div>
         <div class="al-act">${(e.canUndo && !undone)
@@ -10347,23 +10547,50 @@ function activityModal(){
   $('#alList').addEventListener('click', async e=>{
     const tog = e.target.closest('[data-altog]');
     if(tog){ const id = tog.dataset.altog; OPEN_ACT.has(id) ? OPEN_ACT.delete(id) : OPEN_ACT.add(id); draw(); return; }
+    /* Delete is instant: the entry is marked undone here, the books go back on
+       screen, and the server does the same behind. If it refuses (the books have
+       since been sold, say) the entry comes back as it was and says why. */
     const pb = e.target.closest('[data-alpart]');
     if(pb){
       const entry = list.find(x=>x.id===pb.dataset.entry);
       const line = entry && (entry.parts||[]).find(x=>x.id===pb.dataset.alpart);
       if(!line || !confirm('Delete this line? This undoes it:\n\n' + line.text)) return;
       OPEN_ACT.add(entry.id);
-      if(await commitSync({action:'undoActivityPart', id:entry.id, part:line.id}, 'Undone')) activityModal();
+      const ids = line.ids || [];
+      if(!undoMovesFit(ids)) return;
+      const was = JSON.stringify(entry);
+      line.undone = true;
+      if(entry.parts.every(x=>x.undone)){ entry.undoneAt = new Date().toISOString(); entry.undoneBy = meLabel(); entry.canUndo = false; }
+      noteUndo('Undid one line: ' + line.text, entry);
+      commit({action:'undoActivityPart', id:entry.id, part:line.id}, st=>undoMovesLocal(st, ids), 'Undone',
+        {keepOpen:true, onFail:()=>{ Object.assign(entry, JSON.parse(was)); list = list.filter(x=>!x.local); activityCacheSave(sid, list); draw(); }});
       return;
     }
     const b = e.target.closest('[data-alundo]'); if(!b) return;
     const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
     if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
-    const ok = entry.loose
-      ? await commitSync({action:'undoStockMove', id:entry.moveId}, 'Undone')
-      : await commitSync({action:'undoActivity', id:entry.id}, 'Undone');
-    if(ok) activityModal();
+    // The stock it undoes, when it is a plain movement of books.
+    const gone = new Set(); (entry.parts||[]).filter(x=>x.undone).forEach(x=>(x.ids||[]).forEach(i=>gone.add(String(i))));
+    const ids = entry.loose ? [entry.moveId]
+      : entry.undoType==='moves' ? (entry.moves||[]).filter(i=>!gone.has(String(i))) : [];
+    if(!undoMovesFit(ids)) return;
+    if(entry.loose){
+      commit({action:'undoStockMove', id:entry.moveId}, st=>undoMovesLocal(st, ids), 'Undone', {keepOpen:true});
+      draw(); return;
+    }
+    const was = JSON.stringify(entry);
+    entry.undoneAt = new Date().toISOString(); entry.undoneBy = meLabel(); entry.canUndo = false;
+    (entry.parts||[]).forEach(x=>{ x.undone = true; });
+    noteUndo('Undid: ' + entry.text, entry);
+    commit({action:'undoActivity', id:entry.id}, st=>undoMovesLocal(st, ids), 'Undone',
+      {keepOpen:true, onFail:()=>{ Object.assign(entry, JSON.parse(was)); list = list.filter(x=>!x.local); activityCacheSave(sid, list); draw(); }});
   });
+  // The undo is itself recorded — shown now, replaced by the server's copy next time.
+  function noteUndo(text, entry){
+    list.unshift({id:'local_'+Date.now(), local:true, ts:new Date().toISOString(), who:meLabel(), text,
+      locs:entry.locs||[], regions:entry.regions||[], canUndo:false});
+    activityCacheSave(sid, list); draw();
+  }
   draw();
   post({action:'activity'}).then(d=>{
     if(!d || !Array.isArray(d.result)) throw new Error('Could not load the log.');

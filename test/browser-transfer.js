@@ -210,19 +210,19 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     t.push(['another season: "leaving this season" warning', d.some(x => /leaving this season\. They will no longer be available for sale in this season, the region, or the region’s events/.test(x))]);
     t.push(['4 moved to Krakow (Year-Round Sales)', qty('wh_kr', B0) === 4 && qty(pl.whLoc, B0) === 9]);
 
-    // Multiple books at the warehouse: one title only with SW2 — it asks which, once.
+    // Multiple books at the warehouse: where they are sold from is chosen up front.
     await page.evaluate(() => pull()); await page.waitForTimeout(800);
     await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
-    await page.click(`#modal .mb-plus[data-book="${B0}"][data-kind="buy"]`);
+    await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
+    const warnWh = await page.evaluate(() => document.querySelector('#mbWarn').hidden ? '' : document.querySelector('#mbWarn').textContent);
+    t.push(['Multiple Books: a title not on the warehouse shelf warns at once', /No/.test(warnWh) && /Choose where it is being sold from/.test(warnWh)]);
+    await page.selectOption('#mbFrom', 'hd_gopal1'); await page.waitForTimeout(100);
     await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
     await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
-    await page.click('#saveBundle'); await page.waitForTimeout(300);
-    const askSw = await page.evaluate(() => { const b = document.querySelector('#mbSw'); return b ? b.textContent.replace(/\s+/g, ' ') : ''; });
-    t.push(['Multiple Books asks which sub-warehouse the short title comes from', /Which sub-warehouse/.test(askSw) && /SW2 — Gopal/.test(askSw)]);
-    await page.screenshot({ path: shot('7-bundle-ask') });
+    await page.screenshot({ path: shot('7-bundle-from') });
     await page.click('#saveBundle'); await page.waitForTimeout(1500);
-    t.push(['…then 2 leave SW2 and the 3-book sale is recorded', qty('hd_gopal1', B1) === 1 &&
-      (m.call({ action: 'getState', season: SA }).state.sales || []).filter(x => x.bundle && x.location === pl.whLoc).length === 3]);
+    t.push(['…sold from SW2: 2 leave SW2 and the 2-book sale is recorded there', qty('hd_gopal1', B1) === 1 &&
+      (m.call({ action: 'getState', season: SA }).state.sales || []).filter(x => x.bundle && x.location === 'hd_gopal1').length === 2]);
 
     // Selling when the shelf is empty but a sub-warehouse has copies.
     // (Title 2 was never on the warehouse shelf itself — only with SW2.)

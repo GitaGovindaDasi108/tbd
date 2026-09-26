@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b186**.
+Handover notes. Current build: **b187**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -345,6 +345,40 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
 - **Consignment titles** show only in the region their group belongs to
   (`bookBelongsIn`); `allPartnerIds` stops other seasons calling them orphans.
 - American spelling throughout (fulfill, color…).
+
+## Done in b187
+
+- **Instant**: Reopen event/region (`commit`, clears `closedAt`), and Delete
+  in the activity log. Delete marks the entry/line undone in the dialog,
+  reverses the stock moves on screen (`undoMovesLocal`), checks first that the
+  books are still there (`undoMovesFit`), and restores the entry if the
+  server refuses (`commit` now takes `opts.onFail`). The log's entries carry
+  `undoType` and per-line `ids` for this.
+- **Deleted line came back** on entries written before b186: undoing a line
+  removes its moves, and the rebuild-from-moves then lost it (or, with one
+  title left, fell back to the stale stored list). `doUndoActivityPart` now
+  stores the full line list first.
+- **Mixed payments** (`mixedPayHTML` / `bindMixedPay`, shared by sale,
+  multi-book and donation): any number of payments; the last one not typed
+  fills with what is left, in the first payment's currency, converted with
+  today's rates and marked as an estimate. Third and later payments are stored
+  as JSON in the new `pmore` sales column; `eachLeg_`/`legs()` include them.
+- **Editing a sale no longer wipes** columns the edit does not send
+  (`usdActual`, `bundle`, `fulfil*`): `doEditSale` falls back to the old value.
+- **Stock refused before saving**: a sale with no copies says so when the
+  dialog opens (Save off, "Pre-order it instead"); moving a sale checks the new
+  place; Multiple Books stops the Buy + at what is there, with a warning.
+- **Multiple Books: "Selling from"** (Warehouse, SW1…) up front; replaces the
+  after-Save sub-warehouse question.
+- **Add Stock: "Coming From"** (free text) before the destination; it leads
+  the note ("From the printer — …") and is the shipment `origin` in transit.
+  "Can’t find your destination? Click here to add it."
+- **Transfer: "Return all to warehouse"** fills From (the event), To (its
+  warehouse), One Destination, and every count.
+- **Wording**: each numbered instruction (`.how-to li`) is one label (was two
+  halves); the edit box opens with the current words (`labelAsTyped`); a
+  rewording applies wherever the same words appear (`byWords` in
+  `applyLabels`), and restoring the original clears the other copies.
 
 ## Open items
 

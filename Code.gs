@@ -165,7 +165,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   'usdActual',
   /* A pre-order another region delivers: which region is asked (any season),
      the shelf the copy came off, and when — and which region declined it. */
-  'fulfilBy','fulfilLoc','fulfilAt','fulfilDeclined'];
+  'fulfilBy','fulfilLoc','fulfilAt','fulfilDeclined',
+  /* A third payment and beyond (rare), as JSON: [{type,cur,amt}, …]. The first
+     two keep their own columns so the sheets read as before. */
+  'pmore'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -204,7 +207,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b186';
+var SERVER_BUILD = 'b187';
 
 function doPost(e) { return handle(e); }
 
@@ -3150,7 +3153,8 @@ function readState() {
       name: String(s.name || ''), phone: phoneRead_(s.phone), comments: String(s.comments || ''),
       bundle: String(s.bundle || ''),
       fulfilBy: String(s.fulfilBy || ''), fulfilLoc: String(s.fulfilLoc || ''), fulfilAt: s.fulfilAt || '',
-      fulfilDeclined: String(s.fulfilDeclined || '')
+      fulfilDeclined: String(s.fulfilDeclined || ''),
+      pmore: pmoreRead_(s.pmore)
     };
   });
   return {
@@ -4991,6 +4995,7 @@ function appendSale_(o) {
     p2type: legs[1] ? legs[1].type : '',
     p2cur:  legs[1] ? legs[1].cur  : '',
     p2amt:  legs[1] ? legs[1].amt  : 0,
+    pmore:  pmoreJson_(legs),
     pending: pending,
     paid: !pending && !(Number(o.dueamt) > 0),
     delivered: o.type === 'PREORDER' ? false : true,
@@ -5010,6 +5015,14 @@ function appendSale_(o) {
   return row.saleId;
 }
 
+/* Payments past the second, as stored in the pmore column. */
+function pmoreJson_(legs) { return legs.length > 2 ? JSON.stringify(legs.slice(2)) : ''; }
+function pmoreRead_(v) {
+  if (Array.isArray(v)) return v;
+  if (!v) return [];
+  try { var a = JSON.parse(String(v)); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+
 function normalizeLegs_(legs) {
   var out = [];
   (legs || []).forEach(function (l) {
@@ -5021,7 +5034,7 @@ function normalizeLegs_(legs) {
     out.push({ type: t, cur: String(l.cur || 'USD'), amt: amt });
   });
   if (!out.length) out.push({ type: 'Cash', cur: 'USD', amt: 0 });
-  return out.slice(0, 2);
+  return out.slice(0, 8);
 }
 
 /* ---- Payment types per place --------------------------------------------
@@ -5414,6 +5427,7 @@ function doEditSale(p) {
     p2type: legs[1] ? legs[1].type : '',
     p2cur:  legs[1] ? legs[1].cur  : '',
     p2amt:  legs[1] ? legs[1].amt  : 0,
+    pmore:  pmoreJson_(legs),
     pending: pending,
     paid: (pending || Number(p.dueamt) > 0) ? false : true,
     delivered: newType === 'PREORDER' ? isDelivered_(old) : true,
@@ -5434,8 +5448,10 @@ function doEditSale(p) {
   ensureHeaders_('_sales', SALES_HEADERS);
   var shS = getSheet_('_sales');
   var liveH = shS.getRange(1, 1, 1, Math.max(shS.getLastColumn(), 1)).getValues()[0].map(String);
+  // Anything the edit does not speak to (the dollars actually received, the
+  // transaction it belongs to, a request to another region) stays as it was.
   shS.getRange(idx + 2, 1, 1, liveH.length)
-    .setValues([liveH.map(function (h) { return vals[h] === undefined ? '' : vals[h]; })]);
+    .setValues([liveH.map(function (h) { return vals[h] !== undefined ? vals[h] : (old[h] === undefined ? '' : old[h]); })]);
   sheetMemoClear_();
 
   markDirty_(String(old.location));
@@ -6109,6 +6125,7 @@ function toUSD_(amt, cur) {
 function eachLeg_(s, fn) {
   if (s.p1type) fn({ type: String(s.p1type), cur: String(s.p1cur), amt: Number(s.p1amt) || 0 });
   if (s.p2type) fn({ type: String(s.p2type), cur: String(s.p2cur), amt: Number(s.p2amt) || 0 });
+  pmoreRead_(s.pmore).forEach(function (l) { if (l && l.type) fn({ type: String(l.type), cur: String(l.cur), amt: Number(l.amt) || 0 }); });
 }
 function legsUsd_(s) { var t = 0; eachLeg_(s, function (l) { t += toUSD_(l.amt, l.cur); }); return t; }
 
@@ -7321,8 +7338,11 @@ function activityList_(who, seasonId) {
             list.forEach(function (x) { if (x.ids.every(function (i) { return gone.indexOf(i) >= 0 || !rec[i]; })) gone.push(x.id); });
           }
         }
-        return list.map(function (x) { return { id: String(x.id), text: String(x.text), undone: gone.indexOf(String(x.id)) >= 0 }; });
-      })() });
+        return list.map(function (x) { return { id: String(x.id), text: String(x.text), ids: (x.ids || []).map(String),
+                                                undone: gone.indexOf(String(x.id)) >= 0 }; });
+      })(),
+      // What kind of undo it is, so the app can show a stock undo straight away.
+      undoType: (function () { try { return (JSON.parse(String(r.undo || '')) || {}).type || ''; } catch (e) { return ''; } })() });
   });
   return out.reverse().slice(0, 1500);
 }
@@ -7396,6 +7416,13 @@ function doUndoActivityPart(p, who) {
   }
   var line = parts.filter(function (x) { return String(x.id) === part; })[0];
   if (!line) throw new Error('That line is no longer in this entry.');
+  /* Keep the lines as they are now. Undoing takes the movements off the record,
+     so an older entry rebuilt from the record afterwards would lose (or, with
+     one title left, fall back to its old list and show again) the line just
+     undone. */
+  var iParts = hs.indexOf('parts');
+  if (iParts < 0) { ensureHeaders_('_activity', ACTIVITY_HEADERS); rows = rowsOf_('_activity'); hs = rows.headers.map(String); iParts = hs.indexOf('parts'); }
+  if (parts.every(function (x) { return x.ids; })) sh.getRange(at + 2, iParts + 1).setValue(JSON.stringify(parts));
   var gone = String(e.undoneParts || '').split(',').filter(Boolean);
   if (gone.indexOf(part) >= 0) return 'already';
   if (who.role !== 'admin') {
