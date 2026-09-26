@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b189**.
+Handover notes. Current build: **b190**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -426,6 +426,13 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
   new rows (it used to be lost, as the rows are rewritten).
 - **Owner's standing rule:** whatever is added to single sales is added to
   multi-book transactions too, unless they say otherwise.
+
+## Done in b190
+
+- "$ Received" (dollars actually received) extends to **donations**: the
+  button shows on digital donations in the log as on sales. Totals already
+  applied the figure to donations (the `don` adjustment); editing a donation
+  keeps it (`doEditSale` fallback).
 
 ## Open items
 

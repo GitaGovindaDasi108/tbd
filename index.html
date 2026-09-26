@@ -1285,7 +1285,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b189</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b190</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3900,10 +3900,11 @@ function logItemHTML(x, opts){
   } else if(hasUsdActual(x)) bits.push(`<span class="usd-actual">($${fmt(Number(x.usdActual))} received)</span>`);
 
   /* Paid by card or transfer: once the money has landed, what actually arrived
-     in dollars is entered right here on the sale — one figure for a
+     in dollars is entered right here on the sale or donation — one figure for a
      multi-book transaction, as for one book. */
   const digital = x._bundle ? (x._members||[]).some(digitalSale) : digitalSale(x);
-  const usdBtn = (digital && !isDon && !hideMoney() && !pendingFlag(x))
+  // Sales and donations alike: a transfer lands as dollars, minus fees, either way.
+  const usdBtn = (digital && !hideMoney() && !pendingFlag(x))
     ? `<button class="btn btn-ghost btn-xs usd-btn" data-act="usdactual" ${x._bundle
         ? `data-bundle="${esc(x.bundle||(x._members[0]||{}).bundle||'')}"` : `data-id="${esc(x.saleId)}"`}
         title="Enter the dollars that actually arrived">$ Received</button>` : '';

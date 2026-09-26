@@ -103,6 +103,19 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     mem = state().sales.filter(x => x.name === 'Two Books');
     t.push(['editing the multi-book sale keeps it', Math.abs(mem.reduce((a, x) => a + Number(x.usdActual), 0) - 50) < 0.001]);
     await page.screenshot({ path: shot('3-log') });
+
+    // 4. Donations too.
+    c({ action: 'donate', saleId: 'd_card1', location: pl.whLoc, legs: [{ type: 'Card', cur: 'PLN', amt: 100 }], name: 'Giver' });
+    await page.evaluate(() => pull()); await page.waitForTimeout(800);
+    const dbtn = page.locator('.usd-btn[data-id="d_card1"]:visible').first();
+    t.push(['a card donation in the log has "$ Received"', (await dbtn.count()) === 1]);
+    await dbtn.click(); await page.waitForTimeout(300);
+    await page.fill('#uaVal', '25'); await page.click('#uaSave'); await page.waitForTimeout(1200);
+    t.push(['…and it is saved', Number(state().sales.find(x => x.saleId === 'd_card1').usdActual) === 25]);
+    t.push(['the donation row shows "($25 received)"', /\(\$25 received\)/.test(await page.evaluate(() => document.body.innerText))]);
+    await page.evaluate(() => donationModal(STATE.sales.find(x => x.saleId === 'd_card1'))); await page.waitForTimeout(300);
+    await page.fill('#ccomments', 'thank you'); await page.click('#saveDon'); await page.waitForTimeout(1200);
+    t.push(['editing the donation keeps it', Number(state().sales.find(x => x.saleId === 'd_card1').usdActual) === 25]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n')[0]);
     t.push(['test ran to the end', false]);
