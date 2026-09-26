@@ -966,6 +966,10 @@ body.busy #busyBar{opacity:1}
 .field input,.field select,.field textarea{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink)}
 .field textarea{resize:vertical;min-height:52px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* Side-by-side boxes share the row: without this a long placeholder pushed a
+   box past the edge of the dialog. */
+.row2>*,.row3>*{min-width:0}
+.row2 .field input,.row2 .field select,.row3 .field input,.row3 .field select{width:100%;min-width:0}
 .row3{display:grid;grid-template-columns:1.1fr .9fr 1fr;gap:8px}
 .checkline{display:flex;align-items:center;gap:9px;font-size:14px;color:var(--ink);cursor:pointer;user-select:none}
 .checkline input{width:18px;height:18px}
@@ -1076,6 +1080,70 @@ body.busy #busyBar{opacity:1}
 .sp-group > div:empty{display:none}
 .opt.on{border-color:var(--saffron);background:#FFF3E4}
 
+/* ---------- Transfer Existing Stock ---------- */
+/* The table scrolls sideways inside itself when there are many sub-warehouse
+   columns, so the dialog never does. */
+.xf-scroll{overflow-x:auto;margin:0 -2px;padding:0 2px}
+.xf{display:flex;flex-direction:column;min-width:min-content}
+.xf-row{display:grid;gap:6px;align-items:center;padding:6px 2px;border-bottom:1px solid var(--line)}
+.xf-row:last-child{border-bottom:none}
+.xf-head{font-size:9.5px;text-transform:uppercase;letter-spacing:.3px;color:var(--muted);font-weight:700;padding:0 2px 6px}
+.xf-head span{text-align:center;border-radius:5px;padding:2px 0}
+.xf-head span:first-child{text-align:left}
+.xf-row .bn{font-family:'Marcellus',serif;font-size:14.5px;color:var(--saffron-d);line-height:1.2}
+.xf-row .bn.aotm{color:var(--blue)}
+.xf-row .num{text-align:center;font-size:13px;color:var(--muted);font-weight:600}
+.xf-row .num.next{color:var(--plum);font-weight:700}
+.xf-row .num.zero{color:var(--clay)}
+/* Room for "208", and no more. */
+.xf-in{width:100%;max-width:56px;display:block;margin:0 auto;text-align:center;padding:7px 2px;
+  border:1.5px solid var(--line-d);border-radius:8px;background:#fff;font-size:14px;font-weight:600;color:var(--ink);
+  -moz-appearance:textfield;appearance:textfield}
+.xf-in::-webkit-outer-spin-button,.xf-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.xf-all{display:flex;justify-content:flex-end}
+.xf-cards{display:flex;flex-direction:column;gap:8px}
+.xf-cards .bulk-sec{border-bottom:none;padding-bottom:0}
+.xf-card{border:1px solid var(--line-d);border-radius:10px;padding:8px 9px;display:flex;flex-direction:column;gap:5px;background:var(--paper)}
+.xf-card-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.xf-card-h .bn{font-family:'Marcellus',serif;font-size:14.5px;color:var(--saffron-d);line-height:1.2}
+.xf-card-h .bn.aotm{color:var(--blue)}
+.xf-card-n{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.xf-card-n .num.next{color:var(--plum);font-size:13px}
+.xf-card-n .num.zero{color:var(--clay)}
+.xf-line{display:grid;grid-template-columns:1fr auto 56px;gap:8px;align-items:center;border-radius:8px;padding:5px 6px 5px 9px}
+.xf-line-l{font-size:12.5px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.xf-line-n{font-size:11.5px;color:var(--muted);white-space:nowrap}
+.xf-line .xf-in{background:#fff}
+.xf-sws{display:flex;flex-direction:column;gap:8px}
+.xf-sw{border:1px solid var(--line-d);border-radius:10px;padding:9px 11px;display:flex;flex-direction:column;gap:6px}
+.xf-sw-h{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--plum)}
+.xf-sw-h .sp-x{margin-left:auto;border:none;background:none;color:var(--muted);cursor:pointer;font-size:13px}
+.xf-sw-who{font-size:13px;color:var(--ink)}
+.xf-sw .field input{background:#fff}
+#xfAddSw{align-self:flex-start}
+/* Sub-warehouse bubbles on a warehouse card. */
+.sw-bubs{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.sw-bub{border:1px solid #B9D2EC;background:#EAF1F9;color:#2F6FB5;border-radius:999px;padding:1px 8px;
+  font-size:11px;font-weight:700;cursor:pointer;line-height:1.6}
+.sw-bub:hover{background:#DCE9F7}
+.sw-who{font-size:11.5px;color:var(--ink);margin-top:3px}
+.sw-who .wa{font-size:11.5px}
+
+/* ---------- Activity log ---------- */
+.al-search{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink);width:100%}
+.al-list{display:flex;flex-direction:column}
+.al-day{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);
+  padding:12px 2px 5px;border-bottom:1px solid var(--line)}
+.al-list .al-day:first-child{padding-top:2px}
+.al-row{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:start;padding:9px 2px;border-bottom:1px solid var(--line)}
+.al-time{font-size:12px;color:var(--muted);font-weight:600;padding-top:1px}
+.al-main{min-width:0}
+.al-text{font-size:13.5px;color:var(--ink);line-height:1.4;overflow-wrap:anywhere}
+.al-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
+.al-row.undone .al-text{text-decoration:line-through;color:var(--muted)}
+.al-undone{color:var(--clay);font-weight:700}
+.al-act .btn{white-space:nowrap}
+
 /* toast */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
   background:var(--plum);color:#FFF3DE;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
@@ -1131,7 +1199,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b180</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b183</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -1848,15 +1916,22 @@ function withHoldersQty(bookId, regionId){
   return holdersOf(regionId).reduce((t,h)=>t+invQty(h.holderId,bookId),0);
 }
 const OUTSIDE_ORIGIN = 'OUTSIDE';
+/* A region's name from any season — a batch can travel into the next tour. */
+function anyRegionName(id){
+  const r = regionById(id) || (STATE.allRegions||[]).find(a=>a.regionId===id);
+  if(!r) return id;
+  const other = r.seasonName && r.seasonId && r.seasonId!==STATE.activeSeason;
+  return r.name + (other ? ' ('+r.seasonName+')' : '');
+}
 function shipLabel(x){
-  let to = (regionById(x.toRegion)||{}).name || x.toRegion;
+  let to = anyRegionName(x.toRegion);
   // Heading for one of the region's events rather than its warehouse: say which.
   if(x.toLoc && !isWarehouseLoc(x.toLoc) && eventsOfRegion(x.toRegion).some(e=>e.eventId===x.toLoc))
     to += ' › ' + locName(x.toLoc);
   // A batch from beyond the tour is named by where it actually came from.
   const from = x.fromRegion===OUTSIDE_ORIGIN
     ? (x.origin || 'Outside the tour')
-    : ((regionById(x.fromRegion)||{}).name || x.fromRegion);
+    : anyRegionName(x.fromRegion);
   return from + ' → ' + to;
 }
 function shipWho(x){
@@ -2776,7 +2851,9 @@ function renderAdmin(){
        </div>${coord ? `<div class="adm-col">
          <div class="adm-lbl">Books</div>
          <button class="btn adm-c3-1" data-act="addstock">＋ Add Stock</button>
-         <button class="btn adm-c3-2" data-act="shipments">🚚 Books in transit</button>
+         <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
+         <button class="btn adm-c3-3" data-act="shipments">🚚 Books in transit</button>
+         <button class="btn adm-c3-4" data-act="activity">🗒 Activity Log</button>
        </div>` : ''}</div>`;
     return;
   }
@@ -2809,28 +2886,11 @@ function renderAdmin(){
   // An event holds nothing that needs ordering, so no button there.
 
   // 2 — moving them
-  if(season){
-    if(admin){
-      cols[1].push(`<button class="btn" data-act="pick" data-then="transfer">→ Transfer to event…</button>`);
-      cols[1].push(`<button class="btn" data-act="pick" data-then="externaltransfer">↔ Transfer to region…</button>`);
-    }
-  }else if(isWarehouseLoc(CUR_LOC)){
-    if(!shut) cols[1].push(`<button class="btn" data-act="transfer" data-mode="toevent">→ Transfer to event</button>`);
-    if(admin) cols[1].push(`<button class="btn" data-act="externaltransfer">↔ Transfer to region</button>`);
-  }else{
-    if(!shut){
-      cols[1].push(`<button class="btn" data-act="transfer" data-mode="in">← Transfer in</button>`);
-      cols[1].push(`<button class="btn" data-act="transfer" data-mode="return">Return to warehouse</button>`);
-    }
-  }
-  /* Reachable from anywhere inside a region, not only while standing at its
-     warehouse — the dialog asks which shelf the books are coming from anyway. */
-  if(admin && (STATE.seasons||[]).length>1){
-    cols[1].push(season
-      ? `<button class="btn" data-act="pick" data-then="seasonxfer">🗓 Hand stock to another season…</button>`
-      : `<button class="btn" data-act="seasonxfer">🗓 Hand stock to another season</button>`);
-  }
-  cols[1].push(`<button class="btn" data-act="transfers">📦 Transfer record</button>`);
+  /* One way to move books already in the system, from anywhere: the dialog asks
+     where from and where to, and works out which kind of transfer it is. */
+  cols[1].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
+  // Every change in one place (sales keep their own log).
+  cols[1].push(`<button class="btn" data-act="activity">🗒 Activity Log</button>`);
 
   // 3 — where the books are
   const shipCount = season
@@ -3074,7 +3134,10 @@ function renderInventory(){
   // The shelf carries every book on the table — a consignment title is sold the
   // same way, it is only the reporting that keeps them apart.
   shelfBooks().forEach(b=>{
-    const q=shownQty(b.id), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
+    /* A warehouse's stock includes what its sub-warehouses (devotees' homes)
+       hold for it: counted in, and shown as SW bubbles beneath the number. */
+    const subs = isWarehouseLoc(CUR_LOC) ? swHoldingsHere(b.id) : [];
+    const q=shownQty(b.id)+subs.reduce((t,x)=>t+x.n,0), held=reservedQty(CUR_LOC,b.id), avail=Math.max(0,q-held);
     const mine=b.partnerId?allSales:s;
     const sold=mine.filter(x=>x.type==='SALE'&&x.bookId===b.id&&x.location===CUR_LOC).length;
     const region = isWarehouseLoc(CUR_LOC) ? regionUnsold(b.id) : q;
@@ -3099,15 +3162,17 @@ function renderInventory(){
             ${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}
             ${isWarehouseLoc(CUR_LOC) ? (function(){
               const atEvents = eventsOfRegion(CUR_REGION).reduce((t,e)=>t+invQty(e.eventId,b.id),0);
-              const held = withHoldersQty(b.id);
               const transit = inTransitQty(b.id);
               const lines=[];
+              if(subs.length) lines.push(`<div class="sw-bubs no-edit">${subs.map(x=>
+                `<button type="button" class="sw-bub" data-act="swbub" data-holder="${esc(x.h.holderId)}"
+                   title="${esc(x.h.name)}">${esc(x.label)} · ${x.n}</button>`).join('')}</div>
+                <div class="sw-who" hidden></div>`);
               if(atEvents) lines.push(`<div class="region">At events: ${atEvents}</div>`);
-              if(held) lines.push(`<div class="region">With devotees: ${held}</div>`);
-              if(atEvents||held) lines.push(`<div class="region total">Total stock: ${q+atEvents+held}</div>`);
+              if(atEvents) lines.push(`<div class="region total">Total stock: ${q+atEvents}</div>`);
               // Books still travelling are not stock yet, so they get their own colour.
               if(transit) lines.push(`<div class="region transit">In transit: ${transit}</div>
-                <div class="region transit">Expected total: ${q+atEvents+held+transit}</div>`);
+                <div class="region transit">Expected total: ${q+atEvents+transit}</div>`);
               return lines.join('');
             })() : (region>q?`<div class="region">Event Stock: ${region-q}</div><div class="region total">Total Stock: ${region}</div>`:'')}</div>
           <div style="text-align:right"><div class="qty-label">sold ${sold}</div></div>
@@ -4467,8 +4532,10 @@ function bundleModal(edit){
 
   // Each book has a Buy count and a Pre-order count. A single transaction can
   // mix the two — buy the ones in stock, pre-order the ones that aren't.
+  // At a warehouse, copies with its sub-warehouses are stock too (see the save step).
+  const subsAt = id => (!edit && isWarehouseLoc(loc)) ? swHoldingsHere(id) : [];
   const rows = bundleBooks().map(b=>{
-    const stock = invQty(loc,b.id) + (backIn[b.id]||0);
+    const stock = invQty(loc,b.id) + (backIn[b.id]||0) + subsAt(b.id).reduce((t,x)=>t+x.n,0);
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
       <div class="mb-main">
@@ -4746,6 +4813,43 @@ function bundleModal(edit){
     if(payMode==='part' && dueamt<=0){ $('#modalErr').textContent='Enter how much is still owed, or choose "Paid in Full".'; return; }
     if((pre.length>0 || payMode!=='full') && !name){ $('#modalErr').textContent='Add a name so the pre-order or balance can be traced.'; return; }
 
+    /* Copies bought at a warehouse whose shelf is short: say which sub-warehouse
+       each comes from (asked right here, once), then they move to the shelf and
+       the sale is recorded as usual — one step for the person selling. */
+    const swMoves = [];
+    if(!edit && isWarehouseLoc(loc)){
+      const want = {}; buy.forEach(id=>{ want[id]=(want[id]||0)+1; });
+      const short = Object.keys(want).map(id=>({id, n:want[id]-invQty(loc,id)}))
+        .filter(x=>x.n>0 && subsAt(x.id).length);
+      if(short.length){
+        let box = $('#mbSw');
+        if(!box){
+          box = document.createElement('div'); box.id = 'mbSw'; box.className = 'sp-group mb-sw';
+          $('#modalErr').parentNode.insertBefore(box, $('#modalErr'));
+          box.innerHTML = `<div class="warn warn-pre">Some of these copies are not on the warehouse shelf itself.
+              Which sub-warehouse is each coming from? Then press ${esc(($('#saveBundle')||{}).textContent||'Save')} again.</div>`
+            + short.map(x=>{
+              const subs = subsAt(x.id), b = bookById(x.id);
+              const single = subs.filter(s=>s.n>=x.n);
+              return `<div class="field"><label>${esc(b.name)} — ${x.n} cop${x.n===1?'y':'ies'}</label>
+                <select data-swfor="${esc(x.id)}">
+                  ${single.map(s=>`<option value="${esc(s.h.holderId)}">${esc(s.label)} — ${esc(s.h.name)} (${s.n} there)</option>`).join('')}
+                  ${single.length<subs.length || !single.length ? `<option value="split">Several sub-warehouses (${subs.map(s=>esc(s.label)).join(', ')})</option>` : ''}
+                </select></div>`;
+            }).join('');
+          box.scrollIntoView({block:'center'});
+          return;
+        }
+        short.forEach(x=>{
+          const sel = box.querySelector(`select[data-swfor="${x.id}"]`);
+          const pickd = sel ? sel.value : 'split';
+          if(pickd && pickd!=='split'){ swMoves.push({from:pickd, to:loc, bookId:x.id, qty:x.n}); return; }
+          let left = x.n;
+          subsAt(x.id).forEach(s=>{ const q = Math.min(left, s.n); if(q>0){ swMoves.push({from:s.h.holderId, to:loc, bookId:x.id, qty:q}); left -= q; } });
+        });
+      }
+    }
+
     // Server takes a per-copy list: {bookId, pre} entries.
     const items = buy.map(id=>({bookId:id,pre:false})).concat(pre.map(id=>({bookId:id,pre:true})));
     const n=items.length;
@@ -4782,6 +4886,14 @@ function bundleModal(edit){
          ts:tsVal}
       : {action:'sellBundle',keepBundleId:bundleId,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
          ts:tsVal,changeamt,changecur,override:true};
+
+    // Copies from sub-warehouses reach the shelf first, in the same order the server sees.
+    if(swMoves.length){
+      const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+      commit({action:'transferMulti', moves:swMoves, note:'Taken for a sale', movePrefix},
+        st=>swMoves.forEach(m=>{ invAdd(st, m.from, m.bookId, -m.qty); invAdd(st, m.to, m.bookId, m.qty); }),
+        null, {keepOpen:true});
+    }
 
     commit(payload,
       st=>{
@@ -8270,6 +8382,7 @@ function addNewPlaceModal(then){
   const admin = isAdmin();
   const back = loc => {
     if(then==='stock') addStockModal({loc});
+    if(then==='transfer') transferStockModal(loc ? {toLoc:loc} : {});
   };
   openModal(`
     ${mHead('Add something new')}
@@ -8392,15 +8505,15 @@ function pickRegionThen(act){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
 }
 function runPicked(act){
-  if(act==='transfer'){ transferModal('toevent'); return; }
+  if(act==='transfer'){ transferStockModal(); return; }
   if(act==='stock'){ addStockModal(); return; }
-  if(act==='externaltransfer'){ externalTransferModal(); return; }
+  if(act==='externaltransfer'){ transferStockModal(); return; }
   if(act==='sharelinks'){ shareLinksModal(); return; }
   if(act==='editregion'){ regionModal(currentRegion()); return; }
   if(act==='deleteregion'){ deleteRegionModal(); return; }
   if(act==='closehere'){ closeModalFor('region'); return; }
   if(act==='newevent'){ eventModal(); return; }
-  if(act==='seasonxfer'){ seasonTransferModal(); return; }
+  if(act==='seasonxfer'){ transferStockModal(); return; }
 }
 
 /* ---- Hand-picked order ----
@@ -9217,88 +9330,7 @@ function partnerEditModal(id){
 
 /* Handing stock to another season. The books do not travel — they are already
    where they are; they simply belong to a different tour from now on. */
-function seasonTransferModal(){
-  const reg = currentRegion();
-  if(!reg) return;
-  const here = (STATE.allRegions||[]).filter(r=>r.seasonId===STATE.activeSeason);
-  const elsewhere = (STATE.allRegions||[]).filter(r=>r.seasonId!==STATE.activeSeason);
-  if(!elsewhere.length){
-    toast('There is only one season — create another first.', true);
-    return;
-  }
-  const srcs = [{id:reg.whLoc, name:reg.name+' — Warehouse'}]
-    .concat(holdersOf(reg.regionId).map(h=>({id:h.holderId, name:h.name+' (devotee storage)'})));
 
-  openModal(`
-    ${mHead('Hand stock to another season')}
-    <div class="m-body">
-      <div class="hint">For books that outlive a tour — what is left here at the end becomes the
-        opening stock of the next one. Nothing travels; the books stay put and simply
-        belong to the other season from now on.</div>
-
-      <div class="field"><label>From</label>
-        <select id="xsFrom">${srcs.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>
-
-      <div class="field"><label>To</label>
-        <select id="xsTo">
-          ${elsewhere.map(r=>`<option value="${esc(r.regionId)}">${esc(r.seasonName)} › ${esc(r.name)}</option>`).join('')}
-        </select></div>
-
-      <div class="cash-sub">Which books</div>
-      <div id="xsRows"></div>
-      <div class="sh-acts" style="margin:6px 0"><button class="btn btn-ghost btn-sm" id="xsAll">Take everything</button></div>
-      <div class="field"><label>Note (optional)</label><input id="xsNote" type="text"></div>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="xsGo">Hand over</button>
-    </div>`, true);
-
-  function draw(){
-    const from = $('#xsFrom').value;
-    $('#xsRows').innerHTML = shelfBooks().map(b=>{
-      const have = invQty(from, b.id);
-      if(!have) return '';
-      return `<div class="cl-row">
-        <div class="cl-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
-        <div class="cl-exp">${have} here</div>
-        <input class="cl-in xs-q" type="number" min="0" max="${have}" inputmode="numeric"
-          data-book="${esc(b.id)}" data-have="${have}" placeholder="0">
-        <div></div>
-      </div>`;
-    }).join('') || `<div class="cash-empty">Nothing in stock there.</div>`;
-  }
-  $('#xsFrom').addEventListener('change',draw);
-  draw();
-  $('#xsAll').addEventListener('click',()=>{
-    [...document.querySelectorAll('#modal .xs-q')].forEach(i=>{ i.value = i.dataset.have; });
-  });
-
-  $('#xsGo').addEventListener('click',()=>{
-    const fromLoc=$('#xsFrom').value, toRegion=$('#xsTo').value;
-    const items=[...document.querySelectorAll('#modal .xs-q')]
-      .map(i=>({bookId:i.dataset.book, qty:Math.max(0,Math.round(Number(i.value)||0)), have:Number(i.dataset.have)}))
-      .filter(x=>x.qty>0);
-    if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
-    const over=items.find(x=>x.qty>x.have);
-    if(over){ $('#modalErr').textContent='Only '+over.have+' × '+bookById(over.bookId).name+' available.'; return; }
-    const dest=(STATE.allRegions||[]).find(r=>r.regionId===toRegion)||{};
-    if(!confirm(`Hand ${items.reduce((t,x)=>t+x.qty,0)} book(s) to ${dest.seasonName} › ${dest.name}?\n\n`
-      +'They leave this season\u2019s books and join that one.')) return;
-
-    // The books leave this season on screen at once; where they land belongs to
-    // another season, so it shows when you switch to it.
-    commit({action:'seasonTransfer', fromRegion:reg.regionId, toRegion, fromLoc,
-            items:items.map(x=>({bookId:x.bookId, qty:x.qty})), note:$('#xsNote').value.trim()},
-      st=>{ items.forEach(it=>invAdd(st, fromLoc, it.bookId, -it.qty)); },
-      'Handed over');
-    // The other season's saved copy predates this, so drop it: switching there
-    // then loads fresh instead of showing the books as not yet arrived.
-    try{ if(dest.seasonId) localStorage.removeItem(SEASON_CACHE+dest.seasonId); }catch(e){}
-    closeModal();
-  });
-}
 
 
 /* One batch on the road, as a card. Used in the Books in transit dialog and in
@@ -9498,7 +9530,14 @@ function shipCountModal(id){
           const have=cur?cur.qty:0, want=counts[bid];
           if(want===have) return;
           invSet(st, id, bid, want);
-          if(backTo) invAdd(st, backTo, bid, have-want);
+          if(backTo && want<have){
+            // Back to the shelves they left, most recent first — as the server does.
+            let left = have-want;
+            const live = new Set(locsInRegion(x.fromRegion));
+            (st.stockMoves||[]).filter(m=>m.toLoc===id && m.bookId===bid && m.kind==='TRANSFER' && live.has(m.fromLoc))
+              .reverse().forEach(m=>{ const q=Math.min(left, Number(m.qty)||0); if(q>0){ invAdd(st, m.fromLoc, bid, q); left-=q; } });
+            if(left>0) invAdd(st, backTo, bid, left);
+          } else if(backTo) invAdd(st, backTo, bid, have-want);
           const ship=(st.shipments||[]).find(v=>v.shipId===id);
           if(ship && ship.manifest) ship.manifest[bid]=Math.max(0,(Number(ship.manifest[bid])||0)+(want-have));
         });
@@ -9663,218 +9702,593 @@ function holderEditModal(id){
 }
 
 
-function externalTransferModal(){
+/* ============================ TRANSFER EXISTING STOCK ============================
+   One dialog for every move of books already in the system: warehouse to
+   event, event to event, event back to its warehouse (onto one shelf or split
+   between sub-warehouses), region to region, and into another season — either
+   arriving at once or travelling with a devotee or a shipping company. */
+
+const COUNT_MSG = 'If you did not count the physical stock of books before clicking this button, please do so now.';
+const LEAVING_MSG = {
+  store:  'The books indicated are leaving this event. They will no longer be available for sale at this event.',
+  region: 'The books indicated are leaving this region. They will no longer be available to sell in this region or this region’s events.',
+  season: 'The books indicated are leaving this season. They will no longer be available for sale in this season, the region, or the region’s events.'
+};
+/* Sub-warehouse columns are tinted, a different shade each, so a row reads across. */
+const SW_TINTS = ['#EAF1F9','#F1EBF8','#E6F3EC','#FBEFDD','#F8E7EE','#ECEFE0'];
+
+/* Sub-warehouses are the region's devotee storage, numbered in their own order:
+   SW1, SW2… — the same numbers wherever they appear. */
+function swListOf(st, regionId){
+  return (st.holders||[]).filter(h=>String(h.regionId)===String(regionId));
+}
+function swLabel(holderId, st){
+  st = st || STATE;
+  const h = (st.holders||[]).find(x=>x.holderId===holderId); if(!h) return '';
+  return 'SW' + (swListOf(st, h.regionId).findIndex(x=>x.holderId===holderId) + 1);
+}
+
+/* The data for a place's season: at once from the screen or the copy saved on
+   the device, then fresher from the server. cb(ctx) may be called twice. */
+function placeCtx(place, cb){
+  if(place.seasonId===STATE.activeSeason){ cb(makeStockCtx(place, null)); return ()=>{}; }
+  let live = true;
+  const cached = seasonCacheLoad(place.seasonId);
+  let ctx = (cached && cached.state) ? makeStockCtx(place, cached.state) : null;
+  if(ctx){ ctx.fresh = false; cb(ctx); }
+  post({action:'getState', season:place.seasonId}).then(d=>{
+    if(!live) return;
+    if(!d || !d.state) throw new Error('Could not open that season.');
+    seasonCacheSave(place.seasonId, d.state, d.rev);
+    if(ctx) ctx.setOther(d.state); else ctx = makeStockCtx(place, d.state);
+    ctx.fresh = true; cb(ctx);
+  }).catch(err=>{
+    if(!live) return;
+    if(ctx){ ctx.fresh = true; cb(ctx); } else cb(null, err);
+  });
+  return ()=>{ live = false; };
+}
+
+/* Which of the four transfers this is. */
+function transferKind(from, to){
+  if(!from || !to) return '';
+  if(from.loc===to.loc) return 'same';
+  if(from.seasonId!==to.seasonId) return 'season';
+  if(from.regionId!==to.regionId) return 'region';
+  if(to.kind==='region') return 'store';          // an event back to its own warehouse
+  return 'event';                                 // warehouse or event, to an event
+}
+
+function transferStockModal(opts){
+  opts = opts || {};
+  if(isSeller()) return;
+  const places = stockPlaces();
   const reg = currentRegion();
-  if(!reg) return;
-  const others = regionsList().filter(r=>r.regionId!==reg.regionId);
-  const srcs = [{id:reg.whLoc, name:reg.name+' — Warehouse'}]
-    .concat(holdersOf(reg.regionId).map(h=>({id:h.holderId, name:h.name+' (devotee storage)'})));
+  const here = CUR_LEVEL==='event' ? CUR_LOC : (CUR_LEVEL==='region' && reg ? reg.whLoc : '');
+  let fromCtx = null, cancelLoad = ()=>{};
+  let storage = '', travel = '';
+  let sws = null;                      // sub-warehouses chosen for an event's books
+  let newN = 0;
+  const typed = {};
 
   openModal(`
-    ${mHead('Send stock to another region')}
-    <div class="m-body">
-      <div class="field"><label>How are they travelling?</label>
-        <select id="txMode">
-          <option value="direct">Direct — they arrive straight away</option>
-          <option value="devotee">With a devotee — in transit</option>
-          <option value="shipping">Shipping company — in transit</option>
-        </select></div>
-
-      <div class="field"><label>From</label>
-        <select id="txFrom">${srcs.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>
-
-      <div class="field"><label>To which region</label>
-        <select id="txTo">
-          ${others.map(r=>`<option value="${esc(r.regionId)}">${esc(r.name)}</option>`).join('')}
-        </select></div>
-
-      <div id="txDevotee" style="display:none">
-        <div class="field"><label>Who is carrying them</label>
-          <input id="txCarrier" type="text" placeholder="e.g. Radha Chandra"></div>
-        <div class="field"><label>WhatsApp number</label>
-          <input id="txPhone" type="tel" placeholder="+48 500 111 222"></div>
+    ${mHead('Transfer Existing Stock')}
+    <div class="m-body sp">
+      <div class="field"><label>Transfer From</label>${placePickerHTML('xfFrom')}</div>
+      <div class="field"><label>Transfer To</label>${placePickerHTML('xfTo')}
+        <div class="sp-addnew">Can’t find your destination?
+          <button type="button" class="linkish" data-act="addnewplace" data-then="transfer">Add a new one by clicking here.</button></div>
       </div>
-      <div id="txShipping" style="display:none">
-        <div class="field"><label>Tracking number <span class="muted-note">(optional)</span></label>
-          <input id="txTracking" type="text" placeholder="add it later if you don't have it yet"></div>
-        <div class="field"><label>Tracking website <span class="muted-note">(optional)</span></label>
-          <input id="txUrl" type="url" placeholder="https://…"></div>
-      </div>
-      <div class="field" id="txEtaWrap" style="display:none">
-        <label>Expected arrival <span class="muted-note">(optional)</span></label>
-        <input id="txEta" type="date"></div>
-
-      <div class="cash-sub">Which books</div>
-      <div id="txRows"></div>
-      <div class="field"><label>Note (optional)</label><input id="txNote" type="text"></div>
+      <div id="xfBody" class="sp-group"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="txGo">Send</button>
+      <button class="btn btn-primary" id="xfGo" disabled>Transfer</button>
     </div>`, true);
 
-  function drawRows(){
-    const from = $('#txFrom').value;
-    $('#txRows').innerHTML = shelfBooks().map(b=>{
-      const have = invQty(from, b.id);
-      if(!have) return '';
-      return `<div class="cl-row">
-        <div class="cl-name ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
-        <div class="cl-exp">${have} here</div>
-        <input class="cl-in tx-q" type="number" min="0" max="${have}" inputmode="numeric"
-          data-book="${esc(b.id)}" data-have="${have}" placeholder="0">
-        <div></div>
-      </div>`;
-    }).join('') || `<div class="cash-empty">Nothing in stock there.</div>`;
-  }
-  function syncMode(){
-    const m = $('#txMode').value;
-    $('#txDevotee').style.display = m==='devotee'?'block':'none';
-    $('#txShipping').style.display = m==='shipping'?'block':'none';
-    $('#txEtaWrap').style.display = m==='direct'?'none':'block';
-    $('#txGo').textContent = m==='direct' ? 'Send now' : 'Send — mark in transit';
-  }
-  $('#txMode').addEventListener('change',syncMode);
-  $('#txFrom').addEventListener('change',drawRows);
-  syncMode(); drawRows();
+  const fromPick = bindPlacePicker('xfFrom', places, opts.fromLoc || here, p=>{ loadFrom(p); });
+  const toPick   = bindPlacePicker('xfTo', places, opts.toLoc || '', ()=>{ sws = null; draw(); });
+  warmSeasons();
 
-  $('#txGo').addEventListener('click',()=>{
-    const mode=$('#txMode').value, fromLoc=$('#txFrom').value, toRegion=$('#txTo').value;
-    if(!toRegion){ $('#modalErr').textContent='Pick a region to send to.'; return; }
-    const items=[...document.querySelectorAll('#modal .tx-q')]
-      .map(i=>({bookId:i.dataset.book, qty:Math.max(0,Math.round(Number(i.value)||0)), have:Number(i.dataset.have)}))
-      .filter(x=>x.qty>0);
-    if(!items.length){ $('#modalErr').textContent='Enter a quantity for at least one title.'; return; }
-    const over=items.find(x=>x.qty>x.have);
-    if(over){ $('#modalErr').textContent='Only '+over.have+' × '+bookById(over.bookId).name+' available.'; return; }
-    if(mode==='devotee' && !$('#txCarrier').value.trim()){
-      $('#modalErr').textContent='Who is carrying them?'; return;
+  function loadFrom(p){
+    cancelLoad(); fromCtx = null; sws = null; draw();
+    cancelLoad = placeCtx(p, (c, err)=>{
+      if(err){ $('#modalErr').textContent = err.message || 'Could not open that place.'; return; }
+      const first = !fromCtx; fromCtx = c;
+      if(first) draw(); else refresh();
+    });
+  }
+
+  const kind = ()=>transferKind(fromPick.value, toPick.value);
+  const toCtxHere = ()=>toPick.value && toPick.value.seasonId===STATE.activeSeason;
+
+  /* Where the books come from: one shelf, or — leaving a warehouse whose stock
+     is spread across sub-warehouses — the warehouse and each sub-warehouse that
+     holds any, side by side. */
+  function sources(){
+    const f = fromPick.value, st = fromCtx.st;
+    if(f.kind!=='region') return [{loc:f.loc, label:'', name:placeLabel(f)}];
+    const books = st.books||[];
+    const has = loc => books.some(b=>fromCtx.qty(loc,b.id)>0);
+    const subs = swListOf(st, f.regionId).filter(h=>has(h.holderId))
+      .map(h=>({loc:h.holderId, label:swLabel(h.holderId, st), name:h.name, phone:h.phone}));
+    if(!subs.length) return [{loc:f.loc, label:'', name:placeLabel(f)}];
+    return (has(f.loc) ? [{loc:f.loc, label:'WH', name:'Warehouse shelf'}] : []).concat(subs);
+  }
+  /* Titles with anything to move, in the region's own order. */
+  function books(srcs){
+    const order = stockBooks(fromCtx).map(b=>b.id);
+    const rank = id => { const i = order.indexOf(id); return i<0 ? 1e6 : i; };
+    return (fromCtx.st.books||[]).filter(b=>srcs.some(s=>fromCtx.qty(s.loc,b.id)>0))
+      .sort((a,b)=>rank(a.id)-rank(b.id));
+  }
+  /* Sub-warehouses for an event's books: the region's existing ones, then any
+     new ones added here. Two empty ones to start if the region has none. */
+  function ensureSws(){
+    if(sws) return;
+    const t = toPick.value;
+    const existing = swListOf(fromCtx.st, t.regionId).map(h=>({key:h.holderId, holderId:h.holderId,
+      label:swLabel(h.holderId, fromCtx.st), name:h.name, phone:h.phone}));
+    sws = existing.length ? existing : [newSw(), newSw()];
+  }
+  function newSw(){
+    newN++;
+    const base = swListOf(fromCtx.st, (toPick.value||{}).regionId).length;
+    const added = sws ? sws.filter(s=>!s.holderId).length : 0;
+    return {key:'new'+newN, holderId:'', label:'SW'+(base+added+1), name:'', phone:''};
+  }
+  function relabel(){
+    const base = swListOf(fromCtx.st, toPick.value.regionId).length;
+    let j = 0;
+    sws.forEach(s=>{ if(!s.holderId){ j++; s.label = 'SW'+(base+j); } });
+  }
+
+  function keepTyped(){
+    document.querySelectorAll('#xfBody [data-k]').forEach(i=>{ typed[i.dataset.k] = i.value; });
+  }
+  function restoreTyped(){
+    document.querySelectorAll('#xfBody [data-k]').forEach(i=>{ if(typed[i.dataset.k]!==undefined) i.value = typed[i.dataset.k]; });
+  }
+
+  function draw(){
+    keepTyped();
+    const body = $('#xfBody'), go = $('#xfGo'), k = kind();
+    $('#modalErr').textContent = '';
+    go.disabled = true; go.textContent = 'Transfer';
+    if(!fromPick.value || !toPick.value){ body.innerHTML = ''; return; }
+    if(k==='same'){ body.innerHTML = ''; $('#modalErr').textContent = 'Pick two different places.'; return; }
+    if(!fromCtx){ body.innerHTML = `<div class="hint sp-loading"><span class="spin-d"></span> Opening ${esc(placeLabel(fromPick.value))}…</div>`; return; }
+
+    let h = '';
+    if(k==='store'){
+      h += `<div class="field"><label>Book Storage</label>
+          <select id="xfStorage">
+            <option value="" disabled ${storage?'':'selected'}>Choose one…</option>
+            <option value="one" ${storage==='one'?'selected':''}>One Destination</option>
+            <option value="multi" ${storage==='multi'?'selected':''}>Multiple Destinations</option>
+          </select></div>`;
+      if(!storage){ body.innerHTML = h; bindTop(); return; }
+      if(storage==='multi'){ ensureSws(); h += swEditorHTML(); }
     }
-    $('#modalErr').textContent='';
-    const payload = {action:'sendShipment', mode, fromRegion:reg.regionId, toRegion, fromLoc,
-      carrier: mode==='devotee' ? $('#txCarrier').value.trim() : '',
-      phone:   mode==='devotee' ? $('#txPhone').value.trim() : '',
-      tracking: mode==='shipping' ? $('#txTracking').value.trim() : '',
-      trackingUrl: mode==='shipping' ? $('#txUrl').value.trim() : '',
-      eta: mode==='direct' ? '' : $('#txEta').value,
-      note: $('#txNote').value.trim(),
-      items: items.map(x=>({bookId:x.bookId, qty:x.qty}))};
+    if(k==='region' || k==='season'){
+      h += `<div class="field"><label>What kind of transfer is this?</label>
+          <select id="xfTravel">
+            <option value="" disabled ${travel?'':'selected'}>Choose one…</option>
+            <option value="now" ${travel==='now'?'selected':''}>Books Arrive Immediately</option>
+            <option value="travel" ${travel==='travel'?'selected':''}>Books Need to Travel</option>
+          </select></div>`;
+      if(!travel){ body.innerHTML = h; bindTop(); return; }
+      if(travel==='travel') h += courierHTML();
+    }
+    h += tableHTML();
+    h += `<div class="xf-all"><button type="button" class="btn btn-ghost btn-sm" id="xfAll">Transfer everything</button></div>
+      <div id="preWarn"></div>`;
+    if(k!=='store' || storage!=='multi')
+      h += `<div class="field"><label>Note (optional)</label><input type="text" data-k="note"></div>`;
+    body.innerHTML = h;
+    restoreTyped();
+    bindTop();
+    if(travel==='travel' && (k==='region'||k==='season')) syncCourier();
+    recalc();
+  }
+  function bindTop(){
+    const s = $('#xfStorage'); if(s) s.addEventListener('change', ()=>{ storage = s.value; draw(); });
+    const t = $('#xfTravel');  if(t) t.addEventListener('change', ()=>{ travel = t.value; draw(); });
+  }
 
-    /* The books leave the shelf on screen straight away and the save follows,
-       the same way a sale works. A direct transfer lands at the destination; an
-       in-transit batch only leaves, because its id comes from the server. */
-    const destWh = (regionById(toRegion)||{}).whLoc;
-    commit(payload, st=>{
-      items.forEach(it=>{
-        invAdd(st, fromLoc, it.bookId, -it.qty);
-        if(mode==='direct' && destWh) invAdd(st, destWh, it.bookId, it.qty);
+  function courierHTML(){
+    return `<div class="field"><label>Courier for Books</label>
+        <select id="xfCourier" data-k="courier">
+          <option value="devotee">Devotee</option>
+          <option value="shipping">Shipping Company</option>
+        </select></div>
+      <div id="xfDevotee" class="sp-group">
+        <div class="field"><label>Name of Devotee Courier</label><input type="text" data-k="carrier" placeholder="Narada Muni"></div>
+        <div class="field"><label>WhatsApp Number</label><input type="tel" data-k="phone" placeholder="+11081728108"></div>
+        <div class="field"><label>Expected Arrival (if known)</label><input type="date" data-k="etaD"></div>
+      </div>
+      <div id="xfShipping" class="sp-group" hidden>
+        <div class="field"><label>Tracking Number</label><input type="text" data-k="tracking"></div>
+        <div class="field"><label>Tracking Website</label><input type="url" data-k="trackingUrl" placeholder="https://…"></div>
+        <div class="field"><label>Expected Arrival (Please fill when known)</label><input type="date" data-k="etaS"></div>
+      </div>
+      <div class="hint">The books leave ${esc(placeLabel(fromPick.value))} now and show as <b>in transit</b> to
+        ${esc(placeLabel(toPick.value))} until someone marks them arrived.</div>`;
+  }
+  function syncCourier(){
+    const c = $('#xfCourier'); if(!c) return;
+    $('#xfDevotee').hidden = c.value!=='devotee';
+    $('#xfShipping').hidden = c.value!=='shipping';
+  }
+
+  function swEditorHTML(){
+    relabel();
+    return `<div class="xf-sws">${sws.map((s,i)=>`
+      <div class="xf-sw" style="background:${SW_TINTS[(Number(String(s.label).slice(2))-1)%SW_TINTS.length]||SW_TINTS[0]}">
+        <div class="xf-sw-h"><b>${esc(s.label)}</b>${s.holderId?' <span class="muted-note">already storing books for this region</span>':''}
+          ${sws.length>1?`<button type="button" class="sp-x" data-swdrop="${esc(s.key)}" title="Leave out of this transfer">✕</button>`:''}</div>
+        ${s.holderId
+          ? `<div class="xf-sw-who">${esc(s.name)}${s.phone?' · '+esc(s.phone):''}</div>`
+          : `<div class="row2">
+              <div class="field"><label>Name</label><input type="text" data-k="swn:${esc(s.key)}" placeholder="e.g. Radha Chandra"></div>
+              <div class="field"><label>WhatsApp Number</label><input type="tel" data-k="swp:${esc(s.key)}" placeholder="+48 500 111 222"></div>
+            </div>`}
+      </div>`).join('')}
+      <button type="button" class="btn btn-ghost btn-sm" id="xfAddSw">＋ Add another sub-warehouse</button>
+    </div>`;
+  }
+
+  /* The table, in one of three shapes:
+       one shelf to one place     Title · Avail · Move · Left
+       several shelves to one     Title · Total · (SWn avail · Move)… · Left
+       one shelf into several     Title · Avail · @SW1 · @SW2… · Left      */
+  function tableHTML(){
+    const srcs = sources(), list = books(srcs);
+    const multiDst = kind()==='store' && storage==='multi';
+    const multiSrc = srcs.length>1;
+    if(!list.length) return `<div class="cash-empty">Nothing in stock at ${esc(placeLabel(fromPick.value))}.</div>`;
+    /* A sub-warehouse keeps its own colour everywhere (SW1 always the first
+       shade); the warehouse shelf itself is plain. */
+    const tintOf = label => { const n = /^SW(\d+)$/.exec(label||''); return n ? SW_TINTS[(Number(n[1])-1)%SW_TINTS.length] : '#F3EFE6'; };
+    const tint = i => tintOf(multiSrc ? srcs[i].label : (sws[i]||{}).label);
+    let cols, head;
+    if(multiSrc){
+      cols = `minmax(96px,1fr) 44px ${srcs.map(()=>'38px 50px').join(' ')} 44px`;
+      head = `<span>Title</span><span>Total</span>${srcs.map((s,i)=>
+        `<span title="${esc(s.name)}">${esc(s.label)}</span><span style="background:${tint(i)}">Move</span>`).join('')}<span>Left</span>`;
+    }else if(multiDst){
+      cols = `minmax(96px,1fr) 44px ${sws.map(()=>'52px').join(' ')} 44px`;
+      head = `<span>Title</span><span>Avail</span>${sws.map((s,i)=>
+        `<span title="${esc(s.holderId?s.name:(typed['swn:'+s.key]||s.label))}" style="background:${tint(i)}">@${esc(s.label)}</span>`).join('')}<span>Left</span>`;
+    }else{
+      cols = `minmax(96px,1fr) 50px 64px 50px`;
+      head = `<span>Title</span><span>Avail</span><span>Move</span><span>Left</span>`;
+    }
+    const inp = (b, attrs, bg) => `<input class="xf-in" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+       data-book="${esc(b.id)}" ${attrs}${bg?` style="background:${bg}"`:''}>`;
+    /* On a phone, several shelves side by side do not fit: each title becomes a
+       small card instead, one tinted line per shelf, so nothing runs off the edge. */
+    const narrow = (multiSrc || multiDst) && window.matchMedia && window.matchMedia('(max-width:560px)').matches;
+    const card = b=>{
+      const total = srcs.reduce((t,s)=>t+fromCtx.qty(s.loc,b.id),0);
+      const lines = multiSrc
+        ? srcs.map((s,i)=>{ const have = fromCtx.qty(s.loc,b.id); return have>0 ? `<div class="xf-line" style="background:${tint(i)}">
+            <span class="xf-line-l"><b>${esc(s.label)}</b> ${esc(s.name)}</span><span class="xf-line-n">${have} here</span>
+            ${inp(b, `data-src="${esc(s.loc)}" data-k="m:${esc(s.loc)}:${esc(b.id)}" max="${have}"`)}</div>` : ''; }).join('')
+        : sws.map((s,i)=>`<div class="xf-line" style="background:${tint(i)}">
+            <span class="xf-line-l"><b>@${esc(s.label)}</b> ${esc(s.holderId ? s.name : (typed['swn:'+s.key]||''))}</span><span class="xf-line-n"></span>
+            ${inp(b, `data-dst="${esc(s.key)}" data-k="d:${esc(s.key)}:${esc(b.id)}"`)}</div>`).join('');
+      return `<div class="xf-card">
+        <div class="xf-card-h"><span class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
+          <span class="xf-card-n">${multiSrc?'Total':'Avail'} ${total} · Left <b class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</b></span></div>
+        ${lines}</div>`;
+    };
+    const row = b=>{
+      const total = srcs.reduce((t,s)=>t+fromCtx.qty(s.loc,b.id),0);
+      let cells;
+      if(multiSrc) cells = `<div class="num">${total}</div>` + srcs.map((s,i)=>{
+          const have = fromCtx.qty(s.loc,b.id);
+          return `<div class="num xf-have">${have}</div><div>${have>0
+            ? inp(b, `data-src="${esc(s.loc)}" data-k="m:${esc(s.loc)}:${esc(b.id)}" max="${have}"`, tint(i)) : ''}</div>`;
+        }).join('');
+      else if(multiDst) cells = `<div class="num">${total}</div>` + sws.map((s,i)=>
+          `<div>${inp(b, `data-dst="${esc(s.key)}" data-k="d:${esc(s.key)}:${esc(b.id)}"`, tint(i))}</div>`).join('');
+      else cells = `<div class="num">${total}</div><div>${inp(b, `data-src="${esc(srcs[0].loc)}" data-k="m:${esc(srcs[0].loc)}:${esc(b.id)}" max="${total}"`)}</div>`;
+      return `<div class="xf-row" style="grid-template-columns:${cols}">
+        <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>${cells}
+        <div class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</div></div>`;
+    };
+    const groups = [['big','Big Books'],['aotm','AoTM — Adventures'],['other','Other']];
+    const grouped = fn => groups.map(([cat,label])=>{
+      const mine = list.filter(b=>catOfBook(b)===cat);
+      return mine.length ? `<div class="bulk-sec">${label}</div>` + mine.map(fn).join('') : '';
+    }).join('');
+    return (narrow
+      ? `<div class="xf-cards">${grouped(card)}</div>`
+      : `<div class="xf-scroll"><div class="xf">
+        <div class="xf-row xf-head" style="grid-template-columns:${cols}">${head}</div>
+        ${grouped(row)}
+      </div></div>`) + `
+      <div class="bulk-foot totals3">
+        <div><span class="tl">Big Books</span><b id="footBig">0</b></div>
+        <div><span class="tl">Other</span><b id="footOther">0</b></div>
+        <div><span class="tl">Adventures</span><b id="footAotm">0</b></div>
+        <div class="all"><span class="tl">Moving</span><b id="footValue">0</b></div>
+      </div>`;
+  }
+
+  const val = i => Math.max(0, Math.round(Number(i.value)||0));
+  function recalc(){
+    const go = $('#xfGo');
+    let big=0, aotm=0, other=0, over=false;
+    document.querySelectorAll('#xfBody [data-left]').forEach(cell=>{
+      const id = cell.dataset.left;
+      const moved = [...document.querySelectorAll(`#xfBody .xf-in[data-book="${id}"]`)].reduce((t,i)=>t+val(i),0);
+      const left = Number(cell.dataset.total) - moved;
+      cell.textContent = left; cell.classList.toggle('zero', left<0);
+      if(left<0) over = true;
+      // A single shelf can be over-drawn too, when several shelves feed one row.
+      document.querySelectorAll(`#xfBody .xf-in[data-book="${id}"][data-src]`).forEach(i=>{
+        if(val(i) > fromCtx.qty(i.dataset.src, id)) over = true; });
+      const c = catOfBook(bookById(id) || (fromCtx.st.books||[]).find(b=>b.id===id));
+      if(c==='aotm') aotm+=moved; else if(c==='other') other+=moved; else big+=moved;
+    });
+    if($('#footValue')){
+      $('#footValue').textContent = big+aotm+other;
+      $('#footBig').textContent = big; $('#footAotm').textContent = aotm; $('#footOther').textContent = other;
+    }
+    $('#modalErr').textContent = over ? 'One or more titles are more than there is to move.' : '';
+    // Taking stock off this region's warehouse shelf can strand its pre-orders.
+    const pw = $('#preWarn');
+    const f = fromPick.value;
+    if(pw && fromCtx.here && f.kind==='region' && f.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC)){
+      const lines = [...document.querySelectorAll(`#xfBody .xf-in[data-src="${f.loc}"]`)].map(i=>{
+        const q = val(i); return q ? shortfallLine(i.dataset.book, invQty(f.loc, i.dataset.book)-q) : '';
+      }).filter(Boolean);
+      pw.innerHTML = preorderWarning(lines, ['transfer it','transfer them']);
+    }
+    const ready = !!document.querySelector('#xfBody .xf-in');
+    const waiting = !fromCtx.fresh;
+    go.disabled = !ready || over || waiting;
+    if(waiting) go.innerHTML = '<span class="spin-d"></span> Checking counts…';
+    else go.textContent = (travel==='travel' && (kind()==='region'||kind()==='season')) ? 'Send — in transit' : 'Transfer';
+  }
+  /* Fresher counts arrived: update the numbers in place if the rows are the same. */
+  function refresh(){
+    const want = books(sources()).map(b=>b.id).join(',');
+    const have = [...document.querySelectorAll('#xfBody [data-left]')].map(c=>c.dataset.left).join(',');
+    if(want!==have || sources().length>1){ draw(); return; }
+    const src = sources()[0];
+    document.querySelectorAll('#xfBody [data-left]').forEach(c=>{
+      const t = fromCtx.qty(src.loc, c.dataset.left);
+      c.dataset.total = t;
+      const n = c.parentNode.querySelector('.num'); if(n) n.textContent = t;
+    });
+    recalc();
+  }
+
+  const body = $('#xfBody');
+  body.addEventListener('input', e=>{ if(e.target.closest('.xf-in')) recalc(); });
+  body.addEventListener('change', e=>{ if(e.target.id==='xfCourier') syncCourier(); });
+  body.addEventListener('click', e=>{
+    if(e.target.closest('#xfAll')){
+      alert(COUNT_MSG);
+      const multiDst = kind()==='store' && storage==='multi';
+      document.querySelectorAll('#xfBody [data-left]').forEach(cell=>{
+        const id = cell.dataset.left;
+        if(multiDst){
+          const ins = [...document.querySelectorAll(`#xfBody .xf-in[data-book="${id}"]`)];
+          ins.forEach((i,n)=>{ i.value = n===0 ? cell.dataset.total : ''; });
+        } else {
+          document.querySelectorAll(`#xfBody .xf-in[data-book="${id}"][data-src]`).forEach(i=>{
+            i.value = fromCtx.qty(i.dataset.src, id) || ''; });
+        }
       });
-    }, mode==='direct' ? 'Stock sent' : 'Marked in transit');
-    closeModal();
+      recalc(); return;
+    }
+    if(e.target.closest('#xfAddSw')){ keepTyped(); sws.push(newSw()); draw(); return; }
+    const drop = e.target.closest('[data-swdrop]');
+    if(drop){ keepTyped(); sws = sws.filter(s=>s.key!==drop.dataset.swdrop); draw(); }
+  });
+
+  $('#xfGo').addEventListener('click', ()=>{
+    const k = kind(), f = fromPick.value, t = toPick.value;
+    const err = m=>{ $('#modalErr').textContent = m; };
+    const v = key => ((document.querySelector(`#xfBody [data-k="${key}"]`)||{}).value||'').trim();
+    const note = v('note');
+    const ins = [...document.querySelectorAll('#xfBody .xf-in')].filter(i=>val(i)>0);
+    if(!ins.length) return err('Enter a quantity for at least one title.');
+    const multiDst = k==='store' && storage==='multi';
+    if(multiDst){
+      const used = new Set(ins.map(i=>i.dataset.dst));
+      const unnamed = sws.find(s=>!s.holderId && used.has(s.key) && !v('swn:'+s.key));
+      if(unnamed) return err('Give '+unnamed.label+' a name.');
+    }
+    if(travel==='travel' && (k==='region'||k==='season') && v('courier')!=='shipping' && !v('carrier'))
+      return err('Who is bringing them? Enter the devotee’s name.');
+    const msg = (LEAVING_MSG[k] ? LEAVING_MSG[k]+'\n\n' : '') + COUNT_MSG + '\n\nAre you sure you have counted everything correctly?';
+    if(!confirm(msg)) return;
+    err('');
+    const season = f.seasonId, fromHere = f.seasonId===STATE.activeSeason, toHere = toCtxHere();
+    const done = 'Transferred to '+placeLabel(t);
+
+    // Travelling between regions: one batch in transit, each title from its own shelf.
+    if(travel==='travel' && (k==='region'||k==='season')){
+      const mode = v('courier')==='shipping' ? 'shipping' : 'devotee';
+      const items = ins.map(i=>({bookId:i.dataset.book, qty:val(i), fromLoc:i.dataset.src}));
+      const shipId = 'sh_' + Math.random().toString(36).slice(2,10);
+      const payload = {action:'sendShipment', mode, fromRegion:f.regionId, toRegion:t.regionId, toLoc:t.loc,
+        fromLoc:f.loc, shipId, season, note, items,
+        carrier: mode==='devotee' ? v('carrier') : '', phone: mode==='devotee' ? v('phone') : '',
+        tracking: mode==='shipping' ? v('tracking') : '', trackingUrl: mode==='shipping' ? v('trackingUrl') : '',
+        eta: mode==='devotee' ? v('etaD') : v('etaS')};
+      commit(payload, fromHere ? st=>{
+        items.forEach(it=>invAdd(st, it.fromLoc, it.bookId, -it.qty));
+        if(toHere){
+          const manifest={}; items.forEach(it=>{ manifest[it.bookId]=(manifest[it.bookId]||0)+it.qty; });
+          (st.shipments=st.shipments||[]).push({shipId, fromRegion:f.regionId, toRegion:t.regionId, toLoc:t.loc,
+            mode, carrier:payload.carrier, phone:payload.phone, tracking:payload.tracking,
+            trackingUrl:payload.trackingUrl, eta:payload.eta, note, status:'IN_TRANSIT',
+            createdAt:new Date().toISOString(), arrivedAt:'', manifest, origin:''});
+          items.forEach(it=>invAdd(st, shipId, it.bookId, it.qty));
+        }
+      } : ()=>{}, 'In transit to '+placeLabel(t));
+      return;
+    }
+
+    // Everything else is books moving between shelves, all in one step.
+    let moves;
+    if(multiDst){
+      // New sub-warehouses are made first, named here, so the move can point at them.
+      const ids = {};
+      sws.forEach(s=>{
+        if(s.holderId){ ids[s.key] = s.holderId; return; }
+        if(!ins.some(i=>i.dataset.dst===s.key)) return;
+        const holderId = 'hd_' + Math.random().toString(36).slice(2,10);
+        ids[s.key] = holderId;
+        const name = v('swn:'+s.key), phone = v('swp:'+s.key);
+        commit({action:'saveHolder', newHolderId:holderId, regionId:t.regionId, name, phone, season},
+          fromHere ? st=>{ (st.holders=st.holders||[]).push({holderId, regionId:t.regionId, name, phone, note:''}); } : ()=>{}, null);
+      });
+      moves = ins.map(i=>({from:f.loc, to:ids[i.dataset.dst], bookId:i.dataset.book, qty:val(i)}));
+    }else{
+      moves = ins.map(i=>({from:i.dataset.src, to:t.loc, bookId:i.dataset.book, qty:val(i)}));
+    }
+    const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    commit({action:'transferMulti', moves, note, movePrefix, season}, fromHere ? st=>{
+      moves.forEach((m,i)=>{
+        const fB = invQty(m.from, m.bookId), tB = invQty(m.to, m.bookId);
+        invAdd(st, m.from, m.bookId, -m.qty);
+        if(toHere) invAdd(st, m.to, m.bookId, m.qty);
+        (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+i, ts:new Date().toISOString(),
+          kind:'TRANSFER', fromLoc:m.from, toLoc:m.to, bookId:m.bookId, qty:m.qty, note,
+          fromBefore:fB, fromAfter:fB-m.qty, toBefore:tB, toAfter:tB+m.qty});
+      });
+    } : ()=>{}, done);
+  });
+
+  if(fromPick.value) loadFrom(fromPick.value); else draw();
+}
+
+/* ============================ ACTIVITY LOG ============================
+   Everything done in the app except sales (they keep their own log): described
+   in plain words by the server as it happens, newest first, for wherever you
+   are standing. Delete means undo — offered only where the undo is safe; an
+   undone entry stays, crossed out, and the undo is itself recorded. */
+const ACT_CACHE = 'tbs_activity_' + (SHARE_KEY ? SHARE_KEY + '_' : '');
+function activityCacheLoad(sid){ try{ return JSON.parse(localStorage.getItem(ACT_CACHE+sid) || 'null'); }catch(e){ return null; } }
+function activityCacheSave(sid, list){ try{ localStorage.setItem(ACT_CACHE+sid, JSON.stringify(list.slice(0,600))); }catch(e){} }
+
+/* Stock movements the log has no entry for — made before the log existed, or
+   moments ago and not yet fetched — shown one by one, each undoable as before. */
+function looseMoveEntries(list){
+  const known = new Set(); list.forEach(e=>(e.moves||[]).forEach(id=>known.add(String(id))));
+  return (STATE.stockMoves||[]).filter(m=>m && m.id && !known.has(String(m.id)) && (Number(m.qty)||0)!==0)
+    .map(m=>{
+      const b = (bookById(m.bookId)||{}).name || 'a title', q = Number(m.qty)||0;
+      const text = m.kind==='ADJUST'
+        ? (q>0?'Added ':'Removed ') + Math.abs(q) + ' × ' + b + ' at ' + locName(m.toLoc)
+        : 'Moved ' + q + ' × ' + b + ' from ' + locName(m.fromLoc) + ' → ' + locName(m.toLoc);
+      return {id:'MV:'+m.id, moveId:m.id, ts:m.ts, who:'', text: text + (m.note ? ' — “'+m.note+'”' : ''),
+        locs:[m.fromLoc, m.toLoc].filter(Boolean), regions:[], canUndo:true, loose:true};
+    });
+}
+/* What belongs to where you are standing. */
+function activityHere(list){
+  if(CUR_LEVEL==='season') return list;
+  if(CUR_LEVEL==='event') return list.filter(e=>(e.locs||[]).includes(CUR_LOC));
+  const mine = new Set(locsInRegion(CUR_REGION));
+  return list.filter(e=>(e.regions||[]).includes(CUR_REGION) || (e.locs||[]).some(l=>mine.has(l)));
+}
+
+function activityModal(){
+  if(isSeller()) return;
+  const sid = STATE.activeSeason;
+  let list = activityCacheLoad(sid) || [], fresh = false;
+  const where = CUR_LEVEL==='season' ? (STATE.seasonName||'this season')
+    : CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'this region');
+  openModal(`
+    ${mHead('Activity Log')}
+    <div class="m-body">
+      <div class="hint">Everything done in <b>${esc(where)}</b> except sales, which keep their own log —
+        newest first. <b>Delete</b> undoes that change; entries that cannot safely be undone have no Delete.</div>
+      <input id="alSearch" class="al-search" type="search" placeholder="Search — a title, a place, a name">
+      <div id="alState" class="hint sp-loading"><span class="spin-d"></span> Checking for the latest…</div>
+      <div id="alList" class="al-list"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+
+  const day = d => d.toLocaleDateString(LOCALE, {weekday:'long', day:'numeric', month:'long'});
+  const time = d => d.toLocaleTimeString(LOCALE, {hour:'2-digit', minute:'2-digit'});
+  function draw(){
+    if(!$('#alList')) return;
+    const q = ($('#alSearch').value||'').trim().toLowerCase();
+    const all = activityHere(list.concat(looseMoveEntries(list)))
+      .filter(e=>!q || (e.text+' '+(e.who||'')).toLowerCase().includes(q))
+      .sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    let last = '', h = '';
+    all.forEach(e=>{
+      const d = new Date(e.ts), dk = isNaN(d) ? '' : day(d);
+      if(dk!==last){ h += `<div class="al-day">${esc(dk)}</div>`; last = dk; }
+      const undone = !!e.undoneAt;
+      h += `<div class="al-row${undone?' undone':''}">
+        <div class="al-time">${isNaN(d)?'':esc(time(d))}</div>
+        <div class="al-main"><div class="al-text">${esc(e.text)}</div>
+          <div class="al-meta">${esc(e.who||'')}${undone
+            ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>` : ''}</div></div>
+        <div class="al-act">${(e.canUndo && !undone)
+          ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">Delete</button>` : ''}</div>
+      </div>`;
+    });
+    $('#alList').innerHTML = h || `<div class="cash-empty">${q ? 'Nothing matches that search.' : 'Nothing recorded here yet.'}</div>`;
+    $('#alState').hidden = fresh;
+  }
+  $('#alSearch').addEventListener('input', draw);
+  $('#alList').addEventListener('click', async e=>{
+    const b = e.target.closest('[data-alundo]'); if(!b) return;
+    const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
+    if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
+    const ok = entry.loose
+      ? await commitSync({action:'undoStockMove', id:entry.moveId}, 'Undone')
+      : await commitSync({action:'undoActivity', id:entry.id}, 'Undone');
+    if(ok) activityModal();
+  });
+  draw();
+  post({action:'activity'}).then(d=>{
+    if(!d || !Array.isArray(d.result)) throw new Error('Could not load the log.');
+    list = d.result; fresh = true; activityCacheSave(sid, list); draw();
+  }).catch(err=>{
+    const s = $('#alState'); if(s){ s.hidden = false; s.textContent = 'Could not check for the latest — showing what this device last saw.'; }
   });
 }
 
-
-
-function transferModal(mode){
-  // Only ever offer places inside this region — books don't hop between regions
-  // here (that's what "Another warehouse" is for).
-  const reg = currentRegion();
-  const regionWh = reg ? reg.whLoc : WAREHOUSE;
-  const events = reg ? eventsOfRegion(reg.regionId) : [];
-  const keepers = reg ? holdersOf(reg.regionId) : [];   // devotee storage is a place too
-  if(mode==='toevent' && !events.length){ toast('Create an event in this region first.',true); return; }
-
-  let fromDefault=regionWh, toDefault='', lockFrom=false, lockTo=false, heading='Transfer stock';
-  if(mode==='toevent'){ heading='Transfer to event'; toDefault=events[0].eventId; lockFrom=true; }
-  if(mode==='in'){ heading='Transfer into '+locName(CUR_LOC); toDefault=CUR_LOC; lockFrom=true; lockTo=true; }
-  if(mode==='return'){ heading='Return to warehouse'; fromDefault=CUR_LOC; toDefault=regionWh; lockFrom=true; lockTo=true; }
-
-  const locOpts=(sel)=>{
-    let o=`<option value="${esc(regionWh)}" ${sel===regionWh?'selected':''}>${esc(reg?reg.name:'')} (Warehouse)</option>`;
-    events.forEach(e=>o+=`<option value="${e.eventId}" ${sel===e.eventId?'selected':''}>${esc(e.name)}</option>`);
-    keepers.forEach(k=>o+=`<option value="${k.holderId}" ${sel===k.holderId?'selected':''}>${esc(k.name)} (devotee storage)</option>`);
-    return o;
-  };
-  const body = bulkRows(b=>({
-    left:`<span data-avail="${b.id}">${invQty(fromDefault,b.id)}</span>`,
-    input:`<input type="number" min="0" step="1" data-book="${b.id}" placeholder="0" inputmode="numeric">`,
-    right:'0'
-  }));
-
+/* ---- Selling from a warehouse whose books sit with sub-warehouses ----
+   The warehouse card counts them in; when the shelf itself has none, the sale
+   asks which sub-warehouse the copy came from, so each home's count stays true. */
+function swHoldingsHere(bookId){
+  const r = currentRegion(); if(!r) return [];
+  return holdersOf(r.regionId).map(h=>({h, n:invQty(h.holderId, bookId), label:swLabel(h.holderId)}))
+    .filter(x=>x.n>0);
+}
+function sellFromWarehouse(bookId){
+  const shelf = invQty(CUR_LOC, bookId);
+  const subs = swHoldingsHere(bookId);
+  if(shelf>0 || !subs.length){ saleModal({bookId, isPreorder:false, loc:CUR_LOC}); return; }
+  const b = bookById(bookId);
   openModal(`
-    ${mHead(heading)}
+    ${mHead('Which sub-warehouse?')}
     <div class="m-body">
-      <div class="row2">
-        <div class="field"><label>From</label><select id="tfrom" ${lockFrom?'disabled':''}>${locOpts(fromDefault)}</select></div>
-        <div class="field"><label>To</label><select id="tto" ${lockTo?'disabled':''}>${locOpts(toDefault)}</select></div>
-      </div>
-      <div class="hint">Fill in every title you are carrying, then send the whole load at once. Transfers add to what is already there.</div>
-      <div class="bulk-head"><span>Title</span><span>Avail.</span><span>Move</span><span>Left</span></div>
-      ${body}
-      <div class="bulk-foot"><span>Books in this load</span><b id="footValue">0</b></div>
-      <div id="preWarn"></div>
-      <div class="err" id="modalErr"></div>
+      <div class="hint">There are no copies of <b>${esc(b.name)}</b> on the warehouse shelf itself.
+        Which sub-warehouse is this copy coming from?</div>
+      <div class="opts">${subs.map(x=>`<button type="button" class="opt" data-sellsw="${esc(x.h.holderId)}">
+        <b>${esc(x.label)} — ${esc(x.h.name)}</b><span>${x.n} in stock${x.h.phone?' · '+esc(x.h.phone):''}</span></button>`).join('')}</div>
     </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="saveTransfer">Transfer</button>
-    </div>`, true);
-
-  const inputs=[...document.querySelectorAll('#modal input[data-book]')];
-  function recalc(){
-    const from=$('#tfrom').value;
-    let load=0, over=false;
-    inputs.forEach(i=>{
-      const id=i.dataset.book, avail=invQty(from,id);
-      document.querySelector(`#modal [data-avail="${id}"]`).textContent=avail;
-      const q=Math.max(0,Math.round(Number(i.value)||0));
-      const left=avail-q; if(left<0) over=true; load+=q;
-      const cell=document.querySelector(`#modal [data-next="${id}"]`);
-      cell.textContent=left; cell.classList.toggle('zero', left<=0);
-    });
-    $('#footValue').textContent=load;
-    $('#modalErr').textContent = over ? 'One or more titles exceed what is in stock.' : '';
-
-    // Taking stock out of the warehouse can strand pre-orders. Say so as it happens.
-    let lines=[];
-    if(from===regionWh){
-      lines = inputs.map(i=>{
-        const q=Math.max(0,Math.round(Number(i.value)||0));
-        return q ? shortfallLine(i.dataset.book, invQty(regionWh,i.dataset.book)-q) : '';
-      }).filter(Boolean);
-    }
-    $('#preWarn').innerHTML = preorderWarning(lines,['transfer it','transfer them']);
-    $('#saveTransfer').textContent = lines.length ? 'Transfer anyway' : 'Transfer';
-  }
-  inputs.forEach(i=>i.addEventListener('input',recalc));
-  $('#tfrom').addEventListener('change',recalc);
-  recalc();
-
-  $('#saveTransfer').addEventListener('click',()=>{
-    const from=$('#tfrom').value, to=$('#tto').value;
-    if(from===to){$('#modalErr').textContent='Pick two different locations.';return;}
-    const items=inputs.filter(i=>Number(i.value)>0)
-      .map(i=>({bookId:i.dataset.book,qty:Math.round(Number(i.value))}));
-    if(!items.length){$('#modalErr').textContent='Enter a quantity for at least one title.';return;}
-    const bad=items.find(it=>it.qty>invQty(from,it.bookId));
-    if(bad){$('#modalErr').textContent='Not enough '+bookById(bad.bookId).name+' at '+locName(from)+'.';return;}
-    /* The movement is written into the log here as well, under the name the
-       server will give it. Without that it only appeared after the next
-       refresh, so a transfer that had plainly worked seemed to be missing —
-       and could not be undone until the log caught up. */
-    const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
-    commit({action:'transferBulk',from,to,items,override:true,movePrefix},
-      st=>items.forEach(it=>{
-        const fB=invQty(from,it.bookId), tB=invQty(to,it.bookId);
-        invAdd(st,from,it.bookId,-it.qty); invAdd(st,to,it.bookId,it.qty);
-        (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+it.bookId, ts:new Date().toISOString(),
-          kind:'TRANSFER', fromLoc:from, toLoc:to, bookId:it.bookId, qty:it.qty, note:'',
-          fromBefore:fB, fromAfter:fB-it.qty, toBefore:tB, toAfter:tB+it.qty});
-      }),
-      'Stock transferred');
-  });
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>`);
+  document.querySelectorAll('#modal [data-sellsw]').forEach(btn=>btn.addEventListener('click', ()=>{
+    saleModal({bookId, isPreorder:false, loc:btn.dataset.sellsw});
+  }));
 }
 
 /* ============================================================
@@ -10018,7 +10432,8 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='shoutside'){ shipOutsideModal(); return; }
-  if(a==='seasonxfer'){ seasonTransferModal(); return; }
+  if(a==='seasonxfer' || a==='xfer'){ transferStockModal(); return; }
+  if(a==='activity'){ activityModal(); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
@@ -10144,8 +10559,7 @@ document.addEventListener('click',e=>{
   if(a==='deleteregion'){ deleteRegionModal(); return; }
   if(a==='stock' || a==='addstock'){ addStockModal(); return; }
   if(a==='addnewplace'){ addNewPlaceModal(t.dataset.then); return; }
-  if(a==='transfer'){ transferModal(t.dataset.mode); return; }
-  if(a==='externaltransfer'){ externalTransferModal(); return; }
+  if(a==='transfer' || a==='externaltransfer'){ transferStockModal(); return; }
   // A closed place is read-only: refuse before anything is attempted, so the
   // reason is obvious rather than arriving as a server error.
   /* Closed means no new business. Settling up is still allowed, so a partly
@@ -10156,7 +10570,21 @@ document.addEventListener('click',e=>{
     toast('This is closed — reopen it first if something needs changing.', true);
     return;
   }
-  if(a==='sell'){ saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return; }
+  if(a==='sell'){
+    if(isWarehouseLoc(CUR_LOC)){ sellFromWarehouse(t.dataset.book); return; }
+    saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return;
+  }
+  if(a==='swbub'){
+    // A sub-warehouse bubble: who holds these, and how to reach them.
+    const box = t.closest('.qtyrow') && t.closest('.qtyrow').querySelector('.sw-who');
+    const h = holderById(t.dataset.holder);
+    if(box && h){
+      const same = box.dataset.holder===h.holderId && !box.hidden;
+      box.hidden = same; box.dataset.holder = h.holderId;
+      box.innerHTML = `<b>${esc(swLabel(h.holderId))}</b> ${esc(h.name)}${h.phone?' · '+waLink(h.phone):''}`;
+    }
+    return;
+  }
   if(a==='preorder'){ saleModal({bookId:t.dataset.book,isPreorder:true,loc:CUR_LOC}); return; }
   if(a==='multi'){ bundleModal(); return; }
 

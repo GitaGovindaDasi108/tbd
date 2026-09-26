@@ -192,7 +192,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b180';
+var SERVER_BUILD = 'b183';
 
 function doPost(e) { return handle(e); }
 
@@ -231,6 +231,7 @@ function handle(e) {
     if (prior) return raw(prior);
     sheetMemoClear_();                   // never serve rows read before this request
     _moveBuffer = [];                    // nothing carried over from a previous call
+    _cashIds = [];                       // nor cash rows
     setSeasonContext_('');               // no season carried over from a previous call
     _cashBy = '';                        // nor who was asking
 
@@ -275,6 +276,13 @@ function handle(e) {
     // ---- Reads: no lock, cache-backed. ----
     if (action === 'getState') {
       return raw(consistentStateReply_(who));
+    }
+    // The activity log, fetched when it is opened rather than with every refresh.
+    if (action === 'activity') {
+      if (who.role === 'seller') throw new Error('That action is not available on this link.');
+      var sid = (who.role === 'admin') ? activeSeasonId_()
+        : ((regionById_(String(who.regionId || '')) || {}).seasonId || activeSeasonId_());
+      return raw(JSON.stringify({ ok: true, result: activityList_(who, sid) }));
     }
 
     /* Did this save land? A read, so no lock.
@@ -325,7 +333,9 @@ function handle(e) {
     lock.waitLock(25000);
     try {
       ensureReady();
+      activityBefore_(action, params);
       switch (action) {
+        case 'undoActivity':     result = doUndoActivity(params, who); break;
         case 'setStockBulk':     doSetStockBulk(params);     break;
         case 'adjustStockBulk':  doAdjustStockBulk(params);  break;
         case 'sell':             doSell(params);             break;
@@ -342,6 +352,7 @@ function handle(e) {
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
+        case 'transferMulti':    doTransferMulti(params);    break;
         case 'transferExternal':  doTransferExternal(params);  break;
         case 'editSale':         doEditSale(params);         break;
         case 'deleteSale':       doDeleteSale(params);       break;
@@ -404,6 +415,7 @@ function handle(e) {
         default: throw new Error('Unknown action: ' + action);
       }
       cacheClear_();                       // data changed; drop the stale copy
+      activityRecord_(action, params, result, who);   // before the movements are flushed
       // Deliberately NOT returning the state. The page already applied this
       // change locally the moment the button was pressed; rebuilding and
       // shipping the whole state here would only make the write slower.
@@ -1125,7 +1137,7 @@ var MUTATING_ACTIONS = {
   sell:1, sellBundle:1, donate:1, editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1,
   transferBulk:1, transferExternal:1, adjustStockBulk:1, setStockBulk:1,
-  undoStockMove:1
+  undoStockMove:1, transferMulti:1
 };
 
 /* Except these. Closing a place means no NEW business — but the promises it
@@ -1142,6 +1154,10 @@ function assertNotClosed_(action, params) {
   var touched = [];
   ['location', 'from', 'to', 'fromLoc'].forEach(function (f) {
     if (params[f]) touched.push(String(params[f]));
+  });
+  (params.moves || []).forEach(function (m) {
+    if (m && m.from) touched.push(String(m.from));
+    if (m && m.to) touched.push(String(m.to));
   });
   if (params.saleId) {
     objectsOf_('_sales').forEach(function (r) {
@@ -1259,6 +1275,55 @@ function doReorder(p) {
   markDirtyAll_();
 }
 
+/* One transfer, however many legs: from several shelves at once (a warehouse
+   and its sub-warehouses), into several at once (an event's books split
+   between devotees' homes), or simply one place to another — in this season or
+   into another. Everything is checked before anything moves, so a transfer
+   either happens whole or not at all. */
+function doTransferMulti(p) {
+  var moves = (p.moves || []).map(function (m) {
+    return { from: String(m.from || ''), to: String(m.to || ''), bookId: String(m.bookId || ''),
+             qty: Math.max(0, Math.round(Number(m.qty) || 0)) };
+  }).filter(function (m) { return m.qty > 0 && m.from && m.to && m.from !== m.to && bookById_(m.bookId); });
+  if (!moves.length) throw new Error('Enter a quantity for at least one title.');
+  /* Both ends must be real places — a warehouse, an event or a sub-warehouse in
+     any season. Books sent to a name the app does not know would simply vanish. */
+  var known = {};
+  known[WAREHOUSE] = 1;
+  allRegionsEverywhere_().forEach(function (r) { if (r.whLoc) known[r.whLoc] = 1; });
+  objectsOf_('_events').forEach(function (e) { if (e.eventId) known[String(e.eventId)] = 1; });
+  objectsOf_('_holders').forEach(function (h) { if (h.holderId && !truthyCell_(h.archived)) known[String(h.holderId)] = 1; });
+  moves.forEach(function (m) {
+    [m.from, m.to].forEach(function (l) {
+      if (!known[l]) throw new Error('One of those places is no longer listed. Nothing was moved.');
+    });
+  });
+
+  var map = loadInvMap_();
+  var need = {};
+  moves.forEach(function (m) { var k = m.from + '||' + m.bookId; need[k] = (need[k] || 0) + m.qty; });
+  Object.keys(need).forEach(function (k) {
+    var bits = k.split('||'), have = getQty_(map, bits[0], bits[1]);
+    if (have < need[k]) {
+      throw new Error('Only ' + have + ' × ' + bookById_(bits[1]).name + ' at ' + locLabel_(bits[0]) +
+        ' — you asked to move ' + need[k] + '. Nothing was moved.');
+    }
+  });
+  var touched = {};
+  moves.forEach(function (m, i) {
+    var fB = getQty_(map, m.from, m.bookId), tB = getQty_(map, m.to, m.bookId);
+    addQty_(map, m.from, m.bookId, -m.qty);
+    addQty_(map, m.to, m.bookId, m.qty);
+    stockMoveAppend_({ id: p.movePrefix ? (p.movePrefix + '_' + i) : '',
+      kind: 'TRANSFER', fromLoc: m.from, toLoc: m.to, bookId: m.bookId, qty: m.qty,
+      note: String(p.note || ''),
+      fromBefore: fB, fromAfter: fB - m.qty, toBefore: tB, toAfter: tB + m.qty });
+    touched[m.from] = 1; touched[m.to] = 1;
+  });
+  saveInvMap_(map);
+  Object.keys(touched).forEach(function (l) { markDirty_(l); });
+}
+
 function doSaveHolder(p) {
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Give the devotee a name.');
@@ -1279,9 +1344,16 @@ function doSaveHolder(p) {
     });
     writeObjects_('_holders', hs, objs);
   } else {
-    id = 'hd_' + Utilities.getUuid().slice(0, 6);
-    getSheet_('_holders').appendRow([id, regionId, name, String(p.phone || '').trim(),
-      String(p.note || '').trim(), new Date(), false]);
+    /* Named by the app when it is made alongside a transfer, so the transfer
+       sent right after it can already point at it; a resend is ignored. */
+    id = /^hd_[a-z0-9]{4,16}$/.test(String(p.newHolderId || '')) ? String(p.newHolderId)
+       : 'hd_' + Utilities.getUuid().slice(0, 6);
+    var exists = objectsOf_('_holders').some(function (h) { return String(h.holderId) === id; });
+    if (!exists) {
+      getSheet_('_holders').appendRow([id, regionId, name, String(p.phone || '').trim(),
+        String(p.note || '').trim(), new Date(), false]);
+      sheetMemoClear_();
+    }
   }
   markDirtyRegions_([regionId]);
   return id;
@@ -1370,18 +1442,27 @@ function doSendShipment(p) {
   if (!fromOutside && fromRegion === toRegion) throw new Error('That is the same region — pick another.');
 
   var items = (p.items || []).map(function (it) {
-    return { bookId: String(it.bookId), qty: Math.max(0, Math.round(Number(it.qty) || 0)) };
+    return { bookId: String(it.bookId), qty: Math.max(0, Math.round(Number(it.qty) || 0)),
+             fromLoc: String(it.fromLoc || '') };
   }).filter(function (it) { return it.qty > 0 && bookById_(it.bookId); });
   if (!items.length) throw new Error('Enter a quantity for at least one title.');
 
   var srcLoc = fromOutside ? '' : String(p.fromLoc || from.whLoc);
+  /* Each title may leave from its own shelf — the warehouse or one of its
+     sub-warehouses — as long as that shelf belongs to the sending region. */
+  var srcLocs = fromOutside ? [] : locsInRegion_(fromRegion);
+  items.forEach(function (it) {
+    it.from = (it.fromLoc && srcLocs.indexOf(it.fromLoc) >= 0) ? it.fromLoc : srcLoc;
+  });
   var map = loadInvMap_();
   if (!fromOutside) {
-    items.forEach(function (it) {
-      var have = getQty_(map, srcLoc, it.bookId);
-      if (have < it.qty) {
-        throw new Error('Only ' + have + ' × ' + bookById_(it.bookId).name + ' at ' +
-          locLabel_(srcLoc) + ' — you asked to send ' + it.qty + '. Nothing was sent.');
+    var needS = {};
+    items.forEach(function (it) { var k = it.from + '||' + it.bookId; needS[k] = (needS[k] || 0) + it.qty; });
+    Object.keys(needS).forEach(function (k) {
+      var bits = k.split('||'), have = getQty_(map, bits[0], bits[1]);
+      if (have < needS[k]) {
+        throw new Error('Only ' + have + ' × ' + bookById_(bits[1]).name + ' at ' +
+          locLabel_(bits[0]) + ' — you asked to send ' + needS[k] + '. Nothing was sent.');
       }
     });
   }
@@ -1402,16 +1483,17 @@ function doSendShipment(p) {
 
   if (mode === 'direct') {
     items.forEach(function (it) {
-      var fB = getQty_(map, srcLoc, it.bookId), tB = getQty_(map, to.whLoc, it.bookId);
-      addQty_(map, srcLoc, it.bookId, -it.qty);
+      var fB = getQty_(map, it.from, it.bookId), tB = getQty_(map, to.whLoc, it.bookId);
+      addQty_(map, it.from, it.bookId, -it.qty);
       addQty_(map, to.whLoc, it.bookId, it.qty);
-      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: srcLoc, toLoc: to.whLoc,
+      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: it.from, toLoc: to.whLoc,
         bookId: it.bookId, qty: it.qty, note: p.note,
-        fromBefore: fB, fromAfter: getQty_(map, srcLoc, it.bookId),
+        fromBefore: fB, fromAfter: getQty_(map, it.from, it.bookId),
         toBefore: tB, toAfter: getQty_(map, to.whLoc, it.bookId) });
+      markDirty_(it.from);
     });
     saveInvMap_(map);
-    markDirty_(srcLoc); markDirty_(to.whLoc);
+    markDirty_(to.whLoc);
     return '';
   }
 
@@ -1449,12 +1531,12 @@ function doSendShipment(p) {
         toBefore: 0, toAfter: it.qty });
       return;
     }
-    var fB = getQty_(map, srcLoc, it.bookId);
-    addQty_(map, srcLoc, it.bookId, -it.qty);
-    stockMoveAppend_({ kind: 'TRANSFER', fromLoc: srcLoc, toLoc: shipId,
+    var fB = getQty_(map, it.from, it.bookId);
+    addQty_(map, it.from, it.bookId, -it.qty);
+    stockMoveAppend_({ kind: 'TRANSFER', fromLoc: it.from, toLoc: shipId,
       bookId: it.bookId, qty: it.qty,
       note: 'Sent in transit to ' + to.name + (p.carrier ? ' with ' + p.carrier : ''),
-      fromBefore: fB, fromAfter: getQty_(map, srcLoc, it.bookId),
+      fromBefore: fB, fromAfter: getQty_(map, it.from, it.bookId),
       toBefore: 0, toAfter: it.qty });
   });
   saveInvMap_(map);
@@ -1469,6 +1551,35 @@ function doSendShipment(p) {
    couple of copies never make it in, someone adds a few more. Rather than
    pretend the manifest was right, this sets the true contents and records the
    difference against the sending region, so nothing simply evaporates. */
+/* Where a batch's copies of one title came from, so copies that never travel
+   go back to the very shelf they left — a sub-warehouse included — rather than
+   all landing on the warehouse shelf. Read from the movement record: every
+   send into the batch was logged with its source. Most recent sends are
+   unwound first; anything not traceable, or whose shelf is gone, goes to
+   `fallback`. Returns [{loc, qty}]. */
+function shipReturnPlan_(shipId, fromRegion, bookId, qty, fallback) {
+  var live = {};
+  if (fromRegion) locsInRegion_(fromRegion).forEach(function (l) { live[l] = 1; });
+  var sent = objectsOf_('_stockmoves').filter(function (m) {
+    return String(m.toLoc) === String(shipId) && String(m.bookId) === String(bookId) &&
+           String(m.kind) === 'TRANSFER' && m.fromLoc && live[String(m.fromLoc)];
+  });
+  var plan = [], left = qty;
+  for (var i = sent.length - 1; i >= 0 && left > 0; i--) {
+    var take = Math.min(left, Math.max(0, Math.round(Number(sent[i].qty) || 0)));
+    if (!take) continue;
+    var loc = String(sent[i].fromLoc);
+    var hit = plan.filter(function (x) { return x.loc === loc; })[0];
+    if (hit) hit.qty += take; else plan.push({ loc: loc, qty: take });
+    left -= take;
+  }
+  if (left > 0 && fallback) {
+    var fb = plan.filter(function (x) { return x.loc === fallback; })[0];
+    if (fb) fb.qty += left; else plan.push({ loc: fallback, qty: left });
+  }
+  return plan;
+}
+
 function doAdjustShipment(p) {
   var id = String(p.shipId || '');
   var ship = shipmentById_(id);
@@ -1491,14 +1602,22 @@ function doAdjustShipment(p) {
     setQty_(map, id, bookId, want);
     // Copies that never travelled go back where they came from; extras that
     // turned up are taken from there, so the sending region stays truthful.
-    if (backTo) {
+    if (backTo && delta < 0) {
+      shipReturnPlan_(id, ship.fromRegion, bookId, -delta, backTo).forEach(function (r) {
+        var rB = getQty_(map, r.loc, bookId);
+        addQty_(map, r.loc, bookId, r.qty);
+        stockMoveAppend_({ kind: 'TRANSFER', fromLoc: id, toLoc: r.loc, bookId: bookId, qty: r.qty,
+          note: 'Shipment contents corrected' + (p.note ? ' — ' + p.note : ''),
+          toBefore: rB, toAfter: rB + r.qty });
+        markDirty_(r.loc);
+      });
+    } else if (backTo) {
       var bB = getQty_(map, backTo, bookId);
       addQty_(map, backTo, bookId, -delta);
-      stockMoveAppend_({ kind: 'TRANSFER',
-        fromLoc: delta > 0 ? backTo : id, toLoc: delta > 0 ? id : backTo,
+      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: backTo, toLoc: id,
         bookId: bookId, qty: Math.abs(delta),
         note: 'Shipment contents corrected' + (p.note ? ' — ' + p.note : ''),
-        toBefore: delta > 0 ? have : bB, toAfter: delta > 0 ? want : bB + Math.abs(delta) });
+        toBefore: have, toAfter: want });
     } else {
       stockMoveAppend_({ kind: 'ADJUST', toLoc: id, bookId: bookId, qty: delta,
         note: 'Shipment contents corrected' + (p.note ? ' — ' + p.note : ''),
@@ -1553,11 +1672,16 @@ function doDeleteShipment(p) {
     returned += q;
     setQty_(map, id, b.id, 0);
     if (backTo) {
-      var tB = getQty_(map, backTo, b.id);
-      addQty_(map, backTo, b.id, q);
-      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: id, toLoc: backTo, bookId: b.id, qty: q,
-        note: 'Shipment deleted — books returned', fromBefore: q, fromAfter: 0,
-        toBefore: tB, toAfter: tB + q });
+      var was = q;
+      shipReturnPlan_(id, ship.fromRegion, b.id, q, backTo).forEach(function (r) {
+        var tB = getQty_(map, r.loc, b.id);
+        addQty_(map, r.loc, b.id, r.qty);
+        stockMoveAppend_({ kind: 'TRANSFER', fromLoc: id, toLoc: r.loc, bookId: b.id, qty: r.qty,
+          note: 'Shipment deleted — books returned', fromBefore: was, fromAfter: was - r.qty,
+          toBefore: tB, toAfter: tB + r.qty });
+        was -= r.qty;
+        markDirty_(r.loc);
+      });
     } else {
       stockMoveAppend_({ kind: 'ADJUST', toLoc: id, bookId: b.id, qty: -q,
         note: 'Shipment deleted', toBefore: q, toAfter: 0 });
@@ -1726,7 +1850,11 @@ var COORD_EXTRA = {
   // Add Stock: books on their way in, and switching on an existing title here.
   sendShipment:1, regionAddBooks:1,
   // Books in transit: marking their own region's deliveries as arrived.
-  receiveShipment:1
+  receiveShipment:1,
+  // Transfer Existing Stock: moves within the region, and its sub-warehouses.
+  transferMulti:1, saveHolder:1,
+  // Activity log: undo, limited inside to this link's own region.
+  undoActivity:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -1841,6 +1969,22 @@ function assertAllowed_(who, action, params) {
         (params.toLoc && !allowed[String(params.toLoc)])) {
       throw new Error('This link can only receive books arriving in its own region.');
     }
+  }
+  /* Every leg of a transfer must start and end inside the link's region. */
+  if (action === 'transferMulti') {
+    (params.moves || []).forEach(function (m) {
+      [m.from, m.to].forEach(function (l) {
+        if (l && !allowed[String(l)]) throw new Error('This link does not cover ' + locLabel_(String(l)) + '.');
+      });
+    });
+  }
+  /* A sub-warehouse (devotee storage) may be added or edited in its own region only. */
+  if (action === 'saveHolder') {
+    var hOk = String(params.regionId) === String(who.regionId);
+    if (hOk && params.holderId) {
+      hOk = holdersOfRegion_(who.regionId).some(function (h) { return h.holderId === String(params.holderId); });
+    }
+    if (!hOk) throw new Error('This link can only change storage in its own region.');
   }
   if (action === 'regionAddBooks' && String(params.regionId) !== String(who.regionId)) {
     throw new Error('This link can only change its own region.');
@@ -3587,6 +3731,7 @@ function cashAppend_(o) {
     changeRef: String(o.changeRef || ''),    // the change this row withdrew or returned
     purpose: String(o.purpose || '')
   };
+  _cashIds.push(row.id);             // for the activity log's undo
   var sh = getSheet_('_cash');
   var live = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
   sh.appendRow(live.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
@@ -6814,4 +6959,372 @@ function logRows_(scoped, type) {
     }
     return row;
   });
+}
+
+/* ============================ ACTIVITY LOG ============================
+   One record of everything done in the app except sales (they keep their own
+   log). Every write is described in plain words as it happens — by the server,
+   so nothing can slip past because a screen forgot to log it — and, where it
+   is safe, carries what is needed to undo it. "Delete" in the log means undo. */
+
+var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions','moves','undo','undoneAt','undoneBy'];
+/* Sales have their own log; these are not repeated here. */
+var ACTIVITY_SKIP = {
+  sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
+  donate:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
+  settle:1, deliver:1, undoActivity:1
+};
+var _cashIds = [];            // cash rows written by the current request
+var _activityBefore = null;   // what a change replaced, noted just before it runs
+
+function activitySheet_() {
+  return sheet_('_activity', ACTIVITY_HEADERS);
+}
+
+/* The region a place belongs to, in any season: warehouse, event, sub-warehouse. */
+function regionOfAnyLoc_(loc) {
+  loc = String(loc || '');
+  if (!loc) return '';
+  var r = allRegionsEverywhere_().filter(function (x) { return x.whLoc === loc; })[0];
+  if (r) return r.regionId;
+  var ev = objectsOf_('_events').filter(function (e) { return String(e.eventId) === loc; })[0];
+  if (ev) return String(ev.regionId || '');
+  var h = objectsOf_('_holders').filter(function (x) { return String(x.holderId) === loc; })[0];
+  if (h) return String(h.regionId || '');
+  return '';
+}
+function bookName_(id) { var b = bookById_(id); return b ? b.name : 'a title'; }
+function plural_(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+function titlesText_(byBook) {
+  return Object.keys(byBook).map(function (id) { return bookName_(id) + ' ×' + byBook[id]; }).join(', ');
+}
+/* Stock movements in words: grouped by where they went, with where each came from. */
+function movesText_(moves) {
+  var adds = moves.filter(function (m) { return m.kind === 'ADJUST'; });
+  var xfers = moves.filter(function (m) { return m.kind === 'TRANSFER'; });
+  var out = [];
+  var byLoc = {};
+  adds.forEach(function (m) { (byLoc[m.to] = byLoc[m.to] || []).push(m); });
+  Object.keys(byLoc).forEach(function (loc) {
+    var up = {}, down = {};
+    byLoc[loc].forEach(function (m) { if (m.qty > 0) up[m.bookId] = (up[m.bookId] || 0) + m.qty;
+                                      else down[m.bookId] = (down[m.bookId] || 0) - m.qty; });
+    var bits = [];
+    if (Object.keys(up).length) bits.push('added ' + titlesText_(up));
+    if (Object.keys(down).length) bits.push('removed ' + titlesText_(down));
+    out.push(bits.join(' and ') + ' at ' + locLabel_(loc));
+  });
+  var byTo = {};
+  xfers.forEach(function (m) { (byTo[m.to] = byTo[m.to] || []).push(m); });
+  Object.keys(byTo).forEach(function (to) {
+    var total = 0, from = {}, books = {};
+    byTo[to].forEach(function (m) {
+      total += m.qty; from[m.from] = (from[m.from] || 0) + m.qty; books[m.bookId] = (books[m.bookId] || 0) + m.qty;
+    });
+    var froms = Object.keys(from);
+    var src = froms.length === 1 ? locLabel_(froms[0])
+      : froms.map(function (f) { return locLabel_(f) + ' ' + from[f]; }).join(', ');
+    out.push('moved ' + plural_(total, 'book') + ' (' + titlesText_(books) + ') from ' + src + ' → ' + locLabel_(to));
+  });
+  var s = out.join('; ');
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+}
+
+/* Noted just before a change runs, for the few things whose undo needs it. */
+function activityBefore_(action, p) {
+  _activityBefore = null;
+  try {
+    if (action === 'saveLabel') {
+      var hit = objectsOf_('_labels').filter(function (r) { return String(r.key) === String(p.key); })[0];
+      _activityBefore = { text: hit ? String(hit.text) : '' };
+    }
+    if (action === 'saveCost') {
+      var cid = String(p.id || '');
+      _activityBefore = { existed: !!cid && !!getSheet_('_costs') &&
+        objectsOf_('_costs').some(function (c) { return String(c.id) === cid; }) };
+    }
+    if (action === 'regionAddBooks') {
+      var r = regionById_(String(p.regionId || ''));
+      _activityBefore = { books: r ? (r.books || []).slice() : [] };
+    }
+  } catch (e) { _activityBefore = null; }
+}
+
+/* What was done, in words; where; and how to undo it (null = not safely). */
+function describe_(action, p, result, moves) {
+  var mv = movesText_(moves);
+  var ids = moves.map(function (m) { return m.id; });
+  var locs = {};
+  moves.forEach(function (m) { if (m.from) locs[m.from] = 1; if (m.to) locs[m.to] = 1; });
+  ['location', 'from', 'to', 'fromLoc', 'toLoc', 'eventId'].forEach(function (f) { if (p[f]) locs[String(p[f])] = 1; });
+  var regions = {};
+  ['regionId', 'fromRegion', 'toRegion'].forEach(function (f) {
+    if (p[f] && p[f] !== OUTSIDE_ORIGIN) regions[String(p[f])] = 1; });
+  var note = p.note ? ' — “' + String(p.note) + '”' : '';
+  var movesUndo = ids.length ? { type: 'moves', ids: ids } : null;
+  var reg = function (id) { var r = regionById_(String(id || '')); return r ? r.name : 'a region'; };
+  var d = { text: '', undo: null };
+
+  switch (action) {
+    case 'adjustStockBulk': case 'setStockBulk': case 'transferBulk': case 'transferMulti':
+    case 'transferExternal': case 'seasonTransfer':
+      d = { text: (mv || 'Stock changed') + note, undo: movesUndo }; break;
+    case 'undoStockMove':
+      d = { text: 'Undid a stock movement from the old transfer record', undo: null }; break;
+    case 'sendShipment':
+      if (String(p.mode) === 'direct' || !result) { d = { text: (mv || 'Stock sent') + note, undo: movesUndo }; break; }
+      var sent = {}; (p.items || []).forEach(function (it) { sent[it.bookId] = (sent[it.bookId] || 0) + (Number(it.qty) || 0); });
+      var total = Object.keys(sent).reduce(function (t, k) { return t + sent[k]; }, 0);
+      var how = String(p.mode) === 'shipping' ? ('by shipping company' + (p.tracking ? ' (tracking ' + p.tracking + ')' : ''))
+                                               : ('with ' + (p.carrier || 'a devotee'));
+      d = { text: 'Put ' + plural_(total, 'book') + ' in transit (' + titlesText_(sent) + ') from ' +
+                  (String(p.fromRegion) === OUTSIDE_ORIGIN ? 'outside the tour' : reg(p.fromRegion)) + ' → ' +
+                  (p.toLoc ? locLabel_(p.toLoc) : reg(p.toRegion)) + ', ' + how + note,
+            undo: { type: 'ship', shipId: String(result) } };
+      break;
+    case 'receiveShipment':
+      d = { text: 'Books arrived: ' + (mv || 'nothing') + note, undo: ids.length ? { type: 'receive', shipId: String(p.shipId), ids: ids } : null }; break;
+    case 'adjustShipment': d = { text: 'Corrected what a shipment holds: ' + (mv || 'no change') + note }; break;
+    case 'deleteShipment': d = { text: 'Deleted a shipment' + (mv ? ': ' + mv : '') }; break;
+    case 'editShipment':   d = { text: 'Changed a shipment’s details' }; break;
+    case 'createEvent':
+      d = { text: 'Created event “' + p.name + '” in ' + reg(p.regionId), undo: { type: 'event', eventId: String(result || p.eventId) } };
+      locs[String(result || p.eventId)] = 1; break;
+    case 'renameEvent':  d = { text: 'Renamed an event to “' + p.name + '”' }; break;
+    case 'deleteEvent':  d = { text: 'Deleted an event' + (mv ? ': ' + mv : '') }; break;
+    case 'setEventHidden': case 'setRegionHidden': d = { text: 'Changed what is shown for ' + (p.eventId ? locLabel_(p.eventId) : reg(p.regionId)) }; break;
+    case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
+    case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
+    case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;
+    case 'regionAddBooks':
+      var added = parseBookList_(p.bookIds).filter(function (id) {
+        return _activityBefore && _activityBefore.books.length && _activityBefore.books.indexOf(id) < 0; });
+      d = { text: 'Switched on ' + (added.length ? added.map(bookName_).join(', ') : 'titles') + ' for ' + reg(p.regionId),
+            undo: added.length ? { type: 'regionBooks', regionId: String(p.regionId), ids: added } : null }; break;
+    case 'saveSeason':   d = { text: p.seasonId ? 'Renamed a season to “' + p.name + '”' : 'Created season “' + p.name + '”' }; break;
+    case 'deleteSeason': d = { text: 'Deleted a season' }; break;
+    case 'closeLocation':  d = { text: 'Closed ' + (p.kind === 'region' ? reg(p.id) : locLabel_(p.id)) + (mv ? ' — ' + mv : '') }; break;
+    case 'reopenLocation': d = { text: 'Reopened ' + (p.kind === 'region' ? reg(p.id) : locLabel_(p.id)) }; break;
+    case 'reorder':      d = { text: 'Changed the order of ' + (p.kind === 'event' ? 'events' : 'regions') }; break;
+    case 'reorderBooks': d = { text: 'Changed the order of the titles' }; break;
+    case 'setPrices':    d = { text: 'Changed prices' + (p.regionId ? ' in ' + reg(p.regionId) : '') }; break;
+    case 'addBook':      d = { text: 'Added a new title: “' + p.name + '”' }; break;
+    case 'renameBook':   d = { text: 'Renamed a title to “' + p.name + '”' }; break;
+    case 'deleteBook':   d = { text: 'Deleted a title' }; break;
+    case 'saveConsignBook': d = { text: 'Saved a consignment title' + (p.name ? ': “' + p.name + '”' : '') }; break;
+    case 'savePartner':  d = { text: (p.partnerId ? 'Changed' : 'Added') + ' consignment group “' + (p.name || '') + '”' }; break;
+    case 'partnerPayout': d = { text: 'Handed money to a consignment group' + note }; break;
+    case 'deletePayout': d = { text: 'Removed a consignment hand-over' }; break;
+    case 'saveHolder':
+      if (p.archived) { d = { text: 'Removed sub-warehouse ' + (p.name || '') + ' from ' + reg(p.regionId) }; break; }
+      d = { text: (p.holderId ? 'Changed sub-warehouse ' : 'Added sub-warehouse ') + (p.name || '') +
+                  (p.phone ? ' (' + p.phone + ')' : '') + ' in ' + reg(p.regionId),
+            undo: p.holderId ? null : { type: 'holder', holderId: String(result) } };
+      locs[String(result || p.holderId)] = 1; break;
+    case 'deleteHolder': d = { text: 'Deleted a sub-warehouse' + (mv ? ': ' + mv : '') }; break;
+    case 'saveLabel':
+      d = { text: 'Changed wording: “' + String(p.key || '').split(' › ').slice(1).join(' › ') + '” → “' + (p.text || '(original)') + '”',
+            undo: _activityBefore ? { type: 'label', key: String(p.key), text: _activityBefore.text } : null }; break;
+    case 'cashMove': case 'cashFloat': case 'cashAdjust': case 'cashSet': case 'cashMoveAll':
+      d = { text: cashText_(action, p) + note, undo: _cashIds.length ? { type: 'cash', ids: _cashIds.slice() } : null };
+      [p.from, p.to, p.acct, p.loc].forEach(function (l) { if (l) locs[String(l)] = 1; }); break;
+    case 'cashDelete':   d = { text: 'Deleted a cash entry' }; break;
+    case 'cashEdit':     d = { text: 'Changed a cash entry' }; break;
+    case 'cashResetBank': case 'cashResetAcct': case 'cashResetAll': d = { text: 'Reset cash records' }; break;
+    case 'changeWithdraw': d = { text: 'Took ' + p.amt + ' ' + p.cur + ' as change for ' + locLabel_(p.loc),
+                                 undo: result ? { type: 'change', id: String(result) } : null }; locs[String(p.loc)] = 1; break;
+    case 'changeReturn': d = { text: 'Returned change' }; break;
+    case 'changeDelete': d = { text: 'Deleted a change entry' }; break;
+    case 'changeMove':   d = { text: 'Moved change' }; break;
+    case 'saveCost':
+      d = { text: 'Recorded a cost: ' + p.amt + ' ' + p.cur + ' (' + (p.category || 'Other') + ') at ' + locLabel_(p.location) + note,
+            undo: (!(_activityBefore && _activityBefore.existed) && (result || p.id)) ? { type: 'cost', id: String(result || p.id) } : null }; break;
+    case 'deleteCost':   d = { text: 'Deleted a cost' }; break;
+    case 'setPayTypes':  d = { text: 'Changed the payment types taken' + (p.location ? ' at ' + locLabel_(p.location) : '') }; break;
+    case 'setWarehouseName': d = { text: 'Renamed the warehouse to “' + p.name + '”' }; break;
+    case 'orgSave':      d = { text: 'Changed the org chart' }; break;
+    case 'qrSave':       d = { text: 'Changed a payment QR' }; break;
+    case 'setKey': case 'sellerLink': d = { text: 'Changed a share link' }; break;
+    case 'setDriveFolder': case 'setSeasonFolder': d = { text: 'Changed where the spreadsheets are filed' }; break;
+    case 'descriptionsSheet': d = { text: 'Made the AI Descriptions spreadsheet' }; break;
+    default: d = { text: (mv || ('Changed: ' + action)) + note, undo: movesUndo };
+  }
+  Object.keys(locs).forEach(function (l) { var r = regionOfAnyLoc_(l); if (r) regions[r] = 1; });
+  d.locs = Object.keys(locs);
+  d.regions = Object.keys(regions);
+  return d;
+}
+function cashText_(action, p) {
+  var amt = (p.amt !== undefined ? p.amt : '') + (p.cur ? ' ' + p.cur : '');
+  if (action === 'cashMove') return 'Moved ' + amt + ' cash from ' + locLabel_(p.from) + ' → ' + locLabel_(p.to);
+  if (action === 'cashMoveAll') return 'Moved all cash from ' + locLabel_(p.from) + ' → ' + locLabel_(p.to);
+  if (action === 'cashFloat') return 'Gave change (float) to ' + locLabel_(p.loc || p.to);
+  if (action === 'cashSet') return 'Set the cash at ' + locLabel_(p.acct) + ' to ' + amt;
+  return (Number(p.amt) < 0 ? 'Removed ' : 'Added ') + String(amt).replace('-', '') + ' cash at ' + locLabel_(p.acct);
+}
+
+/* Called after every successful write. Never allowed to fail the write itself. */
+function activityRecord_(action, p, result, who) {
+  if (ACTIVITY_SKIP[action]) return;
+  try {
+    var moves = _moveBuffer.map(function (r) {
+      return { id: String(r[0]), kind: String(r[2]), from: String(r[3] || ''), to: String(r[4] || ''),
+               bookId: String(r[5]), qty: Number(r[6]) || 0 };
+    });
+    var d = describe_(action, p, result, moves);
+    if (!d || !d.text) return;
+    var sh = activitySheet_();
+    ensureHeaders_('_activity', ACTIVITY_HEADERS);
+    var hs = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+    var row = { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
+      season: String(p.season || activeSeasonId_()), who: _cashBy || '', action: action,
+      text: String(d.text).slice(0, 900), locs: d.locs.join(','), regions: d.regions.join(','),
+      moves: moves.map(function (m) { return m.id; }).join(','),
+      undo: d.undo ? JSON.stringify(d.undo) : '', undoneAt: '', undoneBy: '' };
+    sh.appendRow(hs.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
+    sheetMemoClear_();
+  } catch (e) { /* the log must never cost anyone their change */ }
+}
+
+/* The log, for one season (and, on a regional link, one region). Newest first. */
+function activityList_(who, seasonId) {
+  if (!getSheet_('_activity')) return [];
+  var seasonRegions = {};
+  allRegionsEverywhere_().forEach(function (r) { if (r.seasonId === seasonId) seasonRegions[r.regionId] = 1; });
+  var out = [];
+  objectsOf_('_activity').forEach(function (r) {
+    if (!r || !r.id) return;
+    var regions = String(r.regions || '').split(',').filter(Boolean);
+    var mine = String(r.season) === seasonId || regions.some(function (x) { return seasonRegions[x]; });
+    if (!mine) return;
+    if (who.role !== 'admin' && regions.indexOf(String(who.regionId)) < 0) return;
+    out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''),
+      text: String(r.text || ''), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
+      moves: String(r.moves || '').split(',').filter(Boolean),
+      canUndo: !!String(r.undo || '') && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || '') });
+  });
+  return out.reverse().slice(0, 1500);
+}
+
+/* Reverse a set of stock movements together: all checked first, then all done,
+   so an undo never leaves half its books behind. */
+function undoMoves_(ids) {
+  var want = {}; ids.forEach(function (id) { want[String(id)] = 1; });
+  var rows = objectsOf_('_stockmoves');
+  var hit = rows.filter(function (m) { return want[String(m.id)]; });
+  if (!hit.length) throw new Error('Those movements are no longer in the record — nothing to undo.');
+  var map = loadInvMap_();
+  var need = {};
+  hit.forEach(function (m) {
+    var q = Math.round(Number(m.qty) || 0), kind = String(m.kind);
+    if (kind === 'TRANSFER') { var k = m.toLoc + '||' + m.bookId; need[k] = (need[k] || 0) + q; }
+    else if (kind === 'ADJUST') { if (q > 0) { var k2 = m.toLoc + '||' + m.bookId; need[k2] = (need[k2] || 0) + q; } }
+    else throw new Error('This movement cannot be undone here.');
+  });
+  Object.keys(need).forEach(function (k) {
+    var bits = k.split('||'), have = getQty_(map, bits[0], bits[1]);
+    if (have < need[k]) throw new Error('Only ' + have + ' × ' + bookName_(bits[1]) + ' left at ' + locLabel_(bits[0]) +
+      ' — not enough to undo this. Nothing was changed.');
+  });
+  hit.forEach(function (m) {
+    var q = Math.round(Number(m.qty) || 0), b = String(m.bookId);
+    if (String(m.kind) === 'TRANSFER') { addQty_(map, String(m.toLoc), b, -q); addQty_(map, String(m.fromLoc), b, q); markDirty_(m.fromLoc); }
+    else addQty_(map, String(m.toLoc), b, -q);
+    markDirty_(m.toLoc);
+  });
+  saveInvMap_(map);
+  writeObjects_('_stockmoves',
+    ['id','ts','kind','fromLoc','toLoc','bookId','qty','note','fromBefore','fromAfter','toBefore','toAfter'],
+    rows.filter(function (m) { return !want[String(m.id)]; }));
+  markDirtyAll_();
+}
+
+function doUndoActivity(p, who) {
+  var id = String(p.id || '');
+  var sh = getSheet_('_activity');
+  if (!sh) throw new Error('That entry is no longer in the log.');
+  var rows = rowsOf_('_activity');
+  var hs = rows.headers.map(String);
+  var at = -1, e = null;
+  rows.data.forEach(function (row, i) {
+    if (String(row[hs.indexOf('id')]) === id) { at = i; e = {}; hs.forEach(function (h, j) { e[h] = row[j]; }); }
+  });
+  if (!e) throw new Error('That entry is no longer in the log.');
+  if (e.undoneAt) return 'already';                          // a resend: done already
+  var u = null; try { u = JSON.parse(String(e.undo || '')); } catch (x) { u = null; }
+  if (!u) throw new Error('This one cannot be undone here.');
+  if (who.role !== 'admin') {
+    var regs = String(e.regions || '').split(',').filter(Boolean);
+    if (!regs.length || regs.some(function (r) { return r !== String(who.regionId); }) ||
+        ['moves', 'ship', 'receive', 'holder', 'event', 'regionBooks'].indexOf(u.type) < 0) {
+      throw new Error('This link can only undo stock changes in its own region.');
+    }
+  }
+
+  if (u.type === 'moves') undoMoves_(u.ids || []);
+  else if (u.type === 'ship') {
+    var s = shipmentById_(u.shipId);
+    if (!s) throw new Error('That shipment is already gone.');
+    if (s.status !== 'IN_TRANSIT') throw new Error('Some of it has already arrived — undo those arrivals first.');
+    doDeleteShipment({ shipId: u.shipId });
+  }
+  else if (u.type === 'receive') {
+    undoMoves_(u.ids || []);
+    // Back on the road: in transit again, or partly delivered if other copies had arrived.
+    var sp = shipmentById_(u.shipId);
+    if (sp) {
+      var map = loadInvMap_(), left = 0, sentTotal = 0;
+      allBooks_().forEach(function (b) { left += getQty_(map, sp.shipId, b.id); });
+      Object.keys(sp.manifest || {}).forEach(function (k) { sentTotal += Number(sp.manifest[k]) || 0; });
+      var status = (sentTotal && left < sentTotal) ? 'PARTIAL' : 'IN_TRANSIT';
+      var r2 = rowsOf_('_shipments'), h2 = r2.headers.map(String);
+      writeObjects_('_shipments', h2, r2.data.map(function (row) {
+        var o = {}; h2.forEach(function (h, j) { o[h] = row[j]; });
+        if (String(o.shipId) === sp.shipId) { o.status = status; o.arrivedAt = ''; }
+        return o;
+      }));
+    }
+  }
+  else if (u.type === 'cash') (u.ids || []).forEach(function (cid) { doCashDelete({ id: cid }); });
+  else if (u.type === 'cost') doDeleteCost({ id: u.id });
+  else if (u.type === 'change') doChangeDelete({ id: u.id });
+  else if (u.type === 'label') doSaveLabel({ key: u.key, text: u.text || '' });
+  else if (u.type === 'regionBooks') {
+    var rr = rowsOf_('_regions'), rh = rr.headers.map(String);
+    var iId = rh.indexOf('regionId'), iB = rh.indexOf('books');
+    rr.data.forEach(function (row, i) {
+      if (String(row[iId]) !== String(u.regionId) || iB < 0) return;
+      var list = parseBookList_(row[iB]).filter(function (b) { return (u.ids || []).indexOf(b) < 0; });
+      if (list.length) rr.sheet.getRange(i + 2, iB + 1).setValue(list.join(','));
+    });
+    markDirtyRegions_([u.regionId]);
+  }
+  else if (u.type === 'holder' || u.type === 'event') {
+    var loc = u.type === 'holder' ? u.holderId : u.eventId;
+    var inv = loadInvMap_(), held = 0;
+    allBooks_().forEach(function (b) { held += getQty_(inv, loc, b.id); });
+    if (held) throw new Error(locLabel_(loc) + ' is holding ' + plural_(held, 'book') + ' — move them first.');
+    if (u.type === 'event') {
+      var sold = objectsOf_('_sales').some(function (x) { return String(x.location) === String(loc); });
+      if (sold) throw new Error('There are sales at ' + locLabel_(loc) + ', so it cannot simply be removed.');
+      doDeleteEvent({ eventId: loc });
+    } else {
+      var hh = objectsOf_('_holders').filter(function (x) { return String(x.holderId) === String(loc); })[0];
+      if (hh) doSaveHolder({ holderId: loc, regionId: hh.regionId, name: hh.name, phone: hh.phone, note: hh.note, archived: true });
+    }
+  }
+  else throw new Error('This one cannot be undone here.');
+
+  // Kept in the log, marked undone — and the undo is itself recorded.
+  var iU = hs.indexOf('undoneAt'), iBy = hs.indexOf('undoneBy');
+  if (iU >= 0) sh.getRange(at + 2, iU + 1).setValue(new Date());
+  if (iBy >= 0) sh.getRange(at + 2, iBy + 1).setValue(_cashBy || '');
+  var ah = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+  var nrow = { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
+    season: String(e.season || ''), who: _cashBy || '', action: 'undoActivity',
+    text: 'Undid: ' + String(e.text || ''), locs: String(e.locs || ''), regions: String(e.regions || ''),
+    moves: '', undo: '', undoneAt: '', undoneBy: '' };
+  sh.appendRow(ah.map(function (h) { return nrow[h] === undefined ? '' : nrow[h]; }));
+  sheetMemoClear_();
+  return 'undone';
 }

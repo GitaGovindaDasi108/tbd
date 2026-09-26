@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b180**.
+Handover notes. Current build: **b183**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -153,7 +153,7 @@ install. See `test/README.md`.
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
 `dutchtest`, `reptest`, `payusd`).
 
-`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -228,15 +228,62 @@ narrowly, and Node's `navigator` is read-only — override it with
   when you tap straight back in.
 - `test/browser-speed.js` checks each step with a 2-second server delay.
 
-## Still to do (agreed plan)
+## Done in b181 — Stock protocol, part 2: Transfer Existing Stock
 
-2. **Transfer Existing Stock** — one dialog for all four kinds of transfer,
-   sub-warehouse columns (devotee storage = sub-warehouses), confirmation
-   messages, "transfer everything". Replaces the remaining transfer buttons.
-   Decided: when the warehouse shelf itself has none, a sale asks which
-   sub-warehouse the book came from.
-3. **One activity log** for everything. Decided: "Delete" on an entry undoes
-   the action where that is safe; entries that cannot be undone have no Delete.
+- One **⇄ Transfer Existing Stock** button (admin and regional links) replaces
+  Transfer to event / Transfer in / Return to warehouse / Transfer to region /
+  Hand stock to another season. `transferStockModal`, `transferKind`.
+- Kinds: `event` (warehouse or event → event), `store` (event → its
+  warehouse: one destination, or split between sub-warehouses, new ones
+  created on the spot via `saveHolder` with an app-named `newHolderId`),
+  `region` and `season` (arrive immediately, or travel as a shipment).
+- **Sub-warehouses = devotee storage (`holders`)**, numbered SW1, SW2… in the
+  region's own order (`swLabel`), each with a fixed tint (`SW_TINTS`). A
+  warehouse whose books sit in sub-warehouses shows one Avail/Move pair per
+  shelf. On a phone (≤560px) those tables become one card per title.
+- Server: new `transferMulti` (many legs, all-or-nothing); `sendShipment`
+  items may carry their own `fromLoc`; regional links may `transferMulti` and
+  `saveHolder` within their region only.
+- Warehouse cards count sub-warehouse stock in, with SW bubbles (tap = name
+  and WhatsApp). Selling when the shelf itself has none asks which
+  sub-warehouse (`sellFromWarehouse`) and records the sale there.
+- Confirmations: "Transfer everything" alerts the count reminder; Transfer
+  confirms the leaving message for the kind plus "Are you sure you have
+  counted everything correctly?" in one pop-up.
+
+Closed in b182: "Multiple Books" at a warehouse asks which sub-warehouse a
+short title comes from (moves it to the shelf with `transferMulti`, then sells);
+deleting or correcting a shipment returns copies to the shelves they left
+(`shipReturnPlan_`, read from the movement record), the warehouse shelf only as
+a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
+
+## Done in b183 — Stock protocol, part 3: one Activity Log
+
+- **Recorded by the server**, not the screens: after every successful write,
+  `activityRecord_` appends a row to the hidden `_activity` sheet (created on
+  first use — no initialize needed): time, season, who (`_cashBy`: the link
+  user's name, or "main app"), action, plain-English text (`describe_`,
+  `movesText_`), places and regions touched, the stock-move ids it made, and an
+  undo recipe. It is wrapped so logging can never fail the change itself.
+- **Sales are left out** (`ACTIVITY_SKIP`) — they keep their own log.
+- **Read on demand**: action `activity` (no lock), newest first, scoped to the
+  season (and to its region for a regional link). The app shows the copy last
+  saved on the device at once, then refreshes (`activityModal`). Stock moves
+  not tied to any entry (made before b183) are listed too, each undoable.
+- **Delete = undo** (`doUndoActivity`): stock moves (all together,
+  all-or-nothing, `undoMoves_`), a shipment still fully in transit, an arrival
+  (back into transit), cash entries, a new cost, change taken, a wording change,
+  titles switched on, a new event or sub-warehouse while still empty. The entry
+  stays, crossed out ("Undone by …"), and the undo is itself logged. Regional
+  links may undo stock changes in their own region only.
+- `transferMulti` now refuses any place that does not exist (found while
+  testing: books could be sent to an unknown name and vanish).
+- "📦 Transfer record" button replaced by "🗒 Activity Log" (the old
+  `transfersModal` is still in the code, unused).
+
+## Still to do
+
+The agreed stock-protocol plan is complete.
 
 ## Open items
 
