@@ -981,6 +981,7 @@ body.busy #busyBar{opacity:1}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
 .modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--gold-l);
   padding:14px 18px;background:var(--plum);display:flex;justify-content:space-between;align-items:center;gap:10px}
+.modal h3 .pencil{margin-right:auto}
 .modal h3 .x{background:none;border:none;color:var(--gold-l);font-size:22px;line-height:1;padding:0 2px}
 .modal .m-body{padding:16px 18px;display:flex;flex-direction:column;gap:12px;overflow:auto;flex:1 1 auto;min-height:0}
 .modal .m-foot{padding:13px 18px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--paper2)}
@@ -1020,6 +1021,8 @@ body.busy #busyBar{opacity:1}
 .opt span{font-size:12px;color:var(--muted);line-height:1.4}
 .opt[disabled]{opacity:.45;pointer-events:none}
 .err{color:var(--clay);font-size:13px;font-weight:600}
+@keyframes errFlash{0%{background:#F6C9C0}100%{background:transparent}}
+.err.err-flash{animation:errFlash 1.2s ease-out;border-radius:6px}
 .err-box{background:var(--clay-l);border:1px solid #EEC0b8;color:var(--clay);border-radius:9px;padding:10px 12px;font-size:13.5px;font-weight:600;margin-bottom:10px}
 .err-box .btn{margin-top:8px;display:block}
 .mb-from{margin:4px 0 10px}
@@ -1274,7 +1277,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b187</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b188</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2560,6 +2563,7 @@ function commit(payload, apply, okMsg, opts){
     op.rev = d.rev;
     outboxDone(payload.opId);      // the server has it
     scheduleSync();
+    if(opts && typeof opts.onDone==='function') opts.onDone(d);
   }).catch(async err=>{
     if(err.unreadable || isOffline(err)){
       /* Neither an unreadable reply nor a slow one means the save failed.
@@ -2960,11 +2964,11 @@ function renderAdmin(){
   // Admin
   cols[0].push(`<button class="btn" data-act="activity">🗒 Activity Log</button>`);
   cols[0].push(`<button class="btn" data-act="org">👥 App and Sales Support</button>`);
-  cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
-  cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
   cols[0].push(season
     ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share Links…</button>`
     : `<button class="btn" data-act="sharelinks">🔗 Share Links</button>`);
+  cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
+  cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
 
   // Money
   if(!hideMoney()){
@@ -5748,28 +5752,39 @@ function labelHtml(text){
     .replace(/\n/g, '<br>');
 }
 
-/** Everything a label says, ignoring its pencil. */
+/* ---- What a piece of wording is made of ----
+   Bold and line breaks are part of the words. Anything else inside it — a
+   spinner, a button, a link, a box to type in — is a working part, and is
+   never touched by a rewording: only the words around it change. */
+const LBL_FMT = /^(B|STRONG|EM|I|U|SMALL|SUP|SUB|BR)$/;
+function lblIsFormatting(n){
+  return n.nodeType===1 && (LBL_FMT.test(n.tagName) || (n.classList && n.classList.contains('how-rest')));
+}
+function lblIsPencil(n){ return n.nodeType===1 && n.classList && n.classList.contains('pencil'); }
+/** Everything a label says: its own words and their bold, not its working parts or pencil. */
 function labelTextOf(el){
   let t = '';
   [...el.childNodes].forEach(n=>{
-    if(n.nodeType===1 && n.classList && n.classList.contains('pencil')) return;
-    t += n.textContent || '';
+    if(n.nodeType===3) t += n.textContent;
+    else if(lblIsFormatting(n)) t += n.textContent || '';
   });
   return t.replace(/\s+/g,' ').trim();
 }
-/** Can its whole content be replaced without destroying something? */
+/** Nothing working inside it, so the whole of it can be rewritten. */
 function labelReplaceable(el){
-  return !el.querySelector('input, select, textarea, button');
+  return [...el.childNodes].every(n=>n.nodeType===3 || lblIsFormatting(n) || lblIsPencil(n) || n.nodeType===8);
 }
-/* A button is offered for rewording only when it is words and nothing else.
-   One carrying a badge or icon element would lose it when replaced whole, and
-   symbol-only buttons (✕, ‹, +) have no wording to change. */
-function buttonEditable(el){
-  // Bold and line breaks are what your own wording produces, so they still count as words.
-  const wordsOnly = c => /^(B|BR)$/.test(c.tagName) || (c.classList && c.classList.contains('pencil'));
-  if(![...el.children].every(wordsOnly)) return false;
-  return /[A-Za-z]{2}/.test(labelTextOf(el));
+/* Numbers change ("7 still coming", "3 still coming"), so a wording is known by
+   its words with each number shown as #, and the numbers of the moment are put
+   back where the #s are. */
+const LBL_NUM = /\d+(?:[.,:]\d+)*/g;
+const lblTemplate = t => String(t||'').replace(LBL_NUM, '#');
+const lblNumbers  = t => String(t||'').match(LBL_NUM) || [];
+function lblFill(want, nums){
+  let i = 0;
+  return String(want).replace(/#/g, m => i < nums.length ? nums[i++] : m);
 }
+function buttonEditable(el){ return /[A-Za-z]{2}/.test(labelTextOf(el)); }
 
 /** Where a piece of wording lives: the dialog or panel it belongs to. */
 /* Where a label lives, by the heading's ORIGINAL words.
@@ -5784,12 +5799,12 @@ function headingWords(h){
   if(orig) return orig.replace(/\s+/g,' ').trim();
   const first = [...h.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
   const t = first ? first.textContent : (h.textContent || '');
-  return String(t).replace(/\s+/g,' ').trim().replace(/✕\s*$/,'').trim();
+  return String(t).replace(/\s+/g,' ').trim().replace(/[✕×]\s*$/,'').trim();
 }
 function labelContextOf(el){
   const m = el.closest('#modal');
   if(m){
-    const t = headingWords(m.querySelector('.m-head h3, .m-head'));
+    const t = headingWords(m.querySelector('.m-head h3, #modal > h3, .m-head'));
     return t ? 'Dialog: '+t : 'Dialog';
   }
   const sec = el.closest('section');
@@ -5814,25 +5829,94 @@ function normLabelKey(key){
   return ctx + ' › ' + bits.slice(1).join(' › ');
 }
 
+/* What the app itself wrote there, remembered so it can be put back exactly —
+   the text pieces only, so a working part keeps its own life (a spinner keeps
+   spinning, a button keeps its action). */
+const LBL_ORIG = new WeakMap();
+function lblForget(el){
+  LBL_ORIG.delete(el);
+  ['data-key','data-orig','data-orightml','data-shown','data-rewritten'].forEach(a=>el.removeAttribute(a));
+}
 /** The original words, and where they are — together they identify one label. */
 function labelKeyOf(el){
+  /* The app rewrote the words itself since we last looked (a count went up, a
+     message changed): start again from what it says now. */
+  if(el.hasAttribute('data-shown') && labelTextOf(el) !== el.getAttribute('data-shown')) lblForget(el);
   const k = el.getAttribute('data-key');
   if(k) return k;
-  /* The WHOLE of what it says, not just the run of text before its first inner
-     tag. Keying on the first fragment meant a sentence containing a bolded word
-     was half-replaced — your version and the rest of the original both on
-     screen at once. */
   const text = labelTextOf(el);
   if(!text) return '';
   /* Keyed by place AND words, so the same sentence in two dialogs can be
-     rewritten separately — before, editing one changed both. */
-  const key = labelContextOf(el) + ' › ' + text;
+     rewritten separately — and found by its words alone, so a change can also
+     reach everywhere those words appear. */
+  const key = labelContextOf(el) + ' › ' + lblTemplate(text);
   el.setAttribute('data-orig', text);
-  if(!el.getAttribute('data-orightml')) el.setAttribute('data-orightml', el.innerHTML);
+  if(!el.getAttribute('data-orightml')) el.setAttribute('data-orightml', el.innerHTML.replace(/<span class="pencil"[^>]*>.*?<\/span>/g,''));
   el.setAttribute('data-key', key);
   return key;
 }
+/* Put your words in, keeping every working part where it was. */
+function lblPut(el, text){
+  if(labelReplaceable(el)){
+    const html = labelHtml(text);
+    const pen = el.querySelector(':scope > .pencil');
+    if(el.innerHTML.replace(/<span class="pencil"[^>]*>.*?<\/span>/,'') !== html){ el.innerHTML = html; if(pen) el.appendChild(pen); }
+    return;
+  }
+  const flat = String(text).replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\n+/g,' ');
+  if(!LBL_ORIG.has(el)){
+    const saved = [];
+    [...el.childNodes].forEach(n=>{
+      if(n.nodeType===3) saved.push({n, t:n.textContent});
+      else if(lblIsFormatting(n)) saved.push({n, d:n.style.display});
+    });
+    LBL_ORIG.set(el, saved);
+  }
+  const parts = LBL_ORIG.get(el);
+  const texts = parts.filter(p=>p.t!==undefined);
+  const main = texts.find(p=>p.t.trim()) || texts[0];
+  parts.forEach(p=>{
+    if(p.t!==undefined){
+      if(p===main){ const lead = /^\s/.test(p.t) ? ' ' : '', tail = /\s$/.test(p.t) ? ' ' : '';
+        p.n.textContent = lead + flat + tail; }
+      else p.n.textContent = p.t.trim() ? '' : p.t;
+    } else p.n.style.display = 'none';
+  });
+  if(!main){ const t = document.createTextNode(flat); el.insertBefore(t, el.firstChild); parts.push({n:t, t:''}); }
+}
+function lblRestore(el){
+  if(LBL_ORIG.has(el)){
+    LBL_ORIG.get(el).forEach(p=>{ if(p.t!==undefined) p.n.textContent = p.t; else p.n.style.display = p.d||''; });
+    LBL_ORIG.delete(el);
+    return;
+  }
+  const was = el.getAttribute('data-orightml');
+  if(was!==null){ const pen = el.querySelector(':scope > .pencil'); el.innerHTML = was; if(pen && !el.querySelector(':scope > .pencil')) el.appendChild(pen); }
+}
+
+/* Everything with words in it: the listed kinds first, then every other piece
+   of text on screen, so a pencil is offered everywhere — dialog headings,
+   counts like "7 still coming", anything. */
+const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#toast,#bld,[contenteditable]';
+function lblTargets(scope){
+  const out = new Set();
+  scope.querySelectorAll(EDIT_SEL).forEach(el=>out.add(el));
+  const root = scope===document ? document.body : scope;
+  if(!root) return out;
+  const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: n => /[A-Za-z]{2}/.test(n.textContent) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  let n;
+  while((n = walk.nextNode())){
+    let el = n.parentElement;
+    // Bold inside a sentence belongs to the sentence.
+    while(el && lblIsFormatting(el) && el.parentElement && el.parentElement!==document.body) el = el.parentElement;
+    if(el) out.add(el);
+  }
+  return out;
+}
+
 /** Put your wording in place of the original, wherever it appears. */
+let LBL_BUSY = false;
 function applyLabels(root){
   /* Looked up on the steady form of the key, so wording saved before — under a
      heading that has since changed — is still found. */
@@ -5845,63 +5929,91 @@ function applyLabels(root){
        where it was asked for. */
     if(raw[k] && raw[k]!=='\u0000hide') byWords[String(k).split(' › ').slice(1).join(' › ')] = raw[k];
   });
+  const words = new Set(Object.keys(raw).map(k=>String(k).split(' › ').slice(1).join(' › ')));
   const scope = root || document;
-  // Headings first: everything else is keyed by where it sits, and that comes
-  // from the heading's original words.
-  scope.querySelectorAll('.m-head h3, .sec-h2, .inv-h2').forEach(h=>{
-    if(!h.getAttribute('data-orig')){
-      const first=[...h.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
-      const t=(first?first.textContent:h.textContent||'').replace(/\s+/g,' ').trim().replace(/✕\s*$/,'').trim();
-      if(t) h.setAttribute('data-orig', t);
-    }
-  });
-  scope.querySelectorAll(EDIT_SEL).forEach(el=>{
-    if(el.closest('.no-edit')) return;
-    if(el.tagName==='BUTTON' && !buttonEditable(el)) return;
-    const key = labelKeyOf(el);
-    if(!key) return;
-    const orig = el.getAttribute('data-orig') || '';
-    const own = map[normLabelKey(key)];
-    const want = own!==undefined ? own : byWords[orig];
-    const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
-    /* Your wording replaces everything the label said — bold words and all —
-       so long as nothing inside it is a control. A label wrapped around a
-       checkbox keeps its plain text instead of losing the checkbox. */
-    const plainOnly = labelReplaceable(el);
-    if(want==='\u0000hide'){                     // you asked for this one to go
-      el.style.display='none'; el.dataset.rewritten='1'; return;
-    }
-    if(el.dataset.rewritten==='1') el.style.display='';
-    if(want){
-      /* Your capitals, not the app's: a heading styled in capitals shows your
-         words exactly as typed once you have rewritten it. */
-      el.style.textTransform='none';
-      if(plainOnly){
-        const html = labelHtml(want);
-        if(el.innerHTML !== html) el.innerHTML = html;
+  LBL_BUSY = true;
+  try{
+    // Headings first: everything else is keyed by where it sits, and that comes
+    // from the heading's original words.
+    scope.querySelectorAll('.m-head h3, #modal > h3, .sec-h2, .inv-h2').forEach(h=>{
+      if(!h.getAttribute('data-orig')){
+        const t = headingWords(h);
+        if(t) h.setAttribute('data-orig', t);
       }
-      else if(first){
-        // No room for formatting here: show the words without their markers.
-        const flat = String(want).replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\n+/g,' ');
-        if(first.textContent.replace(/\s+/g,' ').trim() !== flat) first.textContent = flat;
+    });
+    lblTargets(scope).forEach(el=>{
+      if(el.closest(LBL_SKIP)) return;
+      if(el.tagName==='BUTTON' && !buttonEditable(el)) return;
+      /* With nothing saved for these words and no pencils showing, there is
+         nothing to do — which keeps this quick on a long sales log. */
+      if(!EDIT_WORDING && !el.hasAttribute('data-rewritten') && !words.has(lblTemplate(labelTextOf(el)))) return;
+      const key = labelKeyOf(el);
+      if(!key) return;
+      const tmpl = key.split(' › ').slice(1).join(' › ');
+      const own = map[normLabelKey(key)];
+      const want = own!==undefined ? own : byWords[tmpl];
+      if(want==='\u0000hide'){                     // you asked for this one to go
+        el.style.display='none'; el.setAttribute('data-rewritten','1');
+      }else if(want){
+        if(el.getAttribute('data-rewritten')==='1') el.style.display='';
+        /* Your capitals, not the app's: a heading styled in capitals shows your
+           words exactly as typed once you have rewritten it. */
+        el.style.textTransform='none';
+        lblPut(el, lblFill(want, lblNumbers(el.getAttribute('data-orig'))));
+        el.setAttribute('data-rewritten','1');
+      }else if(el.getAttribute('data-rewritten')==='1'){
+        el.style.textTransform=''; el.style.display='';     // back to the app's own styling
+        lblRestore(el);
+        el.removeAttribute('data-rewritten');
       }
-    }
-    if(!want && el.dataset.rewritten==='1'){
-      el.style.textTransform=''; el.style.display='';     // back to the app's own styling
-      const was = el.getAttribute('data-orightml');
-      if(plainOnly && was!==null) el.innerHTML = was;
-      else if(plainOnly) el.innerHTML = esc(orig);
-      else if(first) first.textContent = orig;
-    }
-    el.dataset.rewritten = want ? '1' : '';
-    if(EDIT_WORDING && !el.querySelector(':scope > .pencil')){
-      const p = document.createElement('span');
-      p.className = 'pencil'; p.textContent = '✏️'; p.title = 'Rewrite these words';
-      p.dataset.act = 'editlabel'; p.dataset.key = key;
-      el.appendChild(p);
-    }
-    if(!EDIT_WORDING){ const p = el.querySelector(':scope > .pencil'); if(p) p.remove(); }
+      el.setAttribute('data-shown', labelTextOf(el));
+      if(EDIT_WORDING && !el.querySelector(':scope > .pencil')){
+        const p = document.createElement('span');
+        p.className = 'pencil'; p.textContent = '✏️'; p.title = 'Rewrite these words';
+        p.dataset.act = 'editlabel'; p.dataset.key = key;
+        // Right after the words, ahead of any working part (a close button, say).
+        const words = [...el.childNodes].filter(n=>(n.nodeType===3 && n.textContent.trim()) || lblIsFormatting(n));
+        const last = words[words.length-1];
+        if(last && !labelReplaceable(el)) last.after(p); else el.appendChild(p);
+      }
+      if(!EDIT_WORDING){ const p = el.querySelector(':scope > .pencil'); if(p) p.remove(); }
+    });
+  } finally {
+    if(LBL_OBS) LBL_OBS.takeRecords();          // our own changes are not news
+    LBL_BUSY = false;
+  }
+}
+/* An error in a dialog is brought into view the moment it appears, and
+   flashes once — a long dialog (Multiple Books, say) could otherwise leave it
+   below the bottom edge, unseen. */
+let ERR_LAST = '';
+if(typeof MutationObserver!=='undefined'){
+  const watchErr = ()=>{
+    const m = document.getElementById('modal'); if(!m) return;
+    new MutationObserver(()=>{
+      const e = m.querySelector('#modalErr');
+      const t = e ? labelTextOf(e) : '';
+      if(t && t!==ERR_LAST){
+        try{ e.scrollIntoView({block:'center', behavior:'smooth'}); }catch(x){ e.scrollIntoView(); }
+        e.classList.remove('err-flash'); void e.offsetWidth; e.classList.add('err-flash');
+      }
+      ERR_LAST = t;
+    }).observe(m, {childList:true, subtree:true, characterData:true});
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', watchErr); else watchErr();
+}
+/* Anything drawn later — a dialog filling in, a count going up — gets its
+   wording and its pencil a moment after it appears, not only on the next
+   full redraw. */
+let LBL_OBS = null, LBL_T = null;
+if(typeof MutationObserver!=='undefined'){
+  LBL_OBS = new MutationObserver(()=>{
+    if(LBL_BUSY) return;
+    clearTimeout(LBL_T);
+    LBL_T = setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 60);
   });
+  const startObs = ()=>{ if(document.body) LBL_OBS.observe(document.body, {childList:true, subtree:true, characterData:true}); };
+  if(document.body) startObs(); else document.addEventListener('DOMContentLoaded', startObs);
 }
 
 /** Rewrite one piece of wording. */
@@ -5921,9 +6033,12 @@ function labelEditBack(){
 /* The wording as it stands, in the form the box takes: **bold**, new lines. */
 function labelAsTyped(html){
   const d = document.createElement('div');
-  d.innerHTML = String(html||'').replace(/<br\s*\/?>/gi, '\n').replace(/<\/?b>/gi, '**');
-  d.querySelectorAll('.pencil').forEach(x=>x.remove());
-  return d.textContent.replace(/\*\*\s*\*\*/g,'').replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').trim();
+  d.innerHTML = String(html||'');
+  // Only the words: working parts (a spinner, a button) are not part of them.
+  [...d.childNodes].forEach(x=>{ if(x.nodeType===1 && !lblIsFormatting(x)) x.remove(); });
+  const e = document.createElement('div');
+  e.innerHTML = d.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/<\/?(b|strong)>/gi, '**');
+  return e.textContent.replace(/\*\*\s*\*\*/g,'').replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').trim();
 }
 function editLabelModal(key){
   const labels = STATE.labels||{};
@@ -5934,20 +6049,21 @@ function editLabelModal(key){
      retype from nothing. */
   let el = null;
   try{ el = document.querySelector('[data-key="'+CSS.escape(key)+'"]'); }catch(e){}
-  const origTyped = el ? labelAsTyped(el.getAttribute('data-orightml') || esc(words)) : words;
+  const origTyped = el ? lblTemplate(labelAsTyped(el.getAttribute('data-orightml') || esc(words))) : words;
   const startText = (cur && cur!=='\u0000hide') ? cur : origTyped;
   const m0 = $('#modal');
   LABEL_BACK = $('#overlay').classList.contains('show')
     ? { cls: m0.className, nodes: [...m0.childNodes] } : null;
   openModal(`
-    <h3>Rewrite these words<button class="x" onclick="labelEditBack()" aria-label="Back">×</button></h3>
+    <h3 class="no-edit">Rewrite these words<button class="x" onclick="labelEditBack()" aria-label="Back">×</button></h3>
     <div class="m-body no-edit">
       <div class="hint">${esc(at)} — currently reads:</div>
       <div class="lbl-orig">${esc(words)}</div>
       <div class="field"><label>Your wording</label>
         <textarea id="lblText" rows="4" placeholder="Leave empty to use the original">${esc(startText)}</textarea>
         <div class="muted-note">Put <b>**stars**</b> around words to make them <b>bold</b>, press Enter for a
-          new line, and type capitals exactly as you want them.</div></div>
+          new line, and type capitals exactly as you want them.${/#/.test(words)
+          ? ' Each <b>#</b> is a number the app fills in — keep a # wherever the number should appear.' : ''}</div></div>
       <label class="radio-row"><input type="checkbox" id="lblHide" ${cur==='\u0000hide'?'checked':''}>
         <span><b>Don't show this at all</b><br><span class="muted-note">Takes the text off the screen.</span></span></label>
       <div class="err" id="modalErr"></div>
@@ -9655,6 +9771,8 @@ function shipEditModal(id){
     ${mHead('Shipment details')}
     <div class="m-body">
       <div class="hint">${esc(shipLabel(x))} · ${shipTotal(x)} book${shipTotal(x)===1?'':'s'} still coming</div>
+      ${x.fromRegion===OUTSIDE_ORIGIN ? `<div class="field"><label>Coming From</label>
+        <input id="seOrigin" type="text" value="${esc(x.origin||'')}" placeholder="Source"></div>` : ''}
       <div class="field"><label>Where they are heading</label>
         <select id="seTo">
           ${regionsList().filter(r=>r.regionId!==x.fromRegion)
@@ -9680,6 +9798,7 @@ function shipEditModal(id){
                      eta:$('#seEta').value, note:$('#seNote').value.trim()};
     if(x.mode==='shipping'){ payload.tracking=$('#seTracking').value.trim(); payload.trackingUrl=$('#seUrl').value.trim(); }
     else { payload.carrier=$('#seCarrier').value.trim(); payload.phone=$('#sePhone').value.trim(); }
+    if($('#seOrigin')) payload.origin = $('#seOrigin').value.trim();
     if(await commitSync(payload,'Shipment updated')) shipmentsModal();
   });
 }
@@ -10426,6 +10545,28 @@ function transferStockModal(opts){
    undone entry stays, crossed out, and the undo is itself recorded. */
 const ACT_CACHE = 'tbs_activity_' + (SHARE_KEY ? SHARE_KEY + '_' : '');
 const OPEN_ACT = new Set();          // entries whose lines are showing
+/* Deletes made here that the server has not confirmed yet. A copy of the log
+   fetched before the delete reached the server must not bring the entry back:
+   these are laid over every copy until the server's own copy shows them. */
+const ACT_PENDING = new Map();       // entry id → {all:true} | {parts:Set}, plus the note to show
+function actOverlay(list){
+  ACT_PENDING.forEach((p, id)=>{
+    const e = list.find(x=>x.id===id); if(!e) return;
+    if(p.all){ if(!e.undoneAt){ e.undoneAt = p.at; e.undoneBy = p.by; e.canUndo = false; (e.parts||[]).forEach(x=>{ x.undone = true; }); } }
+    else (e.parts||[]).forEach(x=>{ if(p.parts.has(x.id)) x.undone = true; });
+    if(!list.some(x=>x.id===p.noteId || (x.text===p.note.text && Math.abs(new Date(x.ts)-new Date(p.note.ts))<600000))) list.unshift(Object.assign({}, p.note));
+  });
+  return list;
+}
+/* Once the server's copy shows a delete, it no longer needs holding. */
+function actSettle(list){
+  ACT_PENDING.forEach((p, id)=>{
+    const e = list.find(x=>x.id===id);
+    if(!e) { ACT_PENDING.delete(id); return; }
+    const done = p.all ? !!e.undoneAt : (e.parts||[]).filter(x=>p.parts.has(x.id)).every(x=>x.undone);
+    if(done && p.landed) ACT_PENDING.delete(id);
+  });
+}
 function activityCacheLoad(sid){ try{ return JSON.parse(localStorage.getItem(ACT_CACHE+sid) || 'null'); }catch(e){ return null; } }
 function activityCacheSave(sid, list){ try{ localStorage.setItem(ACT_CACHE+sid, JSON.stringify(list.slice(0,600))); }catch(e){} }
 
@@ -10561,9 +10702,14 @@ function activityModal(){
       const was = JSON.stringify(entry);
       line.undone = true;
       if(entry.parts.every(x=>x.undone)){ entry.undoneAt = new Date().toISOString(); entry.undoneBy = meLabel(); entry.canUndo = false; }
-      noteUndo('Undid one line: ' + line.text, entry);
+      const note = noteUndo('Undid one line: ' + line.text, entry);
+      const pend = ACT_PENDING.get(entry.id) || {parts:new Set(), note, noteId:note.id};
+      if(!pend.all){ pend.parts = pend.parts || new Set(); pend.parts.add(line.id); }
+      pend.note = note; pend.noteId = note.id; pend.landed = false;
+      ACT_PENDING.set(entry.id, pend);
       commit({action:'undoActivityPart', id:entry.id, part:line.id}, st=>undoMovesLocal(st, ids), 'Undone',
-        {keepOpen:true, onFail:()=>{ Object.assign(entry, JSON.parse(was)); list = list.filter(x=>!x.local); activityCacheSave(sid, list); draw(); }});
+        {keepOpen:true, onDone:()=>{ pend.landed = true; refetch(); },
+         onFail:()=>{ ACT_PENDING.delete(entry.id); Object.assign(entry, JSON.parse(was)); list = list.filter(x=>x.id!==note.id); activityCacheSave(sid, list); draw(); }});
       return;
     }
     const b = e.target.closest('[data-alundo]'); if(!b) return;
@@ -10581,21 +10727,33 @@ function activityModal(){
     const was = JSON.stringify(entry);
     entry.undoneAt = new Date().toISOString(); entry.undoneBy = meLabel(); entry.canUndo = false;
     (entry.parts||[]).forEach(x=>{ x.undone = true; });
-    noteUndo('Undid: ' + entry.text, entry);
+    const note = noteUndo('Undid: ' + entry.text, entry);
+    const pend = {all:true, at:entry.undoneAt, by:entry.undoneBy, note, noteId:note.id, landed:false};
+    ACT_PENDING.set(entry.id, pend);
     commit({action:'undoActivity', id:entry.id}, st=>undoMovesLocal(st, ids), 'Undone',
-      {keepOpen:true, onFail:()=>{ Object.assign(entry, JSON.parse(was)); list = list.filter(x=>!x.local); activityCacheSave(sid, list); draw(); }});
+      {keepOpen:true, onDone:()=>{ pend.landed = true; refetch(); },
+       onFail:()=>{ ACT_PENDING.delete(entry.id); Object.assign(entry, JSON.parse(was)); list = list.filter(x=>x.id!==note.id); activityCacheSave(sid, list); draw(); }});
   });
   // The undo is itself recorded — shown now, replaced by the server's copy next time.
   function noteUndo(text, entry){
-    list.unshift({id:'local_'+Date.now(), local:true, ts:new Date().toISOString(), who:meLabel(), text,
-      locs:entry.locs||[], regions:entry.regions||[], canUndo:false});
+    const note = {id:'local_'+Date.now(), local:true, ts:new Date().toISOString(), who:meLabel(), text,
+      locs:entry.locs||[], regions:entry.regions||[], canUndo:false};
+    list.unshift(note);
     activityCacheSave(sid, list); draw();
+    return note;
   }
+  list = actOverlay(list);
   draw();
-  post({action:'activity'}).then(d=>{
-    if(!d || !Array.isArray(d.result)) throw new Error('Could not load the log.');
-    list = d.result; fresh = true; activityCacheSave(sid, list); draw();
-  }).catch(err=>{
+  /* The server's copy, with any delete made here that it may not have seen yet
+     laid over it — so nothing that was deleted ever comes back. */
+  function refetch(){
+    return post({action:'activity'}).then(d=>{
+      if(!d || !Array.isArray(d.result)) throw new Error('Could not load the log.');
+      actSettle(d.result);
+      list = actOverlay(d.result); fresh = true; activityCacheSave(sid, list); draw();
+    });
+  }
+  refetch().catch(err=>{
     const s = $('#alState'); if(s){ s.hidden = false; s.textContent = 'Could not check for the latest — showing what this device last saw.'; }
   });
 }

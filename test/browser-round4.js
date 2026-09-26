@@ -179,6 +179,7 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     // 8. Wording: the same words change everywhere, at once; the box opens with what it says now.
     await page.evaluate(() => closeModal());
     const words = await page.evaluate(() => {
+      EDIT_WORDING = true;                       // pencils on, as when rewording
       const a = document.createElement('div'); a.className = 'hint'; a.id = 'wA'; a.textContent = 'Money kept in the box here';
       const b = document.createElement('div'); b.className = 'hint'; b.id = 'wB'; b.textContent = 'Money kept in the box here';
       document.querySelector('#adminPanel').appendChild(a); document.querySelector('main').prepend(b);

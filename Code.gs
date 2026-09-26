@@ -207,7 +207,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b187';
+var SERVER_BUILD = 'b188';
 
 function doPost(e) { return handle(e); }
 
@@ -1792,7 +1792,8 @@ function doEditShipment(p) {
     var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
     if (String(o.shipId) === id) {
       found = true;
-      ['carrier','phone','tracking','trackingUrl','note'].forEach(function (f) {
+      // Where outside books came from is typed in, so a typo can be put right.
+      ['carrier','phone','tracking','trackingUrl','note','origin'].forEach(function (f) {
         if (p[f] !== undefined) o[f] = String(p[f]).trim();
       });
       if (p.eta !== undefined) o.eta = p.eta ? new Date(p.eta) : '';
