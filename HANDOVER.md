@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b180**.
+Handover notes. Current build: **b181**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -153,7 +153,7 @@ install. See `test/README.md`.
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
 `dutchtest`, `reptest`, `payusd`).
 
-`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -228,13 +228,35 @@ narrowly, and Node's `navigator` is read-only — override it with
   when you tap straight back in.
 - `test/browser-speed.js` checks each step with a 2-second server delay.
 
+## Done in b181 — Stock protocol, part 2: Transfer Existing Stock
+
+- One **⇄ Transfer Existing Stock** button (admin and regional links) replaces
+  Transfer to event / Transfer in / Return to warehouse / Transfer to region /
+  Hand stock to another season. `transferStockModal`, `transferKind`.
+- Kinds: `event` (warehouse or event → event), `store` (event → its
+  warehouse: one destination, or split between sub-warehouses, new ones
+  created on the spot via `saveHolder` with an app-named `newHolderId`),
+  `region` and `season` (arrive immediately, or travel as a shipment).
+- **Sub-warehouses = devotee storage (`holders`)**, numbered SW1, SW2… in the
+  region's own order (`swLabel`), each with a fixed tint (`SW_TINTS`). A
+  warehouse whose books sit in sub-warehouses shows one Avail/Move pair per
+  shelf. On a phone (≤560px) those tables become one card per title.
+- Server: new `transferMulti` (many legs, all-or-nothing); `sendShipment`
+  items may carry their own `fromLoc`; regional links may `transferMulti` and
+  `saveHolder` within their region only.
+- Warehouse cards count sub-warehouse stock in, with SW bubbles (tap = name
+  and WhatsApp). Selling when the shelf itself has none asks which
+  sub-warehouse (`sellFromWarehouse`) and records the sale there.
+- Confirmations: "Transfer everything" alerts the count reminder; Transfer
+  confirms the leaving message for the kind plus "Are you sure you have
+  counted everything correctly?" in one pop-up.
+
+Known gaps: "Multiple Books — one transaction" at a warehouse does not yet ask
+which sub-warehouse; deleting a shipment returns its books to the sending
+warehouse's shelf, not to the sub-warehouse they left.
+
 ## Still to do (agreed plan)
 
-2. **Transfer Existing Stock** — one dialog for all four kinds of transfer,
-   sub-warehouse columns (devotee storage = sub-warehouses), confirmation
-   messages, "transfer everything". Replaces the remaining transfer buttons.
-   Decided: when the warehouse shelf itself has none, a sale asks which
-   sub-warehouse the book came from.
 3. **One activity log** for everything. Decided: "Delete" on an entry undoes
    the action where that is safe; entries that cannot be undone have no Delete.
 

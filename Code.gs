@@ -192,7 +192,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b180';
+var SERVER_BUILD = 'b181';
 
 function doPost(e) { return handle(e); }
 
@@ -342,6 +342,7 @@ function handle(e) {
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
+        case 'transferMulti':    doTransferMulti(params);    break;
         case 'transferExternal':  doTransferExternal(params);  break;
         case 'editSale':         doEditSale(params);         break;
         case 'deleteSale':       doDeleteSale(params);       break;
@@ -1125,7 +1126,7 @@ var MUTATING_ACTIONS = {
   sell:1, sellBundle:1, donate:1, editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1,
   transferBulk:1, transferExternal:1, adjustStockBulk:1, setStockBulk:1,
-  undoStockMove:1
+  undoStockMove:1, transferMulti:1
 };
 
 /* Except these. Closing a place means no NEW business — but the promises it
@@ -1142,6 +1143,10 @@ function assertNotClosed_(action, params) {
   var touched = [];
   ['location', 'from', 'to', 'fromLoc'].forEach(function (f) {
     if (params[f]) touched.push(String(params[f]));
+  });
+  (params.moves || []).forEach(function (m) {
+    if (m && m.from) touched.push(String(m.from));
+    if (m && m.to) touched.push(String(m.to));
   });
   if (params.saleId) {
     objectsOf_('_sales').forEach(function (r) {
@@ -1259,6 +1264,43 @@ function doReorder(p) {
   markDirtyAll_();
 }
 
+/* One transfer, however many legs: from several shelves at once (a warehouse
+   and its sub-warehouses), into several at once (an event's books split
+   between devotees' homes), or simply one place to another — in this season or
+   into another. Everything is checked before anything moves, so a transfer
+   either happens whole or not at all. */
+function doTransferMulti(p) {
+  var moves = (p.moves || []).map(function (m) {
+    return { from: String(m.from || ''), to: String(m.to || ''), bookId: String(m.bookId || ''),
+             qty: Math.max(0, Math.round(Number(m.qty) || 0)) };
+  }).filter(function (m) { return m.qty > 0 && m.from && m.to && m.from !== m.to && bookById_(m.bookId); });
+  if (!moves.length) throw new Error('Enter a quantity for at least one title.');
+
+  var map = loadInvMap_();
+  var need = {};
+  moves.forEach(function (m) { var k = m.from + '||' + m.bookId; need[k] = (need[k] || 0) + m.qty; });
+  Object.keys(need).forEach(function (k) {
+    var bits = k.split('||'), have = getQty_(map, bits[0], bits[1]);
+    if (have < need[k]) {
+      throw new Error('Only ' + have + ' × ' + bookById_(bits[1]).name + ' at ' + locLabel_(bits[0]) +
+        ' — you asked to move ' + need[k] + '. Nothing was moved.');
+    }
+  });
+  var touched = {};
+  moves.forEach(function (m, i) {
+    var fB = getQty_(map, m.from, m.bookId), tB = getQty_(map, m.to, m.bookId);
+    addQty_(map, m.from, m.bookId, -m.qty);
+    addQty_(map, m.to, m.bookId, m.qty);
+    stockMoveAppend_({ id: p.movePrefix ? (p.movePrefix + '_' + i) : '',
+      kind: 'TRANSFER', fromLoc: m.from, toLoc: m.to, bookId: m.bookId, qty: m.qty,
+      note: String(p.note || ''),
+      fromBefore: fB, fromAfter: fB - m.qty, toBefore: tB, toAfter: tB + m.qty });
+    touched[m.from] = 1; touched[m.to] = 1;
+  });
+  saveInvMap_(map);
+  Object.keys(touched).forEach(function (l) { markDirty_(l); });
+}
+
 function doSaveHolder(p) {
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Give the devotee a name.');
@@ -1279,9 +1321,16 @@ function doSaveHolder(p) {
     });
     writeObjects_('_holders', hs, objs);
   } else {
-    id = 'hd_' + Utilities.getUuid().slice(0, 6);
-    getSheet_('_holders').appendRow([id, regionId, name, String(p.phone || '').trim(),
-      String(p.note || '').trim(), new Date(), false]);
+    /* Named by the app when it is made alongside a transfer, so the transfer
+       sent right after it can already point at it; a resend is ignored. */
+    id = /^hd_[a-z0-9]{4,16}$/.test(String(p.newHolderId || '')) ? String(p.newHolderId)
+       : 'hd_' + Utilities.getUuid().slice(0, 6);
+    var exists = objectsOf_('_holders').some(function (h) { return String(h.holderId) === id; });
+    if (!exists) {
+      getSheet_('_holders').appendRow([id, regionId, name, String(p.phone || '').trim(),
+        String(p.note || '').trim(), new Date(), false]);
+      sheetMemoClear_();
+    }
   }
   markDirtyRegions_([regionId]);
   return id;
@@ -1370,18 +1419,27 @@ function doSendShipment(p) {
   if (!fromOutside && fromRegion === toRegion) throw new Error('That is the same region — pick another.');
 
   var items = (p.items || []).map(function (it) {
-    return { bookId: String(it.bookId), qty: Math.max(0, Math.round(Number(it.qty) || 0)) };
+    return { bookId: String(it.bookId), qty: Math.max(0, Math.round(Number(it.qty) || 0)),
+             fromLoc: String(it.fromLoc || '') };
   }).filter(function (it) { return it.qty > 0 && bookById_(it.bookId); });
   if (!items.length) throw new Error('Enter a quantity for at least one title.');
 
   var srcLoc = fromOutside ? '' : String(p.fromLoc || from.whLoc);
+  /* Each title may leave from its own shelf — the warehouse or one of its
+     sub-warehouses — as long as that shelf belongs to the sending region. */
+  var srcLocs = fromOutside ? [] : locsInRegion_(fromRegion);
+  items.forEach(function (it) {
+    it.from = (it.fromLoc && srcLocs.indexOf(it.fromLoc) >= 0) ? it.fromLoc : srcLoc;
+  });
   var map = loadInvMap_();
   if (!fromOutside) {
-    items.forEach(function (it) {
-      var have = getQty_(map, srcLoc, it.bookId);
-      if (have < it.qty) {
-        throw new Error('Only ' + have + ' × ' + bookById_(it.bookId).name + ' at ' +
-          locLabel_(srcLoc) + ' — you asked to send ' + it.qty + '. Nothing was sent.');
+    var needS = {};
+    items.forEach(function (it) { var k = it.from + '||' + it.bookId; needS[k] = (needS[k] || 0) + it.qty; });
+    Object.keys(needS).forEach(function (k) {
+      var bits = k.split('||'), have = getQty_(map, bits[0], bits[1]);
+      if (have < needS[k]) {
+        throw new Error('Only ' + have + ' × ' + bookById_(bits[1]).name + ' at ' +
+          locLabel_(bits[0]) + ' — you asked to send ' + needS[k] + '. Nothing was sent.');
       }
     });
   }
@@ -1402,16 +1460,17 @@ function doSendShipment(p) {
 
   if (mode === 'direct') {
     items.forEach(function (it) {
-      var fB = getQty_(map, srcLoc, it.bookId), tB = getQty_(map, to.whLoc, it.bookId);
-      addQty_(map, srcLoc, it.bookId, -it.qty);
+      var fB = getQty_(map, it.from, it.bookId), tB = getQty_(map, to.whLoc, it.bookId);
+      addQty_(map, it.from, it.bookId, -it.qty);
       addQty_(map, to.whLoc, it.bookId, it.qty);
-      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: srcLoc, toLoc: to.whLoc,
+      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: it.from, toLoc: to.whLoc,
         bookId: it.bookId, qty: it.qty, note: p.note,
-        fromBefore: fB, fromAfter: getQty_(map, srcLoc, it.bookId),
+        fromBefore: fB, fromAfter: getQty_(map, it.from, it.bookId),
         toBefore: tB, toAfter: getQty_(map, to.whLoc, it.bookId) });
+      markDirty_(it.from);
     });
     saveInvMap_(map);
-    markDirty_(srcLoc); markDirty_(to.whLoc);
+    markDirty_(to.whLoc);
     return '';
   }
 
@@ -1449,12 +1508,12 @@ function doSendShipment(p) {
         toBefore: 0, toAfter: it.qty });
       return;
     }
-    var fB = getQty_(map, srcLoc, it.bookId);
-    addQty_(map, srcLoc, it.bookId, -it.qty);
-    stockMoveAppend_({ kind: 'TRANSFER', fromLoc: srcLoc, toLoc: shipId,
+    var fB = getQty_(map, it.from, it.bookId);
+    addQty_(map, it.from, it.bookId, -it.qty);
+    stockMoveAppend_({ kind: 'TRANSFER', fromLoc: it.from, toLoc: shipId,
       bookId: it.bookId, qty: it.qty,
       note: 'Sent in transit to ' + to.name + (p.carrier ? ' with ' + p.carrier : ''),
-      fromBefore: fB, fromAfter: getQty_(map, srcLoc, it.bookId),
+      fromBefore: fB, fromAfter: getQty_(map, it.from, it.bookId),
       toBefore: 0, toAfter: it.qty });
   });
   saveInvMap_(map);
@@ -1726,7 +1785,9 @@ var COORD_EXTRA = {
   // Add Stock: books on their way in, and switching on an existing title here.
   sendShipment:1, regionAddBooks:1,
   // Books in transit: marking their own region's deliveries as arrived.
-  receiveShipment:1
+  receiveShipment:1,
+  // Transfer Existing Stock: moves within the region, and its sub-warehouses.
+  transferMulti:1, saveHolder:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -1841,6 +1902,22 @@ function assertAllowed_(who, action, params) {
         (params.toLoc && !allowed[String(params.toLoc)])) {
       throw new Error('This link can only receive books arriving in its own region.');
     }
+  }
+  /* Every leg of a transfer must start and end inside the link's region. */
+  if (action === 'transferMulti') {
+    (params.moves || []).forEach(function (m) {
+      [m.from, m.to].forEach(function (l) {
+        if (l && !allowed[String(l)]) throw new Error('This link does not cover ' + locLabel_(String(l)) + '.');
+      });
+    });
+  }
+  /* A sub-warehouse (devotee storage) may be added or edited in its own region only. */
+  if (action === 'saveHolder') {
+    var hOk = String(params.regionId) === String(who.regionId);
+    if (hOk && params.holderId) {
+      hOk = holdersOfRegion_(who.regionId).some(function (h) { return h.holderId === String(params.holderId); });
+    }
+    if (!hOk) throw new Error('This link can only change storage in its own region.');
   }
   if (action === 'regionAddBooks' && String(params.regionId) !== String(who.regionId)) {
     throw new Error('This link can only change its own region.');
