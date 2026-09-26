@@ -259,8 +259,6 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .pt-row span:first-child{color:var(--ink);font-weight:600}
 .muted{color:var(--muted);font-weight:400}
 /* region price grid */
-.bk-move{cursor:pointer;font-size:9px;color:var(--muted);padding:0 1px;user-select:none}
-.bk-move:hover{color:var(--plum)}
 .rp-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--line)}
 .rp-row:last-child{border-bottom:none}
 .rp-name{flex:1 1 40%;font-size:13px;font-weight:600;color:var(--ink);min-width:0}
@@ -268,7 +266,14 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .rp-cells{display:flex;gap:5px;flex:1 1 55%;flex-wrap:wrap;justify-content:flex-end}
 .bk-row.off{opacity:.45}
 .bk-row .rp-name{display:flex;align-items:center;gap:7px;cursor:pointer}
+.pt-move{cursor:pointer;font-size:9px;color:var(--muted);padding:0 1px;user-select:none}
+.pt-move:hover{color:var(--plum)}
+.pt-lbl{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:pointer}
 .pt-row{display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:14px;cursor:pointer}
+/* The ordering arrows, kept quiet — another component also styles .pt-row. */
+.pt-row .pt-move{cursor:pointer;font-size:9px;color:var(--muted);font-weight:400;padding:0 1px;user-select:none}
+.pt-row .pt-move:hover{color:var(--plum)}
+.pt-row .pt-lbl{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:pointer}
 .pt-row input{width:17px;height:17px}
 .rp-add{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .rp-add input{flex:1 1 180px;border:1px solid var(--line-d);border-radius:8px;padding:7px 9px;font-size:12.5px}
@@ -1074,7 +1079,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b174</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b175</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -3489,9 +3494,11 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-h"><span class="cur-sym">${esc(CUR_SYM[c]||'')}</span><span class="cur-code">${esc(c)}</span></div>`).join('')}
         <div class="ptg-h">USD eq.</div>
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
-        <div class="ptg-t ptg-first">Gross Sales</div>
+        ${/* With nothing to take off, a "gross" line is just the same figure
+              twice, so only the net is shown. */''}
+        ${(conBody || costTotal) ? `<div class="ptg-t ptg-first">Gross Sales</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
-        <div class="ptg-t usd">$${fmt(usdWhole(grand))}</div>
+        <div class="ptg-t usd">$${fmt(usdWhole(grand))}</div>` : ''}
 
         ${/* Two things come off the gross: the groups' money and our costs.
               Both read as what they are — amounts taken away. */''}
@@ -5318,6 +5325,20 @@ function labelHtml(text){
     .replace(/\n/g, '<br>');
 }
 
+/** Everything a label says, ignoring its pencil. */
+function labelTextOf(el){
+  let t = '';
+  [...el.childNodes].forEach(n=>{
+    if(n.nodeType===1 && n.classList && n.classList.contains('pencil')) return;
+    t += n.textContent || '';
+  });
+  return t.replace(/\s+/g,' ').trim();
+}
+/** Can its whole content be replaced without destroying something? */
+function labelReplaceable(el){
+  return !el.querySelector('input, select, textarea, button');
+}
+
 /** Where a piece of wording lives: the dialog or panel it belongs to. */
 /* Where a label lives, by the heading's ORIGINAL words.
 
@@ -5365,13 +5386,17 @@ function normLabelKey(key){
 function labelKeyOf(el){
   const k = el.getAttribute('data-key');
   if(k) return k;
-  const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
-  const text = (first ? first.textContent : el.textContent || '').replace(/\s+/g,' ').trim();
+  /* The WHOLE of what it says, not just the run of text before its first inner
+     tag. Keying on the first fragment meant a sentence containing a bolded word
+     was half-replaced — your version and the rest of the original both on
+     screen at once. */
+  const text = labelTextOf(el);
   if(!text) return '';
   /* Keyed by place AND words, so the same sentence in two dialogs can be
      rewritten separately — before, editing one changed both. */
   const key = labelContextOf(el) + ' › ' + text;
   el.setAttribute('data-orig', text);
+  if(!el.getAttribute('data-orightml')) el.setAttribute('data-orightml', el.innerHTML);
   el.setAttribute('data-key', key);
   return key;
 }
@@ -5399,11 +5424,10 @@ function applyLabels(root){
     const want = map[normLabelKey(key)];
     const orig = el.getAttribute('data-orig') || '';
     const first = [...el.childNodes].find(n=>n.nodeType===3 && n.textContent.trim());
-    /* Your wording may carry simple formatting. That can only be drawn where
-       the element holds nothing but text (and its pencil) — a label wrapped
-       around a checkbox keeps its plain text instead of losing the checkbox. */
-    const plainOnly = [...el.childNodes].every(n=>
-      n.nodeType===3 || (n.nodeType===1 && n.classList && n.classList.contains('pencil')));
+    /* Your wording replaces everything the label said — bold words and all —
+       so long as nothing inside it is a control. A label wrapped around a
+       checkbox keeps its plain text instead of losing the checkbox. */
+    const plainOnly = labelReplaceable(el);
     if(want==='\u0000hide'){                     // you asked for this one to go
       el.style.display='none'; el.dataset.rewritten='1'; return;
     }
@@ -5412,7 +5436,10 @@ function applyLabels(root){
       /* Your capitals, not the app's: a heading styled in capitals shows your
          words exactly as typed once you have rewritten it. */
       el.style.textTransform='none';
-      if(plainOnly && /\*\*|\n/.test(want)) el.innerHTML = labelHtml(want);
+      if(plainOnly){
+        const html = labelHtml(want);
+        if(el.innerHTML !== html) el.innerHTML = html;
+      }
       else if(first){
         // No room for formatting here: show the words without their markers.
         const flat = String(want).replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\n+/g,' ');
@@ -5421,7 +5448,10 @@ function applyLabels(root){
     }
     if(!want && el.dataset.rewritten==='1'){
       el.style.textTransform=''; el.style.display='';     // back to the app's own styling
-      if(plainOnly) el.innerHTML = esc(orig); else if(first) first.textContent = orig;
+      const was = el.getAttribute('data-orightml');
+      if(plainOnly && was!==null) el.innerHTML = was;
+      else if(plainOnly) el.innerHTML = esc(orig);
+      else if(first) first.textContent = orig;
     }
     el.dataset.rewritten = want ? '1' : '';
     if(EDIT_WORDING && !el.querySelector(':scope > .pencil')){
@@ -7264,19 +7294,6 @@ function deleteRegionModal(){
 }
 
 
-/* Moving a title up or down in the region dialog: the rows' order becomes the
-   shelf's order, so it can be set as the region is made rather than after. */
-function bindBookMove(){
-  onModal('click','bkmove',e=>{
-    const mv = e.target.closest('.bk-move'); if(!mv) return;
-    const row = mv.closest('.bk-row'); if(!row) return;
-    const dir = mv.dataset.mv;
-    const sib = dir==='up' ? row.previousElementSibling : row.nextElementSibling;
-    if(!sib || !sib.classList.contains('bk-row')) return;     // stays within its kind
-    if(dir==='up') row.parentNode.insertBefore(row, sib);
-    else row.parentNode.insertBefore(sib, row);
-  });
-}
 
 function regionModal(edit){
   const isEdit = !!edit;
@@ -7309,20 +7326,24 @@ function regionModal(edit){
         `<input class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}" type="number"
            step="0.01" inputmode="decimal" placeholder="${esc(c)}" value="${esc(priceOf(b.id,c))}">`
       ).join('');
-      // The order these rows sit in is the order the shelf will use.
       return `<div class="rp-row bk-row ${on?'':'off'}" data-row="${esc(b.id)}">
                 <label class="rp-name ${isAotm(b)?'aotm':''}">
-                  <span class="bk-move" data-mv="up" title="Move up">▲</span><span class="bk-move" data-mv="down" title="Move down">▼</span>
                   <input type="checkbox" class="bk-cb" value="${esc(b.id)}" ${on?'checked':''}>
                   <span>${esc(b.name)}</span></label>
                 <div class="rp-cells">${cells}</div></div>`;
     }).join('');
 
+    /* Three kinds, as everywhere else in the app. Splitting only on
+       "is it Adventures?" filed every Other title under Big Books, so the
+       Other group never appeared here at all. */
     const all=(STATE.books||[]);
-    const big=all.filter(b=>!isAotm(b)), aotm=all.filter(isAotm);
+    const big  = all.filter(b=>catOfBook(b)==='big');
+    const other= all.filter(b=>catOfBook(b)==='other');
+    const aotm = all.filter(b=>catOfBook(b)==='aotm');
     return head
-      + (big.length ? fill('Big Books','big') + rowsFor(big) : '')
-      + (aotm.length ? fill('Adventures','aotm') + rowsFor(aotm) : '');
+      + (big.length   ? fill('Big Books','big')   + rowsFor(big)   : '')
+      + (other.length ? fill('Other','other')     + rowsFor(other) : '')
+      + (aotm.length  ? fill('Adventures','aotm') + rowsFor(aotm)  : '');
   }
 
   openModal(`
@@ -7353,7 +7374,6 @@ function regionModal(edit){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="rgSave">${isEdit?'Save changes':'Create region'}</button>
     </div>`, true);
-  bindBookMove();     // the rows can be arranged into the order you want
 
   // Re-draw the price grid whenever the currency list changes, keeping anything typed.
   // Typing in a "fill all" box writes that price into every book of that kind.
@@ -7902,11 +7922,13 @@ function payTypesModal(){
         ? 'Following ' + (isEvent ? 'the region' : 'the tour') + ' at the moment. Change anything here and this place keeps its own list.'
         : 'This place has its own list. Clear it to follow ' + (isEvent ? 'the region' : 'the tour') + ' again.'}</div>
 
+      <div class="hint">The order here is the order they appear when recording a sale.</div>
       <div id="ptList">${known.map(t=>`
-        <label class="pt-row">
-          <input type="checkbox" class="pt-box" value="${esc(t)}" ${active.has(t)?'checked':''}>
-          <span>${esc(t)}</span>
-        </label>`).join('')}</div>
+        <div class="pt-row">
+          <span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>
+          <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(t)}" ${active.has(t)?'checked':''}>
+            <span>${esc(t)}</span></label>
+        </div>`).join('')}</div>
 
       <div class="cash-sub">Add another</div>
       <div class="rp-add">
@@ -7923,6 +7945,17 @@ function payTypesModal(){
       <button class="btn btn-primary" id="ptSave">Save</button>
     </div>`, true);
 
+  /* Arranging the list: the order you leave it in is the order it is saved in,
+     and that is the order the payment buttons appear in when recording a sale. */
+  $('#ptList').addEventListener('click', e=>{
+    const mv = e.target.closest('.pt-move'); if(!mv) return;
+    const row = mv.closest('.pt-row'); if(!row) return;
+    const sib = mv.dataset.mv==='up' ? row.previousElementSibling : row.nextElementSibling;
+    if(!sib) return;
+    if(mv.dataset.mv==='up') row.parentNode.insertBefore(row, sib);
+    else row.parentNode.insertBefore(sib, row);
+  });
+
   $('#ptAdd').addEventListener('click',()=>{
     const name=$('#ptNew').value.trim();
     if(!name){ $('#modalErr').textContent='Type a name first.'; return; }
@@ -7930,8 +7963,11 @@ function payTypesModal(){
       $('#modalErr').textContent='That one is already listed.'; return;
     }
     $('#ptList').insertAdjacentHTML('beforeend',
-      `<label class="pt-row"><input type="checkbox" class="pt-box" value="${esc(name)}" checked>
-        <span>${esc(name)}</span></label>`);
+      `<div class="pt-row">
+        <span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>
+        <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(name)}" checked>
+          <span>${esc(name)}</span></label>
+      </div>`);
     $('#ptNew').value=''; $('#modalErr').textContent='';
   });
 
@@ -7940,10 +7976,14 @@ function payTypesModal(){
     if(await commitSync({action:'setPayTypes', kind, id, types:[]}, 'Now following the level above')) closeModal();
   });
 
-  $('#ptSave').addEventListener('click',async ()=>{
+  $('#ptSave').addEventListener('click',()=>{
     const types=[...document.querySelectorAll('#modal .pt-box')].filter(b=>b.checked).map(b=>b.value);
     if(!types.length){ $('#modalErr').textContent='Keep at least one way of paying.'; return; }
-    if(await commitSync({action:'setPayTypes', kind, id, types}, 'Saved')) closeModal();
+    commit({action:'setPayTypes', kind, id, types},
+      st=>{
+        if(isEvent){ const e=(st.events||[]).find(x=>x.eventId===id); if(e) e.payTypes=types; }
+        else { const r=(st.regions||[]).find(x=>x.regionId===id); if(r) r.payTypes=types; }
+      }, 'Saved');
   });
 }
 
