@@ -1129,6 +1129,21 @@ body.busy #busyBar{opacity:1}
 .sw-who{font-size:11.5px;color:var(--ink);margin-top:3px}
 .sw-who .wa{font-size:11.5px}
 
+/* ---------- Activity log ---------- */
+.al-search{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink);width:100%}
+.al-list{display:flex;flex-direction:column}
+.al-day{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);
+  padding:12px 2px 5px;border-bottom:1px solid var(--line)}
+.al-list .al-day:first-child{padding-top:2px}
+.al-row{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:start;padding:9px 2px;border-bottom:1px solid var(--line)}
+.al-time{font-size:12px;color:var(--muted);font-weight:600;padding-top:1px}
+.al-main{min-width:0}
+.al-text{font-size:13.5px;color:var(--ink);line-height:1.4;overflow-wrap:anywhere}
+.al-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
+.al-row.undone .al-text{text-decoration:line-through;color:var(--muted)}
+.al-undone{color:var(--clay);font-weight:700}
+.al-act .btn{white-space:nowrap}
+
 /* toast */
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
   background:var(--plum);color:#FFF3DE;padding:11px 18px;border-radius:999px;font-size:14px;font-weight:600;
@@ -1184,7 +1199,7 @@ body.busy #busyBar{opacity:1}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b182</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b183</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
@@ -2838,6 +2853,7 @@ function renderAdmin(){
          <button class="btn adm-c3-1" data-act="addstock">＋ Add Stock</button>
          <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
          <button class="btn adm-c3-3" data-act="shipments">🚚 Books in transit</button>
+         <button class="btn adm-c3-4" data-act="activity">🗒 Activity Log</button>
        </div>` : ''}</div>`;
     return;
   }
@@ -2873,7 +2889,8 @@ function renderAdmin(){
   /* One way to move books already in the system, from anywhere: the dialog asks
      where from and where to, and works out which kind of transfer it is. */
   cols[1].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
-  cols[1].push(`<button class="btn" data-act="transfers">📦 Transfer record</button>`);
+  // Every change in one place (sales keep their own log).
+  cols[1].push(`<button class="btn" data-act="activity">🗒 Activity Log</button>`);
 
   // 3 — where the books are
   const shipCount = season
@@ -10154,6 +10171,99 @@ function transferStockModal(opts){
   if(fromPick.value) loadFrom(fromPick.value); else draw();
 }
 
+/* ============================ ACTIVITY LOG ============================
+   Everything done in the app except sales (they keep their own log): described
+   in plain words by the server as it happens, newest first, for wherever you
+   are standing. Delete means undo — offered only where the undo is safe; an
+   undone entry stays, crossed out, and the undo is itself recorded. */
+const ACT_CACHE = 'tbs_activity_' + (SHARE_KEY ? SHARE_KEY + '_' : '');
+function activityCacheLoad(sid){ try{ return JSON.parse(localStorage.getItem(ACT_CACHE+sid) || 'null'); }catch(e){ return null; } }
+function activityCacheSave(sid, list){ try{ localStorage.setItem(ACT_CACHE+sid, JSON.stringify(list.slice(0,600))); }catch(e){} }
+
+/* Stock movements the log has no entry for — made before the log existed, or
+   moments ago and not yet fetched — shown one by one, each undoable as before. */
+function looseMoveEntries(list){
+  const known = new Set(); list.forEach(e=>(e.moves||[]).forEach(id=>known.add(String(id))));
+  return (STATE.stockMoves||[]).filter(m=>m && m.id && !known.has(String(m.id)) && (Number(m.qty)||0)!==0)
+    .map(m=>{
+      const b = (bookById(m.bookId)||{}).name || 'a title', q = Number(m.qty)||0;
+      const text = m.kind==='ADJUST'
+        ? (q>0?'Added ':'Removed ') + Math.abs(q) + ' × ' + b + ' at ' + locName(m.toLoc)
+        : 'Moved ' + q + ' × ' + b + ' from ' + locName(m.fromLoc) + ' → ' + locName(m.toLoc);
+      return {id:'MV:'+m.id, moveId:m.id, ts:m.ts, who:'', text: text + (m.note ? ' — “'+m.note+'”' : ''),
+        locs:[m.fromLoc, m.toLoc].filter(Boolean), regions:[], canUndo:true, loose:true};
+    });
+}
+/* What belongs to where you are standing. */
+function activityHere(list){
+  if(CUR_LEVEL==='season') return list;
+  if(CUR_LEVEL==='event') return list.filter(e=>(e.locs||[]).includes(CUR_LOC));
+  const mine = new Set(locsInRegion(CUR_REGION));
+  return list.filter(e=>(e.regions||[]).includes(CUR_REGION) || (e.locs||[]).some(l=>mine.has(l)));
+}
+
+function activityModal(){
+  if(isSeller()) return;
+  const sid = STATE.activeSeason;
+  let list = activityCacheLoad(sid) || [], fresh = false;
+  const where = CUR_LEVEL==='season' ? (STATE.seasonName||'this season')
+    : CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'this region');
+  openModal(`
+    ${mHead('Activity Log')}
+    <div class="m-body">
+      <div class="hint">Everything done in <b>${esc(where)}</b> except sales, which keep their own log —
+        newest first. <b>Delete</b> undoes that change; entries that cannot safely be undone have no Delete.</div>
+      <input id="alSearch" class="al-search" type="search" placeholder="Search — a title, a place, a name">
+      <div id="alState" class="hint sp-loading"><span class="spin-d"></span> Checking for the latest…</div>
+      <div id="alList" class="al-list"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+
+  const day = d => d.toLocaleDateString(LOCALE, {weekday:'long', day:'numeric', month:'long'});
+  const time = d => d.toLocaleTimeString(LOCALE, {hour:'2-digit', minute:'2-digit'});
+  function draw(){
+    if(!$('#alList')) return;
+    const q = ($('#alSearch').value||'').trim().toLowerCase();
+    const all = activityHere(list.concat(looseMoveEntries(list)))
+      .filter(e=>!q || (e.text+' '+(e.who||'')).toLowerCase().includes(q))
+      .sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    let last = '', h = '';
+    all.forEach(e=>{
+      const d = new Date(e.ts), dk = isNaN(d) ? '' : day(d);
+      if(dk!==last){ h += `<div class="al-day">${esc(dk)}</div>`; last = dk; }
+      const undone = !!e.undoneAt;
+      h += `<div class="al-row${undone?' undone':''}">
+        <div class="al-time">${isNaN(d)?'':esc(time(d))}</div>
+        <div class="al-main"><div class="al-text">${esc(e.text)}</div>
+          <div class="al-meta">${esc(e.who||'')}${undone
+            ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>` : ''}</div></div>
+        <div class="al-act">${(e.canUndo && !undone)
+          ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">Delete</button>` : ''}</div>
+      </div>`;
+    });
+    $('#alList').innerHTML = h || `<div class="cash-empty">${q ? 'Nothing matches that search.' : 'Nothing recorded here yet.'}</div>`;
+    $('#alState').hidden = fresh;
+  }
+  $('#alSearch').addEventListener('input', draw);
+  $('#alList').addEventListener('click', async e=>{
+    const b = e.target.closest('[data-alundo]'); if(!b) return;
+    const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
+    if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
+    const ok = entry.loose
+      ? await commitSync({action:'undoStockMove', id:entry.moveId}, 'Undone')
+      : await commitSync({action:'undoActivity', id:entry.id}, 'Undone');
+    if(ok) activityModal();
+  });
+  draw();
+  post({action:'activity'}).then(d=>{
+    if(!d || !Array.isArray(d.result)) throw new Error('Could not load the log.');
+    list = d.result; fresh = true; activityCacheSave(sid, list); draw();
+  }).catch(err=>{
+    const s = $('#alState'); if(s){ s.hidden = false; s.textContent = 'Could not check for the latest — showing what this device last saw.'; }
+  });
+}
+
 /* ---- Selling from a warehouse whose books sit with sub-warehouses ----
    The warehouse card counts them in; when the shelf itself has none, the sale
    asks which sub-warehouse the copy came from, so each home's count stays true. */
@@ -10323,6 +10433,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='shoutside'){ shipOutsideModal(); return; }
   if(a==='seasonxfer' || a==='xfer'){ transferStockModal(); return; }
+  if(a==='activity'){ activityModal(); return; }
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
