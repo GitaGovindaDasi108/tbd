@@ -207,7 +207,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b190';
+var SERVER_BUILD = 'b191';
 
 function doPost(e) { return handle(e); }
 
@@ -438,6 +438,7 @@ function handle(e) {
         case 'adjustShipment':   result = doAdjustShipment(params); break;
         case 'receiveShipment':  result = doReceiveShipment(params); break;
         case 'reopenLocation':   doReopenLocation(params);   break;
+        case 'saveCloseDraft':   doSaveCloseDraft(params);   break;
         default: throw new Error('Unknown action: ' + action);
       }
       cacheClear_();                       // data changed; drop the stale copy
@@ -584,6 +585,12 @@ function scopedStateBuild_(who) {
   full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location] || shipLocs[i.location]; });
   full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return String(x.fulfilBy) === String(regionId); });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
+  var drafts = {};
+  Object.keys(full.closeDrafts || {}).forEach(function (k) {
+    var id = k.split(':').slice(1).join(':');
+    if (!isSeller && (mine[id] || id === regionId)) drafts[k] = full.closeDrafts[k];
+  });
+  full.closeDrafts = drafts;
   full.costs     = isSeller ? [] : (full.costs || []).filter(function (c) { return mine[c.location]; });
   full.change    = isSeller ? [] : (full.change || []).filter(function (c) {
     // A link sees change at its own places or with its own coordinator.
@@ -1239,11 +1246,35 @@ function setClosed_(kind, id, when) {
    `counts` is what was physically there at the end. Anything that differs from
    what the system expected is recorded as an adjustment with a note, so the
    discrepancy is visible in the transfer log rather than silently absorbed. */
+/* Closing takes a while — a count, a checklist — so it can be saved part-way
+   and picked up again, on any device. Kept until the place is closed. */
+var CLOSE_DRAFT_PREFIX = 'cldraft:';
+function doSaveCloseDraft(p) {
+  var kind = String(p.kind || 'event'), id = String(p.id || '');
+  if (!id) throw new Error('Nothing to save.');
+  var key = CLOSE_DRAFT_PREFIX + kind + ':' + id;
+  var props = PropertiesService.getScriptProperties();
+  if (p.clear) { props.deleteProperty(key); return; }
+  var d = p.draft || {};
+  var draft = { checks: (d.checks || []).map(Number), counts: d.counts || {}, note: String(d.note || '').slice(0, 500),
+                at: new Date().toISOString(), by: _cashBy || '' };
+  props.setProperty(key, JSON.stringify(draft).slice(0, 8500));
+}
+function closeDrafts_() {
+  var all = PropertiesService.getScriptProperties().getProperties(), out = {};
+  Object.keys(all).forEach(function (k) {
+    if (k.indexOf(CLOSE_DRAFT_PREFIX) !== 0) return;
+    try { out[k.slice(CLOSE_DRAFT_PREFIX.length)] = JSON.parse(all[k]); } catch (e) {}
+  });
+  return out;
+}
+
 function doCloseLocation(p) {
   var kind = String(p.kind || 'event');
   var id = String(p.id || '');
   var locs = (kind === 'event') ? [id] : locsInRegion_(id);
   if (!locs.length) throw new Error('Nothing to close.');
+  PropertiesService.getScriptProperties().deleteProperty(CLOSE_DRAFT_PREFIX + kind + ':' + id);   // done with it
 
   var counts = p.counts || {};
   var map = loadInvMap_();
@@ -1881,7 +1912,7 @@ var SELLER_ACTIONS = {
   settle:1, deliver:1, markPaid:1
 };
 var COORD_EXTRA = {
-  transferBulk:1, createEvent:1, adjustStockBulk:1, setStockBulk:1, closeLocation:1,
+  transferBulk:1, createEvent:1, adjustStockBulk:1, setStockBulk:1, closeLocation:1, saveCloseDraft:1,
   // Add Stock: books on their way in, and switching on an existing title here.
   sendShipment:1, regionAddBooks:1,
   // Books in transit: marking their own region's deliveries as arrived.
@@ -1989,6 +2020,11 @@ function assertAllowed_(who, action, params) {
       throw new Error('This link does not cover ' + locLabel_(String(v)) + '.');
     }
   });
+  // Closing (and its saved progress): only this link's own region or its events.
+  if ((action === 'closeLocation' || action === 'saveCloseDraft') &&
+      (params.kind === 'region' ? String(params.id) !== String(who.regionId) : !allowed[String(params.id)])) {
+    throw new Error('This link can only close places in its own region.');
+  }
   if (action === 'createEvent' && who.role === 'coordinator') {
     params.regionId = who.regionId;          // never another region's
   }
@@ -3186,6 +3222,7 @@ function readState() {
                  caption: String(q.caption || ''), src: String(q.src || ''), sort: Number(q.sort) || 0 };
       }).sort(function (a, b) { return a.sort - b.sort; }),
     payTypes: PAY_TYPES,
+    closeDrafts: closeDrafts_(),
     rates: (function () { var r = getRates_();
       var R = r.RATES || {};
       return { perUsd: R, plnPerUsd: R.PLN || RATE_PLN_PER_USD, eurPerUsd: R.EUR || RATE_EUR_PER_USD,
@@ -7071,7 +7108,7 @@ var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions
 var ACTIVITY_SKIP = {
   sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
   donate:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
-  settle:1, deliver:1, undoActivity:1, undoActivityPart:1
+  settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1
 };
 var _cashIds = [];            // cash rows written by the current request
 var _activityBefore = null;   // what a change replaced, noted just before it runs

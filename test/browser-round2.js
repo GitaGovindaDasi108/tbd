@@ -162,7 +162,9 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
 
     // 10. Pre-order fulfilled by another region.
     await page.evaluate(() => { goTo('region', 'rg_it'); goTo('event', 'ev_mela2'); }); await page.waitForTimeout(300);
-    await page.click(`.book:has([data-book="${B0}"]) .pre-btn`); await page.waitForTimeout(300);
+    // Never brought to this event, so it is off the shelf: pre-ordered through "Pre-order another title".
+    await page.click('#invMulti [data-act="hiddenpre"]'); await page.waitForTimeout(300);
+    await page.click(`#modal [data-act="hbpre"][data-id="${B0}"]`); await page.waitForTimeout(300);
     await page.fill('#cname', 'Maria'); await page.fill('#cphone', '+34 600 111');
     await page.fill('#ccomments', 'Spanish edition please');
     await page.selectOption('#fulSel', 'other'); await page.waitForTimeout(100);
