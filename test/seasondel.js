@@ -54,4 +54,13 @@ m.run("propDel_('lastWriteAt'); tempDel_('orphan_sweep')");
 m.sync(false);
 t.push(['…and the background sweep erases it and its books',
   !rows('_shipments').some(x => /sh_old/.test(x)) && !rows('_inventory').some(x => /sh_old/.test(x))]);
+// Your live case: the shipment's record is gone, its books were left behind.
+m.sheet('_inventory').grid.push(['sh_40hie4ne', B, 12]);
+m.clear();
+const seen = atHQ({ action: 'getState' }).state;
+t.push(['books left on a shipment with no record are not shown', !seen.inventory.some(i => i.location === 'sh_40hie4ne')
+  && !seen.everywhere.inventory.some(i => i.location === 'sh_40hie4ne')]);
+m.run("tempDel_('orphan_sweep')");
+m.call({ action: 'setStockBulk', season: SA, location: W, items: [{ bookId: B, qty: 9 }], override: true });
+t.push(['…and the next save erases them', !rows('_inventory').some(x => /sh_40hie4ne/.test(x))]);
 t.forEach(([n, ok]) => console.log((ok ? 'PASS' : 'FAIL'), n));

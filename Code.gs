@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b201';
+var SERVER_BUILD = 'b202';
 
 function doPost(e) { return handle(e); }
 
@@ -375,6 +375,8 @@ function handle(e) {
     try {
       ensureReady();
       retireBuiltInLabels_();
+      // Leftovers of deleted seasons and regions, cleared on the next save too.
+      if (!tempGet_('orphan_sweep')) { tempPut_('orphan_sweep', '1', 3600); try { purgeOrphans_(); } catch (e) {} }
       activityBefore_(action, params);
       switch (action) {
         case 'undoActivity':     result = doUndoActivity(params, who); break;
@@ -3514,7 +3516,9 @@ function eventsOrdered_() {
 function readState() {
   ensureReady();
   var events = eventsOrdered_();
-  var inv = objectsOf_('_inventory').map(function (r) {
+  // Books on a shipment that no longer exists are nowhere: never shown.
+  var strayShip = strayShipLocs_();
+  var inv = objectsOf_('_inventory').filter(function (r) { return !strayShip[String(r.location)]; }).map(function (r) {
     return { location: String(r.location), bookId: String(r.bookId), qty: Number(r.qty) || 0 };
   });
   var sales = objectsOf_('_sales').map(function (s) {
@@ -4842,10 +4846,26 @@ function purgeOrphans_() {
   objectsOf_('_holders').forEach(function (h) { check(h.regionId); });
   objectsOf_('_partners').forEach(function (pt) { check(pt.regionId); });
   var ids = Object.keys(dead);
-  if (!ids.length) return 0;
-  purgeRegions_(ids);
+  if (ids.length) purgeRegions_(ids);
+  // Books left on a shipment whose record is gone (a season deleted before b200).
+  var stray = strayShipLocs_();
+  var n = Object.keys(stray).length ? dbDelete_('_inventory', function (r) { return !!stray[String(r.location)]; }) : 0;
+  if (!ids.length && !n) return 0;
   cacheClear_(); bumpRev_();
-  return ids.length;
+  return ids.length + n;
+}
+
+/* Shipment places ("sh_…") holding books with no shipment to go with them, or
+   only one to or from a region that no longer exists. */
+function strayShipLocs_() {
+  var live = {};
+  shipmentsAll_().forEach(function (x) { live[String(x.shipId)] = 1; });
+  var out = {};
+  objectsOf_('_inventory').forEach(function (r) {
+    var l = String(r.location);
+    if (/^sh_/.test(l) && !live[l]) out[l] = 1;
+  });
+  return out;
 }
 
 /** What deleting a region would destroy — shown to the user before they commit. */
