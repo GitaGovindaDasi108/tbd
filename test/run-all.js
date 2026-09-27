@@ -58,6 +58,17 @@ for (const s of SCRIPTS) {
         console.log(`OK       golden.js sheets = memory — ${n} recorded sessions`); }
   catch (e) { console.log(`FAIL     golden.js sheets vs memory\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
 }
+/* ...and in SQLite, the Cloudflare server's database, trusting only what is in
+ * the database (its memory emptied before every request). */
+{
+  let out = '';
+  try { out = execFileSync(process.execPath, [path.join(here, 'golden.js'), '--base=WORKTREE', '--store=sqlite'],
+                           { encoding: 'utf8', stdio: 'pipe',
+                             env: Object.assign({}, process.env, { TBS_SQL_COLD: '1', NODE_NO_WARNINGS: '1' }) });
+        const n = (out.match(/^PASS/gm) || []).length;
+        console.log(`OK       golden.js sheets = SQLite — ${n} recorded sessions`); }
+  catch (e) { console.log(`FAIL     golden.js sheets vs SQLite\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
+}
 
 console.log(bad ? `\n${bad} problem(s).` : '\nAll clear.');
 process.exit(bad ? 1 : 0);

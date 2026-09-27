@@ -9,7 +9,10 @@
    to a real database by writing one more of these. */
 const tables = {};          // name -> { cols: [...], rows: [[...], ...] }
 const props = {};
-const temp = {};
+const temp = {}, tempExp = {};
+// Things run out, as in Apps Script's cache: the seconds given, else ten minutes, at most six hours.
+const live = k => (k in temp) && !(tempExp[k] <= Date.now());
+const put = (k, v, secs) => { temp[k] = String(v); tempExp[k] = Date.now() + 1000 * Math.min(Number(secs) || 600, 21600); };
 
 const pad = (row, n) => { const r = row.slice(0, Math.max(n, row.length)); while (r.length < n) r.push(''); return r; };
 
@@ -38,11 +41,11 @@ const kv = {
   setProp: (k, v) => { props[k] = String(v); },
   delProp: k => { delete props[k]; },
   allProps: () => Object.assign({}, props),
-  getTemp: k => (k in temp ? temp[k] : null),
-  putTemp: (k, v) => { temp[k] = String(v); },
+  getTemp: k => (live(k) ? temp[k] : null),
+  putTemp: put,
   delTemp: k => { delete temp[k]; },
-  getTempAll: keys => { const o = {}; keys.forEach(k => { if (k in temp) o[k] = temp[k]; }); return o; },
-  putTempAll: obj => { Object.keys(obj).forEach(k => { temp[k] = String(obj[k]); }); },
+  getTempAll: keys => { const o = {}; keys.forEach(k => { if (live(k)) o[k] = temp[k]; }); return o; },
+  putTempAll: (obj, secs) => { Object.keys(obj).forEach(k => put(k, obj[k], secs)); },
   delTempAll: keys => { keys.forEach(k => { delete temp[k]; }); }
 };
 
