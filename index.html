@@ -1311,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b196</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b199</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1438,26 +1438,26 @@ body.list-view .mc-name{min-height:0}
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
     <div class="cols-2">
       <section class="panel" data-fold="sumTitles">
-        <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered, every season</span></h2>
+        <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div class="title-list" id="hqTitleList"></div></div>
       </section>
       <section class="panel" data-fold="sumCollBy">
-        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span></h2>
+        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body" id="hqCollBy"></div>
       </section>
     </div>
     <div class="cols-2">
       <section class="panel" data-fold="sumSalesBy">
-        <h2 class="sec-h2">Sales by Season <span class="hint">(tap for the per-title breakdown)</span></h2>
+        <h2 class="sec-h2">Sales by Season <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div id="hqSalesBy"></div></div>
       </section>
       <section class="panel" data-fold="sumPayments">
-        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span></h2>
+        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body" id="hqPayBody"></div>
       </section>
     </div>
     <section class="panel" data-fold="sumWarehouses" style="margin-top:16px">
-      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span></h2>
+      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="hqWhOverview"></div></div>
     </section>
   </div>
@@ -1630,14 +1630,45 @@ function convertCur(amt,from,to){
    figure entered — what the account actually received — is used instead of an
    estimate from today's rate. Sales without one are converted as before, so
    nothing is counted twice and nothing is counted from the wrong side. */
+/* In order of trust, a sale's dollars are:
+     1. the dollars actually received, where entered;
+     2. its amounts at the rates its region was frozen at, if the region is closed;
+     3. at the rates its season was frozen at, if the season is closed
+        (the server sends those as STATE.rates, and HQ adds them per place);
+     4. at today's rates — an estimate. */
 function saleUsd(sale){
   if(!sale) return 0;
-  const actual = Number(sale.usdActual);
-  if(sale.usdActual!=='' && sale.usdActual!==null && sale.usdActual!==undefined && !isNaN(actual) && actual>0)
-    return actual;
+  if(hasUsdActual(sale)) return Number(sale.usdActual);
   let t=0;
-  legs(sale).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) t += toUSD(l.amt, l.cur); });
+  legs(sale).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) t += toUSDAt(l.amt, l.cur, sale.location); });
   return t;
+}
+/** The frozen rates a place's dollars are counted at, or null for today's. */
+function ratesAt(loc){
+  if(STATE.locFx) return STATE.locFx[loc]||null;               // HQ: worked out per place
+  let rid = regionOfLoc(loc);
+  if(!rid){ const h=(STATE.holders||[]).find(x=>x.holderId===loc); rid = h ? (h.regionId||'') : ''; }
+  const r = rid ? regionById(rid) : null;
+  return (r && r.closedAt && r.rates) ? r.rates : null;
+}
+/** An amount in dollars at the rates its place counts in. */
+function toUSDAt(amt,cur,loc){
+  amt=Number(amt)||0; if(!amt) return 0;
+  cur=String(cur||'').toUpperCase();
+  if(cur==='USD') return amt;
+  const fx = ratesAt(loc), per = fx ? Number(fx[cur]) : 0;
+  return per>0 ? amt/per : toUSD(amt,cur);
+}
+/** Is this sale's dollar figure fixed — entered, or frozen with its region? */
+function hasTruth(sale){ return hasUsdActual(sale) || (!!sale && !!ratesAt(sale.location)); }
+/** Today's estimate for a sale's legs — what the truth corrects. */
+function saleEst(sale){
+  let t=0; legs(sale).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) t += toUSD(l.amt, l.cur); });
+  return t;
+}
+/** How far the frozen rates move a set of costs away from today's estimate. */
+function costTruthAdj(list){
+  return (list||[]).reduce((t,c)=>c ? t + toUSDAt(c.amt, c.cur, c.location) - toUSD(c.amt, c.cur) : t, 0);
 }
 /** Dollars for a set of sales, honoring every entered figure. */
 function salesUsd(list){
@@ -1647,9 +1678,8 @@ function salesUsd(list){
    add this to a figure converted at today's rates. */
 function usdActualAdj(list){
   return (list||[]).reduce((t,x)=>{
-    if(!hasUsdActual(x) || !received(x)) return t;
-    let est=0; legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) est += toUSD(l.amt, l.cur); });
-    return t + (Number(x.usdActual) - est);
+    if(!hasTruth(x) || !received(x)) return t;
+    return t + (saleUsd(x) - saleEst(x));
   }, 0);
 }
 /** Is a figure entered for this sale? */
@@ -1681,7 +1711,7 @@ function dueParts(s){
   if(pendingFlag(s)) return legs(s).filter(l=>l.amt>0).map(l=>({amt:l.amt,cur:l.cur}));
   return dueAmt(s)>0 ? [{amt:dueAmt(s),cur:dueCur(s)}] : [];
 }
-function dueUSD(s){return dueParts(s).reduce((t,d)=>t+toUSD(d.amt,d.cur),0);}
+function dueUSD(s){return dueParts(s).reduce((t,d)=>t+toUSDAt(d.amt,d.cur,s.location),0);}
 /* A sale given away rather than paid for. Counted separately everywhere so a
    gift never inflates the money, but never disappears from the book count. */
 function isGift(x){
@@ -2961,10 +2991,10 @@ function renderAll(){
    season exactly as they group by region at the season, with no second copy
    of any of them. UNIT supplies the words and where a tap goes.
 
-   A closed season's dollars stay at the rates it was frozen at: each of its
-   sales carries the dollar figure those rates give, through the same
-   correction the tables already make for dollars actually received. (Its
-   costs are converted at today's rates.) */
+   Dollars follow the truth here as everywhere: what was actually received,
+   else a closed region's frozen rates, else a closed season's, else today's.
+   The state carries locFx (place -> frozen rates), which toUSDAt reads, so
+   sales and costs alike add up at HQ exactly as they do in their season. */
 const UNIT_REGION = {word:'region', Word:'Region', words:'regions', act:'goregion', attr:'region'};
 const UNIT_SEASON = {word:'season', Word:'Season', words:'seasons', act:'goseasonid', attr:'season'};
 let UNIT = UNIT_REGION;
@@ -2985,27 +3015,31 @@ function rollupState(){
   const partners = (ev.partners||[]).map(p=>Object.assign({}, p, {regionId:seasonOf[p.regionId]||''}));
   const unitOf = {};
   events.forEach(e=>{ unitOf[e.eventId]=e.regionId; }); holders.forEach(h=>{ unitOf[h.holderId]=h.regionId; });
+  /* Which rates each place counts at: a closed region's own, else its closed
+     season's, else today's (no entry). Dollars actually received still come
+     first — saleUsd checks those before any rate. */
   const frozen = {}; units.forEach(u=>{ if(u.closedAt && u.rates) frozen[u.id]=u.rates; });
-  const atFrozen = x=>{
-    const fx = frozen[unitOf[x.location]];
-    if(!fx || hasUsdActual(x)) return x;
-    let t=0;
-    legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt){
-      const per = String(l.cur).toUpperCase()==='USD' ? 1 : Number(fx[String(l.cur).toUpperCase()]);
-      if(per>0) t += l.amt/per; } });
-    return t>0 ? Object.assign({}, x, {usdActual:t}) : x;
-  };
+  const regFx = {}; (ev.regions||[]).forEach(r=>{ if(r.closedAt && r.rates) regFx[r.regionId]=r.rates; });
+  const realRegion = {};
+  (ev.regions||[]).forEach(r=>{ if(r.whLoc) realRegion[r.whLoc]=r.regionId; });
+  (ev.events||[]).forEach(e=>{ realRegion[e.eventId]=e.regionId||''; });
+  (ev.holders||[]).forEach(h=>{ realRegion[h.holderId]=h.regionId||''; });
+  const locFx = {};
+  Object.keys(unitOf).concat(Object.keys(realRegion)).forEach(loc=>{
+    const fx = regFx[realRegion[loc]] || frozen[unitOf[loc]];
+    if(fx) locFx[loc]=fx;
+  });
   // HQ's own records come from the live state, so a sale just made counts at once.
   const mine = new Set([HQ_WH].concat((STATE.holders||[]).filter(h=>h.regionId===HQ_REGION).map(h=>h.holderId)));
   const sales = (ev.sales||[]).filter(x=>!mine.has(x.location))
-    .concat((STATE.sales||[]).filter(x=>mine.has(x.location))).map(atFrozen);
+    .concat((STATE.sales||[]).filter(x=>mine.has(x.location)));
   const inventory = (ev.inventory||[]).filter(i=>!mine.has(i.location))
     .concat((STATE.inventory||[]).filter(i=>mine.has(i.location)));
   const all = (ev.currencies||[]).slice();
   (currentRegion()||{currencies:[]}).currencies.forEach(c=>{ if(!all.includes(c)) all.push(c); });
   return Object.assign({}, STATE, {regions, events, holders, partners, sales, inventory,
     shipments: ev.shipments||[], costs: ev.costs||[], currencies: all, prices:{},
-    remote:[], change:[], everywhere:null});
+    remote:[], change:[], everywhere:null, locFx});
 }
 /** Draw with the season-level panels over every season (see rollupState). */
 function withRollup(fn){
@@ -3240,6 +3274,8 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
+  if(Object.keys(STATE.labels||{}).length)
+    cols[0].push(`<button class="btn" data-act="copywording">📋 Copy Saved Wording</button>`);
 
   // Money
   if(!hideMoney()){
@@ -3466,7 +3502,7 @@ function renderTotals(){
       <div class="sub">${money(got)||'nothing collected yet'}${(function(){
         // With costs recorded, show what was kept after them.
         const cs = scopedCosts(); if(!cs.length) return '';
-        const cu = cs.reduce((t,c)=>t+toUSD(Number(c.amt)||0, c.cur), 0);
+        const cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
         return `<br><span class="sub-cost">costs −$${fmt(cu)}</span> · <b>net $${fmt(totUsd-cu)}</b>`;
       })()}</div></div>
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
@@ -3703,7 +3739,7 @@ function renderCollectionsByRegion(target){
   const curs = curAllCurrencies();
   const rows = regionsList().map(r=>{
     const locs = locsInRegion(r.regionId);
-    const got = {}, mine = [];
+    const got = {}, mine = [], spent = [];
     (STATE.sales||[]).forEach(x=>{
       if(!x || !locs.includes(x.location)) return;
       if(pendingFlag(x) || isPartnerSale(x)) return;        // not in hand, or not ours
@@ -3716,8 +3752,9 @@ function renderCollectionsByRegion(target){
       if(!c || c.partnerId) return;                        // a group's cost, not ours
       if(!locs.includes(c.location)) return;
       got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
+      spent.push(c);
     });
-    return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine)};
+    return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine) - costTruthAdj(spent)};
   });
   const tot = {}; let totUsd = 0;
   rows.forEach(x=>{ Object.keys(x.got).forEach(c=>tot[c]=(tot[c]||0)+x.got[c]); totUsd += x.usd; });
@@ -3807,9 +3844,9 @@ function renderPayments(target){
        the estimate they replace and the figure itself, per payment type and
        currency. The local-currency buckets are untouched: only the dollar
        column swaps an estimate for what the account really got. */
-    const est0 = legs(x).reduce((t,l)=>t + ((l.type && l.type!=='Gift' && l.amt) ? toUSD(l.amt,l.cur) : 0), 0);
-    const useActual = hasUsdActual(x) && est0 > 0;
-    const factor = useActual ? (Number(x.usdActual) / est0) : 1;
+    const est0 = saleEst(x);
+    const useActual = hasTruth(x) && est0 > 0;
+    const factor = useActual ? (saleUsd(x) / est0) : 1;
 
     legs(x).forEach(l=>{
       if(!l.type || !l.amt) return;
@@ -3957,7 +3994,7 @@ function renderPayments(target){
   const conCostRow = Object.keys(conCostByCur).length ? `
         <div class="ptg-t ptg-first ptg-cost">Consignment costs</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${conCostByCur[c] ? '−'+fmt(conCostByCur[c]) : num({},c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(conCostByCur))}</div>` : '';
+        <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(conCostByCur) + costTruthAdj(scopedAllCosts().filter(c=>c.partnerId)))}</div>` : '';
   /* Figures that come off the total are written as negatives, so the column
      reads as a subtraction rather than a second pile of money. */
   const minus = (o,c) => o[c] ? '−'+fmt(o[c]) : num({},c);
@@ -3965,14 +4002,16 @@ function renderPayments(target){
   const costByCur = {};
   costs.forEach(c=>{ costByCur[c.cur] = (costByCur[c.cur]||0) + (Number(c.amt)||0); });
   const costTotal = Object.keys(costByCur).some(c=>costByCur[c]);
+  // Costs in dollars, at the rates their places count in (see toUSDAt).
+  const costUsd = usdOf(costByCur) + costTruthAdj(costs);
   const kept = conBody ? netOf(grand, conGrand) : grand;
   const costRows = costs.length ? `
         <div class="ptg-t ptg-first ptg-cost">Costs</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${costByCur[c] ? '−'+fmt(costByCur[c]) : num({},c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(costByCur))}</div>
+        <div class="ptg-t usd ptg-cost">−$${fmt(costUsd)}</div>
         <div class="ptg-t ptg-first ptg-net">Net after costs</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(kept,costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - usdOf(costByCur))}</div>` : '';
+        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>` : '';
 
   /* Rendered as a CSS grid rather than a table. One column definition lives on
      the container and every row is a direct child of it, so the header, the type
@@ -4005,11 +4044,11 @@ function renderPayments(target){
 
         ${costTotal ? `<div class="ptg-t ptg-first ptg-cost ptg-sub">Costs</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost ptg-sub">${minus(costByCur,c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost ptg-sub">−$${fmt(usdOf(costByCur))}</div>` : ''}
+        <div class="ptg-t usd ptg-cost ptg-sub">−$${fmt(costUsd)}</div>` : ''}
 
         <div class="ptg-t ptg-first ptg-net">Net Sales</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(netOf(grand,conGrand),costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - usdOf(costByCur))}</div>
+        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>
       </div>
     </div>`;
 }
@@ -6617,6 +6656,7 @@ function renderDriveMap(map, note){
       ? folderHead('📁', map.root.name, map.root.url, false, 'data-act="dfroot"')
       : `<div class="df-folder"><div class="df-fname">📁 <span class="muted">Not set up yet</span></div>
            <span class="df-btns"><button class="btn btn-ghost btn-xs" data-act="dfroot">Change</button></span></div>`}
+    ${map.hq ? `<div class="cash-sub">Earthly HQ</div>${fileRow(map.hq)}` : ''}
     <div class="cash-sub">Seasons</div>
     ${seasons || '<div class="cash-empty">No seasons yet.</div>'}
     <div class="err" id="modalErr"></div>`;
@@ -6890,21 +6930,23 @@ function buildReport(part, opts){
       : (CUR_LEVEL==='season' ? regionsList().map(r=>({name:r.name, locs:locsInRegion(r.regionId)})) : []);
     if(parts.length){
       const byRegion = parts.map(r=>{
-        const locs = r.locs, got = {};
+        const locs = r.locs, got = {}, mine = [], spent = [];
         (STATE.sales||[]).forEach(x=>{
           if(!x || !locs.includes(x.location) || pendingFlag(x) || isPartnerSale(x)) return;
+          mine.push(x);
           legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
         });
         (STATE.costs||[]).forEach(c=>{
           if(!c || c.partnerId || !locs.includes(c.location)) return;
           got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
+          spent.push(c);
         });
-        return {name:r.name, got};
+        return {name:r.name, got, adj: usdActualAdj(mine) - costTruthAdj(spent)};
       }).filter(x=>curs(x.got).length);
       if(byRegion.length){
         L.push('');
-        L.push(combo ? '— BY PLACE (after costs) —' : '— BY REGION (after costs) —');
-        byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got))));
+        L.push(combo ? '— BY PLACE (after costs) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after costs) —');
+        byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got) + x.adj)));
       }
     }
 
@@ -6921,14 +6963,14 @@ function buildReport(part, opts){
       line('Costs', minus(cost));
       const netText = Object.keys(net).filter(c=>Math.abs(net[c])>0.005).sort()
         .map(c=>cashFmt(net[c],c)).join(' + ') || '0';
-      line('Net after costs', netText + ' ≈ $' + nf(usd(net)));
+      line('Net after costs', netText + ' ≈ $' + nf(usd(net) + usdActualAdj(s.filter(x=>!isPartnerSale(x))) - costTruthAdj(costs)));
     }
 
     if(curs(conGrand).length){
       L.push('');
       L.push('— CONSIGNMENT —');
       types(theirs).forEach(t=>{ if(curs(theirs[t]).length) line(t, text(theirs[t])); });
-      line('Consignment Total', text(conGrand) + ' ≈ $' + nf(usd(conGrand)));
+      line('Consignment Total', text(conGrand) + ' ≈ $' + nf(usd(conGrand) + usdActualAdj(s.filter(x=>isPartnerSale(x)))));
       const conCosts = (combo ? (STATE.costs||[]).filter(c=>c && combo.has(c.location)) : scopedAllCosts()).filter(c=>c.partnerId);
       if(conCosts.length){
         const cc={}; conCosts.forEach(c=>{ cc[c.cur]=(cc[c.cur]||0)+(Number(c.amt)||0); });
@@ -6972,6 +7014,31 @@ function reportPicks(){
   return new Set(REPORT_SECTIONS.map(x=>x[0]));      // everything, the first time
 }
 function saveReportPicks(set){ try{ localStorage.setItem(REP_PICK_KEY, JSON.stringify([...set])); }catch(e){} }
+
+/* Your rewritten wording, as text to hand over, so it can be built into the
+   app itself: each change becomes the app's own words and the stored copy is
+   cleared. (The app cannot rewrite its own files while it runs.) */
+function copyWordingModal(){
+  const labels = STATE.labels || {};
+  const text = JSON.stringify(labels, null, 1);
+  openModal(`
+    ${mHead('Saved wording')}
+    <div class="m-body">
+      <div class="hint">${Object.keys(labels).length} pieces of wording you have rewritten. Copy this and send it
+        to be built into the app, so your words become its own.</div>
+      <textarea id="wordText" class="rep-box" rows="12" readonly>${esc(text)}</textarea>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" id="wordCopy">Copy</button>
+    </div>`);
+  $('#wordCopy').addEventListener('click', async ()=>{
+    const box = $('#wordText');
+    try{ await navigator.clipboard.writeText(box.value); toast('Copied'); }
+    catch(e){ box.select(); try{ document.execCommand('copy'); toast('Copied'); }catch(e2){ $('#modalErr').textContent='Select the text and copy it.'; } }
+  });
+}
 
 function shareReport(part){
   const full = !part;
@@ -11176,11 +11243,11 @@ function activityModal(){
           <div class="al-meta">${esc(e.who||'')}${undone
             ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>`
             : (someGone ? `${e.who?' · ':''}<span class="al-undone">Partly undone</span>` : '')}</div>
-          ${parts.length>1 ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length} lines</button>
+          ${parts.length ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length===1?'1 title':parts.length+' titles'}</button>
             <div class="al-parts" ${open?'':'hidden'}>${parts.map(x=>`<div class="al-part${(x.undone||undone)?' undone':''}">
               <span class="al-part-t">${esc(x.text)}</span>
               ${(x.undone || undone) ? '<span class="al-undone">Undone</span>'
-                : (e.canUndo && !undone ? `<button type="button" class="btn btn-danger btn-xs" data-alpart="${esc(x.id)}" data-entry="${esc(e.id)}">Delete</button>` : '')}
+                : (e.canUndo && !undone && parts.length>1 ? `<button type="button" class="btn btn-danger btn-xs" data-alpart="${esc(x.id)}" data-entry="${esc(e.id)}">Delete</button>` : '')}
             </div>`).join('')}</div>` : ''}</div>
         <div class="al-act">${(e.canUndo && !undone)
           ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">${parts.length>1?'Delete all':'Delete'}</button>` : ''}</div>
@@ -11781,8 +11848,11 @@ document.addEventListener('click',e=>{
     else toast('Select the link and copy it', true);
     return;
   }
-  if(a==='report'){ shareReport(t.dataset.part||''); return; }
+  // The Summaries Portal's buttons report over every season, as that portal shows.
+  if(a==='report'){ const part=t.dataset.part||'';
+    if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
+  if(a==='copywording'){ copyWordingModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
     closeModal(); goTo('region', t.dataset.id); cashModal(); return;

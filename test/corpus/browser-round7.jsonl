@@ -1,25 +1,24 @@
 {"__init":1}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_mad","name":"Madrid","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_bcn","name":"Barcelona","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_new","name":"Kirtan Mela","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":30},{"bookId":"we_en","delta":10}],"override":true}
-{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_mad","bookId":"sr_en","qty":5},{"from":"WAREHOUSE","to":"ev_bcn","bookId":"sr_en","qty":5},{"from":"WAREHOUSE","to":"ev_new","bookId":"sr_en","qty":2}],"movePrefix":"Mr7"}
-{"season":"sn_paaaaa","action":"sell","saleId":"s_mad1","location":"ev_mad","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
-{"season":"sn_paaaaa","action":"sell","saleId":"s_mad2","location":"ev_mad","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
-{"season":"sn_paaaaa","action":"sell","saleId":"s_bcn1","location":"ev_bcn","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
-{"season":"sn_paaaaa","action":"sell","saleId":"s_card","location":"WAREHOUSE","bookId":"we_en","legs":[{"type":"Card","cur":"PLN","amt":150}]}
-{"season":"sn_paaaaa","action":"setUsdActual","saleId":"s_card","usd":30}
-{"season":"sn_paaaaa","action":"sell","saleId":"s_odd","location":"WAREHOUSE","bookId":"we_en","legs":[{"type":"Zelle","cur":"GBP","amt":10}],"name":"Odd One"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_mad","name":"Madrid","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_bcn","name":"Barcelona","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_new","name":"Kirtan Mela","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":30},{"bookId":"we_en","delta":10}],"override":true}
+{"season":"sn_baaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_mad","bookId":"sr_en","qty":5},{"from":"WAREHOUSE","to":"ev_bcn","bookId":"sr_en","qty":5},{"from":"WAREHOUSE","to":"ev_new","bookId":"sr_en","qty":2}],"movePrefix":"Mr7"}
+{"season":"sn_baaaaa","action":"sell","saleId":"s_mad1","location":"ev_mad","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
+{"season":"sn_baaaaa","action":"sell","saleId":"s_mad2","location":"ev_mad","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
+{"season":"sn_baaaaa","action":"sell","saleId":"s_bcn1","location":"ev_bcn","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
+{"season":"sn_baaaaa","action":"sell","saleId":"s_card","location":"WAREHOUSE","bookId":"we_en","legs":[{"type":"Card","cur":"PLN","amt":150}]}
+{"season":"sn_baaaaa","action":"setUsdActual","saleId":"s_card","usd":30}
+{"season":"sn_baaaaa","action":"sell","saleId":"s_odd","location":"WAREHOUSE","bookId":"we_en","legs":[{"type":"Zelle","cur":"GBP","amt":10}],"name":"Odd One"}
 {"action":"getState"}
-{"action":"saveCloseDraft","kind":"event","id":"ev_new","draft":{"checks":[0],"counts":{"ev_new|sr_en":1},"note":"half done","at":"2026-09-27T07:07:01.590Z","by":"main app"},"opId":"opmujh732u_1_ul5kou","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"editSale","saleId":"s_odd","type":"SALE","location":"WAREHOUSE","bookId":"we_en","legs":[{"type":"Zelle","cur":"GBP","amt":10}],"pending":false,"dueamt":0,"duecur":"","name":"Odd One","phone":"","comments":"","ts":"2026-09-27T07:06:00.000Z","changeamt":0,"changecur":"","opId":"opmujh75ki_2_goqmfd","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"ping"}
-{"season":"sn_paaaaa","action":"getState"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"reorderBooks","regionId":"rg_naaaaa","ids":["sr_en","we_en","ea_en","go_en","sr_ru","we_ru","ea_ru","go_ru","adv_en"],"opId":"opmujh78nf_3_bioyyv","season":"sn_paaaaa"}
-{"action":"setEventHidden","eventId":"ev_new","hidden":"+we_en","opId":"opmujh78nk_4_1mxnky","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
+{"action":"saveCloseDraft","kind":"event","id":"ev_new","draft":{"checks":[0],"counts":{"ev_new|sr_en":1},"note":"half done","at":"2026-09-27T10:23:19.318Z","by":"main app"},"opId":"opmujo7itz_1_5ql94h","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"ping"}
+{"action":"editSale","saleId":"s_odd","type":"SALE","location":"WAREHOUSE","bookId":"we_en","legs":[{"type":"Zelle","cur":"GBP","amt":10}],"pending":false,"dueamt":0,"duecur":"","name":"Odd One","phone":"","comments":"","ts":"2026-09-27T10:23:00.000Z","changeamt":0,"changecur":"","opId":"opmujo7lna_2_lqw90i","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"reorderBooks","regionId":"rg_poland","ids":["sr_en","we_en","ea_en","go_en","sr_ru","we_ru","ea_ru","go_ru","adv_en"],"opId":"opmujo7pq9_3_j43j1y","season":"sn_baaaaa"}
+{"action":"setEventHidden","eventId":"ev_new","hidden":"+we_en","opId":"opmujo7pr8_4_1jy97b","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}

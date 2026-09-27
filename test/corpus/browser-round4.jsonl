@@ -1,46 +1,48 @@
 {"__init":1}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_yoga","name":"Yoga Day","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":10},{"bookId":"ea_en","delta":20}],"override":true}
-{"season":"sn_paaaaa","action":"saveHolder","newHolderId":"hd_radha1","regionId":"rg_naaaaa","name":"Radha","phone":"+48 1"}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"hd_radha1","items":[{"bookId":"sr_en","delta":4}],"override":true}
-{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_yoga","bookId":"sr_en","qty":3},{"from":"WAREHOUSE","to":"ev_yoga","bookId":"we_en","qty":2}],"movePrefix":"Myg"}
-{"season":"sn_paaaaa","action":"closeLocation","kind":"event","id":"ev_fest","counts":{}}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_yoga","name":"Yoga Day","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":10},{"bookId":"ea_en","delta":20}],"override":true}
+{"season":"sn_baaaaa","action":"saveHolder","newHolderId":"hd_radha1","regionId":"rg_poland","name":"Radha","phone":"+48 1"}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"hd_radha1","items":[{"bookId":"sr_en","delta":4}],"override":true}
+{"season":"sn_baaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_yoga","bookId":"sr_en","qty":3},{"from":"WAREHOUSE","to":"ev_yoga","bookId":"we_en","qty":2}],"movePrefix":"Myg"}
+{"season":"sn_baaaaa","action":"closeLocation","kind":"event","id":"ev_fest","counts":{}}
 {"action":"getState"}
-{"action":"reopenLocation","kind":"event","id":"ev_fest","opId":"opmujh71fd_1_xt1zht","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":2},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":3},{"from":"WAREHOUSE","to":"ev_fest","bookId":"ea_en","qty":10}],"movePrefix":"Mr4"}
-{"season":"sn_paaaaa","action":"getState"}
-{"season":"sn_paaaaa","action":"activity"}
-{"action":"undoActivityPart","id":"Apaaaaaqaaa","part":"b:ea_en","opId":"opmujh76b0_2_5pd1vu","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"getState","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"action":"undoActivity","id":"Apaaaaaqaaa","opId":"opmujh7b5j_3_fz0w9g","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"getState","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":1},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":1}],"movePrefix":"Mold"}
-{"action":"activity","season":"sn_paaaaa"}
-{"action":"undoActivityPart","season":"sn_paaaaa","id":"Avaaaaawaaa","part":"b:sr_en"}
-{"action":"activity","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"sell","saleId":"Smujh7eucds8e","location":"WAREHOUSE","bookId":"sr_en","isPreorder":false,"legs":[{"type":"Cash","cur":"PLN","amt":100},{"type":"Card","cur":"USD","amt":5},{"type":"Cash","cur":"PLN","amt":31.05}],"pending":false,"dueamt":0,"duecur":"","name":"Three Ways","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"","opId":"opmujh7euc_4_2z42di","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"sellBundle","keepBundleId":"Bmujh7hl134ah","location":"hd_radha1","items":[{"bookId":"sr_en","pre":false},{"bookId":"sr_en","pre":false}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"pending":false,"dueamt":0,"duecur":"","name":"","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"opId":"opmujh7hl1_5_4fcojv","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"go_en","delta":7}],"note":"From the printer","override":true,"movePrefix":"Mmujh7jcv68q","season":"sn_paaaaa","opId":"opmujh7jcv_6_yp23c6"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"transferMulti","moves":[{"from":"ev_yoga","to":"WAREHOUSE","bookId":"sr_en","qty":3},{"from":"ev_yoga","to":"WAREHOUSE","bookId":"we_en","qty":2}],"note":"","movePrefix":"Mmujh7luebk1","season":"sn_paaaaa","opId":"opmujh7lue_7_rx0nxv"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"saveLabel","key":"Panel: App Admin › Money kept in the box here","text":"Cash on hand","opId":"opmujh7n1b_8_hwi3ve","season":"sn_paaaaa"}
+{"action":"reopenLocation","kind":"event","id":"ev_fest","opId":"opmujo7i9t_1_wwaput","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":2},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":3},{"from":"WAREHOUSE","to":"ev_fest","bookId":"ea_en","qty":10}],"movePrefix":"Mr4"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","action":"activity"}
+{"action":"undoActivityPart","id":"Abaaaaacaaa","part":"b:ea_en","opId":"opmujo7mtx_2_kf75a2","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"getState","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"action":"undoActivity","id":"Abaaaaacaaa","opId":"opmujo7rf1_3_kfvy1s","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"getState","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":1},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":1}],"movePrefix":"Mold"}
+{"action":"activity","season":"sn_baaaaa"}
+{"action":"undoActivityPart","season":"sn_baaaaa","id":"Ahaaaaaiaaa","part":"b:sr_en"}
+{"action":"activity","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"sell","saleId":"Smujo7v9t7vmf","location":"WAREHOUSE","bookId":"sr_en","isPreorder":false,"legs":[{"type":"Cash","cur":"PLN","amt":100},{"type":"Card","cur":"USD","amt":5},{"type":"Cash","cur":"PLN","amt":31.05}],"pending":false,"dueamt":0,"duecur":"","name":"Three Ways","phone":"","comments":"","ts":"2026-09-27T10:23:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"","opId":"opmujo7v9t_4_t37hex","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"sellBundle","keepBundleId":"Bmujo7y2ptz48","location":"hd_radha1","items":[{"bookId":"sr_en","pre":false},{"bookId":"sr_en","pre":false}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"pending":false,"dueamt":0,"duecur":"","name":"","phone":"","comments":"","ts":"2026-09-27T10:23:00.000Z","changeamt":0,"changecur":"","override":true,"opId":"opmujo7y2p_5_5h0f84","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"ping"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"go_en","delta":7}],"note":"From the printer","override":true,"movePrefix":"Mmujo7zvpgbz","season":"sn_baaaaa","opId":"opmujo7zvp_6_ej787w"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"transferMulti","moves":[{"from":"ev_yoga","to":"WAREHOUSE","bookId":"sr_en","qty":3},{"from":"ev_yoga","to":"WAREHOUSE","bookId":"we_en","qty":2}],"note":"","movePrefix":"Mmujo82d6yel","season":"sn_baaaaa","opId":"opmujo82d6_7_zjjpu6"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"saveLabel","key":"Panel: App Admin › Money kept in the box here","text":"Cash on hand","opId":"opmujo83ju_8_q7r0ug","season":"sn_baaaaa"}

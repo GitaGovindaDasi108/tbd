@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b196';
+var SERVER_BUILD = 'b199';
 
 function doPost(e) { return handle(e); }
 
@@ -877,8 +877,11 @@ function ensureReady(force) {
 
   sheetsPrepare_();                      // phone columns as text, before anything is written
 
-  if (!objectsOf_('_meta').length) dbInsert_('_meta', { key: 'warehouseName', value: 'Poland' });
-
+  /* A new spreadsheet starts with the book catalogue and nothing else: no
+     region, no contacts, no payment codes. (It used to create a region named
+     "Poland" with Polish prices, the original contact list and three personal
+     payment codes — from when the app was Poland's alone.) Seasons, regions and
+     everything in them are made in the app. */
   /* The built-in titles, written by position over whatever the first rows
      hold; anything else on those rows (a hand-placed sort) is kept. */
   var oldBooks = objectsOf_('_books');
@@ -889,35 +892,6 @@ function ensureReady(force) {
       return Object.assign({}, o, { id: '', name: '', cat: '', usd: '', pln: '', eur: '' });
     }));
     dbSave_('_books', seeded, ['id','name','cat','usd','pln','eur']);
-  }
-
-  // Seed the org chart once, with the initial contacts. Never overwrites edits.
-  if (!objectsOf_('_org').length) {
-    var seed = [
-      ['General — book distribution in Poland', 'Gita Govinda', '+16509225957'],
-      ['Warehouse Books', 'Tulasi Sevani', '+48515967837'],
-      ['Warehouse Books', 'Gita Govinda', '+16509225957'],
-      ['Festival Books', 'Daivi Radhika', '+48726541539'],
-      ['Warehouse Bank', 'Gita Govinda', ''],
-      ['Universal Bank', 'Rasika', '']
-    ];
-    /* Written by column name. Laid out positionally, these five values landed in
-       a six-column sheet, so every seeded contact was shifted one place — the
-       category ended up under 'scope' and the phone under 'name'. */
-    dbInsert_('_org', seed.map(function (r, i) {
-      return { id: 'O' + Utilities.getUuid().slice(0, 7), scope: SEASON,
-               category: r[0], sort: i, name: r[1], phone: r[2] };
-    }));
-  }
-
-  // Seed the tour-wide payment codes once, pointing at the files shipped with
-  // the page. Editing or removing them later is never overwritten.
-  if (dbHas_('_qr') && !objectsOf_('_qr').length) {
-    dbInsert_('_qr', [
-      { id: 'Qseed01', scope: SEASON, label: 'Wise',   caption: 'Name: Renuka Radhakrishnan\nWiseTag: https://wise.com/pay/me/renukar73', src: 'qr-wise.jpeg', sort: 0 },
-      { id: 'Qseed02', scope: SEASON, label: 'PayPal', caption: 'rradhakrsna@gmail.com', src: 'qr-paypal.jpeg', sort: 1 },
-      { id: 'Qseed03', scope: SEASON, label: 'Zelle',  caption: 'Name: Renuka RadhaKrishnan\nrradhakrsna@gmail.com', src: 'qr-zelle.jpeg', sort: 2 }
-    ]);
   }
 
   migrateSeason_();
@@ -966,9 +940,14 @@ function migrateSeason_() {
 
   var firstRegionId = '';
 
-  if (!objectsOf_('_regions').length) {
-    // Name the first region after whatever the warehouse was already called.
-    var whName = String(getWarehouseName_() || 'Poland').trim() || 'Poland';
+  /* Data from before regions existed (sales, stock, events at the literal
+     WAREHOUSE) is adopted by a first region. A new spreadsheet has nothing to
+     adopt, so it gets no region at all. */
+  var legacy = !objectsOf_('_regions').length &&
+    (objectsOf_('_sales').length || objectsOf_('_inventory').length || objectsOf_('_events').length);
+  if (legacy) {
+    // Named after whatever the warehouse was already called.
+    var whName = String(getWarehouseName_() || 'Warehouse').trim() || 'Warehouse';
     firstRegionId = 'rg_' + Utilities.getUuid().slice(0, 6);
     // Poland's original three currencies, in the order the app has always shown them.
     dbInsert_('_regions', { regionId: firstRegionId, name: whName, whLoc: WAREHOUSE, sort: 0,
@@ -1188,6 +1167,8 @@ function doCloseLocation(p) {
   saveInvMap_(map);
 
   setClosed_(kind, id, new Date());
+  // A region's dollars stop moving the day it closes.
+  if (kind === 'region') freezeRegionRates_(id, null);
   /* Only redraw the spreadsheets if the closing actually changed a number.
 
      A clean close — counts matching what the app expected — alters nothing but
@@ -1200,9 +1181,92 @@ function doCloseLocation(p) {
   return { diffs: diffs, outstanding: outstandingAt_(locs) };
 }
 
+/* The currencies a region's money is in: its own list, and any its sales, debts
+   and costs actually used. */
+function regionCurrencies_(regionId) {
+  var locs = {}, out = {};
+  locsInRegion_(regionId).forEach(function (l) { locs[l] = 1; });
+  objectsOf_('_holders').forEach(function (h) { if (String(h.regionId || '') === String(regionId)) locs[String(h.holderId)] = 1; });
+  var r = objectsOf_('_regions').filter(function (x) { return String(x.regionId) === String(regionId); })[0];
+  if (r) parseCurList_(r.currencies).forEach(function (c) { out[c] = 1; });
+  objectsOf_('_sales').forEach(function (s) {
+    if (!locs[String(s.location)]) return;
+    eachLeg_(s, function (l) { if (l.cur) out[String(l.cur).toUpperCase()] = 1; });
+    if (s.duecur) out[String(s.duecur).toUpperCase()] = 1;
+  });
+  objectsOf_('_costs').forEach(function (c) { if (locs[String(c.location)] && c.cur) out[String(c.cur).toUpperCase()] = 1; });
+  delete out.USD;
+  return Object.keys(out).sort();
+}
+
+/* Store the rates a closed region's dollars are counted at.
+
+   `rates` is given when filling in a region that closed before this existed
+   (the rates of its closing day); otherwise today's — or, in a closed season,
+   the season's frozen ones. Nothing is stored unless every currency the region
+   used has a rate, so a region is never frozen with a currency worth zero. */
+function freezeRegionRates_(regionId, given, asOf) {
+  var curs = regionCurrencies_(regionId);
+  var src = given, when = asOf || '';
+  if (!src) {
+    var fx = getRates_();
+    if (!fx || !(fx.live || fx.frozen)) return false;   // offline: filled in later
+    src = fx.RATES || {};
+    when = fx.asOf || '';
+  }
+  var out = { USD: 1 };
+  for (var i = 0; i < curs.length; i++) {
+    var v = Number(src[curs[i]]);
+    if (!(v > 0)) return false;
+    out[curs[i]] = v;
+  }
+  dbAddCols_('_regions', ['frozenRates']);
+  dbUpdate_('_regions', { regionId: String(regionId) },
+            { frozenRates: JSON.stringify({ RATES: out, asOf: String(when), frozenAt: new Date().toISOString() }) });
+  return true;
+}
+
+/* Regions closed before rates were frozen with them: look up the rates of the
+   day each one closed (Frankfurter keeps the ECB's history) and store them.
+   Currencies the ECB does not publish take today's rate, so the figures stop
+   moving from here on. Runs in the background, a few regions at a time. */
+function backfillRegionRates_() {
+  if (!dbHas_('_regions')) return 0;
+  var todo = objectsOf_('_regions').filter(function (r) {
+    return r && r.regionId && r.closedAt && !r.frozenRates && String(r.regionId) !== HQ_REGION;
+  }).slice(0, 5);
+  var done = 0;
+  todo.forEach(function (r) {
+    try {
+      var d = new Date(r.closedAt);
+      if (isNaN(d)) return;
+      var day = d.toISOString().slice(0, 10);
+      var curs = regionCurrencies_(r.regionId);
+      var rates = {};
+      if (curs.length) {
+        var h = fxGet_('https://api.frankfurter.app/' + day + '?from=USD&to=' + encodeURIComponent(curs.join(',')));
+        if (h && h.rates) Object.keys(h.rates).forEach(function (c) { rates[String(c).toUpperCase()] = Number(h.rates[c]); });
+        var ctx = _seasonOverride;
+        setSeasonContext_('');
+        try {
+          var today = getRates_();
+          if (today && today.live) curs.forEach(function (c) { if (!(rates[c] > 0)) rates[c] = Number((today.RATES || {})[c]); });
+        } finally { setSeasonContext_(ctx); }
+      }
+      if (freezeRegionRates_(r.regionId, rates, day)) { done++; markDirtyRegions_([String(r.regionId)]); }
+    } catch (e) { /* try again next time */ }
+  });
+  if (done) { cacheClear_(); bumpRev_(); }
+  return done;
+}
+
 function doReopenLocation(p) {
   var kind = String(p.kind || 'event'), id = String(p.id || '');
   setClosed_(kind, id, '');
+  // Open again: its dollars follow the rates again until it closes once more.
+  if (kind === 'region' && dbCols_('_regions').indexOf('frozenRates') >= 0) {
+    dbUpdate_('_regions', { regionId: id }, { frozenRates: '' });
+  }
   markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
 }
 
@@ -2363,7 +2427,7 @@ function everywhere_(sales, inv) {
     regions: objectsOf_('_regions').filter(function (r) { return r && r.regionId; }).map(function (r) {
       return { regionId: String(r.regionId), name: String(r.name), whLoc: String(r.whLoc || ''),
                seasonId: String(r.seasonId || ''), currencies: parseCurList_(r.currencies),
-               closedAt: r.closedAt ? String(r.closedAt) : '' };
+               closedAt: r.closedAt ? String(r.closedAt) : '', rates: regionFrozenRates_(r) };
     }),
     events: objectsOf_('_events').filter(function (e) { return e && e.eventId; }).map(function (e) {
       return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || '') };
@@ -2594,7 +2658,7 @@ var TABLE_KEYS_ = {
 /* Rows read during this request, per table. Any write drops the lot, so a
    read never sees data older than the last change. */
 var _sheetMemo = {};
-function sheetMemoClear_() { _sheetMemo = {}; bookMemoClear_(); }
+function sheetMemoClear_() { _sheetMemo = {}; bookMemoClear_(); _locFxMemo = null; _seasonFxMemo = null; }
 
 /* { cols: [...], rows: [ {col: value} ] } for one table, read once per request. */
 function storeRead_(t) {
@@ -2932,7 +2996,7 @@ function migrateSales_() {
 function getWarehouseName_() {
   var m = objectsOf_('_meta');
   for (var i = 0; i < m.length; i++) if (m[i].key === 'warehouseName') return m[i].value;
-  return 'Poland';
+  return '';
 }
 
 /* ---- Meta helpers ---- */
@@ -3146,6 +3210,11 @@ function driveMap_() {
     });
     out.seasons.push(entry);
   });
+  // Earthly HQ's own file, at the top of the folder (once HQ has been opened).
+  if (regionById_(HQ_REGION)) {
+    var hqId = String(getMeta_('regionSheetId:' + HQ_REGION, ''));
+    out.hq = { name: '0 — Earthly HQ — Book Sales', url: hqId ? sheetUrl_(hqId) : '' };
+  }
   tempPut_(ck, JSON.stringify(out), 1800);   // half an hour
   return out;
 }
@@ -3240,6 +3309,12 @@ function seasonSpreadsheet_() {
     function () { return seasonFolder_(sid); });
 }
 function regionSpreadsheet_(regionId) {
+  /* Earthly HQ has one file of its own, at the top of the folder: every season
+     added up, then HQ's own warehouse and sales. */
+  if (String(regionId) === HQ_REGION) {
+    return openOrCreateSheetFile_('regionSheetId:' + HQ_REGION, '0 — Earthly HQ — Book Sales',
+      function () { return driveRoot_(); });
+  }
   var r = regionById_(regionId);
   var name = r ? r.name : String(regionId);
   var sid = r ? r.seasonId : activeSeasonId_();
@@ -3259,7 +3334,7 @@ function sheetLinks_() {
 function getSeasonName_() {
   var m = objectsOf_('_meta');
   for (var i = 0; i < m.length; i++) if (m[i].key === 'seasonName') return m[i].value;
-  return 'Europe Tour';
+  return 'First Season';
 }
 
 /* Single source of truth for event order: oldest first, so the tabs read
@@ -3427,6 +3502,11 @@ function readState() {
                  bookOrder: parsePayList_(r.bookOrder),
                  hidden: String(r.hidden || ''),      // titles this region does not offer
                  counts: im[r.regionId] || { events: 0, sales: 0, books: 0 } };
+      }).map(function (r) {
+        // A closed region's dollars are counted at the rates of its closing day.
+        var fx = ratesForLoc_(r.whLoc);
+        if (fx) r.rates = fx;
+        return r;
       });
     })(),
     prices: pricesForState_(),
@@ -3675,6 +3755,13 @@ var QUIET_MS = 25 * 1000;   // how long after a save to leave the sheets alone
    redrawn under that season, sharing one time budget. */
 var _presetDirty = null, _syncStarted = 0;
 function syncEverySeason_() {
+  /* Now and then, fill in the frozen rates of regions that closed before they
+     were kept. At most once an hour, and only when nobody is saving. */
+  if (!tempGet_('fx_backfill')) {
+    tempPut_('fx_backfill', '1', 3600);
+    var bl = LockService.getScriptLock();
+    if (bl.tryLock(1000)) { try { backfillRegionRates_(); } catch (e) {} finally { bl.releaseLock(); } }
+  }
   var raw = propGet_('dirtyLocs');
   if (!raw || raw === '{}') return;
   var lastWrite = Number(propGet_('lastWriteAt') || 0);
@@ -3686,7 +3773,8 @@ function syncEverySeason_() {
 
   var events = objectsOf_('_events');
   var groups = [];
-  seasonsAll_().forEach(function (se) {
+  var hasHQ = !!regionById_(HQ_REGION);
+  seasonsAll_().concat(hasHQ ? [{ seasonId: HQ_ID }] : []).forEach(function (se) {
     setSeasonContext_(se.seasonId);
     var mine = {};
     regionsOrdered_().forEach(function (r) {
@@ -3695,6 +3783,8 @@ function syncEverySeason_() {
     });
     var group = {};
     Object.keys(set).forEach(function (k) { if (mine[k]) group[k] = 1; });
+    // Earthly HQ adds up every season: whatever was redrawn, redraw it too.
+    if (se.seasonId === HQ_ID && groups.length) group[SUMMARY] = 1;
     if (Object.keys(group).length) groups.push({ sid: se.seasonId, set: group });
   });
   setSeasonContext_('');
@@ -3832,12 +3922,19 @@ function syncSheets(force) {
     // The season file rolls everything up. If that fails, say so IN the sheet —
     // a silently blank summary is worse than an honest error message.
     try { if (!timeLeft()) { ranOut = true; throw new Error('Out of time — will finish on the next pass.'); }
-          renderSeasonSheet_(); }
+          if (isHQ_()) renderHQSheet_(); else renderSeasonSheet_();
+          // Earthly HQ adds up every season, so a full sync of one refreshes it.
+          if (force && !isHQ_() && regionById_(HQ_REGION) && timeLeft()) {
+            var ctxHQ = _seasonOverride;
+            try { setSeasonContext_(HQ_ID); renderHQSheet_(); }
+            catch (e3) { console.error('HQ sheet failed: ' + e3); }
+            finally { setSeasonContext_(ctxHQ); }
+          } }
     catch (err) {
       lastErr = String(err && err.message ? err.message : err);
       console.error('renderSeasonSheet_ failed: ' + lastErr);
       try {
-        var ss = seasonSpreadsheet_();
+        var ss = isHQ_() ? regionSpreadsheet_(HQ_REGION) : seasonSpreadsheet_();
         var sh = ss.getSheetByName('Summary') || ss.insertSheet('Summary');
         if (sh.getLastRow() < 2) {          // only if it is empty anyway
           sh.getRange(1, 1, 3, 1).setValues([
@@ -6188,12 +6285,100 @@ function toUSD_(amt, cur) {
   return per > 0 ? amt / per : 0;
 }
 
+/* ---- Dollars from the truth ----
+
+   Local amounts never change; only their dollar value can. In order of trust:
+     1. dollars actually received, where entered on the sale (usdActual);
+     2. the rates a closed REGION was frozen at, the day it closed;
+     3. the rates a closed SEASON was frozen at (getRates_ already returns them);
+     4. today's rates, as an estimate.
+   Every dollar figure in the spreadsheets goes through the helpers below, so a
+   closed region's totals stop moving and add up the same everywhere. */
+var _locFxMemo = null;
+/** The rates a closed region was frozen at, or null. */
+function regionFrozenRates_(r) {
+  if (!r || !r.closedAt || !r.frozenRates) return null;
+  try { var fr = JSON.parse(r.frozenRates); return (fr && fr.RATES) ? fr.RATES : null; } catch (e) { return null; }
+}
+/** Location -> frozen rates, for every place in a closed region (any season). */
+function locFxMap_() {
+  if (_locFxMemo) return _locFxMemo;
+  var byRegion = {}, out = {};
+  objectsOf_('_regions').forEach(function (r) {
+    var fx = regionFrozenRates_(r);
+    if (!fx) return;
+    byRegion[String(r.regionId)] = fx;
+    if (r.whLoc) out[String(r.whLoc)] = fx;
+  });
+  if (Object.keys(byRegion).length) {
+    objectsOf_('_events').forEach(function (e) { var fx = byRegion[String(e.regionId || '')]; if (fx) out[String(e.eventId)] = fx; });
+    objectsOf_('_holders').forEach(function (h) { var fx = byRegion[String(h.regionId || '')]; if (fx) out[String(h.holderId)] = fx; });
+  }
+  _locFxMemo = out;
+  return out;
+}
+function ratesForLoc_(loc) { return locFxMap_()[String(loc)] || null; }
+/* Location -> a closed season's frozen rates, for every place in it. Inside a
+   season getRates_ already returns them; this is for Earthly HQ, which counts
+   every season at once. */
+var _seasonFxMemo = null;
+function seasonFxMap_() {
+  if (_seasonFxMemo) return _seasonFxMemo;
+  var bySeason = {}, byRegion = {}, out = {};
+  if (dbHas_('_seasons')) objectsOf_('_seasons').forEach(function (x) {
+    if (!x || !x.closedAt || !x.frozenRates) return;
+    try { var fr = JSON.parse(x.frozenRates); if (fr && fr.RATES) bySeason[String(x.seasonId)] = fr.RATES; } catch (e) {}
+  });
+  if (Object.keys(bySeason).length) {
+    objectsOf_('_regions').forEach(function (r) {
+      var fx = bySeason[String(r.seasonId || '')];
+      if (!fx) return;
+      byRegion[String(r.regionId)] = fx;
+      if (r.whLoc) out[String(r.whLoc)] = fx;
+    });
+    objectsOf_('_events').forEach(function (e) { var fx = byRegion[String(e.regionId || '')]; if (fx) out[String(e.eventId)] = fx; });
+    objectsOf_('_holders').forEach(function (h) { var fx = byRegion[String(h.regionId || '')]; if (fx) out[String(h.holderId)] = fx; });
+  }
+  _seasonFxMemo = out;
+  return out;
+}
+/** The frozen rates a place counts at: its closed region's, else its closed season's. */
+function truthFxForLoc_(loc) { return ratesForLoc_(loc) || seasonFxMap_()[String(loc)] || null; }
+/** Dollars at a place's own rates: a closed region's if it has them, else as usual. */
+function toUsdAt_(amt, cur, loc) {
+  amt = Number(amt) || 0;
+  if (!amt) return 0;
+  cur = String(cur || '').toUpperCase();
+  if (cur === 'USD') return amt;
+  var fx = truthFxForLoc_(loc);
+  var per = fx ? Number(fx[cur]) : 0;
+  return per > 0 ? amt / per : toUSD_(amt, cur);
+}
+function hasUsdActual_(s) {
+  var v = s ? s.usdActual : '';
+  return v !== '' && v !== null && v !== undefined && !isNaN(Number(v)) && Number(v) > 0;
+}
+/* How far the dollars received move this sale from its estimate: every leg is
+   scaled by the same factor, so a breakdown still adds up to the whole. */
+function saleFactor_(s) {
+  if (!hasUsdActual_(s) || !received_(s)) return 1;
+  var est = 0;
+  eachLeg_(s, function (l) { if (l.type !== 'Gift') est += toUsdAt_(l.amt, l.cur, s.location); });
+  return est > 0 ? Number(s.usdActual) / est : 1;
+}
+/** One payment leg of a sale, in dollars, from the truth. */
+function legTruthUsd_(s, leg, factor) {
+  return toUsdAt_(leg.amt, leg.cur, s.location) * (factor === undefined ? saleFactor_(s) : factor);
+}
+/** A cost, in dollars at its place's rates. */
+function costUsd_(c) { return toUsdAt_(c.amt, c.cur, c.location); }
+
 function eachLeg_(s, fn) {
   if (s.p1type) fn({ type: String(s.p1type), cur: String(s.p1cur), amt: Number(s.p1amt) || 0 });
   if (s.p2type) fn({ type: String(s.p2type), cur: String(s.p2cur), amt: Number(s.p2amt) || 0 });
   pmoreRead_(s.pmore).forEach(function (l) { if (l && l.type) fn({ type: String(l.type), cur: String(l.cur), amt: Number(l.amt) || 0 }); });
 }
-function legsUsd_(s) { var t = 0; eachLeg_(s, function (l) { t += toUSD_(l.amt, l.cur); }); return t; }
+function legsUsd_(s) { var t = 0, f = saleFactor_(s); eachLeg_(s, function (l) { t += legTruthUsd_(s, l, f); }); return t; }
 
 /* Three payment states, from two stored fields:
      pending = true          nothing received; the legs are what is owed
@@ -6213,27 +6398,18 @@ function received_(s) { return !pendingFlag_(s); }
 
 /* USD helpers used by the season rollup. Kept alongside received_/eachLeg_ so
    every sheet values money the same way. */
-function legsUSD_(s) {
-  var t = 0;
-  eachLeg_(s, function (leg) { t += toUSD_(leg.amt, leg.cur); });
-  return t;
-}
-function dueUSD_(s) {
-  var amt = Number(s.dueamt) || 0;
-  if (pendingFlag_(s)) {
-    // Nothing paid yet: the whole ticket is outstanding.
-    var t = 0;
-    eachLeg_(s, function (leg) { t += toUSD_(leg.amt, leg.cur); });
-    return t;
-  }
-  if (amt <= 0) return 0;
-  return toUSD_(amt, String(s.duecur || 'USD'));
-}
+function legsUSD_(s) { return legsUsd_(s); }
+function dueUSD_(s) { return dueUsd_(s); }
 
 /** Everything still owed on this sale, in USD. */
 function dueUsd_(s) {
-  if (pendingFlag_(s)) return legsUsd_(s);
-  return toUSD_(dueAmt_(s), dueCur_(s));
+  if (pendingFlag_(s)) {
+    // Nothing paid yet: the whole ticket is outstanding, at the place's rates.
+    var t = 0;
+    eachLeg_(s, function (l) { t += toUsdAt_(l.amt, l.cur, s.location); });
+    return t;
+  }
+  return toUsdAt_(dueAmt_(s), dueCur_(s), s.location);
 }
 
 /** What is still owed, as amounts in the currencies they are owed in. */
@@ -6476,8 +6652,11 @@ function renderSeasonSheet_() {
   put(['gop\u012b-bhartu\u1e25 pada-kamalayor d\u0101sa-d\u0101s\u0101nud\u0101sa\u1e25']);
   put(['Last updated', stamp_()]);
   var fx = getRates_();
-  put([(fx.live ? 'Exchange rates \u2014 LIVE' : 'Exchange rates \u2014 OFFLINE FALLBACK (live fetch failed)'),
-       'USD is the common currency' + (fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')]);
+  put([(fx.frozen ? 'Exchange rates \u2014 FROZEN when this season closed'
+        : fx.live ? 'Exchange rates \u2014 LIVE' : 'Exchange rates \u2014 OFFLINE FALLBACK (live fetch failed)'),
+       'USD is the common currency' + (fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')
+       + (regions.some(function (r) { return ratesForLoc_(r.whLoc); })
+          ? ' \u2014 a closed region counts at the rates of the day it closed' : '')]);
   blank();
 
   /* ---- Headline totals ---- */
@@ -6558,7 +6737,7 @@ function renderSeasonSheet_() {
       if (!mine[String(s.location)] || !received_(s)) return;
       eachLeg_(s, function (leg) {
         acc.cur[leg.cur] = (acc.cur[leg.cur] || 0) + leg.amt;
-        acc.usd += toUSD_(leg.amt, leg.cur);
+        acc.usd += legTruthUsd_(s, leg);
       });
     });
     return acc;
@@ -6602,6 +6781,177 @@ function renderSeasonSheet_() {
   money.push('B' + kStart + ':' + colLetter_(regions.length + 3) + rows.length);
 
   paintSheet_(sh, rows, band, head, tot, money, ints);
+}
+
+/* ---- Earthly HQ: every season, added up ----
+
+   The first tab of the Earthly HQ file, the spreadsheet twin of the app's
+   Summaries Portal: Total Sales by Title, Collections by Season, Sales by
+   Season, Collections by Payment Type and the Seasonal Warehouse Overview,
+   each with a column per season and one for HQ itself. Dollars follow the
+   truth (see toUsdAt_): received, else a closed region's or season's frozen
+   rates, else today's. The file's other tabs are HQ's own, as for a region. */
+var HQ_ALL_TAB = 'All Seasons';
+function renderHQSheet_() {
+  var ss = regionSpreadsheet_(HQ_REGION);
+  var sh = ss.getSheetByName(HQ_ALL_TAB) || ss.insertSheet(HQ_ALL_TAB);
+
+  // One column per season, then Earthly HQ.
+  var allRegions = objectsOf_('_regions').filter(function (r) { return r && r.regionId; });
+  var units = seasonsAll_().map(function (x) { return { id: String(x.seasonId), name: String(x.name) }; })
+    .concat([{ id: HQ_ID, name: 'Earthly HQ' }]);
+  var unitOf = {};
+  var regionUnit = {};
+  allRegions.forEach(function (r) {
+    var u = String(r.regionId) === HQ_REGION ? HQ_ID : String(r.seasonId || '');
+    regionUnit[String(r.regionId)] = u;
+    if (r.whLoc) unitOf[String(r.whLoc)] = u;
+  });
+  objectsOf_('_events').forEach(function (e) { var u = regionUnit[String(e.regionId || '')]; if (u) unitOf[String(e.eventId)] = u; });
+  objectsOf_('_holders').forEach(function (h) {
+    if (truthyCell_(h.archived)) return;
+    var u = regionUnit[String(h.regionId || '')]; if (u) unitOf[String(h.holderId)] = u;
+  });
+  var col = {}; units.forEach(function (u, i) { col[u.id] = i; });
+  var zeros = function () { return units.map(function () { return 0; }); };
+  var sum = function (a) { return a.reduce(function (t, n) { return t + n; }, 0); };
+
+  var sales = tourSales_().filter(function (x) { return col[unitOf[String(x.location)]] !== undefined; });
+  var costs = objectsOf_('_costs').filter(function (c) {
+    return c && c.id && !String(c.partnerId || '') && col[unitOf[String(c.location)]] !== undefined;
+  });
+  var invMap = loadInvMap_();
+
+  var rows = [], band = [], head = [], tot = [], money = [], ints = [];
+  function put(row) { rows.push(row); return rows.length; }
+  function blank() { put(['']); }
+  var W = units.length + 2;               // label, one per unit, Total
+  var names = units.map(function (u) { return u.name; });
+
+  put(['Transcendental Book Sales \u2014 Earthly HQ \u2014 All Seasons']);
+  put(['gop\u012b-bhartu\u1e25 pada-kamalayor d\u0101sa-d\u0101s\u0101nud\u0101sa\u1e25']);
+  put(['Last updated', stamp_()]);
+  var fx = getRates_();
+  put(['Dollars', 'as received where entered; a closed region or season at the rates of the day it closed; '
+       + 'otherwise today\u2019s' + (fx.live ? (fx.asOf ? ' (as of ' + fx.asOf + ')' : '') : ' (OFFLINE FALLBACK \u2014 live fetch failed)')]);
+  blank();
+
+  /* ---- Headline ---- */
+  var totUsd = 0, donUsd = 0, pendUsd = 0, costUsd = 0;
+  sales.forEach(function (x) {
+    if (received_(x)) { var u = legsUsd_(x); totUsd += u; if (String(x.type) === 'DONATION') donUsd += u; }
+    pendUsd += dueUsd_(x);
+  });
+  costs.forEach(function (c) { costUsd += costUsd_(c); });
+  band.push(put(['SUMMARY']));
+  head.push(put(['Total collections (USD)', 'Donations (USD)', 'Pending (USD)', 'Costs (USD)', 'Net (USD)']));
+  var r0 = put([round2_(totUsd), round2_(donUsd), round2_(pendUsd), round2_(costUsd), round2_(totUsd - costUsd)]);
+  tot.push(r0);
+  money.push('A' + r0 + ':E' + r0);
+  blank();
+
+  /* ---- 1. Total Sales by Title ---- */
+  band.push(put(['TOTAL SALES BY TITLE']));
+  head.push(put(['Book'].concat(names).concat(['Total'])));
+  var tStart = rows.length + 1;
+  var colTot = zeros();
+  allBooks_().forEach(function (b) {
+    var per = zeros();
+    sales.forEach(function (x) {
+      if (String(x.bookId) !== b.id || (x.type !== 'SALE' && x.type !== 'PREORDER')) return;
+      per[col[unitOf[String(x.location)]]]++;
+    });
+    if (!sum(per)) return;
+    per.forEach(function (n, i) { colTot[i] += n; });
+    put([b.name].concat(per).concat([sum(per)]));
+  });
+  tot.push(put(['TOTAL'].concat(colTot).concat([sum(colTot)])));
+  ints.push('B' + tStart + ':' + colLetter_(W) + rows.length);
+  blank();
+
+  /* ---- 2. Collections by Season ---- */
+  var curSeen = {};
+  sales.forEach(function (x) { if (received_(x)) eachLeg_(x, function (l) { if (l.amt) curSeen[l.cur] = 1; }); });
+  costs.forEach(function (c) { curSeen[String(c.cur)] = 1; });
+  var curs = Object.keys(curSeen).sort();
+  band.push(put(['COLLECTIONS BY SEASON']));
+  head.push(put(['Currency'].concat(names).concat(['Total'])));
+  var cStart = rows.length + 1;
+  var got = {}; curs.forEach(function (c) { got[c] = zeros(); });
+  var usdIn = zeros(), usdCost = zeros();
+  sales.forEach(function (x) {
+    if (!received_(x)) return;
+    var i = col[unitOf[String(x.location)]], f = saleFactor_(x);
+    eachLeg_(x, function (l) {
+      if (!l.amt || l.type === 'Gift') return;
+      got[l.cur][i] += l.amt;
+      usdIn[i] += legTruthUsd_(x, l, f);
+    });
+  });
+  curs.forEach(function (c) {
+    var per = got[c].map(round2_);
+    put([c].concat(per).concat([round2_(sum(got[c]))]));
+  });
+  costs.forEach(function (c) { usdCost[col[unitOf[String(c.location)]]] += costUsd_(c); });
+  tot.push(put(['Collected (USD)'].concat(usdIn.map(round2_)).concat([round2_(sum(usdIn))])));
+  put(['Costs (USD)'].concat(usdCost.map(function (n) { return round2_(-n); })).concat([round2_(-sum(usdCost))]));
+  var net = usdIn.map(function (n, i) { return n - usdCost[i]; });
+  tot.push(put(['Net (USD)'].concat(net.map(round2_)).concat([round2_(sum(net))])));
+  money.push('B' + cStart + ':' + colLetter_(W) + rows.length);
+  blank();
+
+  /* ---- 3. Sales by Season ---- */
+  band.push(put(['SALES BY SEASON']));
+  head.push(put([''].concat(names).concat(['Total'])));
+  var sStart = rows.length + 1;
+  [['SALE', 'Sold'], ['PREORDER', 'Pre-ordered'], ['DONATION', 'Donations']].forEach(function (pr) {
+    var per = zeros();
+    sales.forEach(function (x) { if (String(x.type) === pr[0]) per[col[unitOf[String(x.location)]]]++; });
+    put([pr[1]].concat(per).concat([sum(per)]));
+  });
+  ints.push('B' + sStart + ':' + colLetter_(W) + rows.length);
+  blank();
+
+  /* ---- 4. Collections by Payment Type ---- */
+  band.push(put(['COLLECTIONS BY PAYMENT TYPE (USD)']));
+  head.push(put(['Type'].concat(names).concat(['Total'])));
+  var pStart = rows.length + 1;
+  var byType = {};
+  sales.forEach(function (x) {
+    if (!received_(x)) return;
+    var i = col[unitOf[String(x.location)]], f = saleFactor_(x);
+    eachLeg_(x, function (l) {
+      if (!l.amt || l.type === 'Gift') return;
+      (byType[l.type] = byType[l.type] || zeros())[i] += legTruthUsd_(x, l, f);
+    });
+  });
+  var pTot = zeros();
+  Object.keys(byType).sort().forEach(function (t) {
+    byType[t].forEach(function (n, i) { pTot[i] += n; });
+    put([t].concat(byType[t].map(round2_)).concat([round2_(sum(byType[t]))]));
+  });
+  tot.push(put(['TOTAL'].concat(pTot.map(round2_)).concat([round2_(sum(pTot))])));
+  money.push('B' + pStart + ':' + colLetter_(W) + rows.length);
+  blank();
+
+  /* ---- 5. Seasonal Warehouse Overview ---- */
+  band.push(put(['SEASONAL WAREHOUSE OVERVIEW (books on hand)']));
+  head.push(put(['Book'].concat(names).concat(['Total'])));
+  var wStart = rows.length + 1;
+  var places = Object.keys(unitOf);
+  var wTot = zeros();
+  allBooks_().forEach(function (b) {
+    var per = zeros();
+    places.forEach(function (l) { per[col[unitOf[l]]] += getQty_(invMap, l, b.id); });
+    if (!sum(per)) return;
+    per.forEach(function (n, i) { wTot[i] += n; });
+    put([b.name].concat(per).concat([sum(per)]));
+  });
+  tot.push(put(['TOTAL'].concat(wTot).concat([sum(wTot)])));
+  ints.push('B' + wStart + ':' + colLetter_(W) + rows.length);
+
+  paintSheet_(sh, rows, band, head, tot, money, ints);
+  try { orderTabs_(HQ_REGION); } catch (e) { /* the tabs keep their order */ }
 }
 
 function renderView_(loc, regionId, ssOverride) {
@@ -6677,11 +7027,16 @@ function renderView_(loc, regionId, ssOverride) {
   put(['gopī-bhartuḥ pada-kamalayor dāsa-dāsānudāsaḥ']);
   put(['Last updated', stamp_()]);
   var fx = getRates_();
+  // A closed region keeps the rates of the day it closed.
+  var regFx = ratesForLoc_(region.whLoc);
+  var perOf = function (c) { return regFx && Number(regFx[c]) > 0 ? Number(regFx[c]) : perUsd_(c); };
   // Show the rate for whatever currencies THIS region actually deals in.
-  put([(fx.live ? 'Exchange rates — LIVE' : 'Exchange rates — OFFLINE FALLBACK (live fetch failed)'),
+  put([(regFx ? 'Exchange rates — FROZEN when this region closed'
+        : fx.frozen ? 'Exchange rates — FROZEN when this season closed'
+        : fx.live ? 'Exchange rates — LIVE' : 'Exchange rates — OFFLINE FALLBACK (live fetch failed)'),
        '$1 = ' + (region.currencies || []).filter(function (c) { return c !== 'USD'; })
-         .map(function (c) { return round2_(perUsd_(c)) + ' ' + c; }).join(' / ')
-       + (fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')]);
+         .map(function (c) { return round2_(perOf(c)) + ' ' + c; }).join(' / ')
+       + (!regFx && fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')]);
   blank();
 
   /* ---- Counts, split big books vs AoTM ---- */
@@ -6807,16 +7162,17 @@ function renderView_(loc, regionId, ssOverride) {
   head.push(put(['Currency', 'Books & pre-orders', 'Donations', 'Total collected', 'USD equivalent']));
   var curStart = rows.length + 1;
   allCurrencies_().forEach(function (cur) {
-    var bookAmt = 0, donAmt = 0;
+    var bookAmt = 0, donAmt = 0, usdAmt = 0;
     scoped.forEach(function (s) {
       if (!received_(s)) return;
       eachLeg_(s, function (leg) {
         if (leg.cur !== cur) return;
         if (s.type === 'DONATION') donAmt += leg.amt; else bookAmt += leg.amt;
+        usdAmt += legTruthUsd_(s, leg);
       });
     });
     var total = bookAmt + donAmt;
-    put([cur, round2_(bookAmt), round2_(donAmt), round2_(total), round2_(toUSD_(total, cur))]);
+    put([cur, round2_(bookAmt), round2_(donAmt), round2_(total), round2_(usdAmt)]);
   });
   money.push('B' + curStart + ':E' + (curStart + 2));
   blank();
@@ -6833,12 +7189,12 @@ function renderView_(loc, regionId, ssOverride) {
   var typeStart = rows.length + 1;
 
   var KINDS = [['big', 'Big Books'], ['aotm', 'Adventures'], ['other', 'Other']];
-  var totalsByCur = {};
+  var totalsByCur = {}, totalUsdEq = 0;
   curList.forEach(function (c) { totalsByCur[c] = 0; });
 
   KINDS.forEach(function (pair) {
     var kind = pair[0];
-    var byCur = {};
+    var byCur = {}, usdEq = 0;
     curList.forEach(function (c) { byCur[c] = 0; });
     scoped.forEach(function (s) {
       if (!received_(s) || s.type === 'DONATION' || !s.bookId) return;
@@ -6847,28 +7203,29 @@ function renderView_(loc, regionId, ssOverride) {
       eachLeg_(s, function (leg) {
         if (byCur[leg.cur] === undefined) return;
         byCur[leg.cur] += leg.amt; totalsByCur[leg.cur] += leg.amt;
+        var u = legTruthUsd_(s, leg); usdEq += u; totalUsdEq += u;
       });
     });
-    var usdEq = curList.reduce(function (t, c) { return t + toUSD_(byCur[c], c); }, 0);
     put([pair[1]].concat(curList.map(function (c) { return round2_(byCur[c]); }))
         .concat([round2_(usdEq)]));
   });
 
   // Donations, kept separate because they are not a book sale.
-  var donByCur = {};
+  var donByCur = {}, donUsdEq = 0;
   curList.forEach(function (c) { donByCur[c] = 0; });
   scoped.forEach(function (s) {
     if (!received_(s) || s.type !== 'DONATION') return;
     eachLeg_(s, function (leg) {
       if (donByCur[leg.cur] === undefined) return;
       donByCur[leg.cur] += leg.amt; totalsByCur[leg.cur] += leg.amt;
+      var u = legTruthUsd_(s, leg); donUsdEq += u; totalUsdEq += u;
     });
   });
   put(['Donations'].concat(curList.map(function (c) { return round2_(donByCur[c]); }))
-      .concat([round2_(curList.reduce(function (t, c) { return t + toUSD_(donByCur[c], c); }, 0))]));
+      .concat([round2_(donUsdEq)]));
 
   put(['Total'].concat(curList.map(function (c) { return round2_(totalsByCur[c]); }))
-      .concat([round2_(curList.reduce(function (t, c) { return t + toUSD_(totalsByCur[c], c); }, 0))]));
+      .concat([round2_(totalUsdEq)]));
 
   money.push('B' + typeStart + ':' + colLetter_(curList.length + 2) + (typeStart + KINDS.length + 1));
   blank();
@@ -6878,12 +7235,13 @@ function renderView_(loc, regionId, ssOverride) {
   head.push(put(['Type', 'PLN', 'EUR', 'USD', 'USD equivalent']));
   var payStart = rows.length + 1;
   PAY_TYPES.forEach(function (t) {
-    var byCur = { PLN: 0, EUR: 0, USD: 0 };
+    var byCur = { PLN: 0, EUR: 0, USD: 0 }, usdEq = 0;
     scoped.forEach(function (s) {
       if (!received_(s)) return;
-      eachLeg_(s, function (leg) { if (leg.type === t && byCur[leg.cur] !== undefined) byCur[leg.cur] += leg.amt; });
+      eachLeg_(s, function (leg) {
+        if (leg.type === t && byCur[leg.cur] !== undefined) { byCur[leg.cur] += leg.amt; usdEq += legTruthUsd_(s, leg); }
+      });
     });
-    var usdEq = toUSD_(byCur.PLN, 'PLN') + toUSD_(byCur.EUR, 'EUR') + toUSD_(byCur.USD, 'USD');
     put([t, round2_(byCur.PLN), round2_(byCur.EUR), round2_(byCur.USD), round2_(usdEq)]);
   });
   money.push('B' + payStart + ':E' + (payStart + PAY_TYPES.length - 1));
@@ -6908,28 +7266,26 @@ function renderView_(loc, regionId, ssOverride) {
     } else {
       head.push(put(['When', 'What for', 'Payment type', 'Where', 'Note'].concat(costCurs).concat(['USD equivalent'])));
       var costStart = rows.length + 1;
-      var costTotal = {}; costCurs.forEach(function (c) { costTotal[c] = 0; });
+      var costTotal = {}, costUsd = 0; costCurs.forEach(function (c) { costTotal[c] = 0; });
       regionCosts.forEach(function (c) {
         var cur = String(c.cur), amt = Number(c.amt) || 0;
-        if (costTotal[cur] !== undefined) costTotal[cur] += amt;
+        if (costTotal[cur] !== undefined) { costTotal[cur] += amt; costUsd += costUsd_(c); }
         put([c.ts, String(c.category || 'Other'), String(c.payType || ''), locLabel_(String(c.location)),
              String(c.note || '')]
           .concat(costCurs.map(function (k) { return k === cur ? round2_(amt) : 0; }))
-          .concat([round2_(toUSD_(amt, cur))]));
+          .concat([round2_(costUsd_(c))]));
       });
-      var costUsd = costCurs.reduce(function (t, k) { return t + toUSD_(costTotal[k], k); }, 0);
       put(['Total costs', '', '', '', ''].concat(costCurs.map(function (k) { return round2_(costTotal[k]); }))
         .concat([round2_(costUsd)]));
       money.push(colLetter_(6) + costStart + ':' + colLetter_(6 + costCurs.length) + (costStart + regionCosts.length));
       blank();
 
       // What was kept: collected (our own sales, received) less the costs.
-      var got = {}; costCurs.forEach(function (k) { got[k] = 0; });
+      var got = {}, gotUsd = 0; costCurs.forEach(function (k) { got[k] = 0; });
       scoped.forEach(function (sl) {
         if (!received_(sl)) return;
-        eachLeg_(sl, function (leg) { if (got[leg.cur] !== undefined) got[leg.cur] += leg.amt; });
+        eachLeg_(sl, function (leg) { if (got[leg.cur] !== undefined) { got[leg.cur] += leg.amt; gotUsd += legTruthUsd_(sl, leg); } });
       });
-      var gotUsd = costCurs.reduce(function (t, k) { return t + toUSD_(got[k], k); }, 0);
       band.push(put(['NET AFTER COSTS']));
       head.push(put([''].concat(costCurs).concat(['USD equivalent'])));
       var netStart = rows.length + 1;
@@ -7020,6 +7376,7 @@ function orderTabs_(regionId) {
   if (!reg) return;
   var ss = regionSpreadsheet_(reg.regionId);
   var wanted = ['Summary', reg.name + ' — Warehouse Sales'];
+  if (reg.regionId === HQ_REGION) wanted.unshift(HQ_ALL_TAB);
   eventsOrdered_().forEach(function (e) {
     if (String(e.regionId || '') !== reg.regionId) return;
     wanted.push(displayTabName_(String(e.name)));
@@ -7133,56 +7490,60 @@ function plural_(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one 
 function titlesText_(byBook) {
   return Object.keys(byBook).map(function (id) { return bookName_(id) + ' ×' + byBook[id]; }).join(', ');
 }
-/* Stock movements in words: grouped by where they went, with where each came from. */
+/* Stock movements in words, as the log's headline: how many books, what
+   happened, and where — "49 Books Transferred from Poland (Warehouse) to
+   Summer Festival", "12 Books Added to Italy (Warehouse)", "3 Books Subtracted
+   from …". Which titles they were is the entry's dropdown (partsJson_), so it
+   is not repeated here. Transferred = the Transfer protocol; Added and
+   Subtracted = Add Stock (and closing counts). */
+function booksN_(n) { return n + ' Book' + (n === 1 ? '' : 's'); }
+function namesList_(names) {
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
 function movesText_(moves) {
-  var adds = moves.filter(function (m) { return m.kind === 'ADJUST'; });
-  var xfers = moves.filter(function (m) { return m.kind === 'TRANSFER'; });
   var out = [];
-  var byLoc = {};
-  adds.forEach(function (m) { (byLoc[m.to] = byLoc[m.to] || []).push(m); });
-  Object.keys(byLoc).forEach(function (loc) {
-    var up = {}, down = {};
-    byLoc[loc].forEach(function (m) { if (m.qty > 0) up[m.bookId] = (up[m.bookId] || 0) + m.qty;
-                                      else down[m.bookId] = (down[m.bookId] || 0) - m.qty; });
-    var bits = [];
-    if (Object.keys(up).length) bits.push('added ' + titlesText_(up));
-    if (Object.keys(down).length) bits.push('removed ' + titlesText_(down));
-    out.push(bits.join(' and ') + ' at ' + locLabel_(loc));
+  var byLoc = {}, locOrder = [];
+  moves.filter(function (m) { return m.kind === 'ADJUST'; }).forEach(function (m) {
+    if (!byLoc[m.to]) { byLoc[m.to] = { up: 0, down: 0 }; locOrder.push(m.to); }
+    if (m.qty > 0) byLoc[m.to].up += m.qty; else byLoc[m.to].down -= m.qty;
   });
-  var byTo = {};
-  xfers.forEach(function (m) { (byTo[m.to] = byTo[m.to] || []).push(m); });
-  Object.keys(byTo).forEach(function (to) {
-    var total = 0, from = {}, books = {};
-    byTo[to].forEach(function (m) {
-      total += m.qty; from[m.from] = (from[m.from] || 0) + m.qty; books[m.bookId] = (books[m.bookId] || 0) + m.qty;
+  locOrder.forEach(function (loc) {
+    if (byLoc[loc].up) out.push(booksN_(byLoc[loc].up) + ' Added to ' + locLabel_(loc));
+    if (byLoc[loc].down) out.push(booksN_(byLoc[loc].down) + ' Subtracted from ' + locLabel_(loc));
+  });
+  var xfers = moves.filter(function (m) { return m.kind === 'TRANSFER'; });
+  if (xfers.length) {
+    var total = 0, froms = [], tos = [];
+    xfers.forEach(function (m) {
+      total += m.qty;
+      if (froms.indexOf(m.from) < 0) froms.push(m.from);
+      if (tos.indexOf(m.to) < 0) tos.push(m.to);
     });
-    var froms = Object.keys(from);
-    var src = froms.length === 1 ? locLabel_(froms[0])
-      : froms.map(function (f) { return locLabel_(f) + ' ' + from[f]; }).join(', ');
-    out.push(plural_(total, 'book') + ' transferred (' + titlesText_(books) + ') from ' + src + ' → ' + locLabel_(to));
-  });
-  var s = out.join('; ');
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    out.push(booksN_(total) + ' Transferred from ' + namesList_(froms.map(locLabel_)) + ' to ' + namesList_(tos.map(locLabel_)));
+  }
+  return out.join('; ');
 }
 
-/* The lines inside an entry: one per title, gathering every movement of that
-   title (a title may have come from several shelves). Only when there is more
-   than one title — a single title is the entry itself. */
+/* The entry's dropdown: one line per title — just the title and how many.
+   Where they went is already the headline. */
 function partsJson_(moves) {
   var by = {}, order = [];
   moves.forEach(function (m) {
     if (!by[m.bookId]) { by[m.bookId] = []; order.push(m.bookId); }
     by[m.bookId].push(m);
   });
-  if (order.length < 2) return '';
+  if (!order.length) return '';
   return JSON.stringify(order.map(function (b) {
     var ms = by[b], n = ms.reduce(function (t, m) { return t + Math.abs(m.qty); }, 0);
-    var tos = {}; ms.forEach(function (m) { tos[m.to] = 1; });
-    var kind = ms[0].kind === 'ADJUST' ? (ms[0].qty > 0 ? 'added' : 'removed') : 'transferred';
-    return { id: 'b:' + b, ids: ms.map(function (m) { return m.id; }),
-             text: bookName_(b) + ' ×' + n + ' ' + kind + (kind === 'transferred'
-               ? ' → ' + Object.keys(tos).map(locLabel_).join(', ') : ' at ' + Object.keys(tos).map(locLabel_).join(', ')) };
+    return { id: 'b:' + b, ids: ms.map(function (m) { return m.id; }), text: bookName_(b) + ' ×' + n };
   }));
+}
+/* A line written before b197 ("Sri Radha ×6 transferred → Festival"), trimmed
+   to the same title-and-count. */
+function partText_(t) {
+  var m = String(t || '').match(/^(.*? ×\d+)(?: (?:transferred|added|removed)\b[\s\S]*)?$/);
+  return m ? m[1] : String(t || '');
 }
 
 /* One movement in words, for the lines inside a multi-line entry. */
@@ -7382,7 +7743,7 @@ function activityList_(who, seasonId) {
     if (!mine) return;
     if (who.role !== 'admin' && regions.indexOf(String(who.regionId)) < 0) return;
     out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''),
-      text: String(r.text || ''), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
+      text: stockEntryText_(r), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
       moves: String(r.moves || '').split(',').filter(Boolean),
       canUndo: !!String(r.undo || '') && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || ''),
       parts: (function () {
@@ -7392,7 +7753,7 @@ function activityList_(who, seasonId) {
            the movements still on record, so every transfer gets its dropdown. */
         var ids = String(r.moves || '').split(',').filter(Boolean);
         var older = !list.length || list.some(function (x) { return !x.ids; });
-        if (older && ids.length > 1 && String(r.undo || '').indexOf('"moves"') >= 0) {
+        if (older && ids.length >= 1 && String(r.undo || '').indexOf('"moves"') >= 0) {
           var rec = movesById_();
           var ms = ids.map(function (i) { return rec[i]; }).filter(Boolean);
           var rebuilt = ms.length ? partsJson_(ms) : '';
@@ -7402,13 +7763,32 @@ function activityList_(who, seasonId) {
             list.forEach(function (x) { if (x.ids.every(function (i) { return gone.indexOf(i) >= 0 || !rec[i]; })) gone.push(x.id); });
           }
         }
-        return list.map(function (x) { return { id: String(x.id), text: String(x.text), ids: (x.ids || []).map(String),
+        return list.map(function (x) { return { id: String(x.id), text: partText_(x.text), ids: (x.ids || []).map(String),
                                                 undone: gone.indexOf(String(x.id)) >= 0 }; });
       })(),
       // What kind of undo it is, so the app can show a stock undo straight away.
       undoType: (function () { try { return (JSON.parse(String(r.undo || '')) || {}).type || ''; } catch (e) { return ''; } })() });
   });
   return out.reverse().slice(0, 1500);
+}
+
+/* A stock entry's headline in today's words, however long ago it was written:
+   rebuilt from its movements while they are all still on record, keeping any
+   note that was typed with it. Other entries read as they were written. */
+var STOCK_ENTRY_ACTIONS_ = { adjustStockBulk: 1, setStockBulk: 1, transferBulk: 1, transferMulti: 1,
+                             transferExternal: 1, seasonTransfer: 1, sendShipment: 1 };
+function stockEntryText_(r) {
+  var text = String(r.text || '');
+  if (!STOCK_ENTRY_ACTIONS_[String(r.action)] || String(r.undo || '').indexOf('"moves"') < 0) return text;
+  var ids = String(r.moves || '').split(',').filter(Boolean);
+  if (!ids.length) return text;
+  var rec = movesById_();
+  var ms = ids.map(function (i) { return rec[i]; });
+  if (ms.some(function (m) { return !m; })) return text;       // partly undone: as written
+  var mv = movesText_(ms);
+  if (!mv) return text;
+  var note = text.match(/ — “[\s\S]*”$/);
+  return mv + (note ? note[0] : '');
 }
 
 /* The movement record by id, in the shape the log uses — read once per request. */

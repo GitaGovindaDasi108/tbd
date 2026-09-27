@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b196**.
+Handover notes. Current build: **b197**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -631,6 +631,91 @@ Not done yet:
   sales use the frozen ones).
 - HQ's Totals by Payment Type still says "tap a type to see it event by
   event", though HQ has no events.
+
+## Done in b197
+
+- **Activity log, cleaned up.** A stock entry's headline is now just the
+  count, what happened and where: "49 Books Transferred from Poland
+  (Warehouse) to Summer Festival" (the Transfer protocol), "12 Books Added
+  to …" or "3 Books Subtracted from …" (Add Stock, and closing counts).
+  Every such entry has a dropdown ("▸ 3 titles") holding only the
+  breakdown, "Sri Radha (English) ×6" — no places, which are in the
+  headline. Older entries are reworded the same way when the log is read,
+  while their movements are all still on record (`stockEntryText_`,
+  `partText_`). Per-line Delete appears only when there is more than one
+  title.
+- **A new spreadsheet starts empty** (book catalogue and one season,
+  "First Season"). It used to create a region named "Poland" with Polish
+  prices, the original contact list and three personal payment codes. A
+  first region is still made to adopt data from before regions existed,
+  if there is any. The tests' sample tour ("Europe Tour" › "Poland",
+  warehouse `WAREHOUSE`) now lives in `test/mini.js` (`sampleTour`);
+  `test/fresh.js` checks a bare start. The corpora were re-recorded.
+- **WhatsApp 📋 on the Summaries Portal**, per section, reporting over
+  every season ("— BY SEASON (after costs) —").
+- **📋 Copy Saved Wording** (admin, once anything has been rewritten): the
+  rewritten wording as text, to be built into the app so your words become
+  its own and the stored copies are cleared. (The running app cannot
+  rewrite its own files; the owner allowed reading the wording from the
+  live app, but this environment's network blocks script.google.com.)
+
+## Done in b198 — dollars from the truth
+
+Local amounts never change; only their dollar value can. Every dollar figure
+— tiles, Collections by Region, Collections by Payment, the WhatsApp report,
+the Summaries Portal at HQ, and the spreadsheets — now counts, in order:
+
+1. **dollars actually received**, where entered on the sale (`usdActual`);
+2. **a closed region's rates**, frozen the day it closed;
+3. **a closed season's rates** (as before: `getRates_` returns them);
+4. **today's rates**, an estimate.
+
+Costs follow 2–4 by their place. Details:
+- `doCloseLocation` (kind region) stores `frozenRates` on the region row
+  (`freezeRegionRates_`: only the currencies the region used, and only if
+  every one has a rate — never frozen offline). Reopening clears it.
+- Regions closed before b198 are filled in by the background sync
+  (`backfillRegionRates_`, at most hourly, five at a time): the ECB rate of
+  the closing day from Frankfurter's history; a currency the ECB does not
+  publish (e.g. MKD) takes the rate of the day it is filled in.
+- Server: `ratesForLoc_`, `toUsdAt_`, `saleFactor_`, `legTruthUsd_`,
+  `costUsd_`. `legsUsd_`/`dueUsd_` go through them, and each per-currency or
+  per-payment-type dollar column adds up leg by leg. The spreadsheets had
+  never honoured dollars received; now they do (golden differs there, and
+  only there — checked by switching `saleFactor_` off). A closed region's
+  sheet says "Exchange rates — FROZEN when this region closed"; a closed
+  season's no longer says "OFFLINE FALLBACK".
+- App: `state.regions[].rates` (closed regions only) and
+  `everywhere.regions[].rates`. `toUSDAt`, `ratesAt`, `hasTruth`, `saleEst`,
+  `costTruthAdj`; `saleUsd`, `usdActualAdj` and the payments factor use them.
+  At HQ, `rollupState` gives `locFx` (place → region-frozen, else
+  season-frozen rates) in place of the old per-sale `usdActual` injection,
+  so costs are right there too. The "received" badges still mean only
+  dollars actually entered (`hasUsdActual`).
+- Tests: `truthusd.js` (server: freeze, reopen, backfill, spreadsheets),
+  `truthclient.js` (app and HQ). `mini.js` gains `run(src)`.
+
+## Done in b199 — the Earthly HQ spreadsheet
+
+- **One file, "0 — Earthly HQ — Book Sales"**, at the top of the Drive
+  folder (not in a season's), made once HQ has been opened in the app
+  (`regionSpreadsheet_(HQ_REGION)`, meta key `regionSheetId:rg_hq`).
+- **First tab, "All Seasons"** (`renderHQSheet_`) — the Summaries Portal as
+  a sheet, a column per season plus Earthly HQ and a Total: a headline
+  (collected, donations, pending, costs, net), Total Sales by Title,
+  Collections by Season (currencies, then collected / costs / net in
+  dollars), Sales by Season, Collections by Payment Type (dollars) and the
+  Seasonal Warehouse Overview. Dollars follow the truth (b198); for sales in
+  a closed season `toUsdAt_` now falls back to that season's frozen rates
+  (`seasonFxMap_`, `truthFxForLoc_`), which is what lets HQ count every
+  season at once.
+- **Then HQ's own tabs**, exactly as for a region: Summary and
+  "Earthly HQ — Warehouse Sales".
+- **Kept current by the usual sync.** In the background HQ is one more
+  group after the seasons, redrawn whenever anything was redrawn; a manual
+  Sync sheet in a season refreshes it too; Sync sheet at HQ builds it.
+- Listed under "Earthly HQ" in the Spreadsheet folders map.
+- Test: `hqsheet.js`.
 
 ## Open items
 

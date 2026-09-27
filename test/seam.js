@@ -17,7 +17,7 @@ const BACKEND = ['STORE_', 'KV_', 'getSheet_', 'sheetsPrepare_', 'hideDataSheets
 // Building and filing the readable spreadsheets. Sheets and Drive, never the data sheets.
 const REPORTS = ['checkDriveAccess', 'removeStaleTabs_', 'openOrCreateSheetFile_', 'driveRoot_', 'chosenFolder_',
   'driveMap_', 'doSetSeasonFolder', 'placeInFolder_', 'doDescriptionsSheet', 'doSetDriveFolder', 'syncSheets',
-  'paintSheet_', 'renderPartnerSheet_', 'renderSeasonSheet_', 'renderView_', 'orderTabs_', 'removeStaleRegionTabs_',
+  'paintSheet_', 'renderPartnerSheet_', 'renderSeasonSheet_', 'renderHQSheet_', 'renderView_', 'orderTabs_', 'removeStaleRegionTabs_',
   // A renamed or deleted event's old readable tab is removed on the spot.
   'doRenameEvent', 'doDeleteEvent'];
 

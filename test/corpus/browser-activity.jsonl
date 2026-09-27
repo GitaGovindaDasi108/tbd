@@ -1,34 +1,34 @@
 {"__init":1}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_yoga","name":"Yoga Studio","regionId":"rg_it"}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":5}],"override":true,"note":"carton from the printer"}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"wh_it","items":[{"bookId":"sr_en","delta":8}],"override":true}
-{"season":"sn_paaaaa","action":"saveCost","id":"cost_ab12","amt":12,"cur":"PLN","category":"Bank fee","location":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"renameEvent","eventId":"ev_fest","name":"Summer Festival"}
-{"season":"sn_paaaaa","action":"sell","location":"WAREHOUSE","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"override":true}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_yoga","name":"Yoga Studio","regionId":"rg_it"}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":5}],"override":true,"note":"carton from the printer"}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"wh_it","items":[{"bookId":"sr_en","delta":8}],"override":true}
+{"season":"sn_baaaaa","action":"saveCost","id":"cost_ab12","amt":12,"cur":"PLN","category":"Bank fee","location":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"renameEvent","eventId":"ev_fest","name":"Summer Festival"}
+{"season":"sn_baaaaa","action":"sell","location":"WAREHOUSE","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"override":true}
 {"action":"setKey","kind":"region","id":"rg_it"}
 {"action":"getState"}
-{"action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":6}],"note":"","movePrefix":"Mmujh72lvbj0","season":"sn_paaaaa","opId":"opmujh72lv_1_bkbtsb"}
-{"season":"sn_paaaaa","action":"getState"}
-{"season":"sn_paaaaa","action":"activity"}
-{"action":"undoActivity","id":"Araaaaasaaa","opId":"opmujh762r_2_ee623m","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"undoActivity","id":"Ahaaaaaiaaa","opId":"opmujh77nl_3_3qvz08","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"activity"}
+{"action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":6}],"note":"","movePrefix":"Mmujo7k3cw4x","season":"sn_baaaaa","opId":"opmujo7k3d_1_0mwu1m"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","action":"activity"}
+{"action":"undoActivity","id":"Adaaaaaeaaa","opId":"opmujo7nh1_2_qer0lz","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"undoActivity","id":"Ataaaaauaaa","opId":"opmujo7p1g_3_8prrcl","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"season":"sn_baaaaa","action":"activity"}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"activity"}
-{"k":"knaaaaaoaaa","by":"","action":"getState"}
-{"k":"knaaaaaoaaa","by":"Tester","action":"activity"}
-{"action":"activity","season":"sn_paaaaa"}
-{"action":"undoActivity","k":"knaaaaaoaaa","id":"Afaaaaagaaa"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"undoActivity","k":"knaaaaaoaaa","id":"Abaaaaacaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"k":"kzaaaaaaaaa","by":"","action":"getState"}
+{"k":"kzaaaaaaaaa","by":"Tester","action":"activity"}
+{"action":"activity","season":"sn_baaaaa"}
+{"action":"undoActivity","k":"kzaaaaaaaaa","id":"Araaaaasaaa"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"undoActivity","k":"kzaaaaaaaaa","id":"Anaaaaaoaaa"}

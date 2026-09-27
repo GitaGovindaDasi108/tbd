@@ -1,22 +1,22 @@
 {"__init":1}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":10},{"bookId":"ea_en","delta":20}],"override":true}
-{"season":"sn_paaaaa","action":"sendShipment","mode":"devotee","fromRegion":"OUTSIDE","toRegion":"rg_naaaaa","toLoc":"WAREHOUSE","shipId":"sh_out1","carrier":"Narada","origin":"the prnter","items":[{"bookId":"sr_en","qty":7}]}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":10},{"bookId":"ea_en","delta":20}],"override":true}
+{"season":"sn_baaaaa","action":"sendShipment","mode":"devotee","fromRegion":"OUTSIDE","toRegion":"rg_poland","toLoc":"WAREHOUSE","shipId":"sh_out1","carrier":"Narada","origin":"the prnter","items":[{"bookId":"sr_en","qty":7}]}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":2},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":3}],"movePrefix":"Mr5"}
-{"season":"sn_paaaaa","action":"getState"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"activity"}
-{"action":"undoActivity","id":"Afaaaaagaaa","opId":"opmujh744j_1_1jgrm3","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"getState","season":"sn_paaaaa"}
-{"action":"saveLabel","key":"Dialog: Partial Delivery Arrived › # still coming","text":"# on the way","opId":"opmujh79bz_2_ini4kx","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"activity"}
-{"season":"sn_paaaaa","action":"getState"}
-{"action":"saveLabel","key":"Dialog: Activity Log › Checking for the latest…","text":"Looking for anything new","opId":"opmujh7ahn_3_oka47c","season":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"getState"}
-{"season":"sn_paaaaa","wantState":true,"action":"editShipment","shipId":"sh_out1","toRegion":"rg_naaaaa","eta":"","note":"","carrier":"Narada","phone":"","origin":"the printer","opId":"opmujh7dau_4_7zyu58"}
-{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_baaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":2},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":3}],"movePrefix":"Mr5"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","action":"activity"}
+{"season":"sn_baaaaa","action":"activity"}
+{"action":"undoActivity","id":"Araaaaasaaa","opId":"opmujo7k6u_1_5tehgk","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"activity"}
+{"season":"sn_baaaaa","action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"saveLabel","key":"Dialog: Partial Delivery Arrived › # still coming","text":"# on the way","opId":"opmujo7pmd_2_q2y5yx","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","action":"activity"}
+{"action":"saveLabel","key":"Dialog: Activity Log › Checking for the latest…","text":"Looking for anything new","opId":"opmujo7r5e_3_h6pjkg","season":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"getState"}
+{"season":"sn_baaaaa","wantState":true,"action":"editShipment","shipId":"sh_out1","toRegion":"rg_poland","eta":"","note":"","carrier":"Narada","phone":"","origin":"the printer","opId":"opmujo7u5f_4_jtvn5p"}
+{"action":"getState","season":"sn_baaaaa"}
