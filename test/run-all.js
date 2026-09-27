@@ -13,7 +13,7 @@ const root = fs.existsSync(path.join(here, '..', 'index.html'))
 
 const SCRIPTS = ['simtest.js', 'bundle.js', 'chg2.js', 'verify.js',
                  'stale.js', 'createtest.js', 'dutchtest.js', 'reptest.js',
-                 'payusd.js', 'curtest.js', 'nodefault.js', 'fresh.js', 'hq.js', 'hqfrozen.js', 'truthusd.js', 'truthclient.js', 'hqsheet.js', 'seasondel.js', 'seasondelclient.js', 'labelsbuiltin.js', 'seam.js'];
+                 'payusd.js', 'curtest.js', 'nodefault.js', 'fresh.js', 'hq.js', 'hqfrozen.js', 'truthusd.js', 'truthclient.js', 'hqsheet.js', 'seasondel.js', 'seasondelclient.js', 'labelsbuiltin.js', 'auth.js', 'bridge.js', 'seam.js'];
 
 let bad = 0;
 
@@ -57,6 +57,28 @@ for (const s of SCRIPTS) {
         const n = (out.match(/^PASS/gm) || []).length;
         console.log(`OK       golden.js sheets = memory — ${n} recorded sessions`); }
   catch (e) { console.log(`FAIL     golden.js sheets vs memory\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
+}
+/* ...and in SQLite, the Cloudflare server's database, trusting only what is in
+ * the database (its memory emptied before every request). */
+{
+  let out = '';
+  try { out = execFileSync(process.execPath, [path.join(here, 'golden.js'), '--base=WORKTREE', '--store=sqlite'],
+                           { encoding: 'utf8', stdio: 'pipe',
+                             env: Object.assign({}, process.env, { TBS_SQL_COLD: '1', NODE_NO_WARNINGS: '1' }) });
+        const n = (out.match(/^PASS/gm) || []).length;
+        console.log(`OK       golden.js sheets = SQLite — ${n} recorded sessions`); }
+  catch (e) { console.log(`FAIL     golden.js sheets vs SQLite\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
+}
+
+/* The whole Cloudflare server (server/src/core.js) against Google, request by
+ * request, over every recorded session (the spreadsheet work left to Google). */
+{
+  let out = '';
+  try { out = execFileSync(process.execPath, [path.join(here, 'workergolden.js')],
+                           { encoding: 'utf8', stdio: 'pipe', env: Object.assign({}, process.env, { NODE_NO_WARNINGS: '1' }) });
+        const n = (out.match(/^PASS/gm) || []).length;
+        console.log(`OK       workergolden.js Google = Cloudflare — ${n} recorded sessions`); }
+  catch (e) { console.log(`FAIL     workergolden.js Google vs Cloudflare\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
 }
 
 console.log(bad ? `\n${bad} problem(s).` : '\nAll clear.');

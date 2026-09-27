@@ -1,0 +1,4 @@
+node_modules/
+.wrangler/
+src/app.gen.js
+.dev.vars

@@ -1,0 +1,25 @@
+# Transcendental Book Sales — the server on Cloudflare (Phase 2).
+# Free plan: Workers + a SQLite-backed Durable Object. See server/README.md.
+name = "tbs-server"
+main = "src/worker.js"
+compatibility_date = "2025-09-01"
+
+# Settings made in the Cloudflare dashboard (Worker › Settings › Variables and
+# Secrets) survive every deploy. They are, all explained in server/README.md:
+#   GOOGLE_CLIENT_ID  the Google sign-in client id for the owner's app
+#   ADMIN_EMAILS      the Google accounts allowed in, comma separated
+#   REPORT_URL        the Apps Script web app's /exec address (the spreadsheets)
+#   REPORT_SECRET     (a Secret) the text shared with Apps Script as CF_SECRET
+keep_vars = true
+
+[vars]
+# The time zone dates are written in (Apps Script used the script's own).
+TIME_ZONE = "UTC"
+
+[[durable_objects.bindings]]
+name = "TBS"
+class_name = "TbsServer"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TbsServer"]

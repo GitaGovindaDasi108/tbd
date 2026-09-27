@@ -87,9 +87,16 @@ const props = {};
 global.PropertiesService = { getScriptProperties:()=>({
   getProperty:k=>(k in props?props[k]:null), setProperty:(k,v)=>{props[k]=String(v);},
   deleteProperty:k=>{delete props[k];}, getProperties:()=>props }) };
-const _cache = {};
+/* Like Apps Script's cache, things run out: after the seconds given, or ten
+   minutes (at most six hours). */
+const _cache = {}, _cacheExp = {};
+const _cacheLive = k => (k in _cache) && !(_cacheExp[k] <= Date.now());
+const _cachePut = (k, v, secs) => { _cache[k] = v; _cacheExp[k] = Date.now() + 1000 * Math.min(Number(secs) || 600, 21600); };
 global.CacheService = { getScriptCache:()=>({
-  get:k=>(k in _cache?_cache[k]:null), put:(k,v)=>{_cache[k]=v;}, remove:k=>{delete _cache[k];} }) };
+  get:k=>(_cacheLive(k)?_cache[k]:null), put:_cachePut, remove:k=>{delete _cache[k];},
+  getAll:keys=>{ const o={}; keys.forEach(k=>{ if(_cacheLive(k)) o[k]=_cache[k]; }); return o; },
+  putAll:(obj,secs)=>{ Object.keys(obj).forEach(k=>_cachePut(k,obj[k],secs)); },
+  removeAll:keys=>{ keys.forEach(k=>{ delete _cache[k]; }); } }) };
 global.LockService = { getScriptLock:()=>({ tryLock:()=>true, waitLock:()=>true, releaseLock:()=>{} }) };
 global.Utilities = { getUuid:()=>nextId()+nextId(), sleep:()=>{}, formatDate:(d)=>String(d),
   formatString:(f,...a)=>f };
@@ -137,7 +144,20 @@ eval(code);
 
 /* TBS_STORE=memory keeps every record in memory (memstore.js) instead of the
    hidden sheets, through the same two objects Code.gs uses for storage. */
-const __mem = process.env.TBS_STORE === 'memory' ? require('./memstore.js') : null;
+/* TBS_STORE=sqlite keeps them in a SQLite database (server/src/sqlstore.js) —
+   the store the Cloudflare server uses. With TBS_SQL_COLD=1 what it holds in
+   memory is forgotten before every request, so only the database is trusted. */
+const __mem = process.env.TBS_STORE === 'memory' ? require('./memstore.js')
+  : process.env.TBS_STORE === 'sqlite' ? (function () {
+      const { DatabaseSync } = require('node:sqlite');
+      const db = new DatabaseSync(':memory:');
+      const exec = (sql, ...params) => {
+        const st = db.prepare(sql);
+        return /^\s*select/i.test(sql) ? st.all(...params) : (st.run(...params), []);
+      };
+      return require(__path.join(__dirname, '..', 'server', 'src', 'sqlstore.js')).makeSqlStore(exec);
+    })()
+  : null;
 if (__mem) { STORE_ = __mem.store; KV_ = __mem.kv; }
 
 /* TBS_RECORD=/path/file.jsonl writes every request, in order, one per line.
@@ -159,6 +179,7 @@ function sampleTour(){
 }
 function call(params){
   if(__rec) __fs.appendFileSync(__rec, JSON.stringify(params) + '\n');
+  if(__mem && __mem.forget && process.env.TBS_SQL_COLD) __mem.forget();
   const e = { postData:{ contents: JSON.stringify(params) } };
   const out = handle(e);
   try { return JSON.parse(out.getContent()); }
@@ -170,7 +191,9 @@ module.exports = {
   label:l=>locLabel_(l),
   sync:f=>{ if(__rec) __fs.appendFileSync(__rec, JSON.stringify({__sync:!!f})+'\n'); return syncSheets(f); },
   cash:(a,c)=>cashCollected_(a,c), tour:()=>tourSales_(),
-  clear:()=>{ sheetMemoClear_(); cacheClear_(); },
+  // As after a save: forget what was read, and move the revision on so no saved
+  // copy of the state is served (tests use it after editing the data directly).
+  clear:()=>{ sheetMemoClear_(); cacheClear_(); bumpRev_(); },
   sheet:n=>active.getSheetByName(n),
   floatOut:l=>floatOutstanding_(l), bal:(a,c)=>cashBalance_(a,c),
   pay:l=>payTypesFor_(l),

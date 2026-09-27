@@ -218,7 +218,13 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b202';
+var SERVER_BUILD = 'b204';
+
+/* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
+   server (server/, Phase 2) the records live in its database and the
+   spreadsheets are still made by Google, so it sets this false: nothing that
+   builds or tidies a spreadsheet runs there. */
+var REPORTS_HERE_ = true;
 
 function doPost(e) { return handle(e); }
 
@@ -250,6 +256,9 @@ function handle(e) {
       params = e.parameter;
     }
     var action = params.action || 'getState';
+
+    // The Cloudflare server passing on a spreadsheet request (Phase 2).
+    if (params.cfForward && !MIRROR_) return raw(cfForwarded_(params));
 
     /* Already done? Hand back the same answer instead of repeating the work. */
     var prior = opSeen_(params.opId);
@@ -343,6 +352,11 @@ function handle(e) {
       return raw('{"ok":true,"done":' + (done ? 'true' : 'false') + '}');
     }
 
+    // Spreadsheet work is Google's (see REPORTS_HERE_).
+    if (!REPORTS_HERE_ && /^(driveMap|syncSheets|setDriveFolder|setSeasonFolder|descriptionsSheet)$/.test(action)) {
+      throw new Error('The spreadsheets are looked after by Google — this is not available here yet.');
+    }
+
     // ---- Where every spreadsheet is filed (read-only; owner only). ----
     if (action === 'driveMap') {
       if (who.role !== 'admin') throw new Error('That action is not available on this link.');
@@ -376,7 +390,7 @@ function handle(e) {
       ensureReady();
       retireBuiltInLabels_();
       // Leftovers of deleted seasons and regions, cleared on the next save too.
-      if (!tempGet_('orphan_sweep')) { tempPut_('orphan_sweep', '1', 3600); try { purgeOrphans_(); } catch (e) {} }
+      if (!MIRROR_ && !tempGet_('orphan_sweep')) { tempPut_('orphan_sweep', '1', 3600); try { purgeOrphans_(); } catch (e) {} }
       activityBefore_(action, params);
       switch (action) {
         case 'undoActivity':     result = doUndoActivity(params, who); break;
@@ -3006,6 +3020,7 @@ function tempDel_(k) { try { KV_.delTemp(k); } catch (e) {} }
    spreadsheet. Row i of a table is sheet row i + 2 (row 1 holds the column
    names). Replacing STORE_ and KV_ moves the data somewhere else. */
 var STORE_ = {
+  isSheets: true,                        // (the Sheets-only repairs check this)
   has: function (t) { return !!getSheet_(t); },
   read: function (t) {
     var sh = getSheet_(t);
@@ -3090,6 +3105,7 @@ function getSheet_(name) { return SpreadsheetApp.getActive().getSheetByName(name
    (Sheets reads a leading "+" as a formula and eats the country code), and
    every data sheet hidden. A database has neither problem. */
 function sheetsPrepare_() {
+  if (!STORE_.isSheets) return;          // a Sheets repair; a database needs none
   [['_sales', 'phone'], ['_org', 'phone'], ['_holders', 'phone']].forEach(function (pair) {
     var sh = getSheet_(pair[0]);
     if (!sh) return;
@@ -3099,6 +3115,7 @@ function sheetsPrepare_() {
   });
 }
 function hideDataSheets_() {
+  if (!STORE_.isSheets) return;          // a Sheets repair; a database needs none
   ['_meta','_seasons','_books','_custombooks','_partners','_payouts','_costs','_change','_labels','_qr','_holders','_shipments','_regions','_prices','_events','_inventory','_sales','_cash','_org','_stockmoves'].forEach(function (n) {
     var sh = getSheet_(n);
     if (sh && !sh.isSheetHidden()) sh.hideSheet();
@@ -3116,6 +3133,7 @@ function hideDataSheets_() {
    and vanished — a partial payment's balance silently became zero. Rewriting
    the row puts the names back over their own data and recovers those records. */
 function migrateSales_() {
+  if (!STORE_.isSheets) return;          // a Sheets repair; a database needs none
   var sh = getSheet_('_sales');
   if (!sh) return;                      // not stored in sheets
   var width = Math.max(sh.getLastColumn(), SALES_HEADERS.length);
@@ -3903,12 +3921,12 @@ var _presetDirty = null, _syncStarted = 0;
 function syncEverySeason_() {
   /* Now and then, fill in the frozen rates of regions that closed before they
      were kept. At most once an hour, and only when nobody is saving. */
-  if (!tempGet_('orphan_sweep')) {
+  if (!MIRROR_ && !tempGet_('orphan_sweep')) {
     tempPut_('orphan_sweep', '1', 3600);
     var ol = LockService.getScriptLock();
     if (ol.tryLock(1000)) { try { purgeOrphans_(); } catch (e) {} finally { ol.releaseLock(); } }
   }
-  if (!tempGet_('fx_backfill')) {
+  if (!MIRROR_ && !tempGet_('fx_backfill')) {
     tempPut_('fx_backfill', '1', 3600);
     var bl = LockService.getScriptLock();
     if (bl.tryLock(1000)) { try { backfillRegionRates_(); } catch (e) {} finally { bl.releaseLock(); } }
@@ -3960,6 +3978,9 @@ function syncSheets(force) {
      rebuild of every spreadsheet, every minute, skipping the wait-until-quiet
      rule meant to keep it out of the way of your saves. */
   force = (force === true);
+  /* Connected to the Cloudflare server: the records live there, and the
+     spreadsheets are drawn from a copy of them (see cfTick_). */
+  if (!MIRROR_ && cfConfig_()) return cfTick_(force);
   if (!force && !_presetDirty) return syncEverySeason_();
 
   flushStockMoves_();                    // nothing left waiting before we render
@@ -4109,6 +4130,135 @@ function syncSheets(force) {
   } finally {
     tempDel_('tbs_rendering');
   }
+}
+
+/* ============ PHASE 2: THE SPREADSHEETS, FOR THE CLOUDFLARE SERVER ============
+
+   Once the records move to the Cloudflare server (server/), this script
+   still builds the readable spreadsheets, with exactly the same code: it asks
+   the server for a copy of the records, holds it in memory in place of the
+   hidden sheets (MIRROR_), draws, and sends back only what it learned — the
+   spreadsheet and folder ids, the Activity Log lines of spreadsheet actions,
+   the last error, and any place it could not finish. See server/src/core.js,
+   "the bridge", for the other side.
+
+   Connected by two Script Properties (Project Settings › Script properties):
+     CF_URL     the Cloudflare server's address
+     CF_SECRET  the same secret the server was given as REPORT_SECRET
+   With neither set, nothing here runs and the app works on the sheets as ever. */
+var MIRROR_ = false;
+
+function cfConfig_() {
+  var url = String(propGet_('CF_URL') || ''), secret = String(propGet_('CF_SECRET') || '');
+  return (url && secret) ? { url: url, secret: secret } : null;
+}
+function cfCall_(cfg, body) {
+  var resp = UrlFetchApp.fetch(cfg.url, { method: 'post', contentType: 'text/plain', muteHttpExceptions: true,
+    payload: JSON.stringify(Object.assign({ secret: cfg.secret }, body)) });
+  var d = JSON.parse(resp.getContentText());
+  if (!d.ok) throw new Error('Cloudflare server: ' + (d.error || 'refused'));
+  return d.result;
+}
+
+/* A table store over the copy, in memory — the same contract as STORE_. */
+function cfDecode_(v) {
+  return (v && typeof v === 'object' && '$d' in v) ? (v.$d === null ? new Date(NaN) : new Date(v.$d)) : v;
+}
+function cfEncode_(v) {
+  if (v instanceof Date) return { $d: isNaN(v) ? null : v.toISOString() };
+  return (v === null || v === undefined) ? '' : v;
+}
+function mirrorStore_(tables) {
+  var t = {};
+  Object.keys(tables || {}).forEach(function (n) {
+    t[n] = { cols: tables[n].cols.slice(), rows: tables[n].rows.map(function (r) { return r.map(cfDecode_); }) };
+  });
+  var pad = function (row, n) { var r = row.slice(); while (r.length < n) r.push(''); return r; };
+  return {
+    tables: t,
+    has: function (n) { return !!t[n]; },
+    read: function (n) { return { cols: t[n].cols.slice(), rows: t[n].rows.map(function (r) { return r.slice(); }) }; },
+    create: function (n, cols) { t[n] = { cols: cols.slice(), rows: [] }; },
+    addCols: function (n, cols) { t[n].cols = t[n].cols.concat(cols); t[n].rows = t[n].rows.map(function (r) { return pad(r, t[n].cols.length); }); },
+    append: function (n, arrays) { arrays.forEach(function (a) { t[n].rows.push(pad(a, t[n].cols.length)); }); },
+    setCells: function (n, edits) { edits.forEach(function (e) { Object.keys(e.cells).forEach(function (c) { t[n].rows[e.i][Number(c)] = e.cells[c]; }); }); },
+    removeRows: function (n, idx) { idx.slice().sort(function (a, b) { return b - a; }).forEach(function (i) { t[n].rows.splice(i, 1); }); },
+    rewrite: function (n, cols, arrays) { t[n] = { cols: cols.slice(), rows: arrays.map(function (a) { return pad(a, cols.length); }) }; }
+  };
+}
+
+/* Run fn with the server's copy in place of the hidden sheets; returns fn's
+   answer and what to send back. */
+function withMirror_(ex, fn) {
+  var saved = { store: STORE_, kv: KV_ };
+  var props = {}; Object.keys(ex.props || {}).forEach(function (k) { props[k] = String(ex.props[k]); });
+  var metaBefore = {}, actBefore = {};
+  var mirror = mirrorStore_(ex.tables);
+  if (mirror.has('_meta')) {
+    var mc = mirror.tables._meta.cols, ki = mc.indexOf('key'), vi = mc.indexOf('value');
+    mirror.tables._meta.rows.forEach(function (r) { metaBefore[String(r[ki])] = String(r[vi]); });
+  }
+  STORE_ = mirror;
+  KV_ = {
+    getProp: function (k) { return Object.prototype.hasOwnProperty.call(props, k) ? props[k] : null; },
+    setProp: function (k, v) { props[k] = String(v); },
+    delProp: function (k) { delete props[k]; },
+    allProps: function () { return Object.assign({}, props); },
+    // Short-lived memory stays this script's own.
+    getTemp: saved.kv.getTemp, putTemp: saved.kv.putTemp, delTemp: saved.kv.delTemp,
+    getTempAll: saved.kv.getTempAll, putTempAll: saved.kv.putTempAll, delTempAll: saved.kv.delTempAll
+  };
+  MIRROR_ = true;
+  sheetMemoClear_(); fileMemoClear_(); _priceMemo = null;
+  var out, back;
+  try {
+    if (mirror.has('_activity')) objectsOf_('_activity').forEach(function (r) { actBefore[String(r.id)] = 1; });
+    out = fn();
+    flushStockMoves_();
+    var meta = {};
+    if (mirror.has('_meta')) objectsOf_('_meta').forEach(function (r) {
+      var k = String(r.key); if (k && metaBefore[k] !== String(r.value)) meta[k] = String(r.value);
+    });
+    var activity = [];
+    if (mirror.has('_activity')) {
+      var cols = mirror.tables._activity.cols;
+      mirror.tables._activity.rows.forEach(function (r) {
+        var o = {}; cols.forEach(function (c, i) { if (c) o[c] = cfEncode_(r[i]); });
+        if (o.id && !actBefore[String(o.id)]) activity.push(o);
+      });
+    }
+    var failed = {}; try { failed = JSON.parse(props.dirtyLocs || '{}'); } catch (e) {}
+    back = { claim: ex.claim || '', meta: meta, activity: activity, failed: failed,
+             props: { lastRenderError: props.lastRenderError || '' } };
+  } finally {
+    STORE_ = saved.store; KV_ = saved.kv; MIRROR_ = false;
+    sheetMemoClear_(); fileMemoClear_(); _priceMemo = null;
+  }
+  return { out: out, back: back };
+}
+
+/* The minute trigger, and "Sync sheet", when connected: draw what the server
+   says needs drawing (or everything, for Sync sheet), and report back. */
+function cfTick_(force) {
+  var cfg = cfConfig_();
+  var ex = cfCall_(cfg, { action: 'reportExport', mode: force ? 'sync' : 'tick' });
+  if (ex.idle) return;
+  var r = withMirror_(ex, function () { return force ? syncSheets(true) : syncEverySeason_(); });
+  cfCall_(cfg, { action: 'reportWriteBack', back: r.back });
+}
+
+/* A spreadsheet request from the app, passed on by the server with the shared
+   secret: done here on a fresh copy, answered as the app expects. */
+function cfForwarded_(p) {
+  var cfg = cfConfig_();
+  if (!cfg || String(p.secret || '') !== cfg.secret) return JSON.stringify({ ok: false, error: 'Not allowed.' });
+  var inner = p.params || {};
+  var ex = cfCall_(cfg, { action: 'reportExport', mode: inner.action === 'syncSheets' ? 'sync' : 'forward' });
+  var r = withMirror_(ex, function () {
+    return handle({ postData: { contents: JSON.stringify(inner) } }).getContent();
+  });
+  cfCall_(cfg, { action: 'reportWriteBack', back: r.back });
+  return r.out;
 }
 
 /* ============================ ACTION HANDLERS ============================ */
@@ -5611,9 +5761,11 @@ function doRenameEvent(p) {
   var oldName = '';
   objectsOf_('_events').forEach(function (e) { if (String(e.eventId) === eventId) oldName = String(e.name); });
   dbUpdate_('_events', { eventId: eventId }, { name: name });
-  var ss = SpreadsheetApp.getActive();
-  var old = ss.getSheetByName(displayTabName_(oldName));
-  if (old) ss.deleteSheet(old);
+  if (REPORTS_HERE_) {
+    var ss = SpreadsheetApp.getActive();
+    var old = ss.getSheetByName(displayTabName_(oldName));
+    if (old) ss.deleteSheet(old);
+  }
   markDirty_(eventId);
 }
 
@@ -5658,7 +5810,7 @@ function doDeleteEvent(p) {
   dbDelete_('_sales', { location: eventId });
 
   // The tab lives in that region's own spreadsheet.
-  try {
+  if (REPORTS_HERE_) try {
     var ss = evReg ? regionSpreadsheet_(evReg.regionId) : SpreadsheetApp.getActive();
     var tab = ss.getSheetByName(displayTabName_(ev.name));
     if (tab) ss.deleteSheet(tab);

@@ -653,7 +653,7 @@ Not done yet:
   `test/fresh.js` checks a bare start. The corpora were re-recorded.
 - **WhatsApp 📋 on the Summaries Portal**, per section, reporting over
   every season ("— BY SEASON (after costs) —").
-- **📋 Copy Saved Wording** (admin, once anything has been rewritten): the
+- (Removed in b203.) **📋 Copy Saved Wording** (admin, once anything has been rewritten): the
   rewritten wording as text, to be built into the app so your words become
   its own and the stored copies are cleared. (The running app cannot
   rewrite its own files; the owner allowed reading the wording from the
@@ -770,6 +770,45 @@ Costs follow 2–4 by their place. Details:
   on the first save of each hour as well as in the background sync.
 - Test: added to `seasondel.js`.
 
+## Done in b204 — Moving off Google Sheets, phase 2: the server on Cloudflare
+
+Nothing switches yet; the app still talks to Google. See `server/README.md`
+(owner's set-up steps included).
+
+- **`server/`** runs Code.gs unchanged on Cloudflare. `build.cjs` wraps it as
+  a module (Cloudflare forbids building code from text); `src/google.js`
+  stands in for Utilities/ContentService/LockService/UrlFetchApp (rates are
+  fetched ahead and served from memory; anything missing is fetched after
+  the reply); `src/sqlstore.js` is `STORE_`/`KV_` on the Durable Object's
+  synchronous SQLite (rows as JSON, dates as `{"$d":…}`, held in memory as
+  the only writer). One Durable Object, `main`, answers every request in
+  turn — the script lock's job. A new database is set up on first start.
+  Hourly alarm: leftovers sweep, closed-region rates, expired sessions.
+- **Code.gs**: `REPORTS_HERE_` (false on Cloudflare) keeps spreadsheet work
+  off the server; the Sheets-only repairs skip themselves off Sheets
+  (`STORE_.isSheets`); spreadsheet actions are refused there if they ever
+  arrive unforwarded.
+- **Sign-in** (`src/auth.js`): the owner's app signs in with Google (ID
+  token checked: signature, audience, expiry, confirmed email,
+  `ADMIN_EMAILS`) and gets a 90-day session renewed while used. Links are
+  untouched. The page shows the sign-in screen only when config.js has
+  `GOOGLE_CLIENT_ID`; saves made while signed out are kept and resent.
+- **Spreadsheets stay with Google** through a bridge (core.js
+  `bridge`/`forwardToGoogle`; Code.gs `withMirror_`, `cfTick_`,
+  `cfForwarded_`): Apps Script asks for a copy of the records, draws from it
+  in memory with the same code, and writes back only what it learned
+  (`_meta` changes, spreadsheet actions' Activity lines, `lastRenderError`,
+  places it could not finish). Places to redraw are claimed, and given back
+  after 15 minutes if a run never reports. "Sync sheet", "Spreadsheet
+  folders" and friends are forwarded by the server to Apps Script.
+- **Deploy**: `.github/workflows/deploy-server.yml` checks and deploys on
+  merge once `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ACCOUNT_ID` are set.
+- **Tests**: `workergolden.js` (every session through the whole server vs
+  Google: identical), golden `--store=sqlite` with `TBS_SQL_COLD=1`,
+  `auth.js`, `bridge.js`, `browser-cloudflare.js` (real page, Cloudflare's
+  runtime via `wrangler dev`). The test stand-ins for Google's cache now
+  expire things as Apps Script does; `m.clear()` also moves the revision on.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
@@ -789,17 +828,13 @@ Costs follow 2–4 by their place. Details:
    - **Reports:** the readable spreadsheets stay. A slimmed Apps Script keeps
      building them, reading from the new server every few minutes.
 
-   Plan: **phase 1** (b192, done) — the data store. **Phase 2** — the same
-   `Code.gs` rules running on a Cloudflare Worker with a D1 `STORE_`/`KV_`;
-   D1 transactions in place of the script lock; the replies cached in memory
-   so the daily read cap stays far away; saves already done kept in a table
-   (permanently, not 6 hours); Google sign-in for admins. The golden replay
-   runs against it before anything switches. Things to move to the report
-   script at that point: `syncSheets` and the render functions, Drive filing
-   (`setDriveFolder`, `setSeasonFolder`, `descriptionsSheet`, `driveMap`),
-   and the tab clean-up inside `doRenameEvent` / `doDeleteEvent`.
-   **Phase 3** — copy the data across, compare every total, switch
-   `config.js`; switching back is restoring the old address.
+   Plan: **phase 1** (b192, done) — the data store. **Phase 2** (b204, done,
+   see below) — the server on Cloudflare. **Phase 3** — copy the data
+   across, compare every total, connect Apps Script (`CF_URL`/`CF_SECRET`)
+   and switch `config.js`; switching back is restoring the old address.
+   (Changed from the September plan: a SQLite-backed Durable Object instead
+   of D1 — same free plan, but synchronous and one-request-at-a-time, so
+   Code.gs runs unchanged and needs no lock.)
 
 ---
 

@@ -1292,6 +1292,14 @@ body.list-view .mc-name{min-height:0}
 }
 
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
+/* Signing in (the Cloudflare server): over everything, until Google says who you are. */
+.signin-wrap{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  background:rgba(43,34,48,.72);backdrop-filter:blur(3px);padding:16px}
+.signin{background:#fff;border-radius:14px;padding:26px 22px;max-width:360px;width:100%;text-align:center;
+  box-shadow:0 10px 40px rgba(0,0,0,.25)}
+.signin h2{margin:0 0 8px;font-size:1.2rem}
+.signin .hint{margin-bottom:16px}
+.signin #gsiBtn{display:flex;justify-content:center;min-height:44px}
 </style>
 </head>
 <body>
@@ -1311,7 +1319,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b202</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b204</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1483,7 +1491,10 @@ const CONFIG = Object.assign({
   APPS_SCRIPT_URL: '',
   PRABHUPADA_IMG: 'Srila_Prabhupada.jpeg',
   GURUDEVA_IMG:   'Gurudeva.jpeg',
-  POLL_SECONDS: 8
+  POLL_SECONDS: 8,
+  /* Set only for the Cloudflare server (Phase 2): the owner's app then signs
+     in with Google. Links never sign in. */
+  GOOGLE_CLIENT_ID: ''
 }, window.TBS_CONFIG || {});
 
 const WAREHOUSE = 'WAREHOUSE';
@@ -2285,6 +2296,8 @@ function newOpId(){
 async function post(payload, opts){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
+  // The owner's app on the Cloudflare server: this device's sign-in goes with every request.
+  else if(CONFIG.GOOGLE_CLIENT_ID && SESSION.get()) payload = Object.assign({s:SESSION.get()}, payload);
   /* Say which season this device is looking at, so the server answers for
      it — not for whichever season another device last opened. (A share link
      is pinned to its own season by the server, so it sends nothing.) */
@@ -2335,8 +2348,73 @@ async function post(payload, opts){
     err.unreadable = true;
     throw err;
   }
+  /* Not signed in (the Cloudflare server only). Kept like a save made with no
+     signal — nothing is lost — and sent again once this device has signed in. */
+  if(!d.ok && d.signIn){
+    SESSION.clear();
+    showSignIn();
+    const err = new Error(d.error || 'Please sign in.');
+    err.network = true; err.signIn = true;
+    throw err;
+  }
   if(!d.ok) throw new Error(d.error||'That did not go through.');
   return d;
+}
+
+/* ---- Signing in (the Cloudflare server, Phase 2) ----
+   Google says who you are once on this device; the server keeps you signed in
+   for 90 days, renewed as you use it. Links never see any of this. */
+const SESSION = {
+  KEY: 'tbs_session',
+  get(){ try{ return localStorage.getItem(this.KEY) || ''; }catch(e){ return ''; } },
+  set(v){ try{ localStorage.setItem(this.KEY, v); }catch(e){} },
+  clear(){ try{ localStorage.removeItem(this.KEY); }catch(e){} }
+};
+let SIGNIN_SHOWN = false;
+function showSignIn(){
+  if(SIGNIN_SHOWN || SHARE_KEY || !CONFIG.GOOGLE_CLIENT_ID) return;
+  SIGNIN_SHOWN = true;
+  const box = document.createElement('div');
+  box.id = 'signIn';
+  box.className = 'signin-wrap';
+  box.innerHTML = `<div class="signin">
+      <h2>Transcendental Book Sales</h2>
+      <div class="hint">Sign in with the Google account you use for the book sales.
+        This device stays signed in.</div>
+      <div id="gsiBtn"></div>
+      <div class="err" id="signInErr"></div>
+    </div>`;
+  document.body.appendChild(box);
+  const start = ()=>{
+    google.accounts.id.initialize({ client_id: CONFIG.GOOGLE_CLIENT_ID, callback: signedIn, auto_select: true });
+    google.accounts.id.renderButton($('#gsiBtn'), { theme:'outline', size:'large', text:'signin_with' });
+    google.accounts.id.prompt();
+  };
+  if(window.google && google.accounts) start();
+  else{
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client'; s.async = true; s.onload = start;
+    s.onerror = ()=>{ $('#signInErr').textContent = 'Could not reach Google to sign in. Check the connection and reload.'; };
+    document.head.appendChild(s);
+  }
+}
+async function signedIn(resp){
+  const err = $('#signInErr'); if(err) err.textContent = 'Signing in…';
+  try{
+    const d = await post({action:'signIn', idToken: resp.credential});
+    SESSION.set(d.result.session);
+    const box = $('#signIn'); if(box) box.remove();
+    SIGNIN_SHOWN = false;
+    toast('Signed in as ' + d.result.email);
+    await pull();
+    flushPending();                    // anything saved while signed out goes now
+  }catch(e){ if(err) err.textContent = e.message; }
+}
+async function signOut(){
+  if(!confirm('Sign out on this device?')) return;
+  try{ await post({action:'signOut'}); }catch(e){}
+  SESSION.clear();
+  location.reload();
 }
 
 /* Send a write, and if the reply is unreadable try once more with the same id.
@@ -3275,8 +3353,7 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
-  if(Object.keys(STATE.labels||{}).length)
-    cols[0].push(`<button class="btn" data-act="copywording">📋 Copy Saved Wording</button>`);
+  if(CONFIG.GOOGLE_CLIENT_ID) cols[0].push(`<button class="btn" data-act="signout">🚪 Sign Out</button>`);
 
   // Money
   if(!hideMoney()){
@@ -7008,31 +7085,6 @@ function reportPicks(){
   return new Set(REPORT_SECTIONS.map(x=>x[0]));      // everything, the first time
 }
 function saveReportPicks(set){ try{ localStorage.setItem(REP_PICK_KEY, JSON.stringify([...set])); }catch(e){} }
-
-/* Your rewritten wording, as text to hand over, so it can be built into the
-   app itself: each change becomes the app's own words and the stored copy is
-   cleared. (The app cannot rewrite its own files while it runs.) */
-function copyWordingModal(){
-  const labels = STATE.labels || {};
-  const text = JSON.stringify(labels, null, 1);
-  openModal(`
-    ${mHead('Saved wording')}
-    <div class="m-body">
-      <div class="hint">${Object.keys(labels).length} pieces of wording you have rewritten. Copy this and send it
-        to be built into the app, so your words become its own.</div>
-      <textarea id="wordText" class="rep-box" rows="12" readonly>${esc(text)}</textarea>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" id="wordCopy">Copy</button>
-    </div>`);
-  $('#wordCopy').addEventListener('click', async ()=>{
-    const box = $('#wordText');
-    try{ await navigator.clipboard.writeText(box.value); toast('Copied'); }
-    catch(e){ box.select(); try{ document.execCommand('copy'); toast('Copied'); }catch(e2){ $('#modalErr').textContent='Select the text and copy it.'; } }
-  });
-}
 
 function shareReport(part){
   const full = !part;
@@ -11778,6 +11830,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='whoami'){ askWhoAmI(true); return; }
+  if(a==='signout'){ signOut(); return; }
   if(a==='closehere'){ closeModalFor(CUR_LEVEL==='event'?'event':'region'); return; }
   if(a==='reopenhere'){ reopenHere(); return; }
   if(a==='pick'){ pickRegionThen(t.dataset.then); return; }
@@ -11873,7 +11926,6 @@ document.addEventListener('click',e=>{
   if(a==='report'){ const part=t.dataset.part||'';
     if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
-  if(a==='copywording'){ copyWordingModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
     closeModal(); goTo('region', t.dataset.id); cashModal(); return;

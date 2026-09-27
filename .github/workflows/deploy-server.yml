@@ -1,0 +1,50 @@
+# Puts the Cloudflare server (server/) live whenever a change to it — or to
+# Code.gs, which it runs — is merged into main. Also runnable by hand from the
+# Actions tab ("Run workflow").
+#
+# Needs two repository secrets (Settings › Secrets and variables › Actions):
+#   CLOUDFLARE_API_TOKEN   a Cloudflare API token ("Edit Cloudflare Workers" template)
+#   CLOUDFLARE_ACCOUNT_ID  the Cloudflare account id
+# Without them it does nothing and says so. See server/README.md.
+name: Deploy the Cloudflare server
+
+on:
+  push:
+    branches: [main]
+    paths: ['server/**', 'Code.gs', '.github/workflows/deploy-server.yml']
+  workflow_dispatch:
+
+concurrency: deploy-server
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Are the Cloudflare secrets set?
+        id: ready
+        env:
+          TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$ACCOUNT" ]; then echo "go=yes" >> "$GITHUB_OUTPUT";
+          else echo "::notice::Not deploying: add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (see server/README.md)."; fi
+      - uses: actions/checkout@v4
+        if: steps.ready.outputs.go == 'yes'
+      - uses: actions/setup-node@v4
+        if: steps.ready.outputs.go == 'yes'
+        with:
+          node-version: 22
+      - name: Check the server against Google, request by request
+        if: steps.ready.outputs.go == 'yes'
+        run: |
+          cd server && npm ci --no-audit --no-fund && cd ..
+          NODE_NO_WARNINGS=1 node test/workergolden.js
+          NODE_NO_WARNINGS=1 node test/auth.js | tee /tmp/auth.txt; ! grep -q '^FAIL' /tmp/auth.txt
+          NODE_NO_WARNINGS=1 node test/bridge.js | tee /tmp/bridge.txt; ! grep -q '^FAIL' /tmp/bridge.txt
+      - name: Deploy
+        if: steps.ready.outputs.go == 'yes'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          WRANGLER_SEND_METRICS: 'false'
+        run: cd server && npm run deploy
