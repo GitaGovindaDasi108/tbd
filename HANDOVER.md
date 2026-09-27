@@ -887,6 +887,16 @@ values.
   other browser tests now serve `test/config.test.js`, since the real
   config.js points at the live server.
 
+## Done in b208 — books in transit shown only where they are headed
+
+The owner's rule: a batch shows at the region, event or season it is going
+to, never at the region it left. `transitHere()` (the main-screen panel) and
+`shipmentsModal()` (no more "Sent from" list): at the season, only batches
+going into its own regions; at a region or Earthly HQ, those coming to it;
+at an event, those aimed at it. The data is unchanged — the sending region
+still has the batch in its records and stock history, and a regional link
+still receives it — it is simply not shown there. Test: `transitwhere.js`.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes

@@ -188,11 +188,12 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     await page.evaluate(id => shipCountModal(id), sh.shipId); await page.waitForTimeout(300);
     await page.fill(`#modal .sc-q[data-book="${B0}"]`, '1'); await page.click('#scGo'); await page.waitForTimeout(1500);
     t.push(['correcting the batch 3 → 1 returns 2 to SW1 (not the shelf)', qty('hd_radha1', B0) === 12 && qty(pl.whLoc, B0) === 13]);
-    await page.evaluate(() => shipmentsModal()); await page.waitForTimeout(300);
+    // (Batches show where they are headed — Italy, for Yoga Studio — not where they left, b208.)
+    await page.evaluate(() => { window.__back = CUR_REGION; goTo('region', 'rg_it'); shipmentsModal(); }); await page.waitForTimeout(300);
     page.__dialogs = [];
     await page.click(`#modal .sh-card:has-text("Narada") [data-act="shdel"]`); await page.waitForTimeout(1500);
     t.push(['deleting the batch returns the last copy to SW1 too', qty('hd_radha1', B0) === 13 && qty(pl.whLoc, B0) === 13]);
-    await page.evaluate(() => closeModal());
+    await page.evaluate(() => { closeModal(); goTo('region', window.__back); });
     // Send 3 again, for the rest of the test.
     await openXfer(page);
     await pick(page, 'xfTo', 'Yoga', 'Yoga Studio');

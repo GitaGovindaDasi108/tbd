@@ -1325,7 +1325,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b207</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b208</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -10459,25 +10459,32 @@ function shipArriveAll(id){
   if($('#overlay').classList.contains('show')) setTimeout(shipmentsModal, 0);
 }
 
-/* The batches that belong on the screen you are looking at: everything on the
-   road at the season; coming to or leaving the region; aimed at this event. */
+/* The batches that belong on the screen you are looking at — only where they
+   are HEADED, never where they came from: at the season, those on their way to
+   one of its regions; at a region (or Earthly HQ), those coming to it; at an
+   event, those aimed at that event. (The sending region still keeps them in its
+   records; they are simply not shown there.) */
+function transitLive(){ return (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && shipTotal(x)>0); }
 function transitHere(){
-  const live = (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && shipTotal(x)>0);
-  if(CUR_LEVEL==='season') return live.map(x=>({x, incoming:true}));
+  const live = transitLive();
+  if(CUR_LEVEL==='season'){
+    const mine = new Set(regionsList().map(r=>r.regionId));
+    return live.filter(x=>mine.has(x.toRegion)).map(x=>({x, incoming:true}));
+  }
   if(CUR_LEVEL==='event') return live.filter(x=>x.toLoc===CUR_LOC).map(x=>({x, incoming:true}));
-  return live.filter(x=>x.toRegion===CUR_REGION).map(x=>({x, incoming:true}))
-    .concat(live.filter(x=>x.fromRegion===CUR_REGION && x.toRegion!==CUR_REGION).map(x=>({x, incoming:false})));
+  return live.filter(x=>x.toRegion===CUR_REGION).map(x=>({x, incoming:true}));
 }
 
 function shipmentsModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
   if(!season && !reg) return;
-  // From the season this is every batch on the road anywhere on the tour.
+  // Only where they are headed (see transitHere): at the season, every batch on
+  // its way to one of its regions; at a region, those coming to it.
+  const mine = new Set(regionsList().map(r=>r.regionId));
   const inb = season
-    ? (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED')
+    ? (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && mine.has(x.toRegion))
     : inboundShipments(reg.regionId);
-  const out = season ? [] : outboundShipments(reg.regionId);
 
   const card = (x, incoming) => shipCardHTML(x, incoming);
 
@@ -10490,8 +10497,6 @@ function shipmentsModal(){
       <div class="cash-sub">${season?'Books Currently Between Locations':'Coming to '+esc(reg.name)}</div>
       ${inb.length ? inb.map(x=>card(x,true)).join('')
         : `<div class="cash-empty">${season?'Nothing at this time.':'Nothing on its way here.'}</div>`}
-      ${season ? '' : `<div class="cash-sub">Sent from ${esc(reg.name)}</div>
-      ${out.length ? out.map(x=>card(x,false)).join('') : `<div class="cash-empty">Nothing outstanding.</div>`}`}
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 }
