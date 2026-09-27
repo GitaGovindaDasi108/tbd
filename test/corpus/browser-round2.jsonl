@@ -1,0 +1,57 @@
+{"__init":1}
+{"action":"getState"}
+{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa"}
+{"season":"sn_paaaaa","action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD"}
+{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_mela2","name":"Mela — Day 2","regionId":"rg_it"}
+{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":10}],"override":true}
+{"season":"sn_paaaaa","action":"adjustStockBulk","location":"wh_it","items":[{"bookId":"sr_en","delta":4}],"override":true}
+{"action":"saveSeason","name":"Year-Round Sales"}
+{"action":"getState"}
+{"season":"sn_haaaaa","action":"createRegion","regionId":"rg_bcn","whLoc":"wh_bcn","name":"Barcelona","currencies":"EUR,USD"}
+{"season":"sn_haaaaa","action":"adjustStockBulk","location":"wh_bcn","items":[{"bookId":"sr_en","delta":5}],"override":true}
+{"action":"setSeason","seasonId":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"sendShipment","mode":"devotee","fromRegion":"OUTSIDE","toRegion":"rg_naaaaa","toLoc":"WAREHOUSE","carrier":"Gopal","shipId":"sh_r2ship","items":[{"bookId":"we_en","qty":3}]}
+{"action":"getState"}
+{"action":"getState"}
+{"action":"getState"}
+{"action":"getState","season":"sn_haaaaa"}
+{"action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":4},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":2}],"note":"","movePrefix":"Mmujh783ed70","season":"sn_paaaaa","opId":"opmujh783e_1_u2pnae"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"activity"}
+{"action":"undoActivityPart","id":"Avaaaaawaaa","part":"b:we_en","opId":"opmujh7awz_2_e8mqww","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"activity"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"undoActivity","id":"Avaaaaawaaa","opId":"opmujh7cet_3_2ovqxy","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"activity"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"createEvent","eventId":"ev_0s0kub","name":"Temple Day","regionId":"rg_naaaaa","opId":"opmujh7fjz_4_1eyiid","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"ping"}
+{"season":"sn_paaaaa","action":"getState"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"saveLabel","key":"Dialog: Add Stock › Coming From","text":"Where are these books going?","opId":"opmujh7gzz_5_9npcwo","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"setEventHidden","eventId":"ev_mela2","hidden":"+sr_en","opId":"opmujh7i20_6_tkvb9t","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"season":"sn_paaaaa","wantState":true,"action":"sell","saleId":"Smujh7j6cxwgi","location":"ev_mela2","bookId":"sr_en","isPreorder":true,"legs":[{"type":"Cash","cur":"PLN","amt":150}],"pending":false,"dueamt":0,"duecur":"","name":"Maria","phone":"+34 600 111","comments":"Spanish edition please","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"rg_bcn","opId":"opmujh7j6c_7_5vr5xp"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"setSeason","seasonId":"sn_haaaaa"}
+{"action":"fulfilRemote","remoteSaleId":"Smujh7j6cxwgi","fromLoc":"wh_bcn","opId":"opmujh7ma5_8_0h0g1e","season":"sn_haaaaa"}
+{"season":"sn_haaaaa","action":"getState"}
+{"action":"getState","season":"sn_haaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"sell","saleId":"s_open2","location":"wh_it","bookId":"sr_en","isPreorder":true,"legs":[{"type":"Cash","cur":"EUR","amt":35}],"name":"Jaya"}
+{"season":"sn_haaaaa","action":"openPreorders"}
+{"action":"fulfilRemote","remoteSaleId":"s_open2","fromLoc":"wh_bcn","opId":"opmujh7ory_9_8ksme4","season":"sn_haaaaa"}
+{"season":"sn_haaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_haaaaa"}
+{"action":"setSeason","seasonId":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"sell","saleId":"s_open3","location":"wh_it","bookId":"sr_en","isPreorder":true,"legs":[{"type":"Cash","cur":"EUR","amt":35}],"name":"Ravi"}
+{"season":"sn_paaaaa","action":"getState"}
+{"season":"sn_paaaaa","action":"ping"}
+{"season":"sn_paaaaa","action":"getState"}
