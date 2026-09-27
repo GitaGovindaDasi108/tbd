@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b192**.
+Handover notes. Current build: **b193**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -518,6 +518,16 @@ No change anyone can see; the groundwork for leaving Google Sheets.
   unchanged.
 - Deploy as usual (new version of Code.gs, push index.html). No initialize
   needed; nothing in the data changes.
+
+## Done in b193
+
+- **No stray PLN.** Sale, multi-book, donation and cash dialogs asked for
+  PLN as their starting currency (a leftover from the Poland-only days).
+  Since b191 a currency asked for is added when the place lacks it, so PLN
+  appeared, already chosen, in regions that never listed it. New entries now
+  start on `defaultCur()`: PLN where the place takes it, else its first
+  currency. Editing an old sale still shows its own stored currency.
+  Covered by `test/curtest.js`.
 
 ## Open items
 
