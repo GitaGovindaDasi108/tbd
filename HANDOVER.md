@@ -860,7 +860,32 @@ values.
   them from the server if ever going back (revert config.js first).
 - Settings: Cloudflare Worker variables `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`,
   `REPORT_URL`, secret `REPORT_SECRET` (= Apps Script's `CF_SECRET`).
-  Adding an admin is adding their Google address to `ADMIN_EMAILS`.
+  `ADMIN_EMAILS` are the permanent admins; everyone else is managed in the
+  app's 🔑 Admins panel (b207).
+
+## Done in b207 — admins added in the app: by email, or on request
+
+- **Request and approve**: someone signs in with Google and is not an admin
+  yet → no session; their request is kept (`access_request`, with the name
+  Google gives) and they are told kindly it has gone to the admins. The
+  admin panel's **🔑 Admins** button shows "N waiting" (the server adds
+  `requests` to a signed-in admin's `ping`). Approve makes them an admin;
+  Decline hides the request and they are told "not approved" if they try
+  again (an admin can still add them).
+- **Add by email** in the same panel: they can sign in at once.
+- **Remove**: signs them out everywhere at once. Nobody can remove
+  themself, and the `ADMIN_EMAILS` owners are permanent and shown, not
+  removable — nobody can be locked out.
+- Server: `auth.js` tables `admin` and `access_request`; core.js actions
+  `adminsList/Add/Approve/Decline/Remove` (signed-in admins only, never
+  links).
+- Google's side: the sign-in app must be **published** (Google Auth
+  Platform › Audience › Publish app), or Google blocks anyone not on its
+  test-user list before they reach us.
+- Tests: `auth.js` (37 checks), `browser-cloudflare.js` (a second person
+  asks, the owner approves in the panel, they get in; add by email). The
+  other browser tests now serve `test/config.test.js`, since the real
+  config.js points at the live server.
 
 ## Open items
 

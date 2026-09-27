@@ -49,7 +49,7 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
         return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(out) });
       }
       if (url.startsWith('http://app.test/')) {
-        const f = path.join(ROOT, new URL(url).pathname.replace(/^\/+/, '') || 'index.html');
+        const f = (rel => rel === 'config.js' ? path.join(__dirname, 'config.test.js') : path.join(ROOT, rel))(new URL(url).pathname.replace(/^\/+/, '') || 'index.html');
         if (fs.existsSync(f) && fs.statSync(f).isFile())
           return route.fulfill({ status: 200, body: fs.readFileSync(f),
             contentType: f.endsWith('.html') ? 'text/html' : f.endsWith('.js') ? 'text/javascript' : undefined });

@@ -1300,6 +1300,12 @@ body.list-view .mc-name{min-height:0}
 .signin h2{margin:0 0 8px;font-size:1.2rem}
 .signin .hint{margin-bottom:16px}
 .signin #gsiBtn{display:flex;justify-content:center;min-height:44px}
+/* The Admins panel, and the waiting-requests badge on its button. */
+.adm-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+.adm-who{min-width:0;overflow-wrap:anywhere}
+.adm-btns{display:flex;gap:6px;flex-shrink:0}
+.req-badge{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;background:#c0392b;color:#fff;font-size:.78em;font-weight:600}
+.signin-note{margin-top:14px;color:#2d5a3a;background:#eef6ef;border-radius:8px;padding:10px 12px;text-align:left}
 </style>
 </head>
 <body>
@@ -1319,7 +1325,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b206</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b207</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2357,7 +2363,7 @@ async function post(payload, opts){
     err.network = true; err.signIn = true;
     throw err;
   }
-  if(!d.ok) throw new Error(d.error||'That did not go through.');
+  if(!d.ok){ const e = new Error(d.error||'That did not go through.'); e.reply = d; throw e; }
   return d;
 }
 
@@ -2408,7 +2414,75 @@ async function signedIn(resp){
     toast('Signed in as ' + d.result.email);
     await pull();
     flushPending();                    // anything saved while signed out goes now
-  }catch(e){ if(err) err.textContent = e.message; }
+  }catch(e){
+    if(!err) return;
+    /* Not an admin yet: the request has gone to the admins (or was declined).
+       Said kindly, not as an error; the Google button stays, to try again
+       once approved. */
+    const r = e.reply || {};
+    if(r.pending || r.declined){
+      err.className = 'signin-note';
+      err.textContent = r.pending
+        ? 'Thank you' + (r.name ? ', ' + r.name : '') + '. Your request to use the app has been sent to the admins. '
+          + 'Once one of them approves it, sign in again here.'
+        : 'This account (' + (r.email||'') + ') has not been approved for the app. If that is a mistake, ask an admin to add it.';
+    }else{
+      err.className = 'err';
+      err.textContent = e.message;
+    }
+  }
+}
+/* ---- Admins: who may use the owner's app (the Cloudflare server) ----
+   Requests from people who signed in and are not admins yet, to approve or
+   decline; the admins, to remove; and anyone added directly by their Google
+   address. The permanent admins are set in Cloudflare and are shown, not
+   changed, here. */
+var ADMIN_REQUESTS = 0;     // (var: renderAdmin may read it before this line runs)
+async function adminsModal(){
+  openModal(`
+    ${mHead('Admins')}
+    <div class="m-body"><div class="df-loading">Loading…</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  try{ drawAdmins((await post({action:'adminsList'})).result); }
+  catch(e){ const b=$('#modal .m-body'); if(b) b.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+function drawAdmins(L){
+  ADMIN_REQUESTS = (L.requests||[]).length; renderAdmin();
+  const body = $('#modal .m-body'); if(!body) return;
+  const when = s => { try{ return new Date(s).toLocaleDateString(LOCALE, {day:'numeric', month:'short', year:'numeric'}); }catch(e){ return ''; } };
+  const person = (name, email) => `<b>${esc(name && name!==email ? name : email)}</b>${name && name!==email ? `<div class="muted-note">${esc(email)}</div>` : ''}`;
+  body.innerHTML = `
+    <div class="hint">Who can use the full app. Sellers and coordinators use their links and never appear here.</div>
+    <div class="cash-sub">Waiting for approval${L.requests.length?` (${L.requests.length})`:''}</div>
+    ${L.requests.length ? L.requests.map(r=>`<div class="adm-row">
+        <div class="adm-who">${person(r.name, r.email)}<div class="muted-note">asked ${esc(when(r.at))}</div></div>
+        <span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="admappr" data-email="${esc(r.email)}">Approve</button>
+          <button class="btn btn-ghost btn-sm" data-act="admdecl" data-email="${esc(r.email)}">Decline</button></span></div>`).join('')
+      : `<div class="cash-empty">Nobody is waiting. Anyone can ask by opening the app and signing in with Google.</div>`}
+    <div class="cash-sub">Admins</div>
+    ${L.owners.map(e=>`<div class="adm-row"><div class="adm-who">${person('', e)}<div class="muted-note">permanent — set in Cloudflare</div></div></div>`).join('')}
+    ${L.admins.map(a=>`<div class="adm-row">
+        <div class="adm-who">${person(a.name, a.email)}<div class="muted-note">added by ${esc(a.addedBy)}, ${esc(when(a.addedAt))}</div></div>
+        <span class="adm-btns">${a.email===L.me ? '<span class="muted-note">you</span>'
+          : `<button class="btn btn-ghost btn-sm" data-act="admrem" data-email="${esc(a.email)}">Remove</button>`}</span></div>`).join('')}
+    <div class="cash-sub">Add an admin</div>
+    <div class="rp-add">
+      <input id="admEmail" type="email" placeholder="their Google address, e.g. name@gmail.com">
+      <button type="button" class="btn btn-primary btn-sm" id="admAdd">Add</button>
+    </div>
+    <div class="hint">They can sign in straight away with that Google account.</div>
+    <div class="err" id="modalErr"></div>`;
+  $('#admAdd').addEventListener('click', ()=>adminsDo('admadd', ($('#admEmail').value||'').trim()));
+  try{ applyLabels($('#modal')); }catch(e){}
+}
+async function adminsDo(what, email){
+  if(!email){ $('#modalErr').textContent = 'Enter their Google address.'; return; }
+  if(what==='admrem' && !confirm('Remove ' + email + '? They are signed out at once, on every device.')) return;
+  const action = {admappr:'adminsApprove', admdecl:'adminsDecline', admrem:'adminsRemove', admadd:'adminsAdd'}[what];
+  try{
+    drawAdmins((await post({action, email})).result);
+    toast({admappr:'Approved — ', admdecl:'Declined — ', admrem:'Removed — ', admadd:'Added — '}[what] + email);
+  }catch(e){ const m=$('#modalErr'); if(m) m.textContent = e.message; }
 }
 async function signOut(){
   if(!confirm('Sign out on this device?')) return;
@@ -2902,6 +2976,8 @@ async function poll(){
   if(document.hidden || inflight) return;
   try{
     const d = await post({action:'ping'});
+    // Sign-in requests waiting for an admin (the Cloudflare server tells signed-in admins).
+    if(d.requests !== undefined && d.requests !== ADMIN_REQUESTS){ ADMIN_REQUESTS = d.requests; renderAdmin(); }
     if(d.rev !== REV) await pull();
     else if(!OPS.length) setStatus('ok','Up to date · '+clock());
   }catch(err){ setStatus('bad','Offline — retrying'); }
@@ -3353,7 +3429,10 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
-  if(CONFIG.GOOGLE_CLIENT_ID) cols[0].push(`<button class="btn" data-act="signout">🚪 Sign Out</button>`);
+  if(CONFIG.GOOGLE_CLIENT_ID){
+    cols[0].push(`<button class="btn" data-act="admins">🔑 Admins${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>`);
+    cols[0].push(`<button class="btn" data-act="signout">🚪 Sign Out</button>`);
+  }
 
   // Money
   if(!hideMoney()){
@@ -11831,6 +11910,8 @@ document.addEventListener('click',e=>{
   }
   if(a==='whoami'){ askWhoAmI(true); return; }
   if(a==='signout'){ signOut(); return; }
+  if(a==='admins'){ adminsModal(); return; }
+  if(a==='admappr' || a==='admdecl' || a==='admrem'){ adminsDo(a, t.dataset.email); return; }
   if(a==='closehere'){ closeModalFor(CUR_LEVEL==='event'?'event':'region'); return; }
   if(a==='reopenhere'){ reopenHere(); return; }
   if(a==='pick'){ pickRegionThen(t.dataset.then); return; }

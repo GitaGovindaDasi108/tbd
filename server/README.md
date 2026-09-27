@@ -98,3 +98,19 @@ cd server
 npm install
 npm run dev        # the server at http://127.0.0.1:8787, with its own local database
 ```
+
+## Adding admins
+
+In the app: **App Admin › 🔑 Admins**.
+- **Someone asks:** they open the app and sign in with Google. You see
+  "1 waiting" on the button; open it and press **Approve** or **Decline**.
+- **You add them:** type their Google address under "Add an admin". They
+  can sign in straight away.
+- **Remove** signs someone out everywhere at once.
+
+The addresses in `ADMIN_EMAILS` (Cloudflare) are permanent admins and cannot
+be removed in the app, so nobody can ever be locked out.
+
+For anyone outside Google's test-user list to sign in at all, the Google
+sign-in app must be published: Google Auth Platform › Audience › **Publish
+app** (free, no review for name-and-email sign-in).
