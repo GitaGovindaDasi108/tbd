@@ -105,15 +105,15 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
 
     // 4. Activity log: one entry, its lines in a dropdown, each undoable.
     await page.evaluate(() => activityModal()); await page.waitForTimeout(1000);
-    const entry = '#alList .al-row:has-text("6 books transferred")';
-    t.push(['the transfer is one entry with "▸ 2 lines"', /2 lines/.test(await page.textContent(`${entry} .al-tog`))]);
+    const entry = '#alList .al-row:has-text("6 Books Transferred")';
+    t.push(['the transfer is one entry with "▸ 2 titles"', /2 titles/.test(await page.textContent(`${entry} .al-tog`))]);
     await page.click(`${entry} .al-tog`); await page.waitForTimeout(200);
     const lines = (await page.locator(entry + ' .al-part').allTextContents()).map(x => x.replace(/\s+/g, ' ').trim());
-    t.push(['the dropdown lists each line', lines.length === 2 && lines.some(x => /×4 transferred/.test(x)) && lines.some(x => /×2 transferred/.test(x))]);
+    t.push(['the dropdown lists each line', lines.length === 2 && lines.some(x => /×4\b/.test(x)) && lines.some(x => /×2\b/.test(x))]);
     await page.screenshot({ path: shot('1-activity-lines') });
-    await page.locator(entry + ' .al-part').filter({ hasText: '×2 transferred' }).locator('[data-alpart]').click(); await page.waitForTimeout(1800);
+    await page.locator(entry + ' .al-part').filter({ hasText: '×2' }).locator('[data-alpart]').click(); await page.waitForTimeout(1800);
     t.push(['deleting one line undoes just that line', qty('ev_fest', B1) === 0 && qty('ev_fest', B0) === 4]);
-    const row = page.locator('#alList .al-row').filter({ hasText: '6 books transferred' }).filter({ hasNotText: 'Undid' }).first();
+    const row = page.locator('#alList .al-row').filter({ hasText: '6 Books Transferred' }).filter({ hasNotText: 'Undid' }).first();
     const after = { meta: await row.locator('.al-meta').textContent(),
       gone: await row.locator('.al-part.undone').count(), all: (await row.locator('[data-alundo]').count()) > 0 };
     t.push(['…the entry reads "Partly undone", that line crossed out', /Partly undone/.test(after.meta) && after.gone === 1 && after.all]);

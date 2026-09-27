@@ -78,10 +78,15 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
     await openLog(page);
     let r = await rows(page);
     console.log('   log:\n     ' + r.map(x => (x.undo ? '[Delete] ' : '         ') + x.text).join('\n     '));
-    const moved = r.find(x => /6 books transferred/.test(x.text));
-    t.push(['the transfer reads in plain words, with titles and places', !!moved && /Sri Radha|×6/.test(moved.text) && /Poland \(Warehouse\) → Summer Festival/.test(moved.text)]);
+    const moved = r.find(x => /6 Books Transferred/.test(x.text));
+    t.push(['the transfer reads in plain words, with titles and places', !!moved && /^6 Books Transferred from Poland \(Warehouse\) to Summer Festival$/.test(moved.text)]);
     t.push(['…with who did it', !!moved && /main app/.test(moved.meta)]);
-    t.push(['stock added, with its note', r.some(x => /Added .*×20.*Poland \(Warehouse\).*carton from the printer/.test(x.text))]);
+    // Its dropdown: the titles and how many — no places (they are in the headline).
+    await page.click('#alList .al-row:has-text("6 Books Transferred") [data-altog]'); await page.waitForTimeout(150);
+    const lines = (await page.locator('#alList .al-row:has-text("6 Books Transferred") .al-part-t').allTextContents()).map(x => x.trim());
+    console.log('   dropdown: ' + lines.join(' | '));
+    t.push(['the dropdown holds only titles and counts', lines.length === 1 && /^Sri Radha \(English\) ×6$/.test(lines[0])]);
+    t.push(['stock added, with its note', r.some(x => /25 Books Added to Poland \(Warehouse\) — “carton from the printer”/.test(x.text))]);
     t.push(['a cost is recorded', r.some(x => /Recorded a cost: 12 PLN/.test(x.text))]);
     t.push(['creating an event is recorded', r.some(x => /Created event “Festival”/.test(x.text))]);
     t.push(['sales are not in it (they keep their own log)', !r.some(x => /sale|Sold/i.test(x.text))]);
@@ -97,13 +102,13 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
 
     // Delete = undo.
     page.__dialogs = [];
-    await page.click('#alList .al-row:has-text("6 books transferred") [data-alundo]'); await page.waitForTimeout(1800);
-    t.push(['Delete asks first, naming what will be undone', (page.__dialogs || []).some(x => /This undoes it:[\s\S]*6 books transferred/.test(x))]);
+    await page.click('#alList .al-row:has-text("6 Books Transferred") [data-alundo]'); await page.waitForTimeout(1800);
+    t.push(['Delete asks first, naming what will be undone', (page.__dialogs || []).some(x => /This undoes it:[\s\S]*6 Books Transferred/.test(x))]);
     t.push(['the books went back (Festival 0, warehouse 19)', qty('ev_fest', B0) === 0 && qty(pl.whLoc, B0) === 19]);
     r = await rows(page);
-    const und = r.find(x => /6 books transferred/.test(x.text) && !/^Undid/.test(x.text));
+    const und = r.find(x => /6 Books Transferred/.test(x.text) && !/^Undid/.test(x.text));
     t.push(['the entry stays, crossed out as "Undone", with no Delete', !!und && und.undone && /Undone by/.test(und.meta) && !und.undo]);
-    t.push(['the undo is itself recorded', r.some(x => /^Undid: 6 books transferred/.test(x.text))]);
+    t.push(['the undo is itself recorded', r.some(x => /^Undid: 6 Books Transferred/.test(x.text))]);
 
     // Undo a cost.
     await page.click('#alList .al-row:has-text("Recorded a cost") [data-alundo]'); await page.waitForTimeout(1800);

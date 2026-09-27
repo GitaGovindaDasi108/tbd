@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b196';
+var SERVER_BUILD = 'b197';
 
 function doPost(e) { return handle(e); }
 
@@ -877,8 +877,11 @@ function ensureReady(force) {
 
   sheetsPrepare_();                      // phone columns as text, before anything is written
 
-  if (!objectsOf_('_meta').length) dbInsert_('_meta', { key: 'warehouseName', value: 'Poland' });
-
+  /* A new spreadsheet starts with the book catalogue and nothing else: no
+     region, no contacts, no payment codes. (It used to create a region named
+     "Poland" with Polish prices, the original contact list and three personal
+     payment codes — from when the app was Poland's alone.) Seasons, regions and
+     everything in them are made in the app. */
   /* The built-in titles, written by position over whatever the first rows
      hold; anything else on those rows (a hand-placed sort) is kept. */
   var oldBooks = objectsOf_('_books');
@@ -889,35 +892,6 @@ function ensureReady(force) {
       return Object.assign({}, o, { id: '', name: '', cat: '', usd: '', pln: '', eur: '' });
     }));
     dbSave_('_books', seeded, ['id','name','cat','usd','pln','eur']);
-  }
-
-  // Seed the org chart once, with the initial contacts. Never overwrites edits.
-  if (!objectsOf_('_org').length) {
-    var seed = [
-      ['General — book distribution in Poland', 'Gita Govinda', '+16509225957'],
-      ['Warehouse Books', 'Tulasi Sevani', '+48515967837'],
-      ['Warehouse Books', 'Gita Govinda', '+16509225957'],
-      ['Festival Books', 'Daivi Radhika', '+48726541539'],
-      ['Warehouse Bank', 'Gita Govinda', ''],
-      ['Universal Bank', 'Rasika', '']
-    ];
-    /* Written by column name. Laid out positionally, these five values landed in
-       a six-column sheet, so every seeded contact was shifted one place — the
-       category ended up under 'scope' and the phone under 'name'. */
-    dbInsert_('_org', seed.map(function (r, i) {
-      return { id: 'O' + Utilities.getUuid().slice(0, 7), scope: SEASON,
-               category: r[0], sort: i, name: r[1], phone: r[2] };
-    }));
-  }
-
-  // Seed the tour-wide payment codes once, pointing at the files shipped with
-  // the page. Editing or removing them later is never overwritten.
-  if (dbHas_('_qr') && !objectsOf_('_qr').length) {
-    dbInsert_('_qr', [
-      { id: 'Qseed01', scope: SEASON, label: 'Wise',   caption: 'Name: Renuka Radhakrishnan\nWiseTag: https://wise.com/pay/me/renukar73', src: 'qr-wise.jpeg', sort: 0 },
-      { id: 'Qseed02', scope: SEASON, label: 'PayPal', caption: 'rradhakrsna@gmail.com', src: 'qr-paypal.jpeg', sort: 1 },
-      { id: 'Qseed03', scope: SEASON, label: 'Zelle',  caption: 'Name: Renuka RadhaKrishnan\nrradhakrsna@gmail.com', src: 'qr-zelle.jpeg', sort: 2 }
-    ]);
   }
 
   migrateSeason_();
@@ -966,9 +940,14 @@ function migrateSeason_() {
 
   var firstRegionId = '';
 
-  if (!objectsOf_('_regions').length) {
-    // Name the first region after whatever the warehouse was already called.
-    var whName = String(getWarehouseName_() || 'Poland').trim() || 'Poland';
+  /* Data from before regions existed (sales, stock, events at the literal
+     WAREHOUSE) is adopted by a first region. A new spreadsheet has nothing to
+     adopt, so it gets no region at all. */
+  var legacy = !objectsOf_('_regions').length &&
+    (objectsOf_('_sales').length || objectsOf_('_inventory').length || objectsOf_('_events').length);
+  if (legacy) {
+    // Named after whatever the warehouse was already called.
+    var whName = String(getWarehouseName_() || 'Warehouse').trim() || 'Warehouse';
     firstRegionId = 'rg_' + Utilities.getUuid().slice(0, 6);
     // Poland's original three currencies, in the order the app has always shown them.
     dbInsert_('_regions', { regionId: firstRegionId, name: whName, whLoc: WAREHOUSE, sort: 0,
@@ -2932,7 +2911,7 @@ function migrateSales_() {
 function getWarehouseName_() {
   var m = objectsOf_('_meta');
   for (var i = 0; i < m.length; i++) if (m[i].key === 'warehouseName') return m[i].value;
-  return 'Poland';
+  return '';
 }
 
 /* ---- Meta helpers ---- */
@@ -3259,7 +3238,7 @@ function sheetLinks_() {
 function getSeasonName_() {
   var m = objectsOf_('_meta');
   for (var i = 0; i < m.length; i++) if (m[i].key === 'seasonName') return m[i].value;
-  return 'Europe Tour';
+  return 'First Season';
 }
 
 /* Single source of truth for event order: oldest first, so the tabs read
@@ -7133,56 +7112,60 @@ function plural_(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one 
 function titlesText_(byBook) {
   return Object.keys(byBook).map(function (id) { return bookName_(id) + ' ×' + byBook[id]; }).join(', ');
 }
-/* Stock movements in words: grouped by where they went, with where each came from. */
+/* Stock movements in words, as the log's headline: how many books, what
+   happened, and where — "49 Books Transferred from Poland (Warehouse) to
+   Summer Festival", "12 Books Added to Italy (Warehouse)", "3 Books Subtracted
+   from …". Which titles they were is the entry's dropdown (partsJson_), so it
+   is not repeated here. Transferred = the Transfer protocol; Added and
+   Subtracted = Add Stock (and closing counts). */
+function booksN_(n) { return n + ' Book' + (n === 1 ? '' : 's'); }
+function namesList_(names) {
+  if (names.length < 2) return names.join('');
+  return names.slice(0, -1).join(', ') + ' and ' + names[names.length - 1];
+}
 function movesText_(moves) {
-  var adds = moves.filter(function (m) { return m.kind === 'ADJUST'; });
-  var xfers = moves.filter(function (m) { return m.kind === 'TRANSFER'; });
   var out = [];
-  var byLoc = {};
-  adds.forEach(function (m) { (byLoc[m.to] = byLoc[m.to] || []).push(m); });
-  Object.keys(byLoc).forEach(function (loc) {
-    var up = {}, down = {};
-    byLoc[loc].forEach(function (m) { if (m.qty > 0) up[m.bookId] = (up[m.bookId] || 0) + m.qty;
-                                      else down[m.bookId] = (down[m.bookId] || 0) - m.qty; });
-    var bits = [];
-    if (Object.keys(up).length) bits.push('added ' + titlesText_(up));
-    if (Object.keys(down).length) bits.push('removed ' + titlesText_(down));
-    out.push(bits.join(' and ') + ' at ' + locLabel_(loc));
+  var byLoc = {}, locOrder = [];
+  moves.filter(function (m) { return m.kind === 'ADJUST'; }).forEach(function (m) {
+    if (!byLoc[m.to]) { byLoc[m.to] = { up: 0, down: 0 }; locOrder.push(m.to); }
+    if (m.qty > 0) byLoc[m.to].up += m.qty; else byLoc[m.to].down -= m.qty;
   });
-  var byTo = {};
-  xfers.forEach(function (m) { (byTo[m.to] = byTo[m.to] || []).push(m); });
-  Object.keys(byTo).forEach(function (to) {
-    var total = 0, from = {}, books = {};
-    byTo[to].forEach(function (m) {
-      total += m.qty; from[m.from] = (from[m.from] || 0) + m.qty; books[m.bookId] = (books[m.bookId] || 0) + m.qty;
+  locOrder.forEach(function (loc) {
+    if (byLoc[loc].up) out.push(booksN_(byLoc[loc].up) + ' Added to ' + locLabel_(loc));
+    if (byLoc[loc].down) out.push(booksN_(byLoc[loc].down) + ' Subtracted from ' + locLabel_(loc));
+  });
+  var xfers = moves.filter(function (m) { return m.kind === 'TRANSFER'; });
+  if (xfers.length) {
+    var total = 0, froms = [], tos = [];
+    xfers.forEach(function (m) {
+      total += m.qty;
+      if (froms.indexOf(m.from) < 0) froms.push(m.from);
+      if (tos.indexOf(m.to) < 0) tos.push(m.to);
     });
-    var froms = Object.keys(from);
-    var src = froms.length === 1 ? locLabel_(froms[0])
-      : froms.map(function (f) { return locLabel_(f) + ' ' + from[f]; }).join(', ');
-    out.push(plural_(total, 'book') + ' transferred (' + titlesText_(books) + ') from ' + src + ' → ' + locLabel_(to));
-  });
-  var s = out.join('; ');
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : '';
+    out.push(booksN_(total) + ' Transferred from ' + namesList_(froms.map(locLabel_)) + ' to ' + namesList_(tos.map(locLabel_)));
+  }
+  return out.join('; ');
 }
 
-/* The lines inside an entry: one per title, gathering every movement of that
-   title (a title may have come from several shelves). Only when there is more
-   than one title — a single title is the entry itself. */
+/* The entry's dropdown: one line per title — just the title and how many.
+   Where they went is already the headline. */
 function partsJson_(moves) {
   var by = {}, order = [];
   moves.forEach(function (m) {
     if (!by[m.bookId]) { by[m.bookId] = []; order.push(m.bookId); }
     by[m.bookId].push(m);
   });
-  if (order.length < 2) return '';
+  if (!order.length) return '';
   return JSON.stringify(order.map(function (b) {
     var ms = by[b], n = ms.reduce(function (t, m) { return t + Math.abs(m.qty); }, 0);
-    var tos = {}; ms.forEach(function (m) { tos[m.to] = 1; });
-    var kind = ms[0].kind === 'ADJUST' ? (ms[0].qty > 0 ? 'added' : 'removed') : 'transferred';
-    return { id: 'b:' + b, ids: ms.map(function (m) { return m.id; }),
-             text: bookName_(b) + ' ×' + n + ' ' + kind + (kind === 'transferred'
-               ? ' → ' + Object.keys(tos).map(locLabel_).join(', ') : ' at ' + Object.keys(tos).map(locLabel_).join(', ')) };
+    return { id: 'b:' + b, ids: ms.map(function (m) { return m.id; }), text: bookName_(b) + ' ×' + n };
   }));
+}
+/* A line written before b197 ("Sri Radha ×6 transferred → Festival"), trimmed
+   to the same title-and-count. */
+function partText_(t) {
+  var m = String(t || '').match(/^(.*? ×\d+)(?: (?:transferred|added|removed)\b[\s\S]*)?$/);
+  return m ? m[1] : String(t || '');
 }
 
 /* One movement in words, for the lines inside a multi-line entry. */
@@ -7382,7 +7365,7 @@ function activityList_(who, seasonId) {
     if (!mine) return;
     if (who.role !== 'admin' && regions.indexOf(String(who.regionId)) < 0) return;
     out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''),
-      text: String(r.text || ''), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
+      text: stockEntryText_(r), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
       moves: String(r.moves || '').split(',').filter(Boolean),
       canUndo: !!String(r.undo || '') && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || ''),
       parts: (function () {
@@ -7392,7 +7375,7 @@ function activityList_(who, seasonId) {
            the movements still on record, so every transfer gets its dropdown. */
         var ids = String(r.moves || '').split(',').filter(Boolean);
         var older = !list.length || list.some(function (x) { return !x.ids; });
-        if (older && ids.length > 1 && String(r.undo || '').indexOf('"moves"') >= 0) {
+        if (older && ids.length >= 1 && String(r.undo || '').indexOf('"moves"') >= 0) {
           var rec = movesById_();
           var ms = ids.map(function (i) { return rec[i]; }).filter(Boolean);
           var rebuilt = ms.length ? partsJson_(ms) : '';
@@ -7402,13 +7385,32 @@ function activityList_(who, seasonId) {
             list.forEach(function (x) { if (x.ids.every(function (i) { return gone.indexOf(i) >= 0 || !rec[i]; })) gone.push(x.id); });
           }
         }
-        return list.map(function (x) { return { id: String(x.id), text: String(x.text), ids: (x.ids || []).map(String),
+        return list.map(function (x) { return { id: String(x.id), text: partText_(x.text), ids: (x.ids || []).map(String),
                                                 undone: gone.indexOf(String(x.id)) >= 0 }; });
       })(),
       // What kind of undo it is, so the app can show a stock undo straight away.
       undoType: (function () { try { return (JSON.parse(String(r.undo || '')) || {}).type || ''; } catch (e) { return ''; } })() });
   });
   return out.reverse().slice(0, 1500);
+}
+
+/* A stock entry's headline in today's words, however long ago it was written:
+   rebuilt from its movements while they are all still on record, keeping any
+   note that was typed with it. Other entries read as they were written. */
+var STOCK_ENTRY_ACTIONS_ = { adjustStockBulk: 1, setStockBulk: 1, transferBulk: 1, transferMulti: 1,
+                             transferExternal: 1, seasonTransfer: 1, sendShipment: 1 };
+function stockEntryText_(r) {
+  var text = String(r.text || '');
+  if (!STOCK_ENTRY_ACTIONS_[String(r.action)] || String(r.undo || '').indexOf('"moves"') < 0) return text;
+  var ids = String(r.moves || '').split(',').filter(Boolean);
+  if (!ids.length) return text;
+  var rec = movesById_();
+  var ms = ids.map(function (i) { return rec[i]; });
+  if (ms.some(function (m) { return !m; })) return text;       // partly undone: as written
+  var mv = movesText_(ms);
+  if (!mv) return text;
+  var note = text.match(/ — “[\s\S]*”$/);
+  return mv + (note ? note[0] : '');
 }
 
 /* The movement record by id, in the shape the log uses — read once per request. */

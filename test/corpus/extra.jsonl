@@ -1,92 +1,92 @@
 {"__init":1}
 {"action":"getState"}
-{"season":"sn_paaaaa","action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD","prices":{"sr_en":{"EUR":35,"USD":40}}}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_a","name":"Festival A","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_b","name":"Festival B","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_c","name":"Roma","regionId":"rg_it"}
-{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_x","name":"Festival A","regionId":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"setStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","qty":30},{"bookId":"we_en","qty":12},{"bookId":"ea_en","qty":4}],"override":true}
-{"season":"sn_paaaaa","action":"adjustStockBulk","location":"wh_it","items":[{"bookId":"sr_en","delta":10}],"override":true,"movePrefix":"adj1"}
-{"season":"sn_paaaaa","action":"transferBulk","from":"WAREHOUSE","to":"ev_a","items":[{"bookId":"sr_en","qty":15},{"bookId":"we_en","qty":4}],"movePrefix":"tb1","override":true}
-{"season":"sn_paaaaa","action":"transferBulk","from":"WAREHOUSE","to":"ev_a","items":[{"bookId":"ea_en","qty":99}]}
-{"season":"sn_paaaaa","action":"transferExternal","direction":"out","fromLoc":"WAREHOUSE","label":"Printer","items":[{"bookId":"we_en","qty":1}],"override":true}
-{"season":"sn_paaaaa","action":"transferExternal","direction":"out","fromLoc":"WAREHOUSE","toRegionId":"rg_it","items":[{"bookId":"sr_en","qty":2}],"override":true}
-{"season":"sn_paaaaa","action":"transferExternal","direction":"in","fromLoc":"WAREHOUSE","label":"Printer","items":[{"bookId":"ea_en","qty":3}]}
-{"season":"sn_paaaaa","action":"undoStockMove","id":"tb1_we_en"}
-{"season":"sn_paaaaa","action":"undoStockMove","id":"nope"}
-{"season":"sn_paaaaa","action":"sell","saleId":"S1","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"by":"Ann","override":true}
-{"season":"sn_paaaaa","action":"sell","saleId":"S2","location":"ev_a","bookId":"sr_en","legs":[{"type":"Card","cur":"PLN","amt":150}],"pending":true,"override":true}
-{"season":"sn_paaaaa","action":"sell","saleId":"S3","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":100}],"dueamt":50,"duecur":"PLN","override":true}
-{"season":"sn_paaaaa","action":"sell","saleId":"S4","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":200}],"changeamt":50,"changecur":"PLN","override":true}
-{"season":"sn_paaaaa","action":"sell","saleId":"S5","location":"ev_a","bookId":"we_en","isPreorder":true,"legs":[{"type":"Cash","cur":"PLN","amt":150}],"name":"Bob","phone":"+48123456","comments":"blue cover"}
-{"season":"sn_paaaaa","action":"sell","saleId":"S6","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":50},{"type":"Card","cur":"EUR","amt":20},{"type":"Zelle","cur":"USD","amt":5}],"override":true}
-{"season":"sn_paaaaa","action":"sell","saleId":"S7","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":100}],"dueamt":10,"duecur":"EUR","override":true}
-{"season":"sn_paaaaa","action":"sell","saleId":"S8","location":"ev_b","bookId":"ea_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
-{"season":"sn_paaaaa","action":"markPaid","saleId":"S2"}
-{"season":"sn_paaaaa","action":"markPaid","saleId":"S3"}
-{"season":"sn_paaaaa","action":"markPaid","saleId":"S7"}
-{"season":"sn_paaaaa","action":"giveChange","saleId":"S4","location":"ev_a"}
-{"season":"sn_paaaaa","action":"markDelivered","saleId":"S5","fromStock":true,"fromLoc":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"markDelivered","saleId":"S5","fromStock":true,"fromLoc":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"sellBundle","keepBundleId":"BX","location":"ev_a","items":[{"bookId":"sr_en","pre":false},{"bookId":"we_en","pre":true}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"pending":true,"name":"Cara","override":true}
-{"season":"sn_paaaaa","action":"markPaidBundle","bundle":"BX"}
-{"season":"sn_paaaaa","action":"markDeliveredBundle","bundle":"BX","fromStock":true,"fromLoc":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"sellBundle","keepBundleId":"BY","location":"ev_a","items":[{"bookId":"sr_en"},{"bookId":"sr_en"}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"override":true}
-{"season":"sn_paaaaa","action":"deleteBundle","bundle":"BY"}
-{"season":"sn_paaaaa","action":"sellBundle","keepBundleId":"BY","location":"ev_a","items":[{"bookId":"sr_en"},{"bookId":"sr_en"}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"override":true}
-{"season":"sn_paaaaa","action":"editSale","saleId":"S1","location":"ev_a","type":"SALE","bookId":"sr_en","legs":[{"type":"Card","cur":"PLN","amt":150}],"comments":"edited"}
-{"season":"sn_paaaaa","action":"setUsdActual","saleId":"S1","usd":38.5}
-{"season":"sn_paaaaa","action":"deleteSale","saleId":"S4"}
-{"season":"sn_paaaaa","action":"deleteSale","saleId":"S4"}
-{"season":"sn_paaaaa","action":"sell","saleId":"S4","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"override":true}
-{"season":"sn_paaaaa","action":"donate","saleId":"D1","location":"ev_a","legs":[{"type":"Cash","cur":"PLN","amt":20}],"name":"Dev"}
-{"season":"sn_paaaaa","action":"cashMove","cashId":"CM1","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":100,"note":"evening"}
-{"season":"sn_paaaaa","action":"cashMove","cashId":"CM2","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":99999}
-{"season":"sn_paaaaa","action":"cashFloat","loc":"ev_b","items":[{"cur":"PLN","amt":50},{"cur":"EUR","amt":10}],"note":"till"}
-{"season":"sn_paaaaa","action":"cashFloat","loc":"ev_b","back":"true","items":[{"cur":"PLN","amt":20}]}
-{"season":"sn_paaaaa","action":"cashAdjust","toAcct":"WAREHOUSE","cur":"PLN","amt":5,"note":"found"}
-{"season":"sn_paaaaa","action":"cashSet","toAcct":"WAREHOUSE","cur":"EUR","amt":30}
-{"season":"sn_paaaaa","action":"cashEdit","id":"CM1","kind":"MOVE","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":90,"note":"edited"}
-{"season":"sn_paaaaa","action":"changeWithdraw","id":"CH1","cashId":"CW1","amt":20,"cur":"PLN","source":"WAREHOUSE","loc":"ev_a"}
-{"season":"sn_paaaaa","action":"changeWithdraw","id":"CH2","cashId":"CW2","amt":10,"cur":"PLN","source":"OTHER","sourceName":"Sita","loc":"ev_a"}
-{"season":"sn_paaaaa","action":"changeWithdraw","id":"CH3","cashId":"CW3","amt":5,"cur":"PLN","source":"WAREHOUSE","loc":"ev_b"}
-{"season":"sn_paaaaa","action":"changeReturn","id":"CH2","cashId":"CRCH2"}
-{"season":"sn_paaaaa","action":"cashMoveAll","fromAcct":"ev_a","toAcct":"WAREHOUSE","changeIds":"CH1","idPrefix":"MA1"}
-{"season":"sn_paaaaa","action":"changeDelete","id":"CH3"}
-{"season":"sn_paaaaa","action":"cashDelete","id":"CM1"}
-{"season":"sn_paaaaa","action":"cashDelete","id":"MA1_PLN"}
-{"season":"sn_paaaaa","action":"cashMove","cashId":"CM1","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":1}
-{"season":"sn_paaaaa","action":"cashResetAcct","acct":"ev_b"}
-{"season":"sn_paaaaa","action":"cashMove","cashId":"CM3","fromAcct":"BANK","toAcct":"WAREHOUSE","cur":"PLN","amt":40}
-{"season":"sn_paaaaa","action":"cashResetBank"}
-{"season":"sn_paaaaa","action":"saveCost","id":"cost1","amt":3,"cur":"PLN","category":"Card machine fee","location":"ev_a","payType":"Card"}
-{"season":"sn_paaaaa","action":"saveCost","id":"cost1","amt":4,"cur":"PLN","category":"Card machine fee","location":"ev_a","payType":"Card"}
-{"season":"sn_paaaaa","action":"saveCost","id":"cost2","amt":2,"cur":"EUR","category":"Bank fee","location":"wh_it"}
-{"season":"sn_paaaaa","action":"deleteCost","id":"cost2"}
-{"season":"sn_paaaaa","action":"orgSave","scope":"SEASON","rows":[{"category":"General","name":"Gita","phone":"+16500000000"},{"category":"Bank","name":"Rasika"}]}
-{"season":"sn_paaaaa","action":"orgSave","scope":"rg_naaaaa","rows":[{"id":"O1","category":"Warehouse","name":"Tulasi","phone":"+48500000000"}]}
-{"season":"sn_paaaaa","action":"orgSave","scope":"rg_naaaaa","rows":[{"id":"O1","category":"Warehouse","name":"Tulasi S","phone":"+48500000001"},{"category":"Festival","name":"Daivi"}]}
-{"season":"sn_paaaaa","action":"qrSave","scope":"SEASON","rows":[{"id":"Qseed01","label":"Wise","caption":"new caption","src":"qr-wise.jpeg"},{"label":"Revolut","caption":"r","src":"data:image/png;base64,AAAA"}]}
-{"season":"sn_paaaaa","action":"setPayTypes","kind":"event","id":"ev_a","types":["Cash","Card","cash"]}
-{"season":"sn_paaaaa","action":"setPayTypes","kind":"region","id":"rg_it","types":["Cash","Wise"]}
-{"season":"sn_paaaaa","action":"setPayTypes","kind":"event","id":"ev_a","types":[]}
-{"season":"sn_paaaaa","action":"setPrices","regionId":"rg_it","prices":{"sr_en":{"EUR":30},"we_en":{"EUR":28,"USD":33}}}
-{"season":"sn_paaaaa","action":"editRegion","regionId":"rg_it","name":"Italia","currencies":"EUR,USD,GBP","books":"sr_en,we_en","prices":{"sr_en":{"EUR":31,"USD":40,"GBP":27}}}
-{"season":"sn_paaaaa","action":"regionAddBooks","regionId":"rg_it","bookIds":"ea_en"}
-{"season":"sn_paaaaa","action":"setRegionHidden","regionId":"rg_it","hidden":"we_en"}
-{"season":"sn_paaaaa","action":"setEventHidden","eventId":"ev_b","hidden":"ea_en"}
-{"season":"sn_paaaaa","action":"reorder","kind":"region","ids":["rg_it","rg_naaaaa"]}
-{"season":"sn_paaaaa","action":"reorder","kind":"event","ids":["ev_b","ev_a"]}
-{"season":"sn_paaaaa","action":"reorderBooks","regionId":"rg_naaaaa","ids":["we_en","sr_en"]}
-{"season":"sn_paaaaa","action":"reorderBooks","ids":["ea_en","we_en","sr_en"]}
-{"season":"sn_paaaaa","action":"setWarehouseName","name":"Polska"}
-{"season":"sn_paaaaa","action":"saveLabel","key":"hello","text":"Hi there"}
-{"season":"sn_paaaaa","action":"saveLabel","key":"hello","text":"Hi again"}
-{"season":"sn_paaaaa","action":"saveLabel","key":"hello","text":""}
-{"season":"sn_paaaaa","action":"renameEvent","eventId":"ev_b","name":"Festival Bee"}
-{"season":"sn_paaaaa","action":"setKey","kind":"event","id":"ev_b"}
-{"season":"sn_paaaaa","action":"setKey","kind":"region","id":"rg_naaaaa","key":"kabcdefghij12"}
-{"season":"sn_paaaaa","action":"sellerLink","regionId":"rg_naaaaa","key":"sabcdefghij12","scope":"ev_a"}
+{"season":"sn_baaaaa","action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD","prices":{"sr_en":{"EUR":35,"USD":40}}}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_a","name":"Festival A","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_b","name":"Festival B","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_c","name":"Roma","regionId":"rg_it"}
+{"season":"sn_baaaaa","action":"createEvent","eventId":"ev_x","name":"Festival A","regionId":"rg_poland"}
+{"season":"sn_baaaaa","action":"setStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","qty":30},{"bookId":"we_en","qty":12},{"bookId":"ea_en","qty":4}],"override":true}
+{"season":"sn_baaaaa","action":"adjustStockBulk","location":"wh_it","items":[{"bookId":"sr_en","delta":10}],"override":true,"movePrefix":"adj1"}
+{"season":"sn_baaaaa","action":"transferBulk","from":"WAREHOUSE","to":"ev_a","items":[{"bookId":"sr_en","qty":15},{"bookId":"we_en","qty":4}],"movePrefix":"tb1","override":true}
+{"season":"sn_baaaaa","action":"transferBulk","from":"WAREHOUSE","to":"ev_a","items":[{"bookId":"ea_en","qty":99}]}
+{"season":"sn_baaaaa","action":"transferExternal","direction":"out","fromLoc":"WAREHOUSE","label":"Printer","items":[{"bookId":"we_en","qty":1}],"override":true}
+{"season":"sn_baaaaa","action":"transferExternal","direction":"out","fromLoc":"WAREHOUSE","toRegionId":"rg_it","items":[{"bookId":"sr_en","qty":2}],"override":true}
+{"season":"sn_baaaaa","action":"transferExternal","direction":"in","fromLoc":"WAREHOUSE","label":"Printer","items":[{"bookId":"ea_en","qty":3}]}
+{"season":"sn_baaaaa","action":"undoStockMove","id":"tb1_we_en"}
+{"season":"sn_baaaaa","action":"undoStockMove","id":"nope"}
+{"season":"sn_baaaaa","action":"sell","saleId":"S1","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"by":"Ann","override":true}
+{"season":"sn_baaaaa","action":"sell","saleId":"S2","location":"ev_a","bookId":"sr_en","legs":[{"type":"Card","cur":"PLN","amt":150}],"pending":true,"override":true}
+{"season":"sn_baaaaa","action":"sell","saleId":"S3","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":100}],"dueamt":50,"duecur":"PLN","override":true}
+{"season":"sn_baaaaa","action":"sell","saleId":"S4","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":200}],"changeamt":50,"changecur":"PLN","override":true}
+{"season":"sn_baaaaa","action":"sell","saleId":"S5","location":"ev_a","bookId":"we_en","isPreorder":true,"legs":[{"type":"Cash","cur":"PLN","amt":150}],"name":"Bob","phone":"+48123456","comments":"blue cover"}
+{"season":"sn_baaaaa","action":"sell","saleId":"S6","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":50},{"type":"Card","cur":"EUR","amt":20},{"type":"Zelle","cur":"USD","amt":5}],"override":true}
+{"season":"sn_baaaaa","action":"sell","saleId":"S7","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":100}],"dueamt":10,"duecur":"EUR","override":true}
+{"season":"sn_baaaaa","action":"sell","saleId":"S8","location":"ev_b","bookId":"ea_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
+{"season":"sn_baaaaa","action":"markPaid","saleId":"S2"}
+{"season":"sn_baaaaa","action":"markPaid","saleId":"S3"}
+{"season":"sn_baaaaa","action":"markPaid","saleId":"S7"}
+{"season":"sn_baaaaa","action":"giveChange","saleId":"S4","location":"ev_a"}
+{"season":"sn_baaaaa","action":"markDelivered","saleId":"S5","fromStock":true,"fromLoc":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"markDelivered","saleId":"S5","fromStock":true,"fromLoc":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"sellBundle","keepBundleId":"BX","location":"ev_a","items":[{"bookId":"sr_en","pre":false},{"bookId":"we_en","pre":true}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"pending":true,"name":"Cara","override":true}
+{"season":"sn_baaaaa","action":"markPaidBundle","bundle":"BX"}
+{"season":"sn_baaaaa","action":"markDeliveredBundle","bundle":"BX","fromStock":true,"fromLoc":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"sellBundle","keepBundleId":"BY","location":"ev_a","items":[{"bookId":"sr_en"},{"bookId":"sr_en"}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"override":true}
+{"season":"sn_baaaaa","action":"deleteBundle","bundle":"BY"}
+{"season":"sn_baaaaa","action":"sellBundle","keepBundleId":"BY","location":"ev_a","items":[{"bookId":"sr_en"},{"bookId":"sr_en"}],"legs":[{"type":"Cash","cur":"PLN","amt":300}],"override":true}
+{"season":"sn_baaaaa","action":"editSale","saleId":"S1","location":"ev_a","type":"SALE","bookId":"sr_en","legs":[{"type":"Card","cur":"PLN","amt":150}],"comments":"edited"}
+{"season":"sn_baaaaa","action":"setUsdActual","saleId":"S1","usd":38.5}
+{"season":"sn_baaaaa","action":"deleteSale","saleId":"S4"}
+{"season":"sn_baaaaa","action":"deleteSale","saleId":"S4"}
+{"season":"sn_baaaaa","action":"sell","saleId":"S4","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"override":true}
+{"season":"sn_baaaaa","action":"donate","saleId":"D1","location":"ev_a","legs":[{"type":"Cash","cur":"PLN","amt":20}],"name":"Dev"}
+{"season":"sn_baaaaa","action":"cashMove","cashId":"CM1","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":100,"note":"evening"}
+{"season":"sn_baaaaa","action":"cashMove","cashId":"CM2","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":99999}
+{"season":"sn_baaaaa","action":"cashFloat","loc":"ev_b","items":[{"cur":"PLN","amt":50},{"cur":"EUR","amt":10}],"note":"till"}
+{"season":"sn_baaaaa","action":"cashFloat","loc":"ev_b","back":"true","items":[{"cur":"PLN","amt":20}]}
+{"season":"sn_baaaaa","action":"cashAdjust","toAcct":"WAREHOUSE","cur":"PLN","amt":5,"note":"found"}
+{"season":"sn_baaaaa","action":"cashSet","toAcct":"WAREHOUSE","cur":"EUR","amt":30}
+{"season":"sn_baaaaa","action":"cashEdit","id":"CM1","kind":"MOVE","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":90,"note":"edited"}
+{"season":"sn_baaaaa","action":"changeWithdraw","id":"CH1","cashId":"CW1","amt":20,"cur":"PLN","source":"WAREHOUSE","loc":"ev_a"}
+{"season":"sn_baaaaa","action":"changeWithdraw","id":"CH2","cashId":"CW2","amt":10,"cur":"PLN","source":"OTHER","sourceName":"Sita","loc":"ev_a"}
+{"season":"sn_baaaaa","action":"changeWithdraw","id":"CH3","cashId":"CW3","amt":5,"cur":"PLN","source":"WAREHOUSE","loc":"ev_b"}
+{"season":"sn_baaaaa","action":"changeReturn","id":"CH2","cashId":"CRCH2"}
+{"season":"sn_baaaaa","action":"cashMoveAll","fromAcct":"ev_a","toAcct":"WAREHOUSE","changeIds":"CH1","idPrefix":"MA1"}
+{"season":"sn_baaaaa","action":"changeDelete","id":"CH3"}
+{"season":"sn_baaaaa","action":"cashDelete","id":"CM1"}
+{"season":"sn_baaaaa","action":"cashDelete","id":"MA1_PLN"}
+{"season":"sn_baaaaa","action":"cashMove","cashId":"CM1","fromAcct":"ev_a","toAcct":"WAREHOUSE","cur":"PLN","amt":1}
+{"season":"sn_baaaaa","action":"cashResetAcct","acct":"ev_b"}
+{"season":"sn_baaaaa","action":"cashMove","cashId":"CM3","fromAcct":"BANK","toAcct":"WAREHOUSE","cur":"PLN","amt":40}
+{"season":"sn_baaaaa","action":"cashResetBank"}
+{"season":"sn_baaaaa","action":"saveCost","id":"cost1","amt":3,"cur":"PLN","category":"Card machine fee","location":"ev_a","payType":"Card"}
+{"season":"sn_baaaaa","action":"saveCost","id":"cost1","amt":4,"cur":"PLN","category":"Card machine fee","location":"ev_a","payType":"Card"}
+{"season":"sn_baaaaa","action":"saveCost","id":"cost2","amt":2,"cur":"EUR","category":"Bank fee","location":"wh_it"}
+{"season":"sn_baaaaa","action":"deleteCost","id":"cost2"}
+{"season":"sn_baaaaa","action":"orgSave","scope":"SEASON","rows":[{"category":"General","name":"Gita","phone":"+16500000000"},{"category":"Bank","name":"Rasika"}]}
+{"season":"sn_baaaaa","action":"orgSave","scope":"rg_poland","rows":[{"id":"O1","category":"Warehouse","name":"Tulasi","phone":"+48500000000"}]}
+{"season":"sn_baaaaa","action":"orgSave","scope":"rg_poland","rows":[{"id":"O1","category":"Warehouse","name":"Tulasi S","phone":"+48500000001"},{"category":"Festival","name":"Daivi"}]}
+{"season":"sn_baaaaa","action":"qrSave","scope":"SEASON","rows":[{"id":"Qseed01","label":"Wise","caption":"new caption","src":"qr-wise.jpeg"},{"label":"Revolut","caption":"r","src":"data:image/png;base64,AAAA"}]}
+{"season":"sn_baaaaa","action":"setPayTypes","kind":"event","id":"ev_a","types":["Cash","Card","cash"]}
+{"season":"sn_baaaaa","action":"setPayTypes","kind":"region","id":"rg_it","types":["Cash","Wise"]}
+{"season":"sn_baaaaa","action":"setPayTypes","kind":"event","id":"ev_a","types":[]}
+{"season":"sn_baaaaa","action":"setPrices","regionId":"rg_it","prices":{"sr_en":{"EUR":30},"we_en":{"EUR":28,"USD":33}}}
+{"season":"sn_baaaaa","action":"editRegion","regionId":"rg_it","name":"Italia","currencies":"EUR,USD,GBP","books":"sr_en,we_en","prices":{"sr_en":{"EUR":31,"USD":40,"GBP":27}}}
+{"season":"sn_baaaaa","action":"regionAddBooks","regionId":"rg_it","bookIds":"ea_en"}
+{"season":"sn_baaaaa","action":"setRegionHidden","regionId":"rg_it","hidden":"we_en"}
+{"season":"sn_baaaaa","action":"setEventHidden","eventId":"ev_b","hidden":"ea_en"}
+{"season":"sn_baaaaa","action":"reorder","kind":"region","ids":["rg_it","rg_poland"]}
+{"season":"sn_baaaaa","action":"reorder","kind":"event","ids":["ev_b","ev_a"]}
+{"season":"sn_baaaaa","action":"reorderBooks","regionId":"rg_poland","ids":["we_en","sr_en"]}
+{"season":"sn_baaaaa","action":"reorderBooks","ids":["ea_en","we_en","sr_en"]}
+{"season":"sn_baaaaa","action":"setWarehouseName","name":"Polska"}
+{"season":"sn_baaaaa","action":"saveLabel","key":"hello","text":"Hi there"}
+{"season":"sn_baaaaa","action":"saveLabel","key":"hello","text":"Hi again"}
+{"season":"sn_baaaaa","action":"saveLabel","key":"hello","text":""}
+{"season":"sn_baaaaa","action":"renameEvent","eventId":"ev_b","name":"Festival Bee"}
+{"season":"sn_baaaaa","action":"setKey","kind":"event","id":"ev_b"}
+{"season":"sn_baaaaa","action":"setKey","kind":"region","id":"rg_poland","key":"kabcdefghij12"}
+{"season":"sn_baaaaa","action":"sellerLink","regionId":"rg_poland","key":"sabcdefghij12","scope":"ev_a"}
 {"k":"kabcdefghij12","by":"Coord","action":"getState"}
 {"k":"sabcdefghij12","by":"Sam","action":"getState"}
 {"k":"sabcdefghij12","by":"Sam","action":"sell","saleId":"SL1","location":"ev_a","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}],"override":true}
@@ -94,56 +94,56 @@
 {"k":"kabcdefghij12","by":"Coord","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_b","bookId":"sr_en","qty":1}],"movePrefix":"cm1"}
 {"k":"kabcdefghij12","by":"Coord","action":"cashMove","fromAcct":"WAREHOUSE","toAcct":"BANK","cur":"PLN","amt":1}
 {"action":"getState","k":"knotarealkey00"}
-{"season":"sn_paaaaa","action":"savePartner","name":"Local group","regionId":"rg_naaaaa","note":"n"}
-{"season":"sn_paaaaa","action":"savePartner","partnerId":"pt_jaaaaa","name":"Local group 2","regionId":"rg_naaaaa","note":"n2"}
-{"season":"sn_paaaaa","action":"saveConsignBook","partnerId":"pt_jaaaaa","name":"Local Gita","cat":"other","regionId":"rg_naaaaa","prices":{"PLN":20},"stock":6,"location":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"saveConsignBook","bookId":"bk_paaaaa","name":"Local Gita (2nd ed.)","cat":"big","regionId":"rg_naaaaa","prices":{"PLN":25}}
-{"season":"sn_paaaaa","action":"sell","saleId":"SC1","location":"WAREHOUSE","bookId":"bk_paaaaa","legs":[{"type":"Cash","cur":"PLN","amt":25}],"override":true}
-{"season":"sn_paaaaa","action":"partnerPayout","payoutId":"PO1","partnerId":"pt_jaaaaa","items":[{"cur":"PLN","amt":10}],"method":"Cash","fromLoc":"WAREHOUSE","note":"first"}
-{"season":"sn_paaaaa","action":"partnerPayout","payoutId":"PO1","partnerId":"pt_jaaaaa","items":[{"cur":"PLN","amt":10}],"method":"Cash","fromLoc":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"deletePayout","id":"PO1_0"}
-{"season":"sn_paaaaa","action":"renameBook","bookId":"bk_paaaaa","name":"Local Gita (3rd ed.)","cat":"aotm"}
-{"season":"sn_paaaaa","action":"addBook","name":"Temporary","cat":"other"}
-{"season":"sn_paaaaa","action":"setStockBulk","location":"WAREHOUSE","items":[{"bookId":"bk_haaaaa","qty":2}],"override":true}
-{"season":"sn_paaaaa","action":"deleteBook","bookId":"bk_haaaaa"}
-{"season":"sn_paaaaa","action":"deleteBook","bookId":"bk_paaaaa"}
-{"season":"sn_paaaaa","action":"saveHolder","regionId":"rg_naaaaa","name":"Radha","phone":"+48111","newHolderId":"hd_abcd12"}
-{"season":"sn_paaaaa","action":"saveHolder","holderId":"hd_abcd12","regionId":"rg_naaaaa","name":"Radha D","phone":"+48112","note":"garage"}
-{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"hd_abcd12","bookId":"sr_en","qty":3}],"movePrefix":"tm1"}
-{"season":"sn_paaaaa","action":"cashMove","cashId":"CM4","fromAcct":"BANK","toAcct":"hd_abcd12","cur":"PLN","amt":5}
-{"season":"sn_paaaaa","action":"deleteHolder","holderId":"hd_abcd12"}
-{"season":"sn_paaaaa","action":"sendShipment","shipId":"sh_aaaa11","fromRegion":"rg_naaaaa","toRegion":"rg_it","mode":"devotee","carrier":"Hari","phone":"+39","items":[{"bookId":"sr_en","qty":2},{"bookId":"we_en","qty":1}],"note":"bag"}
-{"season":"sn_paaaaa","action":"editShipment","shipId":"sh_aaaa11","tracking":"T1","eta":"2026-06-10","note":"bag 2"}
-{"season":"sn_paaaaa","action":"adjustShipment","shipId":"sh_aaaa11","counts":{"sr_en":1},"note":"one left behind"}
-{"season":"sn_paaaaa","action":"receiveShipment","shipId":"sh_aaaa11","items":[{"bookId":"sr_en","qty":1}]}
-{"season":"sn_paaaaa","action":"receiveShipment","shipId":"sh_aaaa11","items":[{"bookId":"we_en","qty":1}],"toLoc":"ev_c"}
-{"season":"sn_paaaaa","action":"sendShipment","shipId":"sh_bbbb22","fromRegion":"OUTSIDE","toRegion":"rg_naaaaa","mode":"shipping","origin":"India","items":[{"bookId":"ea_en","qty":5}],"toLoc":"ev_a"}
-{"season":"sn_paaaaa","action":"deleteShipment","shipId":"sh_bbbb22"}
-{"season":"sn_paaaaa","action":"sendShipment","fromRegion":"OUTSIDE","toRegion":"rg_naaaaa","mode":"direct","origin":"Printer","items":[{"bookId":"ea_en","qty":2}]}
-{"season":"sn_paaaaa","action":"sell","saleId":"P1","location":"ev_c","bookId":"sr_en","isPreorder":true,"legs":[{"type":"Cash","cur":"EUR","amt":35}],"name":"Luca"}
-{"season":"sn_paaaaa","action":"setFulfilBy","remoteSaleId":"P1","fulfilBy":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"setFulfilBy","remoteSaleId":"P1","fulfilBy":"","declined":true}
-{"season":"sn_paaaaa","action":"fulfilRemote","remoteSaleId":"P1","fromLoc":"WAREHOUSE"}
-{"season":"sn_paaaaa","action":"saveCloseDraft","kind":"event","id":"ev_b","draft":{"checks":[1,2],"counts":{"WAREHOUSE|sr_en":3},"note":"half way"}}
-{"season":"sn_paaaaa","action":"closeLocation","kind":"event","id":"ev_b","counts":{"ev_b|sr_en":0},"note":"end"}
-{"season":"sn_paaaaa","action":"sell","saleId":"S9","location":"ev_b","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
-{"season":"sn_paaaaa","action":"reopenLocation","kind":"event","id":"ev_b"}
-{"season":"sn_paaaaa","action":"setDriveFolder","folder":"https://drive.google.com/drive/folders/1AbCdEfGhIjK000001"}
-{"season":"sn_paaaaa","action":"setSeasonFolder","seasonId":"sn_paaaaa","which":"season","folder":"1AbCdEfGhIjK000001"}
-{"season":"sn_paaaaa","action":"setSeasonFolder","seasonId":"sn_paaaaa","which":"season","reset":"true"}
-{"season":"sn_paaaaa","action":"descriptionsSheet","rows":"[{\"where\":\"Top\",\"kind\":\"button\",\"text\":\"Sell\"}]"}
+{"season":"sn_baaaaa","action":"savePartner","name":"Local group","regionId":"rg_poland","note":"n"}
+{"season":"sn_baaaaa","action":"savePartner","partnerId":"pt_vaaaaa","name":"Local group 2","regionId":"rg_poland","note":"n2"}
+{"season":"sn_baaaaa","action":"saveConsignBook","partnerId":"pt_vaaaaa","name":"Local Gita","cat":"other","regionId":"rg_poland","prices":{"PLN":20},"stock":6,"location":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"saveConsignBook","bookId":"bk_baaaaa","name":"Local Gita (2nd ed.)","cat":"big","regionId":"rg_poland","prices":{"PLN":25}}
+{"season":"sn_baaaaa","action":"sell","saleId":"SC1","location":"WAREHOUSE","bookId":"bk_baaaaa","legs":[{"type":"Cash","cur":"PLN","amt":25}],"override":true}
+{"season":"sn_baaaaa","action":"partnerPayout","payoutId":"PO1","partnerId":"pt_vaaaaa","items":[{"cur":"PLN","amt":10}],"method":"Cash","fromLoc":"WAREHOUSE","note":"first"}
+{"season":"sn_baaaaa","action":"partnerPayout","payoutId":"PO1","partnerId":"pt_vaaaaa","items":[{"cur":"PLN","amt":10}],"method":"Cash","fromLoc":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"deletePayout","id":"PO1_0"}
+{"season":"sn_baaaaa","action":"renameBook","bookId":"bk_baaaaa","name":"Local Gita (3rd ed.)","cat":"aotm"}
+{"season":"sn_baaaaa","action":"addBook","name":"Temporary","cat":"other"}
+{"season":"sn_baaaaa","action":"setStockBulk","location":"WAREHOUSE","items":[{"bookId":"bk_taaaaa","qty":2}],"override":true}
+{"season":"sn_baaaaa","action":"deleteBook","bookId":"bk_taaaaa"}
+{"season":"sn_baaaaa","action":"deleteBook","bookId":"bk_baaaaa"}
+{"season":"sn_baaaaa","action":"saveHolder","regionId":"rg_poland","name":"Radha","phone":"+48111","newHolderId":"hd_abcd12"}
+{"season":"sn_baaaaa","action":"saveHolder","holderId":"hd_abcd12","regionId":"rg_poland","name":"Radha D","phone":"+48112","note":"garage"}
+{"season":"sn_baaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"hd_abcd12","bookId":"sr_en","qty":3}],"movePrefix":"tm1"}
+{"season":"sn_baaaaa","action":"cashMove","cashId":"CM4","fromAcct":"BANK","toAcct":"hd_abcd12","cur":"PLN","amt":5}
+{"season":"sn_baaaaa","action":"deleteHolder","holderId":"hd_abcd12"}
+{"season":"sn_baaaaa","action":"sendShipment","shipId":"sh_aaaa11","fromRegion":"rg_poland","toRegion":"rg_it","mode":"devotee","carrier":"Hari","phone":"+39","items":[{"bookId":"sr_en","qty":2},{"bookId":"we_en","qty":1}],"note":"bag"}
+{"season":"sn_baaaaa","action":"editShipment","shipId":"sh_aaaa11","tracking":"T1","eta":"2026-06-10","note":"bag 2"}
+{"season":"sn_baaaaa","action":"adjustShipment","shipId":"sh_aaaa11","counts":{"sr_en":1},"note":"one left behind"}
+{"season":"sn_baaaaa","action":"receiveShipment","shipId":"sh_aaaa11","items":[{"bookId":"sr_en","qty":1}]}
+{"season":"sn_baaaaa","action":"receiveShipment","shipId":"sh_aaaa11","items":[{"bookId":"we_en","qty":1}],"toLoc":"ev_c"}
+{"season":"sn_baaaaa","action":"sendShipment","shipId":"sh_bbbb22","fromRegion":"OUTSIDE","toRegion":"rg_poland","mode":"shipping","origin":"India","items":[{"bookId":"ea_en","qty":5}],"toLoc":"ev_a"}
+{"season":"sn_baaaaa","action":"deleteShipment","shipId":"sh_bbbb22"}
+{"season":"sn_baaaaa","action":"sendShipment","fromRegion":"OUTSIDE","toRegion":"rg_poland","mode":"direct","origin":"Printer","items":[{"bookId":"ea_en","qty":2}]}
+{"season":"sn_baaaaa","action":"sell","saleId":"P1","location":"ev_c","bookId":"sr_en","isPreorder":true,"legs":[{"type":"Cash","cur":"EUR","amt":35}],"name":"Luca"}
+{"season":"sn_baaaaa","action":"setFulfilBy","remoteSaleId":"P1","fulfilBy":"rg_poland"}
+{"season":"sn_baaaaa","action":"setFulfilBy","remoteSaleId":"P1","fulfilBy":"","declined":true}
+{"season":"sn_baaaaa","action":"fulfilRemote","remoteSaleId":"P1","fromLoc":"WAREHOUSE"}
+{"season":"sn_baaaaa","action":"saveCloseDraft","kind":"event","id":"ev_b","draft":{"checks":[1,2],"counts":{"WAREHOUSE|sr_en":3},"note":"half way"}}
+{"season":"sn_baaaaa","action":"closeLocation","kind":"event","id":"ev_b","counts":{"ev_b|sr_en":0},"note":"end"}
+{"season":"sn_baaaaa","action":"sell","saleId":"S9","location":"ev_b","bookId":"sr_en","legs":[{"type":"Cash","cur":"PLN","amt":150}]}
+{"season":"sn_baaaaa","action":"reopenLocation","kind":"event","id":"ev_b"}
+{"season":"sn_baaaaa","action":"setDriveFolder","folder":"https://drive.google.com/drive/folders/1AbCdEfGhIjK000001"}
+{"season":"sn_baaaaa","action":"setSeasonFolder","seasonId":"sn_baaaaa","which":"season","folder":"1AbCdEfGhIjK000001"}
+{"season":"sn_baaaaa","action":"setSeasonFolder","seasonId":"sn_baaaaa","which":"season","reset":"true"}
+{"season":"sn_baaaaa","action":"descriptionsSheet","rows":"[{\"where\":\"Top\",\"kind\":\"button\",\"text\":\"Sell\"}]"}
 {"__sync":true}
-{"season":"sn_paaaaa","action":"saveSeason","name":"Year Round"}
-{"season":"sn_paaaaa","action":"saveSeason","seasonId":"sn_faaaaa","name":"Year-Round"}
-{"season":"sn_faaaaa","action":"createRegion","regionId":"rg_yr","whLoc":"wh_yr","name":"Barcelona","currencies":"EUR"}
-{"season":"sn_paaaaa","action":"seasonTransfer","fromRegion":"rg_naaaaa","toRegion":"rg_yr","items":[{"bookId":"sr_en","qty":2}],"note":"winter"}
-{"season":"sn_paaaaa","action":"setSeason","seasonId":"sn_paaaaa"}
-{"season":"sn_paaaaa","action":"reopenSeason","seasonId":"sn_faaaaa"}
-{"season":"sn_paaaaa","action":"deleteEvent","eventId":"ev_c","restoreSold":true}
-{"season":"sn_paaaaa","action":"deleteRegion","regionId":"rg_it","confirmName":"Italia","moveStockTo":"rg_naaaaa"}
-{"season":"sn_paaaaa","action":"deleteSeason","seasonId":"sn_faaaaa","confirmName":"Year-Round"}
-{"season":"sn_paaaaa","action":"deleteSeason","seasonId":"sn_paaaaa","confirmName":"wrong"}
+{"season":"sn_baaaaa","action":"saveSeason","name":"Year Round"}
+{"season":"sn_baaaaa","action":"saveSeason","seasonId":"sn_raaaaa","name":"Year-Round"}
+{"season":"sn_raaaaa","action":"createRegion","regionId":"rg_yr","whLoc":"wh_yr","name":"Barcelona","currencies":"EUR"}
+{"season":"sn_baaaaa","action":"seasonTransfer","fromRegion":"rg_poland","toRegion":"rg_yr","items":[{"bookId":"sr_en","qty":2}],"note":"winter"}
+{"season":"sn_baaaaa","action":"setSeason","seasonId":"sn_baaaaa"}
+{"season":"sn_baaaaa","action":"reopenSeason","seasonId":"sn_raaaaa"}
+{"season":"sn_baaaaa","action":"deleteEvent","eventId":"ev_c","restoreSold":true}
+{"season":"sn_baaaaa","action":"deleteRegion","regionId":"rg_it","confirmName":"Italia","moveStockTo":"rg_poland"}
+{"season":"sn_baaaaa","action":"deleteSeason","seasonId":"sn_raaaaa","confirmName":"Year-Round"}
+{"season":"sn_baaaaa","action":"deleteSeason","seasonId":"sn_baaaaa","confirmName":"wrong"}
 {"action":"opStatus","checkOp":"nothing"}
 {"action":"ping"}
-{"season":"sn_paaaaa","action":"cashResetAll"}
+{"season":"sn_baaaaa","action":"cashResetAll"}
 {"__sync":true}

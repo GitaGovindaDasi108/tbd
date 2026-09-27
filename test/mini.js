@@ -144,6 +144,19 @@ if (__mem) { STORE_ = __mem.store; KV_ = __mem.kv; }
    test/golden.js replays such a file to prove a change behaves exactly as
    before — the safety net for moving the data off Google Sheets. */
 const __rec = process.env.TBS_RECORD;
+/* The tour the tests were written against: a season called "Europe Tour" with
+   one region, "Poland", whose warehouse has the original id WAREHOUSE and
+   PLN/EUR/USD prices. A real new spreadsheet starts empty (b197); this sample
+   lives only here. Made directly, so it leaves no activity-log entries. */
+function sampleTour(){
+  if(objectsOf_('_regions').some(r=>String(r.seasonId)!=='HQ')) return;   // an older Code.gs made its own
+  const sid = activeSeasonId_();
+  dbUpdate_('_seasons', { seasonId: sid }, { name: 'Europe Tour' });
+  const prices = {};
+  BOOKS.forEach(b=>{ prices[b.id] = { PLN: b.pln, EUR: b.eur, USD: b.usd }; });
+  doCreateRegion({ regionId: 'rg_poland', whLoc: WAREHOUSE, name: 'Poland', currencies: 'PLN,EUR,USD', prices });
+  cacheClear_(); bumpRev_();
+}
 function call(params){
   if(__rec) __fs.appendFileSync(__rec, JSON.stringify(params) + '\n');
   const e = { postData:{ contents: JSON.stringify(params) } };
@@ -152,7 +165,8 @@ function call(params){
   catch(err){ return { ok:false, error:'unparseable', raw:out }; }
 }
 module.exports = {
-  call, init:()=>{ if(__rec) __fs.appendFileSync(__rec, '{"__init":1}\n'); try{ initialize(); }catch(e){ console.error('init failed', e.message, (e.stack||'').split('\n').slice(1,4).join(' / ')); } },
+  initBare:()=>initialize(),
+  call, init:()=>{ if(__rec) __fs.appendFileSync(__rec, '{"__init":1}\n'); try{ initialize(); sampleTour(); }catch(e){ console.error('init failed', e.message, (e.stack||'').split('\n').slice(1,4).join(' / ')); } },
   label:l=>locLabel_(l),
   sync:f=>{ if(__rec) __fs.appendFileSync(__rec, JSON.stringify({__sync:!!f})+'\n'); return syncSheets(f); },
   cash:(a,c)=>cashCollected_(a,c), tour:()=>tourSales_(),

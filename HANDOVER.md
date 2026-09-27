@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b196**.
+Handover notes. Current build: **b197**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -631,6 +631,33 @@ Not done yet:
   sales use the frozen ones).
 - HQ's Totals by Payment Type still says "tap a type to see it event by
   event", though HQ has no events.
+
+## Done in b197
+
+- **Activity log, cleaned up.** A stock entry's headline is now just the
+  count, what happened and where: "49 Books Transferred from Poland
+  (Warehouse) to Summer Festival" (the Transfer protocol), "12 Books Added
+  to …" or "3 Books Subtracted from …" (Add Stock, and closing counts).
+  Every such entry has a dropdown ("▸ 3 titles") holding only the
+  breakdown, "Sri Radha (English) ×6" — no places, which are in the
+  headline. Older entries are reworded the same way when the log is read,
+  while their movements are all still on record (`stockEntryText_`,
+  `partText_`). Per-line Delete appears only when there is more than one
+  title.
+- **A new spreadsheet starts empty** (book catalogue and one season,
+  "First Season"). It used to create a region named "Poland" with Polish
+  prices, the original contact list and three personal payment codes. A
+  first region is still made to adopt data from before regions existed,
+  if there is any. The tests' sample tour ("Europe Tour" › "Poland",
+  warehouse `WAREHOUSE`) now lives in `test/mini.js` (`sampleTour`);
+  `test/fresh.js` checks a bare start. The corpora were re-recorded.
+- **WhatsApp 📋 on the Summaries Portal**, per section, reporting over
+  every season ("— BY SEASON (after costs) —").
+- **📋 Copy Saved Wording** (admin, once anything has been rewritten): the
+  rewritten wording as text, to be built into the app so your words become
+  its own and the stored copies are cleared. (The running app cannot
+  rewrite its own files; the owner allowed reading the wording from the
+  live app, but this environment's network blocks script.google.com.)
 
 ## Open items
 

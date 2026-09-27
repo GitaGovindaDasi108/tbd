@@ -1311,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b196</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b197</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1438,26 +1438,26 @@ body.list-view .mc-name{min-height:0}
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
     <div class="cols-2">
       <section class="panel" data-fold="sumTitles">
-        <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered, every season</span></h2>
+        <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div class="title-list" id="hqTitleList"></div></div>
       </section>
       <section class="panel" data-fold="sumCollBy">
-        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span></h2>
+        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body" id="hqCollBy"></div>
       </section>
     </div>
     <div class="cols-2">
       <section class="panel" data-fold="sumSalesBy">
-        <h2 class="sec-h2">Sales by Season <span class="hint">(tap for the per-title breakdown)</span></h2>
+        <h2 class="sec-h2">Sales by Season <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div id="hqSalesBy"></div></div>
       </section>
       <section class="panel" data-fold="sumPayments">
-        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span></h2>
+        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body" id="hqPayBody"></div>
       </section>
     </div>
     <section class="panel" data-fold="sumWarehouses" style="margin-top:16px">
-      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span></h2>
+      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="hqWhOverview"></div></div>
     </section>
   </div>
@@ -3240,6 +3240,8 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
+  if(Object.keys(STATE.labels||{}).length)
+    cols[0].push(`<button class="btn" data-act="copywording">📋 Copy Saved Wording</button>`);
 
   // Money
   if(!hideMoney()){
@@ -6903,7 +6905,7 @@ function buildReport(part, opts){
       }).filter(x=>curs(x.got).length);
       if(byRegion.length){
         L.push('');
-        L.push(combo ? '— BY PLACE (after costs) —' : '— BY REGION (after costs) —');
+        L.push(combo ? '— BY PLACE (after costs) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after costs) —');
         byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got))));
       }
     }
@@ -6972,6 +6974,31 @@ function reportPicks(){
   return new Set(REPORT_SECTIONS.map(x=>x[0]));      // everything, the first time
 }
 function saveReportPicks(set){ try{ localStorage.setItem(REP_PICK_KEY, JSON.stringify([...set])); }catch(e){} }
+
+/* Your rewritten wording, as text to hand over, so it can be built into the
+   app itself: each change becomes the app's own words and the stored copy is
+   cleared. (The app cannot rewrite its own files while it runs.) */
+function copyWordingModal(){
+  const labels = STATE.labels || {};
+  const text = JSON.stringify(labels, null, 1);
+  openModal(`
+    ${mHead('Saved wording')}
+    <div class="m-body">
+      <div class="hint">${Object.keys(labels).length} pieces of wording you have rewritten. Copy this and send it
+        to be built into the app, so your words become its own.</div>
+      <textarea id="wordText" class="rep-box" rows="12" readonly>${esc(text)}</textarea>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary" id="wordCopy">Copy</button>
+    </div>`);
+  $('#wordCopy').addEventListener('click', async ()=>{
+    const box = $('#wordText');
+    try{ await navigator.clipboard.writeText(box.value); toast('Copied'); }
+    catch(e){ box.select(); try{ document.execCommand('copy'); toast('Copied'); }catch(e2){ $('#modalErr').textContent='Select the text and copy it.'; } }
+  });
+}
 
 function shareReport(part){
   const full = !part;
@@ -11176,11 +11203,11 @@ function activityModal(){
           <div class="al-meta">${esc(e.who||'')}${undone
             ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>`
             : (someGone ? `${e.who?' · ':''}<span class="al-undone">Partly undone</span>` : '')}</div>
-          ${parts.length>1 ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length} lines</button>
+          ${parts.length ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length===1?'1 title':parts.length+' titles'}</button>
             <div class="al-parts" ${open?'':'hidden'}>${parts.map(x=>`<div class="al-part${(x.undone||undone)?' undone':''}">
               <span class="al-part-t">${esc(x.text)}</span>
               ${(x.undone || undone) ? '<span class="al-undone">Undone</span>'
-                : (e.canUndo && !undone ? `<button type="button" class="btn btn-danger btn-xs" data-alpart="${esc(x.id)}" data-entry="${esc(e.id)}">Delete</button>` : '')}
+                : (e.canUndo && !undone && parts.length>1 ? `<button type="button" class="btn btn-danger btn-xs" data-alpart="${esc(x.id)}" data-entry="${esc(e.id)}">Delete</button>` : '')}
             </div>`).join('')}</div>` : ''}</div>
         <div class="al-act">${(e.canUndo && !undone)
           ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">${parts.length>1?'Delete all':'Delete'}</button>` : ''}</div>
@@ -11781,8 +11808,11 @@ document.addEventListener('click',e=>{
     else toast('Select the link and copy it', true);
     return;
   }
-  if(a==='report'){ shareReport(t.dataset.part||''); return; }
+  // The Summaries Portal's buttons report over every season, as that portal shows.
+  if(a==='report'){ const part=t.dataset.part||'';
+    if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
+  if(a==='copywording'){ copyWordingModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
     closeModal(); goTo('region', t.dataset.id); cashModal(); return;

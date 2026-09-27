@@ -82,6 +82,23 @@ c({ action: 'setSeason', seasonId: SA });
     t.push(['the sale is recorded at HQ', hqState.sales.some(x => x.location === 'wh_hq' && x.p1cur === 'INR' && x.p1amt === 3000)]);
     t.push(['HQ\'s own row in the summaries shows it', /3,?000/.test(await text('#hqCollBy'))]);
 
+    // WhatsApp from the Summaries Portal: every season, by season.
+    await page.click('#summaryPortal [data-act="report"][data-part="cash"]'); await page.waitForTimeout(400);
+    const rep = await page.evaluate(() => (document.querySelector('#repText') || {}).value || '');
+    console.log('   report:\n     ' + rep.split('\n').join('\n     '));
+    t.push(['📋 on the summaries reports every season, by season', /BY SEASON/.test(rep) && /Europe Tour/.test(rep) && /Year-Round/.test(rep)]);
+    await page.evaluate(() => closeModal());
+
+    // Rewritten wording can be copied out, to be built into the app.
+    c({ action: 'saveLabel', key: 'Sales Portal', text: 'Selling at HQ' });
+    await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
+    await page.click('#adminActions [data-act="copywording"]'); await page.waitForTimeout(300);
+    const words = await page.evaluate(() => (document.querySelector('#wordText') || {}).value || '');
+    t.push(['"Copy Saved Wording" shows what was rewritten', /Selling at HQ/.test(words)]);
+    await page.evaluate(() => closeModal());
+    c({ action: 'saveLabel', key: 'Sales Portal', text: '' });
+    await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
+
     // Folding the portals, remembered on this device.
     await page.click('#salesPortal > .portal-h', { position: { x: 30, y: 12 } }); await page.waitForTimeout(200);
     t.push(['the Sales Portal folds from its heading', !(await visible('#regionCols')) && await visible('#summaryPortal .panel')]);

@@ -178,13 +178,13 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     c({ action: 'transferMulti', moves: [{ from: pl.whLoc, to: 'ev_fest', bookId: B0, qty: 2 }, { from: pl.whLoc, to: 'ev_fest', bookId: B1, qty: 3 },
       { from: pl.whLoc, to: 'ev_fest', bookId: B2, qty: 10 }], movePrefix: 'Mr3' });
     await page.evaluate(r => { goTo('region', r); activityModal(); }, pl.regionId); await page.waitForTimeout(1200);
-    const entry = page.locator('#alList .al-row').filter({ hasText: '15 books transferred' }).first();
-    t.push(['one entry: "15 books transferred"', (await entry.count()) === 1]);
+    const entry = page.locator('#alList .al-row').filter({ hasText: '15 Books Transferred' }).first();
+    t.push(['one entry: "15 Books Transferred"', (await entry.count()) === 1]);
     await entry.locator('.al-tog').click(); await page.waitForTimeout(200);
     const lines = (await entry.locator('.al-part').allTextContents()).map(x => x.replace(/\s+/g, ' '));
-    t.push(['three lines, one per title', lines.length === 3 && lines.some(x => /×10 transferred/.test(x))]);
+    t.push(['three lines, one per title', lines.length === 3 && lines.some(x => /×10\b/.test(x))]);
     await page.screenshot({ path: shot('4-activity') });
-    await entry.locator('.al-part').filter({ hasText: '×10 transferred' }).locator('[data-alpart]').click(); await page.waitForTimeout(1800);
+    await entry.locator('.al-part').filter({ hasText: '×10' }).locator('[data-alpart]').click(); await page.waitForTimeout(1800);
     t.push(['deleting just that title puts only those 10 back', qty('ev_fest', B2) === 0 && qty('ev_fest', B1) === 3 && qty('ev_fest', B0) === 2]);
     await page.evaluate(() => closeModal());
 

@@ -74,9 +74,9 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     await page.evaluate(() => closeModal());
     page.__slowLog = true;
     await page.evaluate(() => activityModal()); await page.waitForTimeout(300);
-    const row = page.locator('#alList .al-row').filter({ hasText: '5 books transferred' }).first();
+    const row = page.locator('#alList .al-row').filter({ hasText: '5 Books Transferred' }).first();
     await row.locator('[data-alundo]').click(); await page.waitForTimeout(3500);
-    const kept = await page.evaluate(() => { const r = [...document.querySelectorAll('#alList .al-row')].find(x => /5 books transferred/.test(x.textContent) && !/^Undid/.test(x.querySelector('.al-text').textContent));
+    const kept = await page.evaluate(() => { const r = [...document.querySelectorAll('#alList .al-row')].find(x => /5 Books Transferred/.test(x.textContent) && !/^Undid/.test(x.querySelector('.al-text').textContent));
       return r ? r.classList.contains('undone') : null; });
     t.push(['a Delete made while the log was still loading does not come back', kept === true]);
     t.push(['…and the books are back', qty('ev_fest', B0) === 0 && qty('ev_fest', B1) === 0]);

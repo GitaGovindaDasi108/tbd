@@ -75,16 +75,16 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
       { from: pl.whLoc, to: 'ev_fest', bookId: B2, qty: 10 }], movePrefix: 'Mr4' });
     await page.evaluate(() => pull()); await page.waitForTimeout(600);
     await page.evaluate(r => { goTo('region', r); activityModal(); }, pl.regionId); await page.waitForTimeout(1200);
-    let entry = page.locator('#alList .al-row').filter({ hasText: '15 books transferred' }).first();
+    let entry = page.locator('#alList .al-row').filter({ hasText: '15 Books Transferred' }).first();
     await entry.locator('.al-tog').click(); await page.waitForTimeout(200);
-    await entry.locator('.al-part').filter({ hasText: '×10 transferred' }).locator('[data-alpart]').click(); await page.waitForTimeout(200);
+    await entry.locator('.al-part').filter({ hasText: '×10' }).locator('[data-alpart]').click(); await page.waitForTimeout(200);
     const fast = await page.evaluate(b => ({ gone: !!document.querySelector('#alList .al-part.undone'), at: invQty('ev_fest', b) }), B2);
     t.push(['deleting a line shows at once: crossed out, books back on screen', fast.gone && fast.at === 0]);
     t.push(['the dialog stays open', await page.evaluate(() => !!document.querySelector('#alList'))]);
     await page.waitForTimeout(2500);
     t.push(['…and the server has it', qty('ev_fest', B2) === 0 && qty('ev_fest', B1) === 3]);
     await page.evaluate(() => { closeModal(); activityModal(); }); await page.waitForTimeout(1500);
-    entry = page.locator('#alList .al-row').filter({ hasText: '15 books transferred' }).first();
+    entry = page.locator('#alList .al-row').filter({ hasText: '15 Books Transferred' }).first();
     const lines = await entry.locator('.al-part').evaluateAll(els => els.map(e => ({ t: e.textContent.replace(/\s+/g, ' '), undone: e.classList.contains('undone') })));
     t.push(['reopened: the deleted line is still marked Undone', lines.some(x => /×10/.test(x.t) && x.undone) && lines.filter(x => !x.undone).length === 2]);
     await page.screenshot({ path: shot('1-activity') });
@@ -99,7 +99,7 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     act[act.length - 1][iParts] = '';               // as written before b186
     m.clear();
     const list = m.call({ action: 'activity', season: SA }).result;
-    const old = list.find(e => /2 books transferred/.test(e.text) && !e.undoneAt);
+    const old = list.find(e => /2 Books Transferred/.test(e.text) && !e.undoneAt);
     ok(m.call({ action: 'undoActivityPart', season: SA, id: old.id, part: old.parts[0].id }), 'old part');
     const after = m.call({ action: 'activity', season: SA }).result.find(e => e.id === old.id);
     t.push(['older entry: the deleted line is marked Undone, not shown again', after.parts.length === 2 && after.parts[0].undone && !after.parts[1].undone]);
