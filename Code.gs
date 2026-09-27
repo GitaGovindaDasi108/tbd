@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b205';
+var SERVER_BUILD = 'b206';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -1435,6 +1435,14 @@ function doSeasonTransfer(p) {
 
 /* Every region across every season, for the pickers that reach beyond the tour
    you are standing in. */
+/* A date as text, the same wherever the server runs: String(date) writes it in
+   the server's own time zone (Google: the script's; Cloudflare: UTC), so the
+   same moment read differently on the two. Anything else is left as it is. */
+function dateText_(v) {
+  if (v instanceof Date) return isNaN(v) ? '' : v.toISOString();
+  return String(v);
+}
+
 function allRegionsEverywhere_() {
   var seasons = {};
   seasonsAll_().forEach(function (x) { seasons[x.seasonId] = x.name; });
@@ -1444,7 +1452,7 @@ function allRegionsEverywhere_() {
                whLoc: String(r.whLoc || ''), seasonId: String(r.seasonId || ''),
                seasonName: seasons[String(r.seasonId || '')] ||
                            (String(r.seasonId || '') === HQ_ID ? 'Earthly HQ' : ''),
-               closedAt: r.closedAt ? String(r.closedAt) : '' };
+               closedAt: r.closedAt ? dateText_(r.closedAt) : '' };
     });
 }
 
@@ -2565,12 +2573,12 @@ function everywhere_(sales, inv) {
     seasons: seasonsAll_().map(function (x) {
       var rates = null;
       if (x.closedAt && x.frozenRates) { try { rates = (JSON.parse(x.frozenRates) || {}).RATES || null; } catch (e) {} }
-      return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt ? String(x.closedAt) : '', rates: rates };
+      return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt ? dateText_(x.closedAt) : '', rates: rates };
     }),
     regions: objectsOf_('_regions').filter(function (r) { return r && r.regionId; }).map(function (r) {
       return { regionId: String(r.regionId), name: String(r.name), whLoc: String(r.whLoc || ''),
                seasonId: String(r.seasonId || ''), currencies: parseCurList_(r.currencies),
-               closedAt: r.closedAt ? String(r.closedAt) : '', rates: regionFrozenRates_(r) };
+               closedAt: r.closedAt ? dateText_(r.closedAt) : '', rates: regionFrozenRates_(r) };
     }),
     events: objectsOf_('_events').filter(function (e) { return e && e.eventId; }).map(function (e) {
       return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || '') };
@@ -3592,7 +3600,7 @@ function readState() {
     // Every season's events, only so that a place in another season can be named.
     allEvents: objectsOf_('_events').filter(function (e) { return e && e.eventId; })
       .map(function (e) { return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || ''),
-                                   closedAt: e.closedAt ? String(e.closedAt) : '' }; }),
+                                   closedAt: e.closedAt ? dateText_(e.closedAt) : '' }; }),
     holders: objectsOf_('_holders').filter(function (h) { return h && h.holderId && !truthyCell_(h.archived); })
       .map(function (h) {
         return { holderId: String(h.holderId), regionId: String(h.regionId),
@@ -3612,7 +3620,7 @@ function readState() {
       .map(function (c) {
         return { id: String(c.id), ts: c.ts, amt: Number(c.amt) || 0, cur: String(c.cur || ''),
                  source: String(c.source || ''), sourceName: String(c.sourceName || ''),
-                 loc: String(c.loc || ''), returnedAt: c.returnedAt ? String(c.returnedAt) : '',
+                 loc: String(c.loc || ''), returnedAt: c.returnedAt ? dateText_(c.returnedAt) : '',
                  by: String(c.by || '') };
       }),
     // Where the generated spreadsheets are filed (shown in the app's settings).
@@ -4324,12 +4332,17 @@ function compareWithCloudflare() {
     delete o.serverTime; delete o.rates;
     return o;
   };
-  var firstDiff = function (a, b, at) {
-    if (a === b) return null;
-    if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object' || Array.isArray(a) !== Array.isArray(b)) return at || '(top)';
+  // Up to three places where they differ, each with both values.
+  var show = function (v) { var t = JSON.stringify(v); return t === undefined ? '(missing)' : (t.length > 120 ? t.slice(0, 120) + '…' : t); };
+  var diffs = function (a, b, at, out) {
+    if (out.length >= 3 || a === b) return out;
+    if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object' || Array.isArray(a) !== Array.isArray(b)) {
+      out.push((at || '(top)') + ' — here ' + show(a) + ', there ' + show(b));
+      return out;
+    }
     var keys = {}; Object.keys(a).concat(Object.keys(b)).forEach(function (k) { keys[k] = 1; });
-    for (var k in keys) { var d = firstDiff(a[k], b[k], at + (Array.isArray(a) ? '[' + k + ']' : '.' + k)); if (d) return d; }
-    return null;
+    for (var k in keys) diffs(a[k], b[k], at + (Array.isArray(a) ? '[' + k + ']' : '.' + k), out);
+    return out;
   };
   var ids = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name }; });
   if (regionById_(HQ_REGION)) ids.push({ id: HQ_ID, name: 'Earthly HQ' });
@@ -4338,7 +4351,7 @@ function compareWithCloudflare() {
     setSeasonContext_(s.id); sheetMemoClear_();
     var mine = JSON.parse(stateJson_());
     var theirs = cfCall_(cfg, { action: 'reportState', season: s.id });
-    var d = firstDiff(clean(mine), clean(theirs), '');
+    var found = diffs(clean(mine), clean(theirs), '', []);
     // What a person would check: how many sales, and the money in each currency.
     var money = {};
     (mine.sales || []).forEach(function (x) {
@@ -4347,8 +4360,9 @@ function compareWithCloudflare() {
     });
     var sum = plural_((mine.sales || []).length, 'sale') + Object.keys(money).sort().map(function (c) {
       return ' · ' + round2_(money[c]) + ' ' + c; }).join('');
-    if (d) ok = false;
-    lines.push(s.name + ': ' + (d ? 'DIFFERENT (first at ' + d + ')' : 'identical') + ' — ' + sum);
+    if (found.length) ok = false;
+    lines.push(s.name + ': ' + (found.length ? 'DIFFERENT' : 'identical') + ' — ' + sum);
+    found.forEach(function (f) { lines.push('    ' + f); });
   });
   setSeasonContext_(''); sheetMemoClear_();
   Logger.log((ok ? 'Every season is identical on the server.' : 'NOT identical:') + '\n' + lines.join('\n'));

@@ -91,12 +91,15 @@ const env = Object.assign({}, process.env, { NODE_NO_WARNINGS: '1', TBS_IGNORE_T
                                              TBS_SKIP_SYNC: '1' });   // no spreadsheet building on either side
 function runBase(corpus) {
   const out = path.join(os.tmpdir(), 'tbs-wg-base-' + process.pid + '.json');
-  execFileSync(process.execPath, [path.join(__dirname, 'golden.js'), '--replay', corpus, out], { env, maxBuffer: 1 << 30 });
+  // Google runs in the script's own time zone (a European one here); Cloudflare in UTC.
+  // Anything that writes a date out differently in different zones shows up.
+  execFileSync(process.execPath, [path.join(__dirname, 'golden.js'), '--replay', corpus, out],
+               { env: Object.assign({}, env, { TZ: 'Europe/Warsaw' }), maxBuffer: 1 << 30 });
   const r = JSON.parse(fs.readFileSync(out, 'utf8')); fs.unlinkSync(out); return r;
 }
 function runWorker(corpus) {
   const out = path.join(os.tmpdir(), 'tbs-wg-worker-' + process.pid + '.json');
-  execFileSync(process.execPath, [__filename, '--worker-replay', corpus, out], { env, maxBuffer: 1 << 30 });
+  execFileSync(process.execPath, [__filename, '--worker-replay', corpus, out], { env: Object.assign({}, env, { TZ: 'UTC' }), maxBuffer: 1 << 30 });
   const r = JSON.parse(fs.readFileSync(out, 'utf8')); fs.unlinkSync(out); return r;
 }
 
