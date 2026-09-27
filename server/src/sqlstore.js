@@ -155,6 +155,27 @@ export function makeSqlStore(exec) {
     return out;
   }
 
-  return { store, kv, dump, forget, exportAll };
+  /* Phase 3: every table and setting replaced by a copy from Google (tables
+     as exportAll gives them; settings as plain text). Sign-ins, and what the
+     server has fetched from the web, are kept; everything else is replaced. */
+  function importAll(tables, props) {
+    exec('DELETE FROM row'); exec('DELETE FROM tbl'); exec('DELETE FROM prop');
+    exec("DELETE FROM temp WHERE k NOT LIKE 'web:%'");
+    forget();
+    let rows = 0;
+    Object.keys(tables || {}).forEach(name => {
+      const t = tables[name];
+      exec('INSERT INTO tbl (name, cols) VALUES (?, ?)', name, JSON.stringify(t.cols));
+      (t.rows || []).forEach((r, i) => {
+        exec('INSERT INTO row (t, seq, v) VALUES (?, ?, ?)', name, i + 1, encRow(pad(r.map(dec), t.cols.length)));
+        rows++;
+      });
+    });
+    Object.keys(props || {}).forEach(k => exec('INSERT INTO prop (k, v) VALUES (?, ?)', k, String(props[k])));
+    forget();
+    return { tables: Object.keys(tables || {}).length, rows };
+  }
+
+  return { store, kv, dump, forget, exportAll, importAll };
 }
 

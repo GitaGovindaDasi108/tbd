@@ -17,7 +17,7 @@ const IN_FLIGHT_MS = 15 * 60 * 1000;          // a spreadsheet run that never re
 
 export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, adminEmails, googleCertsUrl,
                              reportUrl, reportSecret }) {
-  const { store, kv, forget, dump, exportAll } = makeSqlStore(exec);
+  const { store, kv, forget, dump, exportAll, importAll } = makeSqlStore(exec);
   const auth = makeAuth({ exec, clientId: googleClientId, adminEmails, fetchImpl, certsUrl: googleCertsUrl });
   const web = makeWebCache(kv, 6 * 3600 * 1000);
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
@@ -49,7 +49,9 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     }
     if (action === 'signOut') { auth.signOut(p.s); return reply({ ok: true }); }
     // Google's spreadsheet side, calling in with the shared secret.
-    if (action === 'reportExport' || action === 'reportWriteBack') return reply(bridge(p));
+    if (/^(reportExport|reportWriteBack|reportImport|reportState)$/.test(action)) return reply(bridge(p));
+    // A phone still pointed at Google, passed on by Google (Phase 3): answered as it always was.
+    if (action === 'relay') return relay(p);
     if (action === 'ping') return answer(e);                        // the revision number, nothing more
     const linkKey = String(p.k || '').trim();
     if (!linkKey && !auth.check(p.s)) {
@@ -78,6 +80,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     try {
       app.sheetMemoClear_(); app.setSeasonContext_('');
       app.flushStockMoves_();
+      if (p.action === 'reportImport') return { ok: true, result: reportImport(p) };
+      if (p.action === 'reportState') return { ok: true, result: reportState(p) };
       return { ok: true, result: p.action === 'reportExport' ? reportExport(String(p.mode || 'tick')) : reportWriteBack(p.back || {}) };
     } catch (err) { return { ok: false, error: String(err && err.message || err) }; }
   }
@@ -107,6 +111,28 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     }
     delete props.cfInFlight;
     return { claim, tables: exportAll(), props };
+  }
+  /* Phase 3: the records copied across from Google, replacing what is here.
+     The revision moves on past Google's, so every phone fetches afresh. */
+  function reportImport(p) {
+    const got = importAll(p.tables || {}, p.props || {});
+    app.sheetMemoClear_(); app.setSeasonContext_('');
+    kv.setProp('rev', String(Number((p.props || {}).rev || 0) + 1));
+    app.cacheClear_();
+    return got;
+  }
+  /* One season's state, as the owner's app would see it — to compare with Google's. */
+  function reportState(p) {
+    const r = JSON.parse(answer({ postData: { contents: JSON.stringify({ action: 'getState', season: String(p.season || '') }) } }));
+    if (!r.ok) throw new Error(r.error || 'Could not read that season.');
+    return r.state;
+  }
+  /* A request that reached Google from a phone not yet switched over. Google
+     vouches for it with the shared secret, and it is answered exactly as the
+     phone expects — so nothing is lost while phones catch up. */
+  function relay(p) {
+    if (!reportSecret || String(p.secret || '') !== reportSecret) return reply({ ok: false, error: 'Not allowed.' });
+    return answer({ postData: { contents: JSON.stringify(p.params || {}) } });
   }
   function reportWriteBack(back) {
     Object.keys(back.meta || {}).forEach(k => {
@@ -188,5 +214,5 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     kv.sweepTemp();
     auth.sweep();
   }
-  return { answer, request, bridge, auth, warm, fetchWanted, housekeeping, kv, store, forget, dump, build: CODE_BUILD, web, app };
+  return { answer, request, bridge, relay, auth, warm, fetchWanted, housekeeping, kv, store, forget, dump, build: CODE_BUILD, web, app };
 }

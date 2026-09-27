@@ -58,19 +58,38 @@ These steps put the server online. It starts empty, and **nothing uses it until 
 
    These survive every deploy.
 
-## Phase 3: switching over (later, together)
+## Phase 3: switching over
 
-1. Copy the records from the Google sheets to the server, and compare every total.
-2. In Apps Script › Project Settings › Script properties, add:
-   - `CF_URL`: the server's address
+Run from the **Apps Script editor**: pick the function in the menu at the
+top, press **Run**, and read the **Execution log** below.
+
+1. **Connect Google to the server.** In Apps Script › Project Settings ›
+   Script properties, add:
+   - `CF_URL`: `https://tbs-server.gitagovinda.workers.dev/`
    - `CF_SECRET`: the same phrase as `REPORT_SECRET`
 
-   **Not before step 1.** From this moment Google draws the spreadsheets from the server's records.
-3. In `config.js`:
-   - set `APPS_SCRIPT_URL` to the server's address;
-   - add `GOOGLE_CLIENT_ID: '<the Client ID>'`.
+   This changes nothing yet; it only lets the functions below reach the
+   server.
+2. **Rehearse: `copyToCloudflare`.** Every record is copied to the server,
+   replacing what is there, and every season (and Earthly HQ) is compared:
+   every sale, count and total. The log ends with one line per season, e.g.
+   `Europe Tour: identical — 2,114 sales · 31,540 PLN · …`.
+   The app keeps working on Google. Run it as often as you like.
+3. **Switch: `switchToCloudflare`.** At a quiet moment. Saves are held for
+   the few seconds it takes to make a last copy and compare it. If anything
+   differs, **nothing switches** and the app carries on on Google. If all is
+   identical, the records now live on the server:
+   - phones still pointed at Google are passed on to the server, so nothing
+     is lost while they catch up;
+   - the spreadsheets are drawn from the server's records.
+4. **Point the app at the server:** merge the pull request that changes
+   `config.js`. After about a minute, reload the app. The owner's app asks
+   you to sign in with Google once; links work as before.
 
-Going back is putting the old address back in `config.js` and removing `CF_URL`.
+**Going back:** point `config.js` back at Google (revert that pull request).
+When the page has updated, run **`copyBackFromCloudflare`**: every record,
+including anything saved on the server since, is copied back into the
+sheets, and the app works on Google as before.
 
 ## Trying it on your own computer
 

@@ -86,7 +86,8 @@ active.getNumSheets = () => Object.keys(sheets).length;
 const props = {};
 global.PropertiesService = { getScriptProperties:()=>({
   getProperty:k=>(k in props?props[k]:null), setProperty:(k,v)=>{props[k]=String(v);},
-  deleteProperty:k=>{delete props[k];}, getProperties:()=>props }) };
+  deleteProperty:k=>{delete props[k];}, getProperties:()=>Object.assign({}, props) }) };   // a copy, as Apps Script gives
+global.Logger = { log:()=>{} };
 /* Like Apps Script's cache, things run out: after the seconds given, or ten
    minutes (at most six hours). */
 const _cache = {}, _cacheExp = {};
