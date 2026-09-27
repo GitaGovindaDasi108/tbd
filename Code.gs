@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b199';
+var SERVER_BUILD = 'b200';
 
 function doPost(e) { return handle(e); }
 
@@ -2322,10 +2322,10 @@ function doDeleteSeason(p) {
   if (String(p.confirmName || '').trim() !== (seasonById_(id) || {}).name) {
     throw new Error('Type the season name exactly to confirm.');
   }
-  regionsOrdered_(id).forEach(function (r) {
-    doDeleteRegion({ regionId: r.regionId, confirmName: r.name, force: true });
-  });
+  // Every region at once, with everything that belongs to them.
+  purgeRegions_(regionsOrdered_(id).map(function (r) { return r.regionId; }));
   dbDelete_('_seasons', { seasonId: id });
+  setMeta_('seasonSheetId:' + id, '');
   setMeta_('activeSeason', seasonsAll_()[0].seasonId);
   cacheClear_(); markDirtyAll_();
 }
@@ -2576,8 +2576,15 @@ function parseManifest_(raw) {
   catch (e) { return {}; }
 }
 
+function shipmentRows_() { return objectsOf_('_shipments').filter(function (x) { return x && x.shipId; }); }
 function shipmentsAll_() {
-  return objectsOf_('_shipments').filter(function (x) { return x && x.shipId; })
+  /* Never one on its way to or from a region that no longer exists: its books
+     went with the region (purgeRegions_ removes such rows; this hides any an
+     older build left behind until the sweep does). */
+  var live = {};
+  objectsOf_('_regions').forEach(function (r) { live[String(r.regionId)] = 1; });
+  var ok = function (id) { id = String(id || ''); return !id || id === OUTSIDE_ORIGIN || !!live[id]; };
+  return shipmentRows_().filter(function (x) { return ok(x.fromRegion) && ok(x.toRegion); })
     .map(function (x) {
       return { shipId: String(x.shipId), fromRegion: String(x.fromRegion || ''),
                toRegion: String(x.toRegion || ''), mode: String(x.mode || 'devotee'),
@@ -2766,7 +2773,9 @@ function dbDelete_(t, match) {
   var r = storeRead_(t), test = dbMatcher_(match), gone = [];
   r.rows.forEach(function (o, i) { if (test(o, i)) gone.push(i); });
   if (!gone.length) return 0;
-  if (gone.length > DB_BULK_) {
+  // Rows next to each other go in one call, so what counts is how many runs.
+  var runs = gone.filter(function (i, k) { return k === 0 || gone[k - 1] !== i - 1; }).length;
+  if (gone.length > DB_BULK_ || runs > DB_RUNS_) {
     STORE_.rewrite(t, r.cols, r.rows.filter(function (o, i) { return gone.indexOf(i) < 0; })
       .map(function (o) { return r.cols.map(function (h) { return h === '' ? '' : o[h]; }); }));
   } else {
@@ -2777,6 +2786,8 @@ function dbDelete_(t, match) {
 }
 /* Past this many rows at once, one rewrite is cheaper than row-by-row. */
 var DB_BULK_ = 25;
+/* ...or past this many separate stretches of rows: each is its own slow call. */
+var DB_RUNS_ = 8;
 
 /* Equal as stored: blank is blank, a date is its moment, anything else exact. */
 function dbSame_(a, b) {
@@ -2908,8 +2919,14 @@ var STORE_ = {
     var sh = getSheet_(t);
     // Sheets refuses to delete every row below the frozen header; keep a spare.
     if (sh.getMaxRows() - indexes.length < 2) sh.insertRowsAfter(sh.getMaxRows(), 1);
-    indexes.slice().sort(function (a, b) { return b - a; })
-      .forEach(function (i) { sh.deleteRow(i + 2); });
+    // Bottom up, a stretch of neighbouring rows at a time.
+    var desc = indexes.slice().sort(function (a, b) { return b - a; });
+    for (var k = 0; k < desc.length;) {
+      var low = desc[k], n = 1;
+      while (k + n < desc.length && desc[k + n] === low - 1) { low--; n++; }
+      if (n > 1) sh.deleteRows(low + 2, n); else sh.deleteRow(low + 2);
+      k += n;
+    }
   },
   /* The whole table at once, column names included. Clears any stale column
      names beyond the current set, so values can never sit under the wrong one. */
@@ -3757,6 +3774,11 @@ var _presetDirty = null, _syncStarted = 0;
 function syncEverySeason_() {
   /* Now and then, fill in the frozen rates of regions that closed before they
      were kept. At most once an hour, and only when nobody is saving. */
+  if (!tempGet_('orphan_sweep')) {
+    tempPut_('orphan_sweep', '1', 3600);
+    var ol = LockService.getScriptLock();
+    if (ol.tryLock(1000)) { try { purgeOrphans_(); } catch (e) {} finally { ol.releaseLock(); } }
+  }
   if (!tempGet_('fx_backfill')) {
     tempPut_('fx_backfill', '1', 3600);
     var bl = LockService.getScriptLock();
@@ -4601,9 +4623,13 @@ function doDeleteRegion(p) {
     var target = regionById_(moveTo);
     if (!target || !target.whLoc) throw new Error('Pick a region to move the books to.');
     if (moveTo === regionId) throw new Error('Pick a different region to move the books to.');
+    // Books still on their way to or from it go to the chosen region as well.
+    var moving = locs.concat(shipmentRows_().filter(function (x) {
+      return (String(x.fromRegion) === regionId || String(x.toRegion) === regionId) && String(x.status) !== 'ARRIVED';
+    }).map(function (x) { return String(x.shipId); }));
     allBooks_().forEach(function (b) {
       var total = 0;
-      locs.forEach(function (l) {
+      moving.forEach(function (l) {
         var q = getQty_(map, l, b.id);
         if (q > 0) { total += q; setQty_(map, l, b.id, 0); }
       });
@@ -4615,39 +4641,86 @@ function doDeleteRegion(p) {
           bookId: b.id, qty: total, note: 'Region "' + reg.name + '" closed' });
       }
     });
-  } else {
-    locs.forEach(function (l) { allBooks_().forEach(function (b) { setQty_(map, l, b.id, 0); }); });
+    saveInvMap_(map);
   }
-  // The map is already authoritative — this region's locations were zeroed (or
-  // emptied into the target) above. Drop its keys and write the map back.
-  Object.keys(map).forEach(function (k) {
-    if (isMine[k.split('||')[0]]) delete map[k];
-  });
-  saveInvMap_(map);
-
-  // Sales, cash, stock moves, org rows, prices, events, and the region itself.
-  dbAddCols_('_sales', SALES_HEADERS);
-  dbDelete_('_sales', function (r) { return !!isMine[String(r.location)]; });
-
-  cashRows_();
-  dbDelete_('_cash', function (c) { return !!isMine[String(c.fromAcct)] || !!isMine[String(c.toAcct)]; });
-
-  dbDelete_('_stockmoves', function (m) { return !!isMine[String(m.fromLoc)] || !!isMine[String(m.toLoc)]; });
-
-  var scopeGone = {}; scopeGone[regionId] = true;
-  locs.forEach(function (l) { scopeGone[l] = true; });
-  dbDelete_('_org', function (r) { return !!scopeGone[String(r.scope || '')]; });
-  dbDelete_('_prices', { regionId: regionId });
-  dbDelete_('_events', function (e) { return String(e.regionId || '') === regionId; });
-  dbDelete_('_regions', { regionId: regionId });
-
-  // Forget its spreadsheet so a region reusing the name gets a clean file.
-  setMeta_('regionSheetId:' + regionId, '');
-  _priceMemo = null;
+  purgeRegions_([regionId]);
   /* Only the season roll-up and wherever the stock went need rebuilding. Asking
      for the whole tour meant deleting one region rewrote every other region's
      file as well, which is what made it slow. */
   markDirtyRegions_(p.moveStockTo ? [String(p.moveStockTo)] : []);
+}
+
+/* Remove regions and EVERYTHING that belongs to them, in one pass per table.
+
+   Its warehouse, events and devotees' shelves, and every book on them; books in
+   transit to or from it (they were on their way to a place that no longer
+   exists); its sales, cash, costs, change, stock movements, contacts, prices,
+   consignment groups and their payouts. Deleting a season used to do this one
+   region at a time, deleting rows one by one — minutes of work — and it left
+   the books in transit, the devotees and the costs behind, which is why a
+   deleted test season's shipments still showed at Earthly HQ. Works from ids
+   alone, so it also sweeps up after regions deleted before it existed. */
+function purgeRegions_(regionIds) {
+  var gone = {}; (regionIds || []).forEach(function (id) { if (id && id !== HQ_REGION) gone[String(id)] = 1; });
+  if (!Object.keys(gone).length) return 0;
+  var loc = {};                         // every place that goes with them
+  objectsOf_('_regions').forEach(function (r) { if (gone[String(r.regionId)] && r.whLoc) loc[String(r.whLoc)] = 1; });
+  objectsOf_('_events').forEach(function (e) { if (gone[String(e.regionId || '')]) loc[String(e.eventId)] = 1; });
+  objectsOf_('_holders').forEach(function (h) { if (gone[String(h.regionId || '')]) loc[String(h.holderId)] = 1; });
+  var ships = {};
+  shipmentRows_().forEach(function (x) {
+    if (gone[String(x.fromRegion || '')] || gone[String(x.toRegion || '')] || loc[String(x.toLoc || '')]) {
+      ships[String(x.shipId)] = 1; loc[String(x.shipId)] = 1;
+    }
+  });
+  var partners = {};
+  objectsOf_('_partners').forEach(function (pt) { if (gone[String(pt.regionId || '')]) partners[String(pt.partnerId)] = 1; });
+  var here = function (v) { return !!loc[String(v || '')]; };
+
+  dbDelete_('_inventory', function (r) { return here(r.location); });
+  if (dbHas_('_sales')) dbDelete_('_sales', function (r) { return here(r.location); });
+  if (dbHas_('_cash')) dbDelete_('_cash', function (c) { return here(c.fromAcct) || here(c.toAcct); });
+  flushStockMoves_();
+  dbDelete_('_stockmoves', function (m) { return here(m.fromLoc) || here(m.toLoc); });
+  dbDelete_('_costs', function (c) { return here(c.location) || !!partners[String(c.partnerId || '')]; });
+  dbDelete_('_change', function (c) { return here(c.loc); });
+  dbDelete_('_org', function (r) { return here(r.scope) || !!gone[String(r.scope || '')]; });
+  dbDelete_('_prices', function (r) { return !!gone[String(r.regionId || '')]; });
+  dbDelete_('_payouts', function (r) { return !!partners[String(r.partnerId || '')]; });
+  dbDelete_('_partners', function (r) { return !!partners[String(r.partnerId)]; });
+  dbDelete_('_holders', function (r) { return !!gone[String(r.regionId || '')]; });
+  dbDelete_('_shipments', function (r) { return !!ships[String(r.shipId)]; });
+  dbDelete_('_events', function (e) { return !!gone[String(e.regionId || '')]; });
+  dbDelete_('_regions', function (r) { return !!gone[String(r.regionId)]; });
+
+  // Forget their spreadsheets and half-finished closings.
+  Object.keys(gone).forEach(function (id) {
+    setMeta_('regionSheetId:' + id, '');
+    propDel_(CLOSE_DRAFT_PREFIX + 'region:' + id);
+  });
+  Object.keys(partners).forEach(function (id) { setMeta_('partnerSheetId:' + id, ''); });
+  Object.keys(loc).forEach(function (l) { propDel_(CLOSE_DRAFT_PREFIX + 'event:' + l); });
+  _priceMemo = null;
+  return Object.keys(gone).length;
+}
+
+/* Records that still point at a region that no longer exists — left behind by
+   deletions before purgeRegions_ — are removed. Cheap when there are none. */
+function purgeOrphans_() {
+  var live = {};
+  objectsOf_('_regions').forEach(function (r) { live[String(r.regionId)] = 1; });
+  var dead = {};
+  // (OUTSIDE is not a region: books from beyond the tour, e.g. a printer.)
+  var check = function (id) { id = String(id || ''); if (id && id !== OUTSIDE_ORIGIN && !live[id]) dead[id] = 1; };
+  shipmentRows_().forEach(function (x) { check(x.fromRegion); check(x.toRegion); });
+  objectsOf_('_events').forEach(function (e) { check(e.regionId); });
+  objectsOf_('_holders').forEach(function (h) { check(h.regionId); });
+  objectsOf_('_partners').forEach(function (pt) { check(pt.regionId); });
+  var ids = Object.keys(dead);
+  if (!ids.length) return 0;
+  purgeRegions_(ids);
+  cacheClear_(); bumpRev_();
+  return ids.length;
 }
 
 /** What deleting a region would destroy — shown to the user before they commit. */

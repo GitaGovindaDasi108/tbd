@@ -1311,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b199</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b200</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2720,7 +2720,8 @@ function commit(payload, apply, okMsg, opts){
   outboxAdd(payload);                          // on the device before it is sent
   /* Belongs to the season it was made in, and to its own save — the opId lets
      it be retired once that save finally lands, however late. */
-  const op = { apply, opId: payload.opId, season: (BASE && BASE.activeSeason) || '' };
+  // A change to the seasons themselves shows wherever you look (anySeason).
+  const op = { apply, opId: payload.opId, season: (opts && opts.anySeason) ? '' : ((BASE && BASE.activeSeason) || '') };
   OPS.push(op);
   STATE = derive(); renderAll();
   if(!(opts && opts.keepOpen)) closeModal();
@@ -9534,6 +9535,49 @@ function blankHQ(st){
   return st;
 }
 
+/* Delete a season at once: it disappears from the screen — the season list,
+   Earthly HQ, and everything it held, books in transit included — the moment
+   the name is confirmed, and the server catches up behind (it is saved like a
+   sale: kept on the device and resent until it lands). */
+function dropSeason(st, sid){
+  st.seasons = (st.seasons||[]).filter(v=>v.seasonId!==sid);
+  const ev = st.everywhere;
+  const dead = new Set(((ev && ev.regions) || []).filter(r=>r.seasonId===sid).map(r=>r.regionId));
+  const locs = new Set();
+  ((ev && ev.regions) || []).forEach(r=>{ if(dead.has(r.regionId) && r.whLoc) locs.add(r.whLoc); });
+  ((ev && ev.events) || []).forEach(e=>{ if(dead.has(e.regionId)) locs.add(e.eventId); });
+  ((ev && ev.holders) || []).forEach(h=>{ if(dead.has(h.regionId)) locs.add(h.holderId); });
+  const deadShip = x => dead.has(x.fromRegion) || dead.has(x.toRegion) || locs.has(x.toLoc);
+  [st, ev].forEach(o=>{ if(o) (o.shipments||[]).forEach(x=>{ if(deadShip(x)) locs.add(x.shipId); }); });
+  const keep = arr => (arr||[]).filter(x=>!locs.has(x.location));
+  if(ev){
+    ev.seasons = (ev.seasons||[]).filter(v=>v.seasonId!==sid);
+    ev.regions = (ev.regions||[]).filter(r=>!dead.has(r.regionId));
+    ev.events = (ev.events||[]).filter(e=>!dead.has(e.regionId));
+    ev.holders = (ev.holders||[]).filter(h=>!dead.has(h.regionId));
+    ev.partners = (ev.partners||[]).filter(p=>!dead.has(p.regionId));
+    ev.shipments = (ev.shipments||[]).filter(x=>!deadShip(x));
+    ev.sales = keep(ev.sales); ev.inventory = keep(ev.inventory); ev.costs = keep(ev.costs);
+  }
+  // HQ's own lists hold shipments to and from every season.
+  st.shipments = (st.shipments||[]).filter(x=>!deadShip(x));
+  st.inventory = keep(st.inventory);
+}
+function deleteSeasonNow(x){
+  const sid = x.seasonId;
+  try{ localStorage.removeItem(SEASON_CACHE+sid); }catch(e){}
+  const payload = {action:'deleteSeason', seasonId:sid, confirmName:x.name};
+  if(STATE.activeSeason===sid){
+    // Looking at it: move to another season first (drawn at once, from memory).
+    const next = (STATE.seasons||[]).find(v=>v.seasonId!==sid);
+    if(!next) return;
+    payload.season = next.seasonId;
+    CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos();
+    switchSeason(next.seasonId);
+  }
+  commit(payload, st=>dropSeason(st, sid), 'Season deleted', {anySeason:true});
+}
+
 async function switchSeason(id){
   if(!id || id===STATE.activeSeason) return;
   SEASON_EPOCH++;                 // anything already in flight is now out of date
@@ -11767,11 +11811,11 @@ document.addEventListener('click',e=>{
   if(a==='seasongo'){ closeModal(); switchSeason(t.dataset.id); return; }
   if(a==='seasondel'){
     const x=(STATE.seasons||[]).find(v=>v.seasonId===t.dataset.id); if(!x) return;
-    const typed=prompt('Deleting "'+x.name+'" removes its regions, events, stock and sales '
+    const typed=prompt('Deleting "'+x.name+'" removes its regions, events, stock, sales and books in transit '
       +'permanently.\n\nType the season name exactly to confirm:');
     if(typed===null) return;
-    commitSync({action:'deleteSeason', seasonId:x.seasonId, confirmName:typed}, 'Season deleted')
-      .then(ok=>{ if(ok){ CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll(); } });
+    if(typed.trim()!==x.name){ alert('That does not match "'+x.name+'" exactly. Nothing was deleted.'); return; }
+    deleteSeasonNow(x);
     return;
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }

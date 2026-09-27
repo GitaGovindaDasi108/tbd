@@ -717,6 +717,30 @@ Costs follow 2–4 by their place. Details:
 - Listed under "Earthly HQ" in the Spreadsheet folders map.
 - Test: `hqsheet.js`.
 
+## Done in b200 — deleting a season, all of it, at once
+
+- **What was wrong.** `doDeleteSeason` deleted its regions one at a time
+  through `doDeleteRegion`, which removed rows one by one (a slow Sheets call
+  each) and never touched shipments, devotees' shelves, costs, change or
+  consignment groups. So a deleted test season's books in transit kept
+  showing at Earthly HQ, and deleting took minutes.
+- **`purgeRegions_(ids)`** removes regions and everything of theirs in one
+  pass per table: warehouse, events, devotees and their stock; shipments to
+  or from them (and the books in them); sales, cash, costs, change, stock
+  movements, contacts, prices, consignment groups and payouts; their
+  spreadsheet ids and closing drafts. Used by deleting a season and a region.
+  Deleting a region with "move stock to" also moves books still in transit.
+- **Leftovers from before:** `shipmentsAll_` hides shipments to or from a
+  region that no longer exists (`OUTSIDE` is not a region), and the
+  background sync sweeps them away hourly (`purgeOrphans_`).
+- **Row deletion is batched:** neighbouring rows go in one `deleteRows`;
+  more than `DB_RUNS_` (8) separate stretches rewrites the table instead.
+- **In the app** the name is checked on the device, and the season vanishes
+  at once — season list, HQ summaries, books in transit — saved like a sale
+  (`deleteSeasonNow`, `dropSeason`; `commit` gains `anySeason`).
+- Tests: `seasondel.js`, `seasondelclient.js`. Golden differs only where
+  deleting a region now also deletes its shipments (extra.jsonl).
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
