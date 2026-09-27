@@ -831,6 +831,18 @@ Run from the Apps Script editor; see server/README.md › Phase 3.
   relayed and its resend recognised, copy back). Test harness: Apps
   Script's `getProperties` stand-in now returns a copy, and `Logger` exists.
 
+## Done in b206 — dates written the same on Google and Cloudflare
+
+The owner's first rehearsal (copyToCloudflare) found every season different
+at `allRegions[0].closedAt`: the records matched, but `String(date)` writes a
+date in the server's own time zone — the script's on Google, UTC on
+Cloudflare. `dateText_()` writes such dates as ISO text everywhere (region,
+season and event closings, change returned). The app only checks whether
+they are set. `workergolden.js` now runs Google in Europe/Warsaw and
+Cloudflare in UTC, so anything of this kind shows up; and
+`compareWithCloudflare` shows up to three differences per season, with both
+values.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
