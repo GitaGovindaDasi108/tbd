@@ -65,7 +65,7 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
 
     // 1. Share Links above Spreadsheet Links.
     const adm = await page.evaluate(() => [...document.querySelectorAll('#adminActions .adm-col')][0].innerText);
-    t.push(['Admin: Share Links comes before Spreadsheet Links', adm.indexOf('Share Links') >= 0 && adm.indexOf('Share Links') < adm.indexOf('Spreadsheet Links')]);
+    t.push(['Admin: Sales Links comes before Spreadsheet Links', adm.indexOf('Sales Links') >= 0 && adm.indexOf('Sales Links') < adm.indexOf('Spreadsheet Links')]);
 
     // 2. A delete made before the log's first fetch returns stays deleted.
     c({ action: 'transferMulti', moves: [{ from: pl.whLoc, to: 'ev_fest', bookId: B0, qty: 2 }, { from: pl.whLoc, to: 'ev_fest', bookId: B1, qty: 3 }], movePrefix: 'Mr5' });
@@ -100,10 +100,10 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     t.push(['a dialog heading has a pencil', await page.evaluate(() => !!document.querySelector('#modal > h3 > .pencil'))]);
     await page.evaluate(() => closeModal());
     await page.evaluate(() => shipReceiveModal('sh_out1')); await page.waitForTimeout(400);
-    const coming = await page.evaluate(() => { const e = [...document.querySelectorAll('#modal .cl-exp')].find(x => /still coming/.test(x.textContent));
+    const coming = await page.evaluate(() => { const e = [...document.querySelectorAll('#modal .cl-exp')].find(x => /in transit/.test(x.textContent));
       return e ? { pencil: !!e.querySelector('.pencil'), key: e.getAttribute('data-key') } : null; });
-    t.push(['"7 still coming" has a pencil', !!coming && coming.pencil]);
-    t.push(['…and is known as "# still coming"', !!coming && / › # still coming$/.test(coming.key)]);
+    t.push(['"7 in transit" has a pencil', !!coming && coming.pencil]);
+    t.push(['…and is known as "# in transit"', !!coming && / › # in transit$/.test(coming.key)]);
     await page.evaluate(k => commit({ action: 'saveLabel', key: normLabelKey(k), text: '# on the way' },
       st => { st.labels = st.labels || {}; st.labels[normLabelKey(k)] = '# on the way'; }, null, { keepOpen: true }), coming.key);
     await page.waitForTimeout(300);
@@ -112,15 +112,11 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     await page.screenshot({ path: shot('2-pencils') });
     await page.evaluate(() => closeModal());
 
-    // 5. Rewording keeps a working part: the spinner in the Activity Log.
+    // 5. The Activity Log's loading line is just its spinner (the owner hid the words, b201).
     page.__slowLog = true;
     await page.evaluate(() => activityModal()); await page.waitForTimeout(300);
-    const spinKey = await page.evaluate(() => document.querySelector('#alState').getAttribute('data-key'));
-    await page.evaluate(k => commit({ action: 'saveLabel', key: normLabelKey(k), text: 'Looking for anything new' },
-      st => { st.labels = st.labels || {}; st.labels[normLabelKey(k)] = 'Looking for anything new'; }, null, { keepOpen: true }), spinKey);
-    await page.waitForTimeout(300);
     const spin = await page.evaluate(() => { const e = document.querySelector('#alState'); return { spinner: !!e.querySelector('.spin-d'), text: labelTextOf(e) }; });
-    t.push(['reworded "Checking for the latest…" keeps its spinner', spin.spinner && /Looking for anything new/.test(spin.text)]);
+    t.push(['the Activity Log shows only a spinner while it checks', spin.spinner && !spin.text]);
     await page.screenshot({ path: shot('3-spinner') });
     await page.waitForTimeout(2600);
     page.__slowLog = false;

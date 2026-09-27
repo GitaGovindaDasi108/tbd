@@ -1311,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b200</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b201</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1333,11 +1333,11 @@ body.list-view .mc-name{min-height:0}
        how each region is selling, how the money came in. -->
   <div class="cols-2" id="seasonTotals" style="display:none">
     <section class="panel" data-fold="titles">
-      <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="seasonTitleList"></div></div>
     </section>
     <section class="panel" data-fold="collBy">
-      <h2 class="sec-h2">Collections by Region <span class="hint">(what each region has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Collections by Region <span class="hint">net sales* for each region</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="collByRegion"></div>
     </section>
   </div>
@@ -1345,17 +1345,17 @@ body.list-view .mc-name{min-height:0}
   <!-- REGIONAL TOTALS — how each region is doing -->
   <div class="cols-2" id="regionalTotals" style="display:none">
     <section class="panel" data-fold="salesBy">
-      <h2 class="sec-h2">Sales by Region <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Sales by Region <span class="hint">drop down = sales by title</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="salesByRegion"></div></div>
     </section>
     <section class="panel" data-fold="payments">
-      <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Total Collections by Payment <span class="hint">drop-down = regional totals</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="seasonPayBody"></div>
     </section>
   </div>
 
   <section class="panel" id="whOverviewPanel" data-fold="warehouses" style="display:none">
-    <h2 class="sec-h2">Warehouse Overview <span class="hint">(where every title sits across the tour)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
+    <h2 class="sec-h2">Warehouse Overview <span class="hint">inventory and inventory locations</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
     <div class="body"><div id="whOverview"></div></div>
   </section>
 
@@ -1373,7 +1373,7 @@ body.list-view .mc-name{min-height:0}
     </section>
     <div class="log-col">
       <section class="panel" data-fold="log">
-        <h2 class="sec-h2">Active Sales Log <span class="hint" id="logCount"></span>
+        <h2 class="sec-h2">Sales Log <span class="hint" id="logCount"></span>
           <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
         </h2>
         <!-- Sorting and filtering get their own line, so the heading stays a heading
@@ -1423,11 +1423,11 @@ body.list-view .mc-name{min-height:0}
 
   <div class="cols-2" id="regionBottom">
     <section class="panel" id="titlePanel" data-fold="titles">
-      <h2 class="sec-h2">Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="titleList"></div></div>
     </section>
     <section class="panel" id="payPanelRegion" data-fold="payments">
-      <h2 class="sec-h2">Totals by Payment Type <span class="hint">(tap a type to see it event by event)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Totals by Payment Type <span class="hint">drop down = totals by event</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="payBody"></div>
     </section>
   </div>
@@ -1438,7 +1438,7 @@ body.list-view .mc-name{min-height:0}
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
     <div class="cols-2">
       <section class="panel" data-fold="sumTitles">
-        <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+        <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div class="title-list" id="hqTitleList"></div></div>
       </section>
       <section class="panel" data-fold="sumCollBy">
@@ -1448,7 +1448,7 @@ body.list-view .mc-name{min-height:0}
     </div>
     <div class="cols-2">
       <section class="panel" data-fold="sumSalesBy">
-        <h2 class="sec-h2">Sales by Season <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+        <h2 class="sec-h2">Sales by Season <span class="hint">drop down = sales by title</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div id="hqSalesBy"></div></div>
       </section>
       <section class="panel" data-fold="sumPayments">
@@ -1463,7 +1463,7 @@ body.list-view .mc-name{min-height:0}
   </div>
 
   <section class="panel admin-panel" id="adminPanel" data-fold="admin">
-    <h2>App Admin <span class="hint">(setup, stock movements and money handling)</span></h2>
+    <h2>App Admin <span class="hint">various settings for administering sales</span></h2>
     <div class="body"><div class="actions" id="adminActions"></div></div>
   </section>
 </main>
@@ -3270,8 +3270,8 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="activity">🗒 Activity Log</button>`);
   cols[0].push(`<button class="btn" data-act="org">👥 App and Sales Support</button>`);
   cols[0].push(season
-    ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share Links…</button>`
-    : `<button class="btn" data-act="sharelinks">🔗 Share Links</button>`);
+    ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Sales Links…</button>`
+    : `<button class="btn" data-act="sharelinks">🔗 Sales Links</button>`);
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
@@ -3280,7 +3280,7 @@ function renderAdmin(){
 
   // Money
   if(!hideMoney()){
-    cols[1].push(`<button class="btn" data-act="cash">💵 Cash Tracker</button>`);
+    cols[1].push(`<button class="btn" data-act="cash">💵 Track Cash</button>`);
     cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs${
       scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
     if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
@@ -3593,8 +3593,8 @@ function renderInventory(){
      people ask for books that were never on the table. */
   const offHere = hiddenHere().size;
   $('#invMulti').innerHTML =
-    `<button class="multi-btn" data-act="multi" data-mode="sale">＋ Multiple Books — one transaction</button>`
-    + (offHere ? `<button class="multi-btn ghost" data-act="hiddenpre">＋ Pre-order another title (${offHere} not offered here)</button>` : '');
+    `<button class="multi-btn" data-act="multi" data-mode="sale">+ Multiple Book Sale</button>`
+    + (offHere ? `<button class="multi-btn ghost" data-act="hiddenpre">+ Pre-Orders (Unlisted Titles)</button>` : '');
 }
 
 /* Sales by title as cards, echoing the warehouse shelf so the eye reads them the
@@ -3771,8 +3771,7 @@ function renderCollectionsByRegion(target){
       <tfoot><tr><th>All ${UNIT.words}</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
         <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
     </table>
-    <div class="hint">What each ${UNIT.word} has brought in: its own takings, less its costs.
-      Consignment money is held for the groups and is shown in Consignment.</div>`;
+    <div class="hint">*net sales = gross sales - (consignment + costs)</div>`;
 }
 
 function renderPayments(target){
@@ -4876,7 +4875,7 @@ function saleModal(opts){
       </div>
       <div id="dueBox" style="display:none">
         <div class="leg-box">
-          <div class="lg-title">Still owed</div>
+          <div class="lg-title">What They Still Owe</div>
           <div class="row2">
             <div class="field"><label>Currency</label><select id="duecur">${curOptions(defaultCur())}</select></div>
             <div class="field"><label>Amount outstanding</label><input id="dueamt" type="number" step="0.01" inputmode="decimal"></div>
@@ -4890,7 +4889,7 @@ function saleModal(opts){
           <div class="field"><label>Phone${isPre?'':' (optional)'}</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789 (include the +)"></div>
         </div>
       </div>
-      <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
+      <div class="field"><label>CHANGE <b>WE</b> OWE <span class="muted-note">(optional)</span></label>
         <div class="mixrow">
           <input id="chgamt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">
           <select id="chgcur">${curOptions()}</select>
@@ -4904,12 +4903,10 @@ function saleModal(opts){
         <div id="fulPick" class="sp-group" hidden>${placePickerHTML('fulReg')}
           <div class="hint">That region sees a request — with the name, number and comments — and delivers
             it from their own stock. The sale stays here.</div></div></div>` : ''}
-      <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
+      <div class="field"><label>Date &amp; Time</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
       ${edit ? `<div class="field"><label>Where it was sold</label>
-        <select id="csLoc">${saleLocOptions(edit.location)}</select>
-        <div class="muted-note">Moving it also moves the copy — it goes back on the old
-          shelf and comes off the new one.</div></div>` : ''}
+        <select id="csLoc">${saleLocOptions(edit.location)}</select></div>` : ''}
         </div>
       </details>
       <div class="err" id="modalErr"></div>
@@ -5205,7 +5202,7 @@ function bundleModal(edit){
   openModal(`
     ${mHead((edit?'Edit — ':'Multiple books — ')+esc(locName(loc)))}
     <div class="m-body">
-      <div class="hint">Set how many of each book are being <b>bought</b> (from stock) and how many <b>pre-ordered</b>. You can do both in one sale. The total fills in as you go.</div>
+      <div class="hint">For one person buying multiple books in one transaction.</div>
       ${swChoices.length ? `<div class="field mb-from"><label>Selling from</label>
         <select id="mbFrom"><option value="${esc(CUR_LOC)}">Warehouse</option>
           ${swChoices.map(x=>`<option value="${esc(x.id)}">${esc(x.label)} — ${esc(x.name)}</option>`).join('')}</select></div>` : ''}
@@ -5241,7 +5238,7 @@ function bundleModal(edit){
       </div>
       <div id="dueBox" style="display:none">
         <div class="leg-box">
-          <div class="lg-title">Still owed</div>
+          <div class="lg-title">What They Still Owe</div>
           <div class="row2">
             <div class="field"><label>Currency</label><select id="duecur">${curOptions(defaultCur())}</select></div>
             <div class="field"><label>Amount outstanding</label><input id="dueamt" type="number" step="0.01" inputmode="decimal"></div>
@@ -5254,13 +5251,13 @@ function bundleModal(edit){
           <div class="field"><label id="phoneLbl">Phone (optional)</label><input id="cphone" type="tel" inputmode="tel" placeholder="+48 123 456 789 (include the +)"></div>
         </div>
       </div>
-      <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
+      <div class="field"><label>CHANGE <b>WE</b> OWE <span class="muted-note">(optional)</span></label>
         <div class="mixrow">
           <input id="chgamt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">
           <select id="chgcur">${curOptions()}</select>
         </div></div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
-      <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
+      <div class="field"><label>Date &amp; Time</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.members[0].ts:new Date()))}"></div>
         </div>
       </details>
@@ -5687,7 +5684,7 @@ function transfersModal(){
   openModal(`
     ${mHead('Stock movements')}
     <div class="m-body">
-      <div class="hint">Every time stock is added to a location, or moved between the warehouse and an event, it shows here.</div>
+      <div class="hint">All stock movements are listed here.<br>Click ↺ to reverse a stock movement.</div>
       ${CUR_LEVEL==='event'
         ? `<div class="field"><label>Show</label><div class="hint">N/A — this list is already just ${esc(locName(CUR_LOC))}.</div></div>`
         : `<div class="field"><label>Show</label><select id="smFilter">${locOpts()}</select></div>`}
@@ -5956,10 +5953,9 @@ function shareLinksModal(){
   openModal(`
     ${mHead('Share links — '+esc(reg.name))}
     <div class="m-body">
-      <div class="hint">Send a link and that person can record sales straight away — no login.
-        Anyone holding a link has that access, so reset it if a phone goes missing.</div>
+      <div class="hint">Generate seller links with limited permissions.<br>Turn off links when event or region is permanently closed.</div>
 
-      <div class="cash-sub">Whole region</div>
+      <div class="cash-sub">Region Link</div>
       ${row('region', reg.regionId, reg.name, 'sell anywhere in this region, move stock between its places — no cash, no other region')}
 
       ${(function(){
@@ -5974,9 +5970,8 @@ function shareLinksModal(){
           ? 'every event in this region'
           : (evs.find(e=>e.eventId===scope) ? locName(scope) : 'every event in this region');
         return `
-        <div class="cash-sub">Sellers</div>
-        <div class="hint">One link for everyone selling here. The link itself never changes,
-          so nobody has to be sent a new one.</div>
+        <div class="cash-sub">Seller Link</div>
+        <div class="hint">generate a link for devotees selling books at events. when the event changes, you can change the event here. devotee sellers keep the same link throughout the ENTIRE regional event.</div>
         <div class="sl-row">
           <div class="sl-top">
             <span class="sl-name">Sellers in ${esc(reg.name)}</span>
@@ -6081,8 +6076,7 @@ function costsModal(editId, presetPartner){
   openModal(`
     ${mHead(edit ? 'Edit cost' : 'Costs')}
     <div class="m-body">
-      <div class="hint">Card-machine fees and other costs of selling. They show beneath the payment
-        totals, taken off to give the net. They do not touch the cash box.</div>
+      <div class="hint">Enter any costs associated with book distribution here.</div>
       <div class="cost-form">
         ${groups.length ? `<div class="field"><label>Belongs to</label>
           <select id="cOwner">${opt('','Our own sales',!owner)}${groups.map(g=>opt(g.partnerId,
@@ -6091,7 +6085,7 @@ function costsModal(editId, presetPartner){
             not off your own net.</div></div>` : ''}
         <div class="field"><label>What for</label>
           <select id="cCat">${COST_CATS.map(c=>opt(c,c,(edit?edit.category:'Card machine fee')===c)).join('')}</select></div>
-        <div class="field"><label>Relates to payment type (optional)</label>
+        <div class="field"><label>Payment Type (Optional)</label>
           <select id="cPay">${opt('','—',!(edit&&edit.payType))}${pays.map(t=>opt(t,t,edit&&edit.payType===t)).join('')}</select></div>
         <div class="field"><label>Where</label>
           <select id="cLoc">${places.map(pl=>opt(pl.id,pl.name,(edit?edit.location:CUR_LOC)===pl.id)).join('')}</select></div>
@@ -6109,7 +6103,7 @@ function costsModal(editId, presetPartner){
         </div>
       </div>
       ${edit ? '' : `
-      <div class="cash-sub">Recorded here${totalText?` — ${esc(totalText)}`:''}</div>
+      <div class="cash-sub">Cost Log</div>
       ${list.length ? list.map(c=>`
         <div class="cost-row">
           <div class="cost-main"><b>${esc(c.category)}</b>${c.payType?` · ${esc(c.payType)}`:''}${
@@ -6648,11 +6642,10 @@ function renderDriveMap(map, note){
 
   const body = $('#modal .m-body'); if(!body) return;
   body.innerHTML = `${note?`<div class="df-stale">${esc(note)}</div>`:''}
-    <div class="hint">Every spreadsheet the app keeps, and where it is filed. Tap a name to open it.
-      Any folder can be pointed elsewhere; its spreadsheets move there on the next sync.</div>
+    <div class="hint">Data from the sales tracker in spreadsheet form.</div>
     ${map.driveOk ? '' : `<div class="warn">Google Drive access is not set up yet, so folders cannot be
       shown or changed. The spreadsheet links below still work.</div>`}
-    <div class="cash-sub">Top folder</div>
+    <div class="cash-sub">Top-Level Folder</div>
     ${map.root
       ? folderHead('📁', map.root.name, map.root.url, false, 'data-act="dfroot"')
       : `<div class="df-folder"><div class="df-fname">📁 <span class="muted">Not set up yet</span></div>
@@ -7063,9 +7056,9 @@ function shareReport(part){
   openModal(`
     ${mHead(full ? 'Full report' : 'Report')}
     <div class="m-body">
-      ${full ? '<div class="hint">Choose what to include.</div>' : ''}
+      ${full ? '<div class="hint">select reports you\'d like to send</div>' : ''}
       ${chooser}
-      <div class="hint">Copy this and paste it into WhatsApp${canShare?', or send it straight there':''}.</div>
+      <div class="hint">data reports designed for sending via text</div>
       <textarea id="repText" class="rep-box" rows="14" readonly>${esc(text)}</textarea>
       <div class="err" id="modalErr"></div>
     </div>
@@ -7135,7 +7128,7 @@ function specialityReportModal(){
       <div class="rep-picks">${offered.map(([k,t])=>`
         <label class="rep-pick"><input type="checkbox" data-sr="${k}" ${picks.has(k)?'checked':''}>
           <span>${esc(k==='stock' ? 'Stock left' : t.charAt(0)+t.slice(1).toLowerCase())}</span></label>`).join('')}</div>
-      <div class="hint">Copy this and paste it into WhatsApp${canShare?', or send it straight there':''}.</div>
+      <div class="hint">data reports designed for sending via text</div>
       <textarea id="repText" class="rep-box" rows="14" readonly></textarea>
       <div class="err" id="modalErr"></div>
     </div>
@@ -7318,7 +7311,7 @@ function orgModal(){
   openModal(`
     ${mHead('Organization chart — '+scopeLabel())}
     <div class="m-body">
-      <div class="hint">Who to contact about what in book distribution. Tap a number to message on WhatsApp.</div>
+      <div class="hint">Contacts for issues and questions.</div>
       <div id="orgView">${viewHTML()}</div>
     </div>
     <div class="m-foot">
@@ -7665,7 +7658,7 @@ function seasonCashModal(){
   openModal(`
     ${mHead('Cash Tracking')}
     <div class="m-body">
-      <div class="cash-lede">Click region to move cash</div>
+      <div class="cash-lede">Click region to transfer cash.</div>
 
       ${regions.length ? regions.map(g=>`
         <details class="cash-reg">
@@ -8176,13 +8169,13 @@ function donationModal(edit){
         <div class="field"><label>Name (optional)</label><input id="cname" type="text"></div>
         <div class="field"><label>Phone (optional)</label><input id="cphone" type="tel" placeholder="+48 123 456 789 (include the +)"></div>
       </div>
-      <div class="field"><label>Change we owe them <span class="muted-note">(optional — if you couldn't break their note)</span></label>
+      <div class="field"><label>CHANGE <b>WE</b> OWE <span class="muted-note">(optional)</span></label>
         <div class="mixrow">
           <input id="chgamt" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0">
           <select id="chgcur">${curOptions()}</select>
         </div></div>
       <div class="field"><label>Comments (optional)</label><textarea id="ccomments"></textarea></div>
-      <div class="field"><label>Date &amp; time${edit?'':' (optional — defaults to now)'}</label>
+      <div class="field"><label>Date &amp; Time</label>
         <input id="csTs" type="datetime-local" value="${esc(toLocalInput(edit?edit.ts:new Date()))}"></div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -8381,7 +8374,7 @@ function deleteRegionModal(){
       <div class="warn">This permanently removes <b>${esc(reg.name)}</b>, its warehouse,
         its ${c.events} event${c.events===1?'':'s'} and all ${c.sales} sales record${c.sales===1?'':'s'},
         along with its cash entries, transfers, prices and org chart. It cannot be undone.</div>
-      <div class="field"><label>The ${c.books} book${c.books===1?'':'s'} still on its shelves</label>
+      <div class="field"><label>Move Remaining Stock</label>
         <select id="drMove">
           ${others.map(r=>`<option value="${esc(r.regionId)}">Move to ${esc(r.name)}</option>`).join('')}
           <option value="">Write them off — they are gone</option>
@@ -8459,7 +8452,7 @@ function regionModal(edit, after){
 
     // Most regions price every big book the same, so fill them in one go.
     const fill = (label,cat)=>`<div class="rp-row rp-fill"><div class="rp-name">${label}
-        <span class="muted-note">fill all</span></div>
+        <span class="muted-note">select relevant offerings</span></div>
       <div class="rp-cells">${curList.map((c,i)=>
         box(c, i, `class="rp rp-all" data-cat="${cat}" data-cur="${esc(c)}"`, '')).join('')}</div></div>`;
 
@@ -8492,16 +8485,13 @@ function regionModal(edit, after){
   openModal(`
     ${mHead(isEdit?(edit.regionId===HQ_REGION?'Edit Earthly HQ':'Edit region'):'New region')}
     <div class="m-body">
-      <div class="hint">A region has its own warehouse, its own currencies and its own prices.</div>
+      <div class="hint">A region is the umbrella that contains all events in one locality.</div>
       <div class="field"><label>Region name</label>
         <input id="rgName" type="text" placeholder="e.g. Macedonia" value="${esc(isEdit?edit.name:'')}"></div>
-      <div class="field"><label>Currencies <span class="muted-note">(comma separated — USD is always included)</span></label>
+      <div class="field"><label>Enter all accepted currencies by their official abbreviation. <span class="muted-note">(Separate currencies with a comma.)</span></label>
         <input id="rgCur" type="text" placeholder="MKD, EUR, USD" value="${esc(cur)}"></div>
       <div class="cash-sub">Titles &amp; prices</div>
-      <div class="hint">Untick a title this region won't offer and it stays out of the sale
-        screens. Use the "fill all" row to price a whole category at once.
-        Set a price in the <b>local</b> currency — the first one listed — and the others
-        are worked out at today's rate. Change any of those and it stays as you set it.</div>
+      <div class="hint">1. Select books that will be available for sale in the region.<br>2. When entering currency, fill in the price by local currency first. The price in other currencies will automatically populate.<br>3. Set price in other currencies to a whole number (round down).</div>
       <div id="rgPrices">${priceRows(parseCurs(cur))}</div>
       <div class="rp-add">
         <input id="rgNewBook" type="text" placeholder="Add a title — e.g. Sri Radha (Spanish)">
@@ -8928,7 +8918,7 @@ function addStockModal(opts){
         <div class="hint">Where are these books coming from? (For example: the printer, a temple, a devotee.)</div>
         <input id="spSource" type="text" placeholder="Source"></div>
       <div class="field"><label>Destination for Books</label>
-        <div class="hint">Search for the region or event where you’d like to add inventory.</div>
+        <div class="hint">Enter the <b>region</b> or <b>event</b> where you’d like to add inventory.</div>
         ${placePickerHTML('spPlace')}
         <div class="sp-addnew">Can’t find your destination?
           <button type="button" class="linkish" data-act="addnewplace" data-then="stock">Click here to add it.</button></div>
@@ -9029,8 +9019,8 @@ function addStockModal(opts){
   function thereHTML(){
     const books = stockBooks(ctx);
     return `<ol class="how-to">
-        <li><b>To add stock</b><span class="how-rest"> to existing inventory, enter the amount to be added in the field next to the “+” sign.</span></li>
-        <li><b>To subtract stock</b><span class="how-rest"> click the “+” sign (it will become a “−” sign) and then enter the number to be subtracted.</span></li>
+        <li><b>To add stock</b><span class="how-rest">, enter the amount to be added in the field next to the “+” sign.</span></li>
+        <li><b>To subtract stock</b><span class="how-rest">, click the “+” sign, and then enter the number to be subtracted.</span></li>
         <li><b>To manually change stock</b><span class="how-rest">, enter number in the “Set” column.</span></li>
       </ol>
       <div class="sp-table"><div class="bulk-head five"><span>Title</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
@@ -9449,7 +9439,7 @@ function pickRegionThen(act){
   openModal(`
     ${mHead('Which region?')}
     <div class="m-body">
-      <div class="hint">This applies to one region at a time.</div>
+      <div class="hint">Click region name to make changes.</div>
       ${regs.map(r=>{
         const cl = regionClosure(r.regionId);
         return `<button class="btn btn-ghost pick-row" data-act="pickgo" data-region="${esc(r.regionId)}"
@@ -9640,8 +9630,7 @@ function newSeasonModal(){
   openModal(`
     ${mHead('Start another season')}
     <div class="m-body">
-      <div class="hint">A completely fresh start — no regions, events, stock, sales or money.
-        Only the book titles carry over, since those belong to no single tour.</div>
+      <div class="hint">Seasons are a period of time that serve as an umbrella for Gurudeva's travels to several regions in one area of the world.<br>For example, Book Tour is a season where Srila Gurudeva travels to several cities in India.</div>
       <div class="field"><label>Name</label>
         <input id="nsName" type="text" placeholder="e.g. Europe Tour 2027"></div>
       <div class="err" id="modalErr"></div>
@@ -9687,8 +9676,8 @@ function payTypesModal(){
     ${mHead('Payments taken at ' + esc(isEvent ? locName(CUR_LOC) : reg.name))}
     <div class="m-body">
       <div class="hint">${inherited
-        ? 'Following ' + (isEvent ? 'the region' : 'the tour') + ' at the moment. Change anything here and this place keeps its own list.'
-        : 'This place has its own list. Clear it to follow ' + (isEvent ? 'the region' : 'the tour') + ' again.'}</div>
+        ? 'Please select the payment types accepted in this region.'
+        : 'select the forms of payment accepted in this region'}</div>
 
       <div class="hint">The order here is the order they appear when recording a sale.</div>
       <div id="ptList">${known.map(t=>`
@@ -9703,8 +9692,7 @@ function payTypesModal(){
         <input id="ptNew" type="text" placeholder="e.g. Revolut, bank transfer">
         <button type="button" class="btn btn-ghost btn-sm" id="ptAdd">Add</button>
       </div>
-      <div class="hint">Anything you add here can be used straight away. It stays on this
-        ${isEvent?'event':'region'} unless you add it elsewhere too.</div>
+      <div class="hint">Payment types added here apply to this region only.</div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -9775,8 +9763,7 @@ function seasonsModal(){
         </div></div>`).join('')}
 
       <div class="cash-sub">Start another season</div>
-      <div class="hint">A completely fresh start — no regions, events, stock, sales or money.
-        Only the book titles carry over, since those belong to no single tour.</div>
+      <div class="hint">Seasons are a period of time that serve as an umbrella for Gurudeva's travels to several regions in one area of the world.<br>For example, Book Tour is a season where Srila Gurudeva travels to several cities in India.</div>
       <div class="rp-add">
         <input id="snName" type="text" placeholder="e.g. Europe Tour 2027">
         <button type="button" class="btn btn-primary btn-sm" id="snAdd">Create</button>
@@ -9926,8 +9913,7 @@ function reorderModal(kind){
   openModal(`
     ${mHead('Change the ' + (isEvent?'event':'region') + ' order')}
     <div class="m-body">
-      <div class="hint">Put whatever is active at the top and anything finished at the bottom.
-        This is the order they appear in everywhere.</div>
+      <div class="hint">Shift the order of ${isEvent?'events':'regions'} for efficiency of access.</div>
       <div id="roList"></div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -10036,8 +10022,7 @@ function partnersModal(){
   openModal(`
     ${mHead('Consignment' + (season?'':' — '+esc((reg||{}).name||'')))}
     <div class="m-body">
-      <div class="hint">Books belonging to a local group, sold from our table. Their sales and
-        their money stay out of every tour total, and each group gets its own spreadsheet.</div>
+      <div class="hint">Consignment books are those we sell on behalf of another party.<br>Please enter information about these books here.</div>
       ${list.length ? list.map(card).join('') : `<div class="cash-empty">No consignment set up${season?'':' in this region'} yet.</div>`}
       ${(function(){
         /* Titles whose group has gone. They belong to nothing now, so they get
@@ -10062,8 +10047,8 @@ function partnersModal(){
               </div></div>`;
           }).join('')}`;
       })()}
-      ${season ? `<div class="hint">To add a group, open their region.</div>` : `
-      <div class="cash-sub">Add a group</div>
+      ${season ? `<div class="hint">To add consignment books, open the region where books will be sold.</div>` : `
+      <div class="cash-sub">Add a consignee</div>
       <div class="rp-add">
         <input id="conName" type="text" placeholder="e.g. Macedonian Devotees">
         <button type="button" class="btn btn-primary btn-sm" id="conAdd">Add</button>
@@ -10091,8 +10076,9 @@ function partnerPayModal(id, method){
   openModal(`
     ${mHead('Deliver ' + esc(mth) + ' to ' + esc(p.name))}
     <div class="m-body">
-      <div class="hint">Their ${esc(mth.toLowerCase())} takings, sent back the same way they came in.
-        Recording it here settles what we owe — our own money was never mixed with it.</div>
+      <div class="hint">${/card/i.test(mth)
+        ? 'Click "record delivery" if:<br>1. We used their credit card machine, and they already have the payout.<br>2. We were cashed out for credit card charges and we gave them money for this cashout.'
+        : 'Click "record delivery" when we have given consignees what we collected for their book sales.'}</div>
       ${curs.length ? curs.map(c=>`<div class="cl-row">
         <div class="cl-name">${esc(CUR_SYM[c]||c)} ${esc(c)}</div>
         <div class="cl-exp">owed ${cashFmt(owed[c],c)}</div>
@@ -10294,7 +10280,7 @@ function shipCardHTML(x, incoming){
   return `<div class="sh-card ${x.status==='PARTIAL'?'part':''}">
     <div class="sh-top">
       <span class="sh-route">${esc(shipLabel(x))}</span>
-      <span class="sh-count">${shipTotal(x)} still coming${
+      <span class="sh-count">${shipTotal(x)} in transit${
         shipSentTotal(x)>shipTotal(x) ? ` <span class="sh-of">of ${shipSentTotal(x)}</span>` : ''}</span>
     </div>
     <div class="sh-who">${esc(shipWho(x))}${x.phone?` · ${waLink(x.phone)}`:''}</div>
@@ -10309,8 +10295,8 @@ function shipCardHTML(x, incoming){
     <div class="sh-acts">
       ${incoming?`<button class="btn btn-green btn-sm" data-act="sharriveall" data-id="${esc(x.shipId)}">Full Delivery Arrived</button>
       <button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Partial Delivery Arrived</button>`:''}
-      ${admin?`<button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit details</button>
-      <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct contents</button>
+      ${admin?`<button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit Details</button>
+      <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct Contents</button>
       <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>`:''}
     </div>
   </div>`;
@@ -10370,9 +10356,9 @@ function shipmentsModal(){
       ${season?'':`<div class="rp-add">
         <button type="button" class="btn btn-primary btn-sm" data-act="shoutside">＋ Books coming from outside the tour</button>
       </div>`}
-      <div class="cash-sub">${season?'Everywhere on the tour':'Coming to '+esc(reg.name)}</div>
+      <div class="cash-sub">${season?'Books Currently Between Locations':'Coming to '+esc(reg.name)}</div>
       ${inb.length ? inb.map(x=>card(x,true)).join('')
-        : `<div class="cash-empty">${season?'Nothing is on the road.':'Nothing on its way here.'}</div>`}
+        : `<div class="cash-empty">${season?'Nothing at this time.':'Nothing on its way here.'}</div>`}
       ${season ? '' : `<div class="cash-sub">Sent from ${esc(reg.name)}</div>
       ${out.length ? out.map(x=>card(x,false)).join('') : `<div class="cash-empty">Nothing outstanding.</div>`}`}
     </div>
@@ -10386,15 +10372,13 @@ function shipEditModal(id){
   openModal(`
     ${mHead('Shipment details')}
     <div class="m-body">
-      <div class="hint">${esc(shipLabel(x))} · ${shipTotal(x)} book${shipTotal(x)===1?'':'s'} still coming</div>
       ${x.fromRegion===OUTSIDE_ORIGIN ? `<div class="field"><label>Coming From</label>
         <input id="seOrigin" type="text" value="${esc(x.origin||'')}" placeholder="Source"></div>` : ''}
       <div class="field"><label>Where they are heading</label>
         <select id="seTo">
           ${regionsList().filter(r=>r.regionId!==x.fromRegion)
             .map(r=>`<option value="${esc(r.regionId)}" ${r.regionId===x.toRegion?'selected':''}>${esc(r.name)}</option>`).join('')}
-        </select>
-        <div class="hint">Change this if the books will meet the tour somewhere else.</div></div>
+        </select></div>
       ${x.mode==='shipping' ? `
         <div class="field"><label>Tracking number</label><input id="seTracking" type="text" value="${esc(x.tracking)}"></div>
         <div class="field"><label>Tracking website</label><input id="seUrl" type="url" value="${esc(x.trackingUrl)}"></div>`
@@ -10430,14 +10414,11 @@ function shipCountModal(id){
   const rows = shelfBooks().map(b=>({b, n:invQty(id,b.id)}));
 
   openModal(`
-    ${mHead('Correct what is traveling')}
+    ${mHead('Correct Contents')}
     <div class="m-body">
-      <div class="hint">${esc(shipWho(x))} · ${esc(shipLabel(x))}. Set what is actually in the
-        batch. The difference goes back to <b>${esc((from||{}).name||'the sending region')}</b>,
-        so nothing disappears from the count.</div>
       ${rows.map(r=>`<div class="cl-row">
         <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}</div>
-        <div class="cl-exp">${r.n} still coming</div>
+        <div class="cl-exp">${r.n} in transit</div>
         <input class="cl-in sc-q" type="number" min="0" inputmode="numeric"
           data-book="${esc(r.b.id)}" data-was="${r.n}" value="${r.n}">
         <div class="cl-diff" data-for="${esc(r.b.id)}"></div>
@@ -10514,16 +10495,14 @@ function shipReceiveModal(id, fromPanel){
   openModal(`
     ${mHead('Partial Delivery Arrived')}
     <div class="m-body">
-      <div class="hint">${esc(shipWho(x))} · ${esc(shipLabel(x))}.
-        <b>Enter how many of each actually arrived.</b> Anything less than the full amount
-        stays recorded as still traveling, so a batch that came in pieces stays honest.</div>
+      <div class="hint">If only part of the delivery arrived, please enter that amount here.</div>
       <div class="field"><label>Arriving at</label>
         <select id="rcTo">${dests.map(d=>`<option value="${esc(d.id)}" ${d.id===aim?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
       ${books.some(r=>r.left>0) ? `<div class="cl-row cl-head"><div>Title</div><div class="cl-exp">Still coming</div><div class="cl-hn"># Arrived</div><div></div></div>` : ''}
       ${books.filter(r=>r.left>0).map(r=>`<div class="cl-row">
         <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}
           ${r.arrived?`<span class="cl-loc">${r.arrived} of ${r.sent} already arrived</span>`:''}</div>
-        <div class="cl-exp">${r.left} still coming</div>
+        <div class="cl-exp">${r.left} in transit</div>
         <input class="cl-in rc-q" type="number" min="0" max="${r.left}" inputmode="numeric"
           data-book="${esc(r.b.id)}" data-max="${r.left}" value="${r.left}">
         <div></div>
@@ -10595,16 +10574,15 @@ function holdersModal(){
   openModal(`
     ${mHead('Devotee storage' + (season?'':' — '+esc(reg.name)))}
     <div class="m-body">
-      <div class="hint">Books kept at devotees' homes. They count as their region's stock, and
-        can be sold from directly or moved with the ordinary transfer.</div>
+      <div class="hint">This is to help us understand where our books are held at a regional level.</div>
       ${season
         ? (regionsList().map(r=>{
             const mine = (STATE.holders||[]).filter(h=>h.regionId===r.regionId);
             if(!mine.length) return '';
             return `<div class="cash-sub">${esc(r.name)}</div>` + mine.map(row).join('');
-          }).join('') || `<div class="cash-empty">No devotee storage set up anywhere yet.</div>`)
+          }).join('') || `<div class="cash-empty">No books are being stored with local devotees.</div>`)
         : (list.length ? list.map(row).join('') : `<div class="cash-empty">No devotee storage set up yet.</div>`)}
-      ${season ? `<div class="hint">To add someone, open their region.</div>` : `
+      ${season ? `<div class="hint">To add a devotee storing books, navigate to their region.</div>` : `
       <div class="cash-sub">Add someone</div>
       <div class="rp-add">
         <input id="hdName" type="text" placeholder="Name">
@@ -11253,10 +11231,9 @@ function activityModal(){
   openModal(`
     ${mHead('Activity Log')}
     <div class="m-body">
-      <div class="hint">Everything done in <b>${esc(where)}</b> except sales, which keep their own log —
-        newest first. <b>Delete</b> undoes that change; entries that cannot safely be undone have no Delete.</div>
+      <div class="hint">All activity from the app is logged here.<br>Delete with care.</div>
       <input id="alSearch" class="al-search" type="search" placeholder="Search — a title, a place, a name">
-      <div id="alState" class="hint sp-loading"><span class="spin-d"></span> Checking for the latest…</div>
+      <div id="alState" class="hint sp-loading"><span class="spin-d"></span></div>
       <div id="alList" class="al-list"></div>
       <div class="err" id="modalErr"></div>
     </div>

@@ -84,7 +84,7 @@ const ship = id => (m.call({ action: 'getState', season: SA }).state.shipments |
     t.push(['the rest stays in transit (partly delivered)', ship('sh_beta22').status === 'PARTIAL']);
     t.push(['back on the main screen, not a dialog', !(await page.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
     c = await cards(page);
-    t.push(['the card now reads "1 of 2" still coming', c.length === 1 && /1 still coming/.test(c[0]) && /partly delivered/.test(c[0])]);
+    t.push(['the card now reads "1 of 2" still coming', c.length === 1 && /1 in transit/.test(c[0]) && /partly delivered/.test(c[0])]);
 
     await page.evaluate(() => goTo('season')); await page.waitForTimeout(400);
     c = await cards(page);

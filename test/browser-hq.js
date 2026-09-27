@@ -56,7 +56,7 @@ c({ action: 'setSeason', seasonId: SA });
     const heads = await page.evaluate(() => [...document.querySelectorAll('#summaryPortal .panel > h2')].map(h => h.childNodes[0].textContent.trim()));
     console.log('   summaries: ' + heads.join(' | '));
     t.push(['summaries: titles, collections by season, sales by season, payments, seasonal warehouses',
-      JSON.stringify(heads) === JSON.stringify(['Total Sales by Title', 'Collections by Season', 'Sales by Season',
+      JSON.stringify(heads) === JSON.stringify(['Distribution by Title', 'Collections by Season', 'Sales by Season',
         'Total Collections by Payment', 'Seasonal Warehouse Overview'])]);
     const coll = await text('#hqCollBy');
     t.push(['collections by season: one row per season, and HQ', /Europe Tour/.test(coll) && /Year-Round/.test(coll) && /Earthly HQ/.test(coll) && /All seasons/.test(coll)]);

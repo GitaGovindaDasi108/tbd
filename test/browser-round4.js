@@ -196,9 +196,9 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     await page.evaluate(() => { goTo('region', CUR_REGION); addStockModal(); }); await page.waitForTimeout(300);
     await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
     const li = await page.evaluate(() => { applyLabels(); const el = document.querySelector('#modal .how-to li'); return el ? el.getAttribute('data-key') : ''; });
-    t.push(['each instruction is one piece of wording', /To add stock to existing inventory/.test(li)]);
+    t.push(['each instruction is one piece of wording', /To add stock, enter the amount/.test(li)]);
     await page.evaluate(k => editLabelModal(k), li); await page.waitForTimeout(200);
-    t.push(['the box opens with the words as they read now', /^\*\*To add stock\*\* to existing inventory/.test(await page.inputValue('#lblText'))]);
+    t.push(['the box opens with the words as they read now', /^\*\*To add stock\*\*, enter the amount/.test(await page.inputValue('#lblText'))]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n')[0]);
     t.push(['test ran to the end', false]);
