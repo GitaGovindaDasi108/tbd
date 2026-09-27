@@ -517,6 +517,17 @@ body.busy #busyBar{opacity:1}
   margin:4px 0 12px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--paper2)}
 .rep-pick{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink);padding:4px 0;cursor:pointer}
 .rep-pick input{width:16px;height:16px;flex:none}
+/* Speciality Reports: the choices fold into one bar; folded, the report fills the window. */
+.sp-choices{border:1px solid var(--line-d);border-radius:10px;padding:0 10px;margin:4px 0 10px}
+.sp-choices>summary{cursor:pointer;list-style:none;padding:10px 0;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}
+.sp-choices>summary::-webkit-details-marker{display:none}
+.sp-choices>summary::before{content:'▸';display:inline-block;transition:transform .15s}
+.sp-choices[open]>summary::before{transform:rotate(90deg)}
+.sp-ch-t{font-weight:700}
+.sp-ch-sum{color:var(--muted,#777);font-size:.92em;min-width:0;overflow-wrap:anywhere}
+.sp-choices:not([open]) .sp-ch-hint::after{content:'tap to change';font-size:.8em;color:var(--muted,#999)}
+.sp-done{margin:6px 0 12px}
+#modal.sp-folded .rep-box{height:calc(100vh - 290px);min-height:260px}
 .rep-box{width:100%;border:1px solid var(--line-d);border-radius:8px;padding:9px;
   font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.5;
   background:var(--paper2);color:var(--ink);resize:vertical}
@@ -1325,7 +1336,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b208</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b209</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -7249,16 +7260,22 @@ function specialityReportModal(){
   openModal(`
     ${mHead('Speciality Reports')}
     <div class="m-body">
-      <div class="hint">1. Choose the places to add together.</div>
-      <div class="seg" id="spMode">
-        <button type="button" data-mode="regions">Regions</button>
-        <button type="button" data-mode="events">Events</button>
-      </div>
-      <div id="spPlaces" class="rep-picks"></div>
-      <div class="hint">2. Choose what to include.</div>
-      <div class="rep-picks">${offered.map(([k,t])=>`
-        <label class="rep-pick"><input type="checkbox" data-sr="${k}" ${picks.has(k)?'checked':''}>
-          <span>${esc(k==='stock' ? 'Stock left' : t.charAt(0)+t.slice(1).toLowerCase())}</span></label>`).join('')}</div>
+      <!-- The choices fold away, so the report itself can be read. -->
+      <details class="sp-choices" id="spChoices">
+        <summary><span class="sp-ch-t">Choices</span> <span class="sp-ch-sum" id="spSum"></span>
+          <span class="sp-ch-hint"></span></summary>
+        <div class="hint">1. Choose the places to add together.</div>
+        <div class="seg" id="spMode">
+          <button type="button" data-mode="regions">Regions</button>
+          <button type="button" data-mode="events">Events</button>
+        </div>
+        <div id="spPlaces" class="rep-picks"></div>
+        <div class="hint">2. Choose what to include.</div>
+        <div class="rep-picks">${offered.map(([k,t])=>`
+          <label class="rep-pick"><input type="checkbox" data-sr="${k}" ${picks.has(k)?'checked':''}>
+            <span>${esc(k==='stock' ? 'Stock left' : t.charAt(0)+t.slice(1).toLowerCase())}</span></label>`).join('')}</div>
+        <button type="button" class="btn btn-ghost btn-sm sp-done" id="spDone">Done — show the report</button>
+      </details>
       <div class="hint">data reports designed for sending via text</div>
       <textarea id="repText" class="rep-box" rows="14" readonly></textarea>
       <div class="err" id="modalErr"></div>
@@ -7287,10 +7304,28 @@ function specialityReportModal(){
       title:chosen.map(c=>c.name).join(' + ')}) || '(nothing to report for these)';
   }
   const box = $('#repText');
+  // What is chosen, in one line, for the folded Choices bar.
+  function summary(){
+    const names = mode==='regions'
+      ? regs.filter(r=>picked.regions.has(r.regionId)).map(r=>r.name)
+      : regs.flatMap(r=>eventsOfRegion(r.regionId)).filter(e=>picked.events.has(e.eventId)).map(e=>e.name);
+    const n = offered.filter(([k])=>picks.has(k)).length;
+    return (mode==='regions' ? 'Regions: ' : 'Events: ') + (names.length ? names.join(' + ') : 'none chosen')
+      + ' · ' + n + ' of ' + offered.length + ' sections';
+  }
   function redo(){
     specSave({mode, regions:[...picked.regions], events:[...picked.events], sections:[...picks]});
     try{ box.value = make(); }catch(err){ box.value = 'Could not build the report — ' + err.message; }
+    const s = $('#spSum'); if(s) s.textContent = summary();
   }
+  /* Folded when places were chosen before — straight to the report; open the
+     first time, when there is nothing to show yet. Folded, the report fills
+     the window. */
+  const ch = $('#spChoices');
+  const fold = open => { ch.open = open; $('#modal').classList.toggle('sp-folded', !open); };
+  ch.addEventListener('toggle', ()=>$('#modal').classList.toggle('sp-folded', !ch.open));
+  $('#spDone').addEventListener('click', ()=>fold(false));
+  fold(!(picked.regions.size || picked.events.size));
   $('#spMode').addEventListener('click', e=>{ const b = e.target.closest('[data-mode]'); if(!b) return; mode = b.dataset.mode; places(); redo(); });
   $('#spPlaces').addEventListener('change', e=>{ const c = e.target.closest('[data-sp]'); if(!c) return;
     const set = picked[mode]; c.checked ? set.add(c.dataset.sp) : set.delete(c.dataset.sp); redo(); });

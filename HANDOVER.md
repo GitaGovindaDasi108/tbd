@@ -897,6 +897,15 @@ at an event, those aimed at it. The data is unchanged — the sending region
 still has the batch in its records and stock history, and a regional link
 still receives it — it is simply not shown there. Test: `transitwhere.js`.
 
+## Done in b209 — Speciality Reports: the choices fold away
+
+The places and sections now sit in one foldable "Choices" bar
+(`#spChoices`) whose summary says what is chosen ("Regions: Poland + Italy ·
+4 of 5 sections"). "Done — show the report" folds it; it opens folded when
+places were chosen before, and open the first time. Folded, the report box
+fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
+desktop and phone width.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
