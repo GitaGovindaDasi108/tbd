@@ -21,10 +21,13 @@ export class TbsServer extends DurableObject {
     this.srv = makeServer({
       exec: (sql, ...params) => ctx.storage.sql.exec(sql, ...params).toArray(),
       timeZone: env.TIME_ZONE || 'UTC',
-      fetchImpl: (url) => fetch(url),
+      fetchImpl: (url, init) => fetch(url, init),
       googleClientId: env.GOOGLE_CLIENT_ID || '',
       adminEmails: env.ADMIN_EMAILS || '',
-      googleCertsUrl: env.GOOGLE_CERTS_URL || ''     // never set in production
+      googleCertsUrl: env.GOOGLE_CERTS_URL || '',    // never set in production
+      // Google's side, which still builds the spreadsheets (see core.js, the bridge).
+      reportUrl: env.REPORT_URL || '',
+      reportSecret: env.REPORT_SECRET || ''
     });
   }
 

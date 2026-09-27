@@ -4,13 +4,17 @@ name = "tbs-server"
 main = "src/worker.js"
 compatibility_date = "2025-09-01"
 
+# Settings made in the Cloudflare dashboard (Worker › Settings › Variables and
+# Secrets) survive every deploy. They are, all explained in server/README.md:
+#   GOOGLE_CLIENT_ID  the Google sign-in client id for the owner's app
+#   ADMIN_EMAILS      the Google accounts allowed in, comma separated
+#   REPORT_URL        the Apps Script web app's /exec address (the spreadsheets)
+#   REPORT_SECRET     (a Secret) the text shared with Apps Script as CF_SECRET
+keep_vars = true
+
 [vars]
 # The time zone dates are written in (Apps Script used the script's own).
 TIME_ZONE = "UTC"
-# Google sign-in for the owner's app: the OAuth client id made in Google Cloud
-# (see server/README.md), and the Google accounts allowed in, comma separated.
-GOOGLE_CLIENT_ID = ""
-ADMIN_EMAILS = ""
 
 [[durable_objects.bindings]]
 name = "TBS"

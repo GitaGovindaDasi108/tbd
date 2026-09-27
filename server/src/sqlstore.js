@@ -144,6 +144,17 @@ export function makeSqlStore(exec) {
   /* Forget what is held in memory (the tests use it to prove the database alone is enough). */
   function forget() { Object.keys(cache).forEach(k => delete cache[k]); }
 
-  return { store, kv, dump, forget };
+  /* Every table, as stored (dates as {"$d": "…"}), for Google to build the
+     spreadsheets from (see reportExport in core.js). */
+  function exportAll() {
+    const out = {};
+    exec('SELECT name FROM tbl ORDER BY name').forEach(({ name }) => {
+      const tb = load(name);
+      out[name] = { cols: tb.cols.slice(), rows: tb.rows.map(r => JSON.parse(encRow(r))) };
+    });
+    return out;
+  }
+
+  return { store, kv, dump, forget, exportAll };
 }
 
