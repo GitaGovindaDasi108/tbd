@@ -44,18 +44,40 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const action = String(p.action || 'getState');
     if (action === 'signIn') {
       if (!googleClientId) return reply({ ok: false, error: 'Sign-in is not set up on this server yet.' });
-      try { return reply({ ok: true, result: await auth.signIn(p.idToken) }); }
-      catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
+      try {
+        const r = await auth.signIn(p.idToken);
+        if (r.pending) return reply({ ok: false, pending: true, email: r.email, name: r.name || '',
+          error: 'Your request has been sent to the admins. You can come in once one of them approves it.' });
+        if (r.declined) return reply({ ok: false, declined: true, email: r.email,
+          error: 'This account has not been approved for the app. Ask an admin to add it.' });
+        return reply({ ok: true, result: r });
+      } catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     if (action === 'signOut') { auth.signOut(p.s); return reply({ ok: true }); }
     // Google's spreadsheet side, calling in with the shared secret.
     if (/^(reportExport|reportWriteBack|reportImport|reportState)$/.test(action)) return reply(bridge(p));
     // A phone still pointed at Google, passed on by Google (Phase 3): answered as it always was.
     if (action === 'relay') return relay(p);
-    if (action === 'ping') return answer(e);                        // the revision number, nothing more
     const linkKey = String(p.k || '').trim();
-    if (!linkKey && !auth.check(p.s)) {
+    const me = linkKey ? null : auth.check(p.s);
+    if (action === 'ping') {                                       // the revision number, nothing more
+      const out = answer(e);
+      // ...and, for a signed-in admin, how many sign-in requests are waiting.
+      if (!me) return out;
+      const o = JSON.parse(out); o.requests = auth.requestCount(); return reply(o);
+    }
+    if (!linkKey && !me) {
       return reply({ ok: false, signIn: true, error: 'Please sign in with Google to use the app.' });
+    }
+    // The Admins panel: who may use the owner's app.
+    if (!linkKey && /^admins(List|Add|Approve|Decline|Remove)$/.test(action)) {
+      try {
+        if (action === 'adminsAdd') auth.add(me, p.email);
+        if (action === 'adminsApprove') auth.add(me, p.email);
+        if (action === 'adminsDecline') auth.decline(p.email);
+        if (action === 'adminsRemove') auth.remove(me, p.email);
+        return reply({ ok: true, result: auth.list(me) });
+      } catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     // The owner's spreadsheet requests are passed to Google, which does them.
     if (!linkKey && SHEET_ACTIONS.test(action)) return forwardToGoogle(p);

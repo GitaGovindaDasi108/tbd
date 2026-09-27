@@ -58,8 +58,8 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['a token meant for another app is refused', r.ok === false && /different app/.test(r.error)]);
   r = await bad({ exp: Math.floor(Date.now() / 1000) - 10 });
   t.push(['an expired token is refused', r.ok === false && /expired/.test(r.error)]);
-  r = await bad({ email: 'stranger@example.com' });
-  t.push(['someone not on the admin list is refused', r.ok === false && /not on the list/.test(r.error)]);
+  r = await bad({ email: 'stranger@example.com', name: 'A Stranger' });
+  t.push(['someone not on the admin list gets no session: their request is sent', r.ok === false && r.pending === true && !r.result && /request has been sent/.test(r.error)]);
   r = await bad({ email_verified: false });
   t.push(['an unconfirmed email is refused', r.ok === false && /not confirmed/.test(r.error)]);
   r = await ask({ action: 'getState', s: 'S' + '0'.repeat(64) });
@@ -87,6 +87,54 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   const srv2 = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com' });
   r = JSON.parse(await srv2.request({ postData: { contents: JSON.stringify({ action: 'getState', s: s2 }) } }));
   t.push(['someone taken off the admin list is signed out everywhere', r.ok === false && r.signIn === true]);
+
+  /* ---- The Admins panel (b207): request and approve, add by email, remove ---- */
+  const s0 = (await ask({ action: 'signIn', idToken: await token({}) })).result.session;     // the owner, again
+  const adm = async (action, email, sess) => ask({ action, email, s: sess || s0 });
+  r = await adm('adminsList');
+  t.push(['the owner sees the waiting request, with the name Google gave', r.ok && r.result.requests.length === 1 &&
+    r.result.requests[0].email === 'stranger@example.com' && r.result.requests[0].name === 'A Stranger']);
+  t.push(['…and themself as a permanent admin', r.result.owners.includes('owner@example.com') && r.result.me === 'owner@example.com']);
+  r = JSON.parse(await srv.request({ postData: { contents: JSON.stringify({ action: 'ping', s: s0 }) } }));
+  t.push(['the app is told how many requests are waiting', r.ok && r.requests === 1]);
+  r = JSON.parse(await srv.request({ postData: { contents: JSON.stringify({ action: 'ping' }) } }));
+  t.push(['…but nobody signed out is', r.ok && r.requests === undefined]);
+  r = await bad({ email: 'stranger@example.com', name: 'A Stranger' });
+  t.push(['asking again makes no second request', r.pending && (await adm('adminsList')).result.requests.length === 1]);
+  r = await adm('adminsApprove', 'stranger@example.com');
+  t.push(['approving: they become an admin, and the request goes', r.ok && r.result.admins.some(a => a.email === 'stranger@example.com' && a.name === 'A Stranger' && a.addedBy === 'owner@example.com') && !r.result.requests.length]);
+  r = await bad({ email: 'stranger@example.com' });
+  t.push(['…and can now sign in', r.ok && /^S/.test(r.result.session)]);
+  const sStranger = r.result.session;
+
+  await bad({ email: 'pest@example.com', name: 'Pest' });
+  r = await adm('adminsDecline', 'pest@example.com');
+  t.push(['declining: the request goes', r.ok && !r.result.requests.length]);
+  r = await bad({ email: 'pest@example.com' });
+  t.push(['…and signing in again says "not approved", with no new request', r.ok === false && r.declined === true && !(await adm('adminsList')).result.requests.length]);
+
+  r = await adm('adminsAdd', 'Helper.Two@Example.com');
+  t.push(['adding by email: they can sign in straight away', r.ok && r.result.admins.some(a => a.email === 'helper.two@example.com') &&
+    (await bad({ email: 'helper.two@example.com' })).ok === true]);
+  r = await adm('adminsAdd', 'not an email');
+  t.push(['a mistyped address is refused', r.ok === false && /full email address/.test(r.error)]);
+  r = await adm('adminsAdd', 'stranger@example.com');
+  t.push(['…as is someone already an admin', r.ok === false && /already an admin/.test(r.error)]);
+  r = await adm('adminsAdd', 'pest@example.com');
+  t.push(['an admin can still add someone once declined', r.ok && (await bad({ email: 'pest@example.com' })).ok === true]);
+
+  r = await adm('adminsRemove', 'owner@example.com', sStranger);
+  t.push(['a permanent admin (set in Cloudflare) cannot be removed in the app', r.ok === false && /permanent admin/.test(r.error)]);
+  r = await adm('adminsRemove', 'stranger@example.com', sStranger);
+  t.push(['nobody can remove themself', r.ok === false && /yourself/.test(r.error)]);
+  r = await adm('adminsRemove', 'stranger@example.com');
+  t.push(['removing someone signs them out everywhere, at once', r.ok && (await ask({ action: 'getState', s: sStranger })).signIn === true]);
+  r = await bad({ email: 'stranger@example.com' });
+  t.push(['…and they would have to ask again', r.ok === false && r.pending === true]);
+  r = await ask({ action: 'adminsAdd', email: 'x@example.com', k: 'kcoordinator1' });
+  t.push(['a link cannot manage admins', r.ok === false && (await adm('adminsList')).result.admins.every(a => a.email !== 'x@example.com')]);
+  r = await ask({ action: 'adminsList' });
+  t.push(['…nor can anyone signed out', r.ok === false && r.signIn === true]);
 
   const noSetup = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: '', adminEmails: '' });
   r = JSON.parse(await noSetup.request({ postData: { contents: JSON.stringify({ action: 'getState' }) } }));

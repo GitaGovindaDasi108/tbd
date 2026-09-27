@@ -23,11 +23,14 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
   const pub = Object.assign(await crypto.subtle.exportKey('jwk', pair.publicKey), { kid: 'k1', alg: 'RS256', use: 'sig' });
   const b64 = x => Buffer.from(typeof x === 'string' ? x : JSON.stringify(x)).toString('base64url');
-  const head = b64({ alg: 'RS256', kid: 'k1', typ: 'JWT' });
-  const body = b64({ iss: 'https://accounts.google.com', aud: 'client-123', email: 'owner@example.com',
-    email_verified: true, exp: Math.floor(Date.now() / 1000) + 3600 });
-  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', pair.privateKey, new TextEncoder().encode(head + '.' + body));
-  const TOKEN = head + '.' + body + '.' + Buffer.from(sig).toString('base64url');
+  const tokenFor = async (email, name) => {
+    const head = b64({ alg: 'RS256', kid: 'k1', typ: 'JWT' });
+    const body = b64({ iss: 'https://accounts.google.com', aud: 'client-123', email, name,
+      email_verified: true, exp: Math.floor(Date.now() / 1000) + 3600 });
+    const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', pair.privateKey, new TextEncoder().encode(head + '.' + body));
+    return head + '.' + body + '.' + Buffer.from(sig).toString('base64url');
+  };
+  const TOKEN = await tokenFor('owner@example.com', 'The Owner');
   const certs = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ keys: [pub] })); });
   await new Promise(r => certs.listen(CERTS, '127.0.0.1', r));
 
@@ -138,6 +141,36 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     await other.goto('http://127.0.0.1:8790/index.html?k=kitaly12345'); await other.waitForTimeout(3000);
     t.push(['a coordinator\'s link opens with no sign-in', !(await other.$('#signIn')) &&
       await other.evaluate(() => !!STATE && STATE.role === 'coordinator' && (STATE.regions || []).some(r => r.regionId === 'rg_it'))]);
+
+    // Someone new asks to come in; the owner approves them in the Admins panel (b207).
+    const hctx = await browser.newContext();
+    await hctx.addInitScript(tok => { window.__TOKEN = tok; }, await tokenFor('helper@example.com', 'Helper Das'));
+    const helper = await hctx.newPage();
+    await helper.route('**/*', async r => {
+      if (/accounts\.google\.com\/gsi\/client/.test(r.request().url())) return r.fulfill({ status: 200, contentType: 'text/javascript', body: `
+        window.google = { accounts: { id: {
+          initialize(o){ window.__gsi = o; },
+          renderButton(el){ el.innerHTML = '<button id="fakeGsi">Sign in with Google</button>';
+            el.querySelector('button').onclick = () => window.__gsi.callback({ credential: window.__TOKEN }); },
+          prompt(){} } } };` });
+      return route2(r);
+    });
+    await helper.goto('http://127.0.0.1:8790/index.html'); await helper.waitForTimeout(2500);
+    await helper.click('#fakeGsi'); await helper.waitForTimeout(2000);
+    const note = await helper.evaluate(() => (document.querySelector('#signInErr') || {}).textContent || '');
+    t.push(['someone new signs in: their request is sent, kindly said', /request to use the app has been sent/.test(note) && /Helper Das/.test(note) && !!(await helper.$('#signIn'))]);
+    await page.evaluate(() => poll()); await page.waitForTimeout(800);
+    t.push(['the owner sees "1 waiting" on the Admins button', /Admins\s*1 waiting/.test(await page.evaluate(() => document.querySelector('#adminActions').innerText))]);
+    await page.click('#adminActions [data-act="admins"]'); await page.waitForTimeout(1500);
+    t.push(['the Admins panel shows the request, with their name', /Helper Das/.test(await page.evaluate(() => document.querySelector('#modal').innerText))]);
+    await page.screenshot({ path: path.join(os.tmpdir(), 'tbs-cf-admins.png') });
+    await page.click('#modal [data-act="admappr"]'); await page.waitForTimeout(1500);
+    t.push(['approving moves them into the admins', await page.evaluate(() => !document.querySelector('#modal [data-act="admappr"]') && /Helper Das/.test(document.querySelector('#modal').innerText))]);
+    await helper.click('#fakeGsi'); await helper.waitForTimeout(2500);
+    t.push(['…and now they are in', !(await helper.$('#signIn')) && await helper.evaluate(() => !!STATE && Array.isArray(STATE.books))]);
+    await page.fill('#admEmail', 'third@example.com'); await page.click('#admAdd'); await page.waitForTimeout(1500);
+    t.push(['adding someone by email', /third@example\.com/.test(await page.evaluate(() => document.querySelector('#modal').innerText))]);
+    await page.evaluate(() => closeModal());
 
     await page.evaluate(() => signOut()); await page.waitForTimeout(3000);
     t.push(['signing out locks the app again', await visible('#signIn')]);

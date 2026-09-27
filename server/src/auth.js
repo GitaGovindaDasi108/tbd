@@ -14,7 +14,16 @@
        region is closed).
 
    Sessions are kept in the database; signing out, or removing someone from
-   the admin list, ends theirs at once. */
+   the admin list, ends theirs at once.
+
+   Who is an admin (b207):
+     - the "owners", ADMIN_EMAILS in Cloudflare's settings: always admins,
+       and not removable from the app, so nobody can ever be locked out;
+     - anyone an admin adds in the app, by their Google address;
+     - anyone who signs in, is not yet an admin, and is approved: their
+       sign-in is kept as a request, shown to the admins to approve or
+       decline. A declined request is not shown again (an admin can still
+       add that address). */
 
 const DAY = 24 * 3600 * 1000;
 export const SESSION_DAYS = 90;
@@ -24,7 +33,14 @@ const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl }) {
   now = now || (() => Date.now());
   exec('CREATE TABLE IF NOT EXISTS session (token TEXT PRIMARY KEY, email TEXT NOT NULL, exp INTEGER NOT NULL, made INTEGER NOT NULL)');
-  const admins = () => String(adminEmails || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  exec('CREATE TABLE IF NOT EXISTS admin (email TEXT PRIMARY KEY, name TEXT NOT NULL, addedBy TEXT NOT NULL, addedAt INTEGER NOT NULL)');
+  exec('CREATE TABLE IF NOT EXISTS access_request (email TEXT PRIMARY KEY, name TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL)');
+  const owners = () => String(adminEmails || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  const isAdmin = email => {
+    email = String(email || '').toLowerCase();
+    return !!email && (owners().indexOf(email) >= 0 || exec('SELECT email FROM admin WHERE email = ?', email).length > 0);
+  };
+  const EMAIL = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
 
   let keys = null, keysAt = 0;
   async function googleKeys() {
@@ -57,7 +73,7 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
     if (!clientId || body.aud !== clientId) throw new Error('That sign-in was meant for a different app.');
     if (!(Number(body.exp) * 1000 > now())) throw new Error('That sign-in has expired. Try again.');
     if (!body.email || body.email_verified === false || body.email_verified === 'false') throw new Error('Google has not confirmed that email address.');
-    return String(body.email).toLowerCase();
+    return { email: String(body.email).toLowerCase(), name: String(body.name || '').slice(0, 80) };
   }
 
   function newToken() {
@@ -66,10 +82,18 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
   }
 
   return {
-    /* { idToken } -> a session for an admin. */
+    /* { idToken } -> a session for an admin; for anyone else, a request
+       for the admins to approve ({ pending: true }), or { declined: true }. */
     async signIn(idToken) {
-      const email = await verifyGoogle(idToken);
-      if (admins().indexOf(email) < 0) throw new Error(email + ' is not on the list of admins for this app.');
+      const who = await verifyGoogle(idToken), email = who.email;
+      if (!isAdmin(email)) {
+        const had = exec('SELECT status FROM access_request WHERE email = ?', email)[0];
+        if (had && had.status === 'declined') return { declined: true, email };
+        if (!had) exec('INSERT INTO access_request (email, name, at, status) VALUES (?, ?, ?, ?)', email, who.name || email, now(), 'pending');
+        return { pending: true, email, name: who.name };
+      }
+      // A name to show in the Admins list, once known.
+      if (who.name) exec('UPDATE admin SET name = ? WHERE email = ? AND name = email', who.name, email);
       const token = newToken(), exp = now() + SESSION_DAYS * DAY;
       exec('INSERT INTO session (token, email, exp, made) VALUES (?, ?, ?, ?)', token, email, exp, now());
       return { session: token, email, expires: new Date(exp).toISOString() };
@@ -79,13 +103,49 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       if (!token) return null;
       const row = exec('SELECT email, exp FROM session WHERE token = ?', String(token))[0];
       if (!row || Number(row.exp) <= now()) return null;
-      if (admins().indexOf(String(row.email)) < 0) return null;            // taken off the list
+      if (!isAdmin(String(row.email))) return null;                       // taken off the list
       if (Number(row.exp) - now() < (SESSION_DAYS - 1) * DAY) {
         exec('UPDATE session SET exp = ? WHERE token = ?', now() + SESSION_DAYS * DAY, String(token));
       }
       return String(row.email);
     },
     signOut(token) { exec('DELETE FROM session WHERE token = ?', String(token || '')); },
+
+    /* ---- The Admins panel (for signed-in admins only; see core.js) ---- */
+    list(me) {
+      return {
+        me,
+        owners: owners(),
+        admins: exec('SELECT email, name, addedBy, addedAt FROM admin ORDER BY addedAt').map(r => ({
+          email: r.email, name: r.name, addedBy: r.addedBy, addedAt: new Date(Number(r.addedAt)).toISOString() })),
+        requests: exec("SELECT email, name, at FROM access_request WHERE status = 'pending' ORDER BY at").map(r => ({
+          email: r.email, name: r.name, at: new Date(Number(r.at)).toISOString() }))
+      };
+    },
+    requestCount() { return Number((exec("SELECT COUNT(*) AS n FROM access_request WHERE status = 'pending'")[0] || {}).n || 0); },
+    add(me, email, name) {
+      email = String(email || '').trim().toLowerCase();
+      if (!EMAIL.test(email)) throw new Error('Enter a full email address, like name@gmail.com.');
+      if (isAdmin(email)) throw new Error(email + ' is already an admin.');
+      const req = exec('SELECT name FROM access_request WHERE email = ?', email)[0];
+      exec('INSERT INTO admin (email, name, addedBy, addedAt) VALUES (?, ?, ?, ?)',
+           email, String(name || (req && req.name) || email).slice(0, 80), me, now());
+      exec('DELETE FROM access_request WHERE email = ?', email);
+      return email;
+    },
+    decline(email) {
+      email = String(email || '').trim().toLowerCase();
+      exec("UPDATE access_request SET status = 'declined' WHERE email = ?", email);
+      return email;
+    },
+    remove(me, email) {
+      email = String(email || '').trim().toLowerCase();
+      if (owners().indexOf(email) >= 0) throw new Error(email + ' is a permanent admin (set in Cloudflare), so cannot be removed here.');
+      if (email === String(me || '').toLowerCase()) throw new Error('You cannot remove yourself. Ask another admin.');
+      exec('DELETE FROM admin WHERE email = ?', email);
+      exec('DELETE FROM session WHERE email = ?', email);          // signed out everywhere, at once
+      return email;
+    },
     sweep() { exec('DELETE FROM session WHERE exp <= ?', now()); }
   };
 }
