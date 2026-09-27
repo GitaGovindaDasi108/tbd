@@ -760,6 +760,16 @@ Costs follow 2–4 by their place. Details:
   exactly as built in, so wording saved since is kept. Test:
   `labelsbuiltin.js`.
 
+## Done in b202 — books left on deleted shipments
+
+- The live data still held 19 books (12 + 7) on two shipments of the test
+  season deleted before b200: the shipment rows were gone, but their stock
+  rows (location `sh_…`) were not, and Earthly HQ counted them in transit.
+- `strayShipLocs_()`: an `sh_…` place with no live shipment. Its stock is
+  never sent to the app (`readState`), and `purgeOrphans_` erases it — now
+  on the first save of each hour as well as in the background sync.
+- Test: added to `seasondel.js`.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
