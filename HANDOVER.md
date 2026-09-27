@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b194**.
+Handover notes. Current build: **b195**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -201,7 +201,7 @@ revision; `--store=memory` runs the working copy with its records in memory.
 the browser tests never reach; re-record it (and the others) when an action
 deliberately changes.
 
-`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-fold.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -570,6 +570,21 @@ in about 30 places. Fixed on both the server and the page:
 Not changed: a brand-new, empty spreadsheet still seeds a first region named
 after the `warehouseName` setting ("Poland") with PLN prices and the original
 contacts. That only runs once, on a new spreadsheet.
+
+## Done in b195 — folding panels; the season's order
+
+- **Every panel folds from its heading** (tap the heading; the ▾ turns to ▸),
+  at every level. Each device remembers its own choices, per level
+  (`tbs_fold` in localStorage, keys like `season:payments`); everything
+  starts open. Buttons, fields and wording pencils inside a heading keep
+  working and do not fold it. The arrow is drawn by CSS, not written into the
+  heading, so rewritten wording still matches. Panels carry `data-fold`;
+  `applyFolds()` runs at the end of `renderAll`.
+- **The season's order:** Total Sales by Title, Collections by Region, Sales
+  by Region, Total Collections by Payment, then the Warehouse Overview.
+- With the shelf folded, the sales log beside it drops out of its borrowed
+  height (`.cols.inv-folded`), so it stays usable.
+- `test/browser-fold.js` covers it.
 
 ## Open items
 

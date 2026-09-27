@@ -633,6 +633,16 @@ body.busy #busyBar{opacity:1}
   border:1px solid var(--line-d);background:var(--paper);color:var(--muted);border-radius:7px;padding:3px 9px}
 .sort-btn.on{background:var(--plum);color:var(--gold-l);border-color:var(--plum)}
 .panel .body{padding:12px 14px;flex:1;min-height:0;display:flex;flex-direction:column}
+/* Every panel folds from its heading. The arrow is drawn here, not written into
+   the heading, so rewritten wording (keyed by the heading's words) still fits. */
+.panel[data-fold] > h2{cursor:pointer;user-select:none}
+.panel[data-fold] > h2::before{content:'▾';font-size:13px;color:var(--muted);margin-right:-2px;
+  transition:transform .15s;display:inline-block}
+.panel.folded > h2::before{transform:rotate(-90deg)}
+.panel.folded > :not(h2){display:none !important}
+.panel.folded > h2{border-bottom:0}
+/* With the shelf folded, the sales log beside it can no longer borrow its height. */
+.cols.inv-folded .log-col > .panel{position:static}
 
 /* ---------- Inventory cards ---------- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
@@ -1289,7 +1299,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b194</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b195</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1306,33 +1316,35 @@ body.list-view .mc-name{min-height:0}
 
   <div class="totals" id="totals"></div>
 
-  <!-- SEASON TOTALS — the whole tour at a glance -->
+  <!-- SEASON TOTALS — the whole tour at a glance. Read left to right, top to
+       bottom (and straight down on a phone): what sold, what each region took,
+       how each region is selling, how the money came in. -->
   <div class="cols-2" id="seasonTotals" style="display:none">
-    <section class="panel">
+    <section class="panel" data-fold="titles">
       <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="seasonTitleList"></div></div>
     </section>
-    <section class="panel">
-      <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body" id="seasonPayBody"></div>
-    </section>
-  </div>
-
-  <!-- REGIONAL TOTALS — how each region is doing -->
-  <div class="cols-2" id="regionalTotals" style="display:none">
-    <section class="panel">
-      <h2 class="sec-h2">Sales by Region <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div id="salesByRegion"></div></div>
-    </section>
-    <section class="panel">
+    <section class="panel" data-fold="collBy">
       <h2 class="sec-h2">Collections by Region <span class="hint">(what each region has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="collByRegion"></div>
     </section>
   </div>
 
+  <!-- REGIONAL TOTALS — how each region is doing -->
+  <div class="cols-2" id="regionalTotals" style="display:none">
+    <section class="panel" data-fold="salesBy">
+      <h2 class="sec-h2">Sales by Region <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body"><div id="salesByRegion"></div></div>
+    </section>
+    <section class="panel" data-fold="payments">
+      <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body" id="seasonPayBody"></div>
+    </section>
+  </div>
+
   <!-- Region + event working area -->
   <div class="cols" id="regionCols">
-    <section class="panel">
+    <section class="panel" data-fold="inventory">
       <h2 id="invHeading" class="inv-h2">Inventory
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
@@ -1340,7 +1352,7 @@ body.list-view .mc-name{min-height:0}
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
-      <section class="panel">
+      <section class="panel" data-fold="log">
         <h2 class="sec-h2">Active Sales Log <span class="hint" id="logCount"></span>
           <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
         </h2>
@@ -1366,46 +1378,46 @@ body.list-view .mc-name{min-height:0}
 
   <!-- WAREHOUSE INFORMATION — what still needs chasing, and where stock sits -->
   <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
-    <section class="panel pend-panel" id="pendingPanel" style="display:none">
+    <section class="panel pend-panel" id="pendingPanel" data-fold="pending" style="display:none">
       <h2 class="sec-h2">Pending Payments <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="pending" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="pendingList"></div></div>
     </section>
-    <section class="panel pre-panel" id="prePanel" style="display:none">
+    <section class="panel pre-panel" id="prePanel" data-fold="preorders" style="display:none">
       <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
     </section>
-    <section class="panel rq-panel" id="remotePanel" style="display:none">
+    <section class="panel rq-panel" id="remotePanel" data-fold="remote" style="display:none">
       <h2 class="sec-h2">Pre-Orders to Fulfill for Other Regions
         <button class="btn btn-ghost btn-sm sec-rep" data-act="fulfilother" title="Take on a pre-order from any other region">＋ Fulfill another</button></h2>
       <div class="body"><div class="log" id="remoteList"></div></div>
     </section>
-    <section class="panel transit-panel" id="transitPanel" style="display:none">
+    <section class="panel transit-panel" id="transitPanel" data-fold="transit" style="display:none">
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
-    <section class="panel change-panel" id="changePanel" style="display:none">
+    <section class="panel change-panel" id="changePanel" data-fold="change" style="display:none">
       <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="changeList"></div></div>
     </section>
   </div>
 
-  <section class="panel" id="whOverviewPanel" style="display:none">
+  <section class="panel" id="whOverviewPanel" data-fold="warehouses" style="display:none">
     <h2 class="sec-h2">Warehouse Overview <span class="hint">(where every title sits across the tour)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
     <div class="body"><div id="whOverview"></div></div>
   </section>
 
   <div class="cols-2" id="regionBottom">
-    <section class="panel" id="titlePanel">
+    <section class="panel" id="titlePanel" data-fold="titles">
       <h2 class="sec-h2">Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="titleList"></div></div>
     </section>
-    <section class="panel" id="payPanelRegion">
+    <section class="panel" id="payPanelRegion" data-fold="payments">
       <h2 class="sec-h2">Totals by Payment Type <span class="hint">(tap a type to see it event by event)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="payBody"></div>
     </section>
   </div>
 
-  <section class="panel admin-panel" id="adminPanel">
+  <section class="panel admin-panel" id="adminPanel" data-fold="admin">
     <h2>App Admin <span class="hint">(setup, stock movements and money handling)</span></h2>
     <div class="body"><div class="actions" id="adminActions"></div></div>
   </section>
@@ -2869,9 +2881,44 @@ function renderAll(){
   // repeat what is already in front of them.
   $('#bottomRow').style.display = isSeller() ? 'none' : '';
   renderBottom();
+  try{ applyFolds(); }catch(e){}
   // Done last, once the page has its final width, so clipping is measured true.
   try{ addTooltipsToClipped(); }catch(e){}
 }
+
+/* ---- Folding panels ----
+   Any panel can be folded from its heading. Each device remembers its own
+   choices, per level (a panel folded at the season stays open in a region
+   unless folded there too). Everything starts open. */
+const FOLD_KEY = 'tbs_fold';
+let FOLDS = {};
+try{ FOLDS = JSON.parse(localStorage.getItem(FOLD_KEY)||'{}') || {}; }catch(e){ FOLDS = {}; }
+function foldKey(name){ return CUR_LEVEL + ':' + name; }
+function isFolded(name){ return !!FOLDS[foldKey(name)]; }
+function setFolded(name, on){
+  if(on) FOLDS[foldKey(name)] = 1; else delete FOLDS[foldKey(name)];
+  try{ localStorage.setItem(FOLD_KEY, JSON.stringify(FOLDS)); }catch(e){}
+}
+function applyFolds(){
+  document.querySelectorAll('.panel[data-fold], .portal[data-fold]').forEach(p=>{
+    p.classList.toggle('folded', isFolded(p.dataset.fold));
+  });
+  const inv = document.querySelector('#regionCols > .panel[data-fold="inventory"]');
+  const cols = $('#regionCols');
+  if(cols && cols.classList) cols.classList.toggle('inv-folded', !!(inv && inv.classList.contains('folded')));
+}
+/* A tap on a heading folds it — but not a tap on a button, link, field or a
+   wording pencil inside the heading, which keep doing what they do. */
+document.addEventListener('click', e=>{
+  const t = e.target;
+  if(!t || !t.closest) return;
+  const h = t.closest('.panel[data-fold] > h2, .portal[data-fold] > .portal-h');
+  if(!h) return;
+  if(t.closest('button, a, input, select, label, .pencil')) return;
+  const p = h.parentElement;
+  setFolded(p.dataset.fold, !isFolded(p.dataset.fold));
+  applyFolds();
+});
 
 function renderTabs(){
   const regions = regionsList();
