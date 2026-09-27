@@ -135,21 +135,27 @@ function __find(name){
 const code = __fs.readFileSync(__find('Code.gs'),'utf8');
 eval(code);
 
+/* TBS_RECORD=/path/file.jsonl writes every request, in order, one per line.
+   test/golden.js replays such a file to prove a change behaves exactly as
+   before — the safety net for moving the data off Google Sheets. */
+const __rec = process.env.TBS_RECORD;
 function call(params){
+  if(__rec) __fs.appendFileSync(__rec, JSON.stringify(params) + '\n');
   const e = { postData:{ contents: JSON.stringify(params) } };
   const out = handle(e);
   try { return JSON.parse(out.getContent()); }
   catch(err){ return { ok:false, error:'unparseable', raw:out }; }
 }
 module.exports = {
-  call, init:()=>{ try{ initialize(); }catch(e){ console.error('init failed', e.message, (e.stack||'').split('\n').slice(1,4).join(' / ')); } },
-  label:l=>locLabel_(l), sync:f=>syncSheets(f),
+  call, init:()=>{ if(__rec) __fs.appendFileSync(__rec, '{"__init":1}\n'); try{ initialize(); }catch(e){ console.error('init failed', e.message, (e.stack||'').split('\n').slice(1,4).join(' / ')); } },
+  label:l=>locLabel_(l),
+  sync:f=>{ if(__rec) __fs.appendFileSync(__rec, JSON.stringify({__sync:!!f})+'\n'); return syncSheets(f); },
   cash:(a,c)=>cashCollected_(a,c), tour:()=>tourSales_(),
   clear:()=>{ sheetMemoClear_(); cacheClear_(); },
   sheet:n=>active.getSheetByName(n),
   floatOut:l=>floatOutstanding_(l), bal:(a,c)=>cashBalance_(a,c),
   pay:l=>payTypesFor_(l),
   // Test hooks: swap a backend function for one call path, and read the revision.
-  patch:(name,fn)=>{ const old=eval(name); eval(name+' = fn'); return old; },
+  patch:(name,fn)=>{ if(__rec) __fs.appendFileSync(__rec, JSON.stringify({__patch:name})+'\n'); const old=eval(name); eval(name+' = fn'); return old; },
   rev:()=>getRev_()
 };

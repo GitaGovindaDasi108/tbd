@@ -1,0 +1,38 @@
+{"__init":1}
+{"action":"getState"}
+{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":20},{"bookId":"we_en","delta":10}],"override":true}
+{"action":"getState"}
+{"action":"sell","saleId":"Smujh73afv14d","location":"WAREHOUSE","bookId":"sr_en","isPreorder":false,"legs":[{"type":"Cash","cur":"PLN","amt":150}],"pending":false,"dueamt":0,"duecur":"","name":"","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"","opId":"opmujh73ag_1_pstjha","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"sell","saleId":"Smujh75tq6ery","location":"WAREHOUSE","bookId":"sr_en","isPreorder":false,"legs":[{"type":"Card","cur":"PLN","amt":150}],"pending":false,"dueamt":0,"duecur":"","name":"Card One","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"","opId":"opmujh75tq_2_38ba4l","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"ping"}
+{"season":"sn_paaaaa","action":"getState"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"setUsdActual","saleId":"Smujh75tq6ery","usd":38.5,"opId":"opmujh77dn_3_cg8fh3","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"editSale","saleId":"Smujh75tq6ery","type":"SALE","location":"WAREHOUSE","bookId":"sr_en","legs":[{"type":"Card","cur":"PLN","amt":150}],"pending":false,"dueamt":0,"duecur":"","name":"Card One","phone":"","comments":"kept","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","opId":"opmujh78ru_4_wkf8hw","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"sellBundle","keepBundleId":"Bmujh7ap1s70z","location":"WAREHOUSE","items":[{"bookId":"sr_en","pre":false},{"bookId":"we_en","pre":false}],"legs":[{"type":"Card","cur":"PLN","amt":300}],"pending":false,"dueamt":0,"duecur":"","name":"Two Books","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"opId":"opmujh7ap1_5_uocc1h","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"setUsdActual","saleId":"Bmujh7ap1s70z_0","usd":25,"opId":"opmujh7c8m_6_xlxas1","season":"sn_paaaaa"}
+{"action":"setUsdActual","saleId":"Bmujh7ap1s70z_1","usd":25,"opId":"opmujh7c8u_7_fql9h0","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"ping"}
+{"season":"sn_paaaaa","action":"getState"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"editBundle","bundle":"Bmujh7ap1s70z","location":"WAREHOUSE","items":[{"bookId":"sr_en","pre":false},{"bookId":"we_en","pre":false}],"legs":[{"type":"Card","cur":"PLN","amt":300}],"pending":false,"dueamt":0,"duecur":"","name":"Two Books","phone":"","comments":"kept","override":true,"ts":"2026-09-27T07:07:00.000Z","opId":"opmujh7du1_8_xtlz3r","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"donate","saleId":"d_card1","location":"WAREHOUSE","legs":[{"type":"Card","cur":"PLN","amt":100}],"name":"Giver"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"setUsdActual","saleId":"d_card1","usd":25,"opId":"opmujh7g41_9_9sef32","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"editSale","saleId":"d_card1","type":"DONATION","location":"WAREHOUSE","bookId":"","legs":[{"type":"Card","cur":"PLN","amt":100}],"pending":false,"dueamt":0,"duecur":"","name":"Giver","phone":"","comments":"thank you","ts":"2026-09-27T07:07:00.000Z","opId":"opmujh7he0_10_y6cfvw","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}

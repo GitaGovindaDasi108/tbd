@@ -1,0 +1,52 @@
+{"__init":1}
+{"action":"getState"}
+{"season":"sn_paaaaa","action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa"}
+{"season":"sn_paaaaa","action":"createRegion","regionId":"rg_mk","whLoc":"wh_mk","name":"Macedonia","currencies":"MKD,EUR,USD"}
+{"season":"sn_paaaaa","action":"savePartner","regionId":"rg_mk","name":"Skopje Temple"}
+{"season":"sn_paaaaa","action":"addBook","name":"Gita (Macedonian)","cat":"big","partnerId":"pt_vaaaaa"}
+{"season":"sn_paaaaa","action":"adjustStockBulk","location":"WAREHOUSE","items":[{"bookId":"sr_en","delta":10},{"bookId":"we_en","delta":6},{"bookId":"ea_en","delta":20}],"override":true}
+{"season":"sn_paaaaa","action":"saveHolder","newHolderId":"hd_radha1","regionId":"rg_naaaaa","name":"Radha","phone":"+48 1"}
+{"season":"sn_paaaaa","action":"saveHolder","newHolderId":"hd_gopal1","regionId":"rg_naaaaa","name":"Gopal","phone":"+48 2"}
+{"season":"sn_paaaaa","action":"adjustStockBulk","location":"hd_radha1","items":[{"bookId":"sr_en","delta":4}],"override":true}
+{"season":"sn_paaaaa","action":"adjustStockBulk","location":"hd_gopal1","items":[{"bookId":"sr_en","delta":3}],"override":true}
+{"action":"saveSeason","name":"Year-Round Sales"}
+{"action":"getState"}
+{"season":"sn_xaaaaa","action":"createRegion","regionId":"rg_bcn","whLoc":"wh_bcn","name":"Barcelona","currencies":"EUR,USD"}
+{"season":"sn_xaaaaa","action":"adjustStockBulk","location":"wh_bcn","items":[{"bookId":"sr_en","delta":5}],"override":true}
+{"action":"saveSeason","name":"Old Tour"}
+{"action":"getState"}
+{"season":"sn_haaaaa","action":"createRegion","regionId":"rg_old","whLoc":"wh_old","name":"Old Region","currencies":"EUR,USD"}
+{"action":"setSeason","seasonId":"sn_paaaaa"}
+{"action":"getState"}
+{"action":"reorderBooks","regionId":"rg_naaaaa","ids":["sr_en","ea_en","we_en","go_en","sr_ru","we_ru","ea_ru","go_ru","adv_en"],"opId":"opmujh73r2_1_gugdgb","season":"sn_paaaaa"}
+{"action":"setRegionHidden","regionId":"rg_naaaaa","hidden":"go_en","opId":"opmujh73rb_2_oudbkr","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_xaaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_haaaaa"}
+{"action":"sell","saleId":"Smujh76ir8m2z","location":"hd_gopal1","bookId":"sr_en","isPreorder":false,"legs":[{"type":"Cash","cur":"PLN","amt":150}],"pending":false,"dueamt":0,"duecur":"","name":"","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"","opId":"opmujh76ir_3_2pzir5","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","wantState":true,"action":"sell","saleId":"Smujh78iso4te","location":"WAREHOUSE","bookId":"we_en","isPreorder":true,"legs":[{"type":"Cash","cur":"PLN","amt":150}],"pending":false,"dueamt":0,"duecur":"","name":"Hari","phone":"","comments":"","ts":"2026-09-27T07:07:00.000Z","changeamt":0,"changecur":"","override":true,"fulfilBy":"rg_bcn","opId":"opmujh78is_4_gcxq0w"}
+{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"sell","saleId":"s_req1","location":"WAREHOUSE","bookId":"sr_en","isPreorder":true,"legs":[],"name":"Maria","fulfilBy":"rg_bcn"}
+{"season":"sn_paaaaa","action":"setFulfilBy","remoteSaleId":"s_req1","fulfilBy":"","declined":true}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"setSeason","seasonId":"sn_xaaaaa"}
+{"action":"setSeason","seasonId":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"transferMulti","moves":[{"from":"WAREHOUSE","to":"ev_fest","bookId":"sr_en","qty":2},{"from":"WAREHOUSE","to":"ev_fest","bookId":"we_en","qty":3},{"from":"WAREHOUSE","to":"ev_fest","bookId":"ea_en","qty":10}],"movePrefix":"Mr3"}
+{"season":"sn_paaaaa","action":"activity"}
+{"action":"undoActivityPart","id":"Ataaaaauaaa","part":"b:ea_en","opId":"opmujh7fzz_5_2vz759","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"activity"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"setSeason","seasonId":"sn_haaaaa"}
+{"season":"sn_haaaaa","action":"ping"}
+{"season":"sn_haaaaa","action":"closeLocation","kind":"region","id":"rg_old"}
+{"season":"sn_haaaaa","action":"getState"}
+{"season":"sn_haaaaa","wantState":true,"action":"closeSeason","seasonId":"sn_haaaaa","opId":"opmujh7kf2_6_qzuwkf"}
+{"season":"sn_haaaaa","action":"getState"}
+{"action":"getState"}

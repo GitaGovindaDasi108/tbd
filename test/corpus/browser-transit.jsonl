@@ -1,0 +1,28 @@
+{"__init":1}
+{"action":"getState"}
+{"action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa","season":"sn_paaaaa"}
+{"action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD","season":"sn_paaaaa"}
+{"action":"sendShipment","shipId":"sh_alpha1","mode":"devotee","fromRegion":"OUTSIDE","toRegion":"rg_naaaaa","toLoc":"WAREHOUSE","carrier":"Alpha","items":[{"bookId":"sr_en","qty":5},{"bookId":"we_en","qty":3}],"season":"sn_paaaaa"}
+{"action":"sendShipment","shipId":"sh_beta22","mode":"devotee","fromRegion":"OUTSIDE","toRegion":"rg_naaaaa","toLoc":"ev_fest","carrier":"Beta","items":[{"bookId":"sr_en","qty":2}],"season":"sn_paaaaa"}
+{"action":"sendShipment","shipId":"sh_gamma3","mode":"devotee","fromRegion":"OUTSIDE","toRegion":"rg_it","toLoc":"wh_it","carrier":"Gamma","items":[{"bookId":"ea_en","qty":4}],"season":"sn_paaaaa"}
+{"action":"setKey","kind":"region","id":"rg_it"}
+{"action":"sellerLink","regionId":"rg_it"}
+{"action":"getState"}
+{"action":"receiveShipment","shipId":"sh_alpha1","toLoc":"WAREHOUSE","items":[{"bookId":"sr_en","qty":5},{"bookId":"we_en","qty":3}],"note":"Full delivery","opId":"opmujh72hn_1_bjmv35","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"receiveShipment","shipId":"sh_beta22","toLoc":"ev_fest","items":[{"bookId":"sr_en","qty":1}],"note":"","opId":"opmujh74jo_2_86t62g","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"season":"sn_paaaaa","action":"ping"}
+{"action":"getState"}
+{"k":"kjaaaaakaaa","by":"","action":"getState"}
+{"k":"kjaaaaakaaa","by":"Tester","action":"receiveShipment","shipId":"sh_gamma3","toLoc":"wh_it","items":[{"bookId":"ea_en","qty":4}],"note":"Full delivery","opId":"opmujh7bm4_1_a4ddsv"}
+{"k":"kjaaaaakaaa","by":"Tester","action":"getState"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"getState","season":"sn_paaaaa"}
+{"action":"receiveShipment","k":"kjaaaaakaaa","shipId":"sh_beta22","toLoc":"ev_fest","items":[{"bookId":"sr_en","qty":1}]}
+{"k":"snaaaaaoaaaaa","by":"","action":"getState"}

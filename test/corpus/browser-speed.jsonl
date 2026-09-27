@@ -1,0 +1,17 @@
+{"__init":1}
+{"action":"getState"}
+{"action":"createEvent","eventId":"ev_fest","name":"Festival","regionId":"rg_naaaaa","season":"sn_paaaaa"}
+{"action":"createRegion","regionId":"rg_it","whLoc":"wh_it","name":"Italy","currencies":"EUR,USD","books":"sr_en,we_en","season":"sn_paaaaa"}
+{"action":"createEvent","eventId":"ev_yoga","name":"Yoga Studio","regionId":"rg_it","season":"sn_paaaaa"}
+{"action":"createRegion","regionId":"rg_es","whLoc":"wh_es","name":"Spain","currencies":"EUR,USD","season":"sn_paaaaa"}
+{"action":"closeLocation","kind":"region","id":"rg_es","season":"sn_paaaaa"}
+{"action":"saveSeason","name":"Year-Round Sales"}
+{"action":"getState"}
+{"action":"createRegion","regionId":"rg_kr","whLoc":"wh_kr","name":"Krakow","currencies":"PLN,USD","season":"sn_baaaaa"}
+{"action":"setSeason","seasonId":"sn_paaaaa"}
+{"action":"setKey","kind":"region","id":"rg_it"}
+{"action":"getState"}
+{"action":"getState","season":"sn_baaaaa"}
+{"season":"sn_paaaaa","action":"ping"}
+{"action":"getState","season":"sn_baaaaa"}
+{"action":"setSeason","seasonId":"sn_baaaaa"}
