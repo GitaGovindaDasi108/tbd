@@ -177,5 +177,7 @@ module.exports = {
   // Test hooks: swap a backend function for one call path, and read the revision.
   patch:(name,fn)=>{ if(__rec) __fs.appendFileSync(__rec, JSON.stringify({__patch:name})+'\n'); const old=eval(name); eval(name+' = fn'); return old; },
   rev:()=>getRev_(),
+  // Test hook: run a line inside Code.gs's own scope (e.g. to forget cached rates).
+  run:src=>eval(src),
   mem:__mem
 };

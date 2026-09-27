@@ -659,6 +659,42 @@ Not done yet:
   rewrite its own files; the owner allowed reading the wording from the
   live app, but this environment's network blocks script.google.com.)
 
+## Done in b198 — dollars from the truth
+
+Local amounts never change; only their dollar value can. Every dollar figure
+— tiles, Collections by Region, Collections by Payment, the WhatsApp report,
+the Summaries Portal at HQ, and the spreadsheets — now counts, in order:
+
+1. **dollars actually received**, where entered on the sale (`usdActual`);
+2. **a closed region's rates**, frozen the day it closed;
+3. **a closed season's rates** (as before: `getRates_` returns them);
+4. **today's rates**, an estimate.
+
+Costs follow 2–4 by their place. Details:
+- `doCloseLocation` (kind region) stores `frozenRates` on the region row
+  (`freezeRegionRates_`: only the currencies the region used, and only if
+  every one has a rate — never frozen offline). Reopening clears it.
+- Regions closed before b198 are filled in by the background sync
+  (`backfillRegionRates_`, at most hourly, five at a time): the ECB rate of
+  the closing day from Frankfurter's history; a currency the ECB does not
+  publish (e.g. MKD) takes the rate of the day it is filled in.
+- Server: `ratesForLoc_`, `toUsdAt_`, `saleFactor_`, `legTruthUsd_`,
+  `costUsd_`. `legsUsd_`/`dueUsd_` go through them, and each per-currency or
+  per-payment-type dollar column adds up leg by leg. The spreadsheets had
+  never honoured dollars received; now they do (golden differs there, and
+  only there — checked by switching `saleFactor_` off). A closed region's
+  sheet says "Exchange rates — FROZEN when this region closed"; a closed
+  season's no longer says "OFFLINE FALLBACK".
+- App: `state.regions[].rates` (closed regions only) and
+  `everywhere.regions[].rates`. `toUSDAt`, `ratesAt`, `hasTruth`, `saleEst`,
+  `costTruthAdj`; `saleUsd`, `usdActualAdj` and the payments factor use them.
+  At HQ, `rollupState` gives `locFx` (place → region-frozen, else
+  season-frozen rates) in place of the old per-sale `usdActual` injection,
+  so costs are right there too. The "received" badges still mean only
+  dollars actually entered (`hasUsdActual`).
+- Tests: `truthusd.js` (server: freeze, reopen, backfill, spreadsheets),
+  `truthclient.js` (app and HQ). `mini.js` gains `run(src)`.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes

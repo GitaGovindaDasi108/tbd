@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b197';
+var SERVER_BUILD = 'b198';
 
 function doPost(e) { return handle(e); }
 
@@ -1167,6 +1167,8 @@ function doCloseLocation(p) {
   saveInvMap_(map);
 
   setClosed_(kind, id, new Date());
+  // A region's dollars stop moving the day it closes.
+  if (kind === 'region') freezeRegionRates_(id, null);
   /* Only redraw the spreadsheets if the closing actually changed a number.
 
      A clean close — counts matching what the app expected — alters nothing but
@@ -1179,9 +1181,92 @@ function doCloseLocation(p) {
   return { diffs: diffs, outstanding: outstandingAt_(locs) };
 }
 
+/* The currencies a region's money is in: its own list, and any its sales, debts
+   and costs actually used. */
+function regionCurrencies_(regionId) {
+  var locs = {}, out = {};
+  locsInRegion_(regionId).forEach(function (l) { locs[l] = 1; });
+  objectsOf_('_holders').forEach(function (h) { if (String(h.regionId || '') === String(regionId)) locs[String(h.holderId)] = 1; });
+  var r = objectsOf_('_regions').filter(function (x) { return String(x.regionId) === String(regionId); })[0];
+  if (r) parseCurList_(r.currencies).forEach(function (c) { out[c] = 1; });
+  objectsOf_('_sales').forEach(function (s) {
+    if (!locs[String(s.location)]) return;
+    eachLeg_(s, function (l) { if (l.cur) out[String(l.cur).toUpperCase()] = 1; });
+    if (s.duecur) out[String(s.duecur).toUpperCase()] = 1;
+  });
+  objectsOf_('_costs').forEach(function (c) { if (locs[String(c.location)] && c.cur) out[String(c.cur).toUpperCase()] = 1; });
+  delete out.USD;
+  return Object.keys(out).sort();
+}
+
+/* Store the rates a closed region's dollars are counted at.
+
+   `rates` is given when filling in a region that closed before this existed
+   (the rates of its closing day); otherwise today's — or, in a closed season,
+   the season's frozen ones. Nothing is stored unless every currency the region
+   used has a rate, so a region is never frozen with a currency worth zero. */
+function freezeRegionRates_(regionId, given, asOf) {
+  var curs = regionCurrencies_(regionId);
+  var src = given, when = asOf || '';
+  if (!src) {
+    var fx = getRates_();
+    if (!fx || !(fx.live || fx.frozen)) return false;   // offline: filled in later
+    src = fx.RATES || {};
+    when = fx.asOf || '';
+  }
+  var out = { USD: 1 };
+  for (var i = 0; i < curs.length; i++) {
+    var v = Number(src[curs[i]]);
+    if (!(v > 0)) return false;
+    out[curs[i]] = v;
+  }
+  dbAddCols_('_regions', ['frozenRates']);
+  dbUpdate_('_regions', { regionId: String(regionId) },
+            { frozenRates: JSON.stringify({ RATES: out, asOf: String(when), frozenAt: new Date().toISOString() }) });
+  return true;
+}
+
+/* Regions closed before rates were frozen with them: look up the rates of the
+   day each one closed (Frankfurter keeps the ECB's history) and store them.
+   Currencies the ECB does not publish take today's rate, so the figures stop
+   moving from here on. Runs in the background, a few regions at a time. */
+function backfillRegionRates_() {
+  if (!dbHas_('_regions')) return 0;
+  var todo = objectsOf_('_regions').filter(function (r) {
+    return r && r.regionId && r.closedAt && !r.frozenRates && String(r.regionId) !== HQ_REGION;
+  }).slice(0, 5);
+  var done = 0;
+  todo.forEach(function (r) {
+    try {
+      var d = new Date(r.closedAt);
+      if (isNaN(d)) return;
+      var day = d.toISOString().slice(0, 10);
+      var curs = regionCurrencies_(r.regionId);
+      var rates = {};
+      if (curs.length) {
+        var h = fxGet_('https://api.frankfurter.app/' + day + '?from=USD&to=' + encodeURIComponent(curs.join(',')));
+        if (h && h.rates) Object.keys(h.rates).forEach(function (c) { rates[String(c).toUpperCase()] = Number(h.rates[c]); });
+        var ctx = _seasonOverride;
+        setSeasonContext_('');
+        try {
+          var today = getRates_();
+          if (today && today.live) curs.forEach(function (c) { if (!(rates[c] > 0)) rates[c] = Number((today.RATES || {})[c]); });
+        } finally { setSeasonContext_(ctx); }
+      }
+      if (freezeRegionRates_(r.regionId, rates, day)) { done++; markDirtyRegions_([String(r.regionId)]); }
+    } catch (e) { /* try again next time */ }
+  });
+  if (done) { cacheClear_(); bumpRev_(); }
+  return done;
+}
+
 function doReopenLocation(p) {
   var kind = String(p.kind || 'event'), id = String(p.id || '');
   setClosed_(kind, id, '');
+  // Open again: its dollars follow the rates again until it closes once more.
+  if (kind === 'region' && dbCols_('_regions').indexOf('frozenRates') >= 0) {
+    dbUpdate_('_regions', { regionId: id }, { frozenRates: '' });
+  }
   markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
 }
 
@@ -2342,7 +2427,7 @@ function everywhere_(sales, inv) {
     regions: objectsOf_('_regions').filter(function (r) { return r && r.regionId; }).map(function (r) {
       return { regionId: String(r.regionId), name: String(r.name), whLoc: String(r.whLoc || ''),
                seasonId: String(r.seasonId || ''), currencies: parseCurList_(r.currencies),
-               closedAt: r.closedAt ? String(r.closedAt) : '' };
+               closedAt: r.closedAt ? String(r.closedAt) : '', rates: regionFrozenRates_(r) };
     }),
     events: objectsOf_('_events').filter(function (e) { return e && e.eventId; }).map(function (e) {
       return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || '') };
@@ -2573,7 +2658,7 @@ var TABLE_KEYS_ = {
 /* Rows read during this request, per table. Any write drops the lot, so a
    read never sees data older than the last change. */
 var _sheetMemo = {};
-function sheetMemoClear_() { _sheetMemo = {}; bookMemoClear_(); }
+function sheetMemoClear_() { _sheetMemo = {}; bookMemoClear_(); _locFxMemo = null; }
 
 /* { cols: [...], rows: [ {col: value} ] } for one table, read once per request. */
 function storeRead_(t) {
@@ -3406,6 +3491,11 @@ function readState() {
                  bookOrder: parsePayList_(r.bookOrder),
                  hidden: String(r.hidden || ''),      // titles this region does not offer
                  counts: im[r.regionId] || { events: 0, sales: 0, books: 0 } };
+      }).map(function (r) {
+        // A closed region's dollars are counted at the rates of its closing day.
+        var fx = ratesForLoc_(r.whLoc);
+        if (fx) r.rates = fx;
+        return r;
       });
     })(),
     prices: pricesForState_(),
@@ -3654,6 +3744,13 @@ var QUIET_MS = 25 * 1000;   // how long after a save to leave the sheets alone
    redrawn under that season, sharing one time budget. */
 var _presetDirty = null, _syncStarted = 0;
 function syncEverySeason_() {
+  /* Now and then, fill in the frozen rates of regions that closed before they
+     were kept. At most once an hour, and only when nobody is saving. */
+  if (!tempGet_('fx_backfill')) {
+    tempPut_('fx_backfill', '1', 3600);
+    var bl = LockService.getScriptLock();
+    if (bl.tryLock(1000)) { try { backfillRegionRates_(); } catch (e) {} finally { bl.releaseLock(); } }
+  }
   var raw = propGet_('dirtyLocs');
   if (!raw || raw === '{}') return;
   var lastWrite = Number(propGet_('lastWriteAt') || 0);
@@ -6167,12 +6264,74 @@ function toUSD_(amt, cur) {
   return per > 0 ? amt / per : 0;
 }
 
+/* ---- Dollars from the truth ----
+
+   Local amounts never change; only their dollar value can. In order of trust:
+     1. dollars actually received, where entered on the sale (usdActual);
+     2. the rates a closed REGION was frozen at, the day it closed;
+     3. the rates a closed SEASON was frozen at (getRates_ already returns them);
+     4. today's rates, as an estimate.
+   Every dollar figure in the spreadsheets goes through the helpers below, so a
+   closed region's totals stop moving and add up the same everywhere. */
+var _locFxMemo = null;
+/** The rates a closed region was frozen at, or null. */
+function regionFrozenRates_(r) {
+  if (!r || !r.closedAt || !r.frozenRates) return null;
+  try { var fr = JSON.parse(r.frozenRates); return (fr && fr.RATES) ? fr.RATES : null; } catch (e) { return null; }
+}
+/** Location -> frozen rates, for every place in a closed region (any season). */
+function locFxMap_() {
+  if (_locFxMemo) return _locFxMemo;
+  var byRegion = {}, out = {};
+  objectsOf_('_regions').forEach(function (r) {
+    var fx = regionFrozenRates_(r);
+    if (!fx) return;
+    byRegion[String(r.regionId)] = fx;
+    if (r.whLoc) out[String(r.whLoc)] = fx;
+  });
+  if (Object.keys(byRegion).length) {
+    objectsOf_('_events').forEach(function (e) { var fx = byRegion[String(e.regionId || '')]; if (fx) out[String(e.eventId)] = fx; });
+    objectsOf_('_holders').forEach(function (h) { var fx = byRegion[String(h.regionId || '')]; if (fx) out[String(h.holderId)] = fx; });
+  }
+  _locFxMemo = out;
+  return out;
+}
+function ratesForLoc_(loc) { return locFxMap_()[String(loc)] || null; }
+/** Dollars at a place's own rates: a closed region's if it has them, else as usual. */
+function toUsdAt_(amt, cur, loc) {
+  amt = Number(amt) || 0;
+  if (!amt) return 0;
+  cur = String(cur || '').toUpperCase();
+  if (cur === 'USD') return amt;
+  var fx = ratesForLoc_(loc);
+  var per = fx ? Number(fx[cur]) : 0;
+  return per > 0 ? amt / per : toUSD_(amt, cur);
+}
+function hasUsdActual_(s) {
+  var v = s ? s.usdActual : '';
+  return v !== '' && v !== null && v !== undefined && !isNaN(Number(v)) && Number(v) > 0;
+}
+/* How far the dollars received move this sale from its estimate: every leg is
+   scaled by the same factor, so a breakdown still adds up to the whole. */
+function saleFactor_(s) {
+  if (!hasUsdActual_(s) || !received_(s)) return 1;
+  var est = 0;
+  eachLeg_(s, function (l) { if (l.type !== 'Gift') est += toUsdAt_(l.amt, l.cur, s.location); });
+  return est > 0 ? Number(s.usdActual) / est : 1;
+}
+/** One payment leg of a sale, in dollars, from the truth. */
+function legTruthUsd_(s, leg, factor) {
+  return toUsdAt_(leg.amt, leg.cur, s.location) * (factor === undefined ? saleFactor_(s) : factor);
+}
+/** A cost, in dollars at its place's rates. */
+function costUsd_(c) { return toUsdAt_(c.amt, c.cur, c.location); }
+
 function eachLeg_(s, fn) {
   if (s.p1type) fn({ type: String(s.p1type), cur: String(s.p1cur), amt: Number(s.p1amt) || 0 });
   if (s.p2type) fn({ type: String(s.p2type), cur: String(s.p2cur), amt: Number(s.p2amt) || 0 });
   pmoreRead_(s.pmore).forEach(function (l) { if (l && l.type) fn({ type: String(l.type), cur: String(l.cur), amt: Number(l.amt) || 0 }); });
 }
-function legsUsd_(s) { var t = 0; eachLeg_(s, function (l) { t += toUSD_(l.amt, l.cur); }); return t; }
+function legsUsd_(s) { var t = 0, f = saleFactor_(s); eachLeg_(s, function (l) { t += legTruthUsd_(s, l, f); }); return t; }
 
 /* Three payment states, from two stored fields:
      pending = true          nothing received; the legs are what is owed
@@ -6192,27 +6351,18 @@ function received_(s) { return !pendingFlag_(s); }
 
 /* USD helpers used by the season rollup. Kept alongside received_/eachLeg_ so
    every sheet values money the same way. */
-function legsUSD_(s) {
-  var t = 0;
-  eachLeg_(s, function (leg) { t += toUSD_(leg.amt, leg.cur); });
-  return t;
-}
-function dueUSD_(s) {
-  var amt = Number(s.dueamt) || 0;
-  if (pendingFlag_(s)) {
-    // Nothing paid yet: the whole ticket is outstanding.
-    var t = 0;
-    eachLeg_(s, function (leg) { t += toUSD_(leg.amt, leg.cur); });
-    return t;
-  }
-  if (amt <= 0) return 0;
-  return toUSD_(amt, String(s.duecur || 'USD'));
-}
+function legsUSD_(s) { return legsUsd_(s); }
+function dueUSD_(s) { return dueUsd_(s); }
 
 /** Everything still owed on this sale, in USD. */
 function dueUsd_(s) {
-  if (pendingFlag_(s)) return legsUsd_(s);
-  return toUSD_(dueAmt_(s), dueCur_(s));
+  if (pendingFlag_(s)) {
+    // Nothing paid yet: the whole ticket is outstanding, at the place's rates.
+    var t = 0;
+    eachLeg_(s, function (l) { t += toUsdAt_(l.amt, l.cur, s.location); });
+    return t;
+  }
+  return toUsdAt_(dueAmt_(s), dueCur_(s), s.location);
 }
 
 /** What is still owed, as amounts in the currencies they are owed in. */
@@ -6455,8 +6605,11 @@ function renderSeasonSheet_() {
   put(['gop\u012b-bhartu\u1e25 pada-kamalayor d\u0101sa-d\u0101s\u0101nud\u0101sa\u1e25']);
   put(['Last updated', stamp_()]);
   var fx = getRates_();
-  put([(fx.live ? 'Exchange rates \u2014 LIVE' : 'Exchange rates \u2014 OFFLINE FALLBACK (live fetch failed)'),
-       'USD is the common currency' + (fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')]);
+  put([(fx.frozen ? 'Exchange rates \u2014 FROZEN when this season closed'
+        : fx.live ? 'Exchange rates \u2014 LIVE' : 'Exchange rates \u2014 OFFLINE FALLBACK (live fetch failed)'),
+       'USD is the common currency' + (fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')
+       + (regions.some(function (r) { return ratesForLoc_(r.whLoc); })
+          ? ' \u2014 a closed region counts at the rates of the day it closed' : '')]);
   blank();
 
   /* ---- Headline totals ---- */
@@ -6537,7 +6690,7 @@ function renderSeasonSheet_() {
       if (!mine[String(s.location)] || !received_(s)) return;
       eachLeg_(s, function (leg) {
         acc.cur[leg.cur] = (acc.cur[leg.cur] || 0) + leg.amt;
-        acc.usd += toUSD_(leg.amt, leg.cur);
+        acc.usd += legTruthUsd_(s, leg);
       });
     });
     return acc;
@@ -6656,11 +6809,16 @@ function renderView_(loc, regionId, ssOverride) {
   put(['gopī-bhartuḥ pada-kamalayor dāsa-dāsānudāsaḥ']);
   put(['Last updated', stamp_()]);
   var fx = getRates_();
+  // A closed region keeps the rates of the day it closed.
+  var regFx = ratesForLoc_(region.whLoc);
+  var perOf = function (c) { return regFx && Number(regFx[c]) > 0 ? Number(regFx[c]) : perUsd_(c); };
   // Show the rate for whatever currencies THIS region actually deals in.
-  put([(fx.live ? 'Exchange rates — LIVE' : 'Exchange rates — OFFLINE FALLBACK (live fetch failed)'),
+  put([(regFx ? 'Exchange rates — FROZEN when this region closed'
+        : fx.frozen ? 'Exchange rates — FROZEN when this season closed'
+        : fx.live ? 'Exchange rates — LIVE' : 'Exchange rates — OFFLINE FALLBACK (live fetch failed)'),
        '$1 = ' + (region.currencies || []).filter(function (c) { return c !== 'USD'; })
-         .map(function (c) { return round2_(perUsd_(c)) + ' ' + c; }).join(' / ')
-       + (fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')]);
+         .map(function (c) { return round2_(perOf(c)) + ' ' + c; }).join(' / ')
+       + (!regFx && fx.live && fx.asOf ? '  (as of ' + fx.asOf + ')' : '')]);
   blank();
 
   /* ---- Counts, split big books vs AoTM ---- */
@@ -6786,16 +6944,17 @@ function renderView_(loc, regionId, ssOverride) {
   head.push(put(['Currency', 'Books & pre-orders', 'Donations', 'Total collected', 'USD equivalent']));
   var curStart = rows.length + 1;
   allCurrencies_().forEach(function (cur) {
-    var bookAmt = 0, donAmt = 0;
+    var bookAmt = 0, donAmt = 0, usdAmt = 0;
     scoped.forEach(function (s) {
       if (!received_(s)) return;
       eachLeg_(s, function (leg) {
         if (leg.cur !== cur) return;
         if (s.type === 'DONATION') donAmt += leg.amt; else bookAmt += leg.amt;
+        usdAmt += legTruthUsd_(s, leg);
       });
     });
     var total = bookAmt + donAmt;
-    put([cur, round2_(bookAmt), round2_(donAmt), round2_(total), round2_(toUSD_(total, cur))]);
+    put([cur, round2_(bookAmt), round2_(donAmt), round2_(total), round2_(usdAmt)]);
   });
   money.push('B' + curStart + ':E' + (curStart + 2));
   blank();
@@ -6812,12 +6971,12 @@ function renderView_(loc, regionId, ssOverride) {
   var typeStart = rows.length + 1;
 
   var KINDS = [['big', 'Big Books'], ['aotm', 'Adventures'], ['other', 'Other']];
-  var totalsByCur = {};
+  var totalsByCur = {}, totalUsdEq = 0;
   curList.forEach(function (c) { totalsByCur[c] = 0; });
 
   KINDS.forEach(function (pair) {
     var kind = pair[0];
-    var byCur = {};
+    var byCur = {}, usdEq = 0;
     curList.forEach(function (c) { byCur[c] = 0; });
     scoped.forEach(function (s) {
       if (!received_(s) || s.type === 'DONATION' || !s.bookId) return;
@@ -6826,28 +6985,29 @@ function renderView_(loc, regionId, ssOverride) {
       eachLeg_(s, function (leg) {
         if (byCur[leg.cur] === undefined) return;
         byCur[leg.cur] += leg.amt; totalsByCur[leg.cur] += leg.amt;
+        var u = legTruthUsd_(s, leg); usdEq += u; totalUsdEq += u;
       });
     });
-    var usdEq = curList.reduce(function (t, c) { return t + toUSD_(byCur[c], c); }, 0);
     put([pair[1]].concat(curList.map(function (c) { return round2_(byCur[c]); }))
         .concat([round2_(usdEq)]));
   });
 
   // Donations, kept separate because they are not a book sale.
-  var donByCur = {};
+  var donByCur = {}, donUsdEq = 0;
   curList.forEach(function (c) { donByCur[c] = 0; });
   scoped.forEach(function (s) {
     if (!received_(s) || s.type !== 'DONATION') return;
     eachLeg_(s, function (leg) {
       if (donByCur[leg.cur] === undefined) return;
       donByCur[leg.cur] += leg.amt; totalsByCur[leg.cur] += leg.amt;
+      var u = legTruthUsd_(s, leg); donUsdEq += u; totalUsdEq += u;
     });
   });
   put(['Donations'].concat(curList.map(function (c) { return round2_(donByCur[c]); }))
-      .concat([round2_(curList.reduce(function (t, c) { return t + toUSD_(donByCur[c], c); }, 0))]));
+      .concat([round2_(donUsdEq)]));
 
   put(['Total'].concat(curList.map(function (c) { return round2_(totalsByCur[c]); }))
-      .concat([round2_(curList.reduce(function (t, c) { return t + toUSD_(totalsByCur[c], c); }, 0))]));
+      .concat([round2_(totalUsdEq)]));
 
   money.push('B' + typeStart + ':' + colLetter_(curList.length + 2) + (typeStart + KINDS.length + 1));
   blank();
@@ -6857,12 +7017,13 @@ function renderView_(loc, regionId, ssOverride) {
   head.push(put(['Type', 'PLN', 'EUR', 'USD', 'USD equivalent']));
   var payStart = rows.length + 1;
   PAY_TYPES.forEach(function (t) {
-    var byCur = { PLN: 0, EUR: 0, USD: 0 };
+    var byCur = { PLN: 0, EUR: 0, USD: 0 }, usdEq = 0;
     scoped.forEach(function (s) {
       if (!received_(s)) return;
-      eachLeg_(s, function (leg) { if (leg.type === t && byCur[leg.cur] !== undefined) byCur[leg.cur] += leg.amt; });
+      eachLeg_(s, function (leg) {
+        if (leg.type === t && byCur[leg.cur] !== undefined) { byCur[leg.cur] += leg.amt; usdEq += legTruthUsd_(s, leg); }
+      });
     });
-    var usdEq = toUSD_(byCur.PLN, 'PLN') + toUSD_(byCur.EUR, 'EUR') + toUSD_(byCur.USD, 'USD');
     put([t, round2_(byCur.PLN), round2_(byCur.EUR), round2_(byCur.USD), round2_(usdEq)]);
   });
   money.push('B' + payStart + ':E' + (payStart + PAY_TYPES.length - 1));
@@ -6887,28 +7048,26 @@ function renderView_(loc, regionId, ssOverride) {
     } else {
       head.push(put(['When', 'What for', 'Payment type', 'Where', 'Note'].concat(costCurs).concat(['USD equivalent'])));
       var costStart = rows.length + 1;
-      var costTotal = {}; costCurs.forEach(function (c) { costTotal[c] = 0; });
+      var costTotal = {}, costUsd = 0; costCurs.forEach(function (c) { costTotal[c] = 0; });
       regionCosts.forEach(function (c) {
         var cur = String(c.cur), amt = Number(c.amt) || 0;
-        if (costTotal[cur] !== undefined) costTotal[cur] += amt;
+        if (costTotal[cur] !== undefined) { costTotal[cur] += amt; costUsd += costUsd_(c); }
         put([c.ts, String(c.category || 'Other'), String(c.payType || ''), locLabel_(String(c.location)),
              String(c.note || '')]
           .concat(costCurs.map(function (k) { return k === cur ? round2_(amt) : 0; }))
-          .concat([round2_(toUSD_(amt, cur))]));
+          .concat([round2_(costUsd_(c))]));
       });
-      var costUsd = costCurs.reduce(function (t, k) { return t + toUSD_(costTotal[k], k); }, 0);
       put(['Total costs', '', '', '', ''].concat(costCurs.map(function (k) { return round2_(costTotal[k]); }))
         .concat([round2_(costUsd)]));
       money.push(colLetter_(6) + costStart + ':' + colLetter_(6 + costCurs.length) + (costStart + regionCosts.length));
       blank();
 
       // What was kept: collected (our own sales, received) less the costs.
-      var got = {}; costCurs.forEach(function (k) { got[k] = 0; });
+      var got = {}, gotUsd = 0; costCurs.forEach(function (k) { got[k] = 0; });
       scoped.forEach(function (sl) {
         if (!received_(sl)) return;
-        eachLeg_(sl, function (leg) { if (got[leg.cur] !== undefined) got[leg.cur] += leg.amt; });
+        eachLeg_(sl, function (leg) { if (got[leg.cur] !== undefined) { got[leg.cur] += leg.amt; gotUsd += legTruthUsd_(sl, leg); } });
       });
-      var gotUsd = costCurs.reduce(function (t, k) { return t + toUSD_(got[k], k); }, 0);
       band.push(put(['NET AFTER COSTS']));
       head.push(put([''].concat(costCurs).concat(['USD equivalent'])));
       var netStart = rows.length + 1;
