@@ -661,7 +661,9 @@ body.busy #busyBar{opacity:1}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
-.sold-tag{position:absolute;top:8px;right:8px}
+/* On its own line above the title — pinned to the corner, it sat on top of a
+   long title and hid it. */
+.book > .sold-tag{position:static;align-self:flex-start;margin:0 0 6px}
 /* Two plain buttons, so neither action depends on knowing the card is tappable. */
 .bk-btns{display:flex;gap:6px;align-items:stretch;margin-top:10px}
 .bk-acts .bk-btns>button{margin-top:0}
@@ -669,8 +671,9 @@ body.busy #busyBar{opacity:1}
 .bk-btns>button{flex:1;min-height:38px;border-radius:9px;padding:9px 8px;font-size:13.5px;
   font-weight:800;font-family:inherit;cursor:pointer;touch-action:manipulation;
   display:inline-flex;align-items:center;justify-content:center;line-height:1}
-.sell-btn{border:1.5px solid var(--saffron,#C0691A);background:var(--saffron,#C0691A);color:#fff}
-.sell-btn:hover{background:#fff;color:var(--saffron,#C0691A);border-color:var(--saffron,#C0691A)}
+/* The same green as Deliver: both hand a book over. */
+.sell-btn{border:1.5px solid var(--green);background:var(--green);color:#fff}
+.sell-btn:hover{background:#fff;color:var(--green);border-color:var(--green)}
 .sell-btn:disabled{opacity:.4;cursor:not-allowed}
 .sell-btn:active{filter:brightness(.92)}
 /* Only the LOOK differs — the box is set once on .bk-btns>button above, so the
@@ -1034,6 +1037,7 @@ body.busy #busyBar{opacity:1}
 .err-box{background:var(--clay-l);border:1px solid #EEC0b8;color:var(--clay);border-radius:9px;padding:10px 12px;font-size:13.5px;font-weight:600;margin-bottom:10px}
 .err-box .btn{margin-top:8px;display:block}
 .mb-from{margin:4px 0 10px}
+.sp-grp{grid-column:1/-1;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-top:4px}
 .xf-return{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 
 /* ---------- Bulk grid ---------- */
@@ -1285,7 +1289,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b190</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b191</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1575,6 +1579,15 @@ function saleUsd(sale){
 function salesUsd(list){
   return (list||[]).reduce((t,x)=>t + (received(x) ? saleUsd(x) : 0), 0);
 }
+/* How far the dollars actually received move a total away from the estimate:
+   add this to a figure converted at today's rates. */
+function usdActualAdj(list){
+  return (list||[]).reduce((t,x)=>{
+    if(!hasUsdActual(x) || !received(x)) return t;
+    let est=0; legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) est += toUSD(l.amt, l.cur); });
+    return t + (Number(x.usdActual) - est);
+  }, 0);
+}
 /** Is a figure entered for this sale? */
 function hasUsdActual(sale){
   return !!sale && sale.usdActual!=='' && sale.usdActual!==null && sale.usdActual!==undefined
@@ -1708,6 +1721,14 @@ function partnerBooks(partnerId){
 }
 /** Every book on the shelf, ours and any consignment ones in this region. */
 function shelfBooks(){
+  const list = baseShelfBooks();
+  /* Titles this event is not offering are kept off its shelf. Only at an
+     event, and only for selling — they are still reachable to pre-order. */
+  const off = hiddenHere();
+  return off.size ? list.filter(b=>!off.has(b.id)) : list;
+}
+/* Every title this place would carry, before any is hidden. */
+function baseShelfBooks(){
   const ours = curBooks();
   // A consignment title only belongs on the shelf while its group still exists.
   // Season used to list every partner book regardless, so titles left behind by
@@ -1741,19 +1762,44 @@ function shelfBooks(){
     }
     if(here.some(l=>invQty(l,b.id)>0)) list.push(b);
   });
-  /* Titles this event is not offering are kept off its shelf. Only at an
-     event, and only for selling — they are still reachable to pre-order. */
-  const off = hiddenHere();
-  return inRegionOrder(off.size ? list.filter(b=>!off.has(b.id)) : list);
+  return inRegionOrder(list);
 }
 
 /** The titles hidden at the event being looked at. */
 /* Titles not offered where you are — an event's table, or a region's warehouse. */
-function hiddenHere(){
+/* The stored list for where you are: titles hidden by hand, and — at an event —
+   titles marked "+id", shown by hand even though no copies came here. */
+function hiddenRawHere(){
   const raw = (CUR_LEVEL==='event')
     ? ((STATE.events||[]).find(e=>e.eventId===CUR_LOC)||{}).hidden
     : (CUR_LEVEL==='region' ? ((STATE.regions||[]).find(r=>r.regionId===CUR_REGION)||{}).hidden : '');
-  return new Set(String(raw||'').split(',').map(x=>x.trim()).filter(Boolean));
+  return String(raw||'').split(',').map(x=>x.trim()).filter(Boolean);
+}
+const manualHiddenHere = () => new Set(hiddenRawHere().filter(x=>x[0]!=='+'));
+const forcedShownHere  = () => new Set(hiddenRawHere().filter(x=>x[0]==='+').map(x=>x.slice(1)));
+/* Has this title ever been at this event — copies brought in, or sold here? */
+function everAtEvent(loc, bookId){
+  if(invQty(loc, bookId) > 0) return true;
+  if((STATE.sales||[]).some(x=>x.location===loc && x.bookId===bookId)) return true;
+  if((STATE.stockMoves||[]).some(m=>m.toLoc===loc && m.bookId===bookId && Number(m.qty)>0)) return true;
+  return (STATE.shipments||[]).some(sh=>sh.toLoc===loc && sh.manifest && Number(sh.manifest[bookId])>0);
+}
+/* At an event, a title that was never brought in hides itself — the table shows
+   what is actually on it. It is still one tap away to pre-order, and Edit Book
+   Display can show it anyway. */
+function autoHiddenHereIgnoringForced(){
+  if(CUR_LEVEL!=='event' || !CUR_LOC) return new Set();
+  return new Set(baseShelfBooks().filter(b=>!everAtEvent(CUR_LOC, b.id)).map(b=>b.id));
+}
+function autoHiddenHere(){
+  if(CUR_LEVEL!=='event' || !CUR_LOC) return new Set();
+  const forced = forcedShownHere();
+  return new Set(baseShelfBooks().filter(b=>!forced.has(b.id) && !everAtEvent(CUR_LOC, b.id)).map(b=>b.id));
+}
+function hiddenHere(){
+  const off = manualHiddenHere();
+  autoHiddenHere().forEach(id=>off.add(id));
+  return off;
 }
 /** Every title, hidden ones included — for pre-orders and for the hide dialog. */
 function allShelfBooks(){
@@ -1768,10 +1814,11 @@ function allShelfBooks(){
 /* Pre-ordering a title that is not on this event's shelf. */
 /** Put a title back on the shelf where you are. */
 function unhideTitle(bookId){
-  const off = hiddenHere();
-  if(!off.has(bookId)) return;
-  off.delete(bookId);
-  const hidden = [...off];
+  if(!hiddenHere().has(bookId)) return;
+  // Hidden by hand comes off the list; hidden because it never came here is shown by hand.
+  const raw = hiddenRawHere().filter(x=>x!==bookId);
+  if(autoHiddenHere().has(bookId)) raw.push('+'+bookId);
+  const hidden = raw;
   const forRegion = (CUR_LEVEL==='region');
   commit(forRegion
       ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
@@ -2975,6 +3022,7 @@ function renderAdmin(){
   cols[0].push(season
     ? `<button class="btn" data-act="pick" data-then="sharelinks">🔗 Share Links…</button>`
     : `<button class="btn" data-act="sharelinks">🔗 Share Links</button>`);
+  cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
 
@@ -3166,7 +3214,8 @@ function renderTotals(){
   s.forEach(x=>{
     // A part-paid sale has money in both columns at once.
     if(received(x)){
-      totUsd+=legsUSD(x);
+      // Dollars actually received, where entered; otherwise today's estimate.
+      totUsd+=saleUsd(x);
       legs(x).forEach(l=>{ if(l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
     }
     pendUsd+=dueUSD(x);
@@ -3433,10 +3482,11 @@ function renderCollectionsByRegion(target){
   const curs = curAllCurrencies();
   const rows = regionsList().map(r=>{
     const locs = locsInRegion(r.regionId);
-    const got = {};
+    const got = {}, mine = [];
     (STATE.sales||[]).forEach(x=>{
       if(!x || !locs.includes(x.location)) return;
       if(pendingFlag(x) || isPartnerSale(x)) return;        // not in hand, or not ours
+      mine.push(x);
       legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
     });
     /* What the region actually brings in: its own takings, less what it spent
@@ -3446,7 +3496,7 @@ function renderCollectionsByRegion(target){
       if(!locs.includes(c.location)) return;
       got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
     });
-    return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0)};
+    return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine)};
   });
   const tot = {}; let totUsd = 0;
   rows.forEach(x=>{ Object.keys(x.got).forEach(c=>tot[c]=(tot[c]||0)+x.got[c]); totUsd += x.usd; });
@@ -4392,7 +4442,7 @@ function bindMixedPay(totalIn, onChange, opts){
         </div>
         <div class="mix-est" data-mixest="${i}"></div>
       </div>`).join('');
-    L.forEach((l,i)=>{ const t = box.querySelector(`[data-mix="type"][data-i="${i}"]`); if(t) t.value = l.type; });
+    L.forEach((l,i)=>{ const t = box.querySelector(`[data-mix="type"][data-i="${i}"]`); if(t) setSel(t, l.type); });
     show();
   }
   // Put the numbers in without redrawing, so the box being typed in keeps its place.
@@ -4442,8 +4492,18 @@ function bindMixedPay(totalIn, onChange, opts){
 /* The currency list follows the region you're standing in: Poland offers PLN/EUR/USD,
    Macedonia offers MKD/USD, and a future region offers whatever it was set up with. */
 function curOptions(sel){
-  return curCurrencies().map(c=>
+  // A sale made in a currency this place no longer lists still shows its own.
+  const list = curCurrencies().slice();
+  if(sel && !list.includes(sel)) list.push(sel);
+  return list.map(c=>
     `<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]||c}</option>`).join('');
+}
+/* Put a stored value into a choice box, adding it if this place does not list
+   it — otherwise an edit silently shows (and saves) the first choice instead. */
+function setSel(sel, v){
+  if(!sel || v===undefined || v===null || v==='') return;
+  if(![...sel.options].some(o=>o.value===v)){ const o = document.createElement('option'); o.value = v; o.textContent = CUR_LABEL[v] || v; sel.appendChild(o); }
+  sel.value = v;
 }
 
 /* Phone numbers cross country codes here, so the leading + has to survive
@@ -4501,8 +4561,8 @@ function saleModal(opts){
      much. Everything else waits under "Specialized Sales", open from the start
      only when it is needed: a pre-order (a name is required) or an edit of a
      sale that already uses it. */
-  const specOpen = isPre || !!(edit && (pendingFlag(edit) || isPartial(edit) || edit.name || edit.phone
-    || edit.comments || Number(edit.changeamt)));
+  // An edit shows everything the sale holds, so nothing looks lost.
+  const specOpen = isPre || !!edit;
 
   openModal(`
     ${mHead(title+' — '+book.name)}
@@ -4670,12 +4730,12 @@ function saleModal(opts){
   if(edit){
     const L=legs(edit);
     if(L.length>1){ ptype.value='Mixed'; mix.set(L); togglePay();
-    }else if(L.length===1){ ptype.value=L[0].type; togglePay(); pcur.value=L[0].cur; pamt.value=L[0].amt; pamt.dataset.touched='1';
+    }else if(L.length===1){ setSel(ptype, L[0].type); togglePay(); setSel(pcur, L[0].cur); pamt.value=L[0].amt; pamt.dataset.touched='1';
       if(L[0].type==='Gift') pamt.disabled=true;
     }
     payMode = pendingFlag(edit) ? 'none' : (isPartial(edit) ? 'part' : 'full');
     [...$('#paySeg').children].forEach(x=>x.classList.toggle('on', x.dataset.pay===payMode));
-    if(isPartial(edit)){ $('#duecur').value=dueCur(edit); $('#dueamt').value=dueAmt(edit); $('#dueamt').dataset.touched='1'; }
+    if(isPartial(edit)){ setSel($('#duecur'), dueCur(edit)); $('#dueamt').value=dueAmt(edit); $('#dueamt').dataset.touched='1'; }
     applyPayMode();
     $('#nameBox').style.display='block';
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
@@ -4683,7 +4743,7 @@ function saleModal(opts){
     // Any change still owed shows here so it can be corrected or cleared.
     if($('#chgamt')){
       $('#chgamt').value = Number(edit.changeamt)||'';
-      if(edit.changecur) $('#chgcur').value = edit.changecur;
+      if(edit.changecur) setSel($('#chgcur'), edit.changecur);
     }
   }else{
     togglePay();
@@ -4843,8 +4903,7 @@ function bundleModal(edit){
   // At a warehouse, copies with its sub-warehouses are stock too (see the save step).
   const stockAt = id => invQty(loc,id) + (backIn[id]||0);
   // As for one book: the rest waits under "Specialized Sales" unless this sale already uses it.
-  const bSpecOpen = !!(edit && edit.members.some(m=>(m.type==='PREORDER' && !m.delivered) || (m.pending && !m.paid)
-    || Number(m.dueamt) || m.name || m.phone || Number(m.changeamt) || /·/.test(String(m.comments||''))));
+  const bSpecOpen = !!edit;          // an edit shows everything the transaction holds
   const rows = bundleBooks().map(b=>{
     const stock = stockAt(b.id);
     return `<div class="mb-row" data-book="${b.id}"
@@ -5095,15 +5154,15 @@ function bundleModal(edit){
     if(merged.length>1){
       ptype.value='Mixed'; mix.set(merged); togglePay();
     } else if(merged.length===1){
-      ptype.value=merged[0].type; togglePay();
-      $('#pcur').value=merged[0].cur; $('#pamt').value=merged[0].amt; pamt.dataset.touched='1';
+      setSel(ptype, merged[0].type); togglePay();
+      setSel($('#pcur'), merged[0].cur); $('#pamt').value=merged[0].amt; pamt.dataset.touched='1';
     }
     // Payment status: pending / partial / full, from the members.
     const anyPending=edit.members.some(m=>m.pending && !m.paid);
     const dueMember=edit.members.find(m=>(Number(m.dueamt)||0)>0);
     payMode = anyPending ? 'none' : (dueMember ? 'part' : 'full');
     [...$('#paySeg').children].forEach(x=>x.classList.toggle('on', x.dataset.pay===payMode));
-    if(dueMember){ $('#duecur').value=dueMember.duecur||'PLN'; $('#dueamt').value=dueMember.dueamt; }
+    if(dueMember){ setSel($('#duecur'), dueMember.duecur||'PLN'); $('#dueamt').value=dueMember.dueamt; }
     $('#cname').value=edit.members[0].name||'';
     $('#cphone').value=edit.members[0].phone||'';
     // Strip the "N book sale" prefix from the shared comment for editing.
@@ -5113,7 +5172,7 @@ function bundleModal(edit){
      if($('#chgamt')){
        const c = edit.members.find(m=>Number(m.changeamt)>0);
        $('#chgamt').value = c ? Number(c.changeamt) : '';
-       if(c && c.changecur) $('#chgcur').value = c.changecur;
+       if(c && c.changecur) setSel($('#chgcur'), c.changecur);
      }
     applyPayMode(); updateCount(); refreshAll();
   }
@@ -5486,12 +5545,36 @@ function closeModalFor(kind){
       ${closeChecklist(kind)}
       <div class="field"><label>Note (optional)</label>
         <input id="clNote" type="text" placeholder="e.g. counted with Tulasi, 2 copies water damaged"></div>
+      <div class="hint" id="clSaved"></div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="clSave">Save progress</button>
       <button class="btn btn-danger" id="clGo" disabled>Close ${isEvent?'event':'region'}</button>
     </div>`, true);
+
+  /* Progress saved earlier — on this device or another — is put back: the ticks,
+     the counts and the note, exactly as left. */
+  const draftKey = kind+':'+id;
+  const draft = (STATE.closeDrafts||{})[draftKey];
+  const savedLine = d => d ? 'Progress saved ' + new Date(d.at).toLocaleString(LOCALE, {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'})
+    + (d.by ? ' by ' + d.by : '') + '.' : '';
+  if(draft){
+    (draft.checks||[]).forEach(i=>{ const c = document.querySelector(`#modal .cl-q[data-i="${i}"]`); if(c) c.checked = true; });
+    Object.keys(draft.counts||{}).forEach(k=>{
+      const inp = [...document.querySelectorAll('#modal .cl-in')].find(x=>x.dataset.key===k); if(inp) inp.value = draft.counts[k]; });
+    if(draft.note) $('#clNote').value = draft.note;
+    $('#clSaved').textContent = savedLine(draft);
+  }
+  $('#clSave').addEventListener('click', ()=>{
+    const d = { checks: [...document.querySelectorAll('#modal .cl-q')].filter(c=>c.checked).map(c=>Number(c.dataset.i)),
+      counts: {}, note: $('#clNote').value.trim(), at: new Date().toISOString(), by: meLabel() };
+    document.querySelectorAll('#modal .cl-in').forEach(i=>{ if(i.value!=='' && Number(i.value)!==Number(i.dataset.exp)) d.counts[i.dataset.key] = Math.max(0, Math.round(Number(i.value)||0)); });
+    commit({action:'saveCloseDraft', kind, id, draft:d},
+      st=>{ (st.closeDrafts = st.closeDrafts||{})[draftKey] = d; }, 'Progress saved', {keepOpen:true});
+    $('#clSaved').textContent = savedLine(d);
+  });
 
   function recount(){
     let diffs=0;
@@ -5543,6 +5626,7 @@ function closeModalFor(kind){
           invSet(st, bits[0], bits[1], counts[key]);
         });
         const when=new Date().toISOString();
+        if(st.closeDrafts) delete st.closeDrafts[kind+':'+id];     // finished with
         if(kind==='event'){
           const e=(st.events||[]).find(v=>v.eventId===id); if(e) e.closedAt=when;
         }else{
@@ -6364,6 +6448,15 @@ function buildReport(part, opts){
   const offeredKeys = new Set(REPORT_SECTIONS.map(x=>x[0]));
   const want = k => part ? part===k : (offeredKeys.has(k) && (!chosen || chosen.has(k)));
   const TITLE = Object.fromEntries(REPORT_SECTIONS);
+  /* A Speciality Report: several places added together (Madrid and Barcelona,
+     say, or two events). Everything else is the ordinary report, worked out
+     over just those places. */
+  const combo = (opts && opts.locs) ? new Set(opts.locs) : null;
+  if(combo) TITLE.stock = 'STOCK LEFT';
+  const comboBooks = combo ? inRegionOrder((STATE.books||[]).filter(b=>
+    (STATE.sales||[]).some(x=>x.bookId===b.id && combo.has(x.location)) ||
+    [...combo].some(l=>invQty(l,b.id)>0))) : null;
+  const shelf = () => combo ? comboBooks : shelfBooks();
   /* Run one section; in the full report, put its heading above whatever it
      wrote. A section with nothing to say gets no heading either. */
   // In the full report each section is collected separately, then laid out
@@ -6379,7 +6472,7 @@ function buildReport(part, opts){
       if(body.length) chunks[key] = ['*' + TITLE[key] + '*'].concat(body, ['']);
     }else if(L.length>at) L.push('');
   };
-  const s = scopedSales();
+  const s = combo ? (STATE.sales||[]).filter(x=>combo.has(x.location)) : scopedSales();
   const money = !hideMoney();
   const nf = n => fmt(n);
   const line = (label, value) => L.push(label + ' - ' + value);
@@ -6429,10 +6522,10 @@ function buildReport(part, opts){
     const shown = r => r.c.sold || r.c.gift;
     // Our own titles, by kind.
     CATS.forEach(kind=>group(
-      shelfBooks().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown),
+      shelf().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown),
       CAT_SHORT[kind]));
     // Then consignment, on its own.
-    const con = shelfBooks().filter(b=>isPartnerBook(b.id)).map(counted).filter(shown);
+    const con = shelf().filter(b=>isPartnerBook(b.id)).map(counted).filter(shown);
     if(con.length){
       L.push('— CONSIGNMENT —');
       group(con, 'Consignment');
@@ -6443,7 +6536,7 @@ function buildReport(part, opts){
     // Same split as the sales report: a count per kind, then the whole shelf.
     let grand=0, blocks=0;
     CATS.forEach(kind=>{
-      const books = shelfBooks().filter(b=>catOfBook(b)===kind && shownQty(b.id));
+      const books = shelf().filter(b=>catOfBook(b)===kind && shownQty(b.id));
       if(!books.length) return;
       if(blocks) gap();
       blocks++;
@@ -6457,11 +6550,12 @@ function buildReport(part, opts){
 
   section('stock', ()=>{
     const regions = (CUR_LEVEL==='season') ? regionsList() : [currentRegion()].filter(Boolean);
-    const held = b => regions.reduce((t,r)=>
-      t + locsInRegion(r.regionId).reduce((u,l)=>u+invQty(l,b.id), 0), 0);
+    const held = combo ? (b => [...combo].reduce((u,l)=>u+invQty(l,b.id), 0))
+      : (b => regions.reduce((t,r)=>
+      t + locsInRegion(r.regionId).reduce((u,l)=>u+invQty(l,b.id), 0), 0));
     let grand=0, blocks=0;
     CATS.forEach(kind=>{
-      const books = shelfBooks().filter(b=>catOfBook(b)===kind && held(b));
+      const books = shelf().filter(b=>catOfBook(b)===kind && held(b));
       if(!books.length) return;
       if(blocks) gap();
       blocks++;
@@ -6554,13 +6648,16 @@ function buildReport(part, opts){
     const types = bag => Object.keys(bag).filter(t=>t!=='Gift').sort();
 
     types(ours).forEach(t=>{ if(curs(ours[t]).length) line(t, text(ours[t])); });
-    if(curs(ourGrand).length) line('Total', text(ourGrand) + ' ≈ $' + nf(usd(ourGrand)));
+    if(curs(ourGrand).length) line('Total', text(ourGrand) + ' ≈ $' + nf(usd(ourGrand) + usdActualAdj(s.filter(x=>!isPartnerSale(x)))));
 
     /* At season level, the same picture region by region as the dashboard:
        each region's own takings less its own costs, consignment apart. */
-    if(CUR_LEVEL==='season'){
-      const byRegion = regionsList().map(r=>{
-        const locs = locsInRegion(r.regionId), got = {};
+    // Place by place: every region at season level, or each place in a Speciality Report.
+    const parts = combo ? ((opts.groups||[]).length>1 ? opts.groups : [])
+      : (CUR_LEVEL==='season' ? regionsList().map(r=>({name:r.name, locs:locsInRegion(r.regionId)})) : []);
+    if(parts.length){
+      const byRegion = parts.map(r=>{
+        const locs = r.locs, got = {};
         (STATE.sales||[]).forEach(x=>{
           if(!x || !locs.includes(x.location) || pendingFlag(x) || isPartnerSale(x)) return;
           legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
@@ -6573,13 +6670,13 @@ function buildReport(part, opts){
       }).filter(x=>curs(x.got).length);
       if(byRegion.length){
         L.push('');
-        L.push('— BY REGION (after costs) —');
+        L.push(combo ? '— BY PLACE (after costs) —' : '— BY REGION (after costs) —');
         byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got))));
       }
     }
 
     // Costs come off our own takings; a group's costs come off what it is owed.
-    const costs = scopedCosts();
+    const costs = combo ? (STATE.costs||[]).filter(c=>c && !c.partnerId && combo.has(c.location)) : scopedCosts();
     if(costs.length){
       const cost = {};
       costs.forEach(c=>{ cost[c.cur]=(cost[c.cur]||0)+(Number(c.amt)||0); });
@@ -6599,7 +6696,7 @@ function buildReport(part, opts){
       L.push('— CONSIGNMENT —');
       types(theirs).forEach(t=>{ if(curs(theirs[t]).length) line(t, text(theirs[t])); });
       line('Consignment Total', text(conGrand) + ' ≈ $' + nf(usd(conGrand)));
-      const conCosts = scopedAllCosts().filter(c=>c.partnerId);
+      const conCosts = (combo ? (STATE.costs||[]).filter(c=>c && combo.has(c.location)) : scopedAllCosts()).filter(c=>c.partnerId);
       if(conCosts.length){
         const cc={}; conCosts.forEach(c=>{ cc[c.cur]=(cc[c.cur]||0)+(Number(c.amt)||0); });
         line('Consignment costs', curs(cc).map(c=>'−'+cashFmt(cc[c],c)).join(' + '));
@@ -6614,7 +6711,7 @@ function buildReport(part, opts){
   }
   if(full && L.length){
     // Just the place and "Totals" — e.g. "London Totals".
-    const where = CUR_LEVEL==='season' ? (STATE.seasonName||'Season')
+    const where = combo ? (opts.title||'Combined') : CUR_LEVEL==='season' ? (STATE.seasonName||'Season')
       : [ (currentRegion()||{}).name, CUR_LEVEL==='event' ? locName(CUR_LOC) : '' ].filter(Boolean).join(' — ');
     L.unshift('*' + where + ' Totals*', '');
   }
@@ -6706,6 +6803,87 @@ function shareReport(part){
   });
 }
 
+
+/* ---- Speciality Reports ----
+   The WhatsApp report for several places added together — Madrid and Barcelona,
+   or Yoga Studio and Kirtan Mela. Choose regions or events, then the sections,
+   and the report is the same one the 📋 Report button makes, over just those
+   places. Choices are remembered on this device. */
+const SPEC_KEY = 'tbs_spec_report';
+function specLoad(){ try{ return JSON.parse(localStorage.getItem(SPEC_KEY)||'null') || {}; }catch(e){ return {}; } }
+function specSave(v){ try{ localStorage.setItem(SPEC_KEY, JSON.stringify(v)); }catch(e){} }
+function specialityReportModal(){
+  if(!isAdmin()) return;
+  const saved = specLoad();
+  let mode = saved.mode==='events' ? 'events' : 'regions';
+  const picked = { regions: new Set(saved.regions||[]), events: new Set(saved.events||[]) };
+  const picks = new Set((saved.sections && saved.sections.length) ? saved.sections : REPORT_SECTIONS.map(x=>x[0]));
+  const regs = regionsList();
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  const offered = REPORT_SECTIONS.filter(([k])=>!(k==='cash' && hideMoney()));
+  openModal(`
+    ${mHead('Speciality Reports')}
+    <div class="m-body">
+      <div class="hint">1. Choose the places to add together.</div>
+      <div class="seg" id="spMode">
+        <button type="button" data-mode="regions">Regions</button>
+        <button type="button" data-mode="events">Events</button>
+      </div>
+      <div id="spPlaces" class="rep-picks"></div>
+      <div class="hint">2. Choose what to include.</div>
+      <div class="rep-picks">${offered.map(([k,t])=>`
+        <label class="rep-pick"><input type="checkbox" data-sr="${k}" ${picks.has(k)?'checked':''}>
+          <span>${esc(k==='stock' ? 'Stock left' : t.charAt(0)+t.slice(1).toLowerCase())}</span></label>`).join('')}</div>
+      <div class="hint">Copy this and paste it into WhatsApp${canShare?', or send it straight there':''}.</div>
+      <textarea id="repText" class="rep-box" rows="14" readonly></textarea>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      ${canShare?`<button class="btn btn-teal" id="repShare">Send…</button>`:''}
+      <button class="btn btn-primary" id="repCopy">Copy</button>
+    </div>`, true);
+
+  function places(){
+    $('#spPlaces').innerHTML = mode==='regions'
+      ? regs.map(r=>`<label class="rep-pick"><input type="checkbox" data-sp="${esc(r.regionId)}" ${picked.regions.has(r.regionId)?'checked':''}>
+          <span>${esc(r.name)}</span></label>`).join('') || '<div class="cash-empty">No regions yet.</div>'
+      : regs.map(r=>{ const evs = eventsOfRegion(r.regionId); return evs.length ? `<div class="sp-grp">${esc(r.name)}</div>` + evs.map(e=>
+          `<label class="rep-pick"><input type="checkbox" data-sp="${esc(e.eventId)}" ${picked.events.has(e.eventId)?'checked':''}>
+            <span>${esc(e.name)}</span></label>`).join('') : ''; }).join('') || '<div class="cash-empty">No events yet.</div>';
+    [...$('#spMode').children].forEach(b=>b.classList.toggle('on', b.dataset.mode===mode));
+  }
+  function make(){
+    const chosen = mode==='regions'
+      ? regs.filter(r=>picked.regions.has(r.regionId)).map(r=>({name:r.name, locs:locsInRegion(r.regionId)}))
+      : regs.flatMap(r=>eventsOfRegion(r.regionId)).filter(e=>picked.events.has(e.eventId)).map(e=>({name:e.name, locs:[e.eventId]}));
+    if(!chosen.length) return '(choose at least one ' + (mode==='regions'?'region':'event') + ')';
+    return buildReport('', {sections:picks, locs:chosen.flatMap(c=>c.locs), groups:chosen,
+      title:chosen.map(c=>c.name).join(' + ')}) || '(nothing to report for these)';
+  }
+  const box = $('#repText');
+  function redo(){
+    specSave({mode, regions:[...picked.regions], events:[...picked.events], sections:[...picks]});
+    try{ box.value = make(); }catch(err){ box.value = 'Could not build the report — ' + err.message; }
+  }
+  $('#spMode').addEventListener('click', e=>{ const b = e.target.closest('[data-mode]'); if(!b) return; mode = b.dataset.mode; places(); redo(); });
+  $('#spPlaces').addEventListener('change', e=>{ const c = e.target.closest('[data-sp]'); if(!c) return;
+    const set = picked[mode]; c.checked ? set.add(c.dataset.sp) : set.delete(c.dataset.sp); redo(); });
+  document.querySelectorAll('#modal [data-sr]').forEach(cb=>cb.onchange=()=>{ cb.checked ? picks.add(cb.dataset.sr) : picks.delete(cb.dataset.sr); redo(); });
+  places(); redo();
+  const shown = () => (box && box.value) || '';
+  $('#repCopy').addEventListener('click', async ()=>{
+    try{
+      if(navigator.clipboard){ await navigator.clipboard.writeText(shown()); toast('Report copied'); return; }
+      throw new Error('no clipboard');
+    }catch(e){ box.focus(); box.select(); $('#modalErr').textContent = 'Copy it with Ctrl/Cmd+C — the text is selected.'; }
+  });
+  const sb = $('#repShare');
+  if(sb) sb.addEventListener('click', async ()=>{
+    try{ await navigator.share({ text: shown() }); }
+    catch(e){ if(e && e.name!=='AbortError') $('#modalErr').textContent='Sharing was not available — copy it instead.'; }
+  });
+}
 
 function qrModal(){
   // Codes shared across the tour, plus any this region added of its own.
@@ -7722,15 +7900,15 @@ function donationModal(edit){
   if(edit){
     const L=legs(edit);
     if(L.length>1){ ptype.value='Mixed'; mix.set(L); togglePay();
-    }else if(L.length===1){ ptype.value=L[0].type; togglePay();
-      $('#pcur').value=L[0].cur; $('#pamt').value=L[0].amt;
+    }else if(L.length===1){ setSel(ptype, L[0].type); togglePay();
+      setSel($('#pcur'), L[0].cur); $('#pamt').value=L[0].amt;
     }
     $('#cname').value=edit.name||''; $('#cphone').value=edit.phone||'';
     $('#ccomments').value=edit.comments||'';
     // Any change still owed shows here so it can be corrected or cleared.
     if($('#chgamt')){
       $('#chgamt').value = Number(edit.changeamt)||'';
-      if(edit.changecur) $('#chgcur').value = edit.changecur;
+      if(edit.changecur) setSel($('#chgcur'), edit.changecur);
     }
   }
 
@@ -11009,8 +11187,9 @@ function askRegionModal(saleId){
 function bookDisplayModal(){
   const season = CUR_LEVEL==='season';
   const off = season ? new Set() : hiddenHere();
+  const autoOff = season ? new Set() : autoHiddenHereIgnoringForced();
   let list = (season ? shelfBooks() : allShelfBooks()).map(b=>({
-    id:b.id, name:b.name, cat:catOfBook(b), on:!off.has(b.id),
+    id:b.id, name:b.name, cat:catOfBook(b), on:!off.has(b.id), auto:autoOff.has(b.id),
     partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
   }));
   if(!list.length){ toast('No titles here yet.', true); return; }
@@ -11023,7 +11202,7 @@ function bookDisplayModal(){
         ${season ? '' : `<input type="checkbox" class="bd-cb" data-bd="${esc(x.id)}" ${x.on?'checked':''} title="Show this title">`}
         <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
           ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}
-          ${x.on?'':'<span class="ro-tag">hidden</span>'}</span>
+          ${x.on?'':'<span class="ro-tag">hidden</span>'}${x.auto?'<span class="ro-tag">no copies here yet</span>':''}</span>
         <span class="ro-btns">
           <button class="cash-mini" data-bd-up="${i}" ${i===0?'disabled':''}>↑</button>
           <button class="cash-mini" data-bd-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
@@ -11054,8 +11233,13 @@ function bookDisplayModal(){
   draw();
   $('#bdSave').addEventListener('click', ()=>{
     const ids = list.map(x=>x.id);
-    const hidden = list.filter(x=>!x.on).map(x=>x.id);
-    if(!season && hidden.length===list.length){ $('#modalErr').textContent='Show at least one title.'; return; }
+    const off = list.filter(x=>!x.on).map(x=>x.id);
+    if(!season && off.length===list.length){ $('#modalErr').textContent='Show at least one title.'; return; }
+    /* At an event, a title never brought in hides itself: unticked, nothing needs
+       storing; ticked, it is stored as shown by hand ("+id"). */
+    const auto = autoHiddenHereIgnoringForced();
+    const hidden = off.filter(id=>!auto.has(id))
+      .concat(CUR_LEVEL==='event' ? list.filter(x=>x.on && auto.has(x.id)).map(x=>'+'+x.id) : []);
     commit({action:'reorderBooks', regionId: season ? '' : CUR_REGION, ids},
       st=>{ if(season){ st.seasonBookOrder = ids.join(','); }
             else { const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.bookOrder=ids; } }, null);
@@ -11069,7 +11253,7 @@ function bookDisplayModal(){
           else { const e=(st.events||[]).find(x=>x.eventId===evId); if(e) e.hidden=hidden.join(','); }
         }, null);
     }
-    toast('Book display saved' + (hidden.length ? ' — ' + hidden.length + ' hidden in ' + where : ''));
+    toast('Book display saved' + (off.length ? ' — ' + off.length + ' hidden in ' + where : ''));
     closeModal();
   });
 }
@@ -11342,6 +11526,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='report'){ shareReport(t.dataset.part||''); return; }
+  if(a==='specreport'){ specialityReportModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
     closeModal(); goTo('region', t.dataset.id); cashModal(); return;

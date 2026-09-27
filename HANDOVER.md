@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b190**.
+Handover notes. Current build: **b191**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -433,6 +433,32 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
   button shows on digital donations in the log as on sales. Totals already
   applied the figure to donations (the `don` adjustment); editing a donation
   keeps it (`doEditSale` fallback).
+
+## Done in b191
+
+- **Totals honor dollars received**: the Total Collections tile uses
+  `saleUsd` (entered figure, else estimate). Collections by Region and the
+  report's Total add `usdActualAdj(list)`.
+- **SOLD OUT / ALL PRE-ORDERED** badge sits on its own line above the title
+  (was absolutely positioned over it).
+- **Sell** buttons use `--green`, like Deliver.
+- **Closing checklist: Save progress** (`saveCloseDraft`): ticks, changed
+  counts and note, stored in script properties `cldraft:<kind>:<id>`, sent in
+  state as `closeDrafts` (scoped to a regional link's own places), restored
+  when the dialog opens, cleared by `doCloseLocation`. Regional links may
+  save/close only their own region's places.
+- **Edits keep everything**: Specialized Sales is always open on an edit, and
+  `setSel` / `curOptions(sel)` add a stored payment type or currency that the
+  place does not list, instead of silently showing (and saving) the first.
+- **Speciality Reports** (App Admin): the WhatsApp report over chosen regions
+  or events added together (`buildReport(part, {locs, groups, title})`), with
+  the same section choices, a "BY PLACE" money breakdown, remembered per
+  device (`tbs_spec_report`).
+- **Auto-hide at events**: a title never brought to an event (no stock, no
+  sale, no movement or shipment in) is off its shelf (`autoHiddenHere`); still
+  pre-orderable via "Pre-order another title". Edit Book Display marks it "no
+  copies here yet"; ticking it stores `+id` in the event's hidden list to show
+  it anyway. `shelfBooks` = `baseShelfBooks` minus hidden.
 
 ## Open items
 
