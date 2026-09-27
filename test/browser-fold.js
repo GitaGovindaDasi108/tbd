@@ -50,7 +50,7 @@ m.call({ action: 'setStockBulk', season: st.activeSeason, location: pl.whLoc, it
     const order = (await headings()).slice(0, 5);
     console.log('   season order: ' + order.join(' | '));
     t.push(['season order: titles, collections by region, sales by region, payments, warehouses',
-      JSON.stringify(order) === JSON.stringify(['Total Sales by Title', 'Collections by Region', 'Sales by Region',
+      JSON.stringify(order) === JSON.stringify(['Distribution by Title', 'Collections by Region', 'Sales by Region',
         'Total Collections by Payment', 'Warehouse Overview'])]);
     t.push(['everything starts open', !(await folded('payments')) && await bodyShown('payments')]);
 

@@ -133,7 +133,7 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     await page.evaluate(() => goTo('event', 'ev_new')); await page.waitForTimeout(300);
     const shelf = await page.evaluate(() => shelfBooks().map(b => b.id));
     t.push(['at an event, only titles brought in are on the shelf', shelf.length === 1 && shelf[0] === B0]);
-    t.push(['the rest are one tap away to pre-order', await page.evaluate(() => /not offered here/.test(document.querySelector('#invMulti').textContent))]);
+    t.push(['the rest are one tap away to pre-order', await page.evaluate(() => /Pre-Orders \(Unlisted Titles\)/.test(document.querySelector('#invMulti').textContent))]);
     await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);
     t.push(['Edit Book Display marks them "no copies here yet"', /no copies here yet/.test(await page.textContent('#bdList'))]);
     await page.check(`#modal [data-bd="${B1}"]`); await page.click('#bdSave'); await page.waitForTimeout(1200);

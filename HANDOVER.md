@@ -741,6 +741,25 @@ Costs follow 2–4 by their place. Details:
 - Tests: `seasondel.js`, `seasondelclient.js`. Golden differs only where
   deleting a region now also deletes its shipments (extra.jsonl).
 
+## Done in b201 — the saved wording is now the app's own
+
+- The 104 pencil rewordings saved on the live app (read, not changed, on
+  27 Sep 2026) are written into `index.html` itself, so the code is the
+  reference. Where two saved versions disagreed, the one saved last wins;
+  saved wording for text the app no longer shows (older dialogs) was
+  dropped. Notable: the titles panel is now "Distribution by Title" at
+  every level (the HQ spreadsheet's section too), "Active Sales Log" is
+  "Sales Log", "still coming" reads "in transit", and the hidden items
+  (the shipment-details lines, "Moving it also moves the copy…", the
+  Activity Log's "Checking for the latest…") are gone from the code.
+- Backend: the spreadsheets' "Still owed" column is "What They Still Owe";
+  the HQ sheet's section is "DISTRIBUTION BY TITLE". Book titles are not
+  touched (the owner changes those elsewhere).
+- The saved copies are retired on the first save after deploying
+  (`retireBuiltInLabels_`, list in `BUILT_IN_LABELS_`): only rows still
+  exactly as built in, so wording saved since is kept. Test:
+  `labelsbuiltin.js`.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes

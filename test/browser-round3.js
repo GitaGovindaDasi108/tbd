@@ -81,8 +81,8 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     t.push(['columns: Admin · Money · Books · Location', cols.map(c => c.title).join(',') === 'Admin,Money,Books,Location']);
     t.push(['Admin: Activity Log, App and Sales Support, Spreadsheet Links, Edit Wording',
       ['Activity Log', 'App and Sales Support', 'Spreadsheet Links', 'Edit Wording'].every(n => has(cols, 'Admin', new RegExp(n)))]);
-    t.push(['Money: Cash Tracker, Record Costs, Edit Payment Types',
-      ['Cash Tracker', 'Record Costs', 'Edit Payment Types'].every(n => has(cols, 'Money', new RegExp(n)))]);
+    t.push(['Money: Track Cash, Record Costs, Edit Payment Types',
+      ['Track Cash', 'Record Costs', 'Edit Payment Types'].every(n => has(cols, 'Money', new RegExp(n)))]);
     t.push(['Books: Add New Stock, Transfer Existing Stock, Consignment Books, Edit Book Display',
       ['Add New Stock', 'Transfer Existing Stock', 'Consignment Books', 'Edit Book Display'].every(n => has(cols, 'Books', new RegExp(n)))]);
     t.push(['region: Change Event Order, Change Regional Order, Edit/Close/Delete Region',

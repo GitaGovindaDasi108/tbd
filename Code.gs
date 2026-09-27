@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b200';
+var SERVER_BUILD = 'b201';
 
 function doPost(e) { return handle(e); }
 
@@ -374,6 +374,7 @@ function handle(e) {
     lock.waitLock(25000);
     try {
       ensureReady();
+      retireBuiltInLabels_();
       activityBefore_(action, params);
       switch (action) {
         case 'undoActivity':     result = doUndoActivity(params, who); break;
@@ -2138,6 +2139,130 @@ function doChangeMove(p) {
 
    Keyed by the original words, so a label that is never rewritten costs
    nothing and the app falls back to what it always said. */
+/* ---- Wording built into the app (b201) ----
+
+   Every rewording saved with the pencil up to b201 is now the app's own text,
+   so the saved copies are retired: the code is the reference, and the old
+   words are not remembered. Removed once, under the lock, on the first save
+   after this is deployed — only where the saved text is still exactly what
+   was built in, so anything reworded since is kept. */
+var BUILT_IN_LABELS_ = {
+  "(tap a type for the regional split)": "drop-down = regional totals",
+  "(tap for the per-title breakdown)": "drop down = sales per title",
+  "What each region has brought in: its own takings, less its costs. Consignment money is held for the groups and is shown in Consignment.": "*consignment sales and costs have been automatically subtracted",
+  "(what each region has taken)": "net collections* for each region",
+  "(where every title sits across the tour)": "total available stock + locations by region",
+  "Click region to move cash": "to transfer cash, click regional name",
+  "Who to contact about what in book distribution. Tap a number to message on WhatsApp.": "Useful Contacts for Books Sales",
+  "Every spreadsheet the app keeps, and where it is filed. Tap a name to open it. Any folder can be pointed elsewhere; its spreadsheets move there on the next sync.": "These sheets are our database. Please view and use with caution.",
+  "Card-machine fees and other costs of selling. They show beneath the payment totals, taken off to give the net. They do not touch the cash box.": "costs deducted from book sales are logged here",
+  "This applies to one region at a time.": "click a region to transfer stock",
+  "Put whatever is active at the top and anything finished at the bottom. This is the order they appear in everywhere.": "organize regions as needed for efficiency",
+  "Panel: Total Sales by Title › sold / pre-ordered": "sold / pre-ordered / gifted",
+  "Panel: Total Collections by Payment › (tap a type for the regional split)": "drop-down = regional totals",
+  "Panel: Collections by Region › (what each region has taken)": "net sales* for each region",
+  "Panel: Collections by Region › What each region has brought in: its own takings, less its costs. Consignment money is held for the groups and is shown in Consignment.": "*net sales = gross sales - (consignment + costs)",
+  "Panel: Sales by Region › (tap for the per-title breakdown)": "drop down = sales by title",
+  "Panel: Warehouse Overview › (where every title sits across the tour)": "inventory and inventory locations",
+  "Panel: App Admin › (setup, stock movements and money handling)": "various settings for adminstering sales",
+  "Panel: Total Sales by Title › Total Sales by Title": "Distribution by Title",
+  "Dialog › Copy this and paste it into WhatsApp, or send it straight there.": "data reports designed for sending via text",
+  "Panel: Distribution by Title › sold / pre-ordered": "sold / pre-ordered / gifted",
+  "Panel: Sales by Title › sold / pre-ordered": "sold / pre-ordered / gifted",
+  "Panel: Sales by Title › Sales by Title": "Distribution by Title",
+  "Panel: Totals by Payment Type › (tap a type to see it event by event)": "drop down = totals by event",
+  "Panel: Active Sales Log › Active Sales Log": "Sales Log",
+  "Dialog › Card-machine fees and other costs of selling. They show beneath the payment totals, taken off to give the net. They do not touch the cash box.": "Enter any costs associated with book distribution here.",
+  "Dialog › This place has its own list. Clear it to follow the tour again.": "select the forms of payment accepted in this region",
+  "Dialog › Anything you add here can be used straight away. It stays on this region unless you add it elsewhere too.": "Payment types added here apply to this region only.",
+  "Dialog › Send a link and that person can record sales straight away — no login. Anyone holding a link has that access, so reset it if a phone goes missing.": "Generate seller links with limited permissions. \nTurn off links when event or region is permanently closed.",
+  "Dialog › Put whatever is active at the top and anything finished at the bottom. This is the order they appear in everywhere.": "Shift the order of events for efficiency of access.",
+  "Dialog › Choose what to include.": "select reports you'd like to send",
+  "Dialog › One link for everyone selling here. The link itself never changes, so nobody has to be sent a new one.": "generate a link for devotees selling books at events. when the event changes, you can change the event here. devotee sellers keep the same link throughout the ENTIRE regional event.",
+  "Dialog › Whole region": "Region Link",
+  "Dialog › Sellers": "Seller Link",
+  "Dialog › Fill in every title you are carrying, then send the whole load at once. Transfers add to what is already there.": "Count all books brought to the event (twice or three times). Enter the numbers here to populate the event inventory.",
+  "Dialog › How are they travelling?": "Journey To Be Taken",
+  "Dialog › To which region": "To",
+  "Dialog › Which books": "Select Books",
+  "Dialog › For books that outlive a tour — what is left here at the end becomes the opening stock of the next one. Nothing travels; the books stay put and simply belong to the other season from now on.": "if books are being transferred outside the current season, enter the numbers here",
+  "Dialog › Every time stock is added to a location, or moved between the warehouse and an event, it shows here.": "All stock movements are listed here. \nClick ↺ to reverse a stock movement.",
+  "Dialog › Use": "To add stock to existing inventory, enter number next to the \"+\" sign. To subtract stock click the \"+\" sign (it will become a \"-\" sign) and then enter the number to be subtracted. To manually change the stock number, enter number in the \"updated\" column.",
+  "Dialog › Following the tour at the moment. Change anything here and this place keeps its own list.": "Please select the payment types accepted in this region.",
+  "Dialog › Books kept at devotees' homes. They count as their region's stock, and can be sold from directly or moved with the ordinary transfer.": "This is to help us understand where our books are held at a regional level.",
+  "Dialog › Books belonging to a local group, sold from our table. Their sales and their money stay out of every tour total, and each group gets its own spreadsheet.": "Consignment books are those we sell on behalf of another party.\nPlease enter information about these books here.",
+  "Dialog › Drag a row by its handle, or use the arrows. This is the order titles appear on every shelf and in every list, everywhere on the tour.": "Change book order for use efficiency.",
+  "Dialog › A region has its own warehouse, its own currencies and its own prices.": "A region is the umbrella that contains all events in one locality.",
+  "Dialog › Currencies": "Enter all accepted currencies by their official abbreviation.",
+  "Dialog › fill all": "select relevant offerings",
+  "Dialog › (comma separated — USD is always included)": "(Separate currencies with a comma.)",
+  "Dialog › Untick a title this region won't offer and it stays out of the sale screens. Use the \"fill all\" row to price a whole category at once. Set a price in the": "1. Select books that will be available for sale in the region.\n2. When entering currency, fill in the price by local currency first. The price in other currencies will automatically populate. \n3. Set price in other currencies to a whole number (round down).",
+  "Dialog › The 36 books still on its shelves": "Move Remaining Stock",
+  "Dialog › to existing inventory, enter the amount to be added in the field next to the “+” sign.": ", enter the amount to be added in the field next to the “+” sign.",
+  "Dialog › click the “+” sign (it will become a “−” sign) and then enter the number to be subtracted.": ", click the “+” sign, and then enter the number to be subtracted.",
+  "Dialog › Recorded here — £23.46": "Entry Log",
+  "Dialog › Who to contact about what in book distribution. Tap a number to message on WhatsApp.": "Contacts for issues and questions.",
+  "Dialog › This applies to one region at a time.": "Click region name to make changes.",
+  "Dialog › Click region to move cash": "Click region to transfer cash.",
+  "Dialog › Everywhere on the tour": "Books Currently Between Locations",
+  "Dialog › Nothing is on the road.": "Nothing at this time.",
+  "Dialog › No devotee storage set up anywhere yet.": "No books are being stored with local devotees.",
+  "Dialog › To add someone, open their region.": "To add a devotee storing books, navigate to their region.",
+  "Dialog › Their card takings, sent back the same way they came in. Recording it here settles what we owe — our own money was never mixed with it.": "Click \"record delivery\" if:\n1. We used their credit card machine, and they already have the payout.\n2. We were cashed out for credit card charges and we gave them money for this cashout.",
+  "Dialog › To add a group, open their region.": "To add consignment books, open the region where books will be sold.",
+  "Dialog › Their cash takings, sent back the same way they came in. Recording it here settles what we owe — our own money was never mixed with it.": "Click \"record delivery\" when we have given consignees what we collected for their book sales.",
+  "Dialog › Untick a title to keep it off this event's shelf. It can still be pre-ordered — use “Pre-order another title” beneath the shelf.": "Deselect a title to hide it from the sales inventory.",
+  "Dialog › Add a group": "Add a consignee",
+  "Panel: App Admin › 👁 Titles offered here (5 hidden)": "Hide Unused Titles",
+  "Panel: App Admin › 🏠 Devotees storing books": "Devotee Book Storage",
+  "Panel: App Admin › 💳 Payments taken here": "💳 Edit Payment Types",
+  "Panel: App Admin › 🧾 Costs": "🧾 Record Costs",
+  "Panel: App Admin › 📁 Spreadsheet folders": "📁 Spreadsheet Links",
+  "Panel: App Admin › 👥 Org chart": "👥 App and Sales Support",
+  "Panel: App Admin › 💵 Cash": "💵 Cash Tracker",
+  "Dialog › Search for the region or event where you’d like to add inventory. If you do not see your region or event, please add it first.": "Enter the **region** or **event** where you’d like to add inventory.",
+  "Panel: Event Inventory 📱 Digital Payment QRs 📋 › ＋ Pre-order another title (4 not offered here)": "+ Pre-Orders (Unlisted Titles)",
+  "Panel: App Admin › 👁 Titles offered here (4 hidden)": "Hide Titles",
+  "Panel: Event Inventory 📱 Digital Payment QRs 📋 › ＋ Multiple Books — one transaction": "+ Multiple Book Sale",
+  "Dialog › Every spreadsheet the app keeps, and where it is filed. Tap a name to open it. Any folder can be pointed elsewhere; its spreadsheets move there on the next sync.": "Data from the sales tracker in spreadsheet form.",
+  "Dialog › Top folder": "Top-Level Folder",
+  "Dialog › A completely fresh start — no regions, events, stock, sales or money. Only the book titles carry over, since those belong to no single tour.": "Seasons are a period of time that serve as an umbrella for Gurudeva's travels to several regions in one area of the world.\nFor example, Book Tour is a season where Srila Gurudeva travels to several cities in India.",
+  "Dialog › Moving it also moves the copy — it goes back on the old shelf and comes off the new one.": "\u0000hide",
+  "Dialog › Checking for the latest…": "\u0000hide",
+  "Dialog › Courier · 45678 · Outside the tour → Test Region. Enter how many of each actually arrived. Anything less than the full amount stays recorded as still travelling, so a batch that came in pieces stays honest.": "Enter how many books arrived.\nAnything left will still be coded as \"in transit.\"",
+  "Dialog › Add a new one by clicking here.": "\u0000hide",
+  "Dialog › Relates to payment type (optional)": "Payment Type (Optional)",
+  "Dialog › Recorded here": "Cost Log",
+  "Dialog › Set how many of each book are being bought (from stock) and how many pre-ordered. You can do both in one sale. The total fills in as you go.": "For one person buying multiple books in one transaction.",
+  "Dialog › Everything done in Test Region except sales, which keep their own log — newest first. Delete undoes that change; entries that cannot safely be undone have no Delete.": "All activity from the app is logged here.\nDelete with care.",
+  "Dialog › Outside the tour → Test Region · 12 books still coming": "\u0000hide",
+  "Dialog › Change this if the books will meet the tour somewhere else.": "\u0000hide",
+  "Dialog › India → Test Region · 7 books still coming": "\u0000hide",
+  "Dialog › With Hari Haribol · India → Test Region. Set what is actually in the batch. The difference goes back to the sending region, so nothing disappears from the count.": "\u0000hide",
+  "Panel: Books in Transit › Edit details": "Edit Details",
+  "Panel: Books in Transit › # still coming": "# in transit",
+  "Panel: Books in Transit › Correct contents": "Correct Contents",
+  "Dialog: Correct what is traveling › With Hari Haribol · India → Test Region. Set what is actually in the batch. The difference goes back to the sending region, so nothing disappears from the count.": "\u0000hide",
+  "Dialog: Correct what is traveling › Correct what is traveling": "Correct Contents",
+  "Dialog: Partial Delivery Arrived › Courier · # · Outside the tour → Test Region. Enter how many of each actually arrived. Anything less than the full amount stays recorded as still traveling, so a batch that came in pieces stays honest.": "If only part of the delivery arrived, please enter that amount here.",
+  "Panel: App Admin › 🔗 Share Links": "🔗 Sales Links",
+  "Panel: App Admin › 💵 Cash Tracker": "💵 Track Cash",
+  "Dialog: Record sale › Change we owe them": "CHANGE **WE** OWE",
+  "Dialog: Record sale › (optional — if you couldn't break their note)": "(optional)",
+  "Dialog: Record sale › Date & time (optional — defaults to now)": "Date & Time",
+  "Dialog: Record sale › Still owed": "What They Still Owe"
+};
+function retireBuiltInLabels_() {
+  if (String(getMeta_('labelsBuiltIn', '')) === 'b201') return;
+  if (!dbHas_('_labels')) return;
+  // (A small table; with nothing of these in it, nothing is written at all.)
+  var gone = dbDelete_('_labels', function (r) {
+    var k = String(r.key);
+    return Object.prototype.hasOwnProperty.call(BUILT_IN_LABELS_, k) && String(r.text) === BUILT_IN_LABELS_[k];
+  });
+  if (gone) { setMeta_('labelsBuiltIn', 'b201'); cacheClear_(); }
+}
+
 function doSaveLabel(p) {
   var key = String(p.key || '').slice(0, 300);
   if (!key) throw new Error('Nothing to rewrite.');
@@ -6859,7 +6984,7 @@ function renderSeasonSheet_() {
 /* ---- Earthly HQ: every season, added up ----
 
    The first tab of the Earthly HQ file, the spreadsheet twin of the app's
-   Summaries Portal: Total Sales by Title, Collections by Season, Sales by
+   Summaries Portal: Distribution by Title, Collections by Season, Sales by
    Season, Collections by Payment Type and the Seasonal Warehouse Overview,
    each with a column per season and one for HQ itself. Dollars follow the
    truth (see toUsdAt_): received, else a closed region's or season's frozen
@@ -6923,8 +7048,8 @@ function renderHQSheet_() {
   money.push('A' + r0 + ':E' + r0);
   blank();
 
-  /* ---- 1. Total Sales by Title ---- */
-  band.push(put(['TOTAL SALES BY TITLE']));
+  /* ---- 1. Distribution by Title ---- */
+  band.push(put(['DISTRIBUTION BY TITLE']));
   head.push(put(['Book'].concat(names).concat(['Total'])));
   var tStart = rows.length + 1;
   var colTot = zeros();
@@ -7395,7 +7520,7 @@ function renderView_(loc, regionId, ssOverride) {
   /* ---- Pending ---- */
   var pendingRows = scoped.filter(function (s) { return !isPaid_(s); });
   band.push(put(['PENDING PAYMENTS']));
-  head.push(put(['Item', 'Still owed', 'Currency', 'Already paid', 'Name', 'Phone', 'When']));
+  head.push(put(['Item', 'What They Still Owe', 'Currency', 'Already paid', 'Name', 'Phone', 'When']));
   if (!pendingRows.length) {
     put(['Nothing outstanding.']);
   } else {
