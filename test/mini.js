@@ -11,7 +11,7 @@ function mkSheet(name){
     getLastColumn:()=>sh.grid.reduce((m,r)=>Math.max(m,r.length),0),
     getMaxRows:()=>Math.max(sh.grid.length,1000),
     getMaxColumns:()=>Math.max(sh.getLastColumn(),50),
-    insertRowsAfter:()=>{}, insertColumnsAfter:()=>{}, deleteRow:i=>sh.grid.splice(i-1,1),
+    insertRowsAfter:()=>{}, insertColumnsAfter:()=>{}, deleteRow:i=>sh.grid.splice(i-1,1), deleteRows:(i,n)=>sh.grid.splice(i-1,n),
     appendRow:r=>{ if(global.__ops){ global.__ops.append++; global.__ops.cells=(global.__ops.cells||0)+r.length; } sh.grid.push(r.slice()); },
     clear:()=>{ sh.grid=[]; }, clearContents:()=>{ sh.grid=[]; },
     setColumnWidth:()=>{}, setRowHeight:()=>{}, setFrozenRows:()=>{}, setFrozenColumns:()=>{},
