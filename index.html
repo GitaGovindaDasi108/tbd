@@ -1289,7 +1289,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b192</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b193</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4498,6 +4498,14 @@ function curOptions(sel){
   return list.map(c=>
     `<option value="${c}" ${sel===c?'selected':''}>${CUR_LABEL[c]||c}</option>`).join('');
 }
+/* The currency a new entry starts on: PLN where the place takes it (as it
+   always has in Poland), otherwise the first one the place lists. Never a
+   currency the place does not take — curOptions adds whatever it is asked
+   for, so asking for PLN put PLN into regions that have never used it. */
+function defaultCur(){
+  const list = curCurrencies();
+  return list.includes('PLN') ? 'PLN' : (list[0] || 'USD');
+}
 /* Put a stored value into a choice box, adding it if this place does not list
    it — otherwise an edit silently shows (and saves) the first choice instead. */
 function setSel(sel, v){
@@ -4581,7 +4589,7 @@ function saleModal(opts){
 
       <div id="singlePay">
         <div class="row2">
-          <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
+          <div class="field"><label>Currency</label><select id="pcur">${curOptions(defaultCur())}</select></div>
           <div class="field"><label id="amtLabel">Amount received</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
         </div>
       </div>
@@ -4605,7 +4613,7 @@ function saleModal(opts){
         <div class="leg-box">
           <div class="lg-title">Still owed</div>
           <div class="row2">
-            <div class="field"><label>Currency</label><select id="duecur">${curOptions('PLN')}</select></div>
+            <div class="field"><label>Currency</label><select id="duecur">${curOptions(defaultCur())}</select></div>
             <div class="field"><label>Amount outstanding</label><input id="dueamt" type="number" step="0.01" inputmode="decimal"></div>
           </div>
           <div class="hint" id="dueHint"></div>
@@ -4947,7 +4955,7 @@ function bundleModal(edit){
       </div>
       <div id="singlePay">
         <div class="row2">
-          <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
+          <div class="field"><label>Currency</label><select id="pcur">${curOptions(defaultCur())}</select></div>
           <div class="field"><label id="amtLabel">Amount received</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
         </div>
       </div>
@@ -4970,7 +4978,7 @@ function bundleModal(edit){
         <div class="leg-box">
           <div class="lg-title">Still owed</div>
           <div class="row2">
-            <div class="field"><label>Currency</label><select id="duecur">${curOptions('PLN')}</select></div>
+            <div class="field"><label>Currency</label><select id="duecur">${curOptions(defaultCur())}</select></div>
             <div class="field"><label>Amount outstanding</label><input id="dueamt" type="number" step="0.01" inputmode="decimal"></div>
           </div>
         </div>
@@ -5162,7 +5170,7 @@ function bundleModal(edit){
     const dueMember=edit.members.find(m=>(Number(m.dueamt)||0)>0);
     payMode = anyPending ? 'none' : (dueMember ? 'part' : 'full');
     [...$('#paySeg').children].forEach(x=>x.classList.toggle('on', x.dataset.pay===payMode));
-    if(dueMember){ setSel($('#duecur'), dueMember.duecur||'PLN'); $('#dueamt').value=dueMember.dueamt; }
+    if(dueMember){ setSel($('#duecur'), dueMember.duecur||defaultCur()); $('#dueamt').value=dueMember.dueamt; }
     $('#cname').value=edit.members[0].name||'';
     $('#cphone').value=edit.members[0].phone||'';
     // Strip the "N book sale" prefix from the shared comment for editing.
@@ -5199,7 +5207,7 @@ function bundleModal(edit){
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
     // What we could not break, owed back to them.
     const changeamt = Math.max(0, Number(($('#chgamt')||{}).value)||0);
-    const changecur = changeamt ? (($('#chgcur')||{}).value || 'PLN') : '';
+    const changecur = changeamt ? (($('#chgcur')||{}).value || defaultCur()) : '';
     if(payMode==='part' && dueamt<=0){ $('#modalErr').textContent='Enter how much is still owed, or choose "Paid in Full".'; return; }
     if((pre.length>0 || payMode!=='full') && !name){ $('#modalErr').textContent='Add a name so the pre-order or balance can be traced.'; return; }
 
@@ -7681,7 +7689,7 @@ function cashModal(){
         <div class="field"><label>To</label><select id="cmTo">${acctOpts(defTo)}</select></div>
       </div>
       <div class="row2">
-        <div class="field"><label>Currency</label><select id="cmCur">${curOptions('PLN')}</select></div>
+        <div class="field"><label>Currency</label><select id="cmCur">${curOptions(defaultCur())}</select></div>
         <div class="field"><label>Amount</label><input id="cmAmt" type="number" step="0.01" inputmode="decimal"></div>
       </div>
       <div class="field"><label>Note (optional)</label><input id="cmNote" type="text" placeholder="e.g. change float, deposit"></div>
@@ -7868,7 +7876,7 @@ function donationModal(edit){
       <div class="hint">Donations add to collections but are not book inventory.</div>
       <div class="field"><label>Payment type</label><select id="ptype">${payTypeOptions(true,false)}</select></div>
       <div id="singlePay"><div class="row2">
-        <div class="field"><label>Currency</label><select id="pcur">${curOptions('PLN')}</select></div>
+        <div class="field"><label>Currency</label><select id="pcur">${curOptions(defaultCur())}</select></div>
         <div class="field"><label>Amount</label><input id="pamt" type="number" step="0.01" inputmode="decimal"></div>
       </div></div>
       ${mixedPayHTML()}
@@ -7923,7 +7931,7 @@ function donationModal(edit){
     const name=$('#cname').value.trim(), phone=cleanPhone($('#cphone').value), comments=$('#ccomments').value.trim();
     // What we could not break, owed back to them.
     const changeamt = Math.max(0, Number(($('#chgamt')||{}).value)||0);
-    const changecur = changeamt ? (($('#chgcur')||{}).value || 'PLN') : '';
+    const changecur = changeamt ? (($('#chgcur')||{}).value || defaultCur()) : '';
     const tsVal = fromLocalInput($('#csTs').value);
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:'DONATION',location:edit.location,bookId:'',
