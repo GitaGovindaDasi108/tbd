@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b193**.
+Handover notes. Current build: **b194**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -95,6 +95,16 @@ These were each learned from a real bug. Breaking them reintroduces it.
 Sales, bundles, events, regions, cash movements, stock movements, payouts and
 change entries are all named client-side and sent with the request. This is what
 makes the UI instant and makes resends safe.
+
+**There is no default warehouse.**
+Every region has its own warehouse and none is "the" warehouse. The first
+region's warehouse still has the id `WAREHOUSE` (so its old data stays valid),
+but nothing may treat that id as a default: pre-orders are held against their
+own region's warehouse (`reservedMap_`, `reservedQty`), a place is never
+filled in when a request leaves it out (`placeOf_`), and names come from the
+region, never from the old `warehouseName` setting. A new device starts at the
+season, not in a region. Learned from "Copies would have to come from outside
+Poland" on another region's pre-order (b194).
 
 **Deleted things stay deleted.**
 `tombstone_(id)` records deliberate deletions; `isDeleted_(id)` blocks
@@ -528,6 +538,38 @@ No change anyone can see; the groundwork for leaving Google Sheets.
   start on `defaultCur()`: PLN where the place takes it, else its first
   currency. Editing an old sale still shows its own stored currency.
   Covered by `test/curtest.js`.
+
+## Done in b194 — no default warehouse
+
+The first region's warehouse (Poland) was still treated as "the" warehouse
+in about 30 places. Fixed on both the server and the page:
+
+- **Pre-orders** hold copies at their own region's warehouse. Every open
+  pre-order in every region and season was held against Poland's shelf,
+  so Poland could be refused stock for another region's pre-order while that
+  region's own shelf held nothing back. The pre-order details say "Copies in
+  <its region> — Warehouse"; warnings name the warehouse being drawn down.
+- **Deleting a delivered pre-order** puts the copy back on the shelf it came
+  off. Deliveries now record that shelf (`dfrom`, a new `_sales` column,
+  added on first use); older ones go back to their own region's warehouse.
+  Before, the copy always went to Poland's warehouse. The page applies the
+  same rule when it shows the change instantly (`restoreLocOf`).
+- **No place is filled in by default:** a sale, donation or stock change that
+  names no place is refused. Deleting an event needs its region's warehouse.
+- **Every save queued a rebuild of Poland's report file**; no longer.
+- Reports name the shelf a pre-order was filled from, not the old
+  `warehouseName` setting.
+- A new device (nothing remembered) opens at the season, not the first
+  region; a region that has gone also falls back to the season.
+- Covered by `test/nodefault.js` (every check fails on b193).
+- `golden.js --ignore-col=name` leaves a deliberately new column out of the
+  comparison. Against b193 the only other differences are the two intended
+  ones (Italy's report now shows its pre-order held; a filled pre-order's
+  report note names the real shelf).
+
+Not changed: a brand-new, empty spreadsheet still seeds a first region named
+after the `warehouseName` setting ("Poland") with PLN prices and the original
+contacts. That only runs once, on a new spreadsheet.
 
 ## Open items
 

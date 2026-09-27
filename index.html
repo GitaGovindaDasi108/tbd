@@ -1289,7 +1289,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b193</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b194</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1460,9 +1460,10 @@ let REV  = -1;        // server revision that BASE corresponds to
 let OPS  = [];        // optimistic changes awaiting confirmation
 let STATE = null;     // BASE + OPS, what the screen shows
 const SEASON = 'SEASON';
-let CUR_LEVEL  = 'region';   // 'season' | 'region' | 'event'
+/* Where a new device starts: the season. No region is anyone's default. */
+let CUR_LEVEL  = 'season';   // 'season' | 'region' | 'event'
 let CUR_REGION = '';         // regionId when at region or event level
-let CUR_LOC    = WAREHOUSE;  // SEASON, a region's warehouse loc, or an event id
+let CUR_LOC    = SEASON;     // SEASON, a region's warehouse loc, or an event id
 let inflight = 0;
 let syncTimer = null;
 
@@ -1888,7 +1889,7 @@ function priceIn(bookId,cur){
 function goTo(level, loc){
   CUR_LEVEL=level;
   if(level==='season'){ CUR_LOC=SEASON; CUR_REGION=''; }
-  else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:WAREHOUSE; }
+  else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:''; }
   else { CUR_LOC=loc; CUR_REGION=regionOfLoc(loc); }
   savePos();
   applyLevelTheme();
@@ -1921,7 +1922,7 @@ function loadPos(){
     try{ raw = sessionStorage.getItem(posKey()); }catch(e){}  // this tab's own place first
     if(!raw) raw = localStorage.getItem(posKey());            // a new tab: where you last were
     const p = JSON.parse(raw||'null');
-    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||WAREHOUSE; TAB_SEASON=p.s||''; }
+    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||(p.l==='season'?SEASON:''); TAB_SEASON=p.s||''; }
   }catch(e){}
 }
 
@@ -1956,7 +1957,6 @@ function locName(loc){
   // the first region still uses — is named with its season.
   const arw=(STATE.allRegions||[]).find(x=>x.whLoc===loc);
   if(arw) return arw.name+' — Warehouse ('+(arw.seasonName||'another season')+')';
-  if(loc===WAREHOUSE) return (STATE.warehouseName||'')+' — Warehouse';
   if(loc===SEASON) return STATE.seasonName||'Season';
   const e=(STATE.events||[]).find(e=>e.eventId===loc);
   if(e) return e.name;
@@ -2095,16 +2095,31 @@ function availQty(loc,bookId){return Math.max(0,invQty(loc,bookId)-reservedQty(l
 /* Pre-order holds are a warning, not a lock — stock is sometimes genuinely
    needed elsewhere. Returns how many promises a title would break if the
    warehouse were left holding `after` copies. */
-function preorderShortfall(bookId,after){
-  return Math.max(0, reservedQty(WAREHOUSE,bookId) - Math.max(0,after));
+/* `wh` is the warehouse being drawn down. Every region's warehouse holds for
+   its own pre-orders; there is no default one (it used to be the original
+   region's, wherever you were standing). */
+function preorderShortfall(bookId,after,wh){
+  return Math.max(0, reservedQty(wh,bookId) - Math.max(0,after));
 }
-function shortfallLine(bookId,after){
-  const short=preorderShortfall(bookId,after);
+function shortfallLine(bookId,after,wh){
+  const short=preorderShortfall(bookId,after,wh);
   if(!short) return '';
-  const held=reservedQty(WAREHOUSE,bookId);
+  const held=reservedQty(wh,bookId);
   return `${short} of the ${held} pre-order${held===1?'':'s'} for `
        + `<b>${esc(bookById(bookId).name)}</b> could no longer be filled from `
-       + `${esc(STATE.warehouseName||'the warehouse')}.`;
+       + `${esc(locName(wh))}.`;
+}
+/** The warehouse of the region a place belongs to ('' if none). */
+function homeWarehouse(loc){
+  const r = regionById(regionOfLoc(loc)) || (STATE.allRegions||[]).find(x=>x.regionId===regionOfLoc(loc));
+  return r ? r.whLoc : '';
+}
+/** Where a deleted sale's copy goes back to — the same rule as the server:
+    nowhere if it never came off our shelves; the shelf a delivered pre-order
+    was filled from; otherwise the place it was sold. */
+function restoreLocOf(x){
+  if(x.type!=='SALE' || !x.bookId || fromOutside(x)) return '';
+  return x.dsource ? (x.dfrom || homeWarehouse(x.location)) : x.location;
 }
 /* verbs: [singular, plural] — "…if you sell it" vs "…if you sell them". */
 function preorderWarning(lines,verbs){
@@ -2377,7 +2392,8 @@ async function pull(){
        region being gone. Judging it then threw you back to the season view (or
        into another region) the moment a refresh landed mid-load. */
     if(BASE && BASE.loading) return;
-    let reg = regs.find(r=>r.regionId===CUR_REGION) || regs[0];
+    // A region that is gone (or never chosen) means the season — not the first region.
+    let reg = regs.find(r=>r.regionId===CUR_REGION);
     if(!reg){ CUR_LEVEL='season'; CUR_LOC=SEASON; CUR_REGION=''; return; }
     CUR_REGION = reg.regionId;
     const stillThere = (CUR_LOC===reg.whLoc) ||
@@ -4007,9 +4023,13 @@ function logItemHTML(x, opts){
       showOwed ? esc(totalLabel(x)) : `<span class="li-owed">${owedLabel}</span>`]);
   }
   if(awaiting){
-    const stock=invQty(WAREHOUSE,x.bookId);
-    det.push(['Copies in ' + esc(STATE.warehouseName||'the warehouse'),
-      `${stock}${stock<=0?' — would have to come from outside the region':''}`]);
+    // Its own region's warehouse — not whichever region used to be the default.
+    const wh=homeWarehouse(x.location);
+    if(wh){
+      const stock=invQty(wh,x.bookId);
+      det.push(['Copies in ' + esc(locName(wh)),
+        `${stock}${stock<=0?' — would have to come from outside the region':''}`]);
+    }
   }
   if(x.comments) det.push(['Notes', esc(x.comments)]);
   det.push(['Sold at', esc(locNameFull(x.location))]);
@@ -4023,7 +4043,7 @@ function logItemHTML(x, opts){
     det.push(['Pre-order', 'Fulfilled — copy came from '
       + (x.dsource===DSRC_REMOTE ? esc(anyRegionName(x.fulfilBy)) + ' (another region)'
          : fromOutside(x) ? 'outside the region'
-                        : esc(String(STATE.warehouseName||'the')+' warehouse'))]);
+                        : esc(locName(restoreLocOf(x)||homeWarehouse(x.location))||'own stock'))]);
   }
 
   const bAttr = x._bundle ? ` data-bundle="${x.bundle}"` : '';
@@ -4578,8 +4598,8 @@ function saleModal(opts){
       ${(!isPre && !edit && onHand<=0) ? `<div class="err-box" id="noStock">There are no copies of <b>${esc(book.name)}</b> at
         ${esc(locName(loc))} to sell. <button type="button" class="btn btn-ghost btn-sm" id="preInstead">Pre-order it instead</button></div>` : ''}
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
-      ${(!isPre && !edit && loc===WAREHOUSE)
-        ? preorderWarning([shortfallLine(opts.bookId, onHand-1)].filter(Boolean), ['sell it','sell them'])
+      ${(!isPre && !edit && isWarehouseLoc(loc))
+        ? preorderWarning([shortfallLine(opts.bookId, onHand-1, loc)].filter(Boolean), ['sell it','sell them'])
         : ''}
       ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} in stock here, ${held} already pre-ordered. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
       <div class="field">
@@ -4653,7 +4673,7 @@ function saleModal(opts){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="saveSale">${edit?'Save changes'
         :(isPre?'Record pre-order'
-          :((loc===WAREHOUSE && preorderShortfall(opts.bookId, onHand-1))?'Sell anyway':'Record sale'))}</button>
+          :((isWarehouseLoc(loc) && preorderShortfall(opts.bookId, onHand-1, loc))?'Sell anyway':'Record sale'))}</button>
     </div>
   `);
 
@@ -5069,9 +5089,9 @@ function bundleModal(edit){
     $('#mbCount').textContent = n<1 ? 'Nothing selected yet.'
       : `${n} book${n===1?'':'s'} — ${nb} to buy, ${np} to pre-order · list total ${listTotal(priceCur())} ${priceCur()}`;
     // pre-order shortfall: only the BUY copies draw down warehouse stock now
-    if(loc===WAREHOUSE){
+    if(isWarehouseLoc(loc)){
       const need={}; buyIds().forEach(id=>need[id]=(need[id]||0)+1);
-      const lines=Object.keys(need).map(id=>shortfallLine(id, invQty(WAREHOUSE,id)-need[id])).filter(Boolean);
+      const lines=Object.keys(need).map(id=>shortfallLine(id, invQty(loc,id)-need[id], loc)).filter(Boolean);
       $('#preWarn').innerHTML = preorderWarning(lines,['sell it','sell them']);
     }
     // a pre-order (or any non-full payment) needs a name
@@ -5084,7 +5104,7 @@ function bundleModal(edit){
     if(nl) nl.textContent = needName ? 'Name' : 'Name (optional)';
     if(pl) pl.textContent = needName ? 'Phone' : 'Phone (optional)';
     $('#saveBundle').textContent =
-      (loc===WAREHOUSE && buyIds().some((id,i,arr)=>preorderShortfall(id, invQty(WAREHOUSE,id)-arr.filter(x=>x===id).length)))
+      (isWarehouseLoc(loc) && buyIds().some((id,i,arr)=>preorderShortfall(id, invQty(loc,id)-arr.filter(x=>x===id).length, loc)))
         ? 'Record anyway' : 'Record';
   }
 
@@ -7225,7 +7245,6 @@ function cashAcctName(id){
   // reads out internal ids like "wh_64c0ee" or "sh_137998".
   const r=(STATE.regions||[]).find(x=>x.whLoc===id);
   if(r) return r.name+' — Warehouse';
-  if(id==='WAREHOUSE') return (STATE.warehouseName||'Warehouse');
   const e=(STATE.events||[]).find(x=>x.eventId===id);
   if(e) return e.name;
   const hd=(STATE.holders||[]).find(x=>x.holderId===id);
@@ -7669,7 +7688,7 @@ function cashModal(){
   if(!logRows) logRows = `<div class="cash-empty">No movements yet. Use “Record move” or “Move ALL cash” above.</div>`;
 
   const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
-  const defFrom = (CUR_LOC && accts.some(a=>a.id===CUR_LOC)) ? CUR_LOC : 'WAREHOUSE';
+  const defFrom = (CUR_LOC && accts.some(a=>a.id===CUR_LOC)) ? CUR_LOC : (accts[0]||{}).id;
   const defTo = (accts.find(a=>a.id!==defFrom)||accts[0]).id;
 
   openModal(`
@@ -8021,7 +8040,7 @@ function deliverModal(id, bundle){
       commit(payload, st=>{
         members.forEach(mm=>{
           const t=(st.sales||[]).find(v=>v.saleId===mm.saleId);
-          if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; }
+          if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; t.dfrom=fromStock?src:''; }
           if(fromStock) invAdd(st, src, mm.bookId, -1);
         });
       }, 'Delivered');
@@ -8873,7 +8892,7 @@ function addStockModal(opts){
     const pw = $('#preWarn');
     if(pw){
       const lines = (where==='there' && ctx.here && ctx.place.kind==='region' && ctx.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC))
-        ? stockBooks(ctx).map(b=>shortfallLine(b.id, nextFor(b.id))).filter(Boolean) : [];
+        ? stockBooks(ctx).map(b=>shortfallLine(b.id, nextFor(b.id), CUR_LOC)).filter(Boolean) : [];
       pw.innerHTML = preorderWarning(lines, ['reduce this count','reduce these counts']);
     }
   }
@@ -10672,7 +10691,7 @@ function transferStockModal(opts){
     const f = fromPick.value;
     if(pw && fromCtx.here && f.kind==='region' && f.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC)){
       const lines = [...document.querySelectorAll(`#xfBody .xf-in[data-src="${f.loc}"]`)].map(i=>{
-        const q = val(i); return q ? shortfallLine(i.dataset.book, invQty(f.loc, i.dataset.book)-q) : '';
+        const q = val(i); return q ? shortfallLine(i.dataset.book, invQty(f.loc, i.dataset.book)-q, f.loc) : '';
       }).filter(Boolean);
       pw.innerHTML = preorderWarning(lines, ['transfer it','transfer them']);
     }
@@ -11705,7 +11724,7 @@ document.addEventListener('click',e=>{
         +(members.some(m=>m.type==='SALE')?'The copies will be returned to stock.':''))) return;
       commit({action:'deleteBundle',bundle},
         st=>{ st.sales.filter(x=>x.bundle===bundle).forEach(m=>{
-                if(m.type==='SALE'&&m.bookId) invAdd(st,m.location,m.bookId,1); });
+                const back=restoreLocOf(m); if(back) invAdd(st,back,m.bookId,1); });
               st.sales=st.sales.filter(x=>x.bundle!==bundle); }, 'Transaction deleted');
       return;
     }
@@ -11714,7 +11733,7 @@ document.addEventListener('click',e=>{
     if(!confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':''))) return;
     commit({action:'deleteSale',saleId:id},
       st=>{const i=st.sales.findIndex(x=>x.saleId===id); if(i<0)return;
-           const x=st.sales[i]; if(x.type==='SALE'&&x.bookId) invAdd(st,x.location,x.bookId,1);
+           const x=st.sales[i]; const back=restoreLocOf(x); if(back) invAdd(st,back,x.bookId,1);
            st.sales.splice(i,1);}, 'Deleted');
     return;
   }
