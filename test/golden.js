@@ -3,6 +3,7 @@
      node test/golden.js                      # every corpus in test/corpus/, against git HEAD
      node test/golden.js --base=b191tag       # against any git revision
      node test/golden.js --base=WORKTREE --store=memory   # sheets vs memory, same code
+     node test/golden.js --ignore-col=dfrom   # a column this change adds on purpose
      node test/golden.js --store=memory       # working copy with its records in memory
      node test/golden.js test/corpus/extra.jsonl
 
@@ -99,6 +100,18 @@ const baseArg = (args.find(a => a.startsWith('--base=')) || '--base=HEAD').slice
 // --store=memory: run the working copy with its records in memory rather than
 // in sheets (the base always runs on sheets), proving storage is swappable.
 const nowStore = (args.find(a => a.startsWith('--store=')) || '--store=').slice(8);
+// --ignore-col=name (repeatable): a column deliberately added by this change,
+// left out of the comparison so everything else can still be checked.
+const ignoreCols = args.filter(a => a.startsWith('--ignore-col=')).map(a => a.slice(13));
+function dropCols(data) {
+  if (!ignoreCols.length || !data) return data;
+  Object.keys(data).forEach(t => {
+    const tb = data[t];
+    tb.head = tb.head.filter(h => ignoreCols.indexOf(h) < 0);
+    tb.rows.forEach(r => ignoreCols.forEach(c => { delete r[c]; }));
+  });
+  return data;
+}
 let files = args.filter(a => !a.startsWith('--'));
 if (!files.length) {
   const dir = path.join(__dirname, 'corpus');
@@ -149,7 +162,7 @@ for (const f of files) {
   for (let i = 0; i < Math.max(A.steps.length, B.steps.length) && !diff; i++) {
     const a = A.steps[i] || {}, b = B.steps[i] || {};
     diff = firstDiff(a.reply, b.reply, 'reply');
-    if (!diff) diff = firstDiff(a.data, b.data, 'data');
+    if (!diff) diff = firstDiff(dropCols(a.data), dropCols(b.data), 'data');
     if (diff) where = 'request ' + (i + 1) + ' ' + short(a.req || b.req);
   }
   if (!diff) { diff = firstDiff(A.reports, B.reports, 'reports'); if (diff) where = 'readable spreadsheets'; }

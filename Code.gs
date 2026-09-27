@@ -29,8 +29,16 @@
 
 /* ============================ CONFIG ============================ */
 
-var WAREHOUSE = 'WAREHOUSE';            // Poland's warehouse — kept as a literal so all
-                                        // pre-season data (sales, stock, cash) stays valid.
+var WAREHOUSE = 'WAREHOUSE';            // the id of the FIRST region's warehouse, kept as a
+                                        // literal so its old data stays valid. Only an id:
+                                        // there is no default warehouse (see homeWarehouse_).
+/* Earthly HQ: the level above every season. It keeps its own warehouse (books
+   straight from the printer, in India) and sells like a region, so it IS a
+   region record — one that lives in a "season" of its own, HQ_ID, and so is
+   never counted inside any tour. Opening it shows every season's totals. */
+var HQ_ID     = 'HQ';
+var HQ_REGION = 'rg_hq';
+var HQ_WH     = 'wh_hq';
 var SEASON    = 'SEASON';               // the whole tour: every region rolled up together
 var SUMMARY   = 'SUMMARY';              // synthetic key: the cross-everything aggregator tab
 var RATE_PLN_PER_USD = 3.79;            // fallback: 3.79 PLN = 1 USD (used only if the live fetch fails)
@@ -168,7 +176,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   'fulfilBy','fulfilLoc','fulfilAt','fulfilDeclined',
   /* A third payment and beyond (rare), as JSON: [{type,cur,amt}, …]. The first
      two keep their own columns so the sheets read as before. */
-  'pmore'];
+  'pmore',
+  /* The shelf a delivered pre-order's copy came off, so deleting the sale puts
+     it back there rather than on some default warehouse. */
+  'dfrom'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -207,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b193';
+var SERVER_BUILD = 'b196';
 
 function doPost(e) { return handle(e); }
 
@@ -266,6 +277,12 @@ function handle(e) {
        round trips into one, which is what made switching feel slow next to
        moving between regions. */
     if (action === 'setSeason') {
+      if (String(params.seasonId || '') === HQ_ID) {
+        if (who.role !== 'admin') throw new Error('That action is not available on this link.');
+        ensureHQ_();
+        setSeasonContext_(HQ_ID);        // looked at, never stored as the default
+        return raw(consistentStateReply_(who));
+      }
       doSetSeason(params);
       // Revision and data read together — the same fix as for refreshes, which
       // this path had been missing.
@@ -286,6 +303,10 @@ function handle(e) {
 
     if (who.role === 'admin' && params.season && seasonById_(String(params.season))) {
       setSeasonContext_(String(params.season));
+    }
+    if (who.role === 'admin' && String(params.season || '') === HQ_ID) {
+      ensureHQ_();
+      setSeasonContext_(HQ_ID);
     }
 
     // ---- Reads: no lock, cache-backed. ----
@@ -593,6 +614,7 @@ function scopedStateBuild_(who) {
     return mine[String(c.loc)] || String(c.loc) === 'BANK_' + regionId;
   });
   delete full.driveFolder;     // an owner's setting, not for link holders
+  delete full.everywhere;      // every season's figures are for the owner at HQ only
   full.stockMoves = isSeller ? [] : (full.stockMoves || []).filter(function (m) {
     return mine[m.fromLoc] || mine[m.toLoc];
   });
@@ -739,7 +761,10 @@ function stateJson_() {
   rev += '_' + SERVER_BUILD;
   var hit = cacheGet_(rev);
   if (hit) return hit;
-  var str = JSON.stringify(scopeToSeason_(readState()));
+  var st = readState();
+  // At HQ, every season's records ride along, taken before HQ's own trim.
+  if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
+  var str = JSON.stringify(scopeToSeason_(st));
   cachePut_(str, rev);
   return str;
 }
@@ -1136,6 +1161,7 @@ function closeDrafts_() {
 function doCloseLocation(p) {
   var kind = String(p.kind || 'event');
   var id = String(p.id || '');
+  if (kind === 'region' && id === HQ_REGION) throw new Error('Earthly HQ is never closed.');
   var locs = (kind === 'event') ? [id] : locsInRegion_(id);
   if (!locs.length) throw new Error('Nothing to close.');
   propDel_(CLOSE_DRAFT_PREFIX + kind + ':' + id);   // done with it
@@ -1211,7 +1237,6 @@ function doTransferMulti(p) {
   /* Both ends must be real places — a warehouse, an event or a sub-warehouse in
      any season. Books sent to a name the app does not know would simply vanish. */
   var known = {};
-  known[WAREHOUSE] = 1;
   allRegionsEverywhere_().forEach(function (r) { if (r.whLoc) known[r.whLoc] = 1; });
   objectsOf_('_events').forEach(function (e) { if (e.eventId) known[String(e.eventId)] = 1; });
   objectsOf_('_holders').forEach(function (h) { if (h.holderId && !truthyCell_(h.archived)) known[String(h.holderId)] = 1; });
@@ -1334,7 +1359,8 @@ function allRegionsEverywhere_() {
     .map(function (r) {
       return { regionId: String(r.regionId), name: String(r.name),
                whLoc: String(r.whLoc || ''), seasonId: String(r.seasonId || ''),
-               seasonName: seasons[String(r.seasonId || '')] || '',
+               seasonName: seasons[String(r.seasonId || '')] ||
+                           (String(r.seasonId || '') === HQ_ID ? 'Earthly HQ' : ''),
                closedAt: r.closedAt ? String(r.closedAt) : '' };
     });
 }
@@ -2289,10 +2315,71 @@ function currenciesOf_(regionId) {
     cash ledger will accept. */
 function allCurrencies_() {
   var seen = { USD: 1 }, out = ['USD'];
-  regionsOrdered_().forEach(function (r) {
+  /* At Earthly HQ every season's money is added up, so every currency in use
+     anywhere is needed — for the columns and for the exchange rates. */
+  var regs = isHQ_()
+    ? objectsOf_('_regions').map(function (r) { return { currencies: parseCurList_(r.currencies) }; })
+    : regionsOrdered_();
+  regs.forEach(function (r) {
     (r.currencies || []).forEach(function (c) { if (!seen[c]) { seen[c] = 1; out.push(c); } });
   });
   return out;
+}
+
+/* ============================ EARTHLY HQ ============================ */
+function isHQ_() { return activeSeasonId_() === HQ_ID; }
+
+/* Made the first time anyone opens HQ — never on a spreadsheet that has not
+   asked for it. Under the lock, so two devices cannot make two. */
+function ensureHQ_() {
+  if (regionById_(HQ_REGION)) return;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    ensureReady();
+    sheetMemoClear_();
+    if (regionById_(HQ_REGION)) return;
+    appendRegion_({ regionId: HQ_REGION, name: 'Earthly HQ', whLoc: HQ_WH, sort: 0,
+                    createdAt: new Date(), currencies: 'INR,USD', books: '', bookOrder: '',
+                    key: '', closedAt: '', seasonId: HQ_ID });
+    cacheClear_();
+    bumpRev_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* Everything, from every season and from HQ itself, for the Summaries Portal.
+   Only admins at HQ get this; the Sales Portal uses the ordinary (HQ-scoped)
+   state beside it. A closed season carries the rates it was frozen at, so its
+   dollar figures add up at HQ exactly as they do in the season itself. */
+function everywhere_(sales, inv) {
+  return {
+    seasons: seasonsAll_().map(function (x) {
+      var rates = null;
+      if (x.closedAt && x.frozenRates) { try { rates = (JSON.parse(x.frozenRates) || {}).RATES || null; } catch (e) {} }
+      return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt ? String(x.closedAt) : '', rates: rates };
+    }),
+    regions: objectsOf_('_regions').filter(function (r) { return r && r.regionId; }).map(function (r) {
+      return { regionId: String(r.regionId), name: String(r.name), whLoc: String(r.whLoc || ''),
+               seasonId: String(r.seasonId || ''), currencies: parseCurList_(r.currencies),
+               closedAt: r.closedAt ? String(r.closedAt) : '' };
+    }),
+    events: objectsOf_('_events').filter(function (e) { return e && e.eventId; }).map(function (e) {
+      return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || '') };
+    }),
+    holders: objectsOf_('_holders').filter(function (h) { return h && h.holderId && !truthyCell_(h.archived); })
+      .map(function (h) { return { holderId: String(h.holderId), regionId: String(h.regionId), name: String(h.name || '') }; }),
+    partners: partnersAll_().map(function (pt) { return { partnerId: pt.partnerId, regionId: pt.regionId, name: pt.name }; }),
+    shipments: shipmentsAll_(),
+    costs: objectsOf_('_costs').filter(function (x) { return x && x.id; }).map(function (x) {
+      return { id: String(x.id), location: String(x.location || ''), cur: String(x.cur || ''),
+               amt: Number(x.amt) || 0, partnerId: String(x.partnerId || ''), category: String(x.category || '') };
+    }),
+    sales: sales,
+    inventory: inv,
+    currencies: allCurrencies_()
+  };
 }
 /* ---- Per-region pricing ----
    `_prices` holds one row per region/book/currency. Falls back to the built-in
@@ -3252,7 +3339,7 @@ function readState() {
       var R = r.RATES || {};
       return { perUsd: R, plnPerUsd: R.PLN || RATE_PLN_PER_USD, eurPerUsd: R.EUR || RATE_EUR_PER_USD,
                live: !!r.live, asOf: r.asOf || '', frozen: !!r.frozen }; })(),
-    seasonName: (seasonById_(activeSeasonId_()) || {}).name || getSeasonName_(),
+    seasonName: isHQ_() ? 'Earthly HQ' : ((seasonById_(activeSeasonId_()) || {}).name || getSeasonName_()),
     seasons: seasonsAll_().map(function (x) {
       return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt };
     }),
@@ -3449,22 +3536,61 @@ function isDelivery_(s) { return !!String(s.dsource || ''); }
    a reliable flag. */
 function preorderNote_(s) {
   if (!isDelivery_(s)) return '';
+  var from = deliveredFrom_(s);
   return 'Fulfilled pre-order — ' +
     (fromOutside_(s) ? 'sourced from outside the region'
-                     : 'from the ' + getWarehouseName_() + ' warehouse');
+                     : 'from ' + (from ? locLabel_(from) : 'the region\'s own stock'));
+}
+
+/* ---- No default warehouse ----
+   Every region has its own warehouse; none of them is "the" warehouse. The
+   original region still uses the literal id WAREHOUSE, but only as its id —
+   nothing may treat it as a default. */
+
+/** The warehouse of the region a place belongs to, in any season ('' if none). */
+function homeWarehouse_(loc) {
+  var r = regionById_(regionOfAnyLoc_(String(loc || '')));
+  return r ? r.whLoc : '';
+}
+/** Is this place a region's warehouse (any season)? */
+function isRegionWarehouse_(loc) {
+  loc = String(loc || '');
+  return !!loc && allRegionsEverywhere_().some(function (r) { return r.whLoc === loc; });
+}
+/** The shelf a delivered pre-order's copy came off: as recorded (dfrom, since
+    b194), else its own region's warehouse — never another region's. */
+function deliveredFrom_(s) {
+  return String(s.dfrom || '') || homeWarehouse_(s.location);
+}
+/** The place a request names. There is no default warehouse to fall back on. */
+function placeOf_(loc) {
+  loc = String(loc || '');
+  if (!loc) throw new Error('Pick where this happened.');
+  return loc;
+}
+/** Where a deleted sale's copy goes back to: '' when it never came off one of
+    our shelves (sourced from outside, or delivered by another region). */
+function restoreLocOf_(s) {
+  if (String(s.type) !== 'SALE' || !s.bookId || fromOutside_(s)) return '';
+  return isDelivery_(s) ? deliveredFrom_(s) : String(s.location);
 }
 
 /**
- * Every undelivered pre-order is a claim on the regional warehouse, wherever it
- * was taken. An event only takes pre-orders once it has sold out of that title,
- * so there is never event stock to hold back — the copy will come from the
- * warehouse or from outside the region entirely.
+ * Every undelivered pre-order is a claim on its OWN region's warehouse. An
+ * event only takes pre-orders once it has sold out of that title, so there is
+ * never event stock to hold back — the copy will come from that warehouse or
+ * from outside the region. (It was a claim on the original region's warehouse
+ * alone, wherever it was taken, so one region's shelf was held back for every
+ * other region's pre-orders.)
  */
 function reservedMap_(sales) {
-  var m = {};
+  var m = {}, wh = {};
   sales.forEach(function (s) {
     if (String(s.type) !== 'PREORDER' || isDelivered_(s) || !s.bookId) return;
-    var k = invKey_(WAREHOUSE, String(s.bookId));
+    var loc = String(s.location);
+    if (!(loc in wh)) wh[loc] = homeWarehouse_(loc);
+    if (!wh[loc]) return;
+    var k = invKey_(wh[loc], String(s.bookId));
     m[k] = (m[k] || 0) + 1;
   });
   return m;
@@ -3477,17 +3603,17 @@ function getReserved_(rmap, loc, book) { var v = rmap[invKey_(loc, book)]; retur
  * stock is sometimes needed elsewhere and that call is the user's to make. The
  * server refuses only until the warning has been seen and acknowledged.
  */
-function shortfall_(rmap, bookId, after) {
-  var held = getReserved_(rmap, WAREHOUSE, bookId);
+function shortfall_(rmap, bookId, after, wh) {
+  var held = getReserved_(rmap, wh, bookId);
   return Math.max(0, held - Math.max(0, after));
 }
-function breaksPreorders_(bookId, after, rmap) {
-  var short = shortfall_(rmap, bookId, after);
+function breaksPreorders_(bookId, after, rmap, wh) {
+  var short = shortfall_(rmap, bookId, after, wh);
   if (!short) return '';
   var b = bookById_(bookId) || { name: bookId };
-  var held = getReserved_(rmap, WAREHOUSE, bookId);
+  var held = getReserved_(rmap, wh, bookId);
   return short + ' of the ' + held + ' pre-order' + (held === 1 ? '' : 's') +
-         ' for ' + b.name + ' could no longer be filled from ' + getWarehouseName_() + '.';
+         ' for ' + b.name + ' could no longer be filled from ' + locLabel_(wh) + '.';
 }
 
 function getQty_(map, loc, book) { var v = map[invKey_(loc, book)]; return v === undefined ? 0 : v; }
@@ -3501,7 +3627,6 @@ function markDirty_(loc) {
   var set = {};
   try { set = JSON.parse(propGet_('dirtyLocs') || '{}'); } catch (err) { set = {}; }
   if (loc) set[String(loc)] = 1;
-  set[WAREHOUSE] = 1;            // the master tab aggregates everything, always
   propSet_('dirtyLocs', JSON.stringify(set));
 }
 
@@ -3509,7 +3634,6 @@ function markDirtyAll_() {
   var set = {};
   set[SUMMARY] = 1;
   regionsOrdered_().forEach(function (r) { if (r.whLoc) set[r.whLoc] = 1; });
-  set[WAREHOUSE] = 1;
   objectsOf_('_events').forEach(function (e) { set[String(e.eventId)] = 1; });
   propSet_('dirtyLocs', JSON.stringify(set));
 }
@@ -3746,7 +3870,6 @@ function syncSheets(force) {
    movement, so balances are just the fold of all entries. Accounts are:
    'WAREHOUSE', 'BANK', or an event id. Currencies match the rest of the app.  */
 
-var CASH_ACCTS = ['WAREHOUSE', 'BANK'];   // events are valid accounts too
 
 /* Two banks, deliberately.
 
@@ -4287,6 +4410,7 @@ function doOrgSave(p) {
 
 /* ---- Regions ---- */
 function doCreateRegion(p) {
+  if (isHQ_()) throw new Error('Regions belong to a season — choose a season first.');
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Give the region a name.');
   var curs = parseCurList_(p.currencies);
@@ -4356,6 +4480,7 @@ function doRegionAddBooks(p) {
        vanishing, because the books still exist even if the record doesn't.   */
 function doDeleteRegion(p) {
   var regionId = String(p.regionId || '');
+  if (regionId === HQ_REGION) throw new Error('Earthly HQ is always there; it cannot be deleted.');
   var reg = regionById_(regionId);
   if (!reg) throw new Error('That region no longer exists.');
 
@@ -4527,12 +4652,12 @@ function doSetWarehouseName(p) {
 /** Absolute counts: "this location now holds exactly N of each." */
 /* Shared advisory check for anything that reduces warehouse stock. */
 function warnPreorders_(p, loc, items, afterFn, verbs) {
-  if (p.override || loc !== WAREHOUSE) return;
+  if (p.override || !isRegionWarehouse_(loc)) return;
   var rmap = reservedMap_(objectsOf_('_sales'));
   var warnings = [];
   (items || []).forEach(function (it) {
     if (!bookById_(String(it.bookId))) return;
-    var why = breaksPreorders_(String(it.bookId), afterFn(it), rmap);
+    var why = breaksPreorders_(String(it.bookId), afterFn(it), rmap, loc);
     if (why) warnings.push(why);
   });
   if (warnings.length) {
@@ -4544,7 +4669,7 @@ function warnPreorders_(p, loc, items, afterFn, verbs) {
 }
 
 function doSetStockBulk(p) {
-  var loc = String(p.location || WAREHOUSE);
+  var loc = placeOf_(p.location);
   var items = p.items || [];
   var map = loadInvMap_();
 
@@ -4566,7 +4691,7 @@ function doSetStockBulk(p) {
 
 /** Relative counts: "add 12 to what's already there" (negative to remove). */
 function doAdjustStockBulk(p) {
-  var loc = String(p.location || WAREHOUSE);
+  var loc = placeOf_(p.location);
   var items = p.items || [];
   var map = loadInvMap_();
 
@@ -4609,7 +4734,7 @@ function doSell(p) {
      tells us, however much later it comes, so it is never recorded twice. */
   if (p.saleId && (saleIdTaken_(String(p.saleId)) ||
       (!_rebuilding && isDeleted_(String(p.saleId))))) return;
-  var loc = String(p.location || WAREHOUSE);
+  var loc = placeOf_(p.location);
   var bookId = String(p.bookId);
   var isPreorder = !!p.isPreorder;
   var book = bookById_(bookId);
@@ -4629,8 +4754,8 @@ function doSell(p) {
     }
     // Pre-order holds are advisory. Refuse once, with the reason, so that a page
     // which has not shown the warning cannot quietly break a promise.
-    if (!p.override && loc === WAREHOUSE && held > 0) {
-      var why = breaksPreorders_(bookId, onHand - 1, rmap);
+    if (!p.override && isRegionWarehouse_(loc) && held > 0) {
+      var why = breaksPreorders_(bookId, onHand - 1, rmap, loc);
       if (why) {
         throw new Error('There are currently pre-orders for this book that you would no longer ' +
           'be able to fulfill if you sell it. ' + why);
@@ -4677,7 +4802,7 @@ function doSellBundle(p) {
   if (!p.isEdit && p.keepBundleId &&
       (bundleIdTaken_(String(p.keepBundleId)) ||
        (!_rebuilding && isDeleted_(String(p.keepBundleId))))) return;
-  var loc = String(p.location || WAREHOUSE);
+  var loc = placeOf_(p.location);
 
   // New format: items = [{bookId, pre}] — one entry per copy, each flagged buy
   // or pre-order, so a single transaction can mix the two. The old bookIds/
@@ -4707,8 +4832,8 @@ function doSellBundle(p) {
       throw new Error('Only ' + onHand + ' \u00d7 ' + b.name + ' at ' + locLabel_(loc) +
         ', but the sale needs ' + need[id] + '. Nothing was recorded.');
     }
-    if (!p.override && loc === WAREHOUSE) {
-      var why = breaksPreorders_(id, onHand - need[id], rmap);
+    if (!p.override && isRegionWarehouse_(loc)) {
+      var why = breaksPreorders_(id, onHand - need[id], rmap, loc);
       if (why) {
         throw new Error('There are currently pre-orders for these books that you would no ' +
           'longer be able to fulfill if you sell them. ' + why);
@@ -4828,8 +4953,8 @@ function doEditBundle(p) {
      are deleted, so they are available to the replacement. */
   var releases = {};
   members.forEach(function (m) {
-    if (String(m.type) !== 'SALE' || !m.bookId || fromOutside_(m)) return;
-    var back = isDelivery_(m) ? WAREHOUSE : String(m.location);
+    var back = restoreLocOf_(m);
+    if (!back) return;
     if (back !== String(p.location || '')) return;   // freed somewhere else, no help here
     releases[String(m.bookId)] = (releases[String(m.bookId)] || 0) + 1;
   });
@@ -4917,8 +5042,8 @@ function restoreSales_(rows) {
      That is how one Russian Adventures became two, and then four. */
   var map = loadInvMap_(), touched = false;
   rows.forEach(function (r) {
-    if (String(r.type) !== 'SALE' || !r.bookId || fromOutside_(r)) return;
-    var from = isDelivery_(r) ? WAREHOUSE : String(r.location);
+    var from = restoreLocOf_(r);
+    if (!from) return;
     addQty_(map, from, String(r.bookId), -1);
     touched = true;
     markDirty_(from);
@@ -4951,7 +5076,7 @@ function doMarkDeliveredBundle(p) {
 function doDonate(p) {
   if (p.saleId && (saleIdTaken_(String(p.saleId)) ||
       (!_rebuilding && isDeleted_(String(p.saleId))))) return;   // already recorded
-  var loc = String(p.location || WAREHOUSE);
+  var loc = placeOf_(p.location);
   appendSale_({
     saleId: p.saleId,               // the app's own name for it, if it gave one
     soldBy: p.by,
@@ -5141,6 +5266,7 @@ function doCreateEvent(p) {
     var first = regionsOrdered_()[0];
     regionId = first ? first.regionId : '';
   }
+  if (regionId === HQ_REGION) throw new Error('Earthly HQ has no events; it sells from its own warehouse.');
   var events = objectsOf_('_events');
   for (var i = 0; i < events.length; i++) {
     if (String(events[i].regionId || '') === regionId &&
@@ -5181,11 +5307,11 @@ function doDeleteEvent(p) {
   var ev = eventById_(eventId);
   if (!ev) throw new Error('Event not found.');
 
-  // Books come home to THIS event's own regional warehouse — not Poland's.
-  var homeWh = WAREHOUSE;
+  // Books come home to THIS event's own regional warehouse.
   var evRegion = String(ev.regionId || regionOfLoc_(eventId) || '');
   var evReg = evRegion ? regionById_(evRegion) : null;
-  if (evReg && evReg.whLoc) homeWh = evReg.whLoc;
+  var homeWh = evReg ? evReg.whLoc : '';
+  if (!homeWh) throw new Error('That event belongs to no region, so there is nowhere to send its books.');
 
   var map = loadInvMap_();
 
@@ -5249,11 +5375,11 @@ function doTransferBulk(p) {
   if (!moves.length) throw new Error('Enter a quantity for at least one title.');
 
   // Moving stock out of the warehouse can strand pre-orders. Advisory only.
-  if (!p.override && from === WAREHOUSE) {
+  if (!p.override && isRegionWarehouse_(from)) {
     var rmap = reservedMap_(objectsOf_('_sales'));
     var warnings = [];
     moves.forEach(function (m) {
-      var why = breaksPreorders_(m.id, getQty_(map, WAREHOUSE, m.id) - m.qty, rmap);
+      var why = breaksPreorders_(m.id, getQty_(map, from, m.id) - m.qty, rmap, from);
       if (why) warnings.push(why);
     });
     if (warnings.length) {
@@ -5290,9 +5416,9 @@ function doTransferExternal(p) {
   // because there's nowhere in the system for them to land yet.
   var toRegionId = String(p.toRegionId || '');
   var target = toRegionId ? regionById_(toRegionId) : null;
-  var here = regionById_(regionOfLoc_(String(p.fromLoc || WAREHOUSE))) ||
-             regionsOrdered_()[0];
-  var hereWh = here ? here.whLoc : WAREHOUSE;
+  var here = regionById_(regionOfLoc_(placeOf_(p.fromLoc)));
+  if (!here) throw new Error('Pick which warehouse the books leave from.');
+  var hereWh = here.whLoc;
   if (target && target.regionId === (here && here.regionId)) {
     throw new Error('That is this same region — pick another one.');
   }
@@ -5354,18 +5480,17 @@ function doDeleteSale(p) {
     if (String(target.bundle || '')) tombstone_(String(target.bundle));
   }
 
-  if (String(target.type) === 'SALE' && target.bookId) {
-    // Put the copy back where it actually came from:
-    //   • fulfilled from outside the region  → nothing to restore (never ours)
-    //   • a delivered pre-order              → back on the warehouse shelf
-    //   • an ordinary sale                   → back on its own location's table
-    if (!fromOutside_(target)) {
-      var map = loadInvMap_();
-      var restoreLoc = isDelivery_(target) ? WAREHOUSE : String(target.location);
-      addQty_(map, restoreLoc, String(target.bookId), 1);
-      saveInvMap_(map);
-      if (restoreLoc !== String(target.location)) markDirty_(restoreLoc);
-    }
+  /* Put the copy back where it actually came from (restoreLocOf_):
+       • sourced from outside, or by another region → nothing to restore
+       • a delivered pre-order → the shelf it was taken off (was: always the
+         original region's warehouse, whichever region it belonged to)
+       • an ordinary sale → its own location's table */
+  var restoreLoc = restoreLocOf_(target);
+  if (restoreLoc) {
+    var map = loadInvMap_();
+    addQty_(map, restoreLoc, String(target.bookId), 1);
+    saveInvMap_(map);
+    if (restoreLoc !== String(target.location)) markDirty_(restoreLoc);
   }
   dbAddCols_('_sales', SALES_HEADERS);
   dbDelete_('_sales', { saleId: saleId });
@@ -5463,10 +5588,8 @@ function doMarkDelivered(p) {
        Defaults to the home warehouse so older callers behave as before. */
     var src = String(p.fromLoc || '');
     if (fromStock) {
-      if (!src) {
-        var home = regionById_(regionOfLoc_(loc));
-        src = home ? home.whLoc : WAREHOUSE;
-      }
+      if (!src) src = homeWarehouse_(loc);
+      if (!src) throw new Error('Choose which shelf the copy comes from.');
       var map = loadInvMap_();
       if (getQty_(map, src, bookId) <= 0) {
         throw new Error('There are no copies of ' + book.name + ' left at ' +
@@ -5476,8 +5599,11 @@ function doMarkDelivered(p) {
       saveInvMap_(map);
     }
 
+    // The shelf is recorded, so a later delete puts the copy back on it.
+    dbAddCols_('_sales', SALES_HEADERS);
     dbUpdate_('_sales', firstOnly_({ saleId: saleId }),
-      { type: 'SALE', delivered: true, dsource: fromStock ? DSRC_WAREHOUSE : DSRC_OUTSIDE });
+      { type: 'SALE', delivered: true, dsource: fromStock ? DSRC_WAREHOUSE : DSRC_OUTSIDE,
+        dfrom: fromStock ? src : '' });
     markDirty_(loc);
     if (fromStock && src && src !== loc) markDirty_(src);
     return;
@@ -6025,7 +6151,6 @@ function locLabel_(loc) {
   // the first region still uses) is named with its season.
   var otherWh = allRegionsEverywhere_().filter(function (r) { return r.whLoc === String(loc); })[0];
   if (otherWh) return otherWh.name + ' (Warehouse, ' + otherWh.seasonName + ')';
-  if (loc === WAREHOUSE) return getWarehouseName_() + ' (Warehouse)';
   var ev = eventById_(loc);
   if (ev) return ev.name;
   var hs = objectsOf_('_holders');
@@ -6957,7 +7082,7 @@ function logRows_(scoped, type) {
       var isFilled = isDelivery_(s);
       var source = !isFilled ? '' :
         (fromOutside_(s) ? 'Sourced from outside the region'
-                         : getWarehouseName_() + ' Warehouse');
+                         : (deliveredFrom_(s) ? locLabel_(deliveredFrom_(s)) : 'Own stock'));
       var shownComments = source
         ? (s.comments ? source + ' · ' + s.comments : source)
         : s.comments;

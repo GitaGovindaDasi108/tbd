@@ -633,6 +633,28 @@ body.busy #busyBar{opacity:1}
   border:1px solid var(--line-d);background:var(--paper);color:var(--muted);border-radius:7px;padding:3px 9px}
 .sort-btn.on{background:var(--plum);color:var(--gold-l);border-color:var(--plum)}
 .panel .body{padding:12px 14px;flex:1;min-height:0;display:flex;flex-direction:column}
+/* Every panel folds from its heading. The arrow is drawn here, not written into
+   the heading, so rewritten wording (keyed by the heading's words) still fits. */
+.panel[data-fold] > h2{cursor:pointer;user-select:none}
+.panel[data-fold] > h2::before{content:'▾';font-size:13px;color:var(--muted);margin-right:-2px;
+  transition:transform .15s;display:inline-block}
+.panel.folded > h2::before{transform:rotate(-90deg)}
+.panel.folded > :not(h2){display:none !important}
+.panel.folded > h2{border-bottom:0}
+/* Earthly HQ's two big sections. Anywhere else the Sales Portal wrapper is not
+   there at all as far as layout goes. */
+.portal:not(.on){display:contents}
+.portal:not(.on) > .portal-h{display:none}
+.portal.on{border:1.5px solid var(--gold);border-radius:calc(var(--radius) + 4px);padding:4px 12px 14px;
+  margin-top:16px;background:linear-gradient(180deg,var(--paper2),transparent 140px)}
+.portal-h{font-family:'Marcellus',serif;font-weight:400;font-size:22px;color:var(--plum);cursor:pointer;
+  user-select:none;padding:10px 4px 2px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.portal-h::before{content:'▾';font-size:14px;color:var(--muted);display:inline-block;transition:transform .15s}
+.portal.folded > .portal-h::before{transform:rotate(-90deg)}
+.portal.folded > :not(.portal-h){display:none !important}
+.portal.on > .cols, .portal.on > .cols-2:first-of-type{margin-top:8px}
+/* With the shelf folded, the sales log beside it can no longer borrow its height. */
+.cols.inv-folded .log-col > .panel{position:static}
 
 /* ---------- Inventory cards ---------- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
@@ -1289,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b193</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b196</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1306,33 +1328,43 @@ body.list-view .mc-name{min-height:0}
 
   <div class="totals" id="totals"></div>
 
-  <!-- SEASON TOTALS — the whole tour at a glance -->
+  <!-- SEASON TOTALS — the whole tour at a glance. Read left to right, top to
+       bottom (and straight down on a phone): what sold, what each region took,
+       how each region is selling, how the money came in. -->
   <div class="cols-2" id="seasonTotals" style="display:none">
-    <section class="panel">
+    <section class="panel" data-fold="titles">
       <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="seasonTitleList"></div></div>
     </section>
-    <section class="panel">
-      <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body" id="seasonPayBody"></div>
-    </section>
-  </div>
-
-  <!-- REGIONAL TOTALS — how each region is doing -->
-  <div class="cols-2" id="regionalTotals" style="display:none">
-    <section class="panel">
-      <h2 class="sec-h2">Sales by Region <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div id="salesByRegion"></div></div>
-    </section>
-    <section class="panel">
+    <section class="panel" data-fold="collBy">
       <h2 class="sec-h2">Collections by Region <span class="hint">(what each region has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="collByRegion"></div>
     </section>
   </div>
 
-  <!-- Region + event working area -->
+  <!-- REGIONAL TOTALS — how each region is doing -->
+  <div class="cols-2" id="regionalTotals" style="display:none">
+    <section class="panel" data-fold="salesBy">
+      <h2 class="sec-h2">Sales by Region <span class="hint">(tap for the per-title breakdown)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body"><div id="salesByRegion"></div></div>
+    </section>
+    <section class="panel" data-fold="payments">
+      <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the regional split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body" id="seasonPayBody"></div>
+    </section>
+  </div>
+
+  <section class="panel" id="whOverviewPanel" data-fold="warehouses" style="display:none">
+    <h2 class="sec-h2">Warehouse Overview <span class="hint">(where every title sits across the tour)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
+    <div class="body"><div id="whOverview"></div></div>
+  </section>
+
+  <!-- Region + event working area. At Earthly HQ this is the Sales Portal, and
+       folds as one; elsewhere its wrapper is invisible (display: contents). -->
+  <div class="portal" id="salesPortal" data-fold="salesPortal">
+  <h2 class="portal-h">Sales Portal <span class="hint">(Earthly HQ's own warehouse, sales and money)</span></h2>
   <div class="cols" id="regionCols">
-    <section class="panel">
+    <section class="panel" data-fold="inventory">
       <h2 id="invHeading" class="inv-h2">Inventory
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
@@ -1340,7 +1372,7 @@ body.list-view .mc-name{min-height:0}
       <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
-      <section class="panel">
+      <section class="panel" data-fold="log">
         <h2 class="sec-h2">Active Sales Log <span class="hint" id="logCount"></span>
           <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="log" title="Copy just this section for WhatsApp">📋</button>
         </h2>
@@ -1366,46 +1398,71 @@ body.list-view .mc-name{min-height:0}
 
   <!-- WAREHOUSE INFORMATION — what still needs chasing, and where stock sits -->
   <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
-    <section class="panel pend-panel" id="pendingPanel" style="display:none">
+    <section class="panel pend-panel" id="pendingPanel" data-fold="pending" style="display:none">
       <h2 class="sec-h2">Pending Payments <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="pending" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="pendingList"></div></div>
     </section>
-    <section class="panel pre-panel" id="prePanel" style="display:none">
+    <section class="panel pre-panel" id="prePanel" data-fold="preorders" style="display:none">
       <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
     </section>
-    <section class="panel rq-panel" id="remotePanel" style="display:none">
+    <section class="panel rq-panel" id="remotePanel" data-fold="remote" style="display:none">
       <h2 class="sec-h2">Pre-Orders to Fulfill for Other Regions
         <button class="btn btn-ghost btn-sm sec-rep" data-act="fulfilother" title="Take on a pre-order from any other region">＋ Fulfill another</button></h2>
       <div class="body"><div class="log" id="remoteList"></div></div>
     </section>
-    <section class="panel transit-panel" id="transitPanel" style="display:none">
+    <section class="panel transit-panel" id="transitPanel" data-fold="transit" style="display:none">
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
-    <section class="panel change-panel" id="changePanel" style="display:none">
+    <section class="panel change-panel" id="changePanel" data-fold="change" style="display:none">
       <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="changeList"></div></div>
     </section>
   </div>
 
-  <section class="panel" id="whOverviewPanel" style="display:none">
-    <h2 class="sec-h2">Warehouse Overview <span class="hint">(where every title sits across the tour)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
-    <div class="body"><div id="whOverview"></div></div>
-  </section>
-
   <div class="cols-2" id="regionBottom">
-    <section class="panel" id="titlePanel">
+    <section class="panel" id="titlePanel" data-fold="titles">
       <h2 class="sec-h2">Sales by Title <span class="hint">sold / pre-ordered</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="titleList"></div></div>
     </section>
-    <section class="panel" id="payPanelRegion">
+    <section class="panel" id="payPanelRegion" data-fold="payments">
       <h2 class="sec-h2">Totals by Payment Type <span class="hint">(tap a type to see it event by event)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body" id="payBody"></div>
     </section>
   </div>
+  </div>
 
-  <section class="panel admin-panel" id="adminPanel">
+  <!-- EARTHLY HQ SUMMARIES — every season added up, one level above the season -->
+  <div class="portal on" id="summaryPortal" data-fold="summaryPortal" style="display:none">
+    <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
+    <div class="cols-2">
+      <section class="panel" data-fold="sumTitles">
+        <h2 class="sec-h2">Total Sales by Title <span class="hint">sold / pre-ordered, every season</span></h2>
+        <div class="body"><div class="title-list" id="hqTitleList"></div></div>
+      </section>
+      <section class="panel" data-fold="sumCollBy">
+        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span></h2>
+        <div class="body" id="hqCollBy"></div>
+      </section>
+    </div>
+    <div class="cols-2">
+      <section class="panel" data-fold="sumSalesBy">
+        <h2 class="sec-h2">Sales by Season <span class="hint">(tap for the per-title breakdown)</span></h2>
+        <div class="body"><div id="hqSalesBy"></div></div>
+      </section>
+      <section class="panel" data-fold="sumPayments">
+        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span></h2>
+        <div class="body" id="hqPayBody"></div>
+      </section>
+    </div>
+    <section class="panel" data-fold="sumWarehouses" style="margin-top:16px">
+      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span></h2>
+      <div class="body"><div id="hqWhOverview"></div></div>
+    </section>
+  </div>
+
+  <section class="panel admin-panel" id="adminPanel" data-fold="admin">
     <h2>App Admin <span class="hint">(setup, stock movements and money handling)</span></h2>
     <div class="body"><div class="actions" id="adminActions"></div></div>
   </section>
@@ -1460,9 +1517,16 @@ let REV  = -1;        // server revision that BASE corresponds to
 let OPS  = [];        // optimistic changes awaiting confirmation
 let STATE = null;     // BASE + OPS, what the screen shows
 const SEASON = 'SEASON';
-let CUR_LEVEL  = 'region';   // 'season' | 'region' | 'event'
+/* Earthly HQ: the level above the seasons. To the data it is a region (its own
+   warehouse, prices, sales, cash) that lives in a "season" of its own, HQ_ID,
+   so it belongs to no tour. Its page is that region's view — the Sales Portal —
+   plus a Summaries Portal adding up every season (rollupState). */
+const HQ_ID = 'HQ', HQ_REGION = 'rg_hq', HQ_WH = 'wh_hq';
+function isHQ(){ return !!STATE && STATE.activeSeason===HQ_ID; }
+/* Where a new device starts: the season. No region is anyone's default. */
+let CUR_LEVEL  = 'season';   // 'season' | 'region' | 'event'
 let CUR_REGION = '';         // regionId when at region or event level
-let CUR_LOC    = WAREHOUSE;  // SEASON, a region's warehouse loc, or an event id
+let CUR_LOC    = SEASON;     // SEASON, a region's warehouse loc, or an event id
 let inflight = 0;
 let syncTimer = null;
 
@@ -1886,9 +1950,11 @@ function priceIn(bookId,cur){
 }
 /** Move the whole app to a level. Keeps CUR_REGION consistent with CUR_LOC. */
 function goTo(level, loc){
+  // At Earthly HQ there is no season page: "up" is HQ's own page.
+  if(level==='season' && isHQ()){ level='region'; loc=HQ_REGION; }
   CUR_LEVEL=level;
   if(level==='season'){ CUR_LOC=SEASON; CUR_REGION=''; }
-  else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:WAREHOUSE; }
+  else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:''; }
   else { CUR_LOC=loc; CUR_REGION=regionOfLoc(loc); }
   savePos();
   applyLevelTheme();
@@ -1921,7 +1987,7 @@ function loadPos(){
     try{ raw = sessionStorage.getItem(posKey()); }catch(e){}  // this tab's own place first
     if(!raw) raw = localStorage.getItem(posKey());            // a new tab: where you last were
     const p = JSON.parse(raw||'null');
-    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||WAREHOUSE; TAB_SEASON=p.s||''; }
+    if(p&&p.l){ CUR_LEVEL=p.l; CUR_REGION=p.r||''; CUR_LOC=p.c||(p.l==='season'?SEASON:''); TAB_SEASON=p.s||''; }
   }catch(e){}
 }
 
@@ -1956,7 +2022,6 @@ function locName(loc){
   // the first region still uses — is named with its season.
   const arw=(STATE.allRegions||[]).find(x=>x.whLoc===loc);
   if(arw) return arw.name+' — Warehouse ('+(arw.seasonName||'another season')+')';
-  if(loc===WAREHOUSE) return (STATE.warehouseName||'')+' — Warehouse';
   if(loc===SEASON) return STATE.seasonName||'Season';
   const e=(STATE.events||[]).find(e=>e.eventId===loc);
   if(e) return e.name;
@@ -2095,16 +2160,31 @@ function availQty(loc,bookId){return Math.max(0,invQty(loc,bookId)-reservedQty(l
 /* Pre-order holds are a warning, not a lock — stock is sometimes genuinely
    needed elsewhere. Returns how many promises a title would break if the
    warehouse were left holding `after` copies. */
-function preorderShortfall(bookId,after){
-  return Math.max(0, reservedQty(WAREHOUSE,bookId) - Math.max(0,after));
+/* `wh` is the warehouse being drawn down. Every region's warehouse holds for
+   its own pre-orders; there is no default one (it used to be the original
+   region's, wherever you were standing). */
+function preorderShortfall(bookId,after,wh){
+  return Math.max(0, reservedQty(wh,bookId) - Math.max(0,after));
 }
-function shortfallLine(bookId,after){
-  const short=preorderShortfall(bookId,after);
+function shortfallLine(bookId,after,wh){
+  const short=preorderShortfall(bookId,after,wh);
   if(!short) return '';
-  const held=reservedQty(WAREHOUSE,bookId);
+  const held=reservedQty(wh,bookId);
   return `${short} of the ${held} pre-order${held===1?'':'s'} for `
        + `<b>${esc(bookById(bookId).name)}</b> could no longer be filled from `
-       + `${esc(STATE.warehouseName||'the warehouse')}.`;
+       + `${esc(locName(wh))}.`;
+}
+/** The warehouse of the region a place belongs to ('' if none). */
+function homeWarehouse(loc){
+  const r = regionById(regionOfLoc(loc)) || (STATE.allRegions||[]).find(x=>x.regionId===regionOfLoc(loc));
+  return r ? r.whLoc : '';
+}
+/** Where a deleted sale's copy goes back to — the same rule as the server:
+    nowhere if it never came off our shelves; the shelf a delivered pre-order
+    was filled from; otherwise the place it was sold. */
+function restoreLocOf(x){
+  if(x.type!=='SALE' || !x.bookId || fromOutside(x)) return '';
+  return x.dsource ? (x.dfrom || homeWarehouse(x.location)) : x.location;
 }
 /* verbs: [singular, plural] — "…if you sell it" vs "…if you sell them". */
 function preorderWarning(lines,verbs){
@@ -2372,12 +2452,15 @@ async function pull(){
       if(CUR_LEVEL==='region'&&r) CUR_LOC=r.whLoc;
       return;
     }
+    // Earthly HQ is one page: its own region's view, with the summaries beside it.
+    if(BASE.activeSeason===HQ_ID){ CUR_LEVEL='region'; CUR_REGION=HQ_REGION; CUR_LOC=HQ_WH; return; }
     if(CUR_LEVEL==='season'){ CUR_LOC=SEASON; CUR_REGION=''; return; }
     /* A season still loading has no regions YET — that is not the same as the
        region being gone. Judging it then threw you back to the season view (or
        into another region) the moment a refresh landed mid-load. */
     if(BASE && BASE.loading) return;
-    let reg = regs.find(r=>r.regionId===CUR_REGION) || regs[0];
+    // A region that is gone (or never chosen) means the season — not the first region.
+    let reg = regs.find(r=>r.regionId===CUR_REGION);
     if(!reg){ CUR_LEVEL='season'; CUR_LOC=SEASON; CUR_REGION=''; return; }
     CUR_REGION = reg.regionId;
     const stillThere = (CUR_LOC===reg.whLoc) ||
@@ -2812,7 +2895,7 @@ function renderAll(){
      above the title; at season level the title already names it. */
   const seasonNm = ((STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason)||{}).name || STATE.seasonName || '';
   const sl = $('#seasonLine');
-  if(sl){ sl.textContent = (CUR_LEVEL==='season') ? '' : seasonNm; sl.style.display = sl.textContent ? '' : 'none'; }
+  if(sl){ sl.textContent = (CUR_LEVEL==='season' || isHQ()) ? '' : seasonNm; sl.style.display = sl.textContent ? '' : 'none'; }
   // On a share link, show whose name is going on the sales — and let them fix it.
   $('#reportBtn').style.display = isAdmin() ? '' : 'none';
   const who = whoAmI();
@@ -2822,7 +2905,19 @@ function renderAll(){
   // The tab is how the app is recognized among a dozen others — it keeps its
   // own name rather than whichever warehouse happens to be open.
   document.title = 'Transcendental Book Sales';
-  renderTabs(); renderContextActions(); renderTotals();
+  renderTabs(); renderContextActions();
+  // At HQ the tiles at the top add up everything, every season.
+  const hq = isHQ();
+  if(hq && STATE.everywhere) withRollup(renderTotals); else renderTotals();
+  $('#salesPortal').classList.toggle('on', hq);
+  $('#summaryPortal').style.display = (hq && STATE.everywhere) ? '' : 'none';
+  if(hq && STATE.everywhere) withRollup(()=>{
+    renderTitleList('#hqTitleList');
+    renderCollectionsByRegion('#hqCollBy');
+    $('#hqSalesBy').innerHTML  = renderSalesByRegion();
+    renderPayments('#hqPayBody');
+    $('#hqWhOverview').innerHTML = renderWarehouseOverview();
+  });
 
   const season = CUR_LEVEL==='season';
   // A seller sees how many books have gone — that is their whole job — but not
@@ -2853,14 +2948,113 @@ function renderAll(){
   // repeat what is already in front of them.
   $('#bottomRow').style.display = isSeller() ? 'none' : '';
   renderBottom();
+  try{ applyFolds(); }catch(e){}
   // Done last, once the page has its final width, so clipping is measured true.
   try{ addTooltipsToClipped(); }catch(e){}
 }
 
+/* ---- Earthly HQ: every season added up ----
+   The season's own panels (titles, collections, sales, payments, warehouses)
+   are drawn one level up by handing them a state in which each "region" is a
+   whole season — its regions' warehouses, events and devotees are that
+   season's places — and HQ itself is one more. The panels then group by
+   season exactly as they group by region at the season, with no second copy
+   of any of them. UNIT supplies the words and where a tap goes.
+
+   A closed season's dollars stay at the rates it was frozen at: each of its
+   sales carries the dollar figure those rates give, through the same
+   correction the tables already make for dollars actually received. (Its
+   costs are converted at today's rates.) */
+const UNIT_REGION = {word:'region', Word:'Region', words:'regions', act:'goregion', attr:'region'};
+const UNIT_SEASON = {word:'season', Word:'Season', words:'seasons', act:'goseasonid', attr:'season'};
+let UNIT = UNIT_REGION;
+function rollupState(){
+  const ev = STATE && STATE.everywhere; if(!ev) return null;
+  const seasonOf = {}; (ev.regions||[]).forEach(r=>{ seasonOf[r.regionId] = r.seasonId; });
+  const units = (ev.seasons||[]).map(x=>({id:x.seasonId, name:x.name, closedAt:x.closedAt, rates:x.rates}))
+    .concat([{id:HQ_ID, name:'Earthly HQ'}]);
+  const curs = {};
+  (ev.regions||[]).forEach(r=>{ (curs[r.seasonId]=curs[r.seasonId]||[]); (r.currencies||[]).forEach(c=>{ if(!curs[r.seasonId].includes(c)) curs[r.seasonId].push(c); }); });
+  const regions = units.map(u=>({regionId:u.id, name:u.name, whLoc:'unit:'+u.id, currencies:curs[u.id]||['USD'],
+    books:[], counts:{}, closedAt:u.closedAt||'', payTypes:[], bookOrder:[], hidden:''}));
+  // Every region's warehouse and every event become places of their season.
+  const events = [];
+  (ev.regions||[]).forEach(r=>{ if(r.whLoc) events.push({eventId:r.whLoc, name:r.name, regionId:r.seasonId}); });
+  (ev.events||[]).forEach(e=>events.push({eventId:e.eventId, name:e.name, regionId:seasonOf[e.regionId]||''}));
+  const holders = (ev.holders||[]).map(h=>Object.assign({}, h, {regionId:seasonOf[h.regionId]||''}));
+  const partners = (ev.partners||[]).map(p=>Object.assign({}, p, {regionId:seasonOf[p.regionId]||''}));
+  const unitOf = {};
+  events.forEach(e=>{ unitOf[e.eventId]=e.regionId; }); holders.forEach(h=>{ unitOf[h.holderId]=h.regionId; });
+  const frozen = {}; units.forEach(u=>{ if(u.closedAt && u.rates) frozen[u.id]=u.rates; });
+  const atFrozen = x=>{
+    const fx = frozen[unitOf[x.location]];
+    if(!fx || hasUsdActual(x)) return x;
+    let t=0;
+    legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt){
+      const per = String(l.cur).toUpperCase()==='USD' ? 1 : Number(fx[String(l.cur).toUpperCase()]);
+      if(per>0) t += l.amt/per; } });
+    return t>0 ? Object.assign({}, x, {usdActual:t}) : x;
+  };
+  // HQ's own records come from the live state, so a sale just made counts at once.
+  const mine = new Set([HQ_WH].concat((STATE.holders||[]).filter(h=>h.regionId===HQ_REGION).map(h=>h.holderId)));
+  const sales = (ev.sales||[]).filter(x=>!mine.has(x.location))
+    .concat((STATE.sales||[]).filter(x=>mine.has(x.location))).map(atFrozen);
+  const inventory = (ev.inventory||[]).filter(i=>!mine.has(i.location))
+    .concat((STATE.inventory||[]).filter(i=>mine.has(i.location)));
+  const all = (ev.currencies||[]).slice();
+  (currentRegion()||{currencies:[]}).currencies.forEach(c=>{ if(!all.includes(c)) all.push(c); });
+  return Object.assign({}, STATE, {regions, events, holders, partners, sales, inventory,
+    shipments: ev.shipments||[], costs: ev.costs||[], currencies: all, prices:{},
+    remote:[], change:[], everywhere:null});
+}
+/** Draw with the season-level panels over every season (see rollupState). */
+function withRollup(fn){
+  const roll = rollupState(); if(!roll) return;
+  const keep = {STATE, CUR_LEVEL, CUR_REGION, CUR_LOC, UNIT};
+  STATE = roll; CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; UNIT=UNIT_SEASON;
+  try{ fn(); }
+  finally{ STATE=keep.STATE; CUR_LEVEL=keep.CUR_LEVEL; CUR_REGION=keep.CUR_REGION; CUR_LOC=keep.CUR_LOC; UNIT=keep.UNIT; }
+}
+
+/* ---- Folding panels ----
+   Any panel can be folded from its heading. Each device remembers its own
+   choices, per level (a panel folded at the season stays open in a region
+   unless folded there too). Everything starts open. */
+const FOLD_KEY = 'tbs_fold';
+let FOLDS = {};
+try{ FOLDS = JSON.parse(localStorage.getItem(FOLD_KEY)||'{}') || {}; }catch(e){ FOLDS = {}; }
+function foldKey(name){ return (isHQ() ? 'hq' : CUR_LEVEL) + ':' + name; }
+function isFolded(name){ return !!FOLDS[foldKey(name)]; }
+function setFolded(name, on){
+  if(on) FOLDS[foldKey(name)] = 1; else delete FOLDS[foldKey(name)];
+  try{ localStorage.setItem(FOLD_KEY, JSON.stringify(FOLDS)); }catch(e){}
+}
+function applyFolds(){
+  document.querySelectorAll('.panel[data-fold], .portal[data-fold]').forEach(p=>{
+    p.classList.toggle('folded', isFolded(p.dataset.fold));
+  });
+  const inv = document.querySelector('#regionCols > .panel[data-fold="inventory"]');
+  const cols = $('#regionCols');
+  if(cols && cols.classList) cols.classList.toggle('inv-folded', !!(inv && inv.classList.contains('folded')));
+}
+/* A tap on a heading folds it — but not a tap on a button, link, field or a
+   wording pencil inside the heading, which keep doing what they do. */
+document.addEventListener('click', e=>{
+  const t = e.target;
+  if(!t || !t.closest) return;
+  const h = t.closest('.panel[data-fold] > h2, .portal[data-fold] > .portal-h');
+  if(!h) return;
+  if(t.closest('button, a, input, select, label, .pencil')) return;
+  const p = h.parentElement;
+  setFolded(p.dataset.fold, !isFolded(p.dataset.fold));
+  applyFolds();
+});
+
 function renderTabs(){
   const regions = regionsList();
   const reg = currentRegion();
-  const lvlWord = CUR_LEVEL==='season'?'Season':CUR_LEVEL==='region'?'Region':'Event';
+  const lvlWord = isHQ() ? 'Earthly HQ'
+    : CUR_LEVEL==='season'?'Season':CUR_LEVEL==='region'?'Region':'Event';
 
   /* One compact bar: a badge saying which level you're on, then the path you
      took to get here. Each step is a dropdown, so the whole tour is reachable
@@ -2896,10 +3090,31 @@ function renderTabs(){
     return;
   }
 
-  /* Season — the root, and the way back up. With more than one tour on record it
-     becomes a picker, exactly like regions and events, rather than being buried
-     in a panel. */
+  /* Earthly HQ — above every season, and the way to reach any of them. */
   const seasons = STATE.seasons || [];
+  h += `<button class="crumb-btn no-edit ${isHQ()?'on':''}" data-act="gohq"
+          title="Every season, added up">🌍 Earthly HQ</button><span class="crumb-sep">›</span>`;
+  if(isHQ()){
+    h += `<span class="crumb-pick">
+      <select class="crumb-sel" data-act="pickseason" title="Open a season">
+        ${opt('','Choose a season…',true)}
+        ${seasons.map(x=>opt(x.seasonId, x.name, false)).join('')}
+        ${opt('__new','＋ New season…',false)}
+      </select>
+    </span></div></div>`;
+    $('#locTabs').innerHTML=h;
+    const hs=$('#locTabs').querySelector('[data-act="pickseason"]');
+    if(hs) hs.addEventListener('change',()=>{
+      const v=hs.value;
+      if(v==='__new'){ renderTabs(); newSeasonModal(); return; }
+      if(v) switchSeason(v);
+    });
+    return;
+  }
+
+  /* Season — the way back up from a region or event. With more than one tour on
+     record it becomes a picker, exactly like regions and events, rather than
+     being buried in a panel. */
   if(seasons.length > 1 && isAdmin()){
     /* Two controls, because they do different things: the button goes UP to the
        tour-wide view, the picker moves BETWEEN tours. With only the picker there
@@ -3043,6 +3258,10 @@ function renderAdmin(){
     (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
 
   // Location
+  if(isHQ()){
+    // HQ is always there: no events, nothing to reorder, never closed or deleted.
+    cols[3].push(`<button class="btn" data-act="editregion">Edit Earthly HQ</button>`);
+  }else{
   cols[3].push(season
     ? `<button class="btn" data-act="pick" data-then="eventorder">↕ Change Event Order…</button>`
     : `<button class="btn" data-act="reorder" data-kind="event">↕ Change Event Order</button>`);
@@ -3066,6 +3285,7 @@ function renderAdmin(){
       ? `<button class="btn" data-act="reopenhere">Reopen Event</button>`
       : `<button class="btn" data-act="closehere">Close Event</button>`);
     cols[3].push(`<button class="btn" data-act="deleteevent">Delete Event</button>`);
+  }
   }
 
   const labels = ['Admin', 'Money', 'Books', 'Location'];
@@ -3117,7 +3337,7 @@ function renderWarehouseOverview(){
       .filter(x=>x.status!=='ARRIVED')
       .reduce((t,x)=>t+invQty(x.shipId,b.id),0);
     const chips = per.map(x=>
-      `<button class="wo-chip" data-act="goregion" data-region="${esc(x.r.regionId)}"
+      `<button class="wo-chip" data-act="${UNIT.act}" data-${UNIT.attr}="${esc(x.r.regionId)}"
          title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
 ;   // in transit is shown once, beneath the number — no separate bubble
     return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}">
@@ -3137,7 +3357,7 @@ function renderWarehouseOverview(){
 /* ---- FE12: Sales by Region, expandable to per-title ---- */
 function renderSalesByRegion(){
   const regions = regionsList();
-  if(!regions.length) return `<div class="cash-empty">No regions yet.</div>`;
+  if(!regions.length) return `<div class="cash-empty">No ${UNIT.words} yet.</div>`;
   return regions.map(r=>{
     const locs = locsInRegion(r.regionId);
     const allHere = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
@@ -3254,7 +3474,8 @@ function renderTotals(){
 }
 
 function renderInventory(){
-  $('#invHeading').firstChild.textContent = (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
+  $('#invHeading').firstChild.textContent = isHQ() ? 'Earthly HQ Warehouse '
+    : (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
   const s=scopedSales();
   const allSales=STATE.sales||[];
   let h='';
@@ -3503,16 +3724,16 @@ function renderCollectionsByRegion(target){
   const cell = (o,c) => o[c] ? fmt(o[c]) : '<span class="zero">—</span>';
   el.innerHTML = `
     <table class="cash-tbl cbr">
-      <thead><tr><th>Region</th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>USD EQ</th></tr></thead>
+      <thead><tr><th>${UNIT.Word}</th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>USD EQ</th></tr></thead>
       <tbody>${rows.map(x=>`<tr>
-        <th><a href="#" data-act="cashregion" data-id="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th>
+        <th><a href="#" data-act="${UNIT===UNIT_SEASON?'goseasonid':'cashregion'}" data-id="${esc(x.r.regionId)}" data-season="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th>
         ${curs.map(c=>`<td>${cell(x.got,c)}</td>`).join('')}
         <td class="usd">$${fmt(x.usd)}</td></tr>`).join('') ||
-        `<tr><td colspan="${curs.length+2}">No regions yet.</td></tr>`}</tbody>
-      <tfoot><tr><th>All regions</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
+        `<tr><td colspan="${curs.length+2}">No ${UNIT.words} yet.</td></tr>`}</tbody>
+      <tfoot><tr><th>All ${UNIT.words}</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
         <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
     </table>
-    <div class="hint">What each region has brought in: its own takings, less its costs.
+    <div class="hint">What each ${UNIT.word} has brought in: its own takings, less its costs.
       Consignment money is held for the groups and is shown in Consignment.</div>`;
 }
 
@@ -4007,9 +4228,13 @@ function logItemHTML(x, opts){
       showOwed ? esc(totalLabel(x)) : `<span class="li-owed">${owedLabel}</span>`]);
   }
   if(awaiting){
-    const stock=invQty(WAREHOUSE,x.bookId);
-    det.push(['Copies in ' + esc(STATE.warehouseName||'the warehouse'),
-      `${stock}${stock<=0?' — would have to come from outside the region':''}`]);
+    // Its own region's warehouse — not whichever region used to be the default.
+    const wh=homeWarehouse(x.location);
+    if(wh){
+      const stock=invQty(wh,x.bookId);
+      det.push(['Copies in ' + esc(locName(wh)),
+        `${stock}${stock<=0?' — would have to come from outside the region':''}`]);
+    }
   }
   if(x.comments) det.push(['Notes', esc(x.comments)]);
   det.push(['Sold at', esc(locNameFull(x.location))]);
@@ -4023,7 +4248,7 @@ function logItemHTML(x, opts){
     det.push(['Pre-order', 'Fulfilled — copy came from '
       + (x.dsource===DSRC_REMOTE ? esc(anyRegionName(x.fulfilBy)) + ' (another region)'
          : fromOutside(x) ? 'outside the region'
-                        : esc(String(STATE.warehouseName||'the')+' warehouse'))]);
+                        : esc(locName(restoreLocOf(x)||homeWarehouse(x.location))||'own stock'))]);
   }
 
   const bAttr = x._bundle ? ` data-bundle="${x.bundle}"` : '';
@@ -4578,8 +4803,8 @@ function saleModal(opts){
       ${(!isPre && !edit && onHand<=0) ? `<div class="err-box" id="noStock">There are no copies of <b>${esc(book.name)}</b> at
         ${esc(locName(loc))} to sell. <button type="button" class="btn btn-ghost btn-sm" id="preInstead">Pre-order it instead</button></div>` : ''}
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
-      ${(!isPre && !edit && loc===WAREHOUSE)
-        ? preorderWarning([shortfallLine(opts.bookId, onHand-1)].filter(Boolean), ['sell it','sell them'])
+      ${(!isPre && !edit && isWarehouseLoc(loc))
+        ? preorderWarning([shortfallLine(opts.bookId, onHand-1, loc)].filter(Boolean), ['sell it','sell them'])
         : ''}
       ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} in stock here, ${held} already pre-ordered. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
       <div class="field">
@@ -4653,7 +4878,7 @@ function saleModal(opts){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="saveSale">${edit?'Save changes'
         :(isPre?'Record pre-order'
-          :((loc===WAREHOUSE && preorderShortfall(opts.bookId, onHand-1))?'Sell anyway':'Record sale'))}</button>
+          :((isWarehouseLoc(loc) && preorderShortfall(opts.bookId, onHand-1, loc))?'Sell anyway':'Record sale'))}</button>
     </div>
   `);
 
@@ -5069,9 +5294,9 @@ function bundleModal(edit){
     $('#mbCount').textContent = n<1 ? 'Nothing selected yet.'
       : `${n} book${n===1?'':'s'} — ${nb} to buy, ${np} to pre-order · list total ${listTotal(priceCur())} ${priceCur()}`;
     // pre-order shortfall: only the BUY copies draw down warehouse stock now
-    if(loc===WAREHOUSE){
+    if(isWarehouseLoc(loc)){
       const need={}; buyIds().forEach(id=>need[id]=(need[id]||0)+1);
-      const lines=Object.keys(need).map(id=>shortfallLine(id, invQty(WAREHOUSE,id)-need[id])).filter(Boolean);
+      const lines=Object.keys(need).map(id=>shortfallLine(id, invQty(loc,id)-need[id], loc)).filter(Boolean);
       $('#preWarn').innerHTML = preorderWarning(lines,['sell it','sell them']);
     }
     // a pre-order (or any non-full payment) needs a name
@@ -5084,7 +5309,7 @@ function bundleModal(edit){
     if(nl) nl.textContent = needName ? 'Name' : 'Name (optional)';
     if(pl) pl.textContent = needName ? 'Phone' : 'Phone (optional)';
     $('#saveBundle').textContent =
-      (loc===WAREHOUSE && buyIds().some((id,i,arr)=>preorderShortfall(id, invQty(WAREHOUSE,id)-arr.filter(x=>x===id).length)))
+      (isWarehouseLoc(loc) && buyIds().some((id,i,arr)=>preorderShortfall(id, invQty(loc,id)-arr.filter(x=>x===id).length, loc)))
         ? 'Record anyway' : 'Record';
   }
 
@@ -7225,7 +7450,6 @@ function cashAcctName(id){
   // reads out internal ids like "wh_64c0ee" or "sh_137998".
   const r=(STATE.regions||[]).find(x=>x.whLoc===id);
   if(r) return r.name+' — Warehouse';
-  if(id==='WAREHOUSE') return (STATE.warehouseName||'Warehouse');
   const e=(STATE.events||[]).find(x=>x.eventId===id);
   if(e) return e.name;
   const hd=(STATE.holders||[]).find(x=>x.holderId===id);
@@ -7669,7 +7893,7 @@ function cashModal(){
   if(!logRows) logRows = `<div class="cash-empty">No movements yet. Use “Record move” or “Move ALL cash” above.</div>`;
 
   const acctOpts = sel => accts.map(a=>`<option value="${esc(a.id)}" ${sel===a.id?'selected':''}>${esc(a.name)}</option>`).join('');
-  const defFrom = (CUR_LOC && accts.some(a=>a.id===CUR_LOC)) ? CUR_LOC : 'WAREHOUSE';
+  const defFrom = (CUR_LOC && accts.some(a=>a.id===CUR_LOC)) ? CUR_LOC : (accts[0]||{}).id;
   const defTo = (accts.find(a=>a.id!==defFrom)||accts[0]).id;
 
   openModal(`
@@ -8021,7 +8245,7 @@ function deliverModal(id, bundle){
       commit(payload, st=>{
         members.forEach(mm=>{
           const t=(st.sales||[]).find(v=>v.saleId===mm.saleId);
-          if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; }
+          if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; t.dfrom=fromStock?src:''; }
           if(fromStock) invAdd(st, src, mm.bookId, -1);
         });
       }, 'Delivered');
@@ -8198,7 +8422,7 @@ function regionModal(edit, after){
   }
 
   openModal(`
-    ${mHead(isEdit?'Edit region':'New region')}
+    ${mHead(isEdit?(edit.regionId===HQ_REGION?'Edit Earthly HQ':'Edit region'):'New region')}
     <div class="m-body">
       <div class="hint">A region has its own warehouse, its own currencies and its own prices.</div>
       <div class="field"><label>Region name</label>
@@ -8457,6 +8681,10 @@ function stockPlaces(){
     : (STATE.seasons||[]).filter(s=>!s.closedAt)
         .map((s,i)=>({s,i})).sort((a,b)=>(b.s.seasonId===STATE.activeSeason)-(a.s.seasonId===STATE.activeSeason) || a.i-b.i)
         .map(x=>x.s);
+  /* Earthly HQ's warehouse (books from the printer) heads the list, once it
+     exists — it is opened, and so made, from the 🌍 button. */
+  if(!coord && (isHQ() || (STATE.allRegions||[]).some(r=>r.regionId===HQ_REGION)))
+    seasons.unshift({seasonId:HQ_ID, name:'Earthly HQ'});
   seasons.forEach(s=>{
     const here = s.seasonId===STATE.activeSeason;
     const regs = (here ? regionsList() : (STATE.allRegions||[]).filter(r=>r.seasonId===s.seasonId))
@@ -8478,6 +8706,7 @@ function stockPlaces(){
 }
 function placeLabel(p){
   if(!p) return '';
+  if(p.seasonId===HQ_ID) return p.kind==='season' ? 'Earthly HQ' : 'Earthly HQ Warehouse';
   const season = (STATE.seasons||[]).length>1 && p.seasonName ? ' ('+p.seasonName+')' : '';
   return (p.kind==='event' ? p.name+' — '+p.regionName : p.name) + season;
 }
@@ -8873,7 +9102,7 @@ function addStockModal(opts){
     const pw = $('#preWarn');
     if(pw){
       const lines = (where==='there' && ctx.here && ctx.place.kind==='region' && ctx.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC))
-        ? stockBooks(ctx).map(b=>shortfallLine(b.id, nextFor(b.id))).filter(Boolean) : [];
+        ? stockBooks(ctx).map(b=>shortfallLine(b.id, nextFor(b.id), CUR_LOC)).filter(Boolean) : [];
       pw.innerHTML = preorderWarning(lines, ['reduce this count','reduce these counts']);
     }
   }
@@ -9208,6 +9437,7 @@ function showSeason(state, rev, id){
      how a sale made moments before could vanish. Each belongs to its own
      season and simply waits there, still being sent, until confirmed. */
   CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON;
+  if(id===HQ_ID){ CUR_LEVEL='region'; CUR_REGION=HQ_REGION; CUR_LOC=HQ_WH; }
   STATE = derive(); savePos(); cacheSave(); renderAll();
 }
 
@@ -9218,7 +9448,7 @@ function showSeason(state, rev, id){
    and settings we already know; the season's own records arrive a moment later. */
 function blankSeasonState(id){
   const seasons = STATE.seasons || [];
-  const name = (seasons.find(x=>x.seasonId===id)||{}).name || 'Season';
+  const name = id===HQ_ID ? 'Earthly HQ' : ((seasons.find(x=>x.seasonId===id)||{}).name || 'Season');
   return {
     seasonName:name, activeSeason:id, seasons, role:STATE.role||'admin',
     books:STATE.books||[], payTypes:STATE.payTypes||[], currencies:STATE.currencies||[],
@@ -9229,6 +9459,12 @@ function blankSeasonState(id){
     allRegions:STATE.allRegions||[], allEvents:STATE.allEvents||[], labels:STATE.labels||{},
     loading:true
   };
+}
+/* HQ opens on its own region straight away, before its records arrive. */
+function blankHQ(st){
+  st.regions = [{regionId:HQ_REGION, name:'Earthly HQ', whLoc:HQ_WH, currencies:['USD'], books:[],
+                 counts:{}, closedAt:'', payTypes:[], bookOrder:[], hidden:''}];
+  return st;
 }
 
 async function switchSeason(id){
@@ -9243,7 +9479,8 @@ async function switchSeason(id){
     setStatus('load','Refreshing…');
   }else{
     // Change now, fill in when the records arrive.
-    showSeason(blankSeasonState(id), REV, id);
+    const blank = blankSeasonState(id);
+    showSeason(id===HQ_ID ? blankHQ(blank) : blank, REV, id);
     setStatus('load','Opening…');
   }
   const myEpoch = SEASON_EPOCH;
@@ -9254,7 +9491,8 @@ async function switchSeason(id){
       seasonCacheSave(id, d.state, d.rev);
       BASE = d.state; REV = d.rev; STATE = derive(); renderAll();
       setStatus('ok','Saved · '+clock());
-      if(!cached) toast('Now showing ' + ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name);
+      if(!cached) toast('Now showing ' + (id===HQ_ID ? 'Earthly HQ'
+        : ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name));
     }
   }catch(err){
     setStatus('bad','Error');
@@ -9305,7 +9543,12 @@ function newSeasonModal(){
   $('#nsGo').addEventListener('click',async ()=>{
     const name=$('#nsName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+    const before = (STATE.seasons||[]).map(x=>x.seasonId);
+    const fromHQ = isHQ();
     if(await commitSync({action:'saveSeason', name}, 'Season created')){
+      // Made from HQ: go into the new season rather than stay above it.
+      const made = (STATE.seasons||[]).find(x=>!before.includes(x.seasonId));
+      if(fromHQ && made){ switchSeason(made.seasonId); return; }
       CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
     }
   });
@@ -10672,7 +10915,7 @@ function transferStockModal(opts){
     const f = fromPick.value;
     if(pw && fromCtx.here && f.kind==='region' && f.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC)){
       const lines = [...document.querySelectorAll(`#xfBody .xf-in[data-src="${f.loc}"]`)].map(i=>{
-        const q = val(i); return q ? shortfallLine(i.dataset.book, invQty(f.loc, i.dataset.book)-q) : '';
+        const q = val(i); return q ? shortfallLine(i.dataset.book, invQty(f.loc, i.dataset.book)-q, f.loc) : '';
       }).filter(Boolean);
       pw.innerHTML = preorderWarning(lines, ['transfer it','transfer them']);
     }
@@ -11357,7 +11600,12 @@ document.addEventListener('click',e=>{
 }, true);
 
 document.addEventListener('click',e=>{
-  if(e.target.closest('a')) return;              // let links open normally
+  /* Real links open normally. A link that carries an action of the app's own
+     (a region's or season's name in a table) is the app's to handle — those
+     used to be swallowed here, so tapping one did nothing. */
+  const link=e.target.closest('a');
+  if(link && !link.dataset.act) return;
+  if(link) e.preventDefault();
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
   if(a==='logfilter'){
@@ -11617,6 +11865,13 @@ document.addEventListener('click',e=>{
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); return; }
+  if(a==='gohq'){ if(!isHQ()) switchSeason(HQ_ID); return; }
+  // From HQ's summaries: open that season (or HQ's own row: stay here).
+  if(a==='goseasonid'){
+    const sid = t.dataset.season;
+    if(sid && sid!==HQ_ID && sid!==STATE.activeSeason) switchSeason(sid);
+    return;
+  }
   if(a==='goregion'){ goTo('region', t.dataset.region); return; }
   if(a==='newregion'){ regionModal(); return; }
   if(a==='editregion'){ regionModal(currentRegion()); return; }
@@ -11705,7 +11960,7 @@ document.addEventListener('click',e=>{
         +(members.some(m=>m.type==='SALE')?'The copies will be returned to stock.':''))) return;
       commit({action:'deleteBundle',bundle},
         st=>{ st.sales.filter(x=>x.bundle===bundle).forEach(m=>{
-                if(m.type==='SALE'&&m.bookId) invAdd(st,m.location,m.bookId,1); });
+                const back=restoreLocOf(m); if(back) invAdd(st,back,m.bookId,1); });
               st.sales=st.sales.filter(x=>x.bundle!==bundle); }, 'Transaction deleted');
       return;
     }
@@ -11714,7 +11969,7 @@ document.addEventListener('click',e=>{
     if(!confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':''))) return;
     commit({action:'deleteSale',saleId:id},
       st=>{const i=st.sales.findIndex(x=>x.saleId===id); if(i<0)return;
-           const x=st.sales[i]; if(x.type==='SALE'&&x.bookId) invAdd(st,x.location,x.bookId,1);
+           const x=st.sales[i]; const back=restoreLocOf(x); if(back) invAdd(st,back,x.bookId,1);
            st.sales.splice(i,1);}, 'Deleted');
     return;
   }

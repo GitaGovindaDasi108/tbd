@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b193**.
+Handover notes. Current build: **b196**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -95,6 +95,16 @@ These were each learned from a real bug. Breaking them reintroduces it.
 Sales, bundles, events, regions, cash movements, stock movements, payouts and
 change entries are all named client-side and sent with the request. This is what
 makes the UI instant and makes resends safe.
+
+**There is no default warehouse.**
+Every region has its own warehouse and none is "the" warehouse. The first
+region's warehouse still has the id `WAREHOUSE` (so its old data stays valid),
+but nothing may treat that id as a default: pre-orders are held against their
+own region's warehouse (`reservedMap_`, `reservedQty`), a place is never
+filled in when a request leaves it out (`placeOf_`), and names come from the
+region, never from the old `warehouseName` setting. A new device starts at the
+season, not in a region. Learned from "Copies would have to come from outside
+Poland" on another region's pre-order (b194).
 
 **Deleted things stay deleted.**
 `tombstone_(id)` records deliberate deletions; `isDeleted_(id)` blocks
@@ -191,7 +201,7 @@ revision; `--store=memory` runs the working copy with its records in memory.
 the browser tests never reach; re-record it (and the others) when an action
 deliberately changes.
 
-`node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -528,6 +538,99 @@ No change anyone can see; the groundwork for leaving Google Sheets.
   start on `defaultCur()`: PLN where the place takes it, else its first
   currency. Editing an old sale still shows its own stored currency.
   Covered by `test/curtest.js`.
+
+## Done in b194 — no default warehouse
+
+The first region's warehouse (Poland) was still treated as "the" warehouse
+in about 30 places. Fixed on both the server and the page:
+
+- **Pre-orders** hold copies at their own region's warehouse. Every open
+  pre-order in every region and season was held against Poland's shelf,
+  so Poland could be refused stock for another region's pre-order while that
+  region's own shelf held nothing back. The pre-order details say "Copies in
+  <its region> — Warehouse"; warnings name the warehouse being drawn down.
+- **Deleting a delivered pre-order** puts the copy back on the shelf it came
+  off. Deliveries now record that shelf (`dfrom`, a new `_sales` column,
+  added on first use); older ones go back to their own region's warehouse.
+  Before, the copy always went to Poland's warehouse. The page applies the
+  same rule when it shows the change instantly (`restoreLocOf`).
+- **No place is filled in by default:** a sale, donation or stock change that
+  names no place is refused. Deleting an event needs its region's warehouse.
+- **Every save queued a rebuild of Poland's report file**; no longer.
+- Reports name the shelf a pre-order was filled from, not the old
+  `warehouseName` setting.
+- A new device (nothing remembered) opens at the season, not the first
+  region; a region that has gone also falls back to the season.
+- Covered by `test/nodefault.js` (every check fails on b193).
+- `golden.js --ignore-col=name` leaves a deliberately new column out of the
+  comparison. Against b193 the only other differences are the two intended
+  ones (Italy's report now shows its pre-order held; a filled pre-order's
+  report note names the real shelf).
+
+Not changed: a brand-new, empty spreadsheet still seeds a first region named
+after the `warehouseName` setting ("Poland") with PLN prices and the original
+contacts. That only runs once, on a new spreadsheet.
+
+## Done in b195 — folding panels; the season's order
+
+- **Every panel folds from its heading** (tap the heading; the ▾ turns to ▸),
+  at every level. Each device remembers its own choices, per level
+  (`tbs_fold` in localStorage, keys like `season:payments`); everything
+  starts open. Buttons, fields and wording pencils inside a heading keep
+  working and do not fold it. The arrow is drawn by CSS, not written into the
+  heading, so rewritten wording still matches. Panels carry `data-fold`;
+  `applyFolds()` runs at the end of `renderAll`.
+- **The season's order:** Total Sales by Title, Collections by Region, Sales
+  by Region, Total Collections by Payment, then the Warehouse Overview.
+- With the shelf folded, the sales log beside it drops out of its borrowed
+  height (`.cols.inv-folded`), so it stays usable.
+- `test/browser-fold.js` covers it.
+
+## Done in b196 — Earthly HQ
+
+The level above the seasons: Earthly HQ › Season › Region › Event.
+
+- **What it is, in the data:** a region record (`rg_hq`, warehouse `wh_hq`,
+  "Earthly HQ") whose `seasonId` is `HQ` — a "season" of its own, so it is
+  never counted inside any tour. It is made the first time anyone opens HQ
+  (`ensureHQ_`, under the lock), with currencies INR and USD and no prices yet.
+  It cannot be closed or deleted, has no events, and no region can be made
+  there.
+- **Getting there:** 🌍 Earthly HQ starts the breadcrumb on every page. At HQ
+  the season picker reads "Choose a season…"; a season's name anywhere in
+  the summaries opens it. The server accepts `season: 'HQ'` (admin only) and
+  `setSeason` to HQ never becomes the stored default.
+- **Sales Portal** (folds): HQ's own region view — "Earthly HQ Warehouse" for
+  its shelf, its sales log, pending payments and pre-orders, sales by title,
+  totals by payment type. It sells, takes stock ("From the printer") and
+  sends books to any season (Transfer / Books in Transit) exactly like a
+  region. HQ heads the Add Stock / Transfer place list. "Edit Earthly HQ"
+  sets its currencies, prices and titles; share links work as for a region.
+- **Summaries Portal** (folds): Total Sales by Title, Collections by Season,
+  Sales by Season, Total Collections by Payment (tap a type for the seasonal
+  split), Seasonal Warehouse Overview. The tiles at the top of the page add
+  up everything too. HQ appears as its own row beside the seasons.
+- **How the summaries are drawn:** the season-level panels, handed a state
+  in which each "region" is a whole season (`rollupState`, `withRollup`;
+  `UNIT` supplies "season" and where a tap goes). The server sends every
+  season's records as `state.everywhere`, only to an admin at HQ; links never
+  get it. Existing seasons' replies are unchanged (golden replay identical).
+- **Closed seasons** keep their frozen rates at HQ: each of their sales
+  carries the dollar figure those rates give, through the same correction
+  used for dollars actually received (`test/hqfrozen.js`).
+- Folding is remembered separately at HQ (`hq:…` keys).
+- Also fixed: a region's (or season's) name in a Collections table, and in
+  the Cash Tracker, did nothing when tapped — the click handler ignored every
+  link. Links that carry an app action are now handled.
+- Tests: `test/hq.js` (server), `test/hqfrozen.js`, `test/browser-hq.js`.
+
+Not done yet:
+- No readable Google spreadsheet for HQ; HQ's own sales appear in no season
+  file. The WhatsApp 📋 buttons are not on the Summaries Portal yet.
+- In the summaries, a closed season's *costs* convert at today's rates (its
+  sales use the frozen ones).
+- HQ's Totals by Payment Type still says "tap a type to see it event by
+  event", though HQ has no events.
 
 ## Open items
 
