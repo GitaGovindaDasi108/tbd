@@ -39,8 +39,10 @@ if (process.argv[2] === '--worker-replay') {
     // Ids made the same way as test/mini.js's, so both sides name things alike.
     let uid = 0;
     const nextId = () => { uid++; return String.fromCharCode(97 + (uid % 26)) + 'aaaaa'; };
-    const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl: async () => { throw new Error('offline'); },
-                             uuid: () => nextId() + nextId() });
+    // Made when the session starts (it sets up a new database as it is made).
+    let srv = null;
+    const make = () => makeServer({ exec, timeZone: 'UTC', fetchImpl: async () => { throw new Error('offline'); },
+                                    uuid: () => nextId() + nextId() });
     const norm = v => (v instanceof RealDate ? 'D:' + (isNaN(v) ? 'invalid' : v.toISOString()) : (v === undefined || v === null ? '' : v));
     const lines = fs.readFileSync(process.argv[3], 'utf8').split('\n').filter(Boolean).map(JSON.parse);
     const clean = t => JSON.parse(JSON.stringify(JSON.parse(t), (k, v) => (k === 'build' || k === 'serverBuild' || k === 'serverTime') ? '' : v));
@@ -49,6 +51,7 @@ if (process.argv[2] === '--worker-replay') {
       now += 60000;
       let reply;
       try {
+        if (!srv) srv = make();
         srv.forget();
         if (p.__init) {
           // initialize()'s record-keeping part, then the tests' sample tour

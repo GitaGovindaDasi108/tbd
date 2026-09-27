@@ -7,6 +7,10 @@ compatibility_date = "2025-09-01"
 [vars]
 # The time zone dates are written in (Apps Script used the script's own).
 TIME_ZONE = "UTC"
+# Google sign-in for the owner's app: the OAuth client id made in Google Cloud
+# (see server/README.md), and the Google accounts allowed in, comma separated.
+GOOGLE_CLIENT_ID = ""
+ADMIN_EMAILS = ""
 
 [[durable_objects.bindings]]
 name = "TBS"

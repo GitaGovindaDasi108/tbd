@@ -21,7 +21,10 @@ export class TbsServer extends DurableObject {
     this.srv = makeServer({
       exec: (sql, ...params) => ctx.storage.sql.exec(sql, ...params).toArray(),
       timeZone: env.TIME_ZONE || 'UTC',
-      fetchImpl: (url) => fetch(url)
+      fetchImpl: (url) => fetch(url),
+      googleClientId: env.GOOGLE_CLIENT_ID || '',
+      adminEmails: env.ADMIN_EMAILS || '',
+      googleCertsUrl: env.GOOGLE_CERTS_URL || ''     // never set in production
     });
   }
 
@@ -31,7 +34,7 @@ export class TbsServer extends DurableObject {
     else e = { parameter: Object.fromEntries(new URL(request.url).searchParams) };
 
     await this.srv.warm();                       // rates in hand before the rules ask
-    const text = this.srv.answer(e);             // the whole request, start to finish
+    const text = await this.srv.request(e);      // sign-in check, then the whole request
     // Anything the rules wanted from the web and did not have: fetched now, for next time.
     this.ctx.waitUntil(this.srv.fetchWanted());
     // The hourly housekeeping, set going on the first request.
