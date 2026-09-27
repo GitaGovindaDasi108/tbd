@@ -32,6 +32,13 @@
 var WAREHOUSE = 'WAREHOUSE';            // the id of the FIRST region's warehouse, kept as a
                                         // literal so its old data stays valid. Only an id:
                                         // there is no default warehouse (see homeWarehouse_).
+/* Earthly HQ: the level above every season. It keeps its own warehouse (books
+   straight from the printer, in India) and sells like a region, so it IS a
+   region record — one that lives in a "season" of its own, HQ_ID, and so is
+   never counted inside any tour. Opening it shows every season's totals. */
+var HQ_ID     = 'HQ';
+var HQ_REGION = 'rg_hq';
+var HQ_WH     = 'wh_hq';
 var SEASON    = 'SEASON';               // the whole tour: every region rolled up together
 var SUMMARY   = 'SUMMARY';              // synthetic key: the cross-everything aggregator tab
 var RATE_PLN_PER_USD = 3.79;            // fallback: 3.79 PLN = 1 USD (used only if the live fetch fails)
@@ -211,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b195';
+var SERVER_BUILD = 'b196';
 
 function doPost(e) { return handle(e); }
 
@@ -270,6 +277,12 @@ function handle(e) {
        round trips into one, which is what made switching feel slow next to
        moving between regions. */
     if (action === 'setSeason') {
+      if (String(params.seasonId || '') === HQ_ID) {
+        if (who.role !== 'admin') throw new Error('That action is not available on this link.');
+        ensureHQ_();
+        setSeasonContext_(HQ_ID);        // looked at, never stored as the default
+        return raw(consistentStateReply_(who));
+      }
       doSetSeason(params);
       // Revision and data read together — the same fix as for refreshes, which
       // this path had been missing.
@@ -290,6 +303,10 @@ function handle(e) {
 
     if (who.role === 'admin' && params.season && seasonById_(String(params.season))) {
       setSeasonContext_(String(params.season));
+    }
+    if (who.role === 'admin' && String(params.season || '') === HQ_ID) {
+      ensureHQ_();
+      setSeasonContext_(HQ_ID);
     }
 
     // ---- Reads: no lock, cache-backed. ----
@@ -597,6 +614,7 @@ function scopedStateBuild_(who) {
     return mine[String(c.loc)] || String(c.loc) === 'BANK_' + regionId;
   });
   delete full.driveFolder;     // an owner's setting, not for link holders
+  delete full.everywhere;      // every season's figures are for the owner at HQ only
   full.stockMoves = isSeller ? [] : (full.stockMoves || []).filter(function (m) {
     return mine[m.fromLoc] || mine[m.toLoc];
   });
@@ -743,7 +761,10 @@ function stateJson_() {
   rev += '_' + SERVER_BUILD;
   var hit = cacheGet_(rev);
   if (hit) return hit;
-  var str = JSON.stringify(scopeToSeason_(readState()));
+  var st = readState();
+  // At HQ, every season's records ride along, taken before HQ's own trim.
+  if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
+  var str = JSON.stringify(scopeToSeason_(st));
   cachePut_(str, rev);
   return str;
 }
@@ -1140,6 +1161,7 @@ function closeDrafts_() {
 function doCloseLocation(p) {
   var kind = String(p.kind || 'event');
   var id = String(p.id || '');
+  if (kind === 'region' && id === HQ_REGION) throw new Error('Earthly HQ is never closed.');
   var locs = (kind === 'event') ? [id] : locsInRegion_(id);
   if (!locs.length) throw new Error('Nothing to close.');
   propDel_(CLOSE_DRAFT_PREFIX + kind + ':' + id);   // done with it
@@ -1337,7 +1359,8 @@ function allRegionsEverywhere_() {
     .map(function (r) {
       return { regionId: String(r.regionId), name: String(r.name),
                whLoc: String(r.whLoc || ''), seasonId: String(r.seasonId || ''),
-               seasonName: seasons[String(r.seasonId || '')] || '',
+               seasonName: seasons[String(r.seasonId || '')] ||
+                           (String(r.seasonId || '') === HQ_ID ? 'Earthly HQ' : ''),
                closedAt: r.closedAt ? String(r.closedAt) : '' };
     });
 }
@@ -2292,10 +2315,71 @@ function currenciesOf_(regionId) {
     cash ledger will accept. */
 function allCurrencies_() {
   var seen = { USD: 1 }, out = ['USD'];
-  regionsOrdered_().forEach(function (r) {
+  /* At Earthly HQ every season's money is added up, so every currency in use
+     anywhere is needed — for the columns and for the exchange rates. */
+  var regs = isHQ_()
+    ? objectsOf_('_regions').map(function (r) { return { currencies: parseCurList_(r.currencies) }; })
+    : regionsOrdered_();
+  regs.forEach(function (r) {
     (r.currencies || []).forEach(function (c) { if (!seen[c]) { seen[c] = 1; out.push(c); } });
   });
   return out;
+}
+
+/* ============================ EARTHLY HQ ============================ */
+function isHQ_() { return activeSeasonId_() === HQ_ID; }
+
+/* Made the first time anyone opens HQ — never on a spreadsheet that has not
+   asked for it. Under the lock, so two devices cannot make two. */
+function ensureHQ_() {
+  if (regionById_(HQ_REGION)) return;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    ensureReady();
+    sheetMemoClear_();
+    if (regionById_(HQ_REGION)) return;
+    appendRegion_({ regionId: HQ_REGION, name: 'Earthly HQ', whLoc: HQ_WH, sort: 0,
+                    createdAt: new Date(), currencies: 'INR,USD', books: '', bookOrder: '',
+                    key: '', closedAt: '', seasonId: HQ_ID });
+    cacheClear_();
+    bumpRev_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* Everything, from every season and from HQ itself, for the Summaries Portal.
+   Only admins at HQ get this; the Sales Portal uses the ordinary (HQ-scoped)
+   state beside it. A closed season carries the rates it was frozen at, so its
+   dollar figures add up at HQ exactly as they do in the season itself. */
+function everywhere_(sales, inv) {
+  return {
+    seasons: seasonsAll_().map(function (x) {
+      var rates = null;
+      if (x.closedAt && x.frozenRates) { try { rates = (JSON.parse(x.frozenRates) || {}).RATES || null; } catch (e) {} }
+      return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt ? String(x.closedAt) : '', rates: rates };
+    }),
+    regions: objectsOf_('_regions').filter(function (r) { return r && r.regionId; }).map(function (r) {
+      return { regionId: String(r.regionId), name: String(r.name), whLoc: String(r.whLoc || ''),
+               seasonId: String(r.seasonId || ''), currencies: parseCurList_(r.currencies),
+               closedAt: r.closedAt ? String(r.closedAt) : '' };
+    }),
+    events: objectsOf_('_events').filter(function (e) { return e && e.eventId; }).map(function (e) {
+      return { eventId: String(e.eventId), name: String(e.name), regionId: String(e.regionId || '') };
+    }),
+    holders: objectsOf_('_holders').filter(function (h) { return h && h.holderId && !truthyCell_(h.archived); })
+      .map(function (h) { return { holderId: String(h.holderId), regionId: String(h.regionId), name: String(h.name || '') }; }),
+    partners: partnersAll_().map(function (pt) { return { partnerId: pt.partnerId, regionId: pt.regionId, name: pt.name }; }),
+    shipments: shipmentsAll_(),
+    costs: objectsOf_('_costs').filter(function (x) { return x && x.id; }).map(function (x) {
+      return { id: String(x.id), location: String(x.location || ''), cur: String(x.cur || ''),
+               amt: Number(x.amt) || 0, partnerId: String(x.partnerId || ''), category: String(x.category || '') };
+    }),
+    sales: sales,
+    inventory: inv,
+    currencies: allCurrencies_()
+  };
 }
 /* ---- Per-region pricing ----
    `_prices` holds one row per region/book/currency. Falls back to the built-in
@@ -3255,7 +3339,7 @@ function readState() {
       var R = r.RATES || {};
       return { perUsd: R, plnPerUsd: R.PLN || RATE_PLN_PER_USD, eurPerUsd: R.EUR || RATE_EUR_PER_USD,
                live: !!r.live, asOf: r.asOf || '', frozen: !!r.frozen }; })(),
-    seasonName: (seasonById_(activeSeasonId_()) || {}).name || getSeasonName_(),
+    seasonName: isHQ_() ? 'Earthly HQ' : ((seasonById_(activeSeasonId_()) || {}).name || getSeasonName_()),
     seasons: seasonsAll_().map(function (x) {
       return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt };
     }),
@@ -4326,6 +4410,7 @@ function doOrgSave(p) {
 
 /* ---- Regions ---- */
 function doCreateRegion(p) {
+  if (isHQ_()) throw new Error('Regions belong to a season — choose a season first.');
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Give the region a name.');
   var curs = parseCurList_(p.currencies);
@@ -4395,6 +4480,7 @@ function doRegionAddBooks(p) {
        vanishing, because the books still exist even if the record doesn't.   */
 function doDeleteRegion(p) {
   var regionId = String(p.regionId || '');
+  if (regionId === HQ_REGION) throw new Error('Earthly HQ is always there; it cannot be deleted.');
   var reg = regionById_(regionId);
   if (!reg) throw new Error('That region no longer exists.');
 
@@ -5180,6 +5266,7 @@ function doCreateEvent(p) {
     var first = regionsOrdered_()[0];
     regionId = first ? first.regionId : '';
   }
+  if (regionId === HQ_REGION) throw new Error('Earthly HQ has no events; it sells from its own warehouse.');
   var events = objectsOf_('_events');
   for (var i = 0; i < events.length; i++) {
     if (String(events[i].regionId || '') === regionId &&

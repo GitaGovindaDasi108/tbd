@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b195**.
+Handover notes. Current build: **b196**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -201,7 +201,7 @@ revision; `--store=memory` runs the working copy with its records in memory.
 the browser tests never reach; re-record it (and the others) when an action
 deliberately changes.
 
-`node test/browser-buttons.js`, `browser-fold.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -585,6 +585,52 @@ contacts. That only runs once, on a new spreadsheet.
 - With the shelf folded, the sales log beside it drops out of its borrowed
   height (`.cols.inv-folded`), so it stays usable.
 - `test/browser-fold.js` covers it.
+
+## Done in b196 — Earthly HQ
+
+The level above the seasons: Earthly HQ › Season › Region › Event.
+
+- **What it is, in the data:** a region record (`rg_hq`, warehouse `wh_hq`,
+  "Earthly HQ") whose `seasonId` is `HQ` — a "season" of its own, so it is
+  never counted inside any tour. It is made the first time anyone opens HQ
+  (`ensureHQ_`, under the lock), with currencies INR and USD and no prices yet.
+  It cannot be closed or deleted, has no events, and no region can be made
+  there.
+- **Getting there:** 🌍 Earthly HQ starts the breadcrumb on every page. At HQ
+  the season picker reads "Choose a season…"; a season's name anywhere in
+  the summaries opens it. The server accepts `season: 'HQ'` (admin only) and
+  `setSeason` to HQ never becomes the stored default.
+- **Sales Portal** (folds): HQ's own region view — "Earthly HQ Warehouse" for
+  its shelf, its sales log, pending payments and pre-orders, sales by title,
+  totals by payment type. It sells, takes stock ("From the printer") and
+  sends books to any season (Transfer / Books in Transit) exactly like a
+  region. HQ heads the Add Stock / Transfer place list. "Edit Earthly HQ"
+  sets its currencies, prices and titles; share links work as for a region.
+- **Summaries Portal** (folds): Total Sales by Title, Collections by Season,
+  Sales by Season, Total Collections by Payment (tap a type for the seasonal
+  split), Seasonal Warehouse Overview. The tiles at the top of the page add
+  up everything too. HQ appears as its own row beside the seasons.
+- **How the summaries are drawn:** the season-level panels, handed a state
+  in which each "region" is a whole season (`rollupState`, `withRollup`;
+  `UNIT` supplies "season" and where a tap goes). The server sends every
+  season's records as `state.everywhere`, only to an admin at HQ; links never
+  get it. Existing seasons' replies are unchanged (golden replay identical).
+- **Closed seasons** keep their frozen rates at HQ: each of their sales
+  carries the dollar figure those rates give, through the same correction
+  used for dollars actually received (`test/hqfrozen.js`).
+- Folding is remembered separately at HQ (`hq:…` keys).
+- Also fixed: a region's (or season's) name in a Collections table, and in
+  the Cash Tracker, did nothing when tapped — the click handler ignored every
+  link. Links that carry an app action are now handled.
+- Tests: `test/hq.js` (server), `test/hqfrozen.js`, `test/browser-hq.js`.
+
+Not done yet:
+- No readable Google spreadsheet for HQ; HQ's own sales appear in no season
+  file. The WhatsApp 📋 buttons are not on the Summaries Portal yet.
+- In the summaries, a closed season's *costs* convert at today's rates (its
+  sales use the frozen ones).
+- HQ's Totals by Payment Type still says "tap a type to see it event by
+  event", though HQ has no events.
 
 ## Open items
 
