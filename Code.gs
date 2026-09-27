@@ -87,7 +87,7 @@ function getRates_() {
   var wanted = allCurrencies_();
   var key = 'fx_v4_' + wanted.join('-');
   try {
-    var hit = CacheService.getScriptCache().get(key);
+    var hit = tempGet_(key);
     if (hit) { var c = JSON.parse(hit); if (c && c.live) { _fxMemo = c; return _fxMemo; } }
   } catch (e) {}
 
@@ -115,7 +115,7 @@ function getRates_() {
   }
 
   if (live) {
-    try { CacheService.getScriptCache().put(key, JSON.stringify(live), 6 * 3600); } catch (e) {}
+    tempPut_(key, JSON.stringify(live), 6 * 3600);
     _fxMemo = live;
     return _fxMemo;
   }
@@ -191,12 +191,12 @@ var TH = {
 /* A revision number changes on every write. Devices poll this instead of
    pulling the whole state, so "nothing has changed" costs one property read. */
 function getRev_() {
-  var v = PropertiesService.getScriptProperties().getProperty('rev');
+  var v = propGet_('rev');
   return v ? Number(v) : 0;
 }
 function bumpRev_() {
   var n = getRev_() + 1;
-  PropertiesService.getScriptProperties().setProperty('rev', String(n));
+  propSet_('rev', String(n));
   return n;
 }
 
@@ -207,7 +207,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b191';
+var SERVER_BUILD = 'b192';
 
 function doPost(e) { return handle(e); }
 
@@ -220,15 +220,14 @@ function doPost(e) { return handle(e); }
    original answer back, so a retry is always safe. */
 function opSeen_(opId) {
   if (!opId) return null;
-  try { return CacheService.getScriptCache().get('op_' + opId); }
-  catch (e) { return null; }
+  return tempGet_('op_' + opId);
 }
 function rememberOp_(opId, reply) {
   if (!opId) return;
   // Ten minutes is far longer than anyone keeps pressing a button.
   // Six hours — the most the cache allows — so a save re-sent long after a
   // closed page is still recognized rather than applied a second time.
-  try { CacheService.getScriptCache().put('op_' + opId, reply, 21600); } catch (e) {}
+  tempPut_('op_' + opId, reply, 21600);
 }
 
 function handle(e) {
@@ -319,7 +318,7 @@ function handle(e) {
          this check at all. */
       var oid = String(params.checkOp || '');
       var done = false;
-      if (oid) { try { done = !!CacheService.getScriptCache().get('op_' + oid); } catch (e) {} }
+      if (oid) done = !!tempGet_('op_' + oid);
       return raw('{"ok":true,"done":' + (done ? 'true' : 'false') + '}');
     }
 
@@ -448,7 +447,7 @@ function handle(e) {
       // shipping the whole state here would only make the write slower.
       flushStockMoves_();          // one write for however many rows this action made
       // Tells the background render to hold off while a burst of work is going on.
-      PropertiesService.getScriptProperties().setProperty('lastWriteAt', String(Date.now()));
+      propSet_('lastWriteAt', String(Date.now()));
       /* If the caller says it needs the new state, send it with the reply.
 
          Structural changes used to save, then fetch the state in a second
@@ -488,27 +487,25 @@ var MAX_CHUNKS = 12;
 
 function cachePut_(str, rev) {
   try {
-    var c = CacheService.getScriptCache();
     var KEY = CACHE_KEY + '_r' + rev;
     var n = Math.ceil(str.length / CHUNK);
     if (n > MAX_CHUNKS) return;            // too big to cache; reads stay direct
     var payload = {};
     for (var i = 0; i < n; i++) payload[KEY + '_' + i] = str.substr(i * CHUNK, CHUNK);
     payload[KEY + '_n'] = String(n);
-    c.putAll(payload, 3600);               // an hour is plenty; the key changes on every write
+    KV_.putTempAll(payload, 3600);               // an hour is plenty; the key changes on every write
   } catch (err) { /* cache is an optimisation, never a requirement */ }
 }
 
 function cacheGet_(rev) {
   try {
-    var c = CacheService.getScriptCache();
     var KEY = CACHE_KEY + '_r' + rev;
-    var n = c.get(KEY + '_n');
+    var n = KV_.getTemp(KEY + '_n');
     if (!n) return null;
     n = Number(n);
     var keys = [];
     for (var i = 0; i < n; i++) keys.push(KEY + '_' + i);
-    var got = c.getAll(keys);
+    var got = KV_.getTempAll(keys);
     var out = '';
     for (var j = 0; j < n; j++) {
       var part = got[KEY + '_' + j];
@@ -524,12 +521,11 @@ function cacheGet_(rev) {
 function cacheClear_() {
   sheetMemoClear_();                     // data just changed; re-read on demand
   try {
-    var c = CacheService.getScriptCache();
     var rev = getRev_();
     var KEY = CACHE_KEY + '_r' + rev;
     var keys = [KEY + '_n'];
     for (var i = 0; i < MAX_CHUNKS; i++) keys.push(KEY + '_' + i);
-    c.removeAll(keys);
+    KV_.delTempAll(keys);
   } catch (err) { /* ignore */ }
 }
 
@@ -828,67 +824,50 @@ function ensureReady(force) {
   // Checking five sheets on every single request was measurable overhead, so
   // the all-clear is remembered for an hour.
   if (!force) {
-    try { if (CacheService.getScriptCache().get('tbs_ready_v4')) return; } catch (err) {}
+    if (tempGet_('tbs_ready_v4')) return;
   }
 
-  sheet_('_meta',      ['key','value']);
-  sheet_('_books',     ['id','name','cat','usd','pln','eur','sort']);
-  sheet_('_custombooks',['id','name','cat','createdAt','partnerId','sort']);
-  sheet_('_partners',  ['partnerId','regionId','name','note','createdAt','archived']);
-  sheet_('_payouts',   ['id','partnerId','ts','cur','amt','note','method']);
-  sheet_('_costs',     ['id','ts','location','category','payType','cur','amt','note','partnerId']);
-  sheet_('_change',    ['id','ts','amt','cur','source','sourceName','loc','returnedAt','by']);
-  sheet_('_labels',    ['key','text']);
-  sheet_('_qr',        ['id','scope','label','caption','src','sort']);
-  sheet_('_holders',   ['holderId','regionId','name','phone','note','createdAt','archived']);
-  sheet_('_shipments', ['shipId','fromRegion','toRegion','mode','carrier','phone',
+  dbCreate_('_meta',      ['key','value']);
+  dbCreate_('_books',     ['id','name','cat','usd','pln','eur','sort']);
+  dbCreate_('_custombooks',['id','name','cat','createdAt','partnerId','sort']);
+  dbCreate_('_partners',  ['partnerId','regionId','name','note','createdAt','archived']);
+  dbCreate_('_payouts',   ['id','partnerId','ts','cur','amt','note','method']);
+  dbCreate_('_costs',     ['id','ts','location','category','payType','cur','amt','note','partnerId']);
+  dbCreate_('_change',    ['id','ts','amt','cur','source','sourceName','loc','returnedAt','by']);
+  dbCreate_('_labels',    ['key','text']);
+  dbCreate_('_qr',        ['id','scope','label','caption','src','sort']);
+  dbCreate_('_holders',   ['holderId','regionId','name','phone','note','createdAt','archived']);
+  dbCreate_('_shipments', ['shipId','fromRegion','toRegion','mode','carrier','phone',
                         'tracking','trackingUrl','eta','note','status','createdAt','arrivedAt',
                         'manifest','origin']);
-  sheet_('_regions',   ['regionId','name','whLoc','sort','createdAt','currencies','books','key','closedAt','seasonId']);
-  sheet_('_seasons',   ['seasonId','name','sort','createdAt','closedAt']);
-  sheet_('_prices',    ['regionId','bookId','cur','price']);
-  sheet_('_events',    ['eventId','name','createdAt','regionId','key','closedAt','sort','payTypes']);
-  sheet_('_inventory', ['location','bookId','qty']);
-  sheet_('_sales',     SALES_HEADERS);
-  sheet_('_cash',      ['id','ts','kind','fromAcct','toAcct','cur','amt','note','purpose','by','changeAmt','changeIds','changeRef']);
-  sheet_('_org',       ['id','scope','category','sort','name','phone']);
-  sheet_('_stockmoves',['id','ts','kind','fromLoc','toLoc','bookId','qty','note','fromBefore','fromAfter','toBefore','toAfter']);
+  dbCreate_('_regions',   ['regionId','name','whLoc','sort','createdAt','currencies','books','key','closedAt','seasonId']);
+  dbCreate_('_seasons',   ['seasonId','name','sort','createdAt','closedAt']);
+  dbCreate_('_prices',    ['regionId','bookId','cur','price']);
+  dbCreate_('_events',    ['eventId','name','createdAt','regionId','key','closedAt','sort','payTypes']);
+  dbCreate_('_inventory', ['location','bookId','qty']);
+  dbCreate_('_sales',     SALES_HEADERS);
+  dbCreate_('_cash',      ['id','ts','kind','fromAcct','toAcct','cur','amt','note','purpose','by','changeAmt','changeIds','changeRef']);
+  dbCreate_('_org',       ['id','scope','category','sort','name','phone']);
+  dbCreate_('_stockmoves',['id','ts','kind','fromLoc','toLoc','bookId','qty','note','fromBefore','fromAfter','toBefore','toAfter']);
 
-  // Force the phone column to plain text. Without this, Sheets treats a leading
-  // "+" as the start of a formula and quietly eats it, so international numbers
-  // came back as bare digits with the country code prefix gone.
-  var salesSh = getSheet_('_sales');
-  var phoneIdx = SALES_HEADERS.indexOf('phone') + 1;
-  salesSh.getRange(2, phoneIdx, Math.max(salesSh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
+  sheetsPrepare_();                      // phone columns as text, before anything is written
 
-  /* Sheets treats a leading "+" as the start of a formula, which turned +48
-     numbers into errors — and reading that error back is what wiped the number.
-     Every sheet holding a phone gets its column forced to plain text, not just
-     the sales one; the org chart was missed and that is where pasted numbers
-     with a country code were being lost. */
-  [['_sales', SALES_HEADERS.indexOf('phone') + 1],
-   ['_org', 6],           // id, scope, category, sort, name, phone
-   ['_holders', 4]        // holderId, regionId, name, phone
-  ].forEach(function (pair) {
-    var sh = getSheet_(pair[0]);
-    if (!sh || pair[1] < 1) return;
-    sh.getRange(2, pair[1], Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
-  });
+  if (!objectsOf_('_meta').length) dbInsert_('_meta', { key: 'warehouseName', value: 'Poland' });
 
-  var meta = getSheet_('_meta');
-  if (meta.getLastRow() < 2) meta.appendRow(['warehouseName', 'Poland']);
-
-  var bs = getSheet_('_books');
-  if (bs.getLastRow() < 2 || force) {
-    bs.getRange(1, 1, 1, 6).setValues([['id','name','cat','usd','pln','eur']]).setFontWeight('bold');
-    if (bs.getLastRow() > 1) bs.getRange(2, 1, bs.getLastRow() - 1, 6).clearContent();
-    var rows = BOOKS.map(function (b) { return [b.id, b.name, b.cat, b.usd, b.pln, b.eur]; });
-    bs.getRange(2, 1, rows.length, 6).setValues(rows);
+  /* The built-in titles, written by position over whatever the first rows
+     hold; anything else on those rows (a hand-placed sort) is kept. */
+  var oldBooks = objectsOf_('_books');
+  if (!oldBooks.length || force) {
+    var seeded = BOOKS.map(function (b, i) {
+      return Object.assign({}, oldBooks[i] || {}, { id: b.id, name: b.name, cat: b.cat, usd: b.usd, pln: b.pln, eur: b.eur });
+    }).concat(oldBooks.slice(BOOKS.length).map(function (o) {
+      return Object.assign({}, o, { id: '', name: '', cat: '', usd: '', pln: '', eur: '' });
+    }));
+    dbSave_('_books', seeded, ['id','name','cat','usd','pln','eur']);
   }
 
   // Seed the org chart once, with the initial contacts. Never overwrites edits.
-  var orgSh = getSheet_('_org');
-  if (orgSh.getLastRow() < 2) {
+  if (!objectsOf_('_org').length) {
     var seed = [
       ['General — book distribution in Poland', 'Gita Govinda', '+16509225957'],
       ['Warehouse Books', 'Tulasi Sevani', '+48515967837'],
@@ -900,51 +879,30 @@ function ensureReady(force) {
     /* Written by column name. Laid out positionally, these five values landed in
        a six-column sheet, so every seeded contact was shifted one place — the
        category ended up under 'scope' and the phone under 'name'. */
-    var orgHeadersNow = orgSh.getRange(1, 1, 1, Math.max(orgSh.getLastColumn(), 1))
-      .getValues()[0].map(String);
-    var orgRows = seed.map(function (r, i) {
-      var row = { id: 'O' + Utilities.getUuid().slice(0, 7), scope: SEASON,
-                  category: r[0], sort: i, name: r[1], phone: r[2] };
-      return orgHeadersNow.map(function (h) { return row[h] === undefined ? '' : row[h]; });
-    });
-    orgSh.getRange(2, 1, orgRows.length, orgHeadersNow.length).setValues(orgRows);
-    var iPhone = orgHeadersNow.indexOf('phone');
-    if (iPhone >= 0) orgSh.getRange(2, iPhone + 1, orgRows.length, 1).setNumberFormat('@');
+    dbInsert_('_org', seed.map(function (r, i) {
+      return { id: 'O' + Utilities.getUuid().slice(0, 7), scope: SEASON,
+               category: r[0], sort: i, name: r[1], phone: r[2] };
+    }));
   }
 
   // Seed the tour-wide payment codes once, pointing at the files shipped with
   // the page. Editing or removing them later is never overwritten.
-  var qrSh = getSheet_('_qr');
-  if (qrSh && qrSh.getLastRow() < 2) {
-    qrSh.getRange(2, 1, 3, 6).setValues([
-      ['Qseed01', SEASON, 'Wise',   'Name: Renuka Radhakrishnan\nWiseTag: https://wise.com/pay/me/renukar73', 'qr-wise.jpeg', 0],
-      ['Qseed02', SEASON, 'PayPal', 'rradhakrsna@gmail.com', 'qr-paypal.jpeg', 1],
-      ['Qseed03', SEASON, 'Zelle',  'Name: Renuka RadhaKrishnan\nrradhakrsna@gmail.com', 'qr-zelle.jpeg', 2]
+  if (dbHas_('_qr') && !objectsOf_('_qr').length) {
+    dbInsert_('_qr', [
+      { id: 'Qseed01', scope: SEASON, label: 'Wise',   caption: 'Name: Renuka Radhakrishnan\nWiseTag: https://wise.com/pay/me/renukar73', src: 'qr-wise.jpeg', sort: 0 },
+      { id: 'Qseed02', scope: SEASON, label: 'PayPal', caption: 'rradhakrsna@gmail.com', src: 'qr-paypal.jpeg', sort: 1 },
+      { id: 'Qseed03', scope: SEASON, label: 'Zelle',  caption: 'Name: Renuka RadhaKrishnan\nrradhakrsna@gmail.com', src: 'qr-zelle.jpeg', sort: 2 }
     ]);
   }
 
   migrateSeason_();
-  ensureColumn_('_sales', 'soldBy');
-  ensureColumn_('_sales', 'changeamt');
-  ensureColumn_('_sales', 'changecur');
+  dbAddCols_('_sales', ['soldBy']);
+  dbAddCols_('_sales', ['changeamt']);
+  dbAddCols_('_sales', ['changecur']);
   migrateSales_();
-  try { CacheService.getScriptCache().put('tbs_ready_v4', '1', 3600); } catch (err) {}
+  tempPut_('tbs_ready_v4', '1', 3600);
 }
 
-/**
- * Keeps the _sales header row canonical.
- *
- * SALES_HEADERS has only ever grown by appending, so rewriting row 1 in full is
- * always correct and is safe to repeat.
- *
- * This replaces an earlier version that appended only the missing labels at
- * getLastColumn() + 1, which was subtly wrong: appendRow writes a value for
- * every column in SALES_HEADERS whether or not the header row knows about it,
- * so the data column count ran ahead of the label count and the new labels
- * landed one block too far right. Values then read back under an empty key and
- * vanished — a partial payment's balance silently became zero. Rewriting the
- * row puts the labels back over their own data and recovers those records.
- */
 /* One-time upgrade to the season/region/event hierarchy.
 
    Deliberately non-destructive: Poland's warehouse keeps the literal location id
@@ -952,87 +910,72 @@ function ensureReady(force) {
    still points at exactly the right place. We only add the region record around
    them, stamp existing events with it, and scope existing org rows to it.      */
 function migrateSeason_() {
-  ensureColumn_('_events', 'regionId');
-  ensureColumn_('_org', 'scope');
-  ensureColumn_('_regions', 'currencies');
-  ensureColumn_('_regions', 'books');
-  ensureColumn_('_regions', 'key');
-  ensureColumn_('_events', 'key');
-  ensureColumn_('_events', 'closedAt');
-  ensureColumn_('_events', 'sort');
-  ensureColumn_('_events', 'hidden');
-  ensureColumn_('_shipments', 'manifest');
-  ensureColumn_('_custombooks', 'partnerId');
-  ensureColumn_('_payouts', 'method');
-  ensureColumn_('_shipments', 'origin');
-  ensureColumn_('_cash', 'purpose');
-  ensureColumn_('_cash', 'by');
-  ensureColumn_('_cash', 'changeAmt');
-  ensureColumn_('_cash', 'changeIds');
-  ensureColumn_('_cash', 'changeRef');
-  ensureColumn_('_regions', 'seasonId');
-  ensureColumn_('_events', 'payTypes');
-  ensureColumn_('_custombooks', 'sort');
-  ensureColumn_('_regions', 'bankName');
-  ensureColumn_('_regions', 'bookOrder');
-  if (getSheet_('_costs')) ensureColumn_('_costs', 'partnerId');
-  ensureColumn_('_regions', 'sellerKey');
-  ensureColumn_('_regions', 'sellerScope');
-  ensureColumn_('_regions', 'payTypes');
-  ensureColumn_('_regions', 'closedAt');
+  dbAddCols_('_events', ['regionId']);
+  dbAddCols_('_org', ['scope']);
+  dbAddCols_('_regions', ['currencies']);
+  dbAddCols_('_regions', ['books']);
+  dbAddCols_('_regions', ['key']);
+  dbAddCols_('_events', ['key']);
+  dbAddCols_('_events', ['closedAt']);
+  dbAddCols_('_events', ['sort']);
+  dbAddCols_('_events', ['hidden']);
+  dbAddCols_('_shipments', ['manifest']);
+  dbAddCols_('_custombooks', ['partnerId']);
+  dbAddCols_('_payouts', ['method']);
+  dbAddCols_('_shipments', ['origin']);
+  dbAddCols_('_cash', ['purpose']);
+  dbAddCols_('_cash', ['by']);
+  dbAddCols_('_cash', ['changeAmt']);
+  dbAddCols_('_cash', ['changeIds']);
+  dbAddCols_('_cash', ['changeRef']);
+  dbAddCols_('_regions', ['seasonId']);
+  dbAddCols_('_events', ['payTypes']);
+  dbAddCols_('_custombooks', ['sort']);
+  dbAddCols_('_regions', ['bankName']);
+  dbAddCols_('_regions', ['bookOrder']);
+  dbAddCols_('_costs', ['partnerId']);
+  dbAddCols_('_regions', ['sellerKey']);
+  dbAddCols_('_regions', ['sellerScope']);
+  dbAddCols_('_regions', ['payTypes']);
+  dbAddCols_('_regions', ['closedAt']);
 
-  var regionsSh = getSheet_('_regions');
   var firstRegionId = '';
 
-  if (regionsSh.getLastRow() < 2) {
+  if (!objectsOf_('_regions').length) {
     // Name the first region after whatever the warehouse was already called.
     var whName = String(getWarehouseName_() || 'Poland').trim() || 'Poland';
     firstRegionId = 'rg_' + Utilities.getUuid().slice(0, 6);
     // Poland's original three currencies, in the order the app has always shown them.
-    regionsSh.appendRow([firstRegionId, whName, WAREHOUSE, 0, new Date(), 'PLN,EUR,USD']);
+    dbInsert_('_regions', { regionId: firstRegionId, name: whName, whLoc: WAREHOUSE, sort: 0,
+                            createdAt: new Date(), currencies: 'PLN,EUR,USD' });
   } else {
     var existing = regionsOrdered_();
     firstRegionId = existing.length ? existing[0].regionId : '';
   }
 
   // Stamp any event that predates regions onto the first region.
-  var evRows = rowsOf_('_events');
-  var evHeaders = evRows.headers.map(String);
-  var regIdx = evHeaders.indexOf('regionId');
-  if (regIdx >= 0 && firstRegionId) {
-    evRows.data.forEach(function (row, i) {
-      if (!String(row[regIdx] || '').trim()) {
-        evRows.sheet.getRange(i + 2, regIdx + 1).setValue(firstRegionId);
-      }
-    });
+  if (firstRegionId) {
+    dbUpdate_('_events', function (e) { return !String(e.regionId || '').trim(); }, { regionId: firstRegionId });
   }
 
   // Seed that region's prices from the built-in figures, so nothing changes for
   // Poland while later regions get their own pricing.
-  var pricesSh = getSheet_('_prices');
-  if (pricesSh && pricesSh.getLastRow() < 2 && firstRegionId) {
+  if (dbHas_('_prices') && !objectsOf_('_prices').length && firstRegionId) {
     var rows = [];
     allBooks_().forEach(function (b) {
-      rows.push([firstRegionId, b.id, 'PLN', Number(b.pln) || 0]);
-      rows.push([firstRegionId, b.id, 'EUR', Number(b.eur) || 0]);
-      rows.push([firstRegionId, b.id, 'USD', Number(b.usd) || 0]);
+      rows.push({ regionId: firstRegionId, bookId: b.id, cur: 'PLN', price: Number(b.pln) || 0 });
+      rows.push({ regionId: firstRegionId, bookId: b.id, cur: 'EUR', price: Number(b.eur) || 0 });
+      rows.push({ regionId: firstRegionId, bookId: b.id, cur: 'USD', price: Number(b.usd) || 0 });
     });
-    if (rows.length) pricesSh.getRange(2, 1, rows.length, 4).setValues(rows);
+    dbInsert_('_prices', rows);
   }
 
   repairOrgColumns_();
 
   // Existing org entries belong to that first region (they were written when the
   // warehouse WAS the whole world).
-  var orgRows = rowsOf_('_org');
-  var orgHeaders = orgRows.headers.map(String);
-  var scopeIdx = orgHeaders.indexOf('scope');
-  if (scopeIdx >= 0 && firstRegionId) {
-    orgRows.data.forEach(function (row, i) {
-      if (!String(row[scopeIdx] || '').trim()) {
-        orgRows.sheet.getRange(i + 2, scopeIdx + 1).setValue(firstRegionId);
-      }
-    });
+  if (firstRegionId) {
+    dbUpdate_('_org', function (o) { return !String(o.scope || '').trim(); }, { scope: firstRegionId });
   }
 }
 
@@ -1075,77 +1018,8 @@ function repairOrgColumns_() {
     };
   }).filter(function (r) { return r.category && (r.name || r.phone); });
 
-  writeObjects_('_org', ['id','scope','category','sort','name','phone'], fixed);
+  dbSave_('_org', fixed, ['id','scope','category','sort','name','phone']);
   console.log('Repaired ' + shifted.length + ' org row(s) shifted by the scope-column change.');
-}
-
-function migrateSales_() {
-  var sh = getSheet_('_sales');
-  var width = Math.max(sh.getLastColumn(), SALES_HEADERS.length);
-  var headers = sh.getRange(1, 1, 1, width).getValues()[0];
-
-  var correct = true;
-  for (var i = 0; i < SALES_HEADERS.length; i++) {
-    if (String(headers[i] || '') !== SALES_HEADERS[i]) { correct = false; break; }
-  }
-  // Anything to the right of the canonical set is stale from the old bug.
-  for (var j = SALES_HEADERS.length; j < width; j++) {
-    if (String(headers[j] || '') !== '') { correct = false; break; }
-  }
-  if (correct) return;
-
-  sh.getRange(1, 1, 1, SALES_HEADERS.length).setValues([SALES_HEADERS]).setFontWeight('bold');
-  if (width > SALES_HEADERS.length) {
-    sh.getRange(1, SALES_HEADERS.length + 1, 1, width - SALES_HEADERS.length).clearContent();
-  }
-}
-
-function sheet_(name, headers) {
-  var ss = SpreadsheetApp.getActive();
-  var sh = ss.getSheetByName(name);
-  if (!sh) {
-    sh = ss.insertSheet(name);
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
-    sh.setFrozenRows(1);
-    sh.hideSheet();
-  }
-  return sh;
-}
-
-function getSheet_(name) { return SpreadsheetApp.getActive().getSheetByName(name); }
-
-/* Add a column header to an existing sheet if it isn't there yet. Rows written
-   before the column existed simply read back undefined, which callers default —
-   so this upgrades a live sheet without rewriting a single row. */
-/* Make sure a sheet has every column the code expects, adding any that are
-   missing.
-
-   Rows are appended by position, so a sheet that predates a new field silently
-   drops it — the record saves, but the new value lands in an unnamed column and
-   is gone on the next read. That is how "change owed" vanished from a sale that
-   was otherwise intact. Self-healing here means a new field works the moment the
-   code ships, whether or not initialize has been run. */
-function ensureHeaders_(name, headers) {
-  var sh = getSheet_(name);
-  if (!sh) return;
-  var width = Math.max(sh.getLastColumn(), 1);
-  var live = sh.getRange(1, 1, 1, width).getValues()[0].map(String);
-  var missing = headers.filter(function (h) { return live.indexOf(h) < 0; });
-  if (!missing.length) return;
-  if (sh.getMaxColumns() < live.length + missing.length) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), missing.length);
-  }
-  sh.getRange(1, live.length + 1, 1, missing.length).setValues([missing]);
-  sheetMemoClear_();
-}
-
-function ensureColumn_(name, header) {
-  var sh = getSheet_(name);
-  if (!sh) return;
-  var width = Math.max(sh.getLastColumn(), 1);
-  var headers = sh.getRange(1, 1, 1, width).getValues()[0].map(String);
-  if (headers.indexOf(header) >= 0) return;
-  sh.getRange(1, width + 1).setValue(header);
 }
 
 /* ---- Closing a place ------------------------------------------------------
@@ -1227,18 +1101,9 @@ function outstandingAt_(locs) {
 function setClosed_(kind, id, when) {
   var sheetName = kind === 'event' ? '_events' : '_regions';
   var idCol = kind === 'event' ? 'eventId' : 'regionId';
-  var rows = rowsOf_(sheetName);
-  var hs = rows.headers.map(String);
-  var iId = hs.indexOf(idCol), iC = hs.indexOf('closedAt');
-  if (iC < 0) throw new Error('That sheet has not been upgraded — run initialize.');
-  var found = false;
-  rows.data.forEach(function (row, i) {
-    if (String(row[iId]) !== String(id)) return;
-    rows.sheet.getRange(i + 2, iC + 1).setValue(when);
-    found = true;
-  });
-  if (!found) throw new Error('That no longer exists.');
-  sheetMemoClear_();
+  if (dbCols_(sheetName).indexOf('closedAt') < 0) throw new Error('That sheet has not been upgraded — run initialize.');
+  var match = {}; match[idCol] = String(id);
+  if (!dbUpdate_(sheetName, match, { closedAt: when })) throw new Error('That no longer exists.');
 }
 
 /* Close an event or a region, reconciling the shelves on the way out.
@@ -1253,15 +1118,14 @@ function doSaveCloseDraft(p) {
   var kind = String(p.kind || 'event'), id = String(p.id || '');
   if (!id) throw new Error('Nothing to save.');
   var key = CLOSE_DRAFT_PREFIX + kind + ':' + id;
-  var props = PropertiesService.getScriptProperties();
-  if (p.clear) { props.deleteProperty(key); return; }
+  if (p.clear) { propDel_(key); return; }
   var d = p.draft || {};
   var draft = { checks: (d.checks || []).map(Number), counts: d.counts || {}, note: String(d.note || '').slice(0, 500),
                 at: new Date().toISOString(), by: _cashBy || '' };
-  props.setProperty(key, JSON.stringify(draft).slice(0, 8500));
+  propSet_(key, JSON.stringify(draft).slice(0, 8500));
 }
 function closeDrafts_() {
-  var all = PropertiesService.getScriptProperties().getProperties(), out = {};
+  var all = propAll_(), out = {};
   Object.keys(all).forEach(function (k) {
     if (k.indexOf(CLOSE_DRAFT_PREFIX) !== 0) return;
     try { out[k.slice(CLOSE_DRAFT_PREFIX.length)] = JSON.parse(all[k]); } catch (e) {}
@@ -1274,7 +1138,7 @@ function doCloseLocation(p) {
   var id = String(p.id || '');
   var locs = (kind === 'event') ? [id] : locsInRegion_(id);
   if (!locs.length) throw new Error('Nothing to close.');
-  PropertiesService.getScriptProperties().deleteProperty(CLOSE_DRAFT_PREFIX + kind + ':' + id);   // done with it
+  propDel_(CLOSE_DRAFT_PREFIX + kind + ':' + id);   // done with it
 
   var counts = p.counts || {};
   var map = loadInvMap_();
@@ -1327,16 +1191,9 @@ function doReorder(p) {
   if (!ids.length) return;
   var sheetName = kind === 'event' ? '_events' : '_regions';
   var idCol = kind === 'event' ? 'eventId' : 'regionId';
-  var rows = rowsOf_(sheetName);
-  var hs = rows.headers.map(String);
-  if (hs.indexOf('sort') < 0) throw new Error('That sheet has not been upgraded — run initialize.');
-  var objs = rows.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    var at = ids.indexOf(String(o[idCol]));
-    if (at >= 0) o.sort = at;
-    return o;
-  });
-  writeObjects_(sheetName, hs, objs);
+  if (dbCols_(sheetName).indexOf('sort') < 0) throw new Error('That sheet has not been upgraded — run initialize.');
+  dbUpdate_(sheetName, function (o) { return ids.indexOf(String(o[idCol])) >= 0; },
+    function (o) { return { sort: ids.indexOf(String(o[idCol])) }; });
   markDirtyAll_();
 }
 
@@ -1396,18 +1253,9 @@ function doSaveHolder(p) {
   if (!regionById_(regionId)) throw new Error('Pick a region.');
   var id = String(p.holderId || '');
   if (id) {
-    var rows = rowsOf_('_holders');
-    var hs = rows.headers.map(String);
-    var iId = hs.indexOf('holderId');
-    var objs = rows.data.map(function (row) {
-      var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-      if (String(o.holderId) === id) {
-        o.name = name; o.phone = String(p.phone || '').trim(); o.note = String(p.note || '').trim();
-        if (p.archived !== undefined) o.archived = !!p.archived;
-      }
-      return o;
-    });
-    writeObjects_('_holders', hs, objs);
+    var hSet = { name: name, phone: String(p.phone || '').trim(), note: String(p.note || '').trim() };
+    if (p.archived !== undefined) hSet.archived = !!p.archived;
+    dbUpdate_('_holders', { holderId: id }, hSet);
   } else {
     /* Named by the app when it is made alongside a transfer, so the transfer
        sent right after it can already point at it; a resend is ignored. */
@@ -1415,9 +1263,8 @@ function doSaveHolder(p) {
        : 'hd_' + Utilities.getUuid().slice(0, 6);
     var exists = objectsOf_('_holders').some(function (h) { return String(h.holderId) === id; });
     if (!exists) {
-      getSheet_('_holders').appendRow([id, regionId, name, String(p.phone || '').trim(),
-        String(p.note || '').trim(), new Date(), false]);
-      sheetMemoClear_();
+      dbInsert_('_holders', { holderId: id, regionId: regionId, name: name, phone: String(p.phone || '').trim(),
+        note: String(p.note || '').trim(), createdAt: new Date(), archived: false });
     }
   }
   markDirtyRegions_([regionId]);
@@ -1576,17 +1423,14 @@ function doSendShipment(p) {
      first time without anyone having to re-run initialize. */
   var toLoc = String(p.toLoc || '');
   if (toLoc && locsInRegion_(toRegion).indexOf(toLoc) < 0) toLoc = '';
-  ensureColumn_('_shipments', 'toLoc');
-  var shS = getSheet_('_shipments');
-  var hsS = shS.getRange(1, 1, 1, Math.max(shS.getLastColumn(), 1)).getValues()[0].map(String);
+  dbAddCols_('_shipments', ['toLoc']);
   var rowS = { shipId: shipId, fromRegion: fromRegion, toRegion: toRegion, mode: mode,
     carrier: String(p.carrier || '').trim(), phone: String(p.phone || '').trim(),
     tracking: String(p.tracking || '').trim(), trackingUrl: String(p.trackingUrl || '').trim(),
     eta: p.eta ? new Date(p.eta) : '', note: String(p.note || '').trim(),
     status: 'IN_TRANSIT', createdAt: new Date(), arrivedAt: '', manifest: JSON.stringify(manifest),
     origin: String(p.origin || '').trim(), toLoc: toLoc };
-  shS.appendRow(hsS.map(function (h) { return rowS[h] === undefined ? '' : rowS[h]; }));
-  sheetMemoClear_();
+  dbInsert_('_shipments', rowS);
 
   items.forEach(function (it) {
     addQty_(map, shipId, it.bookId, it.qty);
@@ -1696,21 +1540,14 @@ function doAdjustShipment(p) {
   // the same amount — otherwise "4 of 5" would keep quoting a number that was
   // never really in the bag.
   if (changes.length) {
-    var rowsM = rowsOf_('_shipments');
-    var hsM = rowsM.headers.map(String);
-    var objsM = rowsM.data.map(function (row) {
-      var o = {}; hsM.forEach(function (h, i) { o[h] = row[i]; });
-      if (String(o.shipId) === id) {
-        var man = parseManifest_(o.manifest);
-        changes.forEach(function (c) {
-          man[c.bookId] = Math.max(0, (Number(man[c.bookId]) || 0) + (c.now - c.was));
-          if (!man[c.bookId]) delete man[c.bookId];
-        });
-        o.manifest = JSON.stringify(man);
-      }
-      return o;
+    dbUpdate_('_shipments', { shipId: id }, function (o) {
+      var man = parseManifest_(o.manifest);
+      changes.forEach(function (c) {
+        man[c.bookId] = Math.max(0, (Number(man[c.bookId]) || 0) + (c.now - c.was));
+        if (!man[c.bookId]) delete man[c.bookId];
+      });
+      return { manifest: JSON.stringify(man) };
     });
-    writeObjects_('_shipments', hsM, objsM);
   }
   if (backTo) markDirty_(backTo);
   markDirtyRegions_([ship.fromRegion, ship.toRegion]);
@@ -1754,12 +1591,7 @@ function doDeleteShipment(p) {
   });
   saveInvMap_(map);
 
-  var rows = rowsOf_('_shipments');
-  var hs = rows.headers.map(String);
-  writeObjects_('_shipments', hs, rows.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    return o;
-  }).filter(function (o) { return String(o.shipId) !== id; }));
+  dbDelete_('_shipments', { shipId: id });
   if (backTo) markDirty_(backTo);
   markDirtyRegions_([ship.fromRegion, ship.toRegion]);
   return { returned: returned };
@@ -1768,12 +1600,7 @@ function doDeleteShipment(p) {
 /* Remove a hand-over recorded against a partner — a mistyped amount, say. */
 function doDeletePayout(p) {
   var id = String(p.id || '');
-  var rows = rowsOf_('_payouts');
-  var hs = rows.headers.map(String);
-  writeObjects_('_payouts', hs, rows.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    return o;
-  }).filter(function (o) { return String(o.id) !== id; }));
+  dbDelete_('_payouts', { id: id });
   markDirtyAll_();
 }
 
@@ -1803,12 +1630,7 @@ function doDeleteHolder(p) {
     }
   });
   saveInvMap_(map);
-  var r = rowsOf_('_holders');
-  var hs = r.headers.map(String);
-  writeObjects_('_holders', hs, r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    return o;
-  }).filter(function (o) { return String(o.holderId) !== id; }));
+  dbDelete_('_holders', { holderId: id });
   markDirtyRegions_([String(mine.regionId)]);
   return { returned: moved };
 }
@@ -1816,35 +1638,28 @@ function doDeleteHolder(p) {
 function doEditShipment(p) {
   var id = String(p.shipId || '');
   var oldTo = '';
-  var rows = rowsOf_('_shipments');
-  var hs = rows.headers.map(String);
-  var found = false;
-  var objs = rows.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o.shipId) === id) {
-      found = true;
-      // Where outside books came from is typed in, so a typo can be put right.
-      ['carrier','phone','tracking','trackingUrl','note','origin'].forEach(function (f) {
-        if (p[f] !== undefined) o[f] = String(p[f]).trim();
-      });
-      if (p.eta !== undefined) o.eta = p.eta ? new Date(p.eta) : '';
-      // Plans change on the road — a batch bound for Croatia may end up meeting
-      // the tour in London instead. The books are already in the shipment, so
-      // redirecting is just a matter of where they are expected to land.
-      if (p.toRegion !== undefined && String(p.toRegion) !== String(o.toRegion)) {
-        var dest = regionById_(String(p.toRegion));
-        if (!dest) throw new Error('Pick a region for them to go to.');
-        if (String(p.toRegion) === String(o.fromRegion)) {
-          throw new Error('That is where they came from — pick somewhere else, or receive them back.');
-        }
-        oldTo = String(o.toRegion);
-        o.toRegion = String(p.toRegion);
+  var found = dbUpdate_('_shipments', { shipId: id }, function (o) {
+    var set = {};
+    // Where outside books came from is typed in, so a typo can be put right.
+    ['carrier','phone','tracking','trackingUrl','note','origin'].forEach(function (f) {
+      if (p[f] !== undefined) set[f] = String(p[f]).trim();
+    });
+    if (p.eta !== undefined) set.eta = p.eta ? new Date(p.eta) : '';
+    // Plans change on the road — a batch bound for Croatia may end up meeting
+    // the tour in London instead. The books are already in the shipment, so
+    // redirecting is just a matter of where they are expected to land.
+    if (p.toRegion !== undefined && String(p.toRegion) !== String(o.toRegion)) {
+      var dest = regionById_(String(p.toRegion));
+      if (!dest) throw new Error('Pick a region for them to go to.');
+      if (String(p.toRegion) === String(o.fromRegion)) {
+        throw new Error('That is where they came from — pick somewhere else, or receive them back.');
       }
+      oldTo = String(o.toRegion);
+      set.toRegion = String(p.toRegion);
     }
-    return o;
+    return set;
   });
   if (!found) throw new Error('That shipment is no longer listed.');
-  writeObjects_('_shipments', hs, objs);
   if (oldTo) {
     // Both the old and the new destination change what they are expecting.
     markDirtyRegions_([oldTo, String(p.toRegion)]);
@@ -1885,14 +1700,8 @@ function doReceiveShipment(p) {
   var left = 0;
   allBooks_().forEach(function (b) { left += getQty_(map, id, b.id); });
   var status = left > 0 ? 'PARTIAL' : 'ARRIVED';
-  var rows = rowsOf_('_shipments');
-  var hs = rows.headers.map(String);
-  var objs = rows.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o.shipId) === id) { o.status = status; if (status === 'ARRIVED') o.arrivedAt = new Date(); }
-    return o;
-  });
-  writeObjects_('_shipments', hs, objs);
+  dbUpdate_('_shipments', { shipId: id },
+    status === 'ARRIVED' ? { status: status, arrivedAt: new Date() } : { status: status });
   markDirty_(destLoc);
   markDirtyRegions_([ship.fromRegion, ship.toRegion]);
   return { status: status, remaining: left };
@@ -1979,22 +1788,20 @@ function roleFor_(key) {
 function doSellerLink(p) {
   var regionId = String(p.regionId || '');
   if (!regionById_(regionId)) throw new Error('That region is no longer listed.');
-  ensureHeaders_('_regions', REGION_HEADERS);
-  var r = rowsOf_('_regions');
-  var hs = r.headers.map(String);
+  dbAddCols_('_regions', REGION_HEADERS);
   var made = '';
-  writeObjects_('_regions', hs, r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o.regionId) === regionId) {
-      if (p.revoke) { o.sellerKey = ''; }
-      else if (!String(o.sellerKey || '') || p.regenerate) {
-        o.sellerKey = suppliedKey_(p.key, 's') || ('s' + Utilities.getUuid().replace(/-/g, '').slice(0, 14));
-      }
-      if (p.scope !== undefined) o.sellerScope = String(p.scope || '');
-      made = String(o.sellerKey || '');
+  dbUpdate_('_regions', { regionId: regionId }, function (o) {
+    var set = {};
+    var key = o.sellerKey;
+    if (p.revoke) { key = ''; set.sellerKey = key; }
+    else if (!String(key || '') || p.regenerate) {
+      key = suppliedKey_(p.key, 's') || ('s' + Utilities.getUuid().replace(/-/g, '').slice(0, 14));
+      set.sellerKey = key;
     }
-    return o;
-  }));
+    if (p.scope !== undefined) set.sellerScope = String(p.scope || '');
+    made = String(key || '');
+    return set;
+  });
   cacheClear_();
   return made;
 }
@@ -2117,32 +1924,25 @@ function doSaveCost(p) {
               payType: String(p.payType || ''), cur: cur, amt: amt,
               note: String(p.note || '').trim().slice(0, 200), partnerId: pid };
   // Created on first use, so recording a cost works even before initialize is run.
-  sheet_('_costs', ['id','ts','location','category','payType','cur','amt','note','partnerId']);
+  dbCreate_('_costs', ['id','ts','location','category','payType','cur','amt','note','partnerId']);
   sheetMemoClear_();
-  ensureHeaders_('_costs', ['id','ts','location','category','payType','cur','amt','note','partnerId']);
-  var r = rowsOf_('_costs');
-  var hs = r.headers.map(String);
-  var rows = r.data.map(function (row) { var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; }); return o; });
-  var at = id ? rows.findIndex(function (x) { return String(x.id) === id; }) : -1;
+  dbAddCols_('_costs', ['id','ts','location','category','payType','cur','amt','note','partnerId']);
+  var at = id ? objectsOf_('_costs').findIndex(function (x) { return String(x.id) === id; }) : -1;
   if (at >= 0) {
-    rows[at] = Object.assign(rows[at], obj);            // an edit
+    dbUpdate_('_costs', firstOnly_({ id: id }), obj);    // an edit
   } else {
     if (!obj.id) obj.id = 'C' + Utilities.getUuid().slice(0, 8);
-    rows.push(obj);                                     // new (or a resend of a new one)
+    dbInsert_('_costs', obj);                           // new (or a resend of a new one)
   }
-  writeObjects_('_costs', hs, rows);
   markDirtyRegions_([regionOfLoc_(loc)]);
   return obj.id;
 }
 function doDeleteCost(p) {
   var id = String(p.id || '');
-  if (!getSheet_('_costs')) return;                     // nothing recorded yet
-  var r = rowsOf_('_costs');
-  var hs = r.headers.map(String);
+  if (!dbHas_('_costs')) return;                        // nothing recorded yet
   var loc = '';
-  var keep = r.data.map(function (row) { var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; }); return o; })
-    .filter(function (x) { if (String(x.id) === id) { loc = String(x.location); return false; } return true; });
-  writeObjects_('_costs', hs, keep);
+  objectsOf_('_costs').forEach(function (x) { if (String(x.id) === id) loc = String(x.location); });
+  dbDelete_('_costs', { id: id });
   if (loc) markDirtyRegions_([regionOfLoc_(loc)]);
 }
 
@@ -2152,15 +1952,11 @@ function doDeleteCost(p) {
    simply handed it over — and it goes back there. It travels with the cash it
    sits among, so it is tracked as its own thing: where it came from, where it
    is now, and whether it has gone home. */
+/* Created on first use, so change works before initialize has been re-run. */
 function changeRows_() {
-  sheet_('_change', ['id','ts','amt','cur','source','sourceName','loc','returnedAt','by']);
-  sheetMemoClear_();
-  var r = rowsOf_('_change');
-  var hs = r.headers.map(String);
-  return { hs: hs, rows: r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; }); return o; }) };
+  dbCreate_('_change', ['id','ts','amt','cur','source','sourceName','loc','returnedAt','by']);
+  return objectsOf_('_change');
 }
-function changeWrite_(hs, rows) { writeObjects_('_change', hs, rows); }
 
 function doChangeWithdraw(p) {
   var amt = Number(p.amt);
@@ -2177,10 +1973,9 @@ function doChangeWithdraw(p) {
   var c = changeRows_();
   var id = String(p.id || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40) || ('CH' + Utilities.getUuid().slice(0, 8));
   if (isDeleted_(id)) return id;                                                        // deleted on purpose
-  for (var i = 0; i < c.rows.length; i++) if (String(c.rows[i].id) === id) return id;   // a resend
-  c.rows.push({ id: id, ts: p.ts ? new Date(p.ts) : new Date(), amt: amt, cur: cur,
+  for (var i = 0; i < c.length; i++) if (String(c[i].id) === id) return id;             // a resend
+  dbInsert_('_change', { id: id, ts: p.ts ? new Date(p.ts) : new Date(), amt: amt, cur: cur,
                 source: source, sourceName: sourceName, loc: loc, returnedAt: '', by: _cashBy });
-  changeWrite_(c.hs, c.rows);
 
   // The cash itself: out of the source (if the source is an account we keep), into the place.
   if (source === 'OTHER') {
@@ -2197,9 +1992,8 @@ function doChangeWithdraw(p) {
 /** Give the change back to where it came from. */
 function doChangeReturn(p) {
   var id = String(p.id || '');
-  var c = changeRows_();
   var hit = null;
-  c.rows.forEach(function (r) { if (String(r.id) === id) hit = r; });
+  changeRows_().forEach(function (r) { if (String(r.id) === id) hit = r; });
   if (!hit) throw new Error('That change record is no longer listed.');
   if (String(hit.returnedAt || '')) return id;                 // already back — a resend
   var loc = String(hit.loc), source = String(hit.source);
@@ -2211,8 +2005,7 @@ function doChangeReturn(p) {
     cashAppend_({ id: p.cashId, kind: 'MOVE', fromAcct: loc, toAcct: source, cur: cur, amt: amt,
                   purpose: 'FLOAT_BACK', changeRef: id, note: 'Change returned' });
   }
-  hit.returnedAt = new Date();
-  changeWrite_(c.hs, c.rows);
+  dbUpdate_('_change', { id: id }, { returnedAt: new Date() });
   markDirty_(loc);
   return id;
 }
@@ -2225,14 +2018,12 @@ function doChangeReturn(p) {
 function doChangeDelete(p) {
   var id = String(p.id || '');
   if (!id) return '';
-  var c = changeRows_();
-  var kept = c.rows.filter(function (r) { return String(r.id) !== id; });
-  if (kept.length !== c.rows.length) changeWrite_(c.hs, kept);
+  changeRows_();
+  dbDelete_('_change', { id: id });
   tombstone_(id);
   // Any movements that only existed to carry this change go with it.
-  var cash = cashRows_();
-  var keptCash = cash.rows.filter(function (r) { return String(r.changeRef || '') !== id; });
-  if (keptCash.length !== cash.rows.length) cashWrite_(cash.headers, keptCash);
+  dbAddCols_('_cash', CASH_HEADERS);
+  dbDelete_('_cash', function (r) { return String(r.changeRef || '') === id; });
   markDirtyAll_();
   return id;
 }
@@ -2242,15 +2033,14 @@ function doChangeMove(p) {
   var ids = p.ids || [];
   if (!ids.length) return '';
   var to = String(p.toLoc || '');
-  var c = changeRows_();
-  var touched = false;
-  c.rows.forEach(function (r) {
-    if (ids.indexOf(String(r.id)) < 0 || String(r.returnedAt || '')) return;
-    r.loc = to;
-    if (to && to === String(r.source)) r.returnedAt = new Date();   // back where it came from
-    touched = true;
+  changeRows_();
+  dbUpdate_('_change', function (r) {
+    return ids.indexOf(String(r.id)) >= 0 && !String(r.returnedAt || '');
+  }, function (r) {
+    var set = { loc: to };
+    if (to && to === String(r.source)) set.returnedAt = new Date();   // back where it came from
+    return set;
   });
-  if (touched) changeWrite_(c.hs, c.rows);
   return '';
 }
 
@@ -2262,11 +2052,9 @@ function doSaveLabel(p) {
   var key = String(p.key || '').slice(0, 300);
   if (!key) throw new Error('Nothing to rewrite.');
   var text = String(p.text == null ? '' : p.text).slice(0, 600);
-  sheet_('_labels', ['key', 'text']);
+  dbCreate_('_labels', ['key', 'text']);
   sheetMemoClear_();
-  var r = rowsOf_('_labels');
-  var hs = r.headers.map(String);
-  var rows = r.data.map(function (row) { var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; }); return o; });
+  var rows = objectsOf_('_labels');
   var at = -1;
   rows.forEach(function (x, i) { if (String(x.key) === key) at = i; });
   if (!text) {                       // emptied: back to the original wording
@@ -2276,7 +2064,7 @@ function doSaveLabel(p) {
   } else {
     rows.push({ key: key, text: text });
   }
-  writeObjects_('_labels', hs, rows);
+  dbSave_('_labels', rows);
   return text;
 }
 
@@ -2306,14 +2094,9 @@ function splitUsdActual_(total, perItemLegs) {
 
 function doSetUsdActual(p) {
   var saleId = String(p.saleId || '');
-  var rows = objectsOf_('_sales');
-  var found = false;
   var v = (p.usd === '' || p.usd === null || p.usd === undefined) ? '' : (Number(p.usd) || 0);
-  rows.forEach(function (r) {
-    if (String(r.saleId) === saleId) { r.usdActual = v; found = true; }
-  });
-  if (!found) throw new Error('That sale is no longer in the log.');
-  writeObjects_('_sales', SALES_HEADERS, rows);
+  dbAddCols_('_sales', SALES_HEADERS);
+  if (!dbUpdate_('_sales', { saleId: saleId }, { usdActual: v })) throw new Error('That sale is no longer in the log.');
   markDirtyAll_();
   return v;
 }
@@ -2325,17 +2108,9 @@ function doSetKey(p) {
     : (suppliedKey_(p.key, 'k') || ('k' + Utilities.getUuid().replace(/-/g, '').slice(0, 10)));
   var sheetName = kind === 'event' ? '_events' : '_regions';
   var idCol = kind === 'event' ? 'eventId' : 'regionId';
-  var rows = rowsOf_(sheetName);
-  var hs = rows.headers.map(String);
-  var iId = hs.indexOf(idCol), iKey = hs.indexOf('key');
-  if (iKey < 0) throw new Error('This sheet has not been upgraded yet — run initialize.');
-  var found = false;
-  rows.data.forEach(function (row, i) {
-    if (String(row[iId]) !== id) return;
-    rows.sheet.getRange(i + 2, iKey + 1).setValue(key);
-    found = true;
-  });
-  if (!found) throw new Error('That no longer exists.');
+  if (dbCols_(sheetName).indexOf('key') < 0) throw new Error('This sheet has not been upgraded yet — run initialize.');
+  var match = {}; match[idCol] = id;
+  if (!dbUpdate_(sheetName, match, { key: key })) throw new Error('That no longer exists.');
   /* A link changes no figures, so there is nothing to redraw. This used to flag
      every spreadsheet on the tour, which is why issuing one took seconds. */
   cacheClear_();
@@ -2360,11 +2135,8 @@ var REGION_HEADERS = ['regionId','name','whLoc','sort','createdAt','currencies',
    without a season and belonged to none — the same silent drop that lost the
    change-owed figure. Writing by name closes it for good. */
 function appendRegion_(row) {
-  ensureHeaders_('_regions', REGION_HEADERS);
-  var sh = getSheet_('_regions');
-  var live = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  sh.appendRow(live.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
-  sheetMemoClear_();
+  dbAddCols_('_regions', REGION_HEADERS);
+  dbInsert_('_regions', row);
 }
 
 function seasonsAll_() {
@@ -2372,34 +2144,23 @@ function seasonsAll_() {
      that hasn't been re-initialized failed at the first mention of a season —
      and a failure this early comes back as a page, not a message, which is why
      it read as "the server sent something unreadable". */
-  if (!getSheet_('_seasons')) {
-    sheet_('_seasons', ['seasonId','name','sort','createdAt','closedAt']);
+  if (!dbHas_('_seasons')) {
+    dbCreate_('_seasons', ['seasonId','name','sort','createdAt','closedAt']);
     hideDataSheets_();
-    sheetMemoClear_();
   }
   var rows = objectsOf_('_seasons').filter(function (x) { return x && x.seasonId; });
   if (!rows.length) {
     // First run, or an existing tour that predates seasons: adopt what is here.
     var id = 'sn_' + Utilities.getUuid().slice(0, 6);
-    getSheet_('_seasons').appendRow([id, getSeasonName_(), 0, new Date(), '']);
-    sheetMemoClear_();
+    dbInsert_('_seasons', { seasonId: id, name: getSeasonName_(), sort: 0, createdAt: new Date(), closedAt: '' });
     /* Adopt everything that existed before seasons did. Done once, here, so no
        row is left unattached — an unattached region would otherwise appear in
        every season at once. */
-    var rr = rowsOf_('_regions');
-    var hs = rr.headers.map(String);
-    var iS = hs.indexOf('seasonId');
-    if (iS >= 0) {
-      /* Adopt anything not attached to a season that exists — both regions from
-         before seasons were introduced, and any left dangling if this sheet was
-         ever lost. An unattached region belongs to no season and would simply
-         disappear from the app, so this is the safety net for that. */
-      rr.data.forEach(function (row, n) {
-        var cur = String(row[iS] || '');
-        if (cur !== id) rr.sheet.getRange(n + 2, iS + 1).setValue(id);
-      });
-      sheetMemoClear_();
-    }
+    /* Adopt anything not attached to a season that exists — both regions from
+       before seasons were introduced, and any left dangling if this sheet was
+       ever lost. An unattached region belongs to no season and would simply
+       disappear from the app, so this is the safety net for that. */
+    dbUpdate_('_regions', function (r) { return String(r.seasonId || '') !== id; }, { seasonId: id });
     setMeta_('activeSeason', id);
     rows = objectsOf_('_seasons').filter(function (x) { return x && x.seasonId; });
   }
@@ -2447,19 +2208,12 @@ function doSaveSeason(p) {
   if (!name) throw new Error('Give the season a name.');
   var id = String(p.seasonId || '');
   if (id) {
-    var rows = rowsOf_('_seasons');
-    var hs = rows.headers.map(String);
-    writeObjects_('_seasons', hs, rows.data.map(function (row) {
-      var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-      if (String(o.seasonId) === id) o.name = name;
-      return o;
-    }));
+    dbUpdate_('_seasons', { seasonId: id }, { name: name });
     cacheClear_(); markDirtyAll_();
     return id;
   }
   id = 'sn_' + Utilities.getUuid().slice(0, 6);
-  getSheet_('_seasons').appendRow([id, name, seasonsAll_().length, new Date(), '']);
-  sheetMemoClear_();
+  dbInsert_('_seasons', { seasonId: id, name: name, sort: seasonsAll_().length, createdAt: new Date(), closedAt: '' });
 
   /* A new season is a genuinely blank slate: no regions, no events, no stock,
      no money, no prices carried over. Only the book catalog is shared, since
@@ -2481,12 +2235,7 @@ function doDeleteSeason(p) {
   regionsOrdered_(id).forEach(function (r) {
     doDeleteRegion({ regionId: r.regionId, confirmName: r.name, force: true });
   });
-  var rows = rowsOf_('_seasons');
-  var hs = rows.headers.map(String);
-  writeObjects_('_seasons', hs, rows.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    return o;
-  }).filter(function (o) { return String(o.seasonId) !== id; }));
+  dbDelete_('_seasons', { seasonId: id });
   setMeta_('activeSeason', seasonsAll_()[0].seasonId);
   cacheClear_(); markDirtyAll_();
 }
@@ -2719,6 +2468,341 @@ function locsInRegion_(regionId) {
   return out;
 }
 
+
+/* ============================ DATA STORE ============================
+   Every read and write of the app's own records goes through this section.
+   Nothing else in the file touches the hidden data sheets, the script
+   properties or the script cache — so the records can move to a real
+   database by replacing only what is here.
+
+   The rest of the file speaks in rows as plain objects:
+     objectsOf_(t)             every row of table t, in stored order
+     dbHas_(t)                 does the table exist yet?
+     dbCreate_(t, cols)        create it if it does not exist yet
+     dbAddCols_(t, cols)       add any of these columns it lacks
+     dbEnsure_(t, cols)        both
+     dbInsert_(t, rows)        append one row or several, by column name
+     dbUpdate_(t, match, set)  change fields on the matching rows only
+     dbDelete_(t, match)       remove the matching rows only
+     dbSave_(t, rows, cols)    make the table hold exactly these rows
+   `match` is { column: value, … } (all must equal, compared as text) or a
+   function(row) → true/false.
+
+   Changing a row touches that row alone. Rewriting a whole sheet to change
+   one field was the slowest part of every save, and the reason two people
+   saving at once had to wait for each other for so long. */
+
+/* Which column(s) name a row. dbSave_ uses it to work out which rows actually
+   changed; a table whose rows cannot be told apart by it (old data with a
+   repeated or missing id) is written out whole, exactly as it used to be. */
+var TABLE_KEYS_ = {
+  _meta: ['key'], _books: ['id'], _custombooks: ['id'], _partners: ['partnerId'],
+  _payouts: ['id'], _costs: ['id'], _change: ['id'], _labels: ['key'], _qr: ['id'],
+  _holders: ['holderId'], _shipments: ['shipId'], _regions: ['regionId'],
+  _seasons: ['seasonId'], _prices: ['regionId', 'bookId', 'cur'], _events: ['eventId'],
+  _inventory: ['location', 'bookId'], _sales: ['saleId'], _cash: ['id'], _org: ['id'],
+  _stockmoves: ['id'], _activity: ['id']
+};
+
+/* Rows read during this request, per table. Any write drops the lot, so a
+   read never sees data older than the last change. */
+var _sheetMemo = {};
+function sheetMemoClear_() { _sheetMemo = {}; bookMemoClear_(); }
+
+/* { cols: [...], rows: [ {col: value} ] } for one table, read once per request. */
+function storeRead_(t) {
+  // Never read the movement log with entries still sitting in the buffer.
+  if (t === '_stockmoves' && _moveBuffer.length) flushStockMoves_();
+  if (_sheetMemo[t]) return _sheetMemo[t];
+  var got = STORE_.read(t);
+  var cols = got.cols.map(String);
+  var rows = got.rows.map(function (arr) {
+    var o = {};
+    cols.forEach(function (h, i) { o[h] = arr[i]; });
+    return o;
+  });
+  _sheetMemo[t] = { cols: cols, rows: rows };
+  return _sheetMemo[t];
+}
+
+/** Every row of a table, as fresh objects (safe to change). [] if it doesn't exist yet. */
+function objectsOf_(t) {
+  if (!STORE_.has(t)) return [];
+  return storeRead_(t).rows.map(function (r) {
+    var o = {}; for (var k in r) o[k] = r[k]; return o;
+  });
+}
+function dbHas_(t) { return STORE_.has(t); }
+/** The table's own column order. */
+function dbCols_(t) { return STORE_.has(t) ? storeRead_(t).cols.filter(function (h) { return h !== ''; }) : []; }
+
+/** Create the table, with these columns, if it does not exist yet. */
+function dbCreate_(t, cols) {
+  if (!STORE_.has(t)) { STORE_.create(t, cols); sheetMemoClear_(); }
+}
+/** Add any of these columns an existing table lacks, after the ones it has.
+    Rows written before a column existed simply read back blank, so this
+    upgrades a live table without rewriting a single row. */
+function dbAddCols_(t, cols) {
+  if (!STORE_.has(t)) return;
+  var live = storeRead_(t).cols.map(String);
+  var missing = cols.filter(function (h) { return live.indexOf(h) < 0; });
+  if (missing.length) { STORE_.addCols(t, missing); sheetMemoClear_(); }
+}
+/** Both: the table exists and carries at least these columns. */
+function dbEnsure_(t, cols) { dbCreate_(t, cols); dbAddCols_(t, cols); }
+
+/** Append rows by column name. A field with no column is left out — ensure it first. */
+function dbInsert_(t, rows) {
+  rows = Array.isArray(rows) ? rows : [rows];
+  if (!rows.length) return;
+  var cols = storeRead_(t).cols;
+  STORE_.append(t, rows.map(function (o) {
+    return cols.map(function (h) { return (o[h] === undefined || o[h] === null) ? '' : o[h]; });
+  }));
+  sheetMemoClear_();
+}
+
+function dbMatcher_(match) {
+  if (typeof match === 'function') return match;
+  var keys = Object.keys(match);
+  return function (o) {
+    for (var i = 0; i < keys.length; i++) if (String(o[keys[i]]) !== String(match[keys[i]])) return false;
+    return true;
+  };
+}
+
+/** A match that stops at the first row it hits — for code that has always
+    changed only the first of several rows sharing an id. */
+function firstOnly_(match) {
+  var test = dbMatcher_(match), done = false;
+  return function (o) { if (done || !test(o)) return false; done = true; return true; };
+}
+
+/** A match for only the last row it hits (where the same id could, in old
+    data, appear twice and the code has always meant the later one). */
+function lastOnly_(t, match) {
+  var test = dbMatcher_(match), want = -1;
+  return function (o, i) {
+    if (i === 0) { want = -1; storeRead_(t).rows.forEach(function (r, j) { if (test(r)) want = j; }); }
+    return i === want;
+  };
+}
+
+/** Set fields on every matching row. Only the fields that differ are written;
+    a field whose column does not exist is skipped. Returns how many rows matched. */
+function dbUpdate_(t, match, fields) {
+  if (!STORE_.has(t)) return 0;
+  var r = storeRead_(t), test = dbMatcher_(match), n = 0, edits = [];
+  r.rows.forEach(function (o, i) {
+    if (!test(o, i)) return;
+    n++;
+    var cells = {};
+    var f = (typeof fields === 'function') ? fields(o) : fields;
+    Object.keys(f || {}).forEach(function (k) {
+      var c = r.cols.indexOf(k);
+      if (c >= 0 && !dbSame_(o[k], f[k])) cells[c] = f[k];
+    });
+    if (Object.keys(cells).length) edits.push({ i: i, cells: cells });
+  });
+  if (edits.length) { STORE_.setCells(t, edits); sheetMemoClear_(); }
+  return n;
+}
+
+/** Remove every matching row. Returns how many went. */
+function dbDelete_(t, match) {
+  if (!STORE_.has(t)) return 0;
+  var r = storeRead_(t), test = dbMatcher_(match), gone = [];
+  r.rows.forEach(function (o, i) { if (test(o, i)) gone.push(i); });
+  if (!gone.length) return 0;
+  if (gone.length > DB_BULK_) {
+    STORE_.rewrite(t, r.cols, r.rows.filter(function (o, i) { return gone.indexOf(i) < 0; })
+      .map(function (o) { return r.cols.map(function (h) { return h === '' ? '' : o[h]; }); }));
+  } else {
+    STORE_.removeRows(t, gone);
+  }
+  sheetMemoClear_();
+  return gone.length;
+}
+/* Past this many rows at once, one rewrite is cheaper than row-by-row. */
+var DB_BULK_ = 25;
+
+/* Equal as stored: blank is blank, a date is its moment, anything else exact. */
+function dbSame_(a, b) {
+  if (a === undefined || a === null) a = '';
+  if (b === undefined || b === null) b = '';
+  if (a instanceof Date || b instanceof Date) {
+    return (a instanceof Date) && (b instanceof Date) && a.getTime() === b.getTime();
+  }
+  return a === b;
+}
+
+/** Make the table hold exactly `rows` (columns as `cols`, plus any the table
+    already has). Only what differs is written: changed fields, removed rows,
+    rows added at the end. When the change is not that shape — rows reordered,
+    ids repeated — the table is written out whole instead. */
+function dbSave_(t, rows, cols) {
+  var r = storeRead_(t);
+  var want = r.cols.filter(function (h) { return h !== ''; });
+  (cols || []).forEach(function (h) { if (want.indexOf(h) < 0) want.push(h); });
+  var key = TABLE_KEYS_[t];
+  var plan = key ? dbDiff_(r.rows, rows, key, want) : null;
+  /* Written whole when the columns themselves change or have gaps, as well —
+     so the names always sit over their own data. */
+  if (!plan || plan.gone.length > DB_BULK_ || want.length !== r.cols.length ||
+      want.some(function (h, i) { return r.cols[i] !== h; })) {
+    STORE_.rewrite(t, want, rows.map(function (o) {
+      return want.map(function (h) { return (o[h] === undefined || o[h] === null) ? '' : o[h]; });
+    }));
+    sheetMemoClear_();
+    return;
+  }
+  if (plan.edits.length) STORE_.setCells(t, plan.edits);
+  if (plan.gone.length) STORE_.removeRows(t, plan.gone);
+  if (plan.added.length) STORE_.append(t, plan.added.map(function (o) {
+    return want.map(function (h) { return (o[h] === undefined || o[h] === null) ? '' : o[h]; });
+  }));
+  sheetMemoClear_();
+}
+
+/* The row-level changes that turn `old` into `now`, or null when rows cannot
+   be told apart (an id repeated or missing). Rows keep their places for as
+   long as `now` lists them in their stored order; from the first one out of
+   order (or new), the rest are written at the end — the same order a full
+   rewrite would leave. */
+function dbDiff_(old, now, key, cols) {
+  var id = function (o) { return key.map(function (k) { return String(o[k] === undefined || o[k] === null ? '' : o[k]); }).join('\u0001'); };
+  var blank = key.map(function () { return ''; }).join('\u0001');
+  var at = {};
+  for (var i = 0; i < old.length; i++) {
+    var k = id(old[i]);
+    if (k === blank || at[k] !== undefined) return null;
+    at[k] = i;
+  }
+  var seen = {}, kept = {}, edits = [], added = [], last = -1, tail = false;
+  for (var j = 0; j < now.length; j++) {
+    var kn = id(now[j]);
+    if (kn === blank || seen[kn]) return null;
+    seen[kn] = 1;
+    var oi = at[kn];
+    if (!tail && oi !== undefined && oi > last) {
+      last = oi; kept[oi] = 1;
+      var cells = {};
+      cols.forEach(function (h, c) { if (!dbSame_(old[oi][h], now[j][h])) cells[c] = now[j][h]; });
+      if (Object.keys(cells).length) edits.push({ i: oi, cells: cells });
+      continue;
+    }
+    tail = true;
+    added.push(now[j]);
+  }
+  var gone = [];
+  old.forEach(function (o, i) { if (!kept[i]) gone.push(i); });
+  return { edits: edits, gone: gone, added: added };
+}
+
+/* ---- Small settings and short-lived memory ----
+   Script properties hold settings that must last (the revision, what is
+   waiting to be redrawn, deleted ids); the cache holds what may vanish
+   (saves already done, the state snapshot). */
+function propGet_(k) { return KV_.getProp(k); }
+function propSet_(k, v) { KV_.setProp(k, String(v)); }
+function propDel_(k) { KV_.delProp(k); }
+function propAll_() { return KV_.allProps(); }
+function tempGet_(k) { try { return KV_.getTemp(k); } catch (e) { return null; } }
+function tempPut_(k, v, secs) { try { KV_.putTemp(k, v, secs); } catch (e) {} }
+function tempDel_(k) { try { KV_.delTemp(k); } catch (e) {} }
+
+/* ============================ GOOGLE SHEETS BACKEND ============================
+   The one place that knows the records live in hidden sheets of this
+   spreadsheet. Row i of a table is sheet row i + 2 (row 1 holds the column
+   names). Replacing STORE_ and KV_ moves the data somewhere else. */
+var STORE_ = {
+  has: function (t) { return !!getSheet_(t); },
+  read: function (t) {
+    var sh = getSheet_(t);
+    var last = sh.getLastRow(), width = sh.getLastColumn();
+    if (width < 1) return { cols: [], rows: [] };
+    var cols = sh.getRange(1, 1, 1, width).getValues()[0];
+    return { cols: cols, rows: last < 2 ? [] : sh.getRange(2, 1, last - 1, width).getValues() };
+  },
+  create: function (t, cols) {
+    var sh = SpreadsheetApp.getActive().insertSheet(t);
+    sh.getRange(1, 1, 1, cols.length).setValues([cols]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.hideSheet();
+  },
+  addCols: function (t, cols) {
+    var sh = getSheet_(t);
+    var at = Math.max(sh.getLastColumn(), 1);             // after everything, data included
+    if (sh.getMaxColumns() < at + cols.length) sh.insertColumnsAfter(sh.getMaxColumns(), at + cols.length - sh.getMaxColumns());
+    sh.getRange(1, at + 1, 1, cols.length).setValues([cols]);
+  },
+  append: function (t, arrays) {
+    var sh = getSheet_(t);
+    if (arrays.length === 1) { sh.appendRow(arrays[0]); return; }
+    var start = sh.getLastRow() + 1, width = arrays[0].length;
+    if (sh.getMaxRows() < start + arrays.length) sh.insertRowsAfter(sh.getMaxRows(), arrays.length + 10);
+    sh.getRange(start, 1, arrays.length, width).setValues(arrays);
+  },
+  // edits: [{ i: row index, cells: { colIndex: value } }]
+  setCells: function (t, edits) {
+    var sh = getSheet_(t);
+    edits.forEach(function (e) {
+      Object.keys(e.cells).forEach(function (c) {
+        sh.getRange(e.i + 2, Number(c) + 1).setValue(e.cells[c]);
+      });
+    });
+  },
+  removeRows: function (t, indexes) {
+    var sh = getSheet_(t);
+    // Sheets refuses to delete every row below the frozen header; keep a spare.
+    if (sh.getMaxRows() - indexes.length < 2) sh.insertRowsAfter(sh.getMaxRows(), 1);
+    indexes.slice().sort(function (a, b) { return b - a; })
+      .forEach(function (i) { sh.deleteRow(i + 2); });
+  },
+  /* The whole table at once, column names included. Clears any stale column
+     names beyond the current set, so values can never sit under the wrong one. */
+  rewrite: function (t, cols, arrays) {
+    var sh = getSheet_(t);
+    var wide = Math.max(sh.getLastColumn(), cols.length);
+    if (sh.getMaxColumns() < cols.length) sh.insertColumnsAfter(sh.getMaxColumns(), cols.length - sh.getMaxColumns());
+    var last = sh.getLastRow();
+    if (last > 1) sh.getRange(2, 1, last - 1, wide).clearContent();
+    if (wide > cols.length) sh.getRange(1, cols.length + 1, 1, wide - cols.length).clearContent();
+    sh.getRange(1, 1, 1, cols.length).setValues([cols]);
+    if (!arrays.length) return;
+    if (sh.getMaxRows() < arrays.length + 1) sh.insertRowsAfter(sh.getMaxRows(), arrays.length + 1 - sh.getMaxRows());
+    sh.getRange(2, 1, arrays.length, cols.length).setValues(arrays);
+  }
+};
+
+var KV_ = {
+  getProp: function (k) { return PropertiesService.getScriptProperties().getProperty(k); },
+  setProp: function (k, v) { PropertiesService.getScriptProperties().setProperty(k, v); },
+  delProp: function (k) { PropertiesService.getScriptProperties().deleteProperty(k); },
+  allProps: function () { return PropertiesService.getScriptProperties().getProperties(); },
+  getTemp: function (k) { return CacheService.getScriptCache().get(k); },
+  putTemp: function (k, v, secs) { CacheService.getScriptCache().put(k, v, secs); },
+  delTemp: function (k) { CacheService.getScriptCache().remove(k); },
+  getTempAll: function (keys) { return CacheService.getScriptCache().getAll(keys); },
+  putTempAll: function (obj, secs) { CacheService.getScriptCache().putAll(obj, secs); },
+  delTempAll: function (keys) { CacheService.getScriptCache().removeAll(keys); }
+};
+
+function getSheet_(name) { return SpreadsheetApp.getActive().getSheetByName(name); }
+
+/* Sheets-only housekeeping, run by ensureReady: phone columns as plain text
+   (Sheets reads a leading "+" as a formula and eats the country code), and
+   every data sheet hidden. A database has neither problem. */
+function sheetsPrepare_() {
+  [['_sales', 'phone'], ['_org', 'phone'], ['_holders', 'phone']].forEach(function (pair) {
+    var sh = getSheet_(pair[0]);
+    if (!sh) return;
+    var c = dbCols_(pair[0]).indexOf(pair[1]) + 1;
+    if (c < 1) return;
+    sh.getRange(2, c, Math.max(sh.getMaxRows() - 1, 1), 1).setNumberFormat('@');
+  });
+}
 function hideDataSheets_() {
   ['_meta','_seasons','_books','_custombooks','_partners','_payouts','_costs','_change','_labels','_qr','_holders','_shipments','_regions','_prices','_events','_inventory','_sales','_cash','_org','_stockmoves'].forEach(function (n) {
     var sh = getSheet_(n);
@@ -2726,85 +2810,34 @@ function hideDataSheets_() {
   });
 }
 
-/* ============================ DATA I/O ============================ */
+/* Keeps the _sales column names canonical — a Sheets repair.
 
-/* Reading a sheet is the expensive part of every request, and building the
-   app's state touches the same handful of sheets many times over. Hold each
-   one for the life of the request; any write drops the lot. */
-var _sheetMemo = {};
-function sheetMemoClear_() { _sheetMemo = {}; bookMemoClear_(); }
-
-function rowsOf_(name) {
-  // Never read the movement log with entries still sitting in the buffer.
-  if (name === '_stockmoves' && _moveBuffer.length) flushStockMoves_();
-  if (_sheetMemo[name]) return _sheetMemo[name];
-  var sh = getSheet_(name);
-  var last = sh.getLastRow();
-  var width = sh.getLastColumn();
+   SALES_HEADERS has only ever grown by appending, so rewriting row 1 in full is
+   always correct and is safe to repeat. An earlier version appended only the
+   missing names at getLastColumn() + 1, which was subtly wrong: appendRow
+   writes a value for every column in SALES_HEADERS whether or not the header
+   row knows about it, so the data ran ahead of the names and the new names
+   landed one block too far right. Values then read back under an empty name
+   and vanished — a partial payment's balance silently became zero. Rewriting
+   the row puts the names back over their own data and recovers those records. */
+function migrateSales_() {
+  var sh = getSheet_('_sales');
+  if (!sh) return;                      // not stored in sheets
+  var width = Math.max(sh.getLastColumn(), SALES_HEADERS.length);
   var headers = sh.getRange(1, 1, 1, width).getValues()[0];
-  var out = (last < 2)
-    ? { sheet: sh, headers: headers, data: [] }
-    : { sheet: sh, headers: headers, data: sh.getRange(2, 1, last - 1, width).getValues() };
-  _sheetMemo[name] = out;
-  return out;
-}
-
-function objectsOf_(name) {
-  var r = rowsOf_(name);
-  return r.data.map(function (row) {
-    var o = {};
-    r.headers.forEach(function (h, i) { o[h] = row[i]; });
-    return o;
-  });
-}
-
-/* Rewrite a data sheet.
-
-   The header row is rewritten too, and that matters: `ensureColumn_` appends a
-   new column at the END, but these header lists put new fields where they read
-   best (scope second, say). If we wrote values in list order while the sheet
-   still carried the old order, every value would land one column off — which is
-   exactly how a season org chart came back as scrambled Poland rows. Writing
-   both together keeps the file and the code permanently in agreement. */
-/* The canonical shape of each data sheet.
-
-   Call sites used to pass their own header list, and any list that forgot a
-   column silently erased it — that is how share links vanished on an update
-   (deleting one event rewrote _events without 'key') and how the org chart got
-   shifted. The sheet's own header row is now the authority, so a caller can
-   never drop a column it happens not to care about. */
-function headersFor_(name, fallback) {
-  var sh = getSheet_(name);
-  if (!sh) return fallback;
-  var width = sh.getLastColumn();
-  if (width < 1) return fallback;
-  var live = sh.getRange(1, 1, 1, width).getValues()[0]
-    .map(String).filter(function (h) { return h !== ''; });
-  if (!live.length) return fallback;
-  // Anything the caller knows about but the sheet lacks gets appended.
-  fallback.forEach(function (h) { if (live.indexOf(h) < 0) live.push(h); });
-  return live;
-}
-
-function writeObjects_(name, headers, objects) {
-  var sh = getSheet_(name);
-  if (!sh) return;
-  headers = headersFor_(name, headers.slice());
-  sheetMemoClear_();
-  var wide = Math.max(sh.getLastColumn(), headers.length);
-  if (sh.getMaxColumns() < headers.length) {
-    sh.insertColumnsAfter(sh.getMaxColumns(), headers.length - sh.getMaxColumns());
+  var correct = true;
+  for (var i = 0; i < SALES_HEADERS.length; i++) {
+    if (String(headers[i] || '') !== SALES_HEADERS[i]) { correct = false; break; }
   }
-  var last = sh.getLastRow();
-  if (last > 1) sh.getRange(2, 1, last - 1, wide).clearContent();
-  // Clear any stale trailing headers before laying down the current set.
-  if (wide > headers.length) sh.getRange(1, headers.length + 1, 1, wide - headers.length).clearContent();
-  sh.getRange(1, 1, 1, headers.length).setValues([headers]);
-  if (!objects.length) return;
-  var values = objects.map(function (o) {
-    return headers.map(function (h) { return (o[h] === undefined || o[h] === null) ? '' : o[h]; });
-  });
-  sh.getRange(2, 1, values.length, headers.length).setValues(values);
+  for (var j = SALES_HEADERS.length; j < width; j++) {
+    if (String(headers[j] || '') !== '') { correct = false; break; }
+  }
+  if (correct) return;
+  sh.getRange(1, 1, 1, SALES_HEADERS.length).setValues([SALES_HEADERS]).setFontWeight('bold');
+  if (width > SALES_HEADERS.length) {
+    sh.getRange(1, SALES_HEADERS.length + 1, 1, width - SALES_HEADERS.length).clearContent();
+  }
+  sheetMemoClear_();
 }
 
 /* ============================ STATE ============================ */
@@ -2822,14 +2855,7 @@ function getMeta_(key, dflt) {
   return dflt === undefined ? '' : dflt;
 }
 function setMeta_(key, value) {
-  var r = rowsOf_('_meta');
-  var found = false;
-  var objs = r.data.map(function (row) {
-    if (String(row[0]) === key) { found = true; return { key: key, value: value }; }
-    return { key: row[0], value: row[1] };
-  });
-  if (!found) objs.push({ key: key, value: value });
-  writeObjects_('_meta', ['key','value'], objs);
+  if (!dbUpdate_('_meta', { key: key }, { value: value })) dbInsert_('_meta', { key: key, value: value });
 }
 
 /* ---- Spreadsheet registry ----
@@ -2954,12 +2980,11 @@ function sheetUrl_(id) { return 'https://docs.google.com/spreadsheets/d/' + id +
    Drive filing has not been set up yet. Nothing is created by looking. */
 function driveMap_() {
   // The finished map, kept for a few minutes: reopening it then costs nothing.
-  var cache = CacheService.getScriptCache();
   /* Keyed by the folder only, NOT by the data revision: folders change when you
      move them, not every time a book is sold. Keying it to the revision meant
      any save threw the map away, so it was rebuilt on almost every open. */
   var ck = 'drivemap_' + String(getMeta_('driveRootFolderId', '')) + '_' + String(getMeta_('driveMapStamp', '0'));
-  try { var hit = cache.get(ck); if (hit) return JSON.parse(hit); } catch (e) {}
+  try { var hit = tempGet_(ck); if (hit) return JSON.parse(hit); } catch (e) {}
 
   var out = { root: null, driveOk: true, seasons: [] };
   var root = null, rootId = String(getMeta_('driveRootFolderId', ''));
@@ -2983,7 +3008,7 @@ function driveMap_() {
     return root;
   }
 
-  var parts = getSheet_('_partners') ? objectsOf_('_partners') : [];
+  var parts = objectsOf_('_partners');
   seasonsAll_().forEach(function (se) {
     var sid = String(se.seasonId), nm = seasonName_(sid);
     var entry = { seasonId: sid, name: nm, folder: null, consign: null,
@@ -3034,7 +3059,7 @@ function driveMap_() {
     });
     out.seasons.push(entry);
   });
-  try { cache.put(ck, JSON.stringify(out), 1800); } catch (e) {}   // half an hour
+  tempPut_(ck, JSON.stringify(out), 1800);   // half an hour
   return out;
 }
 
@@ -3114,7 +3139,7 @@ function doSetDriveFolder(p) {
   setMeta_('driveRootFolderId', f.getId());
   setMeta_('driveRootFolderName', f.getName());
   _driveRoot = null; _folderMemo = {};
-  try { CacheService.getScriptCache().remove('drivemap_' + f.getId() + '_' + getRev_()); } catch (e) {}
+  tempDel_('drivemap_' + f.getId() + '_' + getRev_());
   markDirtyAll_();               // the next sync files everything into the new place
   return f.getName();
 }
@@ -3255,7 +3280,7 @@ function readState() {
     /* Change taken out to give to buyers: where it came from, where it is now,
        and whether it has gone back. Kept apart from the cash movements so it
        stays a distinct thing wherever the money travels. */
-    change: (getSheet_('_change') ? objectsOf_('_change') : []).filter(function (c) { return c && c.id; })
+    change: objectsOf_('_change').filter(function (c) { return c && c.id; })
       .map(function (c) {
         return { id: String(c.id), ts: c.ts, amt: Number(c.amt) || 0, cur: String(c.cur || ''),
                  source: String(c.source || ''), sourceName: String(c.sourceName || ''),
@@ -3270,7 +3295,6 @@ function readState() {
        Anything not rewritten simply is not here. */
     labels: (function () {
       var out = {};
-      if (!getSheet_('_labels')) return out;
       objectsOf_('_labels').forEach(function (r) {
         if (r && String(r.key)) out[String(r.key)] = String(r.text == null ? '' : r.text);
       });
@@ -3280,7 +3304,7 @@ function readState() {
     // Money spent to make sales — card-machine fees and the like.
     // Read only if the sheet exists: a new sheet must never stop the app loading
     // on a deployment where initialize has not been run yet.
-    costs: (getSheet_('_costs') ? objectsOf_('_costs') : []).filter(function (x) { return x && x.id; })
+    costs: objectsOf_('_costs').filter(function (x) { return x && x.id; })
       .map(function (x) {
         return { id: String(x.id), ts: x.ts, location: String(x.location || ''),
                  category: String(x.category || 'Other'), payType: String(x.payType || ''),
@@ -3401,7 +3425,7 @@ function saveInvMap_(map) {
     var parts = k.split('||');
     objs.push({ location: parts[0], bookId: parts[1], qty: map[k] });
   });
-  writeObjects_('_inventory', ['location','bookId','qty'], objs);
+  dbSave_('_inventory', objs, ['location','bookId','qty']);
 }
 
 /* A pre-order that has not been handed over yet holds a copy back. On-hand
@@ -3474,12 +3498,11 @@ function addQty_(map, loc, book, delta) { setQty_(map, loc, book, getQty_(map, l
 /* Writes are fast because they only flag which readable tabs need rebuilding. */
 
 function markDirty_(loc) {
-  var p = PropertiesService.getScriptProperties();
   var set = {};
-  try { set = JSON.parse(p.getProperty('dirtyLocs') || '{}'); } catch (err) { set = {}; }
+  try { set = JSON.parse(propGet_('dirtyLocs') || '{}'); } catch (err) { set = {}; }
   if (loc) set[String(loc)] = 1;
   set[WAREHOUSE] = 1;            // the master tab aggregates everything, always
-  p.setProperty('dirtyLocs', JSON.stringify(set));
+  propSet_('dirtyLocs', JSON.stringify(set));
 }
 
 function markDirtyAll_() {
@@ -3488,7 +3511,7 @@ function markDirtyAll_() {
   regionsOrdered_().forEach(function (r) { if (r.whLoc) set[r.whLoc] = 1; });
   set[WAREHOUSE] = 1;
   objectsOf_('_events').forEach(function (e) { set[String(e.eventId)] = 1; });
-  PropertiesService.getScriptProperties().setProperty('dirtyLocs', JSON.stringify(set));
+  propSet_('dirtyLocs', JSON.stringify(set));
 }
 
 /* Flag only the regions a change actually touched.
@@ -3498,9 +3521,8 @@ function markDirtyAll_() {
    seconds apiece. A shipment concerns two regions, so saying so keeps the
    background rebuild proportionate instead of redoing the whole tour. */
 function markDirtyRegions_(regionIds) {
-  var p = PropertiesService.getScriptProperties();
   var set = {};
-  try { set = JSON.parse(p.getProperty('dirtyLocs') || '{}'); } catch (e) { set = {}; }
+  try { set = JSON.parse(propGet_('dirtyLocs') || '{}'); } catch (e) { set = {}; }
   // Deliberately NOT flagging SUMMARY: the sync reads that as "every region",
   // which would rebuild the whole tour. The season file is rewritten at the end
   // of every run anyway, so it stays current without asking.
@@ -3508,7 +3530,7 @@ function markDirtyRegions_(regionIds) {
     if (!rid) return;
     locsInRegion_(rid).forEach(function (l) { set[l] = 1; });
   });
-  p.setProperty('dirtyLocs', JSON.stringify(set));
+  propSet_('dirtyLocs', JSON.stringify(set));
 }
 
 /**
@@ -3529,15 +3551,14 @@ var QUIET_MS = 25 * 1000;   // how long after a save to leave the sheets alone
    redrawn under that season, sharing one time budget. */
 var _presetDirty = null, _syncStarted = 0;
 function syncEverySeason_() {
-  var p = PropertiesService.getScriptProperties();
-  var raw = p.getProperty('dirtyLocs');
+  var raw = propGet_('dirtyLocs');
   if (!raw || raw === '{}') return;
-  var lastWrite = Number(p.getProperty('lastWriteAt') || 0);
+  var lastWrite = Number(propGet_('lastWriteAt') || 0);
   if (lastWrite && (Date.now() - lastWrite) < QUIET_MS) return;     // someone is working
-  if (CacheService.getScriptCache().get('tbs_rendering')) return;   // already running
+  if (tempGet_('tbs_rendering')) return;   // already running
   var set = {};
   try { set = JSON.parse(raw); } catch (e) { return; }
-  p.setProperty('dirtyLocs', '{}');          // anything written from here on re-flags
+  propSet_('dirtyLocs', '{}');          // anything written from here on re-flags
 
   var events = objectsOf_('_events');
   var groups = [];
@@ -3577,8 +3598,7 @@ function syncSheets(force) {
   if (!force && !_presetDirty) return syncEverySeason_();
 
   flushStockMoves_();                    // nothing left waiting before we render
-  var p = PropertiesService.getScriptProperties();
-  var dirtyRaw = _presetDirty ? JSON.stringify(_presetDirty) : p.getProperty('dirtyLocs');
+  var dirtyRaw = _presetDirty ? JSON.stringify(_presetDirty) : propGet_('dirtyLocs');
   // A manual "Sync sheet" (and the first run after an update) rebuilds
   // everything: nothing is flagged dirty then, and silently doing nothing looks
   // exactly like a broken sync — which is how a new event's tab went missing.
@@ -3604,13 +3624,12 @@ function syncSheets(force) {
   // (A per-season pass skips this: the loop already checked, and bailing here
   // would lose the share of the queue it was handed.)
   if (!force && !_presetDirty) {
-    var lastWrite = Number(p.getProperty('lastWriteAt') || 0);
+    var lastWrite = Number(propGet_('lastWriteAt') || 0);
     if (lastWrite && (Date.now() - lastWrite) < QUIET_MS) return;
   }
 
-  var cache = CacheService.getScriptCache();
-  if (!force && !_presetDirty && cache.get('tbs_rendering')) return;   // a render is already in flight
-  cache.put('tbs_rendering', '1', 300);
+  if (!force && !_presetDirty && tempGet_('tbs_rendering')) return;   // a render is already in flight
+  tempPut_('tbs_rendering', '1', 300);
 
   // Apps Script kills a script at six minutes. Stop well short of that and hand
   // the remainder back to the next pass, so a big tour finishes across a few
@@ -3623,7 +3642,7 @@ function syncSheets(force) {
 
   try {
     // A per-season pass was handed its share; the queue was already cleared once.
-    if (!_presetDirty) p.setProperty('dirtyLocs', '{}');   // anything written from here on re-flags
+    if (!_presetDirty) propSet_('dirtyLocs', '{}');   // anything written from here on re-flags
     var set = {};
     try { set = JSON.parse(dirtyRaw); } catch (err) { set = {}; }
     var live = {};
@@ -3706,17 +3725,17 @@ function syncSheets(force) {
       } catch (e2) { /* nothing more we can do */ }
     }
 
-    if (lastErr) p.setProperty('lastRenderError', lastErr);
-    else p.deleteProperty('lastRenderError');
+    if (lastErr) propSet_('lastRenderError', lastErr);
+    else propDel_('lastRenderError');
 
     if (Object.keys(failed).length) {
       var still = {};
-      try { still = JSON.parse(p.getProperty('dirtyLocs') || '{}'); } catch (e2) { still = {}; }
+      try { still = JSON.parse(propGet_('dirtyLocs') || '{}'); } catch (e2) { still = {}; }
       Object.keys(failed).forEach(function (k) { still[k] = 1; });
-      p.setProperty('dirtyLocs', JSON.stringify(still));
+      propSet_('dirtyLocs', JSON.stringify(still));
     }
   } finally {
-    cache.remove('tbs_rendering');
+    tempDel_('tbs_rendering');
   }
 }
 
@@ -3767,15 +3786,9 @@ function cashValidAcct_(a) {
    Doing it by name means the sheet can grow without old code quietly destroying
    the new field. */
 function cashRows_() {
-  ensureHeaders_('_cash', CASH_HEADERS);
-  var r = rowsOf_('_cash');
-  var hs = r.headers.map(String);
-  return { headers: hs, rows: r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    return o;
-  }) };
+  dbAddCols_('_cash', CASH_HEADERS);
+  return objectsOf_('_cash');
 }
-function cashWrite_(headers, rows) { writeObjects_('_cash', headers, rows); }
 
 /* 'by' records who made the entry. Without it, a movement nobody recognized
    could not be traced to a person or a link — which is exactly the position a
@@ -3792,7 +3805,7 @@ var _cashBy = '';
    arrival is recognized as something already dealt with. */
 var TOMB_KEY = 'deletedIds';
 function tombstones_() {
-  try { return JSON.parse(PropertiesService.getScriptProperties().getProperty(TOMB_KEY) || '[]'); }
+  try { return JSON.parse(propGet_(TOMB_KEY) || '[]'); }
   catch (e) { return []; }
 }
 function tombstone_(id) {
@@ -3801,7 +3814,7 @@ function tombstone_(id) {
   if (list.indexOf(String(id)) >= 0) return;
   list.push(String(id));
   if (list.length > 800) list = list.slice(list.length - 800);   // keep it small
-  try { PropertiesService.getScriptProperties().setProperty(TOMB_KEY, JSON.stringify(list)); } catch (e) {}
+  try { propSet_(TOMB_KEY, JSON.stringify(list)); } catch (e) {}
 }
 function isDeleted_(id) { return !!id && tombstones_().indexOf(String(id)) >= 0; }
 
@@ -3815,14 +3828,14 @@ function cashAppend_(o) {
   // Written by name against the sheet's own columns, adding any that are
   // missing — the same self-healing as sales, so a new field can never be
   // silently dropped for want of running initialize.
-  ensureHeaders_('_cash', CASH_HEADERS);
+  dbAddCols_('_cash', CASH_HEADERS);
   /* The app may name the row itself. Without that, a movement made moments ago
      still carried a temporary name, so the first attempt to remove it was
      refused — "no longer in the ledger" — and only worked on a second try. */
   var wanted = String(o.id || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40);
   if (wanted) {
     if (isDeleted_(wanted)) return wanted;          // deleted on purpose: never write it again
-    var have = cashRows_().rows;
+    var have = cashRows_();
     for (var i = 0; i < have.length; i++) if (String(have[i].id) === wanted) return wanted;
   }
   var row = {
@@ -3841,10 +3854,7 @@ function cashAppend_(o) {
     purpose: String(o.purpose || '')
   };
   _cashIds.push(row.id);             // for the activity log's undo
-  var sh = getSheet_('_cash');
-  var live = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  sh.appendRow(live.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
-  sheetMemoClear_();
+  dbInsert_('_cash', row);
 }
 
 /* ============================ STOCK MOVEMENTS ============================
@@ -3892,9 +3902,7 @@ function doUndoStockMove(p) {
   }
   saveInvMap_(map);
 
-  writeObjects_('_stockmoves',
-    ['id','ts','kind','fromLoc','toLoc','bookId','qty','note','fromBefore','fromAfter','toBefore','toAfter'],
-    rows.filter(function (m) { return String(m.id) !== id; }));
+  dbDelete_('_stockmoves', { id: id });
   markDirtyAll_();
 }
 
@@ -3929,20 +3937,18 @@ function stockMoveAppend_(o) {
   ]);
 }
 
+/* The buffer holds each movement as a list in this order. */
+var MOVE_FIELDS_ = ['id','ts','kind','fromLoc','toLoc','bookId','qty','note','fromBefore','fromAfter','toBefore','toAfter'];
+
 /** Write everything buffered so far. Safe to call at any time. */
 function flushStockMoves_() {
   if (!_moveBuffer.length) return;
   var rows = _moveBuffer;
   _moveBuffer = [];                       // cleared first, so a failure can't double-write
-  var sh = getSheet_('_stockmoves');
-  if (!sh) return;
-  var start = sh.getLastRow() + 1;
-  var width = rows[0].length;
-  if (sh.getMaxRows() < start + rows.length) {
-    sh.insertRowsAfter(sh.getMaxRows(), rows.length + 10);
-  }
-  sh.getRange(start, 1, rows.length, width).setValues(rows);
-  sheetMemoClear_();
+  if (!dbHas_('_stockmoves')) return;
+  dbInsert_('_stockmoves', rows.map(function (r) {
+    var o = {}; MOVE_FIELDS_.forEach(function (h, i) { o[h] = r[i]; }); return o;
+  }));
 }
 /** Physical cash actually collected at a location — the same basis as the
     Collections figures, but limited to Cash payments (Zelle/PayPal/Wise are not
@@ -4122,7 +4128,7 @@ function doCashMoveAll(p) {
     .filter(function (x) { return x; });
   var chgBy = {};
   if (ids.length) {
-    (getSheet_('_change') ? objectsOf_('_change') : []).forEach(function (r) {
+    objectsOf_('_change').forEach(function (r) {
       if (ids.indexOf(String(r.id)) < 0 || String(r.returnedAt || '')) return;
       chgBy[String(r.cur)] = (chgBy[String(r.cur)] || 0) + (Number(r.amt) || 0);
     });
@@ -4141,7 +4147,8 @@ function doCashMoveAll(p) {
 /** Reset the whole tracker: remove every manual entry so all balances fall back
     to exactly what was collected. Collections (from sales) are never touched. */
 function doCashResetAll(p) {
-  cashWrite_(cashRows_().headers, []);
+  cashRows_();
+  dbDelete_('_cash', function () { return true; });
   markDirtyAll_();
 }
 
@@ -4194,27 +4201,12 @@ function doCashEdit(p) {
      from every entry, which is exactly why change withdrawn from the bank
      stopped showing. Reading by name keeps whatever the sheet carries, now and
      in future. */
-  ensureHeaders_('_cash', CASH_HEADERS);
-  var r = rowsOf_('_cash');
-  var hs = r.headers.map(String);
-  var found = false;
-  var objs = r.data.map(function (row) {
-    var o = {};
-    hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o.id) === id) {
-      found = true;
-      o.kind = kind;
-      o.fromAcct = (kind === 'MOVE' ? String(p.fromAcct) : '');
-      o.toAcct = String(p.toAcct);
-      o.cur = cur;
-      o.amt = amt;
-      o.note = String(p.note || '');
-      // purpose, and anything else on the row, is left exactly as it was.
-    }
-    return o;
-  });
+  dbAddCols_('_cash', CASH_HEADERS);
+  // purpose, and anything else on the row, is left exactly as it was.
+  var found = dbUpdate_('_cash', { id: id }, {
+    kind: kind, fromAcct: (kind === 'MOVE' ? String(p.fromAcct) : ''), toAcct: String(p.toAcct),
+    cur: cur, amt: amt, note: String(p.note || '') });
   if (!found) throw new Error('That entry is no longer in the ledger.');
-  writeObjects_('_cash', hs, objs);
   var touched = [regionOfLoc_(String(p.toAcct))];
   if (p.fromAcct) touched.push(regionOfLoc_(String(p.fromAcct)));
   markDirtyRegions_(touched);
@@ -4222,14 +4214,10 @@ function doCashEdit(p) {
 
 function doCashDelete(p) {
   var id = String(p.id);
-  var c = cashRows_();
   var gone = null;
-  var kept = c.rows.filter(function (o) {
-    if (String(o.id) !== id) return true;
-    gone = o; return false;
-  });
+  cashRows_().forEach(function (o) { if (String(o.id) === id) gone = o; });
   if (!gone) return;                       // already removed — a resend, not a failure
-  cashWrite_(c.headers, kept);
+  dbDelete_('_cash', { id: id });
   tombstone_(id);                          // and it must not come back on a resend
 
   /* Change is change wherever it goes, so removing a movement puts it back the
@@ -4240,21 +4228,14 @@ function doCashDelete(p) {
   var ids = String(gone.changeIds || '').split(',').map(function (x) { return x.trim(); })
     .filter(function (x) { return x; });
   if (ref || ids.length) {
-    var ch = changeRows_();
-    var touched = false;
-    ch.rows = ch.rows.filter(function (r) {
-      if (ref && String(r.id) === ref && String(gone.purpose) === 'FLOAT') { touched = true; return false; }
-      return true;
-    });
-    ch.rows.forEach(function (r) {
-      if (ref && String(r.id) === ref && String(gone.purpose) === 'FLOAT_BACK') {
-        r.returnedAt = ''; r.loc = String(gone.fromAcct || r.loc); touched = true;   // out again
-      }
-      if (ids.indexOf(String(r.id)) >= 0) {
-        r.loc = String(gone.fromAcct || r.loc); r.returnedAt = ''; touched = true;   // back where it was
-      }
-    });
-    if (touched) changeWrite_(ch.hs, ch.rows);
+    changeRows_();
+    // A withdrawal undone: the change was never taken.
+    if (ref && String(gone.purpose) === 'FLOAT') dbDelete_('_change', { id: ref });
+    // A return undone: out again. A transfer undone: back where it was.
+    dbUpdate_('_change', function (r) {
+      return (ref && String(r.id) === ref && String(gone.purpose) === 'FLOAT_BACK') ||
+             ids.indexOf(String(r.id)) >= 0;
+    }, function (r) { return { returnedAt: '', loc: String(gone.fromAcct || r.loc) }; });
   }
   markDirtyAll_();
 }
@@ -4267,18 +4248,14 @@ function doCashDelete(p) {
 function doCashResetAcct(p) {
   var acct = String(p.acct || '');
   if (!cashValidAcct_(acct)) throw new Error('Pick an account.');
-  var c = cashRows_();
-  cashWrite_(c.headers, c.rows.filter(function (o) {
-    return String(o.fromAcct) !== acct && String(o.toAcct) !== acct;
-  }));
+  cashRows_();
+  dbDelete_('_cash', function (o) { return String(o.fromAcct) === acct || String(o.toAcct) === acct; });
   markDirtyAll_();
 }
 
 function doCashResetBank(p) {
-  var c = cashRows_();
-  cashWrite_(c.headers, c.rows.filter(function (o) {
-    return String(o.fromAcct) !== 'BANK' && String(o.toAcct) !== 'BANK';
-  }));
+  cashRows_();
+  dbDelete_('_cash', function (o) { return String(o.fromAcct) === 'BANK' || String(o.toAcct) === 'BANK'; });
   markDirtyAll_();
 }
 
@@ -4304,7 +4281,7 @@ function doOrgSave(p) {
       phone: String(r.phone || '').trim()
     };
   }).filter(function (r) { return r.category && (r.name || r.phone); });
-  writeObjects_('_org', ['id','scope','category','sort','name','phone'], kept.concat(mine));
+  dbSave_('_org', kept.concat(mine), ['id','scope','category','sort','name','phone']);
   markDirtyAll_();
 }
 
@@ -4343,17 +4320,10 @@ function doEditRegion(p) {
   if (!name) throw new Error('Give the region a name.');
   var curs = parseCurList_(p.currencies);
 
-  var rows = rowsOf_('_regions');
-  var hs = rows.headers.map(String);
-  var iId = hs.indexOf('regionId'), iName = hs.indexOf('name'), iCur = hs.indexOf('currencies');
-  var iBooks = hs.indexOf('books');
   var bookIds = (p.books === undefined) ? null : parseBookList_(p.books);
-  rows.data.forEach(function (row, i) {
-    if (String(row[iId]) !== regionId) return;
-    if (iName >= 0) rows.sheet.getRange(i + 2, iName + 1).setValue(name);
-    if (iCur >= 0) rows.sheet.getRange(i + 2, iCur + 1).setValue(curs.join(','));
-    if (iBooks >= 0 && bookIds) rows.sheet.getRange(i + 2, iBooks + 1).setValue(bookIds.join(','));
-  });
+  var rSet = { name: name, currencies: curs.join(',') };
+  if (bookIds) rSet.books = bookIds.join(',');
+  dbUpdate_('_regions', { regionId: regionId }, rSet);
   if (p.prices) savePrices_(regionId, p.prices);
   markDirtyAll_();
 }
@@ -4367,16 +4337,12 @@ function doRegionAddBooks(p) {
   if (!regionById_(regionId)) throw new Error('That region no longer exists.');
   var add = parseBookList_(p.bookIds).filter(function (id) { return bookById_(id); });
   if (!add.length) return;
-  var rows = rowsOf_('_regions');
-  var hs = rows.headers.map(String);
-  var iId = hs.indexOf('regionId'), iBooks = hs.indexOf('books');
-  if (iBooks < 0) return;
-  rows.data.forEach(function (row, i) {
-    if (String(row[iId]) !== regionId) return;
-    var have = parseBookList_(row[iBooks]);
-    if (!have.length) return;                       // blank = every title already
+  if (dbCols_('_regions').indexOf('books') < 0) return;
+  dbUpdate_('_regions', { regionId: regionId }, function (row) {
+    var have = parseBookList_(row.books);
+    if (!have.length) return {};                    // blank = every title already
     add.forEach(function (id) { if (have.indexOf(id) < 0) have.push(id); });
-    rows.sheet.getRange(i + 2, iBooks + 1).setValue(have.join(','));
+    return { books: have.join(',') };
   });
   markDirtyRegions_([regionId]);
 }
@@ -4438,32 +4404,20 @@ function doDeleteRegion(p) {
   saveInvMap_(map);
 
   // Sales, cash, stock moves, org rows, prices, events, and the region itself.
-  writeObjects_('_sales', SALES_HEADERS,
-    objectsOf_('_sales').filter(function (r) { return !isMine[String(r.location)]; }));
+  dbAddCols_('_sales', SALES_HEADERS);
+  dbDelete_('_sales', function (r) { return !!isMine[String(r.location)]; });
 
-  var cashAll = cashRows_();
-  cashWrite_(cashAll.headers, cashAll.rows.filter(function (c) {
-    return !isMine[String(c.fromAcct)] && !isMine[String(c.toAcct)];
-  }));
+  cashRows_();
+  dbDelete_('_cash', function (c) { return !!isMine[String(c.fromAcct)] || !!isMine[String(c.toAcct)]; });
 
-  writeObjects_('_stockmoves', ['id','ts','kind','fromLoc','toLoc','bookId','qty','note'],
-    objectsOf_('_stockmoves').filter(function (m) {
-      return !isMine[String(m.fromLoc)] && !isMine[String(m.toLoc)];
-    }));
+  dbDelete_('_stockmoves', function (m) { return !!isMine[String(m.fromLoc)] || !!isMine[String(m.toLoc)]; });
 
   var scopeGone = {}; scopeGone[regionId] = true;
   locs.forEach(function (l) { scopeGone[l] = true; });
-  writeObjects_('_org', ['id','scope','category','sort','name','phone'],
-    objectsOf_('_org').filter(function (r) { return !scopeGone[String(r.scope || '')]; }));
-
-  writeObjects_('_prices', ['regionId','bookId','cur','price'],
-    objectsOf_('_prices').filter(function (r) { return String(r.regionId) !== regionId; }));
-
-  writeObjects_('_events', ['eventId','name','createdAt','regionId','key'],
-    objectsOf_('_events').filter(function (e) { return String(e.regionId || '') !== regionId; }));
-
-  writeObjects_('_regions', ['regionId','name','whLoc','sort','createdAt','currencies','books','key'],
-    objectsOf_('_regions').filter(function (r) { return String(r.regionId) !== regionId; }));
+  dbDelete_('_org', function (r) { return !!scopeGone[String(r.scope || '')]; });
+  dbDelete_('_prices', { regionId: regionId });
+  dbDelete_('_events', function (e) { return String(e.regionId || '') === regionId; });
+  dbDelete_('_regions', { regionId: regionId });
 
   // Forget its spreadsheet so a region reusing the name gets a clean file.
   setMeta_('regionSheetId:' + regionId, '');
@@ -4537,7 +4491,7 @@ function doSetPrices(p) {
       if (!found) rows.push({ regionId: regionId, bookId: String(bookId), cur: cur, price: amt });
     });
   });
-  writeObjects_('_prices', ['regionId','bookId','cur','price'], rows);
+  dbSave_('_prices', rows, ['regionId','bookId','cur','price']);
   _priceMemo = null;
   markDirtyRegions_([regionId]);
 }
@@ -4559,21 +4513,14 @@ function savePrices_(regionId, prices) {
                   cur: String(cur).toUpperCase(), price: amt });
     });
   });
-  writeObjects_('_prices', ['regionId','bookId','cur','price'], kept.concat(mine));
+  dbSave_('_prices', kept.concat(mine), ['regionId','bookId','cur','price']);
   _priceMemo = null;
 }
 
 function doSetWarehouseName(p) {
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Enter a warehouse name.');
-  var r = rowsOf_('_meta');
-  var found = false;
-  for (var i = 0; i < r.data.length; i++) {
-    if (r.data[i][0] === 'warehouseName') { r.data[i][1] = name; found = true; }
-  }
-  var objs = r.data.map(function (row) { return { key: row[0], value: row[1] }; });
-  if (!found) objs.push({ key: 'warehouseName', value: name });
-  writeObjects_('_meta', ['key','value'], objs);
+  setMeta_('warehouseName', name);
   markDirtyAll_();
 }
 
@@ -4961,12 +4908,8 @@ function validateBundle_(p, releases) {
 /** Write a set of previously-deleted sale rows back exactly as they were. */
 function restoreSales_(rows) {
   if (!rows || !rows.length) return;
-  ensureHeaders_('_sales', SALES_HEADERS);
-  var sh = getSheet_('_sales');
-  var live = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  rows.forEach(function (r) {
-    sh.appendRow(live.map(function (h) { return r[h] === undefined ? '' : r[h]; }));
-  });
+  dbAddCols_('_sales', SALES_HEADERS);
+  dbInsert_('_sales', rows);
   /* And take the copies back off the shelf.
 
      Deleting a sale puts its copy back; restoring the sale must take it off
@@ -5073,11 +5016,8 @@ function appendSale_(o) {
     usdActual: usdActualIn_(o.usdActual)
   };
   /* Written by position, so the sheet must carry every column first. */
-  ensureHeaders_('_sales', SALES_HEADERS);
-  var sh = getSheet_('_sales');
-  var live = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  sh.appendRow(live.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
-  sheetMemoClear_();
+  dbAddCols_('_sales', SALES_HEADERS);
+  dbInsert_('_sales', row);
   return row.saleId;
 }
 
@@ -5151,21 +5091,13 @@ function doSetPayTypes(p) {
 
   var sheetName = (kind === 'event') ? '_events' : '_regions';
   var idField   = (kind === 'event') ? 'eventId' : 'regionId';
-  var r = rowsOf_(sheetName);
-  var hs = r.headers.map(String);
-  if (hs.indexOf('payTypes') < 0) {
-    ensureHeaders_(sheetName, sheetName === '_events'
+  if (dbCols_(sheetName).indexOf('payTypes') < 0) {
+    dbAddCols_(sheetName, sheetName === '_events'
       ? ['eventId','name','createdAt','regionId','key','closedAt','sort','payTypes']
       : REGION_HEADERS);
-    r = rowsOf_(sheetName); hs = r.headers.map(String);
   }
-  var found = false;
-  writeObjects_(sheetName, hs, r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o[idField]) === id) { o.payTypes = value; found = true; }
-    return o;
-  }));
-  if (!found) throw new Error('That place is no longer listed.');
+  var match = {}; match[idField] = id;
+  if (!dbUpdate_(sheetName, match, { payTypes: value })) throw new Error('That place is no longer listed.');
   markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
 }
 
@@ -5181,10 +5113,8 @@ function doSetRegionHidden(p) {
   if (!reg) throw new Error('That region is no longer listed.');
   var ids = String(p.hidden || '').split(',').map(function (x) { return String(x).trim(); })
     .filter(function (x) { return x; });
-  ensureHeaders_('_regions', REGION_HEADERS);
-  var rows = objectsOf_('_regions');
-  rows.forEach(function (r) { if (String(r.regionId) === regionId) r.hidden = ids.join(','); });
-  writeObjects_('_regions', REGION_HEADERS, rows);
+  dbAddCols_('_regions', REGION_HEADERS);
+  dbUpdate_('_regions', { regionId: regionId }, { hidden: ids.join(',') });
   markDirtyAll_();
   return ids.join(',');
 }
@@ -5195,12 +5125,8 @@ function doSetEventHidden(p) {
   if (!ev) throw new Error('That event is no longer listed.');
   var ids = String(p.hidden || '').split(',').map(function (x) { return x.trim(); })
     .filter(function (x) { return x; });
-  ensureColumn_('_events', 'hidden');
-  var r = rowsOf_('_events');
-  var hs = r.headers.map(String);
-  var rows = r.data.map(function (row) { var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; }); return o; });
-  rows.forEach(function (o) { if (String(o.eventId) === id) o.hidden = ids.join(','); });
-  writeObjects_('_events', hs, rows);
+  dbAddCols_('_events', ['hidden']);
+  dbUpdate_('_events', { eventId: id }, { hidden: ids.join(',') });
   markDirty_(id);
   return ids.join(',');
 }
@@ -5230,7 +5156,7 @@ function doCreateEvent(p) {
     for (var j = 0; j < events.length; j++) if (String(events[j].eventId) === wanted) return wanted;
   }
   var eventId = wanted || ('ev_' + Utilities.getUuid().slice(0, 6));
-  getSheet_('_events').appendRow([eventId, name, new Date(), regionId]);
+  dbInsert_('_events', { eventId: eventId, name: name, createdAt: new Date(), regionId: regionId });
   markDirty_(eventId);
   return eventId;
 }
@@ -5242,11 +5168,8 @@ function doRenameEvent(p) {
   // Change only the name; every other field on the row travels untouched, so a
   // rename can't quietly discard the event's region or its share link.
   var oldName = '';
-  var objs = objectsOf_('_events').map(function (e) {
-    if (String(e.eventId) === eventId) { oldName = String(e.name); e.name = name; }
-    return e;
-  });
-  writeObjects_('_events', ['eventId','name','createdAt','regionId','key'], objs);
+  objectsOf_('_events').forEach(function (e) { if (String(e.eventId) === eventId) oldName = String(e.name); });
+  dbUpdate_('_events', { eventId: eventId }, { name: name });
   var ss = SpreadsheetApp.getActive();
   var old = ss.getSheetByName(displayTabName_(oldName));
   if (old) ss.deleteSheet(old);
@@ -5289,10 +5212,9 @@ function doDeleteEvent(p) {
 
   // Whole rows, untouched — rebuilding them field by field is what used to wipe
   // the share links stored alongside them.
-  var evObjs = objectsOf_('_events').filter(function (e) { return String(e.eventId) !== eventId; });
-  writeObjects_('_events', ['eventId','name','createdAt','regionId','key'], evObjs);
-  var keep = objectsOf_('_sales').filter(function (s) { return String(s.location) !== eventId; });
-  writeObjects_('_sales', SALES_HEADERS, keep);
+  dbDelete_('_events', { eventId: eventId });
+  dbAddCols_('_sales', SALES_HEADERS);
+  dbDelete_('_sales', { location: eventId });
 
   // The tab lives in that region's own spreadsheet.
   try {
@@ -5421,12 +5343,8 @@ function doTransferExternal(p) {
 
 function doDeleteSale(p) {
   var saleId = String(p.saleId);
-  var all = objectsOf_('_sales');
   var target = null;
-  var keep = all.filter(function (s) {
-    if (String(s.saleId) === saleId) { target = s; return false; }
-    return true;
-  });
+  objectsOf_('_sales').forEach(function (s) { if (String(s.saleId) === saleId) target = s; });
   // Already gone: the page's optimistic delete beat us here, or the write was
   // retried. Either way the end state is what the caller wanted, so succeed
   // quietly instead of throwing a scary error at them.
@@ -5449,21 +5367,19 @@ function doDeleteSale(p) {
       if (restoreLoc !== String(target.location)) markDirty_(restoreLoc);
     }
   }
-  writeObjects_('_sales', SALES_HEADERS, keep);
+  dbAddCols_('_sales', SALES_HEADERS);
+  dbDelete_('_sales', { saleId: saleId });
   markDirty_(String(target.location));
 }
 
 function doEditSale(p) {
   var saleId = String(p.saleId);
-  var r = rowsOf_('_sales');
-  var idx = -1;
-  for (var i = 0; i < r.data.length; i++) {
-    if (String(r.data[i][0]) === saleId) { idx = i; break; }
+  var old = null;
+  var all = objectsOf_('_sales');
+  for (var i = 0; i < all.length; i++) {
+    if (String(all[i].saleId) === saleId) { old = all[i]; break; }
   }
-  if (idx < 0) throw new Error('That sale is no longer in the log.');
-
-  var old = {};
-  r.headers.forEach(function (h, i) { old[h] = r.data[idx][i]; });
+  if (!old) throw new Error('That sale is no longer in the log.');
 
   var newType = String(p.type || old.type);
   var newLoc = String(p.location || old.location);
@@ -5512,14 +5428,12 @@ function doEditSale(p) {
   /* Written against the sheet's OWN column order, adding any it lacks. Writing
      by position here would scramble a sheet whose columns differ — the same
      fault that has cost us data before. */
-  ensureHeaders_('_sales', SALES_HEADERS);
-  var shS = getSheet_('_sales');
-  var liveH = shS.getRange(1, 1, 1, Math.max(shS.getLastColumn(), 1)).getValues()[0].map(String);
+  dbAddCols_('_sales', SALES_HEADERS);
   // Anything the edit does not speak to (the dollars actually received, the
   // transaction it belongs to, a request to another region) stays as it was.
-  shS.getRange(idx + 2, 1, 1, liveH.length)
-    .setValues([liveH.map(function (h) { return vals[h] !== undefined ? vals[h] : (old[h] === undefined ? '' : old[h]); })]);
-  sheetMemoClear_();
+  var set = {};
+  Object.keys(vals).forEach(function (h) { if (vals[h] !== undefined) set[h] = vals[h]; });
+  dbUpdate_('_sales', firstOnly_({ saleId: saleId }), set);
 
   markDirty_(String(old.location));
   if (newLoc !== String(old.location)) markDirty_(newLoc);
@@ -5535,11 +5449,10 @@ function doEditSale(p) {
 function doMarkDelivered(p) {
   var saleId = String(p.saleId);
   var fromStock = (p.fromStock === undefined) ? true : !!p.fromStock;
-  var r = rowsOf_('_sales');
-  for (var i = 0; i < r.data.length; i++) {
-    if (String(r.data[i][0]) !== saleId) continue;
-    var o = {};
-    r.headers.forEach(function (h, j) { o[h] = r.data[i][j]; });
+  var all = objectsOf_('_sales');
+  for (var i = 0; i < all.length; i++) {
+    if (String(all[i].saleId) !== saleId) continue;
+    var o = all[i];
     if (String(o.type) !== 'PREORDER') throw new Error('That record is already a completed sale.');
 
     var loc = String(o.location), bookId = String(o.bookId);
@@ -5563,11 +5476,8 @@ function doMarkDelivered(p) {
       saveInvMap_(map);
     }
 
-    var sh = getSheet_('_sales');
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('type') + 1).setValue('SALE');
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('delivered') + 1).setValue(true);
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('dsource') + 1)
-      .setValue(fromStock ? DSRC_WAREHOUSE : DSRC_OUTSIDE);
+    dbUpdate_('_sales', firstOnly_({ saleId: saleId }),
+      { type: 'SALE', delivered: true, dsource: fromStock ? DSRC_WAREHOUSE : DSRC_OUTSIDE });
     markDirty_(loc);
     if (fromStock && src && src !== loc) markDirty_(src);
     return;
@@ -5582,56 +5492,46 @@ function doMarkDelivered(p) {
 /* Change handed back, so the debt is cleared. */
 function doGiveChange(p) {
   var saleId = String(p.saleId);
-  ensureHeaders_('_sales', SALES_HEADERS);
-  var r = rowsOf_('_sales');
-  var hs = r.headers.map(String);
-  var iId = hs.indexOf('saleId'), iAmt = hs.indexOf('changeamt'), iCur = hs.indexOf('changecur');
-  if (iAmt < 0) return;                     // nothing to clear
-  var found = false;
-  r.data.forEach(function (row, i) {
-    if (String(row[iId]) !== saleId) return;
-    r.sheet.getRange(i + 2, iAmt + 1).setValue(0);
-    if (iCur >= 0) r.sheet.getRange(i + 2, iCur + 1).setValue('');
-    found = true;
-  });
+  dbAddCols_('_sales', SALES_HEADERS);
+  if (dbCols_('_sales').indexOf('changeamt') < 0) return;   // nothing to clear
+  var found = dbUpdate_('_sales', { saleId: saleId }, { changeamt: 0, changecur: '' });
   if (!found) return;                       // already cleared; nothing to do
-  sheetMemoClear_();
   markDirtyRegions_([regionOfLoc_(String(p.location || ''))]);
 }
 
 function doMarkPaid(p) {
   var saleId = String(p.saleId);
-  var r = rowsOf_('_sales');
-  var sh = getSheet_('_sales');
-  for (var i = 0; i < r.data.length; i++) {
-    if (String(r.data[i][0]) !== saleId) continue;
-    var o = {};
-    r.headers.forEach(function (h, j) { o[h] = r.data[i][j]; });
+  var all = objectsOf_('_sales');
+  for (var i = 0; i < all.length; i++) {
+    if (String(all[i].saleId) !== saleId) continue;
+    var o = all[i];
+    var set = {};
 
     var due = dueAmt_(o), dueCur = dueCur_(o);
     if (!pendingFlag_(o) && due > 0) {
       if (String(o.p1cur) === dueCur) {
-        sh.getRange(i + 2, SALES_HEADERS.indexOf('p1amt') + 1).setValue((Number(o.p1amt) || 0) + due);
+        set.p1amt = (Number(o.p1amt) || 0) + due;
       } else if (String(o.p2type) && String(o.p2cur) === dueCur) {
-        sh.getRange(i + 2, SALES_HEADERS.indexOf('p2amt') + 1).setValue((Number(o.p2amt) || 0) + due);
+        set.p2amt = (Number(o.p2amt) || 0) + due;
       } else if (!String(o.p2type)) {
-        sh.getRange(i + 2, SALES_HEADERS.indexOf('p2type') + 1).setValue(String(o.p1type) || 'Cash');
-        sh.getRange(i + 2, SALES_HEADERS.indexOf('p2cur') + 1).setValue(dueCur);
-        sh.getRange(i + 2, SALES_HEADERS.indexOf('p2amt') + 1).setValue(due);
+        set.p2type = String(o.p1type) || 'Cash';
+        set.p2cur = dueCur;
+        set.p2amt = due;
       } else {
         // Both slots taken and neither is in the right currency. Convert into
         // the first leg's currency so the money is not simply lost.
         var conv = toUSD_(due, dueCur);
         var c1 = String(o.p1cur);
         var add = c1 === 'USD' ? conv : (c1 === 'PLN' ? conv * plnPerUsd_() : conv * eurPerUsd_());
-        sh.getRange(i + 2, SALES_HEADERS.indexOf('p1amt') + 1).setValue(round2_((Number(o.p1amt) || 0) + add));
+        set.p1amt = round2_((Number(o.p1amt) || 0) + add);
       }
     }
 
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('pending') + 1).setValue(false);
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('paid') + 1).setValue(true);
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('dueamt') + 1).setValue(0);
-    sh.getRange(i + 2, SALES_HEADERS.indexOf('duecur') + 1).setValue('');
+    set.pending = false;
+    set.paid = true;
+    set.dueamt = 0;
+    set.duecur = '';
+    dbUpdate_('_sales', firstOnly_({ saleId: saleId }), set);
     markDirty_(String(o.location));
     return;
   }
@@ -5716,19 +5616,13 @@ function doSavePartner(p) {
   if (!regionById_(regionId)) throw new Error('Pick a region.');
   var id = String(p.partnerId || '');
   if (id) {
-    var rows = rowsOf_('_partners');
-    var hs = rows.headers.map(String);
-    writeObjects_('_partners', hs, rows.data.map(function (row) {
-      var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-      if (String(o.partnerId) === id) {
-        o.name = name; o.note = String(p.note || '').trim();
-        if (p.archived !== undefined) o.archived = !!p.archived;
-      }
-      return o;
-    }));
+    var pSet = { name: name, note: String(p.note || '').trim() };
+    if (p.archived !== undefined) pSet.archived = !!p.archived;
+    dbUpdate_('_partners', { partnerId: id }, pSet);
   } else {
     id = 'pt_' + Utilities.getUuid().slice(0, 6);
-    getSheet_('_partners').appendRow([id, regionId, name, String(p.note || '').trim(), new Date(), false]);
+    dbInsert_('_partners', { partnerId: id, regionId: regionId, name: name, note: String(p.note || '').trim(),
+                             createdAt: new Date(), archived: false });
   }
   markDirtyRegions_([regionId]);
   return id;
@@ -5763,8 +5657,8 @@ function doPartnerPayout(p) {
       var seen = objectsOf_('_payouts').some(function (x) { return String(x.id) === rowId; });
       if (seen) return;                      // already recorded — a resend
     }
-    getSheet_('_payouts').appendRow([rowId, partnerId,
-      new Date(), it.cur, it.amt, String(p.note || '').trim(), String(p.method || 'Cash')]);
+    dbInsert_('_payouts', { id: rowId, partnerId: partnerId, ts: new Date(), cur: it.cur, amt: it.amt,
+                            note: String(p.note || '').trim(), method: String(p.method || 'Cash') });
     /* Cash handed over physically leaves the box, so the tracker has to see it
        go. A digital hand-over never touched the box, so it doesn't. */
     if (isCash && fromLoc && cashValidAcct_(fromLoc)) {
@@ -5823,7 +5717,7 @@ function partnerTallies_() {
      comes off what the group is owed, not off our own net. Tagged with a
      payment type, it also comes off that method's figure (a card fee against
      Card), which is what the Deliver buttons hand over. */
-  if (getSheet_('_costs')) objectsOf_('_costs').forEach(function (c) {
+  objectsOf_('_costs').forEach(function (c) {
     var t = out[String(c.partnerId || '')];
     if (!t) return;
     var cur = String(c.cur), amt = Number(c.amt) || 0;
@@ -5953,14 +5847,8 @@ function doReorderBooks(p) {
   }
   if (!regionById_(regionId)) throw new Error('Pick a region.');
 
-  ensureHeaders_('_regions', REGION_HEADERS);
-  var r = rowsOf_('_regions');
-  var hs = r.headers.map(String);
-  writeObjects_('_regions', hs, r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o.regionId) === regionId) o.bookOrder = ids.join(',');
-    return o;
-  }));
+  dbAddCols_('_regions', REGION_HEADERS);
+  dbUpdate_('_regions', { regionId: regionId }, { bookOrder: ids.join(',') });
   bookMemoClear_();
   markDirtyRegions_([regionId]);
 }
@@ -5988,7 +5876,7 @@ function doQrSave(p) {
              scope: scope, label: String(r.label || '').trim(),
              caption: String(r.caption || '').trim(), src: String(r.src || ''), sort: i };
   }).filter(function (r) { return r.label && r.src; });
-  writeObjects_('_qr', ['id','scope','label','caption','src','sort'], kept.concat(mine));
+  dbSave_('_qr', kept.concat(mine), ['id','scope','label','caption','src','sort']);
   markDirtyAll_();
 }
 
@@ -6006,18 +5894,9 @@ function doRenameBook(p) {
   var id = String(p.bookId || '');
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Give the title a name.');
-  var r = rowsOf_('_custombooks');
-  var hs = r.headers.map(String);
-  var found = false;
-  writeObjects_('_custombooks', hs, r.data.map(function (row) {
-    var o = {}; hs.forEach(function (h, i) { o[h] = row[i]; });
-    if (String(o.id) === id) {
-      o.name = name;
-      if (p.cat) o.cat = normCat_(p.cat);
-      found = true;
-    }
-    return o;
-  }));
+  var bSet = { name: name };
+  if (p.cat) bSet.cat = normCat_(p.cat);
+  var found = dbUpdate_('_custombooks', { id: id }, bSet);
   if (!found) throw new Error('That is one of the standard titles and cannot be renamed.');
   bookMemoClear_();
   markDirtyRegions_(regionsTouchedByBook_(partnerOfBook_(id)));
@@ -6047,15 +5926,13 @@ function doDeleteBook(p) {
   });
   if (held) saveInvMap_(map);
 
-  writeObjects_('_custombooks', rowsOf_('_custombooks').headers.map(String),
-    custom.filter(function (b) { return String(b.id) !== id; }));
+  dbSave_('_custombooks', custom.filter(function (b) { return String(b.id) !== id; }));
   // Its prices go with it.
-  writeObjects_('_prices', ['regionId','bookId','cur','price'],
-    objectsOf_('_prices').filter(function (r) { return String(r.bookId) !== id; })
+  dbSave_('_prices', objectsOf_('_prices').filter(function (r) { return String(r.bookId) !== id; })
       .map(function (r) {
         return { regionId: String(r.regionId), bookId: String(r.bookId),
                  cur: String(r.cur), price: Number(r.price) || 0 };
-      }));
+      }), ['regionId','bookId','cur','price']);
   // Only where the title actually was needs redrawing.
   markDirtyRegions_(regionsOrdered_().map(function (r) { return r.regionId; }));
   return { removedStock: held };
@@ -6095,13 +5972,10 @@ function doAddBook(p) {
       throw new Error('A book called "' + name + '" already exists.');
   }
   var id = 'bk_' + Utilities.getUuid().slice(0, 6);
-  ensureHeaders_('_custombooks', ['id','name','cat','createdAt','partnerId','sort']);
-  var shB = getSheet_('_custombooks');
-  var liveB = shB.getRange(1, 1, 1, Math.max(shB.getLastColumn(), 1)).getValues()[0].map(String);
+  dbAddCols_('_custombooks', ['id','name','cat','createdAt','partnerId','sort']);
   var rowB = { id: id, name: name, cat: cat, createdAt: new Date(),
                partnerId: String(p.partnerId || ''), sort: '' };
-  shB.appendRow(liveB.map(function (h) { return rowB[h] === undefined ? '' : rowB[h]; }));
-  sheetMemoClear_();
+  dbInsert_('_custombooks', rowB);
   bookMemoClear_();
   markDirtyRegions_(regionsTouchedByBook_(p.partnerId));
   return id;
@@ -6898,7 +6772,7 @@ function renderView_(loc, regionId, ssOverride) {
      so — as in the collections above — it is not part of the net either. */
   if (isSummary) {
     var costCurs = allCurrencies_();
-    var regionCosts = (getSheet_('_costs') ? objectsOf_('_costs') : [])
+    var regionCosts = objectsOf_('_costs')
       // Our own costs only: a consignment group's costs come off what it is owed.
       .filter(function (c) { return c && c.id && inRegion[String(c.location)] && !String(c.partnerId || ''); })
       .sort(function (a, b) { return new Date(a.ts) - new Date(b.ts); });
@@ -7114,7 +6988,7 @@ var _cashIds = [];            // cash rows written by the current request
 var _activityBefore = null;   // what a change replaced, noted just before it runs
 
 function activitySheet_() {
-  return sheet_('_activity', ACTIVITY_HEADERS);
+  return dbCreate_('_activity', ACTIVITY_HEADERS);
 }
 
 /* The region a place belongs to, in any season: warehouse, event, sub-warehouse. */
@@ -7202,7 +7076,7 @@ function activityBefore_(action, p) {
     }
     if (action === 'saveCost') {
       var cid = String(p.id || '');
-      _activityBefore = { existed: !!cid && !!getSheet_('_costs') &&
+      _activityBefore = { existed: !!cid && dbHas_('_costs') &&
         objectsOf_('_costs').some(function (c) { return String(c.id) === cid; }) };
     }
     if (action === 'regionAddBooks') {
@@ -7356,9 +7230,8 @@ function activityRecord_(action, p, result, who) {
     });
     var d = describe_(action, p, result, moves, who);
     if (!d || !d.text) return;
-    var sh = activitySheet_();
-    ensureHeaders_('_activity', ACTIVITY_HEADERS);
-    var hs = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
+    activitySheet_();
+    dbAddCols_('_activity', ACTIVITY_HEADERS);
     var row = { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
       season: String(p.season || activeSeasonId_()), who: _cashBy || '', action: action,
       text: String(d.text).slice(0, 900), locs: d.locs.join(','), regions: d.regions.join(','),
@@ -7367,14 +7240,13 @@ function activityRecord_(action, p, result, who) {
       // Several titles in one change: one line per title, so each can be undone on its own.
       parts: (d.undo && d.undo.type === 'moves') ? partsJson_(moves) : '',
       undoneParts: '' };
-    sh.appendRow(hs.map(function (h) { return row[h] === undefined ? '' : row[h]; }));
-    sheetMemoClear_();
+    dbInsert_('_activity', row);
   } catch (e) { /* the log must never cost anyone their change */ }
 }
 
 /* The log, for one season (and, on a regional link, one region). Newest first. */
 function activityList_(who, seasonId) {
-  if (!getSheet_('_activity')) return [];
+  if (!dbHas_('_activity')) return [];
   var seasonRegions = {};
   allRegionsEverywhere_().forEach(function (r) { if (r.seasonId === seasonId) seasonRegions[r.regionId] = 1; });
   var out = [];
@@ -7454,9 +7326,7 @@ function undoMoves_(ids) {
     markDirty_(m.toLoc);
   });
   saveInvMap_(map);
-  writeObjects_('_stockmoves',
-    ['id','ts','kind','fromLoc','toLoc','bookId','qty','note','fromBefore','fromAfter','toBefore','toAfter'],
-    rows.filter(function (m) { return !want[String(m.id)]; }));
+  dbDelete_('_stockmoves', function (m) { return !!want[String(m.id)]; });
   markDirtyAll_();
 }
 
@@ -7464,14 +7334,11 @@ function undoMoves_(ids) {
    itself counts as undone. */
 function doUndoActivityPart(p, who) {
   var id = String(p.id || ''), part = String(p.part || '');
-  var sh = getSheet_('_activity');
-  if (!sh) throw new Error('That entry is no longer in the log.');
-  var rows = rowsOf_('_activity'), hs = rows.headers.map(String);
-  var at = -1, e = null;
-  rows.data.forEach(function (row, i) {
-    if (String(row[hs.indexOf('id')]) === id) { at = i; e = {}; hs.forEach(function (h, j) { e[h] = row[j]; }); }
-  });
+  if (!dbHas_('_activity')) throw new Error('That entry is no longer in the log.');
+  var e = null;
+  objectsOf_('_activity').forEach(function (r) { if (String(r.id) === id) e = r; });
   if (!e) throw new Error('That entry is no longer in the log.');
+  var mine = lastOnly_('_activity', { id: id });
   if (e.undoneAt) return 'already';
   var parts = []; try { parts = JSON.parse(String(e.parts || '[]')) || []; } catch (x) { parts = []; }
   // Older entries: their lines are rebuilt the same way the log shows them.
@@ -7487,9 +7354,8 @@ function doUndoActivityPart(p, who) {
      so an older entry rebuilt from the record afterwards would lose (or, with
      one title left, fall back to its old list and show again) the line just
      undone. */
-  var iParts = hs.indexOf('parts');
-  if (iParts < 0) { ensureHeaders_('_activity', ACTIVITY_HEADERS); rows = rowsOf_('_activity'); hs = rows.headers.map(String); iParts = hs.indexOf('parts'); }
-  if (parts.every(function (x) { return x.ids; })) sh.getRange(at + 2, iParts + 1).setValue(JSON.stringify(parts));
+  dbAddCols_('_activity', ACTIVITY_HEADERS);
+  if (parts.every(function (x) { return x.ids; })) dbUpdate_('_activity', mine, { parts: JSON.stringify(parts) });
   var gone = String(e.undoneParts || '').split(',').filter(Boolean);
   if (gone.indexOf(part) >= 0) return 'already';
   if (who.role !== 'admin') {
@@ -7502,33 +7368,24 @@ function doUndoActivityPart(p, who) {
   undoMoves_((line.ids || [part]).filter(function (i) { return gonePrev.indexOf(i) < 0; }));
   gone.push(part);
   (line.ids || []).forEach(function (i) { if (gone.indexOf(i) < 0) gone.push(i); });
-  var iP = hs.indexOf('undoneParts');
-  if (iP < 0) { ensureHeaders_('_activity', ACTIVITY_HEADERS); rows = rowsOf_('_activity'); hs = rows.headers.map(String); iP = hs.indexOf('undoneParts'); }
-  sh.getRange(at + 2, iP + 1).setValue(gone.join(','));
+  var set = { undoneParts: gone.join(',') };
   if (parts.every(function (x) { return gone.indexOf(String(x.id)) >= 0; })) {
-    sh.getRange(at + 2, hs.indexOf('undoneAt') + 1).setValue(new Date());
-    sh.getRange(at + 2, hs.indexOf('undoneBy') + 1).setValue(_cashBy || '');
+    set.undoneAt = new Date();
+    set.undoneBy = _cashBy || '';
   }
-  var ah = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  var nrow = { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
+  dbUpdate_('_activity', mine, set);
+  dbInsert_('_activity', { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
     season: String(e.season || ''), who: _cashBy || '', action: 'undoActivity',
     text: 'Undid one line: ' + String(line.text), locs: String(e.locs || ''), regions: String(e.regions || ''),
-    moves: '', undo: '', undoneAt: '', undoneBy: '', parts: '', undoneParts: '' };
-  sh.appendRow(ah.map(function (h) { return nrow[h] === undefined ? '' : nrow[h]; }));
-  sheetMemoClear_();
+    moves: '', undo: '', undoneAt: '', undoneBy: '', parts: '', undoneParts: '' });
   return 'undone';
 }
 
 function doUndoActivity(p, who) {
   var id = String(p.id || '');
-  var sh = getSheet_('_activity');
-  if (!sh) throw new Error('That entry is no longer in the log.');
-  var rows = rowsOf_('_activity');
-  var hs = rows.headers.map(String);
-  var at = -1, e = null;
-  rows.data.forEach(function (row, i) {
-    if (String(row[hs.indexOf('id')]) === id) { at = i; e = {}; hs.forEach(function (h, j) { e[h] = row[j]; }); }
-  });
+  if (!dbHas_('_activity')) throw new Error('That entry is no longer in the log.');
+  var e = null;
+  objectsOf_('_activity').forEach(function (r) { if (String(r.id) === id) e = r; });
   if (!e) throw new Error('That entry is no longer in the log.');
   if (e.undoneAt) return 'already';                          // a resend: done already
   var u = null; try { u = JSON.parse(String(e.undo || '')); } catch (x) { u = null; }
@@ -7558,12 +7415,7 @@ function doUndoActivity(p, who) {
       allBooks_().forEach(function (b) { left += getQty_(map, sp.shipId, b.id); });
       Object.keys(sp.manifest || {}).forEach(function (k) { sentTotal += Number(sp.manifest[k]) || 0; });
       var status = (sentTotal && left < sentTotal) ? 'PARTIAL' : 'IN_TRANSIT';
-      var r2 = rowsOf_('_shipments'), h2 = r2.headers.map(String);
-      writeObjects_('_shipments', h2, r2.data.map(function (row) {
-        var o = {}; h2.forEach(function (h, j) { o[h] = row[j]; });
-        if (String(o.shipId) === sp.shipId) { o.status = status; o.arrivedAt = ''; }
-        return o;
-      }));
+      dbUpdate_('_shipments', { shipId: sp.shipId }, { status: status, arrivedAt: '' });
     }
   }
   else if (u.type === 'fulfill') {
@@ -7579,12 +7431,9 @@ function doUndoActivity(p, who) {
   else if (u.type === 'change') doChangeDelete({ id: u.id });
   else if (u.type === 'label') doSaveLabel({ key: u.key, text: u.text || '' });
   else if (u.type === 'regionBooks') {
-    var rr = rowsOf_('_regions'), rh = rr.headers.map(String);
-    var iId = rh.indexOf('regionId'), iB = rh.indexOf('books');
-    rr.data.forEach(function (row, i) {
-      if (String(row[iId]) !== String(u.regionId) || iB < 0) return;
-      var list = parseBookList_(row[iB]).filter(function (b) { return (u.ids || []).indexOf(b) < 0; });
-      if (list.length) rr.sheet.getRange(i + 2, iB + 1).setValue(list.join(','));
+    dbUpdate_('_regions', { regionId: String(u.regionId) }, function (row) {
+      var list = parseBookList_(row.books).filter(function (b) { return (u.ids || []).indexOf(b) < 0; });
+      return list.length ? { books: list.join(',') } : {};
     });
     markDirtyRegions_([u.regionId]);
   }
@@ -7605,16 +7454,11 @@ function doUndoActivity(p, who) {
   else throw new Error('This one cannot be undone here.');
 
   // Kept in the log, marked undone — and the undo is itself recorded.
-  var iU = hs.indexOf('undoneAt'), iBy = hs.indexOf('undoneBy');
-  if (iU >= 0) sh.getRange(at + 2, iU + 1).setValue(new Date());
-  if (iBy >= 0) sh.getRange(at + 2, iBy + 1).setValue(_cashBy || '');
-  var ah = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  var nrow = { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
+  dbUpdate_('_activity', lastOnly_('_activity', { id: id }), { undoneAt: new Date(), undoneBy: _cashBy || '' });
+  dbInsert_('_activity', { id: 'A' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(),
     season: String(e.season || ''), who: _cashBy || '', action: 'undoActivity',
     text: 'Undid: ' + String(e.text || ''), locs: String(e.locs || ''), regions: String(e.regions || ''),
-    moves: '', undo: '', undoneAt: '', undoneBy: '' };
-  sh.appendRow(ah.map(function (h) { return nrow[h] === undefined ? '' : nrow[h]; }));
-  sheetMemoClear_();
+    moves: '', undo: '', undoneAt: '', undoneBy: '' });
   return 'undone';
 }
 
@@ -7641,24 +7485,15 @@ function placePath_(loc) {
 }
 
 function saleRowById_(id) {
-  var r = rowsOf_('_sales'), hs = r.headers.map(String);
-  for (var i = 0; i < r.data.length; i++) {
-    if (String(r.data[i][hs.indexOf('saleId')]) === String(id)) {
-      var o = {}; hs.forEach(function (h, j) { o[h] = r.data[i][j]; });
-      return { at: i, o: o, hs: hs, sheet: r.sheet };
-    }
+  var all = objectsOf_('_sales');
+  for (var i = 0; i < all.length; i++) {
+    if (String(all[i].saleId) === String(id)) return { o: all[i] };
   }
   return null;
 }
 function setSaleFields_(hit, fields) {
-  ensureHeaders_('_sales', SALES_HEADERS);
-  var sh = getSheet_('_sales');
-  var hs = sh.getRange(1, 1, 1, Math.max(sh.getLastColumn(), 1)).getValues()[0].map(String);
-  Object.keys(fields).forEach(function (k) {
-    var c = hs.indexOf(k);
-    if (c >= 0) sh.getRange(hit.at + 2, c + 1).setValue(fields[k]);
-  });
-  sheetMemoClear_();
+  dbAddCols_('_sales', SALES_HEADERS);
+  dbUpdate_('_sales', firstOnly_({ saleId: String(hit.o.saleId) }), fields);
 }
 function isOpenPreorder_(o) {
   return String(o.type) === 'PREORDER' && !(o.delivered === true || String(o.delivered).toUpperCase() === 'TRUE');
@@ -7772,23 +7607,13 @@ function doCloseSeason(p) {
   setSeasonContext_('');
   var live = null;
   try { _fxMemo = null; live = getRates_(); } finally { setSeasonContext_(ctx); }
-  ensureHeaders_('_seasons', ['seasonId','name','sort','createdAt','closedAt','frozenRates']);
-  var rows = rowsOf_('_seasons'), hs = rows.headers.map(String);
-  rows.data.forEach(function (row, i) {
-    if (String(row[hs.indexOf('seasonId')]) !== id) return;
-    rows.sheet.getRange(i + 2, hs.indexOf('closedAt') + 1).setValue(new Date());
-    rows.sheet.getRange(i + 2, hs.indexOf('frozenRates') + 1).setValue(JSON.stringify(live || {}));
-  });
-  sheetMemoClear_(); cacheClear_(); markDirtyAll_();
+  dbAddCols_('_seasons', ['seasonId','name','sort','createdAt','closedAt','frozenRates']);
+  dbUpdate_('_seasons', { seasonId: id }, { closedAt: new Date(), frozenRates: JSON.stringify(live || {}) });
+  cacheClear_(); markDirtyAll_();
   return 'closed';
 }
 function doReopenSeason(p) {
   var id = String(p.seasonId || '');
-  var rows = rowsOf_('_seasons'), hs = rows.headers.map(String);
-  rows.data.forEach(function (row, i) {
-    if (String(row[hs.indexOf('seasonId')]) !== id) return;
-    rows.sheet.getRange(i + 2, hs.indexOf('closedAt') + 1).setValue('');
-    var f = hs.indexOf('frozenRates'); if (f >= 0) rows.sheet.getRange(i + 2, f + 1).setValue('');
-  });
-  sheetMemoClear_(); cacheClear_(); markDirtyAll_();
+  dbUpdate_('_seasons', { seasonId: id }, { closedAt: '', frozenRates: '' });
+  cacheClear_(); markDirtyAll_();
 }

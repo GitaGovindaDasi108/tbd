@@ -13,7 +13,7 @@ const root = fs.existsSync(path.join(here, '..', 'index.html'))
 
 const SCRIPTS = ['simtest.js', 'bundle.js', 'chg2.js', 'verify.js',
                  'stale.js', 'createtest.js', 'dutchtest.js', 'reptest.js',
-                 'payusd.js'];
+                 'payusd.js', 'seam.js'];
 
 let bad = 0;
 
@@ -46,6 +46,17 @@ for (const s of SCRIPTS) {
   if (fails.length) { console.log(`FAIL     ${s} — ${fails.length} of ${passes + fails.length}`);
                       fails.forEach(l => console.log('           ' + l.trim())); bad++; }
   else console.log(`OK       ${s}${passes ? ` — ${passes} checks` : ' (prints output; read it)'}`);
+}
+
+/* The same code with its records in sheets and in memory must behave
+ * identically over every recorded session — the storage layer's contract. */
+{
+  let out = '';
+  try { out = execFileSync(process.execPath, [path.join(here, 'golden.js'), '--base=WORKTREE', '--store=memory'],
+                           { encoding: 'utf8', stdio: 'pipe' });
+        const n = (out.match(/^PASS/gm) || []).length;
+        console.log(`OK       golden.js sheets = memory — ${n} recorded sessions`); }
+  catch (e) { console.log(`FAIL     golden.js sheets vs memory\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
 }
 
 console.log(bad ? `\n${bad} problem(s).` : '\nAll clear.');

@@ -12,7 +12,7 @@ function mkSheet(name){
     getMaxRows:()=>Math.max(sh.grid.length,1000),
     getMaxColumns:()=>Math.max(sh.getLastColumn(),50),
     insertRowsAfter:()=>{}, insertColumnsAfter:()=>{}, deleteRow:i=>sh.grid.splice(i-1,1),
-    appendRow:r=>{ global.__ops && global.__ops.append++; sh.grid.push(r.slice()); },
+    appendRow:r=>{ if(global.__ops){ global.__ops.append++; global.__ops.cells=(global.__ops.cells||0)+r.length; } sh.grid.push(r.slice()); },
     clear:()=>{ sh.grid=[]; }, clearContents:()=>{ sh.grid=[]; },
     setColumnWidth:()=>{}, setRowHeight:()=>{}, setFrozenRows:()=>{}, setFrozenColumns:()=>{},
     hideSheet:()=>{}, showSheet:()=>{}, autoResizeColumn:()=>{},
@@ -25,7 +25,7 @@ function mkSheet(name){
             for(let j=0;j<nc;j++) o.push(row[c-1+j]===undefined?'':row[c-1+j]); out.push(o); }
           return out; },
         getValue:()=>api.getValues()[0][0],
-        setValues:v=>{ global.__ops && global.__ops.write++;
+        setValues:v=>{ if(global.__ops){ global.__ops.write++; global.__ops.cells=(global.__ops.cells||0)+v.length*((v[0]||[]).length); }
           v.forEach((row,i)=>{ const gi=r-1+i; while(sh.grid.length<=gi) sh.grid.push([]);
             row.forEach((val,j)=>{ sh.grid[gi][c-1+j]=val; }); }); return api; },
         setValue:v=>api.setValues([[v]]),
@@ -135,6 +135,11 @@ function __find(name){
 const code = __fs.readFileSync(__find('Code.gs'),'utf8');
 eval(code);
 
+/* TBS_STORE=memory keeps every record in memory (memstore.js) instead of the
+   hidden sheets, through the same two objects Code.gs uses for storage. */
+const __mem = process.env.TBS_STORE === 'memory' ? require('./memstore.js') : null;
+if (__mem) { STORE_ = __mem.store; KV_ = __mem.kv; }
+
 /* TBS_RECORD=/path/file.jsonl writes every request, in order, one per line.
    test/golden.js replays such a file to prove a change behaves exactly as
    before — the safety net for moving the data off Google Sheets. */
@@ -157,5 +162,6 @@ module.exports = {
   pay:l=>payTypesFor_(l),
   // Test hooks: swap a backend function for one call path, and read the revision.
   patch:(name,fn)=>{ if(__rec) __fs.appendFileSync(__rec, JSON.stringify({__patch:name})+'\n'); const old=eval(name); eval(name+' = fn'); return old; },
-  rev:()=>getRev_()
+  rev:()=>getRev_(),
+  mem:__mem
 };

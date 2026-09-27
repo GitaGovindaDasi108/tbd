@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b191**.
+Handover notes. Current build: **b192**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -55,8 +55,32 @@ useful when a bug refuses to go away.
 
 - Sheets prefixed `_` are the database (`_sales`, `_events`, `_regions`,
   `_cash`, `_change`, `_costs`, `_payouts`, `_labels`, `_meta`, …).
-- Visible generated sheets are rebuilt by `syncSheets()`; a time trigger runs
-  `syncEverySeason_()`.
+- **Every read and write of those records goes through the data store**
+  (section `DATA STORE` in `Code.gs`, since b192). The rest of the file sees
+  rows as plain objects:
+
+  | Call | Does |
+  |---|---|
+  | `objectsOf_(t)` | every row of table `t`, in stored order (`[]` if it doesn't exist yet) |
+  | `dbInsert_(t, rows)` | append one row or several, by column name |
+  | `dbUpdate_(t, match, set)` | change fields on the matching rows only |
+  | `dbDelete_(t, match)` | remove the matching rows only |
+  | `dbSave_(t, rows, cols)` | make the table hold exactly these rows (writes only what differs) |
+  | `dbCreate_` / `dbAddCols_` / `dbHas_` / `dbCols_` | tables and columns |
+  | `propGet_` / `propSet_` / `propDel_` / `propAll_` | lasting settings (revision, redraw queue, deleted ids, close drafts) |
+  | `tempGet_` / `tempPut_` / `tempDel_` | short-lived memory (saves already done, state snapshot, FX) |
+
+  `match` is `{ column: value }` or a function. `firstOnly_` / `lastOnly_`
+  keep the old behaviour where code changed only one of several rows sharing
+  an id. Underneath, two small objects, `STORE_` (tables) and `KV_`
+  (properties and cache), are the **only** code that knows about Google
+  Sheets. Moving the data to a database means writing another `STORE_` and
+  `KV_`; `test/memstore.js` is a working example that keeps everything in
+  memory. `test/seam.js` fails if anything else starts touching the sheets,
+  properties or cache directly.
+- Visible generated sheets (the reports) are rebuilt by `syncSheets()`; a
+  time trigger runs `syncEverySeason_()`. They read their data through the
+  store too, and are the one other place that uses Sheets and Drive.
 - Writes take a script lock; reads do not.
 - `rememberOp_(opId, reply)` caches replies for 6 hours so a re-sent save is
   recognized rather than applied twice.
@@ -151,7 +175,21 @@ install. See `test/README.md`.
 
 `node test/run-all.js` checks both files parse and runs every regression
 script (`simtest`, `bundle`, `chg2`, `verify`, `stale`, `createtest`,
-`dutchtest`, `reptest`, `payusd`).
+`dutchtest`, `reptest`, `payusd`, `seam`), then replays every recorded
+session with the records in sheets and in memory and requires identical
+results.
+
+**Golden replay** (`test/golden.js`, since b192). `test/corpus/` holds real
+request sessions recorded from the tests (`TBS_RECORD=file` in `mini.js`).
+`node test/golden.js` replays each one against git `HEAD` and the working
+copy, with the same clock, and compares every reply and every data sheet
+after every request, then the readable spreadsheets. It prints the first
+difference. Use it for any change that should not change behaviour —
+especially anything touching storage. `--base=<rev>` compares against another
+revision; `--store=memory` runs the working copy with its records in memory.
+`test/corpus-extra.js` produced `extra.jsonl`, which drives the save actions
+the browser tests never reach; re-record it (and the others) when an action
+deliberately changes.
 
 `node test/browser-buttons.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
@@ -460,13 +498,57 @@ a fallback. Also: side-by-side boxes (`.row2`) no longer overflow a dialog.
   copies here yet"; ticking it stores `+id` in the event's hidden list to show
   it anyway. `shelfBooks` = `baseShelfBooks` minus hidden.
 
+## Done in b192 — Moving off Google Sheets, phase 1: the data store
+
+No change anyone can see; the groundwork for leaving Google Sheets.
+
+- **One storage layer.** Every read and write of the records now goes through
+  the data store (see Architecture › Server). Before, the rules and the sheet
+  calls were mixed together in about 200 places.
+- **Changes touch only what changed.** Many saves used to rewrite a whole
+  sheet to change one field. With 2,000 sales recorded, "dollars received"
+  rewrote 62,093 cells and now writes 1; deleting a sale rewrote 62,068 and
+  now removes one row; deleting a cash entry went from 3,641 cells to 14. A
+  full rewrite still happens where the rows are reordered, or more than 25
+  go at once.
+- **Proven identical.** 653 recorded requests (14 sessions) give identical
+  replies, identical data after every request and identical readable
+  spreadsheets, before and after — and again with the records held in memory
+  instead of sheets. All 291 browser checks and every regression script pass
+  unchanged.
+- Deploy as usual (new version of Code.gs, push index.html). No initialize
+  needed; nothing in the data changes.
+
 ## Open items
 
-1. **Scale.** Google Sheets is the ceiling: writes are serialised behind a
-   script lock (~1–2 s each) and a read rebuilds state from ~25 sheet reads.
-   Fine for a handful of concurrent users; it will not hold for a dozen sellers
-   at once. The recommended move is Firestore — the entire UI and all the rules
-   carry over; only the storage layer changes.
+1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
+   are serialised behind a script lock (~1–2 s each) and a read rebuilds
+   state from ~25 sheet reads. Fine for a handful of concurrent users, not
+   for 10–15 sellers at once. The owner's decisions (September 2026):
+   - **Database: Cloudflare Workers + D1**, on the free plan. Always free, no
+     credit card, never sleeps; a hard daily cap instead of a bill (5 M rows
+     read, 100 k written, 5 GB). Upgrading, if ever needed, is the $5/month
+     Workers Paid plan: a setting, no code or data change. Firebase (no
+     server functions on its free plan) and Supabase (pauses after a week
+     unused) were ruled out.
+   - **Sign-in:** admins sign in with Google, once per device, remembered
+     (~90 days). Regional coordinators and sellers keep links, no accounts.
+     Seller links stay valid until their region closes (closing already
+     blocks new business at a place; see `assertNotClosed_`).
+   - **Reports:** the readable spreadsheets stay. A slimmed Apps Script keeps
+     building them, reading from the new server every few minutes.
+
+   Plan: **phase 1** (b192, done) — the data store. **Phase 2** — the same
+   `Code.gs` rules running on a Cloudflare Worker with a D1 `STORE_`/`KV_`;
+   D1 transactions in place of the script lock; the replies cached in memory
+   so the daily read cap stays far away; saves already done kept in a table
+   (permanently, not 6 hours); Google sign-in for admins. The golden replay
+   runs against it before anything switches. Things to move to the report
+   script at that point: `syncSheets` and the render functions, Drive filing
+   (`setDriveFolder`, `setSeasonFolder`, `descriptionsSheet`, `driveMap`),
+   and the tab clean-up inside `doRenameEvent` / `doDeleteEvent`.
+   **Phase 3** — copy the data across, compare every total, switch
+   `config.js`; switching back is restoring the old address.
 
 ---
 

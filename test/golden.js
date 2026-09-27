@@ -2,7 +2,9 @@
 
      node test/golden.js                      # every corpus in test/corpus/, against git HEAD
      node test/golden.js --base=b191tag       # against any git revision
-     node test/golden.js --verbose test/corpus/round2.jsonl
+     node test/golden.js --base=WORKTREE --store=memory   # sheets vs memory, same code
+     node test/golden.js --store=memory       # working copy with its records in memory
+     node test/golden.js test/corpus/extra.jsonl
 
    Why: moving the data off Google Sheets means rewriting how every record is
    read and written, while nothing the app sees may change. Each corpus is the
@@ -49,6 +51,7 @@ if (process.argv[2] === '--replay') {
     return { head, rows };
   };
   const dumpData = () => {
+    if (m.mem) return m.mem.dump(norm);
     const out = {};
     const act = m.sheet ? SpreadsheetApp.getActive() : null;
     act.getSheets().forEach(sh => { if (/^_/.test(sh.getName())) out[sh.getName()] = dumpSheet(sh); });
@@ -66,7 +69,7 @@ if (process.argv[2] === '--replay') {
     return out;
   };
   const cleanReply = r => {
-    const s = JSON.stringify(r, (k, v) => (k === 'build' || k === 'serverBuild') ? '' : v);
+    const s = JSON.stringify(r, (k, v) => (k === 'build' || k === 'serverBuild' || (process.env.TBS_IGNORE_TIME && k === 'serverTime')) ? '' : v);
     return JSON.parse(s);
   };
 
@@ -93,20 +96,29 @@ if (process.argv[2] === '--replay') {
 /* ---------- parent: run both versions, compare ---------- */
 const args = process.argv.slice(2);
 const baseArg = (args.find(a => a.startsWith('--base=')) || '--base=HEAD').slice(7);
-const verbose = args.includes('--verbose');
+// --store=memory: run the working copy with its records in memory rather than
+// in sheets (the base always runs on sheets), proving storage is swappable.
+const nowStore = (args.find(a => a.startsWith('--store=')) || '--store=').slice(8);
 let files = args.filter(a => !a.startsWith('--'));
 if (!files.length) {
   const dir = path.join(__dirname, 'corpus');
   files = fs.readdirSync(dir).filter(f => f.endsWith('.jsonl')).sort().map(f => path.join(dir, f));
 }
 
+// --base=WORKTREE compares the working copy with itself — with --store=memory,
+// the check that storage alone makes no difference (run by run-all.js).
 const baseCode = path.join(os.tmpdir(), 'tbs-golden-base-' + process.pid + '.gs');
-fs.writeFileSync(baseCode, execFileSync('git', ['show', baseArg + ':Code.gs'], { cwd: ROOT, maxBuffer: 1 << 28 }));
+fs.writeFileSync(baseCode, baseArg === 'WORKTREE' ? fs.readFileSync(path.join(ROOT, 'Code.gs'))
+  : execFileSync('git', ['show', baseArg + ':Code.gs'], { cwd: ROOT, maxBuffer: 1 << 28 }));
 
-function run(codePath, corpus) {
+function run(codePath, corpus, store) {
   const out = path.join(os.tmpdir(), 'tbs-golden-out-' + process.pid + '.json');
   execFileSync(process.execPath, [__filename, '--replay', corpus, out],
-    { env: Object.assign({}, process.env, { TBS_CODE: codePath, TBS_RECORD: '' }), maxBuffer: 1 << 30 });
+    /* The mock Google cache cannot hold the chunked state snapshot; the
+       memory store can, so a snapshot may be served whose serverTime is from
+       when it was made. Everything else in it must still match exactly. */
+    { env: Object.assign({}, process.env, { TBS_CODE: codePath, TBS_RECORD: '', TBS_STORE: store || '',
+                                            TBS_IGNORE_TIME: nowStore ? '1' : '' }), maxBuffer: 1 << 30 });
   const res = JSON.parse(fs.readFileSync(out, 'utf8'));
   fs.unlinkSync(out);
   return res;
@@ -131,7 +143,7 @@ let bad = 0;
 for (const f of files) {
   const name = path.basename(f);
   let A, B;
-  try { A = run(baseCode, f); B = run(path.join(ROOT, 'Code.gs'), f); }
+  try { A = run(baseCode, f); B = run(path.join(ROOT, 'Code.gs'), f, nowStore); }
   catch (e) { console.log('ERROR    ' + name + '\n' + String(e.stderr || e.message).slice(0, 2000)); bad++; continue; }
   let diff = null, where = '';
   for (let i = 0; i < Math.max(A.steps.length, B.steps.length) && !diff; i++) {
@@ -147,7 +159,7 @@ for (const f of files) {
                 '\n           base: ' + short(diff.base) + '\n           now:  ' + short(diff.now));
   } else {
     const writes = A.steps.filter(s => s.req && s.req.action && !/^(getState|ping|activity|openPreorders|opStatus|setSeason)$/.test(s.req.action)).length;
-    console.log('PASS     ' + name + ' — ' + A.steps.length + ' requests (' + writes + ' saves) identical' + (verbose ? '' : ''));
+    console.log('PASS     ' + name + ' — ' + A.steps.length + ' requests (' + writes + ' saves) identical');
   }
 }
 fs.unlinkSync(baseCode);

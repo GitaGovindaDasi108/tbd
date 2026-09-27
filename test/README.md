@@ -47,6 +47,30 @@ with `TBS_APP=/path/to/index.html` and `TBS_CODE=/path/to/Code.gs`.
 To drive the app against the real server logic in one process, point the app's
 `fetch` at `mini.js` — see `verify.js` for the pattern.
 
+## Golden replay: proving a change changes nothing
+
+`test/corpus/*.jsonl` are real request sessions, recorded from the tests with
+`TBS_RECORD=file` (see `mini.js`). `golden.js` replays each against two
+versions of `Code.gs` from an empty spreadsheet, with the same clock, and
+compares every reply and every data sheet after every request, then the
+readable spreadsheets:
+
+```
+node test/golden.js                           # working copy vs git HEAD
+node test/golden.js --base=<rev>              # vs any revision
+node test/golden.js --store=memory            # working copy with its records in memory
+node test/golden.js --base=WORKTREE --store=memory   # sheets vs memory, same code (run-all does this)
+```
+
+The first difference in each session is printed with the request and the
+field. `corpus-extra.js` drives the save actions the browser tests don't
+reach; to re-record: `TBS_RECORD=test/corpus/extra.jsonl node test/corpus-extra.js`
+(delete the old file first — recording appends).
+
+`TBS_STORE=memory` works for any script using `mini.js`: the records live in
+`memstore.js` instead of the fake sheets. `seam.js` checks that only the
+storage backend in `Code.gs` touches the data sheets, properties and cache.
+
 ## Traps
 
 These have each cost a debugging session. A failing test here is as likely to
