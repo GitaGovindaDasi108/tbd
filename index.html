@@ -1311,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b198</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b199</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -6656,6 +6656,7 @@ function renderDriveMap(map, note){
       ? folderHead('📁', map.root.name, map.root.url, false, 'data-act="dfroot"')
       : `<div class="df-folder"><div class="df-fname">📁 <span class="muted">Not set up yet</span></div>
            <span class="df-btns"><button class="btn btn-ghost btn-xs" data-act="dfroot">Change</button></span></div>`}
+    ${map.hq ? `<div class="cash-sub">Earthly HQ</div>${fileRow(map.hq)}` : ''}
     <div class="cash-sub">Seasons</div>
     ${seasons || '<div class="cash-empty">No seasons yet.</div>'}
     <div class="err" id="modalErr"></div>`;

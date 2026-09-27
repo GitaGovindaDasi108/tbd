@@ -695,6 +695,28 @@ Costs follow 2–4 by their place. Details:
 - Tests: `truthusd.js` (server: freeze, reopen, backfill, spreadsheets),
   `truthclient.js` (app and HQ). `mini.js` gains `run(src)`.
 
+## Done in b199 — the Earthly HQ spreadsheet
+
+- **One file, "0 — Earthly HQ — Book Sales"**, at the top of the Drive
+  folder (not in a season's), made once HQ has been opened in the app
+  (`regionSpreadsheet_(HQ_REGION)`, meta key `regionSheetId:rg_hq`).
+- **First tab, "All Seasons"** (`renderHQSheet_`) — the Summaries Portal as
+  a sheet, a column per season plus Earthly HQ and a Total: a headline
+  (collected, donations, pending, costs, net), Total Sales by Title,
+  Collections by Season (currencies, then collected / costs / net in
+  dollars), Sales by Season, Collections by Payment Type (dollars) and the
+  Seasonal Warehouse Overview. Dollars follow the truth (b198); for sales in
+  a closed season `toUsdAt_` now falls back to that season's frozen rates
+  (`seasonFxMap_`, `truthFxForLoc_`), which is what lets HQ count every
+  season at once.
+- **Then HQ's own tabs**, exactly as for a region: Summary and
+  "Earthly HQ — Warehouse Sales".
+- **Kept current by the usual sync.** In the background HQ is one more
+  group after the seasons, redrawn whenever anything was redrawn; a manual
+  Sync sheet in a season refreshes it too; Sync sheet at HQ builds it.
+- Listed under "Earthly HQ" in the Spreadsheet folders map.
+- Test: `hqsheet.js`.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
