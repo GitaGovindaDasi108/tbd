@@ -89,13 +89,10 @@ c({ action: 'setSeason', seasonId: SA });
     t.push(['📋 on the summaries reports every season, by season', /BY SEASON/.test(rep) && /Europe Tour/.test(rep) && /Year-Round/.test(rep)]);
     await page.evaluate(() => closeModal());
 
-    // Rewritten wording can be copied out, to be built into the app.
+    // The Copy Saved Wording button is gone (b203), even with wording saved.
     c({ action: 'saveLabel', key: 'Sales Portal', text: 'Selling at HQ' });
     await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
-    await page.click('#adminActions [data-act="copywording"]'); await page.waitForTimeout(300);
-    const words = await page.evaluate(() => (document.querySelector('#wordText') || {}).value || '');
-    t.push(['"Copy Saved Wording" shows what was rewritten', /Selling at HQ/.test(words)]);
-    await page.evaluate(() => closeModal());
+    t.push(['no "Copy Saved Wording" button', !(await page.$('#adminActions [data-act="copywording"]'))]);
     c({ action: 'saveLabel', key: 'Sales Portal', text: '' });
     await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
 

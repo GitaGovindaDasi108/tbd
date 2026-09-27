@@ -653,7 +653,7 @@ Not done yet:
   `test/fresh.js` checks a bare start. The corpora were re-recorded.
 - **WhatsApp 📋 on the Summaries Portal**, per section, reporting over
   every season ("— BY SEASON (after costs) —").
-- **📋 Copy Saved Wording** (admin, once anything has been rewritten): the
+- (Removed in b203.) **📋 Copy Saved Wording** (admin, once anything has been rewritten): the
   rewritten wording as text, to be built into the app so your words become
   its own and the stored copies are cleared. (The running app cannot
   rewrite its own files; the owner allowed reading the wording from the

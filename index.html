@@ -1311,7 +1311,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b202</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b203</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3275,8 +3275,6 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
-  if(Object.keys(STATE.labels||{}).length)
-    cols[0].push(`<button class="btn" data-act="copywording">📋 Copy Saved Wording</button>`);
 
   // Money
   if(!hideMoney()){
@@ -7008,31 +7006,6 @@ function reportPicks(){
   return new Set(REPORT_SECTIONS.map(x=>x[0]));      // everything, the first time
 }
 function saveReportPicks(set){ try{ localStorage.setItem(REP_PICK_KEY, JSON.stringify([...set])); }catch(e){} }
-
-/* Your rewritten wording, as text to hand over, so it can be built into the
-   app itself: each change becomes the app's own words and the stored copy is
-   cleared. (The app cannot rewrite its own files while it runs.) */
-function copyWordingModal(){
-  const labels = STATE.labels || {};
-  const text = JSON.stringify(labels, null, 1);
-  openModal(`
-    ${mHead('Saved wording')}
-    <div class="m-body">
-      <div class="hint">${Object.keys(labels).length} pieces of wording you have rewritten. Copy this and send it
-        to be built into the app, so your words become its own.</div>
-      <textarea id="wordText" class="rep-box" rows="12" readonly>${esc(text)}</textarea>
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot">
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-      <button class="btn btn-primary" id="wordCopy">Copy</button>
-    </div>`);
-  $('#wordCopy').addEventListener('click', async ()=>{
-    const box = $('#wordText');
-    try{ await navigator.clipboard.writeText(box.value); toast('Copied'); }
-    catch(e){ box.select(); try{ document.execCommand('copy'); toast('Copied'); }catch(e2){ $('#modalErr').textContent='Select the text and copy it.'; } }
-  });
-}
 
 function shareReport(part){
   const full = !part;
@@ -11873,7 +11846,6 @@ document.addEventListener('click',e=>{
   if(a==='report'){ const part=t.dataset.part||'';
     if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
-  if(a==='copywording'){ copyWordingModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
     closeModal(); goTo('region', t.dataset.id); cashModal(); return;
