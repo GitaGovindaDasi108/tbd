@@ -843,6 +843,25 @@ Cloudflare in UTC, so anything of this kind shows up; and
 `compareWithCloudflare` shows up to three differences per season, with both
 values.
 
+## Where things live now (since the Phase 3 switch, September 2026)
+
+- **The records**: the Cloudflare server, https://tbs-server.gitagovinda.workers.dev/
+  (one SQLite Durable Object). `config.js` points the app at it; the owner
+  signs in with Google, links do not.
+- **The spreadsheets**: still built by the Apps Script project, from a copy
+  of the server's records (Script properties `CF_URL`, `CF_SECRET`,
+  `CF_LIVE=yes`). Its minute trigger must stay installed. Keep deploying
+  Code.gs there as before: it is also the spreadsheet builder, and phones
+  on an old page reaching it are relayed to the server.
+- **Deploying the server**: automatic on merge (GitHub Action), for any
+  change to `server/` or `Code.gs`.
+- **The old hidden sheets** in the Google spreadsheet are no longer written
+  to. They are the state at the switch; `copyBackFromCloudflare` rewrites
+  them from the server if ever going back (revert config.js first).
+- Settings: Cloudflare Worker variables `GOOGLE_CLIENT_ID`, `ADMIN_EMAILS`,
+  `REPORT_URL`, secret `REPORT_SECRET` (= Apps Script's `CF_SECRET`).
+  Adding an admin is adding their Google address to `ADMIN_EMAILS`.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes
@@ -863,9 +882,9 @@ values.
      building them, reading from the new server every few minutes.
 
    Plan: **phase 1** (b192, done) — the data store. **Phase 2** (b204, done,
-   see below) — the server on Cloudflare. **Phase 3** — copy the data
-   across, compare every total, connect Apps Script (`CF_URL`/`CF_SECRET`)
-   and switch `config.js`; switching back is restoring the old address.
+   see below) — the server on Cloudflare. **Phase 3** (b205–b206, done: the
+   owner switched on 27 September 2026) — see "Where things live now"
+   below.
    (Changed from the September plan: a SQLite-backed Durable Object instead
    of D1 — same free plan, but synchronous and one-request-at-a-time, so
    Code.gs runs unchanged and needs no lock.)
