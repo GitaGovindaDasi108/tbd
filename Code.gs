@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b204';
+var SERVER_BUILD = 'b205';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -259,6 +259,8 @@ function handle(e) {
 
     // The Cloudflare server passing on a spreadsheet request (Phase 2).
     if (params.cfForward && !MIRROR_) return raw(cfForwarded_(params));
+    // Switched to Cloudflare (Phase 3): a phone still pointed here is passed on.
+    if (!MIRROR_ && !params.cfForward && cfLive_()) return raw(cfRelay_(params));
 
     /* Already done? Hand back the same answer instead of repeating the work. */
     var prior = opSeen_(params.opId);
@@ -3980,7 +3982,7 @@ function syncSheets(force) {
   force = (force === true);
   /* Connected to the Cloudflare server: the records live there, and the
      spreadsheets are drawn from a copy of them (see cfTick_). */
-  if (!MIRROR_ && cfConfig_()) return cfTick_(force);
+  if (!MIRROR_ && cfLive_()) return cfTick_(force);
   if (!force && !_presetDirty) return syncEverySeason_();
 
   flushStockMoves_();                    // nothing left waiting before we render
@@ -4145,7 +4147,8 @@ function syncSheets(force) {
    Connected by two Script Properties (Project Settings › Script properties):
      CF_URL     the Cloudflare server's address
      CF_SECRET  the same secret the server was given as REPORT_SECRET
-   With neither set, nothing here runs and the app works on the sheets as ever. */
+   The spreadsheets are drawn from the server only once switched (CF_LIVE,
+   see PHASE 3 below); until then the app works on the sheets as ever. */
 var MIRROR_ = false;
 
 function cfConfig_() {
@@ -4259,6 +4262,163 @@ function cfForwarded_(p) {
   });
   cfCall_(cfg, { action: 'reportWriteBack', back: r.back });
   return r.out;
+}
+
+/* ============ PHASE 3: MOVING THE RECORDS TO THE CLOUDFLARE SERVER ============
+
+   Run from the Apps Script editor (choose the function, press Run; the
+   Execution log shows what happened). Needs CF_URL and CF_SECRET in Script
+   properties (see PHASE 2 above).
+
+     copyToCloudflare()      Copy every record to the server, replacing what
+                             is there, and compare every season. A rehearsal:
+                             the app keeps working on Google. Run it as often
+                             as you like, until the switch.
+     compareWithCloudflare() Compare every season again, without copying.
+     switchToCloudflare()    The switch: a last copy and comparison, holding
+                             every save back while it runs. From then on,
+                             phones still pointed here are passed on to the
+                             server (relayed), so nothing is lost while they
+                             catch up; the spreadsheets are drawn from the
+                             server's records. If the copy does not match,
+                             nothing switches.
+     copyBackFromCloudflare() The way back: every record copied from the
+                             server into these sheets, and the relay turned
+                             off. (Point config.js back at Google first.)
+
+   CF_LIVE = "yes" in Script properties is what "switched" means. */
+function cfLive_() { return !!cfConfig_() && String(propGet_('CF_LIVE') || '') === 'yes'; }
+
+function copyToCloudflare() {
+  var cfg = cfConfig_();
+  if (!cfg) throw new Error('First add CF_URL and CF_SECRET in Project Settings › Script properties.');
+  if (cfLive_()) throw new Error('Already switched: the server has newer records than these sheets, and copying would erase them. (To go back to Google, run copyBackFromCloudflare.)');
+  var got = cfCopy_(cfg);
+  Logger.log('Copied ' + got.rows + ' records in ' + got.tables + ' tables to ' + cfg.url);
+  var cmp = compareWithCloudflare();
+  return cmp.ok ? 'Copied and identical.' : 'Copied, but NOT identical — see the log.';
+}
+
+/* Every hidden table and setting, sent to the server to replace its own. */
+function cfCopy_(cfg) {
+  ensureReady(); flushStockMoves_(); sheetMemoClear_();
+  var tables = {};
+  Object.keys(TABLE_KEYS_).forEach(function (t) {
+    if (!dbHas_(t)) return;
+    var r = STORE_.read(t);
+    tables[t] = { cols: r.cols.map(String), rows: r.rows.map(function (row) { return row.map(cfEncode_); }) };
+  });
+  var props = Object.assign({}, propAll_());
+  ['CF_URL', 'CF_SECRET', 'CF_LIVE'].forEach(function (k) { delete props[k]; });
+  return cfCall_(cfg, { action: 'reportImport', tables: tables, props: props });
+}
+
+/* Season by season, what the owner's app is shown here and there: every
+   sale, every count, every total — the same, or where they first differ.
+   (Exchange rates are left out: each side fetches today's for itself.) */
+function compareWithCloudflare() {
+  var cfg = cfConfig_();
+  if (!cfg) throw new Error('First add CF_URL and CF_SECRET in Project Settings › Script properties.');
+  var clean = function (st) {
+    var o = JSON.parse(JSON.stringify(st));
+    delete o.serverTime; delete o.rates;
+    return o;
+  };
+  var firstDiff = function (a, b, at) {
+    if (a === b) return null;
+    if (typeof a !== typeof b || a === null || b === null || typeof a !== 'object' || Array.isArray(a) !== Array.isArray(b)) return at || '(top)';
+    var keys = {}; Object.keys(a).concat(Object.keys(b)).forEach(function (k) { keys[k] = 1; });
+    for (var k in keys) { var d = firstDiff(a[k], b[k], at + (Array.isArray(a) ? '[' + k + ']' : '.' + k)); if (d) return d; }
+    return null;
+  };
+  var ids = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name }; });
+  if (regionById_(HQ_REGION)) ids.push({ id: HQ_ID, name: 'Earthly HQ' });
+  var lines = [], ok = true;
+  ids.forEach(function (s) {
+    setSeasonContext_(s.id); sheetMemoClear_();
+    var mine = JSON.parse(stateJson_());
+    var theirs = cfCall_(cfg, { action: 'reportState', season: s.id });
+    var d = firstDiff(clean(mine), clean(theirs), '');
+    // What a person would check: how many sales, and the money in each currency.
+    var money = {};
+    (mine.sales || []).forEach(function (x) {
+      if (!received_(x)) return;
+      eachLeg_(x, function (l) { if (l.amt) money[l.cur] = (money[l.cur] || 0) + l.amt; });
+    });
+    var sum = plural_((mine.sales || []).length, 'sale') + Object.keys(money).sort().map(function (c) {
+      return ' · ' + round2_(money[c]) + ' ' + c; }).join('');
+    if (d) ok = false;
+    lines.push(s.name + ': ' + (d ? 'DIFFERENT (first at ' + d + ')' : 'identical') + ' — ' + sum);
+  });
+  setSeasonContext_(''); sheetMemoClear_();
+  Logger.log((ok ? 'Every season is identical on the server.' : 'NOT identical:') + '\n' + lines.join('\n'));
+  return { ok: ok, lines: lines };
+}
+
+function switchToCloudflare() {
+  var cfg = cfConfig_();
+  if (!cfg) throw new Error('First add CF_URL and CF_SECRET in Project Settings › Script properties.');
+  if (cfLive_()) { Logger.log('Already switched to Cloudflare.'); return 'Already switched.'; }
+  // Every save waits while the last copy is made, so none can fall between.
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    propSet_('CF_LIVE', 'yes');
+    try {
+      var got = cfCopy_(cfg);
+      Logger.log('Copied ' + got.rows + ' records in ' + got.tables + ' tables.');
+      var cmp = compareWithCloudflare();
+      if (!cmp.ok) throw new Error('The copy did not match, so nothing was switched. See the log.');
+    } catch (e) {
+      propDel_('CF_LIVE');                     // still on Google, exactly as before
+      throw e;
+    }
+  } finally {
+    lock.releaseLock();
+  }
+  Logger.log('Switched. The records now live on ' + cfg.url + '. Point config.js at it; ' +
+             'until each phone reloads, its requests are passed on from here.');
+  return 'Switched.';
+}
+
+/* A request from a phone still pointed at Google, once switched: passed on to
+   the server and its answer handed back, so the phone works as before. It
+   waits for a switch in progress (which holds the lock while it copies). */
+function cfRelay_(params) {
+  var lock = LockService.getScriptLock();
+  try { lock.waitLock(30000); lock.releaseLock(); } catch (e) { /* go on; the server decides */ }
+  var cfg = cfConfig_();
+  var resp = UrlFetchApp.fetch(cfg.url, { method: 'post', contentType: 'text/plain', muteHttpExceptions: true,
+    payload: JSON.stringify({ action: 'relay', secret: cfg.secret, params: params }) });
+  return resp.getContentText();
+}
+
+function copyBackFromCloudflare() {
+  var cfg = cfConfig_();
+  if (!cfg) throw new Error('First add CF_URL and CF_SECRET in Project Settings › Script properties.');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    var ex = cfCall_(cfg, { action: 'reportExport', mode: 'forward' });
+    var rows = 0;
+    Object.keys(ex.tables || {}).forEach(function (t) {
+      var tb = ex.tables[t];
+      if (!STORE_.has(t)) STORE_.create(t, tb.cols);
+      STORE_.rewrite(t, tb.cols, tb.rows.map(function (r) { rows++; return r.map(cfDecode_); }));
+    });
+    var theirRev = Number((ex.props || {}).rev || 0);
+    Object.keys(ex.props || {}).forEach(function (k) {
+      if (k === 'rev' || k === 'dirtyLocs' || k === 'cfInFlight' || /^CF_/.test(k)) return;
+      propSet_(k, ex.props[k]);
+    });
+    propSet_('rev', String(Math.max(getRev_(), theirRev) + 1));
+    propDel_('CF_LIVE');
+    sheetMemoClear_(); cacheClear_(); markDirtyAll_();
+    Logger.log('Copied ' + rows + ' records back from the server. The app works on these sheets again.');
+  } finally {
+    lock.releaseLock();
+  }
+  return 'Copied back.';
 }
 
 /* ============================ ACTION HANDLERS ============================ */

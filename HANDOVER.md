@@ -809,6 +809,28 @@ Nothing switches yet; the app still talks to Google. See `server/README.md`
   runtime via `wrangler dev`). The test stand-ins for Google's cache now
   expire things as Apps Script does; `m.clear()` also moves the revision on.
 
+## Done in b205 — Phase 3 tools: copy, compare, switch, and back
+
+Run from the Apps Script editor; see server/README.md › Phase 3.
+- `copyToCloudflare()` — every hidden table (by `TABLE_KEYS_`) and setting
+  (not `CF_*`) sent to the server (`reportImport`, which replaces its
+  tables and settings, keeps sign-ins, and moves `rev` past Google's), then
+  `compareWithCloudflare()`: each season's state (and Earthly HQ's) here vs
+  the server's (`reportState`), all but `serverTime` and `rates`, with a
+  line per season of sales and money per currency. Refused once switched.
+- `switchToCloudflare()` — under the script lock: `CF_LIVE=yes`, a last
+  copy, the comparison; any difference unsets `CF_LIVE` and switches
+  nothing. Once live, every app request reaching Google is relayed
+  (`cfRelay_` → the server's `relay`, secret-checked; waits for the lock so
+  none lands mid-copy), and the minute trigger draws from the server
+  (`cfTick_`, now gated on `CF_LIVE`, not just `CF_URL`).
+- `copyBackFromCloudflare()` — the way back: the server's tables rewritten
+  into the sheets, its settings copied, `CF_LIVE` removed.
+- Test: `cutover.js` (a whole recorded session plus a second season and HQ:
+  rehearse, a tampered copy that switches nothing, the switch, a phone
+  relayed and its resend recognised, copy back). Test harness: Apps
+  Script's `getProperties` stand-in now returns a copy, and `Logger` exists.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes

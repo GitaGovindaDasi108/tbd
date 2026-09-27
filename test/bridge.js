@@ -49,7 +49,7 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   // Google's side, set up as today, then connected.
   m.init();
   const googleSalesBefore = m.sheet('_sales').grid.length;
-  m.run("propSet_('CF_URL', " + JSON.stringify(CF) + "); propSet_('CF_SECRET', " + JSON.stringify(SECRET) + ")");
+  m.run("propSet_('CF_URL', " + JSON.stringify(CF) + "); propSet_('CF_SECRET', " + JSON.stringify(SECRET) + "); propSet_('CF_LIVE', 'yes')");
 
   // Records on the Cloudflare server.
   let st = cf({ action: 'getState' }).state;
