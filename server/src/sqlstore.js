@@ -17,10 +17,10 @@
    kept as dates. Everything is also held in memory once read: the Durable
    Object is the only thing that writes, so what it holds is always current.
 
-   (A plain CommonJS-style file with no imports, so both Node's require and the
-   Worker bundler take it as it is.) */
+   (A module with no imports: the Worker bundles it, and the Node tests load it
+   with require.) */
 
-function makeSqlStore(exec) {
+export function makeSqlStore(exec) {
   exec('CREATE TABLE IF NOT EXISTS tbl (name TEXT PRIMARY KEY, cols TEXT NOT NULL)');
   exec('CREATE TABLE IF NOT EXISTS row (t TEXT NOT NULL, seq INTEGER NOT NULL, v TEXT NOT NULL, PRIMARY KEY (t, seq))');
   exec('CREATE TABLE IF NOT EXISTS prop (k TEXT PRIMARY KEY, v TEXT NOT NULL)');
@@ -147,4 +147,3 @@ function makeSqlStore(exec) {
   return { store, kv, dump, forget };
 }
 
-if (typeof module !== 'undefined' && module.exports) module.exports = { makeSqlStore };

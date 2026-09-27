@@ -220,6 +220,12 @@ function doGet(e)  { return handle(e); }
    of looking like a bug. */
 var SERVER_BUILD = 'b203';
 
+/* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
+   server (server/, Phase 2) the records live in its database and the
+   spreadsheets are still made by Google, so it sets this false: nothing that
+   builds or tidies a spreadsheet runs there. */
+var REPORTS_HERE_ = true;
+
 function doPost(e) { return handle(e); }
 
 /* Requests carry a one-off id so a repeat cannot be applied twice.
@@ -341,6 +347,11 @@ function handle(e) {
       var done = false;
       if (oid) done = !!tempGet_('op_' + oid);
       return raw('{"ok":true,"done":' + (done ? 'true' : 'false') + '}');
+    }
+
+    // Spreadsheet work is Google's (see REPORTS_HERE_).
+    if (!REPORTS_HERE_ && /^(driveMap|syncSheets|setDriveFolder|setSeasonFolder|descriptionsSheet)$/.test(action)) {
+      throw new Error('The spreadsheets are looked after by Google — this is not available here yet.');
     }
 
     // ---- Where every spreadsheet is filed (read-only; owner only). ----
@@ -3006,6 +3017,7 @@ function tempDel_(k) { try { KV_.delTemp(k); } catch (e) {} }
    spreadsheet. Row i of a table is sheet row i + 2 (row 1 holds the column
    names). Replacing STORE_ and KV_ moves the data somewhere else. */
 var STORE_ = {
+  isSheets: true,                        // (the Sheets-only repairs check this)
   has: function (t) { return !!getSheet_(t); },
   read: function (t) {
     var sh = getSheet_(t);
@@ -3090,6 +3102,7 @@ function getSheet_(name) { return SpreadsheetApp.getActive().getSheetByName(name
    (Sheets reads a leading "+" as a formula and eats the country code), and
    every data sheet hidden. A database has neither problem. */
 function sheetsPrepare_() {
+  if (!STORE_.isSheets) return;          // a Sheets repair; a database needs none
   [['_sales', 'phone'], ['_org', 'phone'], ['_holders', 'phone']].forEach(function (pair) {
     var sh = getSheet_(pair[0]);
     if (!sh) return;
@@ -3099,6 +3112,7 @@ function sheetsPrepare_() {
   });
 }
 function hideDataSheets_() {
+  if (!STORE_.isSheets) return;          // a Sheets repair; a database needs none
   ['_meta','_seasons','_books','_custombooks','_partners','_payouts','_costs','_change','_labels','_qr','_holders','_shipments','_regions','_prices','_events','_inventory','_sales','_cash','_org','_stockmoves'].forEach(function (n) {
     var sh = getSheet_(n);
     if (sh && !sh.isSheetHidden()) sh.hideSheet();
@@ -3116,6 +3130,7 @@ function hideDataSheets_() {
    and vanished — a partial payment's balance silently became zero. Rewriting
    the row puts the names back over their own data and recovers those records. */
 function migrateSales_() {
+  if (!STORE_.isSheets) return;          // a Sheets repair; a database needs none
   var sh = getSheet_('_sales');
   if (!sh) return;                      // not stored in sheets
   var width = Math.max(sh.getLastColumn(), SALES_HEADERS.length);
@@ -5611,9 +5626,11 @@ function doRenameEvent(p) {
   var oldName = '';
   objectsOf_('_events').forEach(function (e) { if (String(e.eventId) === eventId) oldName = String(e.name); });
   dbUpdate_('_events', { eventId: eventId }, { name: name });
-  var ss = SpreadsheetApp.getActive();
-  var old = ss.getSheetByName(displayTabName_(oldName));
-  if (old) ss.deleteSheet(old);
+  if (REPORTS_HERE_) {
+    var ss = SpreadsheetApp.getActive();
+    var old = ss.getSheetByName(displayTabName_(oldName));
+    if (old) ss.deleteSheet(old);
+  }
   markDirty_(eventId);
 }
 
@@ -5658,7 +5675,7 @@ function doDeleteEvent(p) {
   dbDelete_('_sales', { location: eventId });
 
   // The tab lives in that region's own spreadsheet.
-  try {
+  if (REPORTS_HERE_) try {
     var ss = evReg ? regionSpreadsheet_(evReg.regionId) : SpreadsheetApp.getActive();
     var tab = ss.getSheetByName(displayTabName_(ev.name));
     if (tab) ss.deleteSheet(tab);

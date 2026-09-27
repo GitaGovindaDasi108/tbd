@@ -1,0 +1,14 @@
+{
+  "name": "tbs-server",
+  "private": true,
+  "type": "module",
+  "description": "Transcendental Book Sales — the app's server on Cloudflare (Phase 2). Runs Code.gs unchanged on a Durable Object's own database.",
+  "scripts": {
+    "build": "node build.cjs",
+    "dev": "node build.cjs && wrangler dev",
+    "deploy": "node build.cjs && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.41.0"
+  }
+}

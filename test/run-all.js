@@ -70,5 +70,16 @@ for (const s of SCRIPTS) {
   catch (e) { console.log(`FAIL     golden.js sheets vs SQLite\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
 }
 
+/* The whole Cloudflare server (server/src/core.js) against Google, request by
+ * request, over every recorded session (the spreadsheet work left to Google). */
+{
+  let out = '';
+  try { out = execFileSync(process.execPath, [path.join(here, 'workergolden.js')],
+                           { encoding: 'utf8', stdio: 'pipe', env: Object.assign({}, process.env, { NODE_NO_WARNINGS: '1' }) });
+        const n = (out.match(/^PASS/gm) || []).length;
+        console.log(`OK       workergolden.js Google = Cloudflare — ${n} recorded sessions`); }
+  catch (e) { console.log(`FAIL     workergolden.js Google vs Cloudflare\n${(e.stdout || '') + (e.stderr || '')}`); bad++; }
+}
+
 console.log(bad ? `\n${bad} problem(s).` : '\nAll clear.');
 process.exit(bad ? 1 : 0);

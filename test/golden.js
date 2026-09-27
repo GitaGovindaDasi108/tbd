@@ -80,14 +80,17 @@ if (process.argv[2] === '--replay') {
     let reply;
     try {
       if (p.__init) { m.init(); reply = 'init'; }
-      else if ('__sync' in p) { m.sync(p.__sync); reply = 'sync'; }
+      else if ('__sync' in p) { if (!process.env.TBS_SKIP_SYNC) m.sync(p.__sync); reply = 'sync'; }
       else if (p.__patch) { reply = 'patch-skipped'; }
       else reply = cleanReply(m.call(p));
     } catch (e) { reply = 'THREW ' + e.message; }
     steps.push({ req: p, reply, data: dumpData() });
   }
   now += 60000;
-  try { m.sync(true); } catch (e) { steps.push({ req: 'final sync', reply: 'THREW ' + e.message }); }
+  // (TBS_SKIP_SYNC: no spreadsheets at all — test/workergolden.js compares the records only.)
+  if (!process.env.TBS_SKIP_SYNC) {
+    try { m.sync(true); } catch (e) { steps.push({ req: 'final sync', reply: 'THREW ' + e.message }); }
+  }
   // To a file: a large write to a pipe is cut short by process.exit.
   fs.writeFileSync(process.argv[4], JSON.stringify({ steps, reports: dumpReports(), finalData: dumpData() }));
   console.log = quiet;
