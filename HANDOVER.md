@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b215**.
+Handover notes. Current build: **b216**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,20 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b216 — a folded panel gives up its space
+
+- Side by side, a row is as tall as its tallest panel. Folding the
+  Warehouse Inventory left its heading over a tall empty box as high as the
+  sales log beside it; folding any panel in the two-column rows left an empty
+  half-row.
+- Now a folded panel stands on a line of its own, the width of the page, and
+  whatever stood beside it moves up underneath and takes the whole width
+  (`foldRows()`, run by `applyFolds()`; class `span-all`). Open panels still
+  pair up in their order; one left without a partner spans the row. Opening
+  the panel again puts them back side by side. Phones already show one column,
+  so nothing changes there.
+- Test: `test/browser-fold.js` (the new checks fail on b215).
 
 ## Done in b215 — Seasonal HQ; search anything
 

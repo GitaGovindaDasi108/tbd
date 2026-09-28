@@ -669,6 +669,9 @@ body.busy #busyBar{opacity:1}
 .portal.on > .cols, .portal.on > .cols-2:first-of-type{margin-top:8px}
 /* With the shelf folded, the sales log beside it can no longer borrow its height. */
 .cols.inv-folded .log-col > .panel{position:static}
+/* A panel on a line of its own (see foldRows): the full width, its own height. */
+.cols > .span-all, .cols-2 > .span-all{grid-column:1 / -1}
+.cols > .log-col.span-all > .panel{position:static}
 
 /* ---------- Inventory cards ---------- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
@@ -1358,7 +1361,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b215</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b216</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3342,6 +3345,33 @@ function applyFolds(){
   const inv = document.querySelector('#regionCols > .panel[data-fold="inventory"]');
   const cols = $('#regionCols');
   if(cols && cols.classList) cols.classList.toggle('inv-folded', !!(inv && inv.classList.contains('folded')));
+  foldRows();
+}
+/* A folded panel gets a line of its own, the width of the page, and whatever
+   stood beside it moves up underneath and takes the whole width too (b216).
+
+   Side by side, a row is as tall as its tallest panel: fold the shelf and the
+   sales log still set the row's height, and the folded shelf's box stretched
+   to match — a heading over a tall empty box. Here each two-column row is
+   laid out again: open panels pair up in their order, a folded one stands
+   alone, and an open one left without a partner spans the row. */
+function foldRows(){
+  document.querySelectorAll('.cols, .cols-2').forEach(row=>{
+    const kids = [...row.children].filter(k=>getComputedStyle(k).display!=='none');
+    const isFoldedKid = k => k.classList.contains('folded') ||
+      !!(k.querySelector && k.querySelector(':scope > .panel.folded'));
+    let waiting = null;                   // an open panel still looking for a partner
+    kids.forEach(k=>{
+      k.classList.remove('span-all');
+      if(isFoldedKid(k)){
+        if(waiting) waiting.classList.add('span-all');
+        waiting = null;
+        k.classList.add('span-all');
+      }else if(waiting){ waiting = null; }
+      else waiting = k;
+    });
+    if(waiting && kids.some(isFoldedKid)) waiting.classList.add('span-all');
+  });
 }
 /* A tap on a heading folds it — but not a tap on a button, link, field or a
    wording pencil inside the heading, which keep doing what they do. */
