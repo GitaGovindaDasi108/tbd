@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b216**.
+Handover notes. Current build: **b217**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,28 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b217 — panels flow two by two
+
+- The owner's follow-up to b216: when a panel folds, the open panels after it
+  pair up afresh, two by two, instead of its neighbour taking the whole width.
+  Region page, Warehouse folded: its bar, then Sales Log · Distribution by
+  Title (or Pending Payments, whichever comes next), and so on.
+- How: each group of rows sits in a `.flow` (a wrapping flexbox:
+  `#seasonFlow`, `#salesFlow`, `#summaryFlow`), and the old row wrappers
+  (`.cols`, `.cols-2`) are `display: contents` inside it, so a panel can pair
+  with one from the next row. Their ids and show/hide are unchanged.
+  `foldRows()` gives each panel its width: a pair (`f-half` / `f-half2`, the
+  second grows into what is left so rounding never wraps it), the shelf
+  beside the sales log (`f-inv` / `f-log`, the old 1.15 : 0.85), or the whole
+  line (`f-full`: folded, left without a partner, or `data-full` — the two
+  warehouse overviews). A flow with nothing showing is hidden (`.empty`).
+- Beside anything but the shelf, the sales log has no height to borrow: it
+  takes its own, up to 85% of the screen, and scrolls inside.
+- Earthly HQ: panels flow within each portal, never from one into the other.
+- Phones: one panel per line, as before.
+- Test: `test/browser-fold.js` (its b216 width checks measured against a row
+  wrapper that no longer has a size; they now measure the flow).
 
 ## Done in b216 — a folded panel gives up its space
 

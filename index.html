@@ -666,12 +666,25 @@ body.busy #busyBar{opacity:1}
 .portal-h::before{content:'▾';font-size:14px;color:var(--muted);display:inline-block;transition:transform .15s}
 .portal.folded > .portal-h::before{transform:rotate(-90deg)}
 .portal.folded > :not(.portal-h){display:none !important}
-.portal.on > .cols, .portal.on > .cols-2:first-of-type{margin-top:8px}
+.portal.on > .flow{margin-top:8px}
 /* With the shelf folded, the sales log beside it can no longer borrow its height. */
 .cols.inv-folded .log-col > .panel{position:static}
-/* A panel on a line of its own (see foldRows): the full width, its own height. */
-.cols > .span-all, .cols-2 > .span-all{grid-column:1 / -1}
-.cols > .log-col.span-all > .panel{position:static}
+/* The panels flow two by two down the page (b217, see foldRows). The row
+   wrappers step aside, so a panel can pair with one from the next row once
+   its own partner folds. foldRows gives each panel its width: a pair, the
+   shelf beside the sales log (wider, as always), or the whole line. The
+   second of a pair grows into what is left, so rounding never wraps it. */
+.flow{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px}
+.flow > .cols, .flow > .cols-2{display:contents}
+.flow.empty{display:none}
+.flow .f-full{flex:0 0 100%;min-width:0}
+.flow .f-half{flex:0 0 calc((100% - 16px) / 2);min-width:0}
+.flow .f-half2{flex:1 1 calc((100% - 16px) / 2 - 1px);min-width:0}
+.flow .f-inv{flex:0 0 calc((100% - 16px) * .575);min-width:0}
+.flow .f-log{flex:1 1 calc((100% - 16px) * .425 - 1px);min-width:0;align-self:stretch}
+/* Beside anything but the shelf, the sales log has no height to borrow: its
+   own, up to about a screen, and it scrolls inside that. */
+.flow .log-col:not(.f-log) > .panel{position:static;max-height:85vh}
 
 /* ---------- Inventory cards ---------- */
 .inv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
@@ -1275,6 +1288,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 @media (max-width:1080px){ .totals{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
+  .flow .f-half, .flow .f-half2, .flow .f-inv, .flow .f-log{flex:0 0 100%}
   .log{max-height:420px}
   .deity{height:62px} .deity img{height:62px}
   .masthead-inner{gap:10px;padding:4px 12px 11px}
@@ -1361,7 +1375,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b216</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b217</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1386,7 +1400,10 @@ body.list-view .mc-name{min-height:0}
 
   <!-- SEASON TOTALS — the whole tour at a glance. Read left to right, top to
        bottom (and straight down on a phone): what sold, what each region took,
-       how each region is selling, how the money came in. -->
+       how each region is selling, how the money came in.
+       .flow: the panels run two by two down the page, across these rows, and
+       close ranks when one folds (b217, see foldRows). -->
+  <div class="flow" id="seasonFlow">
   <div class="cols-2" id="seasonTotals" style="display:none">
     <section class="panel" data-fold="titles">
       <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
@@ -1410,15 +1427,18 @@ body.list-view .mc-name{min-height:0}
     </section>
   </div>
 
-  <section class="panel" id="whOverviewPanel" data-fold="warehouses" style="display:none">
+  <!-- data-full: always the whole width — its cards need the room. -->
+  <section class="panel" id="whOverviewPanel" data-fold="warehouses" data-full style="display:none">
     <h2 class="sec-h2">Warehouse Overview <span class="hint">inventory and inventory locations</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
     <div class="body"><div id="whOverview"></div></div>
   </section>
+  </div>
 
   <!-- Region + event working area. At Earthly HQ this is the Sales Portal, and
        folds as one; elsewhere its wrapper is invisible (display: contents). -->
   <div class="portal" id="salesPortal" data-fold="salesPortal">
   <h2 class="portal-h">Sales Portal <span class="hint">(Earthly HQ's own warehouse, sales and money)</span></h2>
+  <div class="flow" id="salesFlow">
   <div class="cols" id="regionCols">
     <section class="panel" data-fold="inventory">
       <h2 id="invHeading" class="inv-h2">Inventory
@@ -1488,10 +1508,12 @@ body.list-view .mc-name{min-height:0}
     </section>
   </div>
   </div>
+  </div>
 
   <!-- EARTHLY HQ SUMMARIES — every season added up, one level above the season -->
   <div class="portal on" id="summaryPortal" data-fold="summaryPortal" style="display:none">
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
+    <div class="flow" id="summaryFlow">
     <div class="cols-2">
       <section class="panel" data-fold="sumTitles">
         <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
@@ -1512,10 +1534,11 @@ body.list-view .mc-name{min-height:0}
         <div class="body" id="hqPayBody"></div>
       </section>
     </div>
-    <section class="panel" data-fold="sumWarehouses" style="margin-top:16px">
+    <section class="panel" data-fold="sumWarehouses" data-full>
       <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="hqWhOverview"></div></div>
     </section>
+    </div>
   </div>
 
   <section class="panel admin-panel" id="adminPanel" data-fold="admin">
@@ -3347,32 +3370,49 @@ function applyFolds(){
   if(cols && cols.classList) cols.classList.toggle('inv-folded', !!(inv && inv.classList.contains('folded')));
   foldRows();
 }
-/* A folded panel gets a line of its own, the width of the page, and whatever
-   stood beside it moves up underneath and takes the whole width too (b216).
-
-   Side by side, a row is as tall as its tallest panel: fold the shelf and the
-   sales log still set the row's height, and the folded shelf's box stretched
-   to match — a heading over a tall empty box. Here each two-column row is
-   laid out again: open panels pair up in their order, a folded one stands
-   alone, and an open one left without a partner spans the row. */
+/* The panels run two by two down the page, and close ranks when one folds
+   (b217). Side by side, a pair is as tall as its taller panel, so a folded
+   panel would sit over an empty box; instead it becomes a bar across the
+   page, and the open panels after it pair up afresh — across what used to be
+   separate rows — so the page never shows a half-empty line when it need
+   not. Open panels pair in their order; a panel left without a partner, and
+   any marked data-full (the warehouse overviews), takes the whole line. */
+function flowItems(flow){
+  const out = [];
+  [...flow.children].forEach(k=>{
+    if(k.matches('.cols, .cols-2')){
+      if(getComputedStyle(k).display==='none') return;
+      [...k.children].forEach(c=>out.push(c));
+    }else out.push(k);
+  });
+  return out.filter(k=>getComputedStyle(k).display!=='none');
+}
 function foldRows(){
-  document.querySelectorAll('.cols, .cols-2').forEach(row=>{
-    const kids = [...row.children].filter(k=>getComputedStyle(k).display!=='none');
-    const isFoldedKid = k => k.classList.contains('folded') ||
-      !!(k.querySelector && k.querySelector(':scope > .panel.folded'));
+  document.querySelectorAll('.flow').forEach(flow=>{
+    const items = flowItems(flow);
+    const alone = k => k.hasAttribute('data-full') || k.classList.contains('folded') ||
+      !!k.querySelector(':scope > .panel.folded');
+    const set = (k, cls) => { k.classList.remove('f-full','f-half','f-half2','f-inv','f-log'); k.classList.add(cls); };
     let waiting = null;                   // an open panel still looking for a partner
-    kids.forEach(k=>{
-      k.classList.remove('span-all');
-      if(isFoldedKid(k)){
-        if(waiting) waiting.classList.add('span-all');
+    items.forEach(k=>{
+      if(alone(k)){
+        if(waiting) set(waiting, 'f-full');
         waiting = null;
-        k.classList.add('span-all');
-      }else if(waiting){ waiting = null; }
-      else waiting = k;
+        set(k, 'f-full');
+      }else if(waiting){
+        // The shelf keeps its wider share beside the sales log, as it always had.
+        const shelfAndLog = waiting.dataset.fold==='inventory' && k.classList.contains('log-col');
+        set(waiting, shelfAndLog ? 'f-inv' : 'f-half');
+        set(k, shelfAndLog ? 'f-log' : 'f-half2');
+        waiting = null;
+      }else waiting = k;
     });
-    if(waiting && kids.some(isFoldedKid)) waiting.classList.add('span-all');
+    if(waiting) set(waiting, 'f-full');
+    // Nothing showing in it (a season has no shelf): no gap left behind either.
+    flow.classList.toggle('empty', !items.length);
   });
 }
+
 /* A tap on a heading folds it — but not a tap on a button, link, field or a
    wording pencil inside the heading, which keep doing what they do. */
 document.addEventListener('click', e=>{

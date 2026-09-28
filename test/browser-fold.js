@@ -2,8 +2,9 @@
    Folding panels from their headings (b195), and the season's order:
    Total Sales by Title, Collections by Region, Sales by Region, Total
    Collections by Payment, then the Warehouse Overview.
-   b216: a folded panel stands on a line of its own, and what stood beside it
-   moves up underneath at full width — no empty, stretched box. */
+   b216: a folded panel stands on a line of its own — no empty, stretched box.
+   b217: the open panels after it pair up afresh, two by two, across what used
+   to be separate rows, instead of the neighbour taking the whole width. */
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){
   return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -81,22 +82,31 @@ for (let i = 0; i < 25; i++) m.call({ action: 'sell', season: st.activeSeason, s
     await page.click('.panel[data-fold="inventory"] > h2', { position: { x: 40, y: 15 } }); await page.waitForTimeout(200);
     t.push(['a second tap opens it again', !(await folded('inventory'))]);
 
-    // b216: folding moves the neighbour up underneath, at full width.
-    let full = await rowW('#regionCols');
+    // b216/b217: a folded panel is a bar; the panels after it pair up afresh.
+    let full = await rowW('#salesFlow');
+    const same = (a, b) => Math.abs(a - b) < 2;
     let inv = await box('inventory'), log = await box('log');
     t.push(['both open: shelf and sales log side by side', log.left >= inv.right - 1]);
+    t.push(['…the shelf the wider of the two, as before', inv.w > log.w * 1.2]);
     await tap('inventory');
     inv = await box('inventory'); log = await box('log');
     await page.screenshot({ path: shot('2-shelf-folded') });
     t.push(['shelf folded: its box is just the heading (no stretched empty box)', inv.h < 70]);
+    t.push(['…the bar spans the page', inv.w > full * 0.95]);
     t.push(['…the sales log moves underneath it', log.top >= inv.bottom - 1]);
-    t.push(['…and takes the whole width', log.w > full * 0.95 && inv.w > full * 0.95]);
+    let ttl = await box('titles');
+    t.push(['…and pairs with the next panel (Distribution by Title) beside it',
+      same(ttl.top, log.top) && ttl.left >= log.right - 1 && log.w < full * 0.55 && ttl.w < full * 0.55]);
+    t.push(['…the sales log is at most about a screen tall',
+      log.h <= await page.evaluate(() => innerHeight * 0.85 + 1)]);
     await tap('inventory');
     await tap('log');
     inv = await box('inventory'); log = await box('log');
     await page.screenshot({ path: shot('3-log-folded') });
+    ttl = await box('titles');
     t.push(['sales log folded: just its heading, underneath the shelf', log.h < 70 && log.top >= inv.bottom - 1]);
-    t.push(['…and the shelf takes the whole width', inv.w > full * 0.95]);
+    t.push(['…the shelf, now without a partner, takes the whole width', inv.w > full * 0.95]);
+    t.push(['…and the panels below still pair up', ttl.top >= log.bottom - 1 && ttl.w < full * 0.55]);
     await tap('log');
     inv = await box('inventory'); log = await box('log');
     t.push(['both open again: side by side as before', log.left >= inv.right - 1 && log.top < inv.top + 5]);
@@ -106,12 +116,15 @@ for (let i = 0; i < 25; i++) m.call({ action: 'sell', season: st.activeSeason, s
     t.push(['back at the season: open it again', !(await folded('payments')) && await bodyShown('payments')]);
 
     // The season's two-column rows behave the same.
-    full = await rowW('#seasonTotals');
+    full = await rowW('#seasonFlow');
     await tap('titles');
     let ti = await box('titles'), cb = await box('collBy');
     await page.screenshot({ path: shot('4-season-titles-folded') });
     t.push(['season: Distribution by Title folded is a bar across the page', ti.h < 70 && ti.w > full * 0.95]);
-    t.push(['…Collections by Region moves under it, full width', cb.top >= ti.bottom - 1 && cb.w > full * 0.95]);
+    let sb0 = await box('salesBy'), py0 = await box('payments');
+    t.push(['…Collections by Region moves under it, beside Sales by Region',
+      cb.top >= ti.bottom - 1 && same(cb.top, sb0.top) && sb0.left >= cb.right - 1 && cb.w < full * 0.55]);
+    t.push(['…and Collections by Payment, left without a partner, takes the line', py0.w > full * 0.95 && py0.top >= sb0.bottom - 1]);
     await tap('titles');
     ti = await box('titles'); cb = await box('collBy');
     t.push(['…opened again: side by side', cb.left >= ti.right - 1]);
@@ -120,6 +133,16 @@ for (let i = 0; i < 25; i++) m.call({ action: 'sell', season: st.activeSeason, s
     t.push(['season: folding the right-hand panel moves it under the left one, which widens',
       py.h < 70 && py.top >= sb.bottom - 1 && sb.w > full * 0.95]);
     await tap('payments');
+
+    // A phone shows one panel per line, folded or not.
+    await page.setViewportSize({ width: 390, height: 850 });
+    await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);
+    await tap('inventory');
+    const lg = await box('log'), tt = await box('titles');
+    full = await rowW('#salesFlow');
+    t.push(['phone: one panel per line, full width', lg.w > full * 0.95 && tt.w > full * 0.95 && tt.top >= lg.bottom - 1]);
+    await page.screenshot({ path: shot('5-phone'), fullPage: false });
+    await tap('inventory');
     t.push(['no errors in the page', !errors.length]);
     if (errors.length) console.log(errors);
   } catch (e) { t.push(['ran to the end: ' + e.message, false]); }
