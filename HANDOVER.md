@@ -906,6 +906,16 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b213 — pounds on a region's spreadsheet
+
+- A region's Summary tab had "Cash on hand" and "Collections by payment type"
+  fixed at PLN / EUR / USD columns, so London (GBP) showed £0 in both, and its
+  pounds were left out of the payment types' "USD equivalent" too. Both now
+  have a column per season currency (`allCurrencies_()`), like "Collections
+  by book type". "Collections by currency" is money-formatted on every row,
+  not just the first three.
+- Test: `test/gbpsheet.js`.
+
 ## Done in b212 — sales-log filters stay on their page, and fit a short window
 
 - The Books / Status / Payment filters are cleared (and their menus shut)
