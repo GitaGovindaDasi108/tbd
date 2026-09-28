@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b209';
+var SERVER_BUILD = 'b210';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -407,6 +407,7 @@ function handle(e) {
         case 'editBundle':       doEditBundle(params);       break;
         case 'donate':           doDonate(params);           break;
         case 'setPayTypes':      doSetPayTypes(params);      break;
+        case 'setPayTypeCurrency': result = doSetPayTypeCurrency(params); break;
         case 'createEvent':      result = doCreateEvent(params);  break;
         case 'setEventHidden':   result = doSetEventHidden(params); break;
         case 'setRegionHidden':  result = doSetRegionHidden(params); break;
@@ -781,6 +782,9 @@ function stateJson_() {
   var hit = cacheGet_(rev);
   if (hit) return hit;
   var st = readState();
+  // The currency each payment type arrives in, once any has been set (b210).
+  var ptc = payTypeCurrencies_();
+  if (Object.keys(ptc).length) st.payTypeCur = ptc;
   // At HQ, every season's records ride along, taken before HQ's own trim.
   if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
   var str = JSON.stringify(scopeToSeason_(st));
@@ -5835,6 +5839,26 @@ function payTypesFor_(loc) {
   return PAY_TYPES.slice();
 }
 
+/* The currency each payment type always arrives in, across the whole tour —
+   Zelle in dollars, UPI in rupees. A type with a currency is a digital
+   account; one without (cash, card) is not. Only for a dollar account is the
+   amount actually received worth entering: that is what the app offers
+   "$ Received" for. Kept as { type: 'USD' | ... | 'none' }; 'none' overrides the
+   app's own starting guesses (see PAY_CUR_DEFAULTS in index.html). */
+function payTypeCurrencies_() {
+  try { return JSON.parse(String(getMeta_('payTypeCur', '') || '{}')) || {}; } catch (e) { return {}; }
+}
+function doSetPayTypeCurrency(p) {
+  var type = String(p.type || '').trim().slice(0, 40);
+  if (!type) throw new Error('Which payment type?');
+  var cur = String(p.cur || '').trim().toUpperCase();
+  if (cur && cur !== 'NONE' && !/^[A-Z]{3}$/.test(cur)) throw new Error('Choose a currency.');
+  var map = payTypeCurrencies_();
+  map[type] = cur && cur !== 'NONE' ? cur : 'none';
+  setMeta_('payTypeCur', JSON.stringify(map));
+  return map;
+}
+
 function doSetPayTypes(p) {
   var kind = String(p.kind || '');
   var id = String(p.id || '');
@@ -8228,6 +8252,10 @@ function describe_(action, p, result, moves, who) {
             undo: (!(_activityBefore && _activityBefore.existed) && (result || p.id)) ? { type: 'cost', id: String(result || p.id) } : null }; break;
     case 'deleteCost':   d = { text: 'Deleted a cost' }; break;
     case 'setPayTypes':  d = { text: 'Changed the payment types taken' + (p.location ? ' at ' + locLabel_(p.location) : '') }; break;
+    case 'setPayTypeCurrency':
+      d = { text: (p.cur && String(p.cur).toUpperCase() !== 'NONE')
+        ? p.type + ' payments now arrive in ' + String(p.cur).toUpperCase()
+        : p.type + ' is no longer a digital account' }; break;
     case 'setWarehouseName': d = { text: 'Renamed the warehouse to “' + p.name + '”' }; break;
     case 'orgSave':      d = { text: 'Changed the org chart' }; break;
     case 'qrSave':       d = { text: 'Changed a payment QR' }; break;

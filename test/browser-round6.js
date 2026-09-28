@@ -63,8 +63,15 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     await page.evaluate(() => closeModal());
 
     // 2. Dollars actually received: not on the sale screen — in the sales log, after the sale.
+    //    Only for money arriving in a dollar account (Zelle...), never for card or cash (b210).
     await page.evaluate(b => saleModal({ bookId: b, isPreorder: false, loc: CUR_LOC }), B0); await page.waitForTimeout(300);
     await page.selectOption('#ptype', 'Card'); await page.click('#specBox > summary');
+    await page.fill('#cname', 'Card Zero');
+    await page.click('#saveSale'); await page.waitForTimeout(1200);
+    const s0 = state().sales.find(x => x.name === 'Card Zero');
+    t.push(['a card sale has no "$ Received" button', !!s0 && (await page.locator(`.usd-btn[data-id="${s0.saleId}"]`).count()) === 0]);
+    await page.evaluate(b => saleModal({ bookId: b, isPreorder: false, loc: CUR_LOC }), B0); await page.waitForTimeout(300);
+    await page.selectOption('#ptype', 'Zelle'); await page.click('#specBox > summary');
     t.push(['the sale screen has no dollars-received box', !(await page.$('#usdAct')) && !/Dollars actually received/i.test(await page.textContent('#modal'))]);
     await page.fill('#cname', 'Card One');
     await page.click('#saveSale'); await page.waitForTimeout(1200);
@@ -88,7 +95,7 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     // 3. Multiple books: the same button, one figure shared out over the books.
     await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
     await page.click(`.mb-plus[data-book="${B0}"][data-kind="buy"]`); await page.click(`.mb-plus[data-book="${B1}"][data-kind="buy"]`);
-    await page.selectOption('#ptype', 'Card');
+    await page.selectOption('#ptype', 'Zelle');
     await page.click('#specBox > summary'); await page.fill('#cname', 'Two Books');
     await page.click('#saveBundle'); await page.waitForTimeout(1500);
     let mem = state().sales.filter(x => x.name === 'Two Books');
@@ -105,10 +112,10 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     await page.screenshot({ path: shot('3-log') });
 
     // 4. Donations too.
-    c({ action: 'donate', saleId: 'd_card1', location: pl.whLoc, legs: [{ type: 'Card', cur: 'PLN', amt: 100 }], name: 'Giver' });
+    c({ action: 'donate', saleId: 'd_card1', location: pl.whLoc, legs: [{ type: 'Zelle', cur: 'PLN', amt: 100 }], name: 'Giver' });
     await page.evaluate(() => pull()); await page.waitForTimeout(800);
     const dbtn = page.locator('.usd-btn[data-id="d_card1"]:visible').first();
-    t.push(['a card donation in the log has "$ Received"', (await dbtn.count()) === 1]);
+    t.push(['a Zelle donation in the log has "$ Received"', (await dbtn.count()) === 1]);
     await dbtn.click(); await page.waitForTimeout(300);
     await page.fill('#uaVal', '25'); await page.click('#uaSave'); await page.waitForTimeout(1200);
     t.push(['…and it is saved', Number(state().sales.find(x => x.saleId === 'd_card1').usdActual) === 25]);

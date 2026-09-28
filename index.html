@@ -1317,6 +1317,7 @@ body.list-view .mc-name{min-height:0}
 .adm-btns{display:flex;gap:6px;flex-shrink:0}
 .req-badge{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;background:#c0392b;color:#fff;font-size:.78em;font-weight:600}
 .signin-note{margin-top:14px;color:#2d5a3a;background:#eef6ef;border-radius:8px;padding:10px 12px;text-align:left}
+.pt-row .pt-cur{margin-left:auto;font-size:12.5px;padding:2px 4px;border:1px solid var(--line-d);border-radius:6px;background:var(--paper)}
 </style>
 </head>
 <body>
@@ -1336,7 +1337,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b209</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b210</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4251,10 +4252,22 @@ function totalLabel(x){ const p=totalParts(x); return p.length?p.join(' + '):'�
 /* opts.showOwed — in the Pending Payments panel the headline figure must be the
    money still outstanding, not the value of the sale. Showing the total there
    is what made a 5 € balance look like it had gone missing behind a 35 € sale. */
-/* A payment that arrives as dollars rather than as notes in a box: anything
-   that is not cash. Those are the ones worth recording a received amount for. */
+/* The currency each payment type always arrives in, across the whole tour —
+   Zelle in dollars, UPI in rupees. Set in Edit Payment Types; these are the
+   starting guesses until someone sets them. A type with a currency is a
+   digital account; one without (cash, card) is not. */
+const PAY_CUR_DEFAULTS = { Zelle:'USD', PayPal:'USD', Wise:'USD', Venmo:'USD', 'Cash App':'USD', UPI:'INR' };
+function payTypeCur(type){
+  const set = (STATE && STATE.payTypeCur) || {};
+  const v = Object.prototype.hasOwnProperty.call(set, type) ? set[type] : PAY_CUR_DEFAULTS[type];
+  return (v && v !== 'none') ? v : '';
+}
+/* A payment worth recording the dollars actually received for: one that
+   arrives in a DOLLAR account (Zelle, PayPal...), where conversion and fees
+   make what lands differ from the price. Not cash, not card, and not an
+   account in another currency (UPI arrives as rupees, which stay rupees). */
 function digitalSale(x){
-  return legs(x).some(l=>l.type && l.type!=='Cash' && l.type!=='Gift' && l.amt);
+  return legs(x).some(l=>l.type && l.amt && payTypeCur(l.type)==='USD');
 }
 
 /** Enter, change or clear the dollars actually received for a sale. */
@@ -7025,12 +7038,27 @@ function buildReport(part, opts){
 
   section('preorders', ()=>{
     const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
-    /* How many of each title are still to be handed over — a list of names and
-       phone numbers is a contact sheet, not a report. */
-    const byBook = {};
-    due.forEach(x=>{ const n=bookById(x.bookId).name; byBook[n]=(byBook[n]||0)+1; });
-    Object.keys(byBook).forEach(n=>line(n, byBook[n]));
-    if(due.length) line('Total', due.length);
+    /* Who is waiting for what (b210): each pre-order with the person's name,
+       phone number, the book, and any comment — so whoever hands the books over
+       can contact them. Several books ordered together are listed together. */
+    const people = [], byKey = {};
+    due.forEach(x=>{
+      const key = x.bundle ? 'b:' + x.bundle : 's:' + x.saleId;
+      let p = byKey[key];
+      if(!p){ p = byKey[key] = { name: x.name, phone: x.phone, books: [], notes: [] }; people.push(p); }
+      p.books.push(bookById(x.bookId).name);
+      const c = String(x.comments||'').trim();
+      if(c && !p.notes.includes(c)) p.notes.push(c);
+    });
+    people.forEach((p, i)=>{
+      L.push((i+1) + '. ' + (String(p.name||'').trim() || '(no name)'));
+      L.push('   📞 ' + (String(p.phone||'').trim() || 'no number'));
+      // The same title twice shows as "×2".
+      const count = {}; p.books.forEach(b=>{ count[b]=(count[b]||0)+1; });
+      L.push('   📖 ' + Object.keys(count).map(b=>count[b]>1 ? b + ' ×' + count[b] : b).join(', '));
+      p.notes.forEach(n=>L.push('   💬 ' + n));
+    });
+    if(due.length) line('Total', due.length + ' book' + (due.length===1?'':'s') + ' for ' + people.length + ' ' + (people.length===1?'person':'people'));
     gap();
   });
 
@@ -9824,6 +9852,13 @@ function newSeasonModal(){
 
    Deliberately scoped to the place you are standing in: a card machine that
    turns up at one festival is that festival's business, not the tour's. */
+/* The currency a payment type arrives in, as a small picker beside it. */
+function ptCurSelect(type){
+  const cur = payTypeCur(type);
+  const list = [...new Set(['USD','EUR','GBP','INR','PLN','MKD'].concat(curAllCurrencies ? curAllCurrencies() : [], cur ? [cur] : []))];
+  return `<select class="pt-cur" data-type="${esc(type)}" title="The currency ${esc(type)} always arrives in">
+    <option value="">—</option>${list.map(c=>`<option value="${esc(c)}" ${c===cur?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
+}
 function payTypesModal(){
   const isEvent = CUR_LEVEL==='event';
   const reg = currentRegion();
@@ -9851,7 +9886,11 @@ function payTypesModal(){
           <span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>
           <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(t)}" ${active.has(t)?'checked':''}>
             <span>${esc(t)}</span></label>
+          ${ptCurSelect(t)}
         </div>`).join('')}</div>
+      <div class="hint">The currency beside each type is what it always arrives in, across the whole tour —
+        for example Zelle in dollars, UPI in rupees. Leave it at “—” for cash and card.
+        Payments into a dollar account can have the dollars actually received entered on the sale.</div>
 
       <div class="cash-sub">Add another</div>
       <div class="rp-add">
@@ -9866,6 +9905,15 @@ function payTypesModal(){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="ptSave">Save</button>
     </div>`, true);
+
+  // A payment type's currency is tour-wide, and saved as soon as it is chosen.
+  $('#ptList').addEventListener('change', e=>{
+    const sel = e.target.closest('.pt-cur'); if(!sel) return;
+    const type = sel.dataset.type, cur = sel.value || 'none';
+    commit({action:'setPayTypeCurrency', type, cur},
+      st=>{ st.payTypeCur = Object.assign({}, st.payTypeCur||{}, {[type]: cur}); },
+      cur==='none' ? type + ': not a digital account' : type + ' arrives in ' + cur, {keepOpen:true});
+  });
 
   /* Arranging the list: the order you leave it in is the order it is saved in,
      and that is the order the payment buttons appear in when recording a sale. */
@@ -9889,6 +9937,7 @@ function payTypesModal(){
         <span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>
         <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(name)}" checked>
           <span>${esc(name)}</span></label>
+        ${ptCurSelect(name)}
       </div>`);
     $('#ptNew').value=''; $('#modalErr').textContent='';
   });
