@@ -65,7 +65,7 @@ const ship = id => (m.call({ action: 'getState', season: SA }).state.shipments |
     t.push(['each card has "Full Delivery Arrived" and "Partial Delivery Arrived"',
       c.every(x => /Full Delivery Arrived/.test(x) && /Partial Delivery Arrived/.test(x))]);
     t.push(['the other region\'s batch is not shown here', !c.some(x => /Gamma/.test(x))]);
-    await (await page.$('#bottomRow')).screenshot({ path: shot('1-region') });
+    await (await page.$('#salesFlow')).screenshot({ path: shot('1-region') });
 
     page.__dialogs = [];
     await page.click('#transitPanel .sh-card:has-text("Alpha") [data-act="sharriveall"]'); await page.waitForTimeout(1500);

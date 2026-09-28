@@ -98,14 +98,14 @@ c({ action: 'setSeason', seasonId: SA });
 
     // Folding the portals, remembered on this device.
     await page.click('#salesPortal > .portal-h', { position: { x: 30, y: 12 } }); await page.waitForTimeout(200);
-    t.push(['the Sales Portal folds from its heading', !(await visible('#regionCols')) && await visible('#summaryPortal .panel')]);
+    t.push(['the Sales Portal folds from its heading', !(await visible('#regionCols > .panel')) && await visible('#summaryPortal .panel')]);
     await page.click('#summaryPortal > .portal-h', { position: { x: 30, y: 12 } }); await page.waitForTimeout(200);
     t.push(['so does the Summaries Portal', !(await visible('#summaryPortal .panel'))]);
     await load();
-    t.push(['both stay folded after a reload', await page.evaluate(() => isHQ()) && !(await visible('#regionCols')) && !(await visible('#summaryPortal .panel'))]);
+    t.push(['both stay folded after a reload', await page.evaluate(() => isHQ()) && !(await visible('#regionCols > .panel')) && !(await visible('#summaryPortal .panel'))]);
     await page.click('#salesPortal > .portal-h', { position: { x: 30, y: 12 } });
     await page.click('#summaryPortal > .portal-h', { position: { x: 30, y: 12 } }); await page.waitForTimeout(200);
-    t.push(['and open again', await visible('#regionCols') && await visible('#summaryPortal .panel')]);
+    t.push(['and open again', await visible('#regionCols > .panel') && await visible('#summaryPortal .panel')]);
 
     // Into a season from the summaries, and back.
     await page.click('#hqCollBy a:has-text("Year-Round")'); await page.waitForTimeout(1500);
