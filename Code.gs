@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b213';
+var SERVER_BUILD = 'b214';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -6311,10 +6311,12 @@ function doMarkPaid(p) {
       } else {
         // Both slots taken and neither is in the right currency. Convert into
         // the first leg's currency so the money is not simply lost.
+        // (Any currency: pounds used to be converted at the euro rate. b214)
         var conv = toUSD_(due, dueCur);
         var c1 = String(o.p1cur);
-        var add = c1 === 'USD' ? conv : (c1 === 'PLN' ? conv * plnPerUsd_() : conv * eurPerUsd_());
-        set.p1amt = round2_((Number(o.p1amt) || 0) + add);
+        var per = c1 === 'USD' ? 1 : c1 === 'PLN' ? plnPerUsd_() : c1 === 'EUR' ? eurPerUsd_() : perUsd_(c1);
+        if (!(per > 0) || !(conv > 0)) throw new Error('No exchange rate for ' + (per > 0 ? dueCur : c1) + ' yet, so the balance cannot be added to this sale. Try again in a minute.');
+        set.p1amt = round2_((Number(o.p1amt) || 0) + conv * per);
       }
     }
 
@@ -7701,26 +7703,28 @@ function renderView_(loc, regionId, ssOverride) {
     // Not the bank's balance — what this region has sent there.
     cashAccts.push({ id: regionBankId_(region.regionId), name: bankLabel_(regionBankId_(region.regionId)) });
     cashAccts.push({ id: 'BANK', name: 'Global bank', bankOf: region.regionId });
+    // A column for every currency in the season — London's pounds were missing
+    // when this was fixed at PLN/EUR/USD.
+    var cashCurs = allCurrencies_();
     // Show the section if any cash has moved OR any cash was collected anywhere.
     var anyCash = objectsOf_('_cash').length > 0 || cashAccts.some(function (a) {
-      return cashCollected_(a.id, 'PLN') || cashCollected_(a.id, 'EUR') || cashCollected_(a.id, 'USD');
+      return cashCurs.some(function (c) { return cashCollected_(a.id, c); });
     });
     if (anyCash) {
       band.push(put(['CASH ON HAND']));
-      head.push(put(['Account', 'PLN', 'EUR', 'USD']));
+      head.push(put(['Account'].concat(cashCurs)));
       var cashStart = rows.length + 1;
       function acctAmt(a, cur) {
         return a.bankOf ? bankFromRegion_(a.bankOf, cur) : cashBalance_(a.id, cur);
       }
       cashAccts.forEach(function (a) {
-        put([a.name, acctAmt(a, 'PLN'), acctAmt(a, 'EUR'), acctAmt(a, 'USD')]);
+        put([a.name].concat(cashCurs.map(function (c) { return acctAmt(a, c); })));
       });
       // totals row
-      tot.push(put(['TOTAL',
-        cashAccts.reduce(function (t, a) { return t + acctAmt(a, 'PLN'); }, 0),
-        cashAccts.reduce(function (t, a) { return t + acctAmt(a, 'EUR'); }, 0),
-        cashAccts.reduce(function (t, a) { return t + acctAmt(a, 'USD'); }, 0)]));
-      money.push('B' + cashStart + ':D' + (cashStart + cashAccts.length));
+      tot.push(put(['TOTAL'].concat(cashCurs.map(function (c) {
+        return round2_(cashAccts.reduce(function (t, a) { return t + acctAmt(a, c); }, 0));
+      }))));
+      money.push('B' + cashStart + ':' + colLetter_(cashCurs.length + 1) + (cashStart + cashAccts.length));
       blank();
     }
   }
@@ -7742,7 +7746,7 @@ function renderView_(loc, regionId, ssOverride) {
     var total = bookAmt + donAmt;
     put([cur, round2_(bookAmt), round2_(donAmt), round2_(total), round2_(usdAmt)]);
   });
-  money.push('B' + curStart + ':E' + (curStart + 2));
+  money.push('B' + curStart + ':E' + (rows.length));
   blank();
 
   /* ---- Money by kind of book ----
@@ -7800,19 +7804,22 @@ function renderView_(loc, regionId, ssOverride) {
 
   /* ---- Money by payment type ---- */
   band.push(put(['COLLECTIONS BY PAYMENT TYPE']));
-  head.push(put(['Type', 'PLN', 'EUR', 'USD', 'USD equivalent']));
+  // Every currency in the season, as in the tables above (not just PLN/EUR/USD).
+  var payCurs = allCurrencies_();
+  head.push(put(['Type'].concat(payCurs).concat(['USD equivalent'])));
   var payStart = rows.length + 1;
   PAY_TYPES.forEach(function (t) {
-    var byCur = { PLN: 0, EUR: 0, USD: 0 }, usdEq = 0;
+    var byCur = {}, usdEq = 0;
+    payCurs.forEach(function (c) { byCur[c] = 0; });
     scoped.forEach(function (s) {
       if (!received_(s)) return;
       eachLeg_(s, function (leg) {
         if (leg.type === t && byCur[leg.cur] !== undefined) { byCur[leg.cur] += leg.amt; usdEq += legTruthUsd_(s, leg); }
       });
     });
-    put([t, round2_(byCur.PLN), round2_(byCur.EUR), round2_(byCur.USD), round2_(usdEq)]);
+    put([t].concat(payCurs.map(function (c) { return round2_(byCur[c]); })).concat([round2_(usdEq)]));
   });
-  money.push('B' + payStart + ':E' + (payStart + PAY_TYPES.length - 1));
+  money.push('B' + payStart + ':' + colLetter_(payCurs.length + 2) + (payStart + PAY_TYPES.length - 1));
   blank();
 
   /* ---- Costs, and what was kept after them (Summary only) ----

@@ -906,6 +906,20 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b214 — pounds (and every currency) on a region's spreadsheet
+
+- A region's Summary tab had "Cash on hand" and "Collections by payment type"
+  fixed at PLN / EUR / USD columns. London (GBP) showed nothing in either,
+  and "Cash on hand" was left out entirely when a region had only pounds.
+  Both now have a column per season currency (`allCurrencies_()`), like
+  "Collections by book type". "Collections by currency" is now money-formatted
+  on every row. (First found and fixed in the London reconciliation session,
+  PR #28, as "b213". Re-applied here as b214, because b213 was already Phase 4.)
+- `doMarkPaid`: a balance added onto a first payment in another currency was
+  converted at the euro rate for anything that wasn't USD or PLN (pounds
+  included). It now uses that currency's own rate.
+- Test: `test/gbpsheet.js`.
+
 ## Done in b213 — Phase 4: live updates
 
 - `server/src/worker.js`: the Durable Object accepts WebSockets at `/live`
