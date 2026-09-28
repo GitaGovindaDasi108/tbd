@@ -897,6 +897,33 @@ at an event, those aimed at it. The data is unchanged — the sending region
 still has the batch in its records and stock history, and a regional link
 still receives it — it is simply not shown there. Test: `transitwhere.js`.
 
+## Done in b209 — Speciality Reports: the choices fold away
+
+The places and sections now sit in one foldable "Choices" bar
+(`#spChoices`) whose summary says what is chosen ("Regions: Poland + Italy ·
+4 of 5 sections"). "Done — show the report" folds it; it opens folded when
+places were chosen before, and open the first time. Folded, the report box
+fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
+desktop and phone width.
+
+## Done in b210 — payment types have a currency; the pre-order report lists people
+
+- **Each payment type's currency, tour-wide** (Edit Payment Types: a picker
+  beside each type; saved at once; `setPayTypeCurrency`, stored in `_meta`
+  `payTypeCur` as { type: 'USD' | … | 'none' }, sent in the state only once
+  set). Starting guesses until set: Zelle, PayPal, Wise, Venmo, Cash App →
+  USD; UPI → INR (`PAY_CUR_DEFAULTS`). A type with a currency is a digital
+  account; cash and card have none.
+- **"$ Received"** (`digitalSale`) now only for payments into a DOLLAR
+  account — not card or cash (the owner's rule), and not an account in
+  another currency (UPI's rupees stay rupees). Amounts already entered on
+  card sales still count; only the button is gone.
+- **Pre-order WhatsApp report**: each person, numbered — name, 📞 phone,
+  📖 the book(s) (ordered together = one entry; "×2" for a repeat), 💬 any
+  comment — then "Total - N books for M people".
+- Tests: `paycur.js`; `browser-round6.js` now uses Zelle for "$ Received"
+  and checks a card sale has none.
+
 ## Open items
 
 1. **Scale — moving off Google Sheets.** Google Sheets is the ceiling: writes

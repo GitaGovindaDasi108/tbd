@@ -127,6 +127,23 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     await page.screenshot({ path: shot('3-speciality') });
     await page.click('#spMode [data-mode="regions"]'); await page.check(`#spPlaces [data-sp="${pl.regionId}"]`); await page.waitForTimeout(100);
     t.push(['regions can be chosen too', new RegExp('^\\*' + pl.name + ' Totals\\*').test(await page.inputValue('#repText'))]);
+    // The choices fold away, so the report can be read (b209).
+    const boxH = () => page.evaluate(() => document.querySelector('#repText').getBoundingClientRect().height);
+    const openH = await boxH();
+    await page.click('#spDone'); await page.waitForTimeout(150);
+    t.push(['"Done" folds the choices into one line saying what is chosen', await page.evaluate(() => !document.querySelector('#spChoices').open)
+      && new RegExp('Regions: ' + pl.name + ' · 4 of 5 sections').test(await page.evaluate(() => document.querySelector('#spSum').textContent))]);
+    t.push(['…and the report grows to fill the window', (await boxH()) > openH + 100]);
+    await page.evaluate(() => closeModal());
+    await page.click('#adminActions [data-act="specreport"]'); await page.waitForTimeout(300);
+    t.push(['opening it again: choices folded, report straight away', await page.evaluate(() => !document.querySelector('#spChoices').open)
+      && new RegExp('^\\*' + pl.name + ' Totals\\*').test(await page.inputValue('#repText'))]);
+    await page.setViewportSize({ width: 390, height: 780 }); await page.waitForTimeout(200);
+    await page.screenshot({ path: shot('3b-speciality-phone') });
+    t.push(['on a phone, most of the screen is the report', (await boxH()) > 380]);
+    await page.click('#spChoices > summary'); await page.waitForTimeout(150);
+    t.push(['tapping the Choices bar opens them again', await page.evaluate(() => document.querySelector('#spChoices').open)]);
+    await page.setViewportSize({ width: 1150, height: 1000 });
     await page.evaluate(() => closeModal());
 
     // 7. Auto-hide at an event.
