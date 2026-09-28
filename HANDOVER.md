@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b197**.
+Handover notes. Current build: **b215**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -201,7 +201,7 @@ revision; `--store=memory` runs the working copy with its records in memory.
 the browser tests never reach; re-record it (and the others) when an action
 deliberately changes.
 
-`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js` and `browser-speed.js` are optional:
+`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js`, `browser-speed.js` and `browser-search.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -905,6 +905,33 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b215 — Seasonal HQ; search anything
+
+- **Seasonal HQ** is the first choice in the region picker and opens the
+  season's overview, the way 🏠 Warehouse heads the place picker. It replaces
+  the ⌂ button, so going up is the same move as going sideways
+  (`SEASONAL_HQ`). "Choose a region…" is gone: at the overview the picker
+  reads Seasonal HQ.
+- **🔍 Search** in the toolbar (tap it, or press `/`): places and actions as
+  you type, like finding a file in Google Drive. "Yoga studio in Italy" opens
+  that event; "transfer stock" opens Transfer Existing Stock.
+  - **Places**: Earthly HQ, every season (as its Seasonal HQ), and every region
+    and event in every season, open or closed, from records the page already
+    holds (`allRegions`/`allEvents`); nothing is fetched to search. Another
+    season opens first, then the place (`gsGoPlace`).
+  - **Actions**: read off the buttons actually in the admin panel and top bar
+    at that moment (`gsItems`), and chosen by clicking that very button. So
+    rewritten wording is what matches, and a regional link finds only what it
+    was given: its own region's places, Activity Log, Add/Transfer Stock,
+    Support. Sales links get no search. `GS_ALSO` adds other words per action
+    ("expenses" → Record Costs). Actions tied to a place act where you are.
+  - Matching: every word typed must start a word of the name or of where it
+    sits; little words ("in", "at", "the") are ignored; name matches rank
+    above region/season ones, this season above others, open above closed.
+  - Not searched yet: books, buyers, sales.
+- Test: `test/browser-search.js` (desktop and 390px phone, admin, regional
+  and sales links).
 
 ## Done in b214 — pounds (and every currency) on a region's spreadsheet
 

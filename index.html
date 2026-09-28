@@ -1132,6 +1132,24 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .bulk-foot.totals3 .all{border-left:1px solid var(--line-d)}
 .bulk-foot.totals3 .all b{color:var(--saffron-d)}
 
+/* ---------- Search (b215) ---------- */
+.gsearch{position:relative;flex:0 1 280px;min-width:180px}
+.gsearch[hidden]{display:none}
+#gsIn{width:100%;box-sizing:border-box;border:1.5px solid var(--line-d);border-radius:999px;
+  padding:6px 14px;font-size:14px;background:var(--paper);color:var(--ink)}
+#gsIn:focus{outline:none;border-color:var(--plum)}
+.gs-list{position:absolute;right:0;top:calc(100% + 4px);z-index:60;width:max(100%,340px);max-width:92vw;
+  max-height:min(60vh,420px);overflow:auto;background:#fff;border:1.5px solid var(--line-d);
+  border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.14);padding:4px 0}
+.gs-head{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);padding:8px 12px 3px}
+.gs-row{padding:8px 12px;cursor:pointer;display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;line-height:1.3}
+.gs-row:hover{background:#FFF3E4}
+.gs-row.on{background:var(--plum);color:var(--gold-l)}
+.gs-name{font-size:13.5px;font-weight:600}
+.gs-tag{font-size:11px;color:var(--muted)}
+.gs-row.on .gs-tag{color:var(--gold-l)}
+.gs-empty{padding:10px 12px;color:var(--muted);font-size:12.5px}
+@media (max-width:560px){ .gsearch{flex:1 1 100%} .gs-list{left:0;right:auto;width:100%;max-width:none} }
 /* ---------- Add Stock ---------- */
 /* The place finder: a search box over an indented season › region › event list.
    The list sits in the flow of the dialog rather than floating, so it can never
@@ -1340,7 +1358,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b214</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b215</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1352,6 +1370,12 @@ body.list-view .mc-name{min-height:0}
 <main>
   <div class="toolbar">
     <div class="loc-tabs" id="locTabs"></div>
+    <!-- Search: any place, any action (b215). no-edit: its results are not wording. -->
+    <div class="gsearch no-edit" id="gSearch" hidden>
+      <input id="gsIn" type="search" autocomplete="off" spellcheck="false" enterkeyhint="go"
+        placeholder="🔍 Search places and actions" aria-label="Search places and actions">
+      <div class="gs-list" id="gsList" hidden></div>
+    </div>
     <div class="actions" id="ctxActions"></div>
   </div>
 
@@ -3174,6 +3198,8 @@ function renderAll(){
   if(sl){ sl.textContent = (CUR_LEVEL==='season' || isHQ()) ? '' : seasonNm; sl.style.display = sl.textContent ? '' : 'none'; }
   // On a share link, show whose name is going on the sales — and let them fix it.
   $('#reportBtn').style.display = isAdmin() ? '' : 'none';
+  // Search: admins, and regional links within what they may do. Not sales links.
+  $('#gSearch').hidden = !(isAdmin() || STATE.role==='coordinator');
   const who = whoAmI();
   const wb = $('#whoBtn');
   if(SHARE_KEY && who){ wb.style.display=''; wb.textContent = '👤 ' + who; }
@@ -3330,6 +3356,8 @@ document.addEventListener('click', e=>{
   applyFolds();
 });
 
+/* The region picker's first choice: the season's own overview (b215). */
+const SEASONAL_HQ = '__seasonhq';
 function renderTabs(){
   const regions = regionsList();
   const reg = currentRegion();
@@ -3396,11 +3424,9 @@ function renderTabs(){
      record it becomes a picker, exactly like regions and events, rather than
      being buried in a panel. */
   if(seasons.length > 1 && isAdmin()){
-    /* Two controls, because they do different things: the button goes UP to the
-       tour-wide view, the picker moves BETWEEN tours. With only the picker there
-       was no way back to the season overview from inside a region. */
-    h += `<button class="crumb-btn ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
-            title="The whole tour">⌂</button>`;
+    /* The picker moves BETWEEN tours. Going UP to the tour-wide view is
+       "Seasonal HQ", the first choice in the region picker (b215) — it used to
+       be a ⌂ button here, which you had to know about. */
     h += `<span class="crumb-pick">
       <select class="crumb-sel ${CUR_LEVEL==='season'?'on':''}" data-act="pickseason"
         title="Switch tour">
@@ -3414,11 +3440,13 @@ function renderTabs(){
             title="The whole tour">${esc(STATE.seasonName||'Season')}</button>`;
   }
 
-  // Region picker
+  /* Region picker. Seasonal HQ heads it — the whole season's overview — just
+     as the Warehouse heads the place picker, so going up is the same move as
+     going sideways (b215). */
   h += `<span class="crumb-sep">›</span>
     <span class="crumb-pick">
       <select class="crumb-sel ${CUR_LEVEL!=='season'?'on':''}" data-act="pickregion">
-        ${CUR_LEVEL==='season'?opt('','Choose a region…',true):''}
+        ${opt(SEASONAL_HQ,'Seasonal HQ',CUR_LEVEL==='season')}
         ${regions.map(r=>opt(r.regionId,r.name+mark(regionClosure(r.regionId)),r.regionId===CUR_REGION&&CUR_LEVEL!=='season')).join('')}
         ${opt('__new','＋ New region…',false)}
       </select>
@@ -3461,6 +3489,7 @@ function renderTabs(){
   if(rs) rs.addEventListener('change',()=>{
     const v=rs.value;
     if(v==='__new'){ renderTabs(); regionModal(); return; }
+    if(v===SEASONAL_HQ){ if(CUR_LEVEL!=='season') goTo('season'); return; }
     if(v) goTo('region',v);
   });
   const ls=$('#locTabs').querySelector('[data-act="pickloc"]');
@@ -12010,6 +12039,205 @@ function sellFromWarehouse(bookId){
     saleModal({bookId, isPreorder:false, loc:btn.dataset.sellsw});
   }));
 }
+
+/* ============================================================
+   SEARCH — type a place or a job, go there (b215)
+   ============================================================
+   Like finding a file in Google Drive: "Yoga studio in Italy" opens that
+   event, "transfer stock" opens Transfer Existing Stock.
+
+   Places come from the records every page already has — this season's
+   regions and events, and every other season's (allRegions / allEvents) — so
+   nothing is fetched to search. Actions are read off the buttons actually in
+   the admin panel and the top bar at the moment you search. That is what
+   keeps a regional link to what it may do: it can only find the buttons it
+   was given, and the server refuses the rest in any case. It also means the
+   words you rewrote with the pencil are the words that match. */
+
+// Small words that carry nothing: "Yoga studio IN Italy".
+const GS_SKIP = new Set(['in','at','the','of','a','an','to','for','from','on','and','my','go','open','show']);
+/* Other words people are likely to type for the same button, by its action. */
+const GS_ALSO = {
+  activity:'log history undo changes', org:'support help contacts phone',
+  sharelinks:'links share sellers', eventorder:'order sort arrange events',
+  specreport:'report whatsapp', report:'report whatsapp summary',
+  drivefolder:'spreadsheets sheets google drive files', editwording:'wording labels text words',
+  admins:'admin access users people permissions', signout:'log out logout',
+  cash:'cash money', costs:'costs expenses spending bills', paytypes:'payment types upi zelle paypal',
+  addstock:'add stock books printer new', xfer:'transfer move stock books send',
+  partners:'consignment partner group', bookdisplay:'books titles display show hide order',
+  reorder:'order sort arrange', seasonedit:'rename season', editregion:'rename region prices currencies',
+  closehere:'close finish', reopenhere:'reopen open', seasonclose:'close season', seasonreopen:'reopen season',
+  renameevent:'rename event', viewmode:'list view cards', refresh:'refresh reload', syncsheet:'sync sheet spreadsheet'
+};
+function gsNorm(t){
+  return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+function gsWords(t){ return gsNorm(t).split(' ').filter(Boolean); }
+/* How well one entry answers the words typed: 0 = not at all. Every word must
+   be found — at the start of a word of its name (worth most) or of where it
+   sits (its region, its season). */
+function gsScore(q, it){
+  const name = gsWords(it.name), ctx = gsWords(it.ctx);
+  let score = 0;
+  for(const w of q){
+    const inName = name.some(x=>x.startsWith(w)), inCtx = ctx.some(x=>x.startsWith(w));
+    if(inName) score += 3; else if(inCtx) score += 1; else return 0;
+  }
+  if(gsNorm(it.name) === q.join(' ')) score += 4;       // typed its name exactly
+  if(it.here) score += 0.5;                               // this season first
+  if(it.closed) score -= 0.5;                             // open places before closed ones
+  return score;
+}
+/* Everything that can be found from this page, for whoever is using it. */
+function gsItems(){
+  const out = [];
+  if(!STATE || isSeller()) return out;
+  const admin = isAdmin();
+  const cur = STATE.activeSeason;
+  const seasons = STATE.seasons || [];
+  const sName = sid => sid===HQ_ID ? 'Earthly HQ' : ((seasons.find(x=>x.seasonId===sid)||{}).name || '');
+  const place = (o) => out.push(Object.assign({kind:'place'}, o));
+  if(admin){
+    place({name:'Earthly HQ', ctx:'hq headquarters every season', tag:'Every season', go:{hq:true}, here:isHQ()});
+    seasons.forEach(x=>place({name:x.name, ctx:'season seasonal hq overview', tag:'Seasonal HQ',
+      go:{season:x.seasonId}, here:x.seasonId===cur, closed:!!x.closedAt}));
+  }
+  /* Regions and events: this season's own (current) records; for an admin,
+     every other season's too. A regional link has only its own region. */
+  const regions = [];
+  const hereRegs = isHQ() ? [] : regionsList();
+  hereRegs.forEach(r=>regions.push({r, sid:cur, evs:eventsOfRegion(r.regionId)}));
+  if(admin) (STATE.allRegions||[]).forEach(r=>{
+    if(r.seasonId===cur || r.seasonId===HQ_ID || r.regionId===HQ_REGION) return;
+    if(!seasons.some(x=>x.seasonId===r.seasonId)) return;           // a deleted season
+    regions.push({r, sid:r.seasonId, evs:(STATE.allEvents||[]).filter(e=>e.regionId===r.regionId)});
+  });
+  regions.forEach(({r, sid, evs})=>{
+    const sn = sName(sid), here = sid===cur;
+    place({name:r.name, ctx:'region warehouse '+sn, tag:'Region'+(admin && sn?' · '+sn:''),
+      go:{season:sid, region:r.regionId}, here, closed:!!r.closedAt});
+    evs.forEach(e=>place({name:e.name, ctx:'event '+r.name+' '+sn, tag:r.name+(admin && sn?' · '+sn:''),
+      go:{season:sid, region:r.regionId, event:e.eventId}, here, closed:!!e.closedAt}));
+  });
+  /* Actions: the buttons on offer right now, in the admin panel and the top
+     bar. Hidden ones (a sales link's missing Report button) are left out. */
+  const seen = new Set();
+  document.querySelectorAll('#adminActions [data-act], .util-bar [data-act]').forEach(b=>{
+    if(b.closest('[hidden]') || getComputedStyle(b).display==='none') return;
+    const a = b.dataset.act;
+    if(a==='whoami') return;
+    const c = b.cloneNode(true);
+    c.querySelectorAll('.pencil, .req-badge').forEach(x=>x.remove());
+    const label = (c.textContent||'').replace(/\s+/g,' ').trim();
+    if(!label || seen.has(label)) return;
+    seen.add(label);
+    out.push({kind:'action', name:label, ctx:GS_ALSO[b.dataset.then||a] || GS_ALSO[a] || '', btn:b,
+              act:a, then:b.dataset.then||''});
+  });
+  return out;
+}
+function gsResults(text){
+  const q = gsWords(text).filter(w=>!GS_SKIP.has(w));
+  if(!q.length) return {places:[], actions:[]};
+  const hits = gsItems().map(it=>({it, s:gsScore(q, it)})).filter(x=>x.s>0)
+    .sort((a,b)=>b.s-a.s);
+  return { places: hits.filter(x=>x.it.kind==='place').slice(0,8).map(x=>x.it),
+           actions: hits.filter(x=>x.it.kind==='action').slice(0,6).map(x=>x.it) };
+}
+let GS_LIST = [], GS_SEL = 0;
+function gsRender(){
+  const box = $('#gsList'), inp = $('#gsIn');
+  if(!box || !inp) return;
+  const text = inp.value || '';
+  if(!text.trim()){ box.hidden = true; box.innerHTML = ''; GS_LIST = []; return; }
+  const r = gsResults(text);
+  GS_LIST = r.actions.concat(r.places);
+  if(GS_SEL >= GS_LIST.length) GS_SEL = 0;
+  const row = (it, i) => `<div class="gs-row ${i===GS_SEL?'on':''}" data-gs="${i}">
+      <span class="gs-name">${esc(it.name)}</span>${it.tag?`<span class="gs-tag">${esc(it.tag)}${it.closed?' · closed':''}</span>`:''}</div>`;
+  let h = '';
+  if(r.actions.length) h += `<div class="gs-head">Actions</div>` + r.actions.map((it,i)=>row(it,i)).join('');
+  if(r.places.length) h += `<div class="gs-head">Places</div>` + r.places.map((it,i)=>row(it, i + r.actions.length)).join('');
+  box.innerHTML = h || `<div class="gs-empty">Nothing matches “${esc(text.trim())}”.</div>`;
+  box.hidden = false;
+}
+function gsClose(){
+  const inp = $('#gsIn'), box = $('#gsList');
+  if(inp){ inp.value = ''; inp.blur(); }
+  if(box){ box.hidden = true; box.innerHTML = ''; }
+  GS_LIST = []; GS_SEL = 0;
+}
+/* Go to a place, in whichever season it is. Another season opens first (from
+   the copy on this device when there is one, as the season picker does); the
+   place is chosen as soon as that season's records hold it. */
+async function gsGoPlace(go){
+  if(go.hq){ if(!isHQ()) switchSeason(HQ_ID); return; }
+  const there = () => go.event
+    ? (STATE.events||[]).some(e=>e.eventId===go.event)
+    : go.region ? !!regionById(go.region) : true;
+  const land = () => {
+    if(go.event) goTo('event', go.event);
+    else if(go.region) goTo('region', go.region);
+    else goTo('season');
+  };
+  if(go.season===STATE.activeSeason){ land(); return; }
+  const sid = go.season;
+  const opening = switchSeason(sid);
+  if(STATE.activeSeason===sid && there()) land();       // this device already had it
+  await opening;
+  // Still in that season, still at its overview (not moved on by hand), and now it's there.
+  if(STATE.activeSeason===sid && CUR_LEVEL==='season' && (go.region || go.event) && there()) land();
+}
+function gsChoose(i){
+  const it = GS_LIST[i];
+  if(!it) return;
+  gsClose();
+  if(it.kind==='place') gsGoPlace(it.go);
+  else{
+    /* A live update may have redrawn the panel since the list was drawn: then
+       the same button, drawn again, is the one to press. */
+    const same = x => x.dataset.act===it.act && (x.dataset.then||'')===it.then;
+    const btn = (it.btn && document.body.contains(it.btn)) ? it.btn
+      : [...document.querySelectorAll('#adminActions [data-act], .util-bar [data-act]')].find(same);
+    if(btn) btn.click(); else toast('That is no longer available here.', true);
+  }
+}
+document.addEventListener('input', e=>{
+  if(e.target && e.target.id==='gsIn'){ GS_SEL = 0; gsRender(); }
+});
+document.addEventListener('keydown', e=>{
+  const inp = $('#gsIn');
+  // "/" anywhere (not while typing elsewhere) jumps to the search box.
+  if(e.key==='/' && inp && !$('#gSearch').hidden && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target&&e.target.tagName)||'')
+     && !(e.target && e.target.isContentEditable)){
+    e.preventDefault(); inp.focus(); return;
+  }
+  if(!e.target || e.target.id!=='gsIn') return;
+  if(e.key==='Escape'){ gsClose(); return; }
+  if(!GS_LIST.length) return;
+  if(e.key==='ArrowDown'){ e.preventDefault(); GS_SEL = (GS_SEL+1) % GS_LIST.length; gsRender(); }
+  else if(e.key==='ArrowUp'){ e.preventDefault(); GS_SEL = (GS_SEL-1+GS_LIST.length) % GS_LIST.length; gsRender(); }
+  else if(e.key==='Enter'){ e.preventDefault(); gsChoose(GS_SEL); }
+});
+/* Pressing a result keeps the focus in the box (so the list stays up), and the
+   result is chosen on the click itself — choosing on the press let a phone's
+   tap land on whatever was under the list once it had gone. */
+document.addEventListener('mousedown', e=>{
+  const row = e.target && e.target.closest && e.target.closest('#gsList [data-gs]');
+  if(row){ e.preventDefault(); return; }
+  if(!(e.target && e.target.closest && e.target.closest('#gSearch'))){
+    const box = $('#gsList'); if(box && !box.hidden) box.hidden = true;
+  }
+});
+document.addEventListener('click', e=>{
+  const row = e.target && e.target.closest && e.target.closest('#gsList [data-gs]');
+  if(row){ e.preventDefault(); gsChoose(Number(row.dataset.gs)); }
+});
+document.addEventListener('focusin', e=>{
+  if(e.target && e.target.id==='gsIn' && e.target.value) gsRender();
+});
 
 /* ============================================================
    EVENT DELEGATION
