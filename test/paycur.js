@@ -37,7 +37,7 @@ T.setUp(Object.assign(JSON.parse(JSON.stringify(base)), { sales: [
   sale('Cash', 'EUR', { type: 'PREORDER', delivered: false, name: '', phone: '' }),
   sale('Cash', 'EUR', { type: 'PREORDER', delivered: true, name: 'Done Already', phone: '+1' }) ] }));
 T.goTo('region', 'r');
-const rep = T.buildReport('preorders');
+const rep = T.buildReport('prepeople');
 process.stdout.write('   report:\n' + rep.split('\n').map(x => '     ' + x).join('\n') + '\n');
 t.push(['the report names the person', /1\. Radha Devi/.test(rep)]);
 t.push(['…with their phone number', /📞 \+48 600 100 200/.test(rep)]);
@@ -46,6 +46,12 @@ t.push(['…and their comment', /💬 Collect Sunday/.test(rep)]);
 t.push(['someone with no details is still listed, plainly', /2\. \(no name\)/.test(rep) && /📞 no number/.test(rep)]);
 t.push(['a delivered pre-order is not listed', !/Done Already/.test(rep)]);
 t.push(['the total counts books and people', /Total - 3 books for 2 people/.test(rep)]);
+// The simple count is kept too (b211): one line per title, then the total.
+const cnt = T.buildReport('preorders');
+process.stdout.write('   counts:\n' + cnt.split('\n').map(x => '     ' + x).join('\n') + '\n');
+t.push(['the count report is just titles and numbers', /Total - 3/.test(cnt) && !/Radha Devi|📞/.test(cnt)]);
+const full = T.buildReport('', { sections: new Set(['preorders', 'prepeople']) });
+t.push(['the full report can carry both', /PRE-ORDERS PENDING/.test(full) && /WHO IS WAITING/.test(full) && /Radha Devi/.test(full)]);
 
 // ---- The server: setting a type's currency ----
 const quiet = console.log; console.log = () => {};

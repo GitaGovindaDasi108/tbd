@@ -906,6 +906,28 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b212 — sales-log filters stay on their page, and fit a short window
+
+- The Books / Status / Payment filters are cleared (and their menus shut)
+  whenever you go to another place or season: `clearLogFilters()`, called from
+  `goTo()` and `switchSeason()`. Coming back starts unfiltered.
+- A filter menu fits the window: `fitLogFilter()` sizes it to the room below
+  the button (or opens it upward when there is more room above), Clear/Done
+  are pinned at its foot, and the section holding it gets `.lf-open`, which
+  lifts it above its neighbours and stops it clipping the menu. That clipping
+  (the section's `overflow:hidden`) is what hid Clear in a half-screen window.
+- Test: `test/browser-filters.js` (720×520 window).
+
+## Done in b211 — pre-orders: the count and the details, both
+
+- The pre-order report is two reports again. **📋 Count** (`preorders`) is the
+  simple count from before b210: one line per title, then the total.
+  **📋 Details** (`prepeople`) is the b210 list: name, phone, books, comments.
+- Both buttons sit on the "Pre-Orders Awaiting Delivery" heading, and the full
+  report and Speciality Reports offer both ("Pre-orders pending" and
+  "Pre-orders — who is waiting").
+- Tests: `test/paycur.js` checks both; `browser-round7.js` now counts 6 sections.
+
 ## Done in b210 — payment types have a currency; the pre-order report lists people
 
 - **Each payment type's currency, tour-wide** (Edit Payment Types: a picker
