@@ -906,6 +906,16 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b211 — pre-orders: the count and the details, both
+
+- The pre-order report is two reports again. **📋 Count** (`preorders`) is the
+  simple count from before b210: one line per title, then the total.
+  **📋 Details** (`prepeople`) is the b210 list: name, phone, books, comments.
+- Both buttons sit on the "Pre-Orders Awaiting Delivery" heading, and the full
+  report and Speciality Reports offer both ("Pre-orders pending" and
+  "Pre-orders — who is waiting").
+- Tests: `test/paycur.js` checks both; `browser-round7.js` now counts 6 sections.
+
 ## Done in b210 — payment types have a currency; the pre-order report lists people
 
 - **Each payment type's currency, tour-wide** (Edit Payment Types: a picker

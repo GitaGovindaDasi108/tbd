@@ -1337,7 +1337,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b210</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b211</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1429,7 +1429,7 @@ body.list-view .mc-name{min-height:0}
       <div class="body"><div class="log" id="pendingList"></div></div>
     </section>
     <section class="panel pre-panel" id="prePanel" data-fold="preorders" style="display:none">
-      <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy just this section for WhatsApp">📋</button></h2>
+      <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy the counts for WhatsApp">📋 Count</button> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="prepeople" title="Copy names, phone numbers, books and comments for WhatsApp">📋 Details</button></h2>
       <div class="body"><div class="log" id="preList"></div></div>
     </section>
     <section class="panel rq-panel" id="remotePanel" data-fold="remote" style="display:none">
@@ -6879,13 +6879,14 @@ async function shareKeySet(kind, id, clear){
    heading to each, plus the place and time at the top. A single section's
    report stays bare figures — heading and date would only repeat what the
    person tapping that section already knows. */
-/* The full report offers these five, in this order. (The other sections still
+/* The full report offers these six, in this order. (The other sections still
    have their own 📋 buttons on the page.) */
 const REPORT_SECTIONS = [
   ['books',     'SALES BY TITLE'],
   ['cash',      'COLLECTIONS BY PAYMENT'],
   ['pending',   'PAYMENTS PENDING'],
   ['preorders', 'PRE-ORDERS PENDING'],
+  ['prepeople', 'PRE-ORDERS — WHO IS WAITING'],
   ['stock',     'STOCK LEFT IN REGION'],
 ];
 function buildReport(part, opts){
@@ -7037,6 +7038,17 @@ function buildReport(part, opts){
   });
 
   section('preorders', ()=>{
+    const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
+    /* How many of each title are still to be handed over: a simple count.
+       Who is waiting for them is its own report, 'prepeople', just below. */
+    const byBook = {};
+    due.forEach(x=>{ const n=bookById(x.bookId).name; byBook[n]=(byBook[n]||0)+1; });
+    Object.keys(byBook).forEach(n=>line(n, byBook[n]));
+    if(due.length) line('Total', due.length);
+    gap();
+  });
+
+  section('prepeople', ()=>{
     const due = s.filter(x=>x.type==='PREORDER' && !x.delivered);
     /* Who is waiting for what (b210): each pre-order with the person's name,
        phone number, the book, and any comment — so whoever hands the books over

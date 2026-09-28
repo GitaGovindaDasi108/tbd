@@ -132,7 +132,7 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     const openH = await boxH();
     await page.click('#spDone'); await page.waitForTimeout(150);
     t.push(['"Done" folds the choices into one line saying what is chosen', await page.evaluate(() => !document.querySelector('#spChoices').open)
-      && new RegExp('Regions: ' + pl.name + ' · 4 of 5 sections').test(await page.evaluate(() => document.querySelector('#spSum').textContent))]);
+      && new RegExp('Regions: ' + pl.name + ' · 5 of 6 sections').test(await page.evaluate(() => document.querySelector('#spSum').textContent))]);
     t.push(['…and the report grows to fill the window', (await boxH()) > openH + 100]);
     await page.evaluate(() => closeModal());
     await page.click('#adminActions [data-act="specreport"]'); await page.waitForTimeout(300);
