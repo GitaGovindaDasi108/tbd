@@ -906,6 +906,21 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b213 — Phase 4: live updates
+
+- `server/src/worker.js`: the Durable Object accepts WebSockets at `/live`
+  (hibernation API; `ping`→`pong` auto-response). After every request and the
+  hourly alarm, `tellPhones()` sends `{rev}` to every socket when the revision
+  changed. On connect, and when asked `rev`, it sends the current one. At most
+  400 sockets (the oldest are closed first). `core.js` gains `rev()`.
+- `index.html`: `LIVE` / `liveConnect()` / `liveRev()`. The URL is derived from
+  `APPS_SCRIPT_URL` (off for script.google.com; `CONFIG.LIVE_URL` overrides it,
+  and `''` turns it off). A message with a new rev fetches at once, unless a
+  form is open (then `LIVE.due`, fetched by `closeModal()`). While live, the
+  regular poll runs once a minute. Reconnects with backoff, and on
+  visibility/online.
+- `test/browser-cloudflare.js`: live checks (both configs poll hourly).
+
 ## Done in b212 — sales-log filters stay on their page, and fit a short window
 
 - The Books / Status / Payment filters are cleared (and their menus shut)

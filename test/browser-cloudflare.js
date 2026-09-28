@@ -79,7 +79,7 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     if (url.startsWith('http://127.0.0.1:8790/')) {
       const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
       if (rel === 'config.js') return route.fulfill({ status: 200, contentType: 'text/javascript',
-        body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', AUTO_REFRESH_SECONDS: 15 };` });
+        body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600 };` });
       const f = path.join(ROOT, rel);
       if (fs.existsSync(f) && fs.statSync(f).isFile())
         return route.fulfill({ status: 200, body: fs.readFileSync(f),
@@ -130,7 +130,7 @@ const API = 'http://127.0.0.1:' + PORT + '/';
       if (url.startsWith('http://127.0.0.1:8790/')) {
         const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
         if (rel === 'config.js') return r.fulfill({ status: 200, contentType: 'text/javascript',
-          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123' };` });
+          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600 };` });
         const f = path.join(ROOT, rel);
         if (fs.existsSync(f) && fs.statSync(f).isFile()) return r.fulfill({ status: 200, body: fs.readFileSync(f),
           contentType: f.endsWith('.html') ? 'text/html' : f.endsWith('.js') ? 'text/javascript' : undefined });
@@ -141,6 +141,35 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     await other.goto('http://127.0.0.1:8790/index.html?k=kitaly12345'); await other.waitForTimeout(3000);
     t.push(['a coordinator\'s link opens with no sign-in', !(await other.$('#signIn')) &&
       await other.evaluate(() => !!STATE && STATE.role === 'coordinator' && (STATE.regions || []).some(r => r.regionId === 'rg_it'))]);
+
+    /* Live updates (Phase 4). The regular check is set to once an hour on both
+       pages, so only the live line can bring a change this quickly. */
+    await other.evaluate(() => closeModal()); await other.waitForTimeout(500);   // (the link's "who are you?" question)
+    t.push(['both apps have their live line open', await page.evaluate(() => LIVE.open) && await other.evaluate(() => LIVE.open)]);
+    const sees = (pg, id) => pg.evaluate(id => (STATE.sales || []).some(x => x.saleId === id), id);
+    const within = async (ms, fn) => { const t0 = Date.now(); while (Date.now() - t0 < ms) { if (await fn()) return Date.now() - t0; await new Promise(r => setTimeout(r, 100)); } return -1; };
+    await api({ action: 'sell', s, season: sid, saleId: 'LIVE1', location: 'wh_it', bookId: 'sr_en', legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] });
+    const msOwner = await within(3000, () => sees(page, 'LIVE1')), msLink = await within(3000, () => sees(other, 'LIVE1'));
+    if (msLink < 0) console.log('   link:', await other.evaluate(() => JSON.stringify({ open: LIVE.open, due: LIVE.due, REV, hidden: document.hidden, overlay: document.querySelector('#overlay').classList.contains('show'), sales: (STATE.sales || []).map(x => x.saleId), loc: CUR_LOC })));
+    console.log('   live: owner saw it in ' + msOwner + ' ms, the link in ' + msLink + ' ms');
+    t.push(['a sale saved elsewhere shows on the owner\'s app within 3 seconds', msOwner >= 0]);
+    t.push(['…and on the coordinator\'s link', msLink >= 0]);
+    // A sale made on the link shows on the owner's app.
+    await other.evaluate(() => commit({ action: 'sell', saleId: 'LIVE2', location: 'wh_it', bookId: 'sr_en', legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] },
+      st => { st.sales.push({ saleId: 'LIVE2', location: 'wh_it', bookId: 'sr_en', type: 'SALE', p1type: 'Cash', p1cur: 'EUR', p1amt: 35 }); }, 'Sold'));
+    t.push(['a sale on the coordinator\'s phone shows on the owner\'s', (await within(4000, () => sees(page, 'LIVE2'))) >= 0]);
+    // The line drops (a tunnel): it comes back by itself, and changes flow again.
+    await page.evaluate(() => LIVE.ws.close());
+    t.push(['a dropped line reconnects by itself', (await within(5000, () => page.evaluate(() => LIVE.open))) >= 0]);
+    await api({ action: 'sell', s, season: sid, saleId: 'LIVE3', location: 'wh_it', bookId: 'sr_en', legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] });
+    t.push(['…and the next sale arrives over it', (await within(3000, () => sees(page, 'LIVE3'))) >= 0]);
+    // With a form open, the screen is not redrawn under you; it catches up when the form closes.
+    await page.evaluate(() => openModal('<div class="m-body">a form</div>'));
+    await api({ action: 'sell', s, season: sid, saleId: 'LIVE4', location: 'wh_it', bookId: 'sr_en', legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] });
+    await page.waitForTimeout(1500);
+    t.push(['while a form is open, the screen is left alone', !(await sees(page, 'LIVE4'))]);
+    await page.evaluate(() => closeModal());
+    t.push(['…and catches up once it closes', (await within(12000, () => sees(page, 'LIVE4'))) >= 0]);
 
     // Someone new asks to come in; the owner approves them in the Admins panel (b207).
     const hctx = await browser.newContext();

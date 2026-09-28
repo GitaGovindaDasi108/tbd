@@ -236,5 +236,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     kv.sweepTemp();
     auth.sweep();
   }
-  return { answer, request, bridge, relay, auth, warm, fetchWanted, housekeeping, kv, store, forget, dump, build: CODE_BUILD, web, app };
+  /* The revision number: it changes on every save (Phase 4 sends it to the
+     phones the moment it does). */
+  function rev() { return Number(app.getRev_()) || 0; }
+  return { answer, request, bridge, relay, auth, warm, fetchWanted, housekeeping, rev, kv, store, forget, dump, build: CODE_BUILD, web, app };
 }

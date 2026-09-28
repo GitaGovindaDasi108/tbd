@@ -91,6 +91,31 @@ When the page has updated, run **`copyBackFromCloudflare`**: every record,
 including anything saved on the server since, is copied back into the
 sheets, and the app works on Google as before.
 
+## Live updates (Phase 4)
+
+Every open app keeps one open line (a WebSocket) to the server, at `/live`.
+When anyone saves anything, the server sends the new revision number down
+every line at once, and each app fetches the change: a sale on one phone
+shows on the others in well under a second.
+
+- The line carries only that number, the same thing the sign-in-free
+  "ping" already gives, so it needs no sign-in. Reading and saving still go
+  through the ordinary requests and their sign-in.
+- The app still checks by itself, but only once a minute while the line is
+  open. If the line drops, it checks every few seconds again and reconnects
+  on its own.
+- A form that is open is never redrawn underneath you. The change is fetched
+  the moment the form closes.
+- Cost: still free. The lines use Cloudflare's "hibernation", so the server
+  sleeps while nobody is saving, and the keep-alive messages every 30 seconds
+  are answered by Cloudflare without waking it.
+- Nothing to set up. It comes with the server, and the app turns it on by
+  itself when `config.js` points at Cloudflare (on Google it stays off).
+
+Tested end to end in `test/browser-cloudflare.js`: two apps, with their own
+checks set to once an hour, see each other's sales within a second. A dropped
+line comes back by itself.
+
 ## Trying it on your own computer
 
 ```
