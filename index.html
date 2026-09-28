@@ -621,7 +621,7 @@ body.busy #busyBar{opacity:1}
 .flt-btn:hover{border-color:var(--plum)}
 .flt-btn.on{background:var(--plum);color:#fff;border-color:var(--plum)}
 .log-filter{position:absolute;right:0;top:calc(100% + 6px);z-index:40;min-width:230px;max-width:300px;
-  max-height:360px;overflow:auto;background:var(--paper);border:1px solid var(--line-d);border-radius:10px;
+  max-height:min(360px, var(--lf-room, 360px));overflow:auto;overscroll-behavior:contain;background:var(--paper);border:1px solid var(--line-d);border-radius:10px;
   box-shadow:0 10px 28px rgba(0,0,0,.14);padding:6px 4px;text-align:left}
 .log-filter[hidden]{display:none}
 .lf-row{display:flex;align-items:center;gap:8px;padding:6px 10px;font-size:13.5px;font-weight:600;
@@ -634,7 +634,10 @@ body.busy #busyBar{opacity:1}
 .lf-row.other span{color:var(--teal)}
 .lf-sep{border-top:1px solid var(--line);margin:4px 8px}
 .lf-empty{padding:8px 10px;color:var(--muted);font-size:13px}
-.lf-foot{display:flex;justify-content:flex-end;gap:6px;padding:8px 8px 4px;border-top:1px solid var(--line);margin-top:4px}
+.lf-foot{display:flex;justify-content:flex-end;gap:6px;padding:8px 8px 4px;border-top:1px solid var(--line);margin-top:4px;
+  position:sticky;bottom:-6px;background:var(--paper)}
+.log-filter.lf-up{top:auto;bottom:calc(100% + 6px)}
+.lf-open{position:relative;z-index:45;overflow:visible !important}
 .log-tools{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;
   padding:7px 14px 0;border-bottom:1px solid var(--line)}
 .log-tools .sortbar{margin:0 0 7px}
@@ -1337,7 +1340,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b211</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b212</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2011,6 +2014,7 @@ function priceIn(bookId,cur){
 function goTo(level, loc){
   // At Earthly HQ there is no season page: "up" is HQ's own page.
   if(level==='season' && isHQ()){ level='region'; loc=HQ_REGION; }
+  clearLogFilters();              // filters belong to the page they were set on (b212)
   CUR_LEVEL=level;
   if(level==='season'){ CUR_LOC=SEASON; CUR_REGION=''; }
   else if(level==='region'){ CUR_REGION=loc; const r=regionById(loc); CUR_LOC=r?r.whLoc:''; }
@@ -4575,6 +4579,33 @@ function passesLogFilter(x){
   }
   return true;
 }
+/* The filters only last while you stay on the page you set them on (b212).
+   Going to another region, event, season or HQ starts that page unfiltered,
+   with the filter menus shut. */
+function clearLogFilters(){
+  Object.values(LOG_FILTERS).forEach(set=>set.clear());
+  document.querySelectorAll('.log-filter[data-panel]').forEach(p=>p.hidden=true);
+  document.querySelectorAll('.lf-open').forEach(x=>x.classList.remove('lf-open'));
+}
+/* An open filter menu fits the window (b212). In a short window (half a
+   screen, a phone on its side) it opens upward when there is more room above,
+   and scrolls inside itself; Clear and Done stay pinned at its foot, so they
+   can always be reached. */
+function fitLogFilter(){
+  // The section holding an open menu sits above its neighbours, so a menu
+  // that opens upward is not hidden behind the section above.
+  document.querySelectorAll('.lf-open').forEach(x=>x.classList.remove('lf-open'));
+  const p = document.querySelector('.log-filter[data-panel]:not([hidden])');
+  if(!p) return;
+  const sec = p.closest('section, .panel'); if(sec) sec.classList.add('lf-open');
+  const btn = p.parentElement.querySelector('.flt-btn');
+  const r = btn.getBoundingClientRect(), vh = window.innerHeight, pad = 12;
+  const below = vh - r.bottom - 6 - pad, above = r.top - 6 - pad;
+  const up = below < 220 && above > below;
+  p.classList.toggle('lf-up', up);
+  p.style.setProperty('--lf-room', Math.max(140, Math.floor(up ? above : below)) + 'px');
+}
+window.addEventListener('resize', ()=>fitLogFilter());
 function logFilterCount(){ return LOG_FILTERS.book.size + LOG_FILTERS.status.size + LOG_FILTERS.pay.size; }
 
 function renderLogFilter(){
@@ -9777,6 +9808,7 @@ function deleteSeasonNow(x){
 async function switchSeason(id){
   if(!id || id===STATE.activeSeason) return;
   SEASON_EPOCH++;                 // anything already in flight is now out of date
+  clearLogFilters();              // a new season starts unfiltered (b212)
   // Keep where we are, so coming back is instant too.
   seasonCacheSave(STATE.activeSeason, BASE, REV);
 
@@ -11935,9 +11967,10 @@ document.addEventListener('click',e=>{
       p.hidden = (p.dataset.panel===f) ? !p.hidden : true;
     });
     renderLogFilter();
+    fitLogFilter();
     return;
   }
-  if(a==='lfdone'){ document.querySelectorAll('.log-filter[data-panel]').forEach(p=>p.hidden=true); return; }
+  if(a==='lfdone'){ document.querySelectorAll('.log-filter[data-panel]').forEach(p=>p.hidden=true); fitLogFilter(); return; }
   if(a==='lfclear'){
     // Clear one filter from inside its panel, or all of them from the empty log.
     const f=t.dataset.facet;
