@@ -1340,7 +1340,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b212</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b213</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2990,6 +2990,7 @@ async function commitSync(payload, okMsg, landed){
 /* Cheap poll: one number. Only pulls the whole state when it changes. */
 async function poll(){
   if(document.hidden || inflight) return;
+  LIVE.lastPoll = Date.now();
   try{
     const d = await post({action:'ping'});
     // Sign-in requests waiting for an admin (the Cloudflare server tells signed-in admins).
@@ -2997,6 +2998,80 @@ async function poll(){
     if(d.rev !== REV) await pull();
     else if(!OPS.length) setStatus('ok','Up to date · '+clock());
   }catch(err){ setStatus('bad','Offline — retrying'); }
+}
+
+/* ---------- Live updates (Phase 4) ----------
+
+   On the Cloudflare server the app keeps one open line (a WebSocket) to it.
+   The moment anyone saves anything, the server sends the new revision number
+   down every open line, and the app fetches the change at once — a sale on
+   one phone shows on the others within a second or so, instead of at their
+   next check.
+
+   The regular check carries on underneath, only much less often while the
+   line is open (once a minute, which also brings the Admins "waiting" count).
+   If the line drops — a tunnel, a phone asleep, the server updating — the app
+   goes back to checking every few seconds and reconnects by itself, waiting a
+   little longer after each failed try. On Google (no live line) nothing
+   changes. */
+const LIVE = { ws:null, open:false, tries:0, retry:0, beat:0, due:false, lastPoll:0 };
+const LIVE_CHECK_MS = 60000;
+function liveUrl(){
+  if(CONFIG.LIVE_URL !== undefined) return CONFIG.LIVE_URL || '';
+  const u = CONFIG.APPS_SCRIPT_URL || '';
+  if(typeof WebSocket === 'undefined' || !/^https?:\/\//.test(u) || /script\.google(usercontent)?\.com/.test(u)) return '';
+  try{
+    const x = new URL(u);
+    x.protocol = x.protocol === 'https:' ? 'wss:' : 'ws:';
+    x.pathname = x.pathname.replace(/\/?$/, '/') + 'live';
+    x.search = ''; x.hash = '';
+    return x.toString();
+  }catch(e){ return ''; }
+}
+function liveConnect(){
+  const url = liveUrl();
+  if(!url || LIVE.ws) return;
+  clearTimeout(LIVE.retry);
+  let ws;
+  try{ ws = new WebSocket(url); }catch(e){ liveRetry(); return; }
+  LIVE.ws = ws;
+  ws.onopen = ()=>{
+    LIVE.open = true; LIVE.tries = 0;
+    clearInterval(LIVE.beat);
+    // A word every 30 s keeps the line from being cut as idle (answered by Cloudflare itself).
+    LIVE.beat = setInterval(()=>{ try{ ws.send('ping'); }catch(e){} }, 30000);
+  };
+  ws.onmessage = ev=>{
+    if(ev.data === 'pong') return;
+    let m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+    if(m && typeof m.rev === 'number') liveRev(m.rev);
+  };
+  ws.onclose = ()=>{
+    if(LIVE.ws !== ws) return;
+    LIVE.ws = null; LIVE.open = false;
+    clearInterval(LIVE.beat);
+    liveRetry();
+  };
+  ws.onerror = ()=>{ try{ ws.close(); }catch(e){} };
+}
+function liveRetry(){
+  clearTimeout(LIVE.retry);
+  if(document.hidden) return;                 // tried again when the app is looked at
+  const wait = Math.min(30000, 1000 * Math.pow(2, LIVE.tries++)) + Math.random() * 1000;
+  LIVE.retry = setTimeout(liveConnect, wait);
+}
+/* The server says the records are now at revision `rev`. */
+function liveRev(rev){
+  if(rev === REV || REV < 0) return;           // (REV < 0: the first load is still on its way; NaN: fetch anyway)
+  if(LIVE.pulling){ LIVE.due = true; return; }
+  // Not while a form is open (the regular check picks it up once it closes).
+  if(document.hidden || $('#overlay').classList.contains('show')){ LIVE.due = true; return; }
+  LIVE.due = false; LIVE.pulling = true;
+  pull().catch(()=>{ LIVE.due = true; }).finally(()=>{ LIVE.pulling = false; });
+}
+function liveWake(){
+  if(!LIVE.ws){ LIVE.tries = 0; liveConnect(); }
+  else if(LIVE.open){ try{ LIVE.ws.send('rev'); }catch(e){} }
 }
 
 async function syncSheet(){
@@ -4800,7 +4875,11 @@ function openModal(html,wide){
   // Dialogs clip too, so they get the same treatment once laid out.
   try{ addTooltipsToClipped(); }catch(e){}
 }
-function closeModal(){$('#overlay').classList.remove('show');}
+function closeModal(){
+  $('#overlay').classList.remove('show');
+  // A change that arrived live while the form was open (Phase 4): fetch it now.
+  if(typeof LIVE !== 'undefined' && LIVE.due) setTimeout(()=>{ if(LIVE.due && !$('#overlay').classList.contains('show')) liveRev(NaN); }, 0);
+}
 $('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
@@ -12369,9 +12448,17 @@ document.addEventListener('click',e=>{
   applyLevelTheme();
   pull().catch(err=>{ setStatus('bad','Offline — '+err.message.slice(0,40)); if(!BASE) toast(err.message,true); });
 
-  setInterval(()=>{ if(!$('#overlay').classList.contains('show')) poll(); },
-              Math.max(4,CONFIG.POLL_SECONDS)*1000);
-  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) poll(); });
+  /* The regular check. While the live line is open (Phase 4) it is only a
+     once-a-minute safety net; changes arrive the moment they are saved. */
+  setInterval(()=>{
+    if($('#overlay').classList.contains('show')) return;
+    if(LIVE.open && !LIVE.due && Date.now() - LIVE.lastPoll < LIVE_CHECK_MS) return;
+    LIVE.due = false;
+    poll();
+  }, Math.max(4,CONFIG.POLL_SECONDS)*1000);
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden){ poll(); liveWake(); } });
+  window.addEventListener('online', ()=>{ poll(); liveWake(); });
+  liveConnect();
 })();
 </script>
 </body>
