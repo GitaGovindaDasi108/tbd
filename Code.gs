@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b217';
+var SERVER_BUILD = 'b218';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -5032,6 +5032,18 @@ function doEditRegion(p) {
    does, and nothing else: names, currencies and prices are left alone, so the
    title picks up whatever price the region already has for it. A region whose
    list is blank already carries every title, so there is nothing to add. */
+/* Make sure the region holding this place carries the title (b218). A region
+   that has never narrowed its list already carries everything; a consignment
+   title stays with its own group's region. */
+function offerTitleInRegion_(loc, bookId) {
+  var regionId = regionOfLoc_(loc);
+  var book = bookById_(bookId);
+  if (!regionId || !book || book.partnerId) return;
+  var reg = regionById_(regionId);
+  if (!reg || !reg.books || !reg.books.length || reg.books.indexOf(bookId) >= 0) return;
+  doRegionAddBooks({ regionId: regionId, bookIds: bookId });
+}
+
 function doRegionAddBooks(p) {
   var regionId = String(p.regionId || '');
   if (!regionById_(regionId)) throw new Error('That region no longer exists.');
@@ -5407,6 +5419,13 @@ function doSell(p) {
     addQty_(map, loc, bookId, -1);
     saveInvMap_(map);
   }
+
+  /* A pre-order for a title this region does not carry (b218: "Pre-Orders
+     (Unlisted Titles)" offers the whole catalogue) switches it on here, as
+     ordering a hidden title puts it back on the shelf: someone here wants it,
+     so it belongs on the region's list, its shelf, its totals and its sheet.
+     Part of the sale itself, so a sales link may do it too. */
+  if (isPreorder) offerTitleInRegion_(loc, bookId);
 
   appendSale_({
     saleId: p.saleId,               // the app's own name for it, if it gave one
