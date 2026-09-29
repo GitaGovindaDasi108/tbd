@@ -1375,7 +1375,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b217</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b218</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1879,7 +1879,29 @@ function regionBooks(regionId){
   if(!r || !r.books || !r.books.length) return all;
   const chosen = new Set(r.books);
   const here = locsInRegion(r.regionId);
-  return all.filter(b=>chosen.has(b.id) || here.some(l=>invQty(l,b.id)>0));
+  /* A title pre-ordered here is carried here (b218): the server adds it to the
+     region's list with the pre-order; this shows it the moment it is made. */
+  const pre = preorderedIn(r.regionId);
+  return all.filter(b=>chosen.has(b.id) || pre.has(b.id) || here.some(l=>invQty(l,b.id)>0));
+}
+/* The titles pre-ordered in each region, worked out once per state — the
+   shelf is drawn several times a redraw, and a long log made this add up. */
+let PRE_MEMO = {st:null, n:-1, by:null};
+function preorderedIn(regionId){
+  const sales = STATE.sales||[];
+  if(PRE_MEMO.st!==STATE || PRE_MEMO.n!==sales.length){
+    const regOf = {};
+    regionsList().forEach(r=>{ if(r.whLoc) regOf[r.whLoc]=r.regionId; });
+    (STATE.events||[]).forEach(e=>{ regOf[e.eventId]=e.regionId; });
+    const by = {};
+    sales.forEach(x=>{
+      if(x.type!=='PREORDER') return;
+      const rid = regOf[x.location]; if(!rid) return;
+      (by[rid] = by[rid] || new Set()).add(x.bookId);
+    });
+    PRE_MEMO = {st:STATE, n:sales.length, by};
+  }
+  return PRE_MEMO.by[regionId] || new Set();
 }
 /* ---- Consignment ----
    Books belonging to a local group, sold from our table but never counted as
@@ -2005,17 +2027,31 @@ function unhideTitle(bookId){
     }, null, {keepOpen:true});
 }
 
+/* Every title that can be pre-ordered here though it is not on this shelf
+   (b218): those hidden here, and — from the whole catalogue — those this
+   region does not carry at all. Another group's consignment titles are not
+   ours to promise, so they stay out. */
+function unlistedTitles(){
+  if(CUR_LEVEL==='season') return {hidden:[], other:[]};
+  const off = hiddenHere();
+  const hidden = allShelfBooks().filter(b=>off.has(b.id));
+  const seen = new Set(shelfBooks().map(b=>b.id).concat(hidden.map(b=>b.id)));
+  const other = (STATE.books||[]).filter(b=>!seen.has(b.id) && !b.partnerId);
+  return {hidden, other};
+}
 function hiddenPreorderModal(){
-  const off=hiddenHere();
-  const books=allShelfBooks().filter(b=>off.has(b.id));
-  if(!books.length) return;
+  const {hidden, other} = unlistedTitles();
+  if(!hidden.length && !other.length) return;
+  const btns = list => list.map(b=>`<button class="btn btn-ghost btn-block" data-act="hbpre" data-id="${esc(b.id)}"
+         style="margin:4px 0">${esc(b.name)}</button>`).join('');
+  const both = hidden.length && other.length;
   openModal(`
     ${mHead('Pre-order another title')}
     <div class="m-body">
       <div class="hint">Not offered here, but still available to order. Ordering one puts it
-        back on the shelf.</div>
-      ${books.map(b=>`<button class="btn btn-ghost btn-block" data-act="hbpre" data-id="${esc(b.id)}"
-         style="margin:4px 0">${esc(b.name)}</button>`).join('')}
+        on the shelf here.</div>
+      ${hidden.length ? (both ? `<div class="cash-sub">Hidden here</div>` : '') + btns(hidden) : ''}
+      ${other.length ? (both ? `<div class="cash-sub">Not carried in this region yet</div>` : '') + btns(other) : ''}
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
 }
@@ -3936,8 +3972,9 @@ function renderInventory(){
   $('#invGrid').innerHTML=h;
   // One-line entry point for a multi-book transaction, under the grid.
   /* Titles kept off this event's shelf are still one tap away to pre-order —
-     people ask for books that were never on the table. */
-  const offHere = hiddenHere().size;
+     people ask for books that were never on the table. So is every other title
+     in the catalogue that this region does not carry (b218). */
+  const un = unlistedTitles(), offHere = un.hidden.length + un.other.length;
   $('#invMulti').innerHTML =
     `<button class="multi-btn" data-act="multi" data-mode="sale">+ Multiple Book Sale</button>`
     + (offHere ? `<button class="multi-btn ghost" data-act="hiddenpre">+ Pre-Orders (Unlisted Titles)</button>` : '');
