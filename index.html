@@ -750,6 +750,12 @@ body.busy #busyBar{opacity:1}
 .con-grp{padding:6px 0 6px 10px;border-top:1px solid var(--line)}
 .con-grp-h{display:flex;justify-content:space-between;gap:10px;font-weight:800;font-size:13px}
 .con-title{font-size:12.5px;padding:2px 0 2px 8px;color:var(--ink)}
+/* A book's language (b221): a small label in its colour, and a stripe down
+   the card. Kept quiet — the colour does the sorting for the eye. */
+.lang-tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:10px;font-weight:700;
+  letter-spacing:.2px;line-height:16px;vertical-align:1px;white-space:nowrap;
+  color:var(--lc);background:var(--lc-l);border:1px solid var(--lc-b)}
+.book.has-lang, .stat-card.has-lang{border-left:4px solid var(--lc)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle;
@@ -1375,7 +1381,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b220</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b221</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1677,6 +1683,53 @@ const CAT_LABEL = {big:'Big Books', aotm:'AoTM — Adventures', other:'Other'};
    "AoTM — Adventures total" reads as clutter on a phone. */
 const CAT_SHORT = {big:'Big Books', aotm:'Adventures', other:'Other'};
 function catOfBook(b){ const c=(b&&b.cat)||'big'; return CATS.includes(c) ? c : 'big'; }
+
+/* ---- Languages (b221) ----
+   The same title comes in several languages: Sri Radha in English, Russian,
+   Spanish. A title names its language in brackets at the end, "Sri Radha
+   (Russian)", and that is all the app needs: the language becomes a small
+   coloured label beside the title, and a stripe of the same colour runs down
+   its card, so every Russian book reads as one family at a glance.
+
+   Colours are handed out in the order languages first appear in the catalogue,
+   so a language keeps its colour as others are added. Eight soft hues that sit
+   with the app's warm palette; a ninth language takes the first again, deeper. */
+const LANG_HUES = ['#3E6FA8','#B5482F','#2E8065','#8A4FA0','#B7841C','#2B8A9A','#A33F6B','#5F7D2C'];
+function bookLang(b){
+  const m = String((b&&b.name)||'').match(/^(.*\S)\s*\(([^()]+)\)\s*$/);
+  return m ? {base:m[1], lang:m[2].trim()} : {base:String((b&&b.name)||''), lang:''};
+}
+let LANG_MEMO = {books:null, order:null};
+function langColor(lang){
+  if(!lang) return null;
+  const books = STATE && STATE.books || [];
+  if(LANG_MEMO.books!==books){
+    const order = [];
+    books.forEach(b=>{ const l = bookLang(b).lang.toLowerCase(); if(l && !order.includes(l)) order.push(l); });
+    LANG_MEMO = {books, order};
+  }
+  let i = LANG_MEMO.order.indexOf(lang.toLowerCase());
+  if(i<0) i = LANG_MEMO.order.length;           // not in the catalogue yet: the next colour
+  const hex = LANG_HUES[i % LANG_HUES.length], round = Math.floor(i / LANG_HUES.length);
+  // Each later round is a little deeper, so a ninth language never repeats the first exactly.
+  const ch = k => Math.round(parseInt(hex.slice(k,k+2),16) * Math.pow(0.78, round));
+  const [r,g,bl] = [ch(1),ch(3),ch(5)];
+  return {c:`rgb(${r},${g},${bl})`, l:`rgba(${r},${g},${bl},.11)`, b:`rgba(${r},${g},${bl},.32)`};
+}
+/** The colour variables for a book's language, for a style="" attribute ('' if none). */
+function langVars(b){
+  const c = langColor(bookLang(b).lang);
+  return c ? `--lc:${c.c};--lc-l:${c.l};--lc-b:${c.b};` : '';
+}
+/** A title for display: "Sri Radha" and a coloured "Russian" label. Escaped. */
+function bookTitleHTML(b){
+  const {base, lang} = bookLang(b);
+  if(!lang) return esc(base);
+  // The space keeps the words apart when copied or read aloud ("Sri Radha Russian").
+  return `${esc(base)} <span class="lang-tag no-edit" style="${langVars(b)}">${esc(lang)}</span>`;
+}
+/** Class and style for a card that carries its language's stripe. */
+function langCard(b){ const v = langVars(b); return v ? {cls:' has-lang', style:` style="${v}"`} : {cls:'', style:''}; }
 function catOf(id){ return catOfBook(bookById(id)); }
 function isAotm(b){return catOfBook(b)==='aotm';}
 function isOther(b){return catOfBook(b)==='other';}
@@ -2043,7 +2096,7 @@ function hiddenPreorderModal(){
   const {hidden, other} = unlistedTitles();
   if(!hidden.length && !other.length) return;
   const btns = list => list.map(b=>`<button class="btn btn-ghost btn-block" data-act="hbpre" data-id="${esc(b.id)}"
-         style="margin:4px 0">${esc(b.name)}</button>`).join('');
+         style="margin:4px 0">${bookTitleHTML(b)}</button>`).join('');
   const both = hidden.length && other.length;
   openModal(`
     ${mHead('Pre-order another title')}
@@ -3771,8 +3824,9 @@ function renderWarehouseOverview(){
       `<button class="wo-chip" data-act="${UNIT.act}" data-${UNIT.attr}="${esc(x.r.regionId)}"
          title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
 ;   // in transit is shown once, beneath the number — no separate bubble
-    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}">
-      <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
+    const lc = langCard(b);
+    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style}>
+      <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big wo-big ${total?'':'zero'}">${total}</span>
@@ -3803,7 +3857,7 @@ function renderSalesByRegion(){
       const {sold, pre, gift} = bookCounts(allHere.filter(x=>x.bookId===b.id));
       if(!sold && !pre && !gift) return '';
       return `<div class="mini-card${b.partnerId?' consign':''}">
-        <div class="mc-name ${catOfBook(b)}">${esc(b.name)}${
+        <div class="mc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
           b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
         <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
         <div class="mc-sub">${countNote({sold,pre,gift}) || '&nbsp;'}</div>
@@ -3928,11 +3982,12 @@ function renderInventory(){
     if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
     else if(avail<=0) flag=`<span class="flag held sold-tag">ALL PRE-ORDERED</span>`;
     else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
-    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}">
+    const lc = langCard(b);
+    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}${lc.cls}"${lc.style}>
       ${(q<=0||avail<=0)?flag:''}
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
-          <div class="bname ${catOfBook(b)}">${esc(b.name)}${
+          <div class="bname ${catOfBook(b)}">${bookTitleHTML(b)}${
             b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
           <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
         </div>
@@ -4090,8 +4145,9 @@ function renderTitleList(target){
         title="Go to ${esc(pl.name)}"><b>${c.sold}</b> ${esc(pl.name)}${
         c.gift?` <span class="chip-gift">+${c.gift} gift${c.gift===1?'':'s'}</span>`:''}</button>`;
     }).filter(Boolean).join('');
-    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}">
-      <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
+    const lc = langCard(b);
+    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}"${lc.style}>
+      <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big ${sold?'':'zero'}">${sold}</span>
@@ -4704,7 +4760,7 @@ function logItemHTML(x, opts){
        data-act="expand" ${idAttr}>
     <div class="li-row">
       <span class="li-chev">▶</span>
-      <span class="li-book">${esc(book)}</span>
+      <span class="li-book">${(!x._bundle && !isDon && x.bookId) ? bookTitleHTML(bookById(x.bookId)) : esc(book)}</span>
       ${badge}${cat}${pend}
       ${bits.length?`<span class="li-who">${bits.join(' · ')}</span>`:''}
       <span class="li-amt ${showOwed?'owed':''}">${showOwed
@@ -5617,7 +5673,7 @@ function bundleModal(edit){
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
       <div class="mb-main">
-        <span class="mb-name">${esc(b.name)}</span>
+        <span class="mb-name">${bookTitleHTML(b)}</span>
         <span class="mb-stock ${stock<=0?'none':''}" data-stockfor="${esc(b.id)}">${stock} in stock</span>
       </div>
       <div class="mb-steppers">
@@ -9171,7 +9227,7 @@ function bulkRows(cols){
     // A second input, where a dialog has two separate things to enter.
     const five = c.input2 !== undefined;
     return `<div class="bulk-row${five?' five':''}">
-      <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</div>
       <div class="num">${c.left}</div>
       <div>${c.input}</div>
       ${five?`<div>${c.input2}</div>`:''}
@@ -9346,7 +9402,7 @@ function stockRows(ctx, books, cols){
     const five = c.input2 !== undefined;
     const isNew = ctx.extra.has(b.id);
     return `<div class="bulk-row${five?' five':''}">
-      <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}${isNew
+      <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}${isNew
         ? ` <span class="sp-new-tag">new here</span><button type="button" class="sp-x" data-unpick="${esc(b.id)}" title="Take it off this list">✕</button>`:''}</div>
       <div class="num" data-now="${esc(b.id)}">${c.left}</div>
       <div>${c.input}</div>
@@ -11431,7 +11487,7 @@ function transferStockModal(opts){
             <span class="xf-line-l"><b>@${esc(s.label)}</b> ${esc(s.holderId ? s.name : (typed['swn:'+s.key]||''))}</span><span class="xf-line-n"></span>
             ${inp(b, `data-dst="${esc(s.key)}" data-k="d:${esc(s.key)}:${esc(b.id)}"`)}</div>`).join('');
       return `<div class="xf-card">
-        <div class="xf-card-h"><span class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
+        <div class="xf-card-h"><span class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</span>
           <span class="xf-card-n">${multiSrc?'Total':'Avail'} ${total} · Left <b class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</b></span></div>
         ${lines}</div>`;
     };
@@ -11447,7 +11503,7 @@ function transferStockModal(opts){
           `<div>${inp(b, `data-dst="${esc(s.key)}" data-k="d:${esc(s.key)}:${esc(b.id)}"`, tint(i))}</div>`).join('');
       else cells = `<div class="num">${total}</div><div>${inp(b, `data-src="${esc(srcs[0].loc)}" data-k="m:${esc(srcs[0].loc)}:${esc(b.id)}" max="${total}"`)}</div>`;
       return `<div class="xf-row" style="grid-template-columns:${cols}">
-        <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>${cells}
+        <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</div>${cells}
         <div class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</div></div>`;
     };
     const groups = [['big','Big Books'],['aotm','AoTM — Adventures'],['other','Other']];
@@ -12030,7 +12086,7 @@ function bookDisplayModal(){
       <div class="ro-row${x.on?'':' bd-off'}" data-id="${esc(x.id)}">
         <span class="ro-grip" title="Drag to move">⠿</span>
         ${season ? '' : `<input type="checkbox" class="bd-cb" data-bd="${esc(x.id)}" ${x.on?'checked':''} title="Show this title">`}
-        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
+        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${bookTitleHTML(bookById(x.id)||{name:x.name})}
           ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}
           ${x.on?'':'<span class="ro-tag">hidden</span>'}${x.auto?'<span class="ro-tag">no copies here yet</span>':''}</span>
         <span class="ro-btns">

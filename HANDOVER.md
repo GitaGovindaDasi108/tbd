@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b220**.
+Handover notes. Current build: **b221**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -201,7 +201,7 @@ revision; `--store=memory` runs the working copy with its records in memory.
 the browser tests never reach; re-record it (and the others) when an action
 deliberately changes.
 
-`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js`, `browser-speed.js`, `browser-search.js`, `browser-preunlisted.js` and `browser-bookorder.js` are optional:
+`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js`, `browser-speed.js`, `browser-search.js`, `browser-preunlisted.js`, `browser-bookorder.js` and `browser-lang.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -905,6 +905,27 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b221 — each language has its colour
+
+- A title names its language in brackets at the end, "Sri Radha (Russian)".
+  The app reads that word (`bookLang`) and shows the title as "Sri Radha"
+  with a small coloured label "Russian" (`bookTitleHTML`), and a 4px stripe
+  of the same colour down the left of its card (`langCard`, class
+  `has-lang`, colour in `--lc`). Same language, same colour: every Russian
+  book reads as one family.
+- Colours (`langColor`) are handed out in the order languages first appear
+  in the catalogue (`STATE.books`), so a new language takes the next colour
+  and none of the others move. Eight soft hues (`LANG_HUES`); a ninth
+  language takes the first again, deeper (0.78× per round), so no two match.
+  Nothing to set up: add "Sri Radha (Hindi)" and Hindi has a colour.
+- Where: shelf cards (label and stripe), Distribution by Title and Warehouse
+  Overview cards (label and stripe), the mini cards in dropdowns, the sales
+  log, Multiple Books, the stock and transfer tables, Edit Book Display and
+  the pre-order list (label). Sentences and messages still use the full name.
+- A title with no language in brackets has no label and no stripe. Book names
+  are unchanged, so reports and spreadsheets still read "Sri Radha (English)".
+- Test: `test/browser-lang.js`.
 
 ## Done in b220 — ⌂ marks Seasonal HQ as home
 

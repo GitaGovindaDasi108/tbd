@@ -14,7 +14,9 @@ m.init();
 const st = m.call({ action: 'getState' }).state;
 const pl = st.regions[0];
 const books = st.books.filter(b => !b.partnerId);
-const first = books[0].name, last = books[books.length - 1].name;
+// As shown since b221: "Sri Radha (English)" reads "Sri Radha" + an "English" label.
+const shown = n => n.replace(/\s*\(([^()]+)\)\s*$/, ' $1');
+const first = shown(books[0].name), last = shown(books[books.length - 1].name);
 m.call({ action: 'setStockBulk', season: st.activeSeason, location: pl.whLoc, items: [{ bookId: books[0].id, qty: 5 }], override: true });
 
 (async () => {
