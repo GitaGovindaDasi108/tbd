@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b218**.
+Handover notes. Current build: **b219**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -201,7 +201,7 @@ revision; `--store=memory` runs the working copy with its records in memory.
 the browser tests never reach; re-record it (and the others) when an action
 deliberately changes.
 
-`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js`, `browser-speed.js`, `browser-search.js` and `browser-preunlisted.js` are optional:
+`node test/browser-buttons.js`, `browser-fold.js`, `browser-hq.js`, `browser-addstock.js`, `browser-transit.js`, `browser-transfer.js`, `browser-activity.js`, `browser-round2.js`, `browser-speed.js`, `browser-search.js`, `browser-preunlisted.js` and `browser-bookorder.js` are optional:
 they drive the real app in Chromium (Playwright), with every Apps Script request
 answered by `mini.js`. Screenshots land in the system temp folder.
 
@@ -905,6 +905,24 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b219 — Earthly HQ's book order shows everywhere
+
+- **Reported:** saving the book order at Earthly HQ (Edit Book Display) said
+  "saved" but the order did not show. It was saved (on the HQ region, as
+  for any region) and HQ's own shelf and Distribution by Title followed it;
+  the Summaries Portal did not, even after a reload. The summaries are drawn
+  as a "season" with no region chosen (`rollupState`), which reads the
+  season's order, and HQ's was never handed to it. Now `rollupState` passes
+  HQ's order as `seasonBookOrder`.
+- **Found with it:** `renderWarehouseOverview` listed the catalogue's order
+  whatever had been set, at the season as well as at HQ. It now uses
+  `inRegionOrder` (the season's order; HQ's in the summaries).
+- Test: `test/browser-bookorder.js` (its HQ and overview checks fail on b218).
+- **Not changed, found while checking:** the spreadsheets list titles in the
+  catalogue's order everywhere. `booksForRegion_` / `bigBooksFor_` would
+  order them but are not called, and `booksForRegion_` reads `reg.bookOrder`,
+  which `regionById_` does not return.
 
 ## Done in b218 — pre-order any title in the catalogue
 

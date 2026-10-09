@@ -1375,7 +1375,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b218</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b219</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3371,9 +3371,18 @@ function rollupState(){
     .concat((STATE.inventory||[]).filter(i=>mine.has(i.location)));
   const all = (ev.currencies||[]).slice();
   (currentRegion()||{currencies:[]}).currencies.forEach(c=>{ if(!all.includes(c)) all.push(c); });
+  /* The order of the books is Earthly HQ's own, as set in its Edit Book
+     Display (b219). The summaries are drawn as a "season" with no region
+     chosen, which reads the season's order, so HQ's is handed over as that.
+     Before, it was never read here: HQ's order showed on its own panels
+     but the summaries kept the catalogue's order. */
+  const hqReg = (STATE.regions||[]).find(r=>r.regionId===HQ_REGION);
+  const hqOrder = hqReg && hqReg.bookOrder;
+  const seasonBookOrder = (Array.isArray(hqOrder) ? hqOrder.length : String(hqOrder||'').trim())
+    ? hqOrder : (STATE.seasonBookOrder || []);
   return Object.assign({}, STATE, {regions, events, holders, partners, sales, inventory,
     shipments: ev.shipments||[], costs: ev.costs||[], currencies: all, prices:{},
-    remote:[], change:[], everywhere:null, locFx});
+    remote:[], change:[], everywhere:null, locFx, seasonBookOrder});
 }
 /** Draw with the season-level panels over every season (see rollupState). */
 function withRollup(fn){
@@ -3746,7 +3755,9 @@ function regionStockOf(regionId, bookId){
 function renderWarehouseOverview(){
   const regions = regionsList();
   // The tour's own titles; consignment stays in its own region's view.
-  const cards = (STATE.books||[]).filter(b=>!b.partnerId).map(b=>{
+  /* In the order set in Edit Book Display — the season's, or at Earthly HQ its
+     own (b219). This panel used to list the catalogue's order whatever was set. */
+  const cards = inRegionOrder((STATE.books||[]).filter(b=>!b.partnerId)).map(b=>{
     const per = regions.map(r=>({r, n:regionStockOf(r.regionId,b.id)})).filter(x=>x.n>0);
     const total = per.reduce((t,x)=>t+x.n,0);
     /* Copies on the road belong to no region yet, so summing the regions alone
