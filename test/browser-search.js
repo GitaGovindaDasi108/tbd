@@ -69,12 +69,12 @@ const sellKey = ok(m.call({ action: 'setKey', kind: 'event', id: 'ev_yoga' }), '
     page = await open('');
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);
     const opts = await page.$$eval('select[data-act="pickregion"] option', o => o.map(x => [x.value, x.textContent.trim()]));
-    t.push(['region picker: "Seasonal HQ" is the first choice', opts[0] && opts[0][1] === 'Seasonal HQ']);
+    t.push(['region picker: "⌂ Seasonal HQ" is the first choice, marked as home', opts[0] && opts[0][1] === '⌂ Seasonal HQ']);
     t.push(['…the ⌂ button is gone', !(await page.$('button[data-act="goseason"]:has-text("⌂")'))]);
     await page.selectOption('select[data-act="pickregion"]', opts[0][0]); await page.waitForTimeout(300);
     t.push(['choosing Seasonal HQ opens the season overview', (await where(page)).level === 'season']);
     t.push(['…and the picker then reads "Seasonal HQ"', await page.$eval('select[data-act="pickregion"]',
-      s => s.options[s.selectedIndex].textContent.trim() === 'Seasonal HQ')]);
+      s => s.options[s.selectedIndex].textContent.trim() === '⌂ Seasonal HQ')]);
     t.push(['no "Choose a region…" left', !opts.some(o => /Choose a region/.test(o[1]))]);
     await page.selectOption('select[data-act="pickregion"]', 'rg_it'); await page.waitForTimeout(300);
     t.push(['a region is still chosen the same way', (await where(page)).region === 'rg_it']);

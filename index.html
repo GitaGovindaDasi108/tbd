@@ -1375,7 +1375,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b219</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b220</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3557,11 +3557,12 @@ function renderTabs(){
 
   /* Region picker. Seasonal HQ heads it — the whole season's overview — just
      as the Warehouse heads the place picker, so going up is the same move as
-     going sideways (b215). */
+     going sideways (b215). ⌂ marks it as the season's home page (b220): the
+     old home button's symbol, as 🏠 is already the Warehouse's. */
   h += `<span class="crumb-sep">›</span>
     <span class="crumb-pick">
       <select class="crumb-sel ${CUR_LEVEL!=='season'?'on':''}" data-act="pickregion">
-        ${opt(SEASONAL_HQ,'Seasonal HQ',CUR_LEVEL==='season')}
+        ${opt(SEASONAL_HQ,'⌂ Seasonal HQ',CUR_LEVEL==='season')}
         ${regions.map(r=>opt(r.regionId,r.name+mark(regionClosure(r.regionId)),r.regionId===CUR_REGION&&CUR_LEVEL!=='season')).join('')}
         ${opt('__new','＋ New region…',false)}
       </select>

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b219**.
+Handover notes. Current build: **b220**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,13 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b220 — ⌂ marks Seasonal HQ as home
+
+- The region picker's first choice reads "⌂ Seasonal HQ", marking it as the
+  season's home page. ⌂ is the old home button's symbol; 🏠 is already the
+  Warehouse's, at the head of the place picker. `test/browser-search.js`
+  checks the wording.
 
 ## Done in b219 — Earthly HQ's book order shows everywhere
 
