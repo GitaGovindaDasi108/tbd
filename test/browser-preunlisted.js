@@ -16,7 +16,8 @@ const SA = st.activeSeason;
 const pl = st.regions[0];
 const books = st.books.filter(b => !b.partnerId);
 const [B0, B1, B2] = books.map(b => b.id);
-const nameOf = id => books.find(b => b.id === id).name;
+// As shown since b221: "Sri Radha (English)" reads "Sri Radha" + an "English" label.
+const nameOf = id => books.find(b => b.id === id).name.replace(/\s*\(([^()]+)\)\s*$/, ' $1');
 const c = (p, w) => ok(m.call(Object.assign({ season: SA }, p)), w || p.action);
 // Poland carries only B0 and B1; B1 has stock; an event where only B1 ever arrived.
 c({ action: 'editRegion', regionId: pl.regionId, name: pl.name, currencies: (pl.currencies || ['PLN']).join(','), books: [B0, B1].join(',') });
@@ -74,7 +75,7 @@ const carried = () => (m.call({ action: 'getState', season: SA }).state.regions.
     // Pre-order a title Poland does not carry.
     await page.click(`#modal [data-act="hbpre"][data-id="${B2}"]`); await page.waitForTimeout(400);
     t.push(['it opens the pre-order dialog for that title', await page.evaluate(n => /Pre-order/i.test(document.querySelector('#modal').textContent) &&
-      document.querySelector('#modal').textContent.includes(n), nameOf(B2))]);
+      document.querySelector('#modal').textContent.includes(n), books.find(b => b.id === B2).name)]);  // its heading keeps the full name
     await page.fill('#cname', 'Radha'); await page.fill('#pamt', '30');
     await page.click('#modal .m-foot .btn-primary'); await page.waitForTimeout(1500);
     t.push(['the pre-order is saved', m.call({ action: 'getState', season: SA }).state.sales.some(x => x.bookId === B2 && x.type === 'PREORDER' && x.location === 'ev_fest')]);

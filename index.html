@@ -750,6 +750,12 @@ body.busy #busyBar{opacity:1}
 .con-grp{padding:6px 0 6px 10px;border-top:1px solid var(--line)}
 .con-grp-h{display:flex;justify-content:space-between;gap:10px;font-weight:800;font-size:13px}
 .con-title{font-size:12.5px;padding:2px 0 2px 8px;color:var(--ink)}
+/* A book's language (b221): a small label in its colour, and a stripe down
+   the card. Kept quiet — the colour does the sorting for the eye. */
+.lang-tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:10px;font-weight:700;
+  letter-spacing:.2px;line-height:16px;vertical-align:1px;white-space:nowrap;
+  color:var(--lc);background:var(--lc-l);border:1px solid var(--lc-b)}
+.book.has-lang, .stat-card.has-lang{border-left:4px solid var(--lc)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;vertical-align:middle;
@@ -1353,6 +1359,20 @@ body.list-view .mc-name{min-height:0}
 .adm-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06)}
 .adm-who{min-width:0;overflow-wrap:anywhere}
 .adm-btns{display:flex;gap:6px;flex-shrink:0}
+/* People and roles (b222) */
+.ppl-person{padding:9px 0;border-bottom:1px solid var(--line)}
+.ppl-roles{display:flex;flex-direction:column;gap:4px;margin-top:5px}
+.ppl-role{font-size:13px;display:flex;align-items:center;flex-wrap:wrap;gap:4px 6px}
+.ppl-role.off{opacity:.62}
+.ppl-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:9px;background:var(--paper2);border:1px solid var(--line-d);color:var(--muted);margin-left:4px}
+.ppl-x{border:0;background:none;color:var(--clay);cursor:pointer;font-size:13px;padding:0 4px}
+.ppl-more{align-self:flex-start;margin-top:2px}
+.ppl-form{display:flex;flex-direction:column;gap:6px}
+.ppl-pick{display:flex;gap:8px;align-items:center;padding:6px 0;font-size:13.5px;cursor:pointer}
+.ppl-link{display:flex;gap:6px;margin-top:8px}
+.ppl-link input{flex:1;min-width:0;font-size:12.5px}
+.signin .btn-row{display:flex;gap:8px;justify-content:center;margin-top:12px}
+.signin .ppl-roles{text-align:left;margin:12px 0;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper2)}
 .req-badge{display:inline-block;margin-left:4px;padding:1px 7px;border-radius:10px;background:#c0392b;color:#fff;font-size:.78em;font-weight:600}
 .signin-note{margin-top:14px;color:#2d5a3a;background:#eef6ef;border-radius:8px;padding:10px 12px;text-align:left}
 .pt-row .pt-cur{margin-left:auto;font-size:12.5px;padding:2px 4px;border:1px solid var(--line-d);border-radius:6px;background:var(--paper)}
@@ -1375,7 +1395,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b219</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b222</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1677,6 +1697,53 @@ const CAT_LABEL = {big:'Big Books', aotm:'AoTM — Adventures', other:'Other'};
    "AoTM — Adventures total" reads as clutter on a phone. */
 const CAT_SHORT = {big:'Big Books', aotm:'Adventures', other:'Other'};
 function catOfBook(b){ const c=(b&&b.cat)||'big'; return CATS.includes(c) ? c : 'big'; }
+
+/* ---- Languages (b221) ----
+   The same title comes in several languages: Sri Radha in English, Russian,
+   Spanish. A title names its language in brackets at the end, "Sri Radha
+   (Russian)", and that is all the app needs: the language becomes a small
+   coloured label beside the title, and a stripe of the same colour runs down
+   its card, so every Russian book reads as one family at a glance.
+
+   Colours are handed out in the order languages first appear in the catalogue,
+   so a language keeps its colour as others are added. Eight soft hues that sit
+   with the app's warm palette; a ninth language takes the first again, deeper. */
+const LANG_HUES = ['#3E6FA8','#B5482F','#2E8065','#8A4FA0','#B7841C','#2B8A9A','#A33F6B','#5F7D2C'];
+function bookLang(b){
+  const m = String((b&&b.name)||'').match(/^(.*\S)\s*\(([^()]+)\)\s*$/);
+  return m ? {base:m[1], lang:m[2].trim()} : {base:String((b&&b.name)||''), lang:''};
+}
+let LANG_MEMO = {books:null, order:null};
+function langColor(lang){
+  if(!lang) return null;
+  const books = STATE && STATE.books || [];
+  if(LANG_MEMO.books!==books){
+    const order = [];
+    books.forEach(b=>{ const l = bookLang(b).lang.toLowerCase(); if(l && !order.includes(l)) order.push(l); });
+    LANG_MEMO = {books, order};
+  }
+  let i = LANG_MEMO.order.indexOf(lang.toLowerCase());
+  if(i<0) i = LANG_MEMO.order.length;           // not in the catalogue yet: the next colour
+  const hex = LANG_HUES[i % LANG_HUES.length], round = Math.floor(i / LANG_HUES.length);
+  // Each later round is a little deeper, so a ninth language never repeats the first exactly.
+  const ch = k => Math.round(parseInt(hex.slice(k,k+2),16) * Math.pow(0.78, round));
+  const [r,g,bl] = [ch(1),ch(3),ch(5)];
+  return {c:`rgb(${r},${g},${bl})`, l:`rgba(${r},${g},${bl},.11)`, b:`rgba(${r},${g},${bl},.32)`};
+}
+/** The colour variables for a book's language, for a style="" attribute ('' if none). */
+function langVars(b){
+  const c = langColor(bookLang(b).lang);
+  return c ? `--lc:${c.c};--lc-l:${c.l};--lc-b:${c.b};` : '';
+}
+/** A title for display: "Sri Radha" and a coloured "Russian" label. Escaped. */
+function bookTitleHTML(b){
+  const {base, lang} = bookLang(b);
+  if(!lang) return esc(base);
+  // The space keeps the words apart when copied or read aloud ("Sri Radha Russian").
+  return `${esc(base)} <span class="lang-tag no-edit" style="${langVars(b)}">${esc(lang)}</span>`;
+}
+/** Class and style for a card that carries its language's stripe. */
+function langCard(b){ const v = langVars(b); return v ? {cls:' has-lang', style:` style="${v}"`} : {cls:'', style:''}; }
 function catOf(id){ return catOfBook(bookById(id)); }
 function isAotm(b){return catOfBook(b)==='aotm';}
 function isOther(b){return catOfBook(b)==='other';}
@@ -2043,7 +2110,7 @@ function hiddenPreorderModal(){
   const {hidden, other} = unlistedTitles();
   if(!hidden.length && !other.length) return;
   const btns = list => list.map(b=>`<button class="btn btn-ghost btn-block" data-act="hbpre" data-id="${esc(b.id)}"
-         style="margin:4px 0">${esc(b.name)}</button>`).join('');
+         style="margin:4px 0">${bookTitleHTML(b)}</button>`).join('');
   const both = hidden.length && other.length;
   openModal(`
     ${mHead('Pre-order another title')}
@@ -2405,7 +2472,7 @@ async function post(payload, opts){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
   // The owner's app on the Cloudflare server: this device's sign-in goes with every request.
-  else if(CONFIG.GOOGLE_CLIENT_ID && SESSION.get()) payload = Object.assign({s:SESSION.get()}, payload);
+  else if(CONFIG.GOOGLE_CLIENT_ID && SESSION.get()) payload = Object.assign({s:SESSION.get()}, ACTING.get()?{g:ACTING.get()}:{}, payload);
   /* Say which season this device is looking at, so the server answers for
      it — not for whichever season another device last opened. (A share link
      is pinned to its own season by the server, so it sends nothing.) */
@@ -2465,6 +2532,14 @@ async function post(payload, opts){
     err.network = true; err.signIn = true;
     throw err;
   }
+  /* Signed in, but none of their roles can be used now (b222): said plainly, and
+     kept like a save with no signal — nothing is lost. */
+  if(!d.ok && d.noAccess){
+    showNoAccess(d.me);
+    const err = new Error(d.error || 'None of your roles can be used right now.');
+    err.network = true;
+    throw err;
+  }
   if(!d.ok){ const e = new Error(d.error||'That did not go through.'); e.reply = d; throw e; }
   return d;
 }
@@ -2511,7 +2586,9 @@ async function signedIn(resp){
   try{
     const d = await post({action:'signIn', idToken: resp.credential});
     SESSION.set(d.result.session);
+    ACTING.set('');
     const box = $('#signIn'); if(box) box.remove();
+    loadMe();
     SIGNIN_SHOWN = false;
     toast('Signed in as ' + d.result.email);
     await pull();
@@ -2586,10 +2663,203 @@ async function adminsDo(what, email){
     toast({admappr:'Approved — ', admdecl:'Declined — ', admrem:'Removed — ', admadd:'Added — '}[what] + email);
   }catch(e){ const m=$('#modalErr'); if(m) m.textContent = e.message; }
 }
+/* ---- People and roles (b222, docs/PERMISSIONS.md) ----
+   Everyone signs in. A person holds roles, each tied to a place; the server
+   decides what each may do. ME is who this device is signed in as, with their
+   roles; ACTING is the role they chose to work in, when they have several. */
+var ME = null;      // (var: renderAll may read it before this line runs)
+const ACTING = {
+  KEY: 'tbs_acting',
+  get(){ try{ return localStorage.getItem(this.KEY) || ''; }catch(e){ return ''; } },
+  set(v){ try{ v ? localStorage.setItem(this.KEY, v) : localStorage.removeItem(this.KEY); }catch(e){} }
+};
+const signedInHere = () => !SHARE_KEY && !!CONFIG.GOOGLE_CLIENT_ID && !!SESSION.get();
+async function loadMe(){
+  if(!signedInHere()) return;
+  try{ ME = (await post({action:'me'})).result; renderAll(); }catch(e){}
+}
+/* The role this device works in: the one chosen, else the first usable — as the server picks. */
+function actingGrant(){
+  if(!ME) return null;
+  const usable = (ME.grants||[]).filter(g=>g.usable);
+  return usable.find(g=>g.id===ACTING.get()) || usable[0] || null;
+}
+function grantStatus(g){
+  if(!g.active) return g.why || 'not in force';
+  if(!g.usable) return 'starts with the next update';
+  return '';
+}
+const grantLine = g => `<b>${esc(g.roleName)}</b> · ${esc(g.place)}`;
+
+/* None of their roles can be used yet: say so plainly, with each role and why. */
+function showNoAccess(me){
+  if($('#noAccess')) return;
+  const box = document.createElement('div');
+  box.id = 'noAccess'; box.className = 'signin-wrap';
+  const roles = (me && me.grants) || [];
+  box.innerHTML = `<div class="signin">
+      <h2>Not quite yet</h2>
+      <div class="hint">You are signed in as <b>${esc(me ? me.name : '')}</b>${me ? ' ('+esc(me.email)+')' : ''}, but none of
+        your roles can be used in the app at the moment.</div>
+      ${roles.length ? `<div class="ppl-roles">${roles.map(g=>`<div class="ppl-role off">${grantLine(g)}
+          <span class="muted-note">— ${esc(grantStatus(g))}</span></div>`).join('')}</div>` : ''}
+      <div class="hint">Roles at a closed event or region come back if it reopens. Roles marked
+        “starts with the next update” will work once the app’s next update is in.</div>
+      <div class="btn-row"><button class="btn btn-ghost" id="naOut">Sign out</button>
+        <button class="btn btn-primary" onclick="location.reload()">Try again</button></div>
+    </div>`;
+  document.body.appendChild(box);
+  $('#naOut').addEventListener('click', async ()=>{ try{ await post({action:'signOut'}); }catch(e){} SESSION.clear(); ACTING.set(''); location.reload(); });
+}
+
+/* "You": your name as others see it, the role you are working in, signing out. */
+function youModal(){
+  if(!ME) return;
+  const usable = (ME.grants||[]).filter(g=>g.usable), cur = actingGrant();
+  const others = (ME.grants||[]).filter(g=>!g.usable);
+  openModal(`
+    ${mHead('You')}
+    <div class="m-body">
+      <div class="field"><label>Your name, as others see it</label>
+        <div class="rp-add"><input id="myName" type="text" maxlength="40" value="${esc(ME.name)}">
+          <button type="button" class="btn btn-primary btn-sm" id="myNameSave">Save</button></div>
+        <div class="hint">Signed in as ${esc(ME.email)}. Your name goes on the sales, cash and changes you record.</div></div>
+      ${usable.length > 1 ? `<div class="cash-sub">Working as</div>
+        ${usable.map(g=>`<label class="ppl-pick"><input type="radio" name="actAs" value="${esc(g.id)}" ${cur && cur.id===g.id?'checked':''}>
+          <span>${grantLine(g)}</span></label>`).join('')}
+        <div class="hint">Choosing another role opens the app as that role.</div>`
+      : usable.length ? `<div class="cash-sub">Your role</div><div class="ppl-role">${grantLine(usable[0])}</div>` : ''}
+      ${others.length ? `<div class="cash-sub">Not in use right now</div>
+        ${others.map(g=>`<div class="ppl-role off">${grantLine(g)} <span class="muted-note">— ${esc(grantStatus(g))}</span></div>`).join('')}` : ''}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" data-act="signout">🚪 Sign out</button>
+      <button class="btn btn-primary" onclick="closeModal()">Done</button></div>`);
+  $('#myNameSave').addEventListener('click', async ()=>{
+    try{ ME = (await post({action:'setMyName', name: $('#myName').value})).result; renderAll(); toast('Your name is now ' + ME.name); }
+    catch(e){ $('#modalErr').textContent = e.message; }
+  });
+  document.querySelectorAll('#modal input[name="actAs"]').forEach(r=>r.addEventListener('change', ()=>{
+    ACTING.set(r.value);
+    // Another role sees another part of the tour: start afresh from the server.
+    try{ localStorage.removeItem(CACHE_KEY); }catch(e){}
+    location.reload();
+  }));
+}
+
+/* 👥 People: who has which role, within your reach; giving and removing roles
+   (only what you may give, only where); sign-in requests; emergency links. */
+async function peopleModal(){
+  openModal(`
+    ${mHead('People')}
+    <div class="m-body"><div class="df-loading">Loading…</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  try{ drawPeople((await post({action:'peopleList'})).result); }
+  catch(e){ const b=$('#modal .m-body'); if(b) b.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+let PEOPLE = null;
+function drawPeople(L, keepForm){
+  PEOPLE = L; if(L.me) ME = L.me;
+  ADMIN_REQUESTS = (L.requests||[]).length; renderAdmin();
+  const body = $('#modal .m-body'); if(!body) return;
+  const gives = (L.choices||[]).length > 0;
+  const form = keepForm ? {email:($('#pplEmail')||{}).value||'', name:($('#pplName')||{}).value||'',
+    role:($('#pplRole')||{}).value||'', place:($('#pplPlace')||{}).value||''} : null;
+  const when = s => { try{ return new Date(s).toLocaleDateString(LOCALE, {day:'numeric', month:'short'}); }catch(e){ return ''; } };
+  const who = (name, email) => `<b>${esc(name || email)}</b>${name && name!==email ? ` <span class="muted-note">${esc(email)}</span>` : ''}`;
+  body.innerHTML = `
+    <div class="hint">Everyone signs in with Google. Each person can hold several roles, each at its own place.
+      ${gives ? 'You can give the roles listed under “Add someone”, at the places listed there.' : 'You can see who has access here; giving roles is for leads.'}</div>
+    ${gives ? `<div class="cash-sub">Sign-in requests${L.requests.length?` (${L.requests.length})`:''}</div>
+      ${L.requests.length ? L.requests.map(r=>`<div class="adm-row">
+          <div class="adm-who">${who(r.name, r.email)}<div class="muted-note">asked ${esc(when(r.at))}</div></div>
+          <span class="adm-btns"><button class="btn btn-primary btn-sm" data-ppl="give" data-email="${esc(r.email)}" data-name="${esc(r.name)}">Give a role…</button>
+            <button class="btn btn-ghost btn-sm" data-ppl="decline" data-email="${esc(r.email)}">Decline</button></span></div>`).join('')
+        : `<div class="cash-empty">Nobody is waiting. Anyone can ask by opening the app and signing in with Google.</div>`}` : ''}
+    <div class="cash-sub">People</div>
+    ${(L.people||[]).length ? L.people.map(p=>`<div class="ppl-person">
+        <div class="adm-who">${who(p.name, p.email)}${p.owner?' <span class="ppl-tag">Universal · permanent</span>':''}${p.email===ME.email?' <span class="ppl-tag">you</span>':''}</div>
+        <div class="ppl-roles">${p.grants.map(g=>`<div class="ppl-role${g.active&&g.usable?'':' off'}">${grantLine(g)}
+            ${grantStatus(g)?`<span class="muted-note">— ${esc(grantStatus(g))}</span>`:''}
+            ${g.removable?`<button class="ppl-x" data-ppl="remove" data-id="${esc(g.id)}" data-what="${esc(g.roleName+' · '+g.place)}" data-email="${esc(p.email)}" title="Remove this role">✕</button>`:''}</div>`).join('')}
+          ${gives?`<button class="btn btn-ghost btn-sm ppl-more" data-ppl="give" data-email="${esc(p.email)}" data-name="${esc(p.name)}">＋ Another role</button>`:''}</div>
+      </div>`).join('') : `<div class="cash-empty">Nobody has a role here yet.</div>`}
+    ${gives ? `<div class="cash-sub" id="pplAddH">Add someone</div>
+      <div class="ppl-form">
+        <div class="row2">
+          <div class="field"><label>Google address</label><input id="pplEmail" type="email" placeholder="name@gmail.com"></div>
+          <div class="field"><label>Name (optional)</label><input id="pplName" type="text" maxlength="40" placeholder="as people know them"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Role</label><select id="pplRole">${L.choices.map(c=>`<option value="${esc(c.role)}">${esc(c.name)}</option>`).join('')}</select></div>
+          <div class="field"><label>Where</label><select id="pplPlace"></select></div>
+        </div>
+        <button type="button" class="btn btn-primary" id="pplAdd">Give this role</button>
+        <div class="hint">They sign in with that Google account and land in their role. A role ends by itself when its place closes.</div>
+      </div>` : ''}
+    ${(ME.linkEvents||[]).length ? `<div class="cash-sub">Emergency sales link</div>
+      <div class="hint">For someone who steps in at the last minute: a link that sells at one event, no sign-in.
+        It stops working when the event closes.</div>
+      <div class="rp-add"><select id="pplLinkEv">${ME.linkEvents.map(e=>`<option value="${esc(e.id)}">${esc(e.label)}</option>`).join('')}</select>
+        <button type="button" class="btn btn-primary btn-sm" id="pplLinkGo">Show link</button></div>
+      <div id="pplLinkOut"></div>` : ''}
+    <div class="err" id="modalErr"></div>`;
+  if(gives){
+    const fillPlaces = ()=>{
+      const c = L.choices.find(x=>x.role===$('#pplRole').value) || L.choices[0];
+      $('#pplPlace').innerHTML = c.places.map(p=>`<option value="${esc(p.id)}">${esc(p.label)}</option>`).join('');
+      $('#pplPlace').disabled = c.places.length===1 && !c.places[0].id;
+    };
+    // Lower roles first: most additions are Sellers and Event Leads.
+    $('#pplRole').value = L.choices[L.choices.length-1].role;
+    if(form && form.role) $('#pplRole').value = form.role;
+    fillPlaces();
+    if(form){ $('#pplEmail').value=form.email; $('#pplName').value=form.name; if(form.place) $('#pplPlace').value=form.place; }
+    $('#pplRole').addEventListener('change', fillPlaces);
+    $('#pplAdd').addEventListener('click', ()=>peopleDo({action:'peopleAdd', email:$('#pplEmail').value.trim(),
+      name:$('#pplName').value.trim(), role:$('#pplRole').value, placeId:$('#pplPlace').value}, 'Role given'));
+  }
+  body.querySelectorAll('[data-ppl]').forEach(b=>b.addEventListener('click', ()=>{
+    const k = b.dataset.ppl;
+    if(k==='give'){
+      $('#pplEmail').value = b.dataset.email; $('#pplName').value = b.dataset.name && b.dataset.name!==b.dataset.email ? b.dataset.name : '';
+      $('#pplAddH').scrollIntoView({block:'start', behavior:'smooth'}); $('#pplRole').focus();
+    }
+    if(k==='decline') peopleDo({action:'peopleDecline', email:b.dataset.email}, 'Declined');
+    if(k==='remove' && confirm('Remove “' + b.dataset.what + '” from ' + b.dataset.email + '?\n\nIf it is their last role, they are signed out at once.'))
+      peopleDo({action:'peopleRemove', id:b.dataset.id}, 'Role removed');
+  }));
+  const lg = $('#pplLinkGo');
+  if(lg) lg.addEventListener('click', ()=>emergencyLink(false));
+  try{ applyLabels($('#modal')); }catch(e){}
+}
+async function peopleDo(payload, done){
+  if(payload.action==='peopleAdd' && !payload.email){ $('#modalErr').textContent = 'Enter their Google address.'; return; }
+  try{ drawPeople((await post(payload)).result, false); toast(done); }
+  catch(e){ const m=$('#modalErr'); if(m){ m.textContent = e.message; } }
+}
+async function emergencyLink(regenerate){
+  const out = $('#pplLinkOut'), id = $('#pplLinkEv').value;
+  if(regenerate && !confirm('Make a new link? The old link for this event stops working at once.')) return;
+  try{
+    const r = (await post({action:'emergencyLink', eventId:id, regenerate:!!regenerate})).result;
+    const url = location.origin + location.pathname + '?k=' + r.key;
+    out.innerHTML = `<div class="ppl-link"><input id="pplLinkUrl" type="text" readonly value="${esc(url)}">
+        <button type="button" class="btn btn-primary btn-sm" id="pplCopy">Copy</button></div>
+      <div class="hint">Sells at <b>${esc(r.label)}</b> only. Anyone with this link can sell there until the event closes.
+        <button type="button" class="btn btn-ghost btn-sm" id="pplRegen">Make a new link</button></div>`;
+    $('#pplCopy').addEventListener('click', async ()=>{
+      try{ await navigator.clipboard.writeText(url); toast('Link copied'); }
+      catch(e){ const i=$('#pplLinkUrl'); i.focus(); i.select(); toast('Selected — copy it from the box'); }
+    });
+    $('#pplRegen').addEventListener('click', ()=>emergencyLink(true));
+  }catch(e){ out.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+}
+
 async function signOut(){
   if(!confirm('Sign out on this device?')) return;
   try{ await post({action:'signOut'}); }catch(e){}
-  SESSION.clear();
+  SESSION.clear(); ACTING.set('');
   location.reload();
 }
 
@@ -3265,6 +3535,11 @@ function renderAll(){
   const who = whoAmI();
   const wb = $('#whoBtn');
   if(SHARE_KEY && who){ wb.style.display=''; wb.textContent = '👤 ' + who; }
+  else if(ME){
+    // Signed in: your name, and which role you are working in when you have several.
+    const g = actingGrant(), several = (ME.grants||[]).filter(x=>x.usable).length > 1;
+    wb.style.display=''; wb.textContent = '👤 ' + ME.name + (g && several ? ' · ' + g.roleName : '');
+  }
   else wb.style.display='none';
   // The tab is how the app is recognized among a dozen others — it keeps its
   // own name rather than whichever warehouse happens to be open.
@@ -3557,11 +3832,12 @@ function renderTabs(){
 
   /* Region picker. Seasonal HQ heads it — the whole season's overview — just
      as the Warehouse heads the place picker, so going up is the same move as
-     going sideways (b215). */
+     going sideways (b215). ⌂ marks it as the season's home page (b220): the
+     old home button's symbol, as 🏠 is already the Warehouse's. */
   h += `<span class="crumb-sep">›</span>
     <span class="crumb-pick">
       <select class="crumb-sel ${CUR_LEVEL!=='season'?'on':''}" data-act="pickregion">
-        ${opt(SEASONAL_HQ,'Seasonal HQ',CUR_LEVEL==='season')}
+        ${opt(SEASONAL_HQ,'⌂ Seasonal HQ',CUR_LEVEL==='season')}
         ${regions.map(r=>opt(r.regionId,r.name+mark(regionClosure(r.regionId)),r.regionId===CUR_REGION&&CUR_LEVEL!=='season')).join('')}
         ${opt('__new','＋ New region…',false)}
       </select>
@@ -3640,6 +3916,8 @@ function renderAdmin(){
          <div class="adm-lbl">Admin</div>
          ${coord ? `<button class="btn adm-c1-1" data-act="activity">🗒 Activity Log</button>` : ''}
          <button class="btn adm-c1-${coord?2:1}" data-act="org">👥 App and Sales Support</button>
+         ${ME && ME.seesPeople ? `<button class="btn adm-c1-3" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : ''}
+         ${ME ? `<button class="btn adm-c1-4" data-act="signout">🚪 Sign Out</button>` : ''}
        </div>${coord ? `<div class="adm-col">
          <div class="adm-lbl">Books</div>
          <button class="btn adm-c3-1" data-act="addstock">＋ Add New Stock</button>
@@ -3665,7 +3943,7 @@ function renderAdmin(){
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
   if(CONFIG.GOOGLE_CLIENT_ID){
-    cols[0].push(`<button class="btn" data-act="admins">🔑 Admins${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>`);
+    cols[0].push(`<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>`);
     cols[0].push(`<button class="btn" data-act="signout">🚪 Sign Out</button>`);
   }
 
@@ -3770,8 +4048,9 @@ function renderWarehouseOverview(){
       `<button class="wo-chip" data-act="${UNIT.act}" data-${UNIT.attr}="${esc(x.r.regionId)}"
          title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
 ;   // in transit is shown once, beneath the number — no separate bubble
-    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}">
-      <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
+    const lc = langCard(b);
+    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style}>
+      <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big wo-big ${total?'':'zero'}">${total}</span>
@@ -3802,7 +4081,7 @@ function renderSalesByRegion(){
       const {sold, pre, gift} = bookCounts(allHere.filter(x=>x.bookId===b.id));
       if(!sold && !pre && !gift) return '';
       return `<div class="mini-card${b.partnerId?' consign':''}">
-        <div class="mc-name ${catOfBook(b)}">${esc(b.name)}${
+        <div class="mc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
           b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
         <div class="mc-figs"><span class="mc-big">${sold}</span><span class="mc-lbl">sold</span></div>
         <div class="mc-sub">${countNote({sold,pre,gift}) || '&nbsp;'}</div>
@@ -3927,11 +4206,12 @@ function renderInventory(){
     if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
     else if(avail<=0) flag=`<span class="flag held sold-tag">ALL PRE-ORDERED</span>`;
     else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
-    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}">
+    const lc = langCard(b);
+    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}${lc.cls}"${lc.style}>
       ${(q<=0||avail<=0)?flag:''}
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
-          <div class="bname ${catOfBook(b)}">${esc(b.name)}${
+          <div class="bname ${catOfBook(b)}">${bookTitleHTML(b)}${
             b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
           <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
         </div>
@@ -4089,8 +4369,9 @@ function renderTitleList(target){
         title="Go to ${esc(pl.name)}"><b>${c.sold}</b> ${esc(pl.name)}${
         c.gift?` <span class="chip-gift">+${c.gift} gift${c.gift===1?'':'s'}</span>`:''}</button>`;
     }).filter(Boolean).join('');
-    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}">
-      <div class="sc-name ${catOfBook(b)}">${esc(b.name)}${
+    const lc = langCard(b);
+    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}"${lc.style}>
+      <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
         <span class="sc-big ${sold?'':'zero'}">${sold}</span>
@@ -4703,7 +4984,7 @@ function logItemHTML(x, opts){
        data-act="expand" ${idAttr}>
     <div class="li-row">
       <span class="li-chev">▶</span>
-      <span class="li-book">${esc(book)}</span>
+      <span class="li-book">${(!x._bundle && !isDon && x.bookId) ? bookTitleHTML(bookById(x.bookId)) : esc(book)}</span>
       ${badge}${cat}${pend}
       ${bits.length?`<span class="li-who">${bits.join(' · ')}</span>`:''}
       <span class="li-amt ${showOwed?'owed':''}">${showOwed
@@ -5616,7 +5897,7 @@ function bundleModal(edit){
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
       <div class="mb-main">
-        <span class="mb-name">${esc(b.name)}</span>
+        <span class="mb-name">${bookTitleHTML(b)}</span>
         <span class="mb-stock ${stock<=0?'none':''}" data-stockfor="${esc(b.id)}">${stock} in stock</span>
       </div>
       <div class="mb-steppers">
@@ -9170,7 +9451,7 @@ function bulkRows(cols){
     // A second input, where a dialog has two separate things to enter.
     const five = c.input2 !== undefined;
     return `<div class="bulk-row${five?' five':''}">
-      <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>
+      <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</div>
       <div class="num">${c.left}</div>
       <div>${c.input}</div>
       ${five?`<div>${c.input2}</div>`:''}
@@ -9345,7 +9626,7 @@ function stockRows(ctx, books, cols){
     const five = c.input2 !== undefined;
     const isNew = ctx.extra.has(b.id);
     return `<div class="bulk-row${five?' five':''}">
-      <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}${isNew
+      <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}${isNew
         ? ` <span class="sp-new-tag">new here</span><button type="button" class="sp-x" data-unpick="${esc(b.id)}" title="Take it off this list">✕</button>`:''}</div>
       <div class="num" data-now="${esc(b.id)}">${c.left}</div>
       <div>${c.input}</div>
@@ -11430,7 +11711,7 @@ function transferStockModal(opts){
             <span class="xf-line-l"><b>@${esc(s.label)}</b> ${esc(s.holderId ? s.name : (typed['swn:'+s.key]||''))}</span><span class="xf-line-n"></span>
             ${inp(b, `data-dst="${esc(s.key)}" data-k="d:${esc(s.key)}:${esc(b.id)}"`)}</div>`).join('');
       return `<div class="xf-card">
-        <div class="xf-card-h"><span class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</span>
+        <div class="xf-card-h"><span class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</span>
           <span class="xf-card-n">${multiSrc?'Total':'Avail'} ${total} · Left <b class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</b></span></div>
         ${lines}</div>`;
     };
@@ -11446,7 +11727,7 @@ function transferStockModal(opts){
           `<div>${inp(b, `data-dst="${esc(s.key)}" data-k="d:${esc(s.key)}:${esc(b.id)}"`, tint(i))}</div>`).join('');
       else cells = `<div class="num">${total}</div><div>${inp(b, `data-src="${esc(srcs[0].loc)}" data-k="m:${esc(srcs[0].loc)}:${esc(b.id)}" max="${total}"`)}</div>`;
       return `<div class="xf-row" style="grid-template-columns:${cols}">
-        <div class="bn ${isAotm(b)?'aotm':''}">${esc(b.name)}</div>${cells}
+        <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</div>${cells}
         <div class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</div></div>`;
     };
     const groups = [['big','Big Books'],['aotm','AoTM — Adventures'],['other','Other']];
@@ -11677,7 +11958,7 @@ function activityHere(list){
 }
 
 // Who this device is, as the log names it.
-function meLabel(){ return whoAmI() || (SHARE_KEY ? (isSeller() ? 'seller link' : 'coordinator link') : 'main app'); }
+function meLabel(){ return whoAmI() || (ME && ME.name) || (SHARE_KEY ? (isSeller() ? 'seller link' : 'coordinator link') : 'main app'); }
 /* Undoing stock movements on this device: each goes back where it came from
    and leaves the record. */
 function undoMovesLocal(st, ids){
@@ -12029,7 +12310,7 @@ function bookDisplayModal(){
       <div class="ro-row${x.on?'':' bd-off'}" data-id="${esc(x.id)}">
         <span class="ro-grip" title="Drag to move">⠿</span>
         ${season ? '' : `<input type="checkbox" class="bd-cb" data-bd="${esc(x.id)}" ${x.on?'checked':''} title="Show this title">`}
-        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${esc(x.name)}
+        <span class="ro-name ${x.cat==='aotm'?'aotm':''}">${bookTitleHTML(bookById(x.id)||{name:x.name})}
           ${x.partner?`<span class="con-tag">${esc(x.partner)}</span>`:''}
           ${x.on?'':'<span class="ro-tag">hidden</span>'}${x.auto?'<span class="ro-tag">no copies here yet</span>':''}</span>
         <span class="ro-btns">
@@ -12467,7 +12748,8 @@ document.addEventListener('click',e=>{
     undoMovement(t.dataset.id, t, row);
     return;
   }
-  if(a==='whoami'){ askWhoAmI(true); return; }
+  if(a==='whoami'){ if(ME) youModal(); else askWhoAmI(true); return; }
+  if(a==='people'){ peopleModal(); return; }
   if(a==='signout'){ signOut(); return; }
   if(a==='admins'){ adminsModal(); return; }
   if(a==='admappr' || a==='admdecl' || a==='admrem'){ adminsDo(a, t.dataset.email); return; }
@@ -12789,6 +13071,8 @@ document.addEventListener('click',e=>{
   flushPending();
   // A share link asks who is holding it before anything gets recorded.
   if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
+  // Signed in: who this is, and their roles (b222).
+  loadMe();
   // Draw last session's data straight away so the page is usable on open.
   if(cacheLoad()) setStatus('load','Checking for changes…');
   applyLevelTheme();

@@ -7,6 +7,7 @@ import { makeApp, CODE_BUILD } from './app.gen.js';
 import { makeSqlStore } from './sqlstore.js';
 import { makeGoogle, makeWebCache } from './google.js';
 import { makeAuth } from './auth.js';
+import * as people from './people.js';
 
 // Where the exchange rates come from (the first source Code.gs tries).
 export const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
@@ -62,15 +63,44 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const me = linkKey ? null : auth.check(p.s);
     if (action === 'ping') {                                       // the revision number, nothing more
       const out = answer(e);
-      // ...and, for a signed-in admin, how many sign-in requests are waiting.
+      // ...and, for someone who can give logins, how many sign-in requests are waiting.
       if (!me) return out;
-      const o = JSON.parse(out); o.requests = auth.requestCount(); return reply(o);
+      const o = JSON.parse(out);
+      if (auth.isAdmin(me) || people.givesAny(places(), auth.grantsOf(me), false)) o.requests = auth.requestCount();
+      return reply(o);
     }
     if (!linkKey && !me) {
       return reply({ ok: false, signIn: true, error: 'Please sign in with Google to use the app.' });
     }
+    // Who I am, my roles, and the People panel (b222).
+    if (!linkKey && /^(me|setMyName|people(List|Add|Remove|Decline)|emergencyLink)$/.test(action)) {
+      try { return reply({ ok: true, result: peopleAction(me, action, p) }); }
+      catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
+    }
+    const universal = !linkKey && auth.isAdmin(me);
+    /* Anyone else signed in acts in one of their roles: the one the page asks
+       for (g), or their first usable one. Code.gs is told who that is directly
+       (setTrustedWho_), so nothing in the request can claim more. */
+    let acting = null;
+    if (!linkKey && !universal) {
+      acting = people.acting(places(), auth.grantsOf(me), String(p.g || ''));
+      if (!acting.who) {
+        return reply({ ok: false, noAccess: true, me: meInfo(me),
+          error: 'You are signed in, but none of your roles can be used in the app yet. ' +
+                 'Your access starts with the next update — or ask the person who added you.' });
+      }
+    }
+    // A signed-in person's own name goes on what they record (sales, cash, the Activity Log).
+    if (!linkKey) {
+      p.by = auth.nameOf(me);
+      delete p.k;
+      e = e.postData ? { postData: { contents: JSON.stringify(p) } } : { parameter: p };
+    }
     // The Admins panel: who may use the owner's app.
-    if (!linkKey && /^admins(List|Add|Approve|Decline|Remove)$/.test(action)) {
+    if (!universal && /^admins(List|Add|Approve|Decline|Remove)$/.test(action)) {
+      return reply({ ok: false, error: 'Only Universal can do that.' });
+    }
+    if (universal && /^admins(List|Add|Approve|Decline|Remove)$/.test(action)) {
       try {
         if (action === 'adminsAdd') auth.add(me, p.email);
         if (action === 'adminsApprove') auth.add(me, p.email);
@@ -80,8 +110,101 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       } catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     // The owner's spreadsheet requests are passed to Google, which does them.
-    if (!linkKey && SHEET_ACTIONS.test(action)) return forwardToGoogle(p);
+    if (universal && SHEET_ACTIONS.test(action)) return forwardToGoogle(p);
+    if (acting) {
+      app.setTrustedWho_(Object.assign({ name: auth.nameOf(me) }, acting.who));
+      const out = answer(e);
+      // Which role this was answered in, so the page can show it.
+      if (action === 'getState' || action === 'setSeason') {
+        try { const o = JSON.parse(out); if (o && o.ok) { o.acting = acting.grant.id; return reply(o); } } catch (err) {}
+      }
+      return out;
+    }
     return answer(e);
+  }
+
+  /* ---- People and roles (b222; the rules are in people.js) ---- */
+  let placesMemo = null;
+  function places() {
+    const r = rev();
+    if (placesMemo && placesMemo.rev === r) return placesMemo.P;
+    app.sheetMemoClear_(); app.setSeasonContext_('');
+    const P = people.indexPlaces(app.placesForAuth_());
+    placesMemo = { rev: r, P };
+    return P;
+  }
+  function meInfo(me) {
+    const P = places(), mine = auth.grantsOf(me), owner = auth.isOwner(me);
+    const grants = mine.map(g => people.describe(P, g));
+    if (owner) grants.unshift({ id: '', role: 'U', roleName: 'Universal', placeId: '', place: 'Everywhere',
+      active: true, why: '', usable: true, owner: true });
+    return Object.assign(auth.person(me), {
+      universal: auth.isAdmin(me), grants,
+      seesPeople: people.seesPeople(mine, owner),
+      givesLogins: people.givesAny(P, mine, owner),
+      // Events they may hand an emergency link for.
+      linkEvents: P.raw.events.filter(ev => mayLink(P, me, ev.id)).map(ev => ({ id: ev.id, label: people.placeLabel(P, 'S', ev.id) }))
+    });
+  }
+  /* An emergency link (Seller permissions, one event): Event Leads and above. */
+  function mayLink(P, me, eventId) {
+    if (auth.isAdmin(me)) return !!P.events[eventId];
+    if (!P.events[eventId] || people.activeState(P, { role: 'S', placeId: eventId }).active === false) return false;
+    return auth.grantsOf(me).some(g => ['EL', 'RL', 'SL'].indexOf(g.role) >= 0 &&
+      people.activeState(P, g).active && people.mayGive(P, [g], false, 'S', eventId));
+  }
+  function peopleAction(me, action, p) {
+    const P = places(), mine = auth.grantsOf(me), owner = auth.isOwner(me) || mine.some(g => g.role === 'U');
+    if (action === 'me') return meInfo(me);
+    if (action === 'setMyName') { auth.setName(me, p.name); return meInfo(me); }
+    if (action === 'emergencyLink') {
+      const id = String(p.eventId || '');
+      if (!mayLink(P, me, id)) throw new Error('You cannot make a link for that event.');
+      let key = P.events[id].key;
+      if (!key || p.regenerate) {
+        // Made as the owner's app would (Code.gs's own setKey), for this one event only.
+        const r = JSON.parse(answer({ postData: { contents: JSON.stringify({ action: 'setKey', kind: 'event', id, by: auth.nameOf(me) }) } }));
+        if (!r.ok) throw new Error(r.error || 'The link could not be made.');
+        key = r.result;
+      }
+      return { eventId: id, key, label: people.placeLabel(P, 'S', id) };
+    }
+    if (!people.seesPeople(mine, owner)) throw new Error('You cannot see who has access.');
+    if (action === 'peopleAdd') {
+      const role = String(p.role || ''), placeId = (people.ROLES[role] || {}).kind === 'all' ? '' : String(p.placeId || '');
+      if (!people.mayGive(P, mine, owner, role, placeId)) throw new Error('You cannot give that role there.');
+      if (people.ROLES[role].kind !== 'all' && !people.activeState(P, { role, placeId }).active)
+        throw new Error('That place is closed, so a role there would do nothing.');
+      auth.addGrant(me, p.email, p.name, role, placeId);
+    }
+    if (action === 'peopleRemove') {
+      const g = auth.grantById(p.id);
+      if (!g) throw new Error('That role has already been removed.');
+      if (!people.mayRemove(P, mine, owner, me, g)) throw new Error(g.email === me
+        ? 'You cannot remove your own role. Ask someone above you.' : 'You cannot remove that role.');
+      auth.removeGrant(g.id);
+    }
+    if (action === 'peopleDecline') {
+      if (!people.givesAny(P, mine, owner)) throw new Error('You cannot answer sign-in requests.');
+      auth.decline(p.email);
+    }
+    // The list: everyone with a role within my reach, and only those roles.
+    const byEmail = {};
+    auth.allGrants().forEach(g => {
+      if (!people.maySee(P, mine, owner, g)) return;
+      const d = people.describe(P, g);
+      d.removable = people.mayRemove(P, mine, owner, me, g);
+      (byEmail[g.email] = byEmail[g.email] || { email: g.email, name: g.name || g.googleName || g.email.split('@')[0], grants: [] }).grants.push(d);
+    });
+    const list = Object.values(byEmail).sort((a, b) => a.name.localeCompare(b.name));
+    if (owner) auth.list(me).owners.forEach(o => {
+      if (!byEmail[o]) list.unshift({ email: o, name: auth.nameOf(o), grants: [] });
+      const row = list.find(x => x.email === o);
+      row.owner = true;
+    });
+    return { me: meInfo(me), people: list,
+      requests: people.givesAny(P, mine, owner) ? auth.requests() : [],
+      choices: people.giveChoices(P, mine, owner) };
   }
 
   /* ---- The spreadsheets, still made by Google ----

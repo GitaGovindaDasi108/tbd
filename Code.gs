@@ -218,7 +218,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b219';
+var SERVER_BUILD = 'b222';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -247,7 +247,37 @@ function rememberOp_(opId, reply) {
   tempPut_('op_' + opId, reply, 21600);
 }
 
+/* Who is asking, when the Cloudflare server already knows (b222: people
+   signed in with a role). The server sets it just before handing over one
+   request, and it is used up by that request — so nothing a request carries
+   can claim it, and it never outlives its request. On Google nobody sets it. */
+var _trustedWho = null;
+function setTrustedWho_(w) { _trustedWho = w || null; }
+
+/* Every place, for the server's people-and-roles rules (b222): which season a
+   region is in, which region an event is in, and whether each is closed —
+   a role ends when its place closes. Earthly HQ is left out: only Universal
+   reaches it. Event keys are included for emergency links; the server hands
+   one out only to someone allowed to make it. */
+function placesForAuth_() {
+  var seasons = seasonsAll_().map(function (x) {
+    return { id: String(x.seasonId), name: String(x.name || ''), closed: !!x.closedAt };
+  });
+  var regions = objectsOf_('_regions').filter(function (r) {
+    return r && r.regionId && String(r.regionId) !== HQ_REGION && String(r.seasonId || '') !== HQ_ID;
+  }).map(function (r) {
+    return { id: String(r.regionId), name: String(r.name || ''), seasonId: String(r.seasonId || ''), closed: !!r.closedAt };
+  });
+  var events = objectsOf_('_events').filter(function (e) { return e && e.eventId; }).map(function (e) {
+    return { id: String(e.eventId), name: String(e.name || ''), regionId: String(e.regionId || ''),
+             closed: !!e.closedAt, key: String(e.key || '') };
+  });
+  return { seasons: seasons, regions: regions, events: events };
+}
+
 function handle(e) {
+  // Used up at once, whatever happens next (see setTrustedWho_).
+  var trustedWho = _trustedWho; _trustedWho = null;
   try {
     var params = {};
     if (e && e.postData && e.postData.contents) {
@@ -278,7 +308,7 @@ function handle(e) {
     }
 
     // Who is asking? No key = the full admin app, exactly as before.
-    var who = roleFor_(params.k);
+    var who = trustedWho || roleFor_(params.k);
     if (who.role === 'invalid') {
       return raw('{"ok":false,"error":"That link is no longer valid. Ask for a new one."}');
     }
@@ -311,6 +341,8 @@ function handle(e) {
     // Who is making this change, for the cash record.
     _cashBy = String(params.by || '').trim().slice(0, 40) ||
       (who.role === 'admin' ? 'main app' : (who.role === 'coordinator' ? 'coordinator link' : 'seller link'));
+    // A signed-in person's own display name, set by the server (b222), outranks what the page sent.
+    if (trustedWho && trustedWho.name) _cashBy = String(trustedWho.name).slice(0, 40);
 
     if (who.role === 'admin' && params.season && seasonById_(String(params.season))) {
       setSeasonContext_(String(params.season));
