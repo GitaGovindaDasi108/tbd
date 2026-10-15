@@ -1409,7 +1409,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b224</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b225</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2004,6 +2004,18 @@ function preorderedIn(regionId){
 function partnersOf(regionId){
   return (STATE.partners||[]).filter(p=>p.regionId===(regionId||CUR_REGION));
 }
+/* The groups whose titles are offered where you are: at an event, the region's
+   own and any kept for this event only (b225); elsewhere, all the region's. */
+function partnersHere(){
+  const all = partnersOf(CUR_REGION);
+  return CUR_LEVEL==='event' ? all.filter(p=>!p.eventId || p.eventId===CUR_LOC) : all;
+}
+/* Where a group's titles are offered: the whole region, or one of its events. */
+function partnerWhereSel(id, current){
+  const evs = (STATE.events||[]).filter(e=>e.regionId===CUR_REGION && (!closureOf(e.eventId) || e.eventId===current));
+  return `<select id="${id}"><option value="">Every event in ${esc((currentRegion()||{}).name||'the region')}</option>${
+    evs.map(e=>`<option value="${esc(e.eventId)}"${e.eventId===current?' selected':''}>Only at ${esc(e.name)}</option>`).join('')}</select>`;
+}
 function partnerById(id){ return (STATE.partners||[]).find(p=>p.partnerId===id)||null; }
 function isPartnerBook(bookId){ const b=bookById(bookId); return !!(b && b.partnerId); }
 function isPartnerSale(x){ return !!(x && x.bookId && isPartnerBook(x.bookId)); }
@@ -2030,7 +2042,7 @@ function baseShelfBooks(){
      titles into a view of what the tour itself carries. */
   const theirs = (CUR_LEVEL==='season')
     ? []
-    : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
+    : partnersHere().flatMap(p=>partnerBooks(p.partnerId));
   const seen = new Set(ours.map(b=>b.id));
   const list = ours.concat(theirs.filter(b=>!seen.has(b.id)));
 
@@ -2051,6 +2063,8 @@ function baseShelfBooks(){
       const pt = partnerById(b.partnerId);
       if(!pt) return;
       if(CUR_LEVEL==='season' || String(pt.regionId)!==String(CUR_REGION)) return;
+      // ...and one kept for another event stays there, unless copies are on this very table (b225).
+      if(CUR_LEVEL==='event' && pt.eventId && pt.eventId!==CUR_LOC && !(invQty(CUR_LOC,b.id)>0)) return;
     }
     if(here.some(l=>invQty(l,b.id)>0)) list.push(b);
   });
@@ -2184,11 +2198,22 @@ function curCurrencies(){
   const r=regionById(CUR_REGION);
   return (r&&r.currencies&&r.currencies.length)?r.currencies:(STATE.currencies||['USD']);
 }
-/** Price of a book in the current region, in a given currency. */
+/** Price of a book where you are, in a given currency: at an event with its
+    own price for it, that one (b225); otherwise the region's. */
 function priceIn(bookId,cur){
+  const ev = eventPriceIn(CUR_LEVEL==='event' ? CUR_LOC : '', bookId, cur);
+  return ev!==null ? ev : regionPriceIn(bookId,cur);
+}
+function regionPriceIn(bookId,cur){
   const pr=(STATE.prices||{})[CUR_REGION];
   if(pr&&pr[bookId]&&pr[bookId][cur]!==undefined) return Number(pr[bookId][cur])||0;
   return 0;
+}
+/** An event's own price for a title, or null when it uses the region's. */
+function eventPriceIn(eventId,bookId,cur){
+  const e = eventId && (STATE.eventPrices||{})[eventId];
+  const v = e && e[bookId] && e[bookId][cur];
+  return (v===undefined || v===null || v==='') ? null : Number(v)||0;
 }
 /** Move the whole app to a level. Keeps CUR_REGION consistent with CUR_LOC. */
 function goTo(level, loc){
@@ -3949,6 +3974,7 @@ function renderAdmin(){
          <div class="adm-lbl">Books</div>
          <button class="btn adm-c3-1" data-act="addstock">＋ Add New Stock</button>
          <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
+         ${CUR_LEVEL==='event' ? eventPricesBtn('adm-c3-3') : ''}
        </div>` : ''}</div>`;
     return;
   }
@@ -3985,10 +4011,11 @@ function renderAdmin(){
   // Books
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
   cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
-  const conCount = (season ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
+  const conCount = (season ? (STATE.partners||[]) : partnersHere()).length;
   cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books${conCount?` (${conCount})`:''}</button>`);
   cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
     (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
+  if(CUR_LEVEL==='event') cols[2].push(eventPricesBtn());
 
   // Location
   if(isHQ()){
@@ -10989,7 +11016,7 @@ function zeroOwed(p){
 function partnersModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
-  const list = season ? (STATE.partners||[]) : partnersOf(CUR_REGION);
+  const list = season ? (STATE.partners||[]) : partnersHere();
   const money = o => Object.keys(o||{}).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
   const card = p => {
@@ -11001,6 +11028,7 @@ function partnersModal(){
         <span class="sh-count">${p.sold} sold${p.preordered?` · ${p.preordered} pre-ordered`:''}</span>
       </div>
       ${season?`<div class="sh-meta">${esc((regionById(p.regionId)||{}).name||'')}</div>`:''}
+      ${p.eventId?`<div class="sh-meta">Only at ${esc(locName(p.eventId))}</div>`:''}
       <div class="con-money">
         <div><span class="con-k">Collected</span><span class="con-v">${money(p.took)||'—'}</span></div>
         <div><span class="con-k">Given to consignee</span><span class="con-v">${money(p.paid)||'—'}</span></div>
@@ -11084,7 +11112,8 @@ function partnersModal(){
       <div class="rp-add">
         <input id="conName" type="text" placeholder="e.g. Macedonian Devotees">
         <button type="button" class="btn btn-primary btn-sm" id="conAdd">Add</button>
-      </div>`}
+      </div>
+      <div class="field"><label>Their titles are offered at</label>${partnerWhereSel('conWhere', CUR_LEVEL==='event'?CUR_LOC:'')}</div>`}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
@@ -11093,7 +11122,8 @@ function partnersModal(){
   if(add) add.addEventListener('click',async ()=>{
     const name=$('#conName').value.trim();
     if(!name){ $('#modalErr').textContent='Enter a name.'; return; }
-    if(await commitSync({action:'savePartner',regionId:CUR_REGION,name},'Added')) partnersModal();
+    const where = ($('#conWhere')||{}).value || '';
+    if(await commitSync(Object.assign({action:'savePartner',regionId:CUR_REGION,name}, where?{eventId:where}:{}),'Added')) partnersModal();
   });
 }
 
@@ -11162,7 +11192,7 @@ function partnerBookModal(id, editId){
   if(!p) return;
   const existing = editId ? bookById(editId) : null;
   const curs = curCurrencies();
-  const priceOf = c => existing ? (priceIn(existing.id, c) || '') : '';
+  const priceOf = c => existing ? (regionPriceIn(existing.id, c) || '') : '';
 
   openModal(`
     ${mHead(existing ? 'Edit ' + esc(existing.name) : 'Add a title for ' + esc(p.name))}
@@ -11269,6 +11299,7 @@ function partnerEditModal(id){
     <div class="m-body">
       <div class="field"><label>Name</label><input id="peName" type="text" value="${esc(p.name)}"></div>
       <div class="field"><label>Note</label><input id="peNote" type="text" value="${esc(p.note||'')}"></div>
+      <div class="field"><label>Their titles are offered at</label>${partnerWhereSel('peWhere', p.eventId||'')}</div>
       <div class="hint">Removing a group only takes it off the list; its records and spreadsheet stay.</div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -11278,8 +11309,9 @@ function partnerEditModal(id){
       <button class="btn btn-primary" id="peSave">Save</button>
     </div>`);
   $('#peSave').addEventListener('click',async ()=>{
-    if(await commitSync({action:'savePartner',partnerId:id,regionId:p.regionId,
-      name:$('#peName').value.trim(),note:$('#peNote').value.trim()},'Saved')) partnersModal();
+    const where = ($('#peWhere')||{}).value || '';
+    if(await commitSync(Object.assign({action:'savePartner',partnerId:id,regionId:p.regionId,
+      name:$('#peName').value.trim(),note:$('#peNote').value.trim()}, (where||p.eventId)?{eventId:where}:{}),'Saved')) partnersModal();
   });
   $('#peDel').addEventListener('click',async ()=>{
     if(!confirm('Remove '+p.name+' from the list? Their records and spreadsheet stay as they are.')) return;
@@ -12556,6 +12588,59 @@ function askRegionModal(saleId){
   });
 }
 
+/* ---- Event Prices (b225) ----
+   An event can ask its own price for a title: a festival with a lower price, a
+   temple that rounds to the note. Only what is typed here is the event's; a
+   blank box is the region's price (shown greyed), so a change to the region's
+   prices still reaches every title the event has not set. */
+function eventPricesBtn(cls){
+  const n = Object.values((STATE.eventPrices||{})[CUR_LOC]||{}).reduce((t,r)=>t+Object.keys(r).length,0);
+  return `<button class="btn ${cls||''}" data-act="eventprices">💲 Event Prices${n?` (${n} set)`:''}</button>`;
+}
+function eventPricesModal(){
+  const ev = CUR_LOC, curs = curCurrencies();
+  const books = baseShelfBooks();
+  const own = (b,c) => { const v = eventPriceIn(ev, b.id, c); return v===null ? '' : v; };
+  const regionP = (b,c) => regionPriceIn(b.id, c) || (c==='PLN'?b.pln:c==='EUR'?b.eur:c==='USD'?b.usd:0) || '';
+  openModal(`
+    ${mHead('Prices at ' + esc(locName(ev)))}
+    <div class="m-body">
+      <div class="hint">Type a price only where this event asks something different. A blank box uses
+        ${esc((currentRegion()||{}).name||'the region')}'s price, shown in grey.</div>
+      <div class="rp-row rp-head"><div class="rp-name"></div><div class="rp-cells">${
+        curs.map(c=>`<span class="rp-cur">${esc(CUR_SYM[c]||'')} ${esc(c)}</span>`).join('')}</div></div>
+      ${books.map(b=>`<div class="rp-row" data-row="${esc(b.id)}"><div class="rp-name">${bookTitleHTML(b)}</div>
+        <div class="rp-cells">${curs.map(c=>`<input class="rp ep" type="number" step="0.01" min="0" inputmode="decimal"
+          data-book="${esc(b.id)}" data-cur="${esc(c)}" placeholder="${esc(String(regionP(b,c)))}" value="${esc(String(own(b,c)))}">`).join('')}</div></div>`).join('')
+        || '<div class="cash-empty">No titles on this event\'s shelf yet.</div>'}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="epSave">Save</button></div>`, true);
+  $('#epSave').addEventListener('click', ()=>{
+    const prices = {};
+    let bad = false;
+    document.querySelectorAll('.ep').forEach(i=>{
+      const b = i.dataset.book, c = i.dataset.cur, v = i.value.trim(), was = own(bookById(b)||{id:b}, c);
+      if(v!=='' && (isNaN(Number(v)) || Number(v)<0)) bad = true;
+      if(String(v)===String(was)) return;
+      (prices[b] = prices[b] || {})[c] = v;
+    });
+    if(bad){ $('#modalErr').textContent = 'A price must be a number.'; return; }
+    if(!Object.keys(prices).length){ closeModal(); return; }
+    commit({action:'setEventPrices', eventId: ev, prices}, st=>{
+      st.eventPrices = st.eventPrices || {};
+      const bag = st.eventPrices[ev] = st.eventPrices[ev] || {};
+      Object.keys(prices).forEach(b=>Object.keys(prices[b]).forEach(c=>{
+        const v = prices[b][c];
+        if(v===''){ if(bag[b]) delete bag[b][c]; }
+        else (bag[b] = bag[b] || {})[c] = Number(v);
+      }));
+    }, 'Prices saved');
+    closeModal();
+  });
+}
+
 /* ---- Edit Book Display ----
    Which titles are shown where you are, and in what order, in one place:
    tick to show, untick to hide, drag (or the arrows) to reorder. At the season
@@ -13041,6 +13126,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
+  if(a==='eventprices'){ eventPricesModal(); return; }
   if(a==='seasonclose'){ closeSeasonModal(); return; }
   if(a==='seasonreopen'){
     if(!confirm('Reopen this season? Its dollar figures will follow live exchange rates again.')) return;

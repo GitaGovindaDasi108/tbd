@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b224**.
+Handover notes. Current build: **b225**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,29 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b225 — Stage 3, part 3: an event's own prices; consignment for one event
+
+- **Event Prices** (💲 button in Books, at an event; admin and Regional
+  Lead): an event can ask its own price for a title, per currency. Only what is
+  typed there is the event's; a blank box shows the region's price in grey and
+  uses it, so later changes to the region's prices still reach every title the
+  event has not set. Stored in `_prices` with the event's id in the `regionId`
+  column (`doSetEventPrices`, action `setEventPrices`, COORD_EXTRA, checked to
+  the coordinator's region; a blank removes the row). Sent as `eventPrices`
+  (only what is set, only once any is). App: `priceIn` = `eventPriceIn` at an
+  event, else `regionPriceIn`. A bundle at the event is split by the event's
+  prices (`priceAtLoc_`). Deleting an event (or its season) takes its prices.
+- **Consignment groups can belong to one event**: `_partners.eventId`
+  (column added the first time a group is tied to an event). "Their titles are
+  offered at": every event in the region, or only at one. Such a group's
+  titles are on that event's shelf only (`partnersHere`), unless copies are on
+  another event's table (stock is a fact). The region lists every group, with
+  "Only at …". Deleting the event returns its groups to the whole region.
+- Not yet: an Event Lead setting their event's prices (they work through a
+  sales link until Stage 2; the table gives them "own").
+- Tests: `test/eventprice.js` (17, in run-all), `test/browser-sellers.js`.
+  Golden identical.
 
 ## Done in b224 — Stage 3, part 2: a count that does not match is flagged, not written over
 

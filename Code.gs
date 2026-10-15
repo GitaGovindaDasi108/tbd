@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b224';
+var SERVER_BUILD = 'b225';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -505,6 +505,7 @@ function handle(e) {
         case 'reorder':          doReorder(params);              break;
         case 'reorderBooks':     doReorderBooks(params);         break;
         case 'setPrices':        doSetPrices(params);             break;
+        case 'setEventPrices':   result = doSetEventPrices(params, who); break;
         case 'saveConsignBook':  result = doSaveConsignBook(params); break;
         case 'savePartner':      result = doSavePartner(params);  break;
         case 'partnerPayout':    doPartnerPayout(params);         break;
@@ -665,6 +666,7 @@ function scopedStateBuild_(who) {
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
   if (full.handovers) full.handovers = full.handovers.filter(function (h) { return mine[String(h.location)]; });
   if (full.mismatches) full.mismatches = full.mismatches.filter(function (m) { return mine[String(m.location)]; });
+  if (full.eventPrices) Object.keys(full.eventPrices).forEach(function (e) { if (!mine[e]) delete full.eventPrices[e]; });
   var drafts = {};
   Object.keys(full.closeDrafts || {}).forEach(function (k) {
     var id = k.split(':').slice(1).join(':');
@@ -839,6 +841,9 @@ function stateJson_() {
   }
   if (dbHas_('_handovers')) st.handovers = handoversAll_();
   if (dbHas_('_mismatches')) st.mismatches = mismatchesAll_();
+  // Events' own prices (b225), only once any is set.
+  var evp = eventPricesForState_();
+  if (evp) st.eventPrices = evp;
   // At HQ, every season's records ride along, taken before HQ's own trim.
   if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
   var str = JSON.stringify(scopeToSeason_(st));
@@ -1969,6 +1974,8 @@ var COORD_EXTRA = {
   undoActivity:1, undoActivityPart:1,
   // Pre-orders fulfilled by another region (checked inside).
   setFulfilBy:1, fulfilRemote:1,
+  // An event's own prices, at one of its events (checked inside, b225).
+  setEventPrices:1,
   // A closing count that differs, at one of its events (checked inside, b224).
   mismatchAnswer:1
 };
@@ -2746,6 +2753,58 @@ function priceFor_(regionId, bookId, cur) {
   if (cur === 'PLN') return Number(b.pln) || 0;
   if (cur === 'EUR') return Number(b.eur) || 0;
   return 0;   // a currency this region hasn't priced yet
+}
+/* An event's own price (b225): rows in `_prices` whose regionId column holds
+   the event's id. Set for one title and currency, it beats the region's for
+   sales at that event only; anything not set there falls back to the region. */
+function priceAtLoc_(loc, bookId, cur) {
+  loc = String(loc || '');
+  if (eventById_(loc)) {
+    var hit = priceMap_()[loc + '|' + String(bookId) + '|' + String(cur || '').toUpperCase()];
+    if (hit !== undefined) return hit;
+  }
+  return priceFor_(regionOfLoc_(loc), bookId, cur);
+}
+/** The events' own prices, only what is set: {eventId:{bookId:{cur:amt}}}. */
+function eventPricesForState_() {
+  var evs = {}, out = {}, any = false;
+  regionsOrdered_().forEach(function (r) { evs[r.regionId] = 1; });
+  objectsOf_('_events').forEach(function (e) { evs['ev:' + e.eventId] = !!evs[String(e.regionId || '')]; });
+  objectsOf_('_prices').forEach(function (r) {
+    var id = String(r.regionId || ''), amt = Number(r.price);
+    if (!evs['ev:' + id] || isNaN(amt)) return;
+    var bag = out[id] = out[id] || {};
+    (bag[String(r.bookId)] = bag[String(r.bookId)] || {})[String(r.cur).toUpperCase()] = amt;
+    any = true;
+  });
+  return any ? out : null;
+}
+/** Set or clear an event's own prices. A blank price goes back to the region's. */
+function doSetEventPrices(p, who) {
+  var eventId = String(p.eventId || '');
+  var ev = eventById_(eventId);
+  if (!ev) throw new Error('That event is no longer listed.');
+  if (who && who.role === 'coordinator' && String(ev.regionId) !== String(who.regionId))
+    throw new Error('That event is in another region.');
+  var incoming = p.prices || {};
+  var rows = objectsOf_('_prices').map(function (r) {
+    return { regionId: String(r.regionId), bookId: String(r.bookId), cur: String(r.cur), price: Number(r.price) || 0 };
+  });
+  Object.keys(incoming).forEach(function (bookId) {
+    var row = incoming[bookId] || {};
+    Object.keys(row).forEach(function (cur) {
+      var v = row[cur], cu = String(cur).toUpperCase();
+      rows = rows.filter(function (r) { return !(r.regionId === eventId && r.bookId === String(bookId) && r.cur === cu); });
+      if (v === null || v === undefined || String(v).trim() === '') return;     // back to the region's price
+      var amt = Number(v);
+      if (isNaN(amt) || amt < 0) throw new Error('A price must be a number.');
+      rows.push({ regionId: eventId, bookId: String(bookId), cur: cu, price: amt });
+    });
+  });
+  dbSave_('_prices', rows, ['regionId','bookId','cur','price']);
+  _priceMemo = null;
+  markDirtyRegions_([String(ev.regionId)]);
+  return eventId;
 }
 /** Prices for the whole season, shaped for the client: {regionId:{bookId:{cur:amt}}} */
 function pricesForState_() {
@@ -3731,9 +3790,11 @@ function readState() {
     shipments: shipmentsAll_(),
     partners: partnersAll_().map(function (pt) {
       var t = partnerTally_(pt.partnerId);
-      return { partnerId: pt.partnerId, regionId: pt.regionId, name: pt.name, note: pt.note,
+      var o = { partnerId: pt.partnerId, regionId: pt.regionId, name: pt.name, note: pt.note,
                took: t.took, paid: t.paid, owed: t.owed, byMethod: t.byMethod,
                sold: t.sold, preordered: t.preordered };
+      if (pt.eventId) o.eventId = pt.eventId;
+      return o;
     }),
     /* Change taken out to give to buyers: where it came from, where it is now,
        and whether it has gone back. Kept apart from the cash movements so it
@@ -5281,7 +5342,7 @@ function purgeRegions_(regionIds) {
   dbDelete_('_costs', function (c) { return here(c.location) || !!partners[String(c.partnerId || '')]; });
   dbDelete_('_change', function (c) { return here(c.loc); });
   dbDelete_('_org', function (r) { return here(r.scope) || !!gone[String(r.scope || '')]; });
-  dbDelete_('_prices', function (r) { return !!gone[String(r.regionId || '')]; });
+  dbDelete_('_prices', function (r) { return !!gone[String(r.regionId || '')] || here(r.regionId); });
   dbDelete_('_payouts', function (r) { return !!partners[String(r.partnerId || '')]; });
   dbDelete_('_partners', function (r) { return !!partners[String(r.partnerId)]; });
   dbDelete_('_holders', function (r) { return !!gone[String(r.regionId || '')]; });
@@ -5640,9 +5701,9 @@ function doSellBundle(p) {
      credited to each title did not. */
   var legs = normalizeLegs_(p.legs || []);
   var payCur = (legs[0] && legs[0].cur) || 'USD';
-  var regionForPrice = regionOfLoc_(loc);
+  // At an event with its own prices, those are what the buyer was asked (b225).
   var weights = items.map(function (it) {
-    return Number(priceFor_(regionForPrice, it.book.id, payCur)) || Number(it.book.usd) || 1;
+    return Number(priceAtLoc_(loc, it.book.id, payCur)) || Number(it.book.usd) || 1;
   });
   var wSum = weights.reduce(function (a, c) { return a + c; }, 0) || items.length;
   var perItem = items.map(function () { return []; });
@@ -6155,6 +6216,13 @@ function doDeleteEvent(p) {
   // Whole rows, untouched — rebuilding them field by field is what used to wipe
   // the share links stored alongside them.
   dbDelete_('_events', { eventId: eventId });
+  // Its own prices go with it; a consignment group kept for it serves the region again (b225).
+  dbDelete_('_prices', function (r) { return String(r.regionId) === eventId; });
+  _priceMemo = null;
+  if (dbCols_('_partners').indexOf('eventId') >= 0)
+    objectsOf_('_partners').forEach(function (pt) {
+      if (String(pt.eventId || '') === eventId) dbUpdate_('_partners', { partnerId: String(pt.partnerId) }, { eventId: '' });
+    });
   dbAddCols_('_sales', SALES_HEADERS);
   dbDelete_('_sales', { location: eventId });
 
@@ -6557,8 +6625,11 @@ function partnersAll_() {
   return objectsOf_('_partners')
     .filter(function (x) { return x && x.partnerId && !truthyCell_(x.archived); })
     .map(function (x) {
-      return { partnerId: String(x.partnerId), regionId: String(x.regionId || ''),
-               name: String(x.name || ''), note: String(x.note || '') };
+      var o = { partnerId: String(x.partnerId), regionId: String(x.regionId || ''),
+                name: String(x.name || ''), note: String(x.note || '') };
+      // A group can belong to one event only (b225); sent only when it does.
+      if (x.eventId) o.eventId = String(x.eventId);
+      return o;
     });
 }
 function partnerById_(id) {
@@ -6617,14 +6688,26 @@ function doSavePartner(p) {
   var regionId = String(p.regionId || '');
   if (!regionById_(regionId)) throw new Error('Pick a region.');
   var id = String(p.partnerId || '');
+  /* Which event it belongs to, if just one (b225): its titles are then offered
+     there and not at the region's other events. '' is the whole region. */
+  var eventId = (p.eventId === undefined || p.eventId === null) ? null : String(p.eventId);
+  if (eventId) {
+    var ev = eventById_(eventId);
+    if (!ev || String(ev.regionId) !== regionId) throw new Error('That event is not in this region.');
+  }
+  if (eventId !== null && (eventId || dbCols_('_partners').indexOf('eventId') >= 0)) dbAddCols_('_partners', ['eventId']);
+  else eventId = null;
   if (id) {
     var pSet = { name: name, note: String(p.note || '').trim() };
     if (p.archived !== undefined) pSet.archived = !!p.archived;
+    if (eventId !== null) pSet.eventId = eventId;
     dbUpdate_('_partners', { partnerId: id }, pSet);
   } else {
     id = 'pt_' + Utilities.getUuid().slice(0, 6);
-    dbInsert_('_partners', { partnerId: id, regionId: regionId, name: name, note: String(p.note || '').trim(),
-                             createdAt: new Date(), archived: false });
+    var row = { partnerId: id, regionId: regionId, name: name, note: String(p.note || '').trim(),
+                createdAt: new Date(), archived: false };
+    if (eventId !== null) row.eventId = eventId;
+    dbInsert_('_partners', row);
   }
   markDirtyRegions_([regionId]);
   return id;
@@ -8436,6 +8519,7 @@ function describe_(action, p, result, moves, who) {
     case 'reorder':      d = { text: 'Changed the order of ' + (p.kind === 'event' ? 'events' : 'regions') }; break;
     case 'reorderBooks': d = { text: 'Changed the order of the titles' }; break;
     case 'setPrices':    d = { text: 'Changed prices' + (p.regionId ? ' in ' + reg(p.regionId) : '') }; break;
+    case 'setEventPrices': d = { text: 'Changed the prices at ' + locLabel_(p.eventId) }; locs[String(p.eventId)] = 1; break;
     case 'addBook':      d = { text: 'Added a new title: “' + p.name + '”' }; break;
     case 'renameBook':   d = { text: 'Renamed a title to “' + p.name + '”' }; break;
     case 'deleteBook':   d = { text: 'Deleted a title' }; break;

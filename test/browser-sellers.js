@@ -174,6 +174,36 @@ const API = 'http://api.test/';
     await refresh(own);
     t.push(['…and the panel is gone (nothing open)', await own.evaluate(() => document.querySelector('#countPanel').style.display === 'none')]);
 
+    /* ---- b225: an event's own prices; a consignment group for one event ---- */
+    await O({ action: 'createEvent', eventId: 'ev_cafe', name: 'Cafe', regionId: 'rg_it', season: SA });
+    await O({ action: 'setPrices', regionId: 'rg_it', prices: { [B[1]]: { EUR: 15 } }, season: SA });
+    const g = await O({ action: 'savePartner', regionId: 'rg_it', name: 'Yoga Friends', eventId: 'ev_yoga', season: SA });
+    await O({ action: 'saveConsignBook', partnerId: g.result, name: 'Friends Songbook', cat: 'small', regionId: 'rg_it', location: 'ev_yoga', stock: 3, season: SA });
+    await refresh(own);
+    await own.evaluate(() => goTo('event', 'ev_yoga')); await own.waitForTimeout(500);
+    await own.click('[data-act="eventprices"]'); await own.waitForTimeout(300);
+    t.push(['Event Prices shows the region\'s price greyed in the blank box', await own.evaluate(b =>
+      document.querySelector(`.ep[data-book="${b}"][data-cur="EUR"]`).placeholder === '15', B[1])]);
+    await own.fill(`.ep[data-book="${B[1]}"][data-cur="EUR"]`, '12');
+    await own.screenshot({ path: shot('6-prices') });
+    await own.click('#epSave'); await own.waitForTimeout(2000);
+    const ep = (await O({ action: 'getState', season: SA })).state.eventPrices;
+    t.push(['saved on the server: 12 at Yoga Studio', ep && ep.ev_yoga[B[1]].EUR === 12]);
+    t.push(['the shelf at Yoga Studio asks 12', await own.evaluate(b => priceFor(bookById(b), 'EUR'), B[1]) === 12]);
+    t.push(['…the button counts it: "Event Prices (1 set)"', /Event Prices \(1 set\)/.test(await own.evaluate(() => document.querySelector('[data-act="eventprices"]').innerText))]);
+    t.push(['…Yoga Friends\' title is on this shelf', await own.evaluate(() => shelfBooks().some(b => b.name === 'Friends Songbook'))]);
+    await own.evaluate(() => goTo('event', 'ev_cafe')); await own.waitForTimeout(500);
+    t.push(['at the Cafe it is still the region\'s 15', await own.evaluate(b => priceFor(bookById(b), 'EUR'), B[1]) === 15]);
+    t.push(['…and Yoga Friends\' title is not offered there', await own.evaluate(() => !baseShelfBooks().some(b => b.name === 'Friends Songbook'))]);
+    await own.click('[data-act="partners"]'); await own.waitForTimeout(300);
+    t.push(['…nor is the group listed in its Consignment Books', !/Yoga Friends/.test(await own.evaluate(() => document.querySelector('.modal').innerText))]);
+    await own.evaluate(() => closeModal());
+    await own.evaluate(() => goTo('region', 'rg_it')); await own.waitForTimeout(500);
+    await own.click('[data-act="partners"]'); await own.waitForTimeout(300);
+    t.push(['at the region the group shows "Only at Yoga Studio"', /Yoga Friends[\s\S]*Only at Yoga Studio/.test(await own.evaluate(() => document.querySelector('.modal').innerText))]);
+    await own.screenshot({ path: shot('7-consign') });
+    await own.evaluate(() => closeModal());
+
     /* ---- Phone ---- */
     const phone = await open('sita@example.com', 'Sita', 390);
     await phone.screenshot({ path: shot('4-phone') });
