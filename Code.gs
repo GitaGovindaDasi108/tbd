@@ -179,7 +179,11 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   'pmore',
   /* The shelf a delivered pre-order's copy came off, so deleting the sale puts
      it back there rather than on some default warehouse. */
-  'dfrom'];
+  'dfrom',
+  /* Who made the sale, by sign-in (b223): their Google address. soldBy is the
+     name shown; this one stays the same when they rename themselves, so "My
+     sales" and Sales by seller still add up. Empty on a link (self-declared). */
+  'soldById'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -218,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b222';
+var SERVER_BUILD = 'b223';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -301,6 +305,8 @@ function handle(e) {
     _movesById = null;
     setSeasonContext_('');               // no season carried over from a previous call
     _cashBy = '';                        // nor who was asking
+    _meEmail = trustedWho ? String(trustedWho.email || '') : '';
+    _meGrant = trustedWho ? String(trustedWho.grant || '') : '';
 
     // ---- Cheapest possible call: one property read, no sheet access. ----
     if (action === 'ping') {
@@ -454,6 +460,8 @@ function handle(e) {
         case 'deleteSale':       doDeleteSale(params);       break;
         case 'markPaid':         doMarkPaid(params);         break;
         case 'giveChange':       doGiveChange(params);       break;
+        case 'handoverCash':     doHandoverCash(params, who); break;
+        case 'handoverAnswer':   doHandoverAnswer(params, who); break;
         case 'markDelivered':    doMarkDelivered(params);    break;
         case 'setWarehouseName': doSetWarehouseName(params); break;
         case 'cashMove':         doCashMove(params);         break;
@@ -654,6 +662,7 @@ function scopedStateBuild_(who) {
   full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location] || shipLocs[i.location]; });
   full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return String(x.fulfilBy) === String(regionId); });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
+  if (full.handovers) full.handovers = full.handovers.filter(function (h) { return mine[String(h.location)]; });
   var drafts = {};
   Object.keys(full.closeDrafts || {}).forEach(function (k) {
     var id = k.split(':').slice(1).join(':');
@@ -725,6 +734,7 @@ function scopeToSeason_(st) {
         || String(c.fromAcct) === 'BANK' || String(c.toAcct) === 'BANK';
   });
   st.costs = (st.costs || []).filter(function (c) { return mine[String(c.location)]; });
+  if (st.handovers) st.handovers = st.handovers.filter(function (h) { return mine[String(h.location)]; });
   // Requests this season's regions were asked to fulfill, wherever they came from.
   st.remote = (st.remote || []).filter(function (x) { return regionOk[String(x.fulfilBy)]; });
   /* Change follows the money, so it can be sitting with a coordinator rather
@@ -817,6 +827,14 @@ function stateJson_() {
   // The currency each payment type arrives in, once any has been set (b210).
   var ptc = payTypeCurrencies_();
   if (Object.keys(ptc).length) st.payTypeCur = ptc;
+  /* Who made each sale, by sign-in, and the cash handed to Event Leads (b223) —
+     sent only once there are any, so nothing changes for a tour without them. */
+  if (dbCols_('_sales').indexOf('soldById') >= 0) {
+    var byId = {};
+    objectsOf_('_sales').forEach(function (r) { if (r.soldById) byId[String(r.saleId)] = String(r.soldById); });
+    (st.sales || []).forEach(function (x) { if (byId[x.saleId]) x.soldById = byId[x.saleId]; });
+  }
+  if (dbHas_('_handovers')) st.handovers = handoversAll_();
   // At HQ, every season's records ride along, taken before HQ's own trim.
   if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
   var str = JSON.stringify(scopeToSeason_(st));
@@ -1869,6 +1887,8 @@ var OUTSIDE_ORIGIN = 'OUTSIDE';
 
 var SELLER_ACTIONS = {
   getState:1, ping:1, orgSave:1, giveChange:1,
+  // Cash handed from a seller to their Event Lead; who may confirm is checked inside (b223).
+  handoverCash:1, handoverAnswer:1,
   sell:1, sellBundle:1, donate:1,
   editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1
@@ -4526,6 +4546,10 @@ function cashRows_() {
    transfer into a regional account left us in. */
 var CASH_HEADERS = ['id','ts','kind','fromAcct','toAcct','cur','amt','note','purpose','by','changeAmt','changeIds','changeRef'];
 var _cashBy = '';
+/* Who is asking, by sign-in (b223): set by the Cloudflare server for a signed-in
+   person (see setTrustedWho_), empty on a link and on Google. */
+var _meEmail = '';
+var _meGrant = '';
 
 /* What has been deliberately deleted, and must never come back.
 
@@ -5461,7 +5485,7 @@ function doSell(p) {
 
   appendSale_({
     saleId: p.saleId,               // the app's own name for it, if it gave one
-    soldBy: p.by,
+    soldBy: p.by, soldById: _meEmail,
     changeamt: p.changeamt, changecur: p.changecur,
     location: loc,
     type: isPreorder ? 'PREORDER' : 'SALE',
@@ -5581,7 +5605,9 @@ function doSellBundle(p) {
       // Members are named from their transaction, so the app knows each one's
       // id without waiting to be told.
       saleId: bundleId + '_' + i,
-      soldBy: p.by,
+      // An edit keeps whoever made the sale (b223); a new one is the person asking.
+      soldBy: p._keepSeller ? p._keepSeller.by : p.by,
+      soldById: p._keepSeller ? p._keepSeller.id : _meEmail,
       // Change owed belongs to the transaction, not to each book in it, so it
       // rides on the first line and the bundle reports it once.
       changeamt: i === 0 ? p.changeamt : 0,
@@ -5662,6 +5688,8 @@ function doEditBundle(p) {
      the second try once the screen had caught up. */
   p.keepBundleId = String(p.bundle);
   p.isEdit = true;
+  // Whoever made the sale still made it after an edit (b223).
+  p._keepSeller = { by: String(members[0].soldBy || p.by || ''), id: String(members[0].soldById || '') };
   // The dollars received survive an edit that does not speak to them.
   if (p.usdActual === undefined) {
     var had = members.filter(function (m) { return usdActualIn_(m.usdActual) !== ''; });
@@ -5773,7 +5801,7 @@ function doDonate(p) {
   var loc = placeOf_(p.location);
   appendSale_({
     saleId: p.saleId,               // the app's own name for it, if it gave one
-    soldBy: p.by,
+    soldBy: p.by, soldById: _meEmail,
     changeamt: p.changeamt, changecur: p.changecur,
     location: loc, type: 'DONATION', bookId: '', qty: 0,
     legs: p.legs || [], pending: !!p.pending,
@@ -5808,6 +5836,7 @@ function appendSale_(o) {
     // Who recorded it. Self-declared on a share link, so it's a trail to follow
     // up, not proof — but it answers "who should I ask about this?".
     soldBy: String(o.soldBy || '').trim().slice(0, 40),
+    soldById: String(o.soldById || '').slice(0, 120),
     /* The reverse of a pending payment: they handed over more than the price
        and we could not break it, so we owe them the difference. */
     changeamt: Number(o.changeamt) || 0,
@@ -6262,6 +6291,7 @@ function doEditSale(p) {
     comments: p.comments !== undefined ? p.comments : old.comments,
     // Who originally recorded it stays put — an edit shouldn't rewrite history.
     soldBy: old.soldBy || '',
+    soldById: old.soldById || '',
     changeamt: p.changeamt !== undefined ? (Number(p.changeamt) || 0) : (Number(old.changeamt) || 0),
     changecur: p.changecur !== undefined ? String(p.changecur) : String(old.changecur || ''),
     usdActual: p.usdActual !== undefined ? usdActualIn_(p.usdActual) : old.usdActual
@@ -6339,6 +6369,63 @@ function doGiveChange(p) {
   var found = dbUpdate_('_sales', { saleId: saleId }, { changeamt: 0, changecur: '' });
   if (!found) return;                       // already cleared; nothing to do
   markDirtyRegions_([regionOfLoc_(String(p.location || ''))]);
+}
+
+/* ---- Cash handed from a seller to their Event Lead (b223) ----
+   Two taps: the seller says "I am handing you this", the Event Lead confirms
+   they received it (or declines, if it never reached them). Nothing moves in
+   the Cash Tracker — the cash was already the event's; this records which
+   person has it, so a seller's "cash with me" goes down only once confirmed. */
+var HANDOVER_HEADERS = ['id','ts','location','fromId','fromName','toId','toName','amounts','status','answeredAt','answeredBy'];
+function handoversAll_() {
+  if (!dbHas_('_handovers')) return [];
+  return objectsOf_('_handovers').filter(function (h) { return h && h.id; }).map(function (h) {
+    var a = {}; try { a = JSON.parse(String(h.amounts || '{}')) || {}; } catch (e) { a = {}; }
+    return { id: String(h.id), ts: h.ts, location: String(h.location || ''),
+             fromId: String(h.fromId || ''), fromName: String(h.fromName || ''),
+             toId: String(h.toId || ''), toName: String(h.toName || ''), amounts: a,
+             status: String(h.status || 'waiting'), answeredAt: h.answeredAt ? dateText_(h.answeredAt) : '',
+             answeredBy: String(h.answeredBy || '') };
+  });
+}
+/* Does this request's role cover this place? (A link: its events or region.) */
+function whoCovers_(who, loc) {
+  if (who.role === 'admin') return true;
+  if (who.role === 'seller') return (who.eventIds || [who.eventId]).indexOf(String(loc)) >= 0;
+  return locsInRegion_(who.regionId).indexOf(String(loc)) >= 0;
+}
+function doHandoverCash(p, who) {
+  var id = String(p.id || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40);
+  if (!id) throw new Error('That handover has no name; try again.');
+  if (!dbHas_('_handovers')) dbCreate_('_handovers', HANDOVER_HEADERS);
+  if (objectsOf_('_handovers').some(function (h) { return String(h.id) === id; })) return id;   // a resend
+  var loc = placeOf_(p.location);
+  var amounts = {};
+  Object.keys(p.amounts || {}).forEach(function (c) {
+    var n = Math.round((Number(p.amounts[c]) || 0) * 100) / 100;
+    if (n > 0 && /^[A-Z]{3}$/.test(c)) amounts[c] = n;
+  });
+  if (!Object.keys(amounts).length) throw new Error('Enter how much cash you are handing over.');
+  // Allowed after the event closes, like settling a debt: the cash still has to change hands.
+  dbInsert_('_handovers', { id: id, ts: new Date(), location: loc, fromId: _meEmail, fromName: _cashBy,
+    toId: String(p.toId || '').toLowerCase().slice(0, 120), toName: String(p.toName || '').slice(0, 40),
+    amounts: JSON.stringify(amounts), status: 'waiting', answeredAt: '', answeredBy: '' });
+  markDirty_(loc);
+  return id;
+}
+function doHandoverAnswer(p, who) {
+  var id = String(p.id || '');
+  var h = handoversAll_().filter(function (x) { return x.id === id; })[0];
+  if (!h) throw new Error('That handover is no longer listed.');
+  if (h.status !== 'waiting') return h.status;                     // already answered (a resend)
+  var mine = _meEmail && h.toId === _meEmail;
+  var anyLead = !h.toId && _meGrant === 'EL' && whoCovers_(who, h.location);
+  if (!(who.role === 'admin' || mine || anyLead)) throw new Error('Only the person it was handed to can confirm it.');
+  if (_meEmail && h.fromId === _meEmail && who.role !== 'admin') throw new Error('You cannot confirm your own handover.');
+  var status = p.accept === false || String(p.accept) === 'false' ? 'declined' : 'received';
+  dbUpdate_('_handovers', { id: id }, { status: status, answeredAt: new Date(), answeredBy: _cashBy });
+  markDirty_(h.location);
+  return status;
 }
 
 function doMarkPaid(p) {
@@ -8090,7 +8177,8 @@ var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions
 var ACTIVITY_SKIP = {
   sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
   donate:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
-  settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1
+  settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1,
+  handoverCash:1, handoverAnswer:1    // a record of its own, like a sale
 };
 var _cashIds = [];            // cash rows written by the current request
 var _activityBefore = null;   // what a change replaced, noted just before it runs

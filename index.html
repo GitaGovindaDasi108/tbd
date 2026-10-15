@@ -1359,6 +1359,19 @@ body.list-view .mc-name{min-height:0}
 .adm-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06)}
 .adm-who{min-width:0;overflow-wrap:anywhere}
 .adm-btns{display:flex;gap:6px;flex-shrink:0}
+/* Sellers and their cash (b223) */
+.my-cash{font-size:22px}
+.hand-btn{margin-top:6px}
+.ho-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px}
+.ho-row.received,.ho-row.declined{opacity:.7}
+.sb-wrap{overflow-x:auto}
+.sb-table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.sb-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line-d)}
+.sb-table td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.sb-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.sb-table .sb-name{font-weight:700;color:var(--plum)}
+.sb-table tr.sb-sub td{font-size:12px;color:var(--muted);padding-top:3px;padding-bottom:3px}
+.sb-table tr.sb-sub .sb-name{font-weight:500;padding-left:18px;color:var(--muted)}
 /* People and roles (b222) */
 .ppl-person{padding:9px 0;border-bottom:1px solid var(--line)}
 .ppl-roles{display:flex;flex-direction:column;gap:4px;margin-top:5px}
@@ -1395,7 +1408,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b222</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b223</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1511,6 +1524,10 @@ body.list-view .mc-name{min-height:0}
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
+    <section class="panel hand-panel" id="handPanel" data-fold="handovers" style="display:none">
+      <h2 class="sec-h2">Cash Handed Over</h2>
+      <div class="body"><div class="log" id="handList"></div></div>
+    </section>
     <section class="panel change-panel" id="changePanel" data-fold="change" style="display:none">
       <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="changeList"></div></div>
@@ -1527,6 +1544,11 @@ body.list-view .mc-name{min-height:0}
       <div class="body" id="payBody"></div>
     </section>
   </div>
+  <!-- Sales by seller (b223): each seller's books and cash, at a region or event. data-full: a wide table. -->
+  <section class="panel" id="sellerPanel" data-fold="sellers" data-full style="display:none">
+    <h2 class="sec-h2">Sales by Seller <span class="hint">books sold and the cash each one holds</span></h2>
+    <div class="body"><div id="sellerList"></div></div>
+  </section>
   </div>
   </div>
 
@@ -4153,6 +4175,8 @@ function renderTotals(){
   const money=o=>Object.keys(o).filter(c=>o[c])
     .sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
+  // A Seller sees their own sales and cash, never the event's totals (b223).
+  if(plainSeller()){ $('#totals').innerHTML = sellerTilesHTML(); return; }
   $('#totals').innerHTML=`
     ${(function(){
       // Delivered pre-orders are already inside the sold count, so the headline
@@ -5260,13 +5284,172 @@ function renderBottom(){
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
   chg.style.display = change.length?'':'none';
-  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length].filter(Boolean).length;
+  const hand = renderHandovers();
+  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length, hand].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
   // These panels exist to be acted on, so they show their details up front.
   if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,{context:'pre'})).join('');
   if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
   if(change.length) $('#changeList').innerHTML=change.map(x=>logItemHTML(x,{context:'change'})).join('');
+  renderSellers();
+}
+
+/* ---- Sellers, their sales and their cash (b223) ----
+   Which role this page is working in: a Seller sees their own sales and the
+   cash they are holding, and hands it to their Event Lead; leads see each
+   seller's sales and confirm the cash handed to them. */
+function actingRole(){
+  if(ME){ const g = actingGrant(); return g ? g.role : (ME.universal ? 'U' : ''); }
+  if(SHARE_KEY) return isSeller() ? 'S' : 'RL';
+  return 'U';
+}
+const plainSeller = () => isSeller() && actingRole()==='S';
+function myName(){ return ME ? ME.name : whoAmI(); }
+/* A sale is mine: by sign-in where it was signed in, else by the name on a link. */
+function isMine(x){
+  if(ME) return x.soldById ? x.soldById===ME.email : (!!x.soldBy && x.soldBy===ME.name);
+  return !!whoAmI() && x.soldBy===whoAmI();
+}
+// "9 Oct, 15:58" — as the sales log writes times.
+function fmtWhen(ts){ try{ return ts ? new Date(ts).toLocaleString(LOCALE, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){ return ''; } }
+function handoverIsMine(h){ return ME ? (h.fromId ? h.fromId===ME.email : h.fromName===ME.name) : (!!whoAmI() && h.fromName===whoAmI()); }
+/* Cash taken on these sales, by currency (only what was actually paid, in cash). */
+function cashTaken(list){
+  const m = {};
+  list.forEach(x=>{ if(!received(x)) return; legs(x).forEach(l=>{ if(l.type==='Cash' && l.amt) m[l.cur]=(m[l.cur]||0)+Number(l.amt); }); });
+  return m;
+}
+function sumAmounts(list){ const m={}; list.forEach(h=>Object.keys(h.amounts||{}).forEach(c=>{ m[c]=(m[c]||0)+Number(h.amounts[c]); })); return m; }
+function minusAmounts(a, b){ const m={}; new Set(Object.keys(a).concat(Object.keys(b))).forEach(c=>{ const v=Math.round(((a[c]||0)-(b[c]||0))*100)/100; if(Math.abs(v)>0.004) m[c]=v; }); return m; }
+const moneyLine = m => Object.keys(m).filter(c=>m[c]).sort().map(c=>cashFmt(m[c],c)).join(' · ');
+function handoversHere(){
+  const locs = new Set(scopedSales().map(x=>x.location).concat(CUR_LOC ? [CUR_LOC] : []));
+  if(CUR_LEVEL==='region') locsInRegion(CUR_REGION).forEach(l=>locs.add(l));
+  return (STATE.handovers||[]).filter(h=>CUR_LEVEL==='season' || locs.has(h.location));
+}
+/* My cash at this event: taken, less what I have handed over (confirmed or waiting). */
+function myCash(){
+  const mine = scopedSales().filter(isMine);
+  const hs = handoversHere().filter(handoverIsMine);
+  const taken = cashTaken(mine);
+  const done = sumAmounts(hs.filter(h=>h.status==='received'));
+  const waiting = hs.filter(h=>h.status==='waiting');
+  return { taken, done, waiting, withMe: minusAmounts(minusAmounts(taken, done), sumAmounts(waiting)) };
+}
+/* The top tiles for a Seller: their own books and their own cash, never the event's totals. */
+function sellerTilesHTML(){
+  const mine = scopedSales().filter(isMine);
+  const c = bookCounts(mine.filter(x=>x.bookId));
+  const cash = myCash(), leads = ((actingGrant()||{}).leads)||[];
+  const to = leads.length===1 ? leads[0].name : 'your Event Lead';
+  const withMe = moneyLine(cash.withMe);
+  return `
+    <div class="tcard"><div class="label">My sales</div>
+      <div class="value">${c.sold}<span class="value-lbl">sold</span>${c.pre?`<span class="value-pre">${preNote(c)}</span>`:''}</div>
+      <div class="sub">${giftNote(c) || (myName() ? 'by ' + esc(myName()) : '&nbsp;')}</div></div>
+    <div class="tcard usd"><div class="label">My cash</div>
+      <div class="value my-cash">${withMe ? esc(withMe) : '—'}</div>
+      <div class="sub">${cash.waiting.length ? cash.waiting.map(h=>`${esc(moneyLine(h.amounts))} waiting for ${esc(h.toName||'the Event Lead')} to confirm`).join('<br>') : 'cash you collected and still hold'}
+        ${withMe ? `<br><button class="btn btn-sm btn-primary hand-btn" data-act="handover">Hand your cash to ${esc(to)}</button>` : ''}</div></div>`;
+}
+function handoverModal(){
+  const cash = myCash(), leads = ((actingGrant()||{}).leads)||[];
+  const curs = Object.keys(cash.withMe).filter(c=>cash.withMe[c]>0);
+  if(!curs.length){ toast('You have no cash to hand over here.'); return; }
+  const loc = CUR_LOC;
+  openModal(`
+    ${mHead('Hand over your cash')}
+    <div class="m-body">
+      ${leads.length>1 ? `<div class="field"><label>To</label><select id="hoTo">${leads.map(l=>`<option value="${esc(l.email)}">${esc(l.name)}</option>`).join('')}</select></div>`
+        : `<div class="hint">To <b>${esc(leads.length ? leads[0].name : 'the Event Lead')}</b>, at ${esc(locName(loc))}.</div>`}
+      ${curs.map(c=>`<div class="field"><label>${esc(c)} — you hold ${esc(cashFmt(cash.withMe[c], c))}</label>
+        <input class="ho-amt" data-cur="${esc(c)}" type="number" step="0.01" min="0" inputmode="decimal" value="${cash.withMe[c]}"></div>`).join('')}
+      <div class="hint">They tap to confirm they received it. Until then it shows as waiting.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="hoGo">Hand it over</button></div>`);
+  $('#hoGo').addEventListener('click', ()=>{
+    const amounts = {};
+    document.querySelectorAll('#modal .ho-amt').forEach(i=>{ const v = Math.round((Number(i.value)||0)*100)/100; if(v>0) amounts[i.dataset.cur]=v; });
+    if(!Object.keys(amounts).length){ $('#modalErr').textContent = 'Enter how much you are handing over.'; return; }
+    const sel = $('#hoTo'), lead = sel ? leads.find(l=>l.email===sel.value) : leads[0];
+    const id = 'H' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const rec = { id, ts:new Date().toISOString(), location:loc, fromId: ME ? ME.email : '', fromName: myName(),
+      toId: lead ? lead.email : '', toName: lead ? lead.name : '', amounts, status:'waiting', answeredAt:'', answeredBy:'' };
+    commit({action:'handoverCash', id, location:loc, toId:rec.toId, toName:rec.toName, amounts},
+      st=>{ (st.handovers = st.handovers || []).push(rec); },
+      'Handed over — waiting for ' + (rec.toName || 'the Event Lead') + ' to confirm');
+    closeModal();
+  });
+}
+/* May this page confirm a handover? The person it was handed to; any Event
+   Lead there when it named nobody; Universal. Never your own. */
+function mayAnswer(h){
+  if(h.status!=='waiting' || handoverIsMine(h)) return false;
+  if(isAdmin()) return true;
+  if(ME && h.toId) return h.toId===ME.email;
+  return actingRole()==='EL';
+}
+function answerHandover(id, accept){
+  const h = (STATE.handovers||[]).find(x=>x.id===id); if(!h) return;
+  if(!accept && !confirm('Mark this cash as NOT received? ' + (h.fromName||'The seller') + ' will see it was declined.')) return;
+  commit({action:'handoverAnswer', id, accept},
+    st=>{ const r=(st.handovers||[]).find(x=>x.id===id); if(r){ r.status = accept ? 'received' : 'declined'; r.answeredAt=new Date().toISOString(); r.answeredBy=myName(); } },
+    accept ? 'Cash received from ' + (h.fromName||'the seller') : 'Marked as not received');
+}
+/* Leads: the cash handed over here, waiting ones first. */
+function renderHandovers(){
+  const panel = $('#handPanel'); if(!panel) return 0;
+  const hs = plainSeller() ? [] : handoversHere().slice().sort((a,b)=>(a.status==='waiting'?0:1)-(b.status==='waiting'?0:1) || new Date(b.ts)-new Date(a.ts));
+  panel.style.display = hs.length ? '' : 'none';
+  if(!hs.length) return 0;
+  $('#handList').innerHTML = hs.slice(0, 30).map(h=>`<div class="ho-row ${h.status}">
+      <div><b>${esc(h.fromName||'A seller')}</b> → ${esc(h.toName||'the Event Lead')} · ${esc(moneyLine(h.amounts))}
+        <div class="muted-note">${esc(locName(h.location))} · ${esc(fmtWhen(h.ts))}${h.status!=='waiting'
+          ? ' · ' + (h.status==='received' ? 'received' : 'not received') + (h.answeredBy ? ' — ' + esc(h.answeredBy) : '') : ''}</div></div>
+      ${mayAnswer(h) ? `<span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="hoyes" data-id="${esc(h.id)}">Received</button>
+        <button class="btn btn-ghost btn-sm" data-act="hono" data-id="${esc(h.id)}">Not received</button></span>`
+        : (h.status==='waiting' ? '<span class="muted-note">waiting</span>' : '')}
+    </div>`).join('');
+  return 1;
+}
+/* Sales by seller: each seller's books and cash, and where that cash is now. */
+function renderSellers(){
+  const panel = $('#sellerPanel'); if(!panel) return;
+  const show = !plainSeller() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
+  const s = show ? scopedSales().filter(x=>x.type!=='DONATION') : [];
+  panel.style.display = s.length ? '' : 'none';
+  if(!s.length) return;
+  const key = x => x.soldById || ('n:' + (x.soldBy || ''));
+  const hKey = h => h.fromId || ('n:' + (h.fromName || ''));
+  const groups = {};
+  s.forEach(x=>{ const k=key(x); (groups[k] = groups[k] || {name:'', list:[]}).list.push(x); if(x.soldBy) groups[k].name = x.soldBy; });
+  const hs = handoversHere();
+  const row = (name, list, hlist, sub) => {
+    const c = bookCounts(list.filter(x=>x.bookId));
+    const taken = cashTaken(list);
+    const done = sumAmounts(hlist.filter(h=>h.status==='received'));
+    const wait = sumAmounts(hlist.filter(h=>h.status==='waiting'));
+    const left = minusAmounts(minusAmounts(taken, done), wait);
+    return `<tr class="${sub?'sb-sub':''}"><td class="sb-name">${esc(name)}</td><td class="num">${c.sold}</td><td class="num">${c.pre||''}</td>
+      <td>${esc(moneyLine(taken))||'—'}</td><td>${esc(moneyLine(done))||'—'}${moneyLine(wait)?`<div class="muted-note">${esc(moneyLine(wait))} waiting</div>`:''}</td>
+      <td><b>${esc(moneyLine(left))||'—'}</b></td></tr>`;
+  };
+  const keys = Object.keys(groups).sort((a,b)=>groups[b].list.length-groups[a].list.length);
+  $('#sellerList').innerHTML = `<div class="sb-wrap"><table class="sb-table">
+    <thead><tr><th>Seller</th><th class="num">Sold</th><th class="num">Pre-orders</th><th>Cash collected</th><th>Handed to lead</th><th>Still with them</th></tr></thead>
+    <tbody>${keys.map(k=>{
+      const g = groups[k], mineH = hs.filter(h=>hKey(h)===k);
+      let h = row(g.name || '(no name given)', g.list, mineH);
+      // At a region: the same seller, event by event.
+      if(CUR_LEVEL==='region'){
+        const locs = [...new Set(g.list.map(x=>x.location))];
+        if(locs.length>1) h += locs.map(l=>row('· ' + locName(l), g.list.filter(x=>x.location===l), mineH.filter(x=>x.location===l), true)).join('');
+      }
+      return h;
+    }).join('')}</tbody></table></div>`;
 }
 
 /** How much change we still owe on a sale, in its own currency. */
@@ -12750,6 +12933,9 @@ document.addEventListener('click',e=>{
   }
   if(a==='whoami'){ if(ME) youModal(); else askWhoAmI(true); return; }
   if(a==='people'){ peopleModal(); return; }
+  if(a==='handover'){ handoverModal(); return; }
+  if(a==='hoyes'){ answerHandover(t.dataset.id, true); return; }
+  if(a==='hono'){ answerHandover(t.dataset.id, false); return; }
   if(a==='signout'){ signOut(); return; }
   if(a==='admins'){ adminsModal(); return; }
   if(a==='admappr' || a==='admdecl' || a==='admrem'){ adminsDo(a, t.dataset.email); return; }

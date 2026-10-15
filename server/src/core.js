@@ -111,8 +111,10 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     }
     // The owner's spreadsheet requests are passed to Google, which does them.
     if (universal && SHEET_ACTIONS.test(action)) return forwardToGoogle(p);
+    // Who is asking, told to Code.gs directly: the role acted in, their name, their address (b223).
+    if (universal) app.setTrustedWho_({ role: 'admin', name: auth.nameOf(me), email: me, grant: 'U' });
     if (acting) {
-      app.setTrustedWho_(Object.assign({ name: auth.nameOf(me) }, acting.who));
+      app.setTrustedWho_(Object.assign({ name: auth.nameOf(me), email: me, grant: acting.grant.role }, acting.who));
       const out = answer(e);
       // Which role this was answered in, so the page can show it.
       if (action === 'getState' || action === 'setSeason') {
@@ -135,7 +137,14 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   }
   function meInfo(me) {
     const P = places(), mine = auth.grantsOf(me), owner = auth.isOwner(me);
-    const grants = mine.map(g => people.describe(P, g));
+    const all = auth.allGrants();
+    const grants = mine.map(g => {
+      const d = people.describe(P, g);
+      // At an event: its Event Leads by name, so a Seller can "Hand your cash to Gita" (b223).
+      if ((people.ROLES[g.role] || {}).kind === 'event') d.leads = all.filter(x => x.role === 'EL' && x.placeId === g.placeId && x.email !== me)
+        .map(x => ({ email: x.email, name: x.name || x.googleName || x.email.split('@')[0] }));
+      return d;
+    });
     if (owner) grants.unshift({ id: '', role: 'U', roleName: 'Universal', placeId: '', place: 'Everywhere',
       active: true, why: '', usable: true, owner: true });
     return Object.assign(auth.person(me), {

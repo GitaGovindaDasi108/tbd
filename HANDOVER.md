@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b222**.
+Handover notes. Current build: **b223**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,31 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b223 — Stage 3, part 1: who sold it, My sales, cash handover, Sales by Seller
+
+- **Sales remember who made them**: new `_sales` column `soldById` (the
+  signed-in person's address; empty on a link). Code.gs takes it only from the
+  server (`_meEmail`, from `setTrustedWho_`, which core.js now calls for
+  Universal too, with `email`, `name` and `grant` — the role acted in). Edits
+  keep the original seller (`doEditSale`, and `doEditBundle` via `_keepSeller`).
+  The state sends `soldById` only on sales that have one.
+- **A Seller** (role S, or any sales link) sees **My sales** (their own books,
+  `isMine`: by sign-in, else by the name on the link) and **My cash** (cash
+  they took, less what they handed over) instead of the event's tiles
+  (`sellerTilesHTML`).
+- **Cash handover** (`_handovers`, actions `handoverCash` / `handoverAnswer`):
+  "Hand your cash to Gita" — the Event Leads of the event come from the server
+  (`me.grants[].leads`). It waits until the person it was handed to (or, when
+  none was named, an Event Lead there; or Universal) taps Received or Not
+  received; never the seller themself. Allowed after the event closes, like
+  settling. Not in the Activity Log (a record of its own, like sales).
+- **Cash Handed Over** panel (bottom row) for leads, and **Sales by Seller**
+  (region and event pages, not for Sellers): books sold, pre-orders, cash
+  collected, handed to lead, still with them; per event at a region.
+- Test: `test/browser-sellers.js` — a new, faster harness: the real page
+  talking to `server/src/core.js` in-process, with a stand-in Google sign-in.
+- Golden: identical apart from the new column (`--ignore-col=soldById`).
 
 ## Done in b222 — Stage 0 and 1 of logins: people, roles, sign-in for everyone
 
