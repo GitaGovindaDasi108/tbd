@@ -4,6 +4,7 @@
      node test/golden.js --base=b191tag       # against any git revision
      node test/golden.js --base=WORKTREE --store=memory   # sheets vs memory, same code
      node test/golden.js --ignore-col=dfrom   # a column this change adds on purpose
+     node test/golden.js --strip-note         # leave out the note on top of every tab (b226)
      node test/golden.js --store=memory       # working copy with its records in memory
      node test/golden.js test/corpus/extra.jsonl
 
@@ -155,6 +156,19 @@ function firstDiff(a, b, at) {
 }
 const short = v => { const s = JSON.stringify(v); return s && s.length > 300 ? s.slice(0, 300) + '…' : s; };
 
+/* --strip-note: set aside the note at the top of every tab (b226), to show the
+   rest of each tab is unchanged, one row lower. */
+const stripNote = args.includes('--strip-note');
+const noNote = reports => {
+  if (!stripNote) return reports;
+  const out = {};
+  Object.keys(reports).forEach(k => {
+    const g = reports[k];
+    out[k] = (g.length && /^If you wish to edit this sheet/.test(String(g[0][0]))) ? g.slice(1) : g;
+  });
+  return out;
+};
+
 let bad = 0;
 for (const f of files) {
   const name = path.basename(f);
@@ -168,7 +182,7 @@ for (const f of files) {
     if (!diff) diff = firstDiff(dropCols(a.data), dropCols(b.data), 'data');
     if (diff) where = 'request ' + (i + 1) + ' ' + short(a.req || b.req);
   }
-  if (!diff) { diff = firstDiff(A.reports, B.reports, 'reports'); if (diff) where = 'readable spreadsheets'; }
+  if (!diff) { diff = firstDiff(noNote(A.reports), noNote(B.reports), 'reports'); if (diff) where = 'readable spreadsheets'; }
   if (diff) {
     bad++;
     console.log('FAIL     ' + name + ' — ' + where + '\n           at ' + diff.at +

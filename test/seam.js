@@ -19,7 +19,9 @@ const REPORTS = ['checkDriveAccess', 'removeStaleTabs_', 'openOrCreateSheetFile_
   'driveMap_', 'doSetSeasonFolder', 'placeInFolder_', 'doDescriptionsSheet', 'doSetDriveFolder', 'syncSheets',
   'paintSheet_', 'renderPartnerSheet_', 'renderSeasonSheet_', 'renderHQSheet_', 'renderView_', 'orderTabs_', 'removeStaleRegionTabs_',
   // A renamed or deleted event's old readable tab is removed on the spot.
-  'doRenameEvent', 'doDeleteEvent'];
+  'doRenameEvent', 'doDeleteEvent',
+  // Sharing each spreadsheet with the people whose roles reach it (b226).
+  'shareSpreadsheets_'];
 
 // Drop comments so explanations may mention the services freely.
 const code = src.replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))

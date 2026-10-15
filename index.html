@@ -471,6 +471,7 @@ body.busy #busyBar{opacity:1}
 .lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
   margin:4px 0 12px;font-size:13.5px}
 .df-stale{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px}
+.df-rebuild{margin:4px 0 12px}
 .df-loading{padding:20px;text-align:center;color:var(--muted)}
 .df-folder,.df-file{display:flex;align-items:flex-start;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
 .df-folder{background:var(--paper2);border-radius:8px;padding:9px 8px;border-bottom:none;margin:4px 0}
@@ -1359,6 +1360,20 @@ body.list-view .mc-name{min-height:0}
 .adm-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid rgba(0,0,0,.06)}
 .adm-who{min-width:0;overflow-wrap:anywhere}
 .adm-btns{display:flex;gap:6px;flex-shrink:0}
+/* Sellers and their cash (b223) */
+.my-cash{font-size:22px}
+.cnt-diff{color:var(--clay);font-weight:700}
+.hand-btn{margin-top:6px}
+.ho-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px}
+.ho-row.received,.ho-row.declined{opacity:.7}
+.sb-wrap{overflow-x:auto}
+.sb-table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px}
+.sb-table th{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1px solid var(--line-d)}
+.sb-table td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.sb-table .num{text-align:right;font-variant-numeric:tabular-nums}
+.sb-table .sb-name{font-weight:700;color:var(--plum)}
+.sb-table tr.sb-sub td{font-size:12px;color:var(--muted);padding-top:3px;padding-bottom:3px}
+.sb-table tr.sb-sub .sb-name{font-weight:500;padding-left:18px;color:var(--muted)}
 /* People and roles (b222) */
 .ppl-person{padding:9px 0;border-bottom:1px solid var(--line)}
 .ppl-roles{display:flex;flex-direction:column;gap:4px;margin-top:5px}
@@ -1395,12 +1410,11 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b222</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b226</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
-    <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
 </header>
 
@@ -1511,6 +1525,14 @@ body.list-view .mc-name{min-height:0}
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
+    <section class="panel count-panel" id="countPanel" data-fold="counts" style="display:none">
+      <h2 class="sec-h2">Counts to Look Into</h2>
+      <div class="body"><div class="log" id="countList"></div></div>
+    </section>
+    <section class="panel hand-panel" id="handPanel" data-fold="handovers" style="display:none">
+      <h2 class="sec-h2">Cash Handed Over</h2>
+      <div class="body"><div class="log" id="handList"></div></div>
+    </section>
     <section class="panel change-panel" id="changePanel" data-fold="change" style="display:none">
       <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="changeList"></div></div>
@@ -1527,6 +1549,11 @@ body.list-view .mc-name{min-height:0}
       <div class="body" id="payBody"></div>
     </section>
   </div>
+  <!-- Sales by seller (b223): each seller's books and cash, at a region or event. data-full: a wide table. -->
+  <section class="panel" id="sellerPanel" data-fold="sellers" data-full style="display:none">
+    <h2 class="sec-h2">Sales by Seller <span class="hint">books sold and the cash each one holds</span></h2>
+    <div class="body"><div id="sellerList"></div></div>
+  </section>
   </div>
   </div>
 
@@ -1977,6 +2004,18 @@ function preorderedIn(regionId){
 function partnersOf(regionId){
   return (STATE.partners||[]).filter(p=>p.regionId===(regionId||CUR_REGION));
 }
+/* The groups whose titles are offered where you are: at an event, the region's
+   own and any kept for this event only (b225); elsewhere, all the region's. */
+function partnersHere(){
+  const all = partnersOf(CUR_REGION);
+  return CUR_LEVEL==='event' ? all.filter(p=>!p.eventId || p.eventId===CUR_LOC) : all;
+}
+/* Where a group's titles are offered: the whole region, or one of its events. */
+function partnerWhereSel(id, current){
+  const evs = (STATE.events||[]).filter(e=>e.regionId===CUR_REGION && (!closureOf(e.eventId) || e.eventId===current));
+  return `<select id="${id}"><option value="">Every event in ${esc((currentRegion()||{}).name||'the region')}</option>${
+    evs.map(e=>`<option value="${esc(e.eventId)}"${e.eventId===current?' selected':''}>Only at ${esc(e.name)}</option>`).join('')}</select>`;
+}
 function partnerById(id){ return (STATE.partners||[]).find(p=>p.partnerId===id)||null; }
 function isPartnerBook(bookId){ const b=bookById(bookId); return !!(b && b.partnerId); }
 function isPartnerSale(x){ return !!(x && x.bookId && isPartnerBook(x.bookId)); }
@@ -2003,7 +2042,7 @@ function baseShelfBooks(){
      titles into a view of what the tour itself carries. */
   const theirs = (CUR_LEVEL==='season')
     ? []
-    : partnersOf(CUR_REGION).flatMap(p=>partnerBooks(p.partnerId));
+    : partnersHere().flatMap(p=>partnerBooks(p.partnerId));
   const seen = new Set(ours.map(b=>b.id));
   const list = ours.concat(theirs.filter(b=>!seen.has(b.id)));
 
@@ -2024,6 +2063,8 @@ function baseShelfBooks(){
       const pt = partnerById(b.partnerId);
       if(!pt) return;
       if(CUR_LEVEL==='season' || String(pt.regionId)!==String(CUR_REGION)) return;
+      // ...and one kept for another event stays there, unless copies are on this very table (b225).
+      if(CUR_LEVEL==='event' && pt.eventId && pt.eventId!==CUR_LOC && !(invQty(CUR_LOC,b.id)>0)) return;
     }
     if(here.some(l=>invQty(l,b.id)>0)) list.push(b);
   });
@@ -2157,11 +2198,22 @@ function curCurrencies(){
   const r=regionById(CUR_REGION);
   return (r&&r.currencies&&r.currencies.length)?r.currencies:(STATE.currencies||['USD']);
 }
-/** Price of a book in the current region, in a given currency. */
+/** Price of a book where you are, in a given currency: at an event with its
+    own price for it, that one (b225); otherwise the region's. */
 function priceIn(bookId,cur){
+  const ev = eventPriceIn(CUR_LEVEL==='event' ? CUR_LOC : '', bookId, cur);
+  return ev!==null ? ev : regionPriceIn(bookId,cur);
+}
+function regionPriceIn(bookId,cur){
   const pr=(STATE.prices||{})[CUR_REGION];
   if(pr&&pr[bookId]&&pr[bookId][cur]!==undefined) return Number(pr[bookId][cur])||0;
   return 0;
+}
+/** An event's own price for a title, or null when it uses the region's. */
+function eventPriceIn(eventId,bookId,cur){
+  const e = eventId && (STATE.eventPrices||{})[eventId];
+  const v = e && e[bookId] && e[bookId][cur];
+  return (v===undefined || v===null || v==='') ? null : Number(v)||0;
 }
 /** Move the whole app to a level. Keeps CUR_REGION consistent with CUR_LOC. */
 function goTo(level, loc){
@@ -3430,11 +3482,14 @@ function liveWake(){
   else if(LIVE.open){ try{ LIVE.ws.send('rev'); }catch(e){} }
 }
 
+/* Rebuild every spreadsheet now (Universal, from Spreadsheet Links). They are
+   rebuilt on their own a minute or so after the last change anyway; this is for
+   when you want them this moment. */
 async function syncSheet(){
-  setStatus('load','Rebuilding sheet…');
+  setStatus('load','Rebuilding the spreadsheets…');
   try{ const d=await post({action:'syncSheets'}); BASE=d.state; REV=d.rev;
     OPS=OPS.filter(o=>o.rev===undefined||o.rev>REV); STATE=derive(); cacheSave(); renderAll();
-    toast('Google Sheet rebuilt'); setStatus('ok','Up to date · '+clock());
+    toast('Spreadsheets rebuilt'); setStatus('ok','Up to date · '+clock());
   }catch(err){ toast(err.message,true); setStatus('bad','Error'); }
 }
 
@@ -3915,6 +3970,7 @@ function renderAdmin(){
       `<div class="adm-grid"><div class="adm-col">
          <div class="adm-lbl">Admin</div>
          ${coord ? `<button class="btn adm-c1-1" data-act="activity">🗒 Activity Log</button>` : ''}
+         ${coord && ME ? `<button class="btn adm-c1-2" data-act="drivefolder">📁 Spreadsheet Links</button>` : ''}
          <button class="btn adm-c1-${coord?2:1}" data-act="org">👥 App and Sales Support</button>
          ${ME && ME.seesPeople ? `<button class="btn adm-c1-3" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : ''}
          ${ME ? `<button class="btn adm-c1-4" data-act="signout">🚪 Sign Out</button>` : ''}
@@ -3922,6 +3978,7 @@ function renderAdmin(){
          <div class="adm-lbl">Books</div>
          <button class="btn adm-c3-1" data-act="addstock">＋ Add New Stock</button>
          <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
+         ${CUR_LEVEL==='event' ? eventPricesBtn('adm-c3-3') : ''}
        </div>` : ''}</div>`;
     return;
   }
@@ -3958,10 +4015,11 @@ function renderAdmin(){
   // Books
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
   cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
-  const conCount = (season ? (STATE.partners||[]) : partnersOf(CUR_REGION)).length;
+  const conCount = (season ? (STATE.partners||[]) : partnersHere()).length;
   cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books${conCount?` (${conCount})`:''}</button>`);
   cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
     (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
+  if(CUR_LEVEL==='event') cols[2].push(eventPricesBtn());
 
   // Location
   if(isHQ()){
@@ -4153,6 +4211,8 @@ function renderTotals(){
   const money=o=>Object.keys(o).filter(c=>o[c])
     .sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
+  // A Seller sees their own sales and cash, never the event's totals (b223).
+  if(plainSeller()){ $('#totals').innerHTML = sellerTilesHTML(); return; }
   $('#totals').innerHTML=`
     ${(function(){
       // Delivered pre-orders are already inside the sold count, so the headline
@@ -5260,13 +5320,241 @@ function renderBottom(){
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
   chg.style.display = change.length?'':'none';
-  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length].filter(Boolean).length;
+  const hand = renderHandovers(), cnts = renderMismatches();
+  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length, hand, cnts].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
   // These panels exist to be acted on, so they show their details up front.
   if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,{context:'pre'})).join('');
   if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
   if(change.length) $('#changeList').innerHTML=change.map(x=>logItemHTML(x,{context:'change'})).join('');
+  renderSellers();
+}
+
+/* ---- Sellers, their sales and their cash (b223) ----
+   Which role this page is working in: a Seller sees their own sales and the
+   cash they are holding, and hands it to their Event Lead; leads see each
+   seller's sales and confirm the cash handed to them. */
+function actingRole(){
+  if(ME){ const g = actingGrant(); return g ? g.role : (ME.universal ? 'U' : ''); }
+  if(SHARE_KEY) return isSeller() ? 'S' : 'RL';
+  return 'U';
+}
+const plainSeller = () => isSeller() && actingRole()==='S';
+function myName(){ return ME ? ME.name : whoAmI(); }
+/* A sale is mine: by sign-in where it was signed in, else by the name on a link. */
+function isMine(x){
+  if(ME) return x.soldById ? x.soldById===ME.email : (!!x.soldBy && x.soldBy===ME.name);
+  return !!whoAmI() && x.soldBy===whoAmI();
+}
+// "9 Oct, 15:58" — as the sales log writes times.
+function fmtWhen(ts){ try{ return ts ? new Date(ts).toLocaleString(LOCALE, {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : ''; }catch(e){ return ''; } }
+function handoverIsMine(h){ return ME ? (h.fromId ? h.fromId===ME.email : h.fromName===ME.name) : (!!whoAmI() && h.fromName===whoAmI()); }
+/* Cash taken on these sales, by currency (only what was actually paid, in cash). */
+function cashTaken(list){
+  const m = {};
+  list.forEach(x=>{ if(!received(x)) return; legs(x).forEach(l=>{ if(l.type==='Cash' && l.amt) m[l.cur]=(m[l.cur]||0)+Number(l.amt); }); });
+  return m;
+}
+function sumAmounts(list){ const m={}; list.forEach(h=>Object.keys(h.amounts||{}).forEach(c=>{ m[c]=(m[c]||0)+Number(h.amounts[c]); })); return m; }
+function minusAmounts(a, b){ const m={}; new Set(Object.keys(a).concat(Object.keys(b))).forEach(c=>{ const v=Math.round(((a[c]||0)-(b[c]||0))*100)/100; if(Math.abs(v)>0.004) m[c]=v; }); return m; }
+const moneyLine = m => Object.keys(m).filter(c=>m[c]).sort().map(c=>cashFmt(m[c],c)).join(' · ');
+function handoversHere(){
+  const locs = new Set(scopedSales().map(x=>x.location).concat(CUR_LOC ? [CUR_LOC] : []));
+  if(CUR_LEVEL==='region') locsInRegion(CUR_REGION).forEach(l=>locs.add(l));
+  return (STATE.handovers||[]).filter(h=>CUR_LEVEL==='season' || locs.has(h.location));
+}
+/* My cash at this event: taken, less what I have handed over (confirmed or waiting). */
+function myCash(){
+  const mine = scopedSales().filter(isMine);
+  const hs = handoversHere().filter(handoverIsMine);
+  const taken = cashTaken(mine);
+  const done = sumAmounts(hs.filter(h=>h.status==='received'));
+  const waiting = hs.filter(h=>h.status==='waiting');
+  return { taken, done, waiting, withMe: minusAmounts(minusAmounts(taken, done), sumAmounts(waiting)) };
+}
+/* The top tiles for a Seller: their own books and their own cash, never the event's totals. */
+function sellerTilesHTML(){
+  const mine = scopedSales().filter(isMine);
+  const c = bookCounts(mine.filter(x=>x.bookId));
+  const cash = myCash(), leads = ((actingGrant()||{}).leads)||[];
+  const to = leads.length===1 ? leads[0].name : 'your Event Lead';
+  const withMe = moneyLine(cash.withMe);
+  return `
+    <div class="tcard"><div class="label">My sales</div>
+      <div class="value">${c.sold}<span class="value-lbl">sold</span>${c.pre?`<span class="value-pre">${preNote(c)}</span>`:''}</div>
+      <div class="sub">${giftNote(c) || (myName() ? 'by ' + esc(myName()) : '&nbsp;')}</div></div>
+    <div class="tcard usd"><div class="label">My cash</div>
+      <div class="value my-cash">${withMe ? esc(withMe) : '—'}</div>
+      <div class="sub">${cash.waiting.length ? cash.waiting.map(h=>`${esc(moneyLine(h.amounts))} waiting for ${esc(h.toName||'the Event Lead')} to confirm`).join('<br>') : 'cash you collected and still hold'}
+        ${withMe ? `<br><button class="btn btn-sm btn-primary hand-btn" data-act="handover">Hand your cash to ${esc(to)}</button>` : ''}</div></div>`;
+}
+function handoverModal(){
+  const cash = myCash(), leads = ((actingGrant()||{}).leads)||[];
+  const curs = Object.keys(cash.withMe).filter(c=>cash.withMe[c]>0);
+  if(!curs.length){ toast('You have no cash to hand over here.'); return; }
+  const loc = CUR_LOC;
+  openModal(`
+    ${mHead('Hand over your cash')}
+    <div class="m-body">
+      ${leads.length>1 ? `<div class="field"><label>To</label><select id="hoTo">${leads.map(l=>`<option value="${esc(l.email)}">${esc(l.name)}</option>`).join('')}</select></div>`
+        : `<div class="hint">To <b>${esc(leads.length ? leads[0].name : 'the Event Lead')}</b>, at ${esc(locName(loc))}.</div>`}
+      ${curs.map(c=>`<div class="field"><label>${esc(c)} — you hold ${esc(cashFmt(cash.withMe[c], c))}</label>
+        <input class="ho-amt" data-cur="${esc(c)}" type="number" step="0.01" min="0" inputmode="decimal" value="${cash.withMe[c]}"></div>`).join('')}
+      <div class="hint">They tap to confirm they received it. Until then it shows as waiting.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="hoGo">Hand it over</button></div>`);
+  $('#hoGo').addEventListener('click', ()=>{
+    const amounts = {};
+    document.querySelectorAll('#modal .ho-amt').forEach(i=>{ const v = Math.round((Number(i.value)||0)*100)/100; if(v>0) amounts[i.dataset.cur]=v; });
+    if(!Object.keys(amounts).length){ $('#modalErr').textContent = 'Enter how much you are handing over.'; return; }
+    const sel = $('#hoTo'), lead = sel ? leads.find(l=>l.email===sel.value) : leads[0];
+    const id = 'H' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+    const rec = { id, ts:new Date().toISOString(), location:loc, fromId: ME ? ME.email : '', fromName: myName(),
+      toId: lead ? lead.email : '', toName: lead ? lead.name : '', amounts, status:'waiting', answeredAt:'', answeredBy:'' };
+    commit({action:'handoverCash', id, location:loc, toId:rec.toId, toName:rec.toName, amounts},
+      st=>{ (st.handovers = st.handovers || []).push(rec); },
+      'Handed over — waiting for ' + (rec.toName || 'the Event Lead') + ' to confirm');
+    closeModal();
+  });
+}
+/* May this page confirm a handover? The person it was handed to; any Event
+   Lead there when it named nobody; Universal. Never your own. */
+function mayAnswer(h){
+  if(h.status!=='waiting' || handoverIsMine(h)) return false;
+  if(isAdmin()) return true;
+  if(ME && h.toId) return h.toId===ME.email;
+  return actingRole()==='EL';
+}
+function answerHandover(id, accept){
+  const h = (STATE.handovers||[]).find(x=>x.id===id); if(!h) return;
+  if(!accept && !confirm('Mark this cash as NOT received? ' + (h.fromName||'The seller') + ' will see it was declined.')) return;
+  commit({action:'handoverAnswer', id, accept},
+    st=>{ const r=(st.handovers||[]).find(x=>x.id===id); if(r){ r.status = accept ? 'received' : 'declined'; r.answeredAt=new Date().toISOString(); r.answeredBy=myName(); } },
+    accept ? 'Cash received from ' + (h.fromName||'the seller') : 'Marked as not received');
+}
+/* Leads: the cash handed over here, waiting ones first. */
+function renderHandovers(){
+  const panel = $('#handPanel'); if(!panel) return 0;
+  const hs = plainSeller() ? [] : handoversHere().slice().sort((a,b)=>(a.status==='waiting'?0:1)-(b.status==='waiting'?0:1) || new Date(b.ts)-new Date(a.ts));
+  panel.style.display = hs.length ? '' : 'none';
+  if(!hs.length) return 0;
+  $('#handList').innerHTML = hs.slice(0, 30).map(h=>`<div class="ho-row ${h.status}">
+      <div><b>${esc(h.fromName||'A seller')}</b> → ${esc(h.toName||'the Event Lead')} · ${esc(moneyLine(h.amounts))}
+        <div class="muted-note">${esc(locName(h.location))} · ${esc(fmtWhen(h.ts))}${h.status!=='waiting'
+          ? ' · ' + (h.status==='received' ? 'received' : 'not received') + (h.answeredBy ? ' — ' + esc(h.answeredBy) : '') : ''}</div></div>
+      ${mayAnswer(h) ? `<span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="hoyes" data-id="${esc(h.id)}">Received</button>
+        <button class="btn btn-ghost btn-sm" data-act="hono" data-id="${esc(h.id)}">Not received</button></span>`
+        : (h.status==='waiting' ? '<span class="muted-note">waiting</span>' : '')}
+    </div>`).join('');
+  return 1;
+}
+/* Sales by seller: each seller's books and cash, and where that cash is now. */
+function renderSellers(){
+  const panel = $('#sellerPanel'); if(!panel) return;
+  const show = !plainSeller() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
+  const s = show ? scopedSales().filter(x=>x.type!=='DONATION') : [];
+  panel.style.display = s.length ? '' : 'none';
+  if(!s.length) return;
+  const key = x => x.soldById || ('n:' + (x.soldBy || ''));
+  const hKey = h => h.fromId || ('n:' + (h.fromName || ''));
+  const groups = {};
+  s.forEach(x=>{ const k=key(x); (groups[k] = groups[k] || {name:'', list:[]}).list.push(x); if(x.soldBy) groups[k].name = x.soldBy; });
+  const hs = handoversHere();
+  const row = (name, list, hlist, sub) => {
+    const c = bookCounts(list.filter(x=>x.bookId));
+    const taken = cashTaken(list);
+    const done = sumAmounts(hlist.filter(h=>h.status==='received'));
+    const wait = sumAmounts(hlist.filter(h=>h.status==='waiting'));
+    const left = minusAmounts(minusAmounts(taken, done), wait);
+    return `<tr class="${sub?'sb-sub':''}"><td class="sb-name">${esc(name)}</td><td class="num">${c.sold}</td><td class="num">${c.pre||''}</td>
+      <td>${esc(moneyLine(taken))||'—'}</td><td>${esc(moneyLine(done))||'—'}${moneyLine(wait)?`<div class="muted-note">${esc(moneyLine(wait))} waiting</div>`:''}</td>
+      <td><b>${esc(moneyLine(left))||'—'}</b></td></tr>`;
+  };
+  const keys = Object.keys(groups).sort((a,b)=>groups[b].list.length-groups[a].list.length);
+  $('#sellerList').innerHTML = `<div class="sb-wrap"><table class="sb-table">
+    <thead><tr><th>Seller</th><th class="num">Sold</th><th class="num">Pre-orders</th><th>Cash collected</th><th>Handed to lead</th><th>Still with them</th></tr></thead>
+    <tbody>${keys.map(k=>{
+      const g = groups[k], mineH = hs.filter(h=>hKey(h)===k);
+      let h = row(g.name || '(no name given)', g.list, mineH);
+      // At a region: the same seller, event by event.
+      if(CUR_LEVEL==='region'){
+        const locs = [...new Set(g.list.map(x=>x.location))];
+        if(locs.length>1) h += locs.map(l=>row('· ' + locName(l), g.list.filter(x=>x.location===l), mineH.filter(x=>x.location===l), true)).join('');
+      }
+      return h;
+    }).join('')}</tbody></table></div>`;
+}
+
+/* ---- Counts to look into (b224) ----
+   A closing count that differed from the records. The records stay as they
+   were; the next person up accepts the count or settles it with what they found. */
+function mismatchesHere(){
+  const ms = (STATE.mismatches||[]);
+  if(CUR_LEVEL==='season') return ms;
+  const locs = new Set(CUR_LEVEL==='region' ? locsInRegion(CUR_REGION) : [CUR_LOC]);
+  return ms.filter(m=>locs.has(m.location));
+}
+const nextUp = m => m.kind==='event' ? 'the Regional Lead' : 'the Seasonal Lead';
+function mayAnswerCount(m){
+  if(m.status!=='open') return false;
+  if(isAdmin()) return true;
+  return STATE.role==='coordinator' && m.kind==='event';
+}
+function renderMismatches(){
+  const panel = $('#countPanel'); if(!panel) return 0;
+  const ms = plainSeller() ? [] : mismatchesHere().slice().sort((a,b)=>(a.status==='open'?0:1)-(b.status==='open'?0:1) || new Date(b.ts)-new Date(a.ts));
+  const open = ms.filter(m=>m.status==='open');
+  // Settled ones stay a while for the record, but the panel is about open ones.
+  const shown = open.concat(ms.filter(m=>m.status!=='open').slice(0, 10));
+  panel.style.display = open.length ? '' : 'none';
+  if(!open.length) return 0;
+  const bk = id => { const b = bookById(id); return b ? bookTitleHTML(b) : esc(id); };
+  $('#countList').innerHTML = shown.map(m=>`<div class="ho-row ${m.status==='open'?'waiting':'received'}">
+      <div><b>${esc(locName(m.location))}</b> · ${bk(m.bookId)}: expected <b>${m.expected}</b>, counted <b>${m.counted}</b>
+        <span class="cnt-diff">(${m.counted>m.expected?'+':''}${m.counted-m.expected})</span>
+        <div class="muted-note">${m.by?'Counted by '+esc(m.by)+', ':''}${esc(fmtWhen(m.ts))}${m.note?' — “'+esc(m.note)+'”':''}${m.status!=='open'
+          ? `<br>${m.status==='accepted'?'Count accepted':'Settled'} by ${esc(m.answeredBy||'')} — “${esc(m.answer)}”` : ''}</div></div>
+      ${mayAnswerCount(m) ? `<span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="cntanswer" data-id="${esc(m.id)}">Look into…</button></span>`
+        : (m.status==='open' ? `<span class="muted-note">with ${esc(nextUp(m))}</span>` : '')}
+    </div>`).join('');
+  return 1;
+}
+function mismatchModal(id){
+  const m = (STATE.mismatches||[]).find(x=>x.id===id); if(!m) return;
+  const b = bookById(m.bookId), now = invQty(m.location, m.bookId);
+  openModal(`
+    ${mHead('A count to look into')}
+    <div class="m-body">
+      <div class="hint"><b>${esc(locName(m.location))}</b> · ${b?bookTitleHTML(b):esc(m.bookId)}<br>
+        The records said <b>${m.expected}</b>; <b>${m.counted}</b> were counted${m.by?' by '+esc(m.by):''}.
+        ${m.note?'<br>Their note: “'+esc(m.note)+'”':''}</div>
+      <div class="field"><label>What did you find?</label>
+        <textarea id="cntWhy" placeholder="e.g. 2 copies given to the temple and never recorded"></textarea></div>
+      <div class="hint"><b>Accept the count</b> changes the stock by ${m.counted-m.expected>0?'+':''}${m.counted-m.expected}
+        (now ${now}, then ${Math.max(0, now + m.counted - m.expected)}), with your name and reason.
+        <b>Settled</b> leaves the stock as it is — for example, when you found the sale that explains it and recorded it.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" id="cntSettle">Settled</button>
+      <button class="btn btn-primary" id="cntAccept">Accept the count</button></div>`);
+  const go = accept => {
+    const why = $('#cntWhy').value.trim();
+    if(!why){ $('#modalErr').textContent = 'Say what you found, or why the count is accepted.'; return; }
+    commit({action:'mismatchAnswer', id, accept, answer: why},
+      st=>{
+        const r = (st.mismatches||[]).find(x=>x.id===id); if(!r) return;
+        r.status = accept ? 'accepted' : 'resolved'; r.answeredBy = myName() || 'main app'; r.answer = why; r.answeredAt = new Date().toISOString();
+        if(accept) invSet(st, m.location, m.bookId, Math.max(0, invQty(m.location, m.bookId) + m.counted - m.expected));
+        const o = (st.outstanding||{})[m.location]; if(o && o.counts) o.counts--;
+      }, accept ? 'Count accepted' : 'Count settled');
+    closeModal();
+  };
+  $('#cntAccept').addEventListener('click', ()=>go(true));
+  $('#cntSettle').addEventListener('click', ()=>go(false));
 }
 
 /** How much change we still owe on a sale, in its own currency. */
@@ -6438,17 +6726,18 @@ function closureOf(loc){
   else if(reg) closed = reg.closedAt || '';
   if(!closed) return '';
   const o = (STATE.outstanding||{})[loc] || {owed:0,undelivered:0};
-  return (o.owed || o.undelivered) ? 'pending' : 'complete';
+  // A count still to look into is work left too (b224).
+  return (o.owed || o.undelivered || o.counts) ? 'pending' : 'complete';
 }
 function regionClosure(regionId){
   const r = regionById(regionId);
   if(!r || !r.closedAt) return '';
-  let owed=0, und=0;
+  let owed=0, und=0, cnt=0;
   locsInRegion(regionId).forEach(l=>{
     const o=(STATE.outstanding||{})[l]||{owed:0,undelivered:0};
-    owed+=o.owed; und+=o.undelivered;
+    owed+=o.owed; und+=o.undelivered; cnt+=(o.counts||0);
   });
-  return (owed||und) ? 'pending' : 'complete';
+  return (owed||und||cnt) ? 'pending' : 'complete';
 }
 function isClosedHere(){
   return CUR_LEVEL==='event' ? !!closureOf(CUR_LOC)
@@ -6579,7 +6868,8 @@ function closeModalFor(kind){
     });
     $('#clSummary').innerHTML = diffs
       ? `<span class="cl-bad">${diffs} title${diffs===1?'':'s'} do not match the expected count.</span>
-         These will be corrected and logged as a closing adjustment.`
+         The records will not be changed: ${diffs===1?'it goes':'they go'} to ${kind==='event'?'the Regional Lead':'the Seasonal Lead'}
+         to look into. Say what you know in the note below.`
       : `<span class="cl-ok">Everything matches.</span>`;
   }
   $('#clRows').addEventListener('input',e=>{ if(e.target.closest('.cl-in')) recount(); });
@@ -6608,12 +6898,19 @@ function closeModalFor(kind){
        already have, so there is nothing worth waiting on. */
     commit({action:'closeLocation',kind,id,counts,note:$('#clNote').value.trim()},
       st=>{
-        Object.keys(counts).forEach(key=>{
+        /* A count that differs is not written over the records (b224): it is
+           flagged to the next person up, shown here at once. */
+        const when=new Date().toISOString(), note=$('#clNote') ? $('#clNote').value.trim() : '';
+        Object.keys(counts).forEach((key,i)=>{
           const bits=key.split('|');
           if(bits.length<2) return;
-          invSet(st, bits[0], bits[1], counts[key]);
+          const exp = invQty(bits[0], bits[1]);
+          if(counts[key]===exp) return;
+          (st.mismatches = st.mismatches || []).push({ id:'tmpM'+i+Date.now(), ts:when, kind, placeId:id, location:bits[0], bookId:bits[1],
+            expected:exp, counted:counts[key], note, by:myName()||'main app', status:'open', answeredAt:'', answeredBy:'', answer:'' });
+          const o = (st.outstanding = st.outstanding || {})[bits[0]] || (st.outstanding[bits[0]] = {owed:0,undelivered:0});
+          o.counts = (o.counts||0) + 1;
         });
-        const when=new Date().toISOString();
         if(st.closeDrafts) delete st.closeDrafts[kind+':'+id];     // finished with
         if(kind==='event'){
           const e=(st.events||[]).find(v=>v.eventId===id); if(e) e.closedAt=when;
@@ -7293,20 +7590,23 @@ async function descriptionsSheet(){
 /* The last map is kept on this device and drawn at once, with a fresh one
    fetched behind it — reading Google Drive is slow however little work it is,
    so there is no reason to stare at an empty dialog while it happens. */
-const DRIVE_MAP_KEY = 'tbs_drivemap';
+/* One per person (b226): someone signing in on a shared phone never sees the
+   map of whoever used it before. */
+const DRIVE_MAP_BASE = 'tbs_drivemap';
+function driveMapKey(){ return DRIVE_MAP_BASE + (ME && ME.email ? ':' + ME.email : ''); }
 function driveMapCached(){
-  try{ return JSON.parse(localStorage.getItem(DRIVE_MAP_KEY)||'null'); }catch(e){ return null; }
+  try{ return JSON.parse(localStorage.getItem(driveMapKey())||'null'); }catch(e){ return null; }
 }
 function driveFolderModal(){
   const seen = driveMapCached();
   openModal(`
-    ${mHead('Spreadsheet folders')}
+    ${mHead('Spreadsheet Links')}
     <div class="m-body"><div class="df-loading">Spreadsheet map takes time to load. Thanks for your patience.</div></div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   // Last time's map, drawn at once, while the current one is fetched behind it.
   if(seen) renderDriveMap(seen, 'Showing last time’s map while the current one loads…');
   post({action:'driveMap'}).then(d=>{
-    try{ localStorage.setItem(DRIVE_MAP_KEY, JSON.stringify(d.result)); }catch(e){}
+    try{ localStorage.setItem(driveMapKey(), JSON.stringify(d.result)); }catch(e){}
     if($('#modal .m-body')) renderDriveMap(d.result);
   }).catch(err=>{
     const b=$('#modal .m-body'); if(!b) return;
@@ -7359,8 +7659,26 @@ function renderDriveMap(map, note){
     </details>`).join('');
 
   const body = $('#modal .m-body'); if(!body) return;
+  /* Anyone but Universal gets only their own files, to view (b226): no folders,
+     nothing to change, and the way to work on the figures is their own copy. */
+  if(map.viewOnly){
+    const all = (map.hq?[map.hq]:[]).concat(...(map.seasons||[]).map(se=>se.files.concat(se.consignFiles)));
+    body.innerHTML = `${note?`<div class="df-stale">${esc(note)}</div>`:''}
+      <div class="hint">The spreadsheets your roles give you, to view. To work on the figures, open one and choose
+        <b>File › Make a copy</b>: the originals are rebuilt from the app, so changes belong in the app itself.</div>
+      ${map.hq ? `<div class="cash-sub">Earthly HQ</div>${fileRow(map.hq)}` : ''}
+      ${(map.seasons||[]).map(se=>`<div class="cash-sub">${esc(se.name)}</div>${se.files.map(fileRow).join('')}${
+        se.consignFiles.length?`<div class="muted-note" style="margin-top:6px">Consignment</div>${se.consignFiles.map(fileRow).join('')}`:''}`).join('')}
+      ${all.length ? '' : '<div class="cash-empty">No spreadsheets for your roles yet.</div>'}
+      <div class="err" id="modalErr"></div>`;
+    try{ applyLabels($('#modal')); }catch(e){}
+    return;
+  }
   body.innerHTML = `${note?`<div class="df-stale">${esc(note)}</div>`:''}
-    <div class="hint">Data from the sales tracker in spreadsheet form.</div>
+    <div class="hint">Data from the sales tracker in spreadsheet form. Each person is given their own files, to view:
+      Regional Leads their region's, Seasonal Leads their season's, Finance all. They are rebuilt by themselves
+      a minute or so after each change.</div>
+    <div class="df-rebuild"><button class="btn btn-primary btn-sm" data-act="syncsheet">⇪ Rebuild spreadsheets now</button></div>
     ${map.driveOk ? '' : `<div class="warn">Google Drive access is not set up yet, so folders cannot be
       shown or changed. The spreadsheet links below still work.</div>`}
     <div class="cash-sub">Top-Level Folder</div>
@@ -10723,7 +11041,7 @@ function zeroOwed(p){
 function partnersModal(){
   const season = CUR_LEVEL==='season';
   const reg = currentRegion();
-  const list = season ? (STATE.partners||[]) : partnersOf(CUR_REGION);
+  const list = season ? (STATE.partners||[]) : partnersHere();
   const money = o => Object.keys(o||{}).filter(c=>o[c]).sort().map(c=>cashFmt(o[c],c)).join(' · ');
 
   const card = p => {
@@ -10735,6 +11053,7 @@ function partnersModal(){
         <span class="sh-count">${p.sold} sold${p.preordered?` · ${p.preordered} pre-ordered`:''}</span>
       </div>
       ${season?`<div class="sh-meta">${esc((regionById(p.regionId)||{}).name||'')}</div>`:''}
+      ${p.eventId?`<div class="sh-meta">Only at ${esc(locName(p.eventId))}</div>`:''}
       <div class="con-money">
         <div><span class="con-k">Collected</span><span class="con-v">${money(p.took)||'—'}</span></div>
         <div><span class="con-k">Given to consignee</span><span class="con-v">${money(p.paid)||'—'}</span></div>
@@ -10818,7 +11137,8 @@ function partnersModal(){
       <div class="rp-add">
         <input id="conName" type="text" placeholder="e.g. Macedonian Devotees">
         <button type="button" class="btn btn-primary btn-sm" id="conAdd">Add</button>
-      </div>`}
+      </div>
+      <div class="field"><label>Their titles are offered at</label>${partnerWhereSel('conWhere', CUR_LEVEL==='event'?CUR_LOC:'')}</div>`}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
@@ -10827,7 +11147,8 @@ function partnersModal(){
   if(add) add.addEventListener('click',async ()=>{
     const name=$('#conName').value.trim();
     if(!name){ $('#modalErr').textContent='Enter a name.'; return; }
-    if(await commitSync({action:'savePartner',regionId:CUR_REGION,name},'Added')) partnersModal();
+    const where = ($('#conWhere')||{}).value || '';
+    if(await commitSync(Object.assign({action:'savePartner',regionId:CUR_REGION,name}, where?{eventId:where}:{}),'Added')) partnersModal();
   });
 }
 
@@ -10896,7 +11217,7 @@ function partnerBookModal(id, editId){
   if(!p) return;
   const existing = editId ? bookById(editId) : null;
   const curs = curCurrencies();
-  const priceOf = c => existing ? (priceIn(existing.id, c) || '') : '';
+  const priceOf = c => existing ? (regionPriceIn(existing.id, c) || '') : '';
 
   openModal(`
     ${mHead(existing ? 'Edit ' + esc(existing.name) : 'Add a title for ' + esc(p.name))}
@@ -11003,6 +11324,7 @@ function partnerEditModal(id){
     <div class="m-body">
       <div class="field"><label>Name</label><input id="peName" type="text" value="${esc(p.name)}"></div>
       <div class="field"><label>Note</label><input id="peNote" type="text" value="${esc(p.note||'')}"></div>
+      <div class="field"><label>Their titles are offered at</label>${partnerWhereSel('peWhere', p.eventId||'')}</div>
       <div class="hint">Removing a group only takes it off the list; its records and spreadsheet stay.</div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -11012,8 +11334,9 @@ function partnerEditModal(id){
       <button class="btn btn-primary" id="peSave">Save</button>
     </div>`);
   $('#peSave').addEventListener('click',async ()=>{
-    if(await commitSync({action:'savePartner',partnerId:id,regionId:p.regionId,
-      name:$('#peName').value.trim(),note:$('#peNote').value.trim()},'Saved')) partnersModal();
+    const where = ($('#peWhere')||{}).value || '';
+    if(await commitSync(Object.assign({action:'savePartner',partnerId:id,regionId:p.regionId,
+      name:$('#peName').value.trim(),note:$('#peNote').value.trim()}, (where||p.eventId)?{eventId:where}:{}),'Saved')) partnersModal();
   });
   $('#peDel').addEventListener('click',async ()=>{
     if(!confirm('Remove '+p.name+' from the list? Their records and spreadsheet stay as they are.')) return;
@@ -12290,6 +12613,59 @@ function askRegionModal(saleId){
   });
 }
 
+/* ---- Event Prices (b225) ----
+   An event can ask its own price for a title: a festival with a lower price, a
+   temple that rounds to the note. Only what is typed here is the event's; a
+   blank box is the region's price (shown greyed), so a change to the region's
+   prices still reaches every title the event has not set. */
+function eventPricesBtn(cls){
+  const n = Object.values((STATE.eventPrices||{})[CUR_LOC]||{}).reduce((t,r)=>t+Object.keys(r).length,0);
+  return `<button class="btn ${cls||''}" data-act="eventprices">💲 Event Prices${n?` (${n} set)`:''}</button>`;
+}
+function eventPricesModal(){
+  const ev = CUR_LOC, curs = curCurrencies();
+  const books = baseShelfBooks();
+  const own = (b,c) => { const v = eventPriceIn(ev, b.id, c); return v===null ? '' : v; };
+  const regionP = (b,c) => regionPriceIn(b.id, c) || (c==='PLN'?b.pln:c==='EUR'?b.eur:c==='USD'?b.usd:0) || '';
+  openModal(`
+    ${mHead('Prices at ' + esc(locName(ev)))}
+    <div class="m-body">
+      <div class="hint">Type a price only where this event asks something different. A blank box uses
+        ${esc((currentRegion()||{}).name||'the region')}'s price, shown in grey.</div>
+      <div class="rp-row rp-head"><div class="rp-name"></div><div class="rp-cells">${
+        curs.map(c=>`<span class="rp-cur">${esc(CUR_SYM[c]||'')} ${esc(c)}</span>`).join('')}</div></div>
+      ${books.map(b=>`<div class="rp-row" data-row="${esc(b.id)}"><div class="rp-name">${bookTitleHTML(b)}</div>
+        <div class="rp-cells">${curs.map(c=>`<input class="rp ep" type="number" step="0.01" min="0" inputmode="decimal"
+          data-book="${esc(b.id)}" data-cur="${esc(c)}" placeholder="${esc(String(regionP(b,c)))}" value="${esc(String(own(b,c)))}">`).join('')}</div></div>`).join('')
+        || '<div class="cash-empty">No titles on this event\'s shelf yet.</div>'}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="epSave">Save</button></div>`, true);
+  $('#epSave').addEventListener('click', ()=>{
+    const prices = {};
+    let bad = false;
+    document.querySelectorAll('.ep').forEach(i=>{
+      const b = i.dataset.book, c = i.dataset.cur, v = i.value.trim(), was = own(bookById(b)||{id:b}, c);
+      if(v!=='' && (isNaN(Number(v)) || Number(v)<0)) bad = true;
+      if(String(v)===String(was)) return;
+      (prices[b] = prices[b] || {})[c] = v;
+    });
+    if(bad){ $('#modalErr').textContent = 'A price must be a number.'; return; }
+    if(!Object.keys(prices).length){ closeModal(); return; }
+    commit({action:'setEventPrices', eventId: ev, prices}, st=>{
+      st.eventPrices = st.eventPrices || {};
+      const bag = st.eventPrices[ev] = st.eventPrices[ev] || {};
+      Object.keys(prices).forEach(b=>Object.keys(prices[b]).forEach(c=>{
+        const v = prices[b][c];
+        if(v===''){ if(bag[b]) delete bag[b][c]; }
+        else (bag[b] = bag[b] || {})[c] = Number(v);
+      }));
+    }, 'Prices saved');
+    closeModal();
+  });
+}
+
 /* ---- Edit Book Display ----
    Which titles are shown where you are, and in what order, in one place:
    tick to show, untick to hide, drag (or the arrows) to reorder. At the season
@@ -12700,7 +13076,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
-  if(a==='syncsheet'){ syncSheet(); return; }
+  if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
   if(a==='deleteevent'){ deleteEventModal(); return; }
@@ -12750,6 +13126,10 @@ document.addEventListener('click',e=>{
   }
   if(a==='whoami'){ if(ME) youModal(); else askWhoAmI(true); return; }
   if(a==='people'){ peopleModal(); return; }
+  if(a==='handover'){ handoverModal(); return; }
+  if(a==='cntanswer'){ mismatchModal(t.dataset.id); return; }
+  if(a==='hoyes'){ answerHandover(t.dataset.id, true); return; }
+  if(a==='hono'){ answerHandover(t.dataset.id, false); return; }
   if(a==='signout'){ signOut(); return; }
   if(a==='admins'){ adminsModal(); return; }
   if(a==='admappr' || a==='admdecl' || a==='admrem'){ adminsDo(a, t.dataset.email); return; }
@@ -12771,6 +13151,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
+  if(a==='eventprices'){ eventPricesModal(); return; }
   if(a==='seasonclose'){ closeSeasonModal(); return; }
   if(a==='seasonreopen'){
     if(!confirm('Reopen this season? Its dollar figures will follow live exchange rates again.')) return;

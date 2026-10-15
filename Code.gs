@@ -179,7 +179,11 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   'pmore',
   /* The shelf a delivered pre-order's copy came off, so deleting the sale puts
      it back there rather than on some default warehouse. */
-  'dfrom'];
+  'dfrom',
+  /* Who made the sale, by sign-in (b223): their Google address. soldBy is the
+     name shown; this one stays the same when they rename themselves, so "My
+     sales" and Sales by seller still add up. Empty on a link (self-declared). */
+  'soldById'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -218,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b222';
+var SERVER_BUILD = 'b226';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -275,6 +279,85 @@ function placesForAuth_() {
   return { seasons: seasons, regions: regions, events: events };
 }
 
+/* Every spreadsheet the app keeps, and whose it is (b226): for the server, which
+   decides who may open each one (people.js sheetsWanted). Only files made already. */
+function sheetFilesForAuth_() {
+  var meta = {};
+  objectsOf_('_meta').forEach(function (r) { meta[String(r.key)] = String(r.value || ''); });
+  var out = [], regSeason = {};
+  objectsOf_('_regions').forEach(function (r) { regSeason[String(r.regionId)] = String(r.seasonId || ''); });
+  seasonsAll_().forEach(function (se) {
+    var id = meta['seasonSheetId:' + se.seasonId];
+    if (id) out.push({ id: id, kind: 'season', seasonId: String(se.seasonId) });
+  });
+  Object.keys(regSeason).forEach(function (rid) {
+    var id = meta['regionSheetId:' + rid];
+    if (!id) return;
+    out.push(rid === HQ_REGION ? { id: id, kind: 'hq' } : { id: id, kind: 'region', regionId: rid, seasonId: regSeason[rid] });
+  });
+  objectsOf_('_partners').forEach(function (pt) {
+    var id = meta['partnerSheetId:' + pt.partnerId];
+    if (!id || truthyCell_(pt.archived)) return;
+    out.push({ id: id, kind: 'partner', regionId: String(pt.regionId || ''), seasonId: regSeason[String(pt.regionId || '')] || '' });
+  });
+  if (meta.descSheetId) out.push({ id: meta.descSheetId, kind: 'desc' });
+  return out;
+}
+
+/* ---- Sharing each spreadsheet with its people (b226) ----
+   The server sends who should have each file ({ fileId: { e: editors, v: viewers } });
+   this makes Drive match. Only people the app itself added are ever taken off:
+   anyone you shared a file with by hand stays. What the app added is kept in
+   _meta ("sheetShare:<fileId>"), and the whole wish in "sheetShareSig", so an
+   unchanged wish costs no Drive calls at all. Viewers can open the file and use
+   File › Make a copy; they cannot change it. */
+var _shareAgain = false;
+function shareSpreadsheets_(wanted) {
+  _shareAgain = false;
+  if (!wanted) return;
+  var sig = JSON.stringify(wanted);
+  if (String(getMeta_('sheetShareSig', '')) === sig) return;
+  var me = '';
+  try { me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase(); } catch (e) {}
+  var had = {};
+  objectsOf_('_meta').forEach(function (r) {
+    var k = String(r.key);
+    if (k.indexOf('sheetShare:') === 0) { try { had[k.slice(11)] = JSON.parse(String(r.value || '')); } catch (e) {} }
+  });
+  var ids = {};
+  Object.keys(wanted).concat(Object.keys(had)).forEach(function (id) { ids[id] = 1; });
+  var started = Date.now(), errors = [], unfinished = false;
+  Object.keys(ids).forEach(function (fid) {
+    if (Date.now() - started > 120000) { unfinished = true; return; }       // the rest next time
+    var w = wanted[fid] || { e: [], v: [] }, h = had[fid] || { e: [], v: [] };
+    var now = { e: h.e.slice(), v: h.v.slice() };
+    var file = null;
+    var drive = function () { return file || (file = DriveApp.getFileById(fid)); };
+    var step = function (fn, email, list, add) {
+      try {
+        fn(email);
+        if (add) { if (list.indexOf(email) < 0) list.push(email); }
+        else { var i = list.indexOf(email); if (i >= 0) list.splice(i, 1); }
+      } catch (err) { errors.push(email + ': ' + (err && err.message || err)); }
+    };
+    // Taken off first, so someone moving from editor to viewer ends up a viewer.
+    h.e.filter(function (m) { return w.e.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().removeEditor(x); }, m, now.e, false); });
+    h.v.filter(function (m) { return w.v.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().removeViewer(x); }, m, now.v, false); });
+    w.e.filter(function (m) { return m !== me && now.e.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().addEditor(x); }, m, now.e, true); });
+    w.v.filter(function (m) { return m !== me && now.v.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().addViewer(x); }, m, now.v, true); });
+    var val = (now.e.length || now.v.length) ? JSON.stringify({ e: now.e.sort(), v: now.v.sort() }) : '';
+    if (val !== (had[fid] ? JSON.stringify(had[fid]) : '')) setMeta_('sheetShare:' + fid, val);
+  });
+  if (errors.length) setMeta_('sheetShareError', errors.slice(0, 5).join(' · ').slice(0, 900));
+  else if (getMeta_('sheetShareError', '')) setMeta_('sheetShareError', '');
+  if (unfinished) _shareAgain = true;
+  else setMeta_('sheetShareSig', sig);       // a failure (say, not a Google address) is not retried every minute
+}
+
 function handle(e) {
   // Used up at once, whatever happens next (see setTrustedWho_).
   var trustedWho = _trustedWho; _trustedWho = null;
@@ -301,6 +384,8 @@ function handle(e) {
     _movesById = null;
     setSeasonContext_('');               // no season carried over from a previous call
     _cashBy = '';                        // nor who was asking
+    _meEmail = trustedWho ? String(trustedWho.email || '') : '';
+    _meGrant = trustedWho ? String(trustedWho.grant || '') : '';
 
     // ---- Cheapest possible call: one property read, no sheet access. ----
     if (action === 'ping') {
@@ -454,6 +539,9 @@ function handle(e) {
         case 'deleteSale':       doDeleteSale(params);       break;
         case 'markPaid':         doMarkPaid(params);         break;
         case 'giveChange':       doGiveChange(params);       break;
+        case 'handoverCash':     doHandoverCash(params, who); break;
+        case 'handoverAnswer':   doHandoverAnswer(params, who); break;
+        case 'mismatchAnswer':   result = doMismatchAnswer(params, who); break;
         case 'markDelivered':    doMarkDelivered(params);    break;
         case 'setWarehouseName': doSetWarehouseName(params); break;
         case 'cashMove':         doCashMove(params);         break;
@@ -496,6 +584,7 @@ function handle(e) {
         case 'reorder':          doReorder(params);              break;
         case 'reorderBooks':     doReorderBooks(params);         break;
         case 'setPrices':        doSetPrices(params);             break;
+        case 'setEventPrices':   result = doSetEventPrices(params, who); break;
         case 'saveConsignBook':  result = doSaveConsignBook(params); break;
         case 'savePartner':      result = doSavePartner(params);  break;
         case 'partnerPayout':    doPartnerPayout(params);         break;
@@ -654,6 +743,9 @@ function scopedStateBuild_(who) {
   full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location] || shipLocs[i.location]; });
   full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return String(x.fulfilBy) === String(regionId); });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
+  if (full.handovers) full.handovers = full.handovers.filter(function (h) { return mine[String(h.location)]; });
+  if (full.mismatches) full.mismatches = full.mismatches.filter(function (m) { return mine[String(m.location)]; });
+  if (full.eventPrices) Object.keys(full.eventPrices).forEach(function (e) { if (!mine[e]) delete full.eventPrices[e]; });
   var drafts = {};
   Object.keys(full.closeDrafts || {}).forEach(function (k) {
     var id = k.split(':').slice(1).join(':');
@@ -725,6 +817,8 @@ function scopeToSeason_(st) {
         || String(c.fromAcct) === 'BANK' || String(c.toAcct) === 'BANK';
   });
   st.costs = (st.costs || []).filter(function (c) { return mine[String(c.location)]; });
+  if (st.handovers) st.handovers = st.handovers.filter(function (h) { return mine[String(h.location)]; });
+  if (st.mismatches) st.mismatches = st.mismatches.filter(function (m) { return mine[String(m.location)]; });
   // Requests this season's regions were asked to fulfill, wherever they came from.
   st.remote = (st.remote || []).filter(function (x) { return regionOk[String(x.fulfilBy)]; });
   /* Change follows the money, so it can be sitting with a coordinator rather
@@ -817,6 +911,18 @@ function stateJson_() {
   // The currency each payment type arrives in, once any has been set (b210).
   var ptc = payTypeCurrencies_();
   if (Object.keys(ptc).length) st.payTypeCur = ptc;
+  /* Who made each sale, by sign-in, and the cash handed to Event Leads (b223) —
+     sent only once there are any, so nothing changes for a tour without them. */
+  if (dbCols_('_sales').indexOf('soldById') >= 0) {
+    var byId = {};
+    objectsOf_('_sales').forEach(function (r) { if (r.soldById) byId[String(r.saleId)] = String(r.soldById); });
+    (st.sales || []).forEach(function (x) { if (byId[x.saleId]) x.soldById = byId[x.saleId]; });
+  }
+  if (dbHas_('_handovers')) st.handovers = handoversAll_();
+  if (dbHas_('_mismatches')) st.mismatches = mismatchesAll_();
+  // Events' own prices (b225), only once any is set.
+  var evp = eventPricesForState_();
+  if (evp) st.eventPrices = evp;
   // At HQ, every season's records ride along, taken before HQ's own trim.
   if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
   var str = JSON.stringify(scopeToSeason_(st));
@@ -863,7 +969,7 @@ function checkDriveAccess() {
     DriveApp.getRootFolder().getName();          // needs the Drive permission
     var f = driveRoot_();
     msg = 'OK — Drive access is working. Spreadsheets will be filed in the folder "' +
-          f.getName() + '". Press Sync sheet in the app to file them now.';
+          f.getName() + '". Press "Rebuild spreadsheets now" (in Spreadsheet Links) to file them now.';
   } catch (e) {
     msg = 'NOT YET — the app cannot use Google Drive. ' +
           'Google said: ' + String(e && e.message || e) + '. ' +
@@ -895,7 +1001,7 @@ function installTrigger_() {
     if (!have) ScriptApp.newTrigger('syncSheets').timeBased().everyMinutes(1).create();
   } catch (err) {
     Logger.log('Could not install the auto-sync trigger (' + err + '). ' +
-      'The app still works — use the "Sync sheet" button, or add the ' +
+      'The app still works — use "Rebuild spreadsheets now" in Spreadsheet Links, or add the ' +
       'script.scriptapp scope to appsscript.json to enable auto-refresh.');
   }
 }
@@ -1154,7 +1260,11 @@ function outstandingAt_(locs) {
     if (pendingFlag_(r) || (Number(r.dueamt) || 0) > 0) owed++;
     if (String(r.type) === 'PREORDER' && !isDelivered_(r)) undelivered++;
   });
-  return { owed: owed, undelivered: undelivered };
+  var out = { owed: owed, undelivered: undelivered };
+  // A count still to look into is work left too (b224).
+  var counts = mismatchesAll_().filter(function (m) { return m.status === 'open' && mine[m.location]; }).length;
+  if (counts) out.counts = counts;
+  return out;
 }
 
 function setClosed_(kind, id, when) {
@@ -1213,13 +1323,20 @@ function doCloseLocation(p) {
     if (isNaN(counted)) return;
     var expected = getQty_(map, loc, bookId);
     if (counted === expected) return;
-    setQty_(map, loc, bookId, counted);
-    stockMoveAppend_({ kind: 'ADJUST', toLoc: loc, bookId: bookId, qty: counted - expected,
-      note: 'Closing count' + (p.note ? ' — ' + p.note : ''),
-      toBefore: expected, toAfter: counted });
+    /* A count that does not match is not written over the records (b224): it is
+       a cause for investigation. It is flagged to the next person up, who
+       accepts the count or finds the error (see doMismatchAnswer). */
     diffs.push({ loc: loc, bookId: bookId, expected: expected, counted: counted });
   });
-  saveInvMap_(map);
+  if (diffs.length) {
+    if (!dbHas_('_mismatches')) dbCreate_('_mismatches', MISMATCH_HEADERS);
+    dbInsert_('_mismatches', diffs.map(function (d) {
+      return { id: 'M' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(), kind: kind, placeId: id,
+               location: d.loc, bookId: d.bookId, expected: d.expected, counted: d.counted,
+               note: String(p.note || '').slice(0, 300), by: _cashBy, byId: _meEmail,
+               status: 'open', answeredAt: '', answeredBy: '', answer: '' };
+    }));
+  }
 
   setClosed_(kind, id, new Date());
   // A region's dollars stop moving the day it closes.
@@ -1234,6 +1351,55 @@ function doCloseLocation(p) {
     markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
   }
   return { diffs: diffs, outstanding: outstandingAt_(locs) };
+}
+
+/* ---- Count mismatches (b224) ----
+   A closing count that differs from the records. The records stay as they were
+   until the next person up looks into it: an event's goes to its Regional Lead,
+   a region's to its Seasonal Lead (Universal stands in until Stage 2). They
+   either ACCEPT the count — the difference is applied, with their name and
+   reason — or mark it RESOLVED with what they found (a sale never recorded,
+   books miscounted), and the records stay. */
+var MISMATCH_HEADERS = ['id','ts','kind','placeId','location','bookId','expected','counted','note','by','byId',
+                        'status','answeredAt','answeredBy','answer'];
+function mismatchesAll_() {
+  if (!dbHas_('_mismatches')) return [];
+  return objectsOf_('_mismatches').filter(function (m) { return m && m.id; }).map(function (m) {
+    return { id: String(m.id), ts: m.ts, kind: String(m.kind || 'event'), placeId: String(m.placeId || ''),
+             location: String(m.location || ''), bookId: String(m.bookId || ''),
+             expected: Number(m.expected) || 0, counted: Number(m.counted) || 0, note: String(m.note || ''),
+             by: String(m.by || ''), status: String(m.status || 'open'),
+             answeredAt: m.answeredAt ? dateText_(m.answeredAt) : '', answeredBy: String(m.answeredBy || ''),
+             answer: String(m.answer || '') };
+  });
+}
+function doMismatchAnswer(p, who) {
+  var m = mismatchesAll_().filter(function (x) { return x.id === String(p.id || ''); })[0];
+  if (!m) throw new Error('That count is no longer listed.');
+  if (m.status !== 'open') return m.status;                      // already answered (a resend)
+  var mayAnswer = who.role === 'admin' ||
+    (who.role === 'coordinator' && m.kind === 'event' && locsInRegion_(who.regionId).indexOf(m.location) >= 0);
+  if (!mayAnswer) throw new Error(m.kind === 'event'
+    ? 'Only the Regional Lead (or someone above) can settle this count.'
+    : 'Only the Seasonal Lead (or someone above) can settle this count.');
+  var why = String(p.answer || '').trim().slice(0, 300);
+  if (!why) throw new Error('Say what you found, or why the count is accepted.');
+  var accept = p.accept === true || String(p.accept) === 'true';
+  if (accept) {
+    var map = loadInvMap_();
+    var before = getQty_(map, m.location, m.bookId);
+    var after = Math.max(0, before + (m.counted - m.expected));
+    if (after !== before) {
+      setQty_(map, m.location, m.bookId, after);
+      stockMoveAppend_({ kind: 'ADJUST', toLoc: m.location, bookId: m.bookId, qty: after - before,
+        note: 'Closing count accepted — ' + why, toBefore: before, toAfter: after });
+      saveInvMap_(map);
+    }
+  }
+  dbUpdate_('_mismatches', { id: m.id }, { status: accept ? 'accepted' : 'resolved', answeredAt: new Date(),
+    answeredBy: _cashBy, answer: why });
+  markDirtyRegions_([regionOfLoc_(m.location)]);
+  return accept ? 'accepted' : 'resolved';
 }
 
 /* The currencies a region's money is in: its own list, and any its sales, debts
@@ -1869,6 +2035,8 @@ var OUTSIDE_ORIGIN = 'OUTSIDE';
 
 var SELLER_ACTIONS = {
   getState:1, ping:1, orgSave:1, giveChange:1,
+  // Cash handed from a seller to their Event Lead; who may confirm is checked inside (b223).
+  handoverCash:1, handoverAnswer:1,
   sell:1, sellBundle:1, donate:1,
   editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1
@@ -1884,7 +2052,11 @@ var COORD_EXTRA = {
   // Activity log: undo, limited inside to this link's own region.
   undoActivity:1, undoActivityPart:1,
   // Pre-orders fulfilled by another region (checked inside).
-  setFulfilBy:1, fulfilRemote:1
+  setFulfilBy:1, fulfilRemote:1,
+  // An event's own prices, at one of its events (checked inside, b225).
+  setEventPrices:1,
+  // A closing count that differs, at one of its events (checked inside, b224).
+  mismatchAnswer:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -2661,6 +2833,58 @@ function priceFor_(regionId, bookId, cur) {
   if (cur === 'EUR') return Number(b.eur) || 0;
   return 0;   // a currency this region hasn't priced yet
 }
+/* An event's own price (b225): rows in `_prices` whose regionId column holds
+   the event's id. Set for one title and currency, it beats the region's for
+   sales at that event only; anything not set there falls back to the region. */
+function priceAtLoc_(loc, bookId, cur) {
+  loc = String(loc || '');
+  if (eventById_(loc)) {
+    var hit = priceMap_()[loc + '|' + String(bookId) + '|' + String(cur || '').toUpperCase()];
+    if (hit !== undefined) return hit;
+  }
+  return priceFor_(regionOfLoc_(loc), bookId, cur);
+}
+/** The events' own prices, only what is set: {eventId:{bookId:{cur:amt}}}. */
+function eventPricesForState_() {
+  var evs = {}, out = {}, any = false;
+  regionsOrdered_().forEach(function (r) { evs[r.regionId] = 1; });
+  objectsOf_('_events').forEach(function (e) { evs['ev:' + e.eventId] = !!evs[String(e.regionId || '')]; });
+  objectsOf_('_prices').forEach(function (r) {
+    var id = String(r.regionId || ''), amt = Number(r.price);
+    if (!evs['ev:' + id] || isNaN(amt)) return;
+    var bag = out[id] = out[id] || {};
+    (bag[String(r.bookId)] = bag[String(r.bookId)] || {})[String(r.cur).toUpperCase()] = amt;
+    any = true;
+  });
+  return any ? out : null;
+}
+/** Set or clear an event's own prices. A blank price goes back to the region's. */
+function doSetEventPrices(p, who) {
+  var eventId = String(p.eventId || '');
+  var ev = eventById_(eventId);
+  if (!ev) throw new Error('That event is no longer listed.');
+  if (who && who.role === 'coordinator' && String(ev.regionId) !== String(who.regionId))
+    throw new Error('That event is in another region.');
+  var incoming = p.prices || {};
+  var rows = objectsOf_('_prices').map(function (r) {
+    return { regionId: String(r.regionId), bookId: String(r.bookId), cur: String(r.cur), price: Number(r.price) || 0 };
+  });
+  Object.keys(incoming).forEach(function (bookId) {
+    var row = incoming[bookId] || {};
+    Object.keys(row).forEach(function (cur) {
+      var v = row[cur], cu = String(cur).toUpperCase();
+      rows = rows.filter(function (r) { return !(r.regionId === eventId && r.bookId === String(bookId) && r.cur === cu); });
+      if (v === null || v === undefined || String(v).trim() === '') return;     // back to the region's price
+      var amt = Number(v);
+      if (isNaN(amt) || amt < 0) throw new Error('A price must be a number.');
+      rows.push({ regionId: eventId, bookId: String(bookId), cur: cu, price: amt });
+    });
+  });
+  dbSave_('_prices', rows, ['regionId','bookId','cur','price']);
+  _priceMemo = null;
+  markDirtyRegions_([String(ev.regionId)]);
+  return eventId;
+}
 /** Prices for the whole season, shaped for the client: {regionId:{bookId:{cur:amt}}} */
 function pricesForState_() {
   var out = {};
@@ -2846,7 +3070,7 @@ var TABLE_KEYS_ = {
   _holders: ['holderId'], _shipments: ['shipId'], _regions: ['regionId'],
   _seasons: ['seasonId'], _prices: ['regionId', 'bookId', 'cur'], _events: ['eventId'],
   _inventory: ['location', 'bookId'], _sales: ['saleId'], _cash: ['id'], _org: ['id'],
-  _stockmoves: ['id'], _activity: ['id']
+  _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id']
 };
 
 /* Rows read during this request, per table. Any write drops the lot, so a
@@ -3342,7 +3566,7 @@ function driveMap_() {
   /* Keyed by the folder only, NOT by the data revision: folders change when you
      move them, not every time a book is sold. Keying it to the revision meant
      any save threw the map away, so it was rebuilt on almost every open. */
-  var ck = 'drivemap_' + String(getMeta_('driveRootFolderId', '')) + '_' + String(getMeta_('driveMapStamp', '0'));
+  var ck = 'drivemap_' + String(getMeta_('driveRootFolderId', '')) + '_' + String(getMeta_('driveMapStamp', '0')) + '_' + SERVER_BUILD;
   try { var hit = tempGet_(ck); if (hit) return JSON.parse(hit); } catch (e) {}
 
   var out = { root: null, driveOk: true, seasons: [] };
@@ -3400,21 +3624,25 @@ function driveMap_() {
         }
       } catch (e) { /* show what we can */ }
     }
-    var file = function (metaKey, title) {
+    /* Each file says whose it is (b226), so the server can show a person only
+       the files their roles reach (see people.js sheetsFor). */
+    var file = function (metaKey, title, regionId) {
       var id = String(getMeta_(metaKey, ''));
-      return { name: title, url: id ? sheetUrl_(id) : '' };
+      var f = { name: title, url: id ? sheetUrl_(id) : '' };
+      if (regionId) f.regionId = regionId;
+      return f;
     };
     entry.files.push(file('seasonSheetId:' + sid, nm + ' — Season Summary'));
     var regs = regionsOrdered_(sid);
     var regIds = {};
     regs.forEach(function (r) {
       regIds[r.regionId] = 1;
-      entry.files.push(file('regionSheetId:' + r.regionId, r.name + ' — ' + nm + ' — Book Sales'));
+      entry.files.push(file('regionSheetId:' + r.regionId, r.name + ' — ' + nm + ' — Book Sales', r.regionId));
     });
     parts.forEach(function (pt) {
       if (!pt || !pt.partnerId || !regIds[String(pt.regionId)] || truthyCell_(pt.archived)) return;
       entry.consignFiles.push(file('partnerSheetId:' + pt.partnerId,
-        String(pt.name) + ' — ' + nm + ' — Consignment Sales'));
+        String(pt.name) + ' — ' + nm + ' — Consignment Sales', String(pt.regionId)));
     });
     out.seasons.push(entry);
   });
@@ -3645,9 +3873,11 @@ function readState() {
     shipments: shipmentsAll_(),
     partners: partnersAll_().map(function (pt) {
       var t = partnerTally_(pt.partnerId);
-      return { partnerId: pt.partnerId, regionId: pt.regionId, name: pt.name, note: pt.note,
+      var o = { partnerId: pt.partnerId, regionId: pt.regionId, name: pt.name, note: pt.note,
                took: t.took, paid: t.paid, owed: t.owed, byMethod: t.byMethod,
                sold: t.sold, preordered: t.preordered };
+      if (pt.eventId) o.eventId = pt.eventId;
+      return o;
     }),
     /* Change taken out to give to buyers: where it came from, where it is now,
        and whether it has gone back. Kept apart from the cash movements so it
@@ -3697,6 +3927,11 @@ function readState() {
         var o = out[loc] || (out[loc] = { owed: 0, undelivered: 0 });
         if (pendingFlag_(r) || (Number(r.dueamt) || 0) > 0) o.owed++;
         if (String(r.type) === 'PREORDER' && !isDelivered_(r)) o.undelivered++;
+      });
+      mismatchesAll_().forEach(function (m) {
+        if (m.status !== 'open') return;
+        var o = out[m.location] || (out[m.location] = { owed: 0, undelivered: 0 });
+        o.counts = (o.counts || 0) + 1;
       });
       return out;
     })(),
@@ -4158,7 +4393,7 @@ function syncSheets(force) {
           sh.getRange(1, 1, 3, 1).setValues([
             ['Could not build the season summary'],
             [lastErr],
-            ['Press "Sync sheet" in the app to try again. The regional files are unaffected.']
+            ['Press "Rebuild spreadsheets now" in Spreadsheet Links to try again. The regional files are unaffected.']
           ]);
         }
       } catch (e2) { /* nothing more we can do */ }
@@ -4262,6 +4497,8 @@ function withMirror_(ex, fn) {
     if (mirror.has('_activity')) objectsOf_('_activity').forEach(function (r) { actBefore[String(r.id)] = 1; });
     out = fn();
     flushStockMoves_();
+    // Who may open each spreadsheet, as the server wants it (b226).
+    if (ex.share) { try { shareSpreadsheets_(ex.share); } catch (e) { _shareAgain = true; } }
     var meta = {};
     if (mirror.has('_meta')) objectsOf_('_meta').forEach(function (r) {
       var k = String(r.key); if (k && metaBefore[k] !== String(r.value)) meta[k] = String(r.value);
@@ -4277,6 +4514,7 @@ function withMirror_(ex, fn) {
     var failed = {}; try { failed = JSON.parse(props.dirtyLocs || '{}'); } catch (e) {}
     back = { claim: ex.claim || '', meta: meta, activity: activity, failed: failed,
              props: { lastRenderError: props.lastRenderError || '' } };
+    if (_shareAgain) back.shareAgain = true;
   } finally {
     STORE_ = saved.store; KV_ = saved.kv; MIRROR_ = false;
     sheetMemoClear_(); fileMemoClear_(); _priceMemo = null;
@@ -4526,6 +4764,10 @@ function cashRows_() {
    transfer into a regional account left us in. */
 var CASH_HEADERS = ['id','ts','kind','fromAcct','toAcct','cur','amt','note','purpose','by','changeAmt','changeIds','changeRef'];
 var _cashBy = '';
+/* Who is asking, by sign-in (b223): set by the Cloudflare server for a signed-in
+   person (see setTrustedWho_), empty on a link and on Google. */
+var _meEmail = '';
+var _meGrant = '';
 
 /* What has been deliberately deleted, and must never come back.
 
@@ -5186,7 +5428,7 @@ function purgeRegions_(regionIds) {
   dbDelete_('_costs', function (c) { return here(c.location) || !!partners[String(c.partnerId || '')]; });
   dbDelete_('_change', function (c) { return here(c.loc); });
   dbDelete_('_org', function (r) { return here(r.scope) || !!gone[String(r.scope || '')]; });
-  dbDelete_('_prices', function (r) { return !!gone[String(r.regionId || '')]; });
+  dbDelete_('_prices', function (r) { return !!gone[String(r.regionId || '')] || here(r.regionId); });
   dbDelete_('_payouts', function (r) { return !!partners[String(r.partnerId || '')]; });
   dbDelete_('_partners', function (r) { return !!partners[String(r.partnerId)]; });
   dbDelete_('_holders', function (r) { return !!gone[String(r.regionId || '')]; });
@@ -5461,7 +5703,7 @@ function doSell(p) {
 
   appendSale_({
     saleId: p.saleId,               // the app's own name for it, if it gave one
-    soldBy: p.by,
+    soldBy: p.by, soldById: _meEmail,
     changeamt: p.changeamt, changecur: p.changecur,
     location: loc,
     type: isPreorder ? 'PREORDER' : 'SALE',
@@ -5545,9 +5787,9 @@ function doSellBundle(p) {
      credited to each title did not. */
   var legs = normalizeLegs_(p.legs || []);
   var payCur = (legs[0] && legs[0].cur) || 'USD';
-  var regionForPrice = regionOfLoc_(loc);
+  // At an event with its own prices, those are what the buyer was asked (b225).
   var weights = items.map(function (it) {
-    return Number(priceFor_(regionForPrice, it.book.id, payCur)) || Number(it.book.usd) || 1;
+    return Number(priceAtLoc_(loc, it.book.id, payCur)) || Number(it.book.usd) || 1;
   });
   var wSum = weights.reduce(function (a, c) { return a + c; }, 0) || items.length;
   var perItem = items.map(function () { return []; });
@@ -5581,7 +5823,9 @@ function doSellBundle(p) {
       // Members are named from their transaction, so the app knows each one's
       // id without waiting to be told.
       saleId: bundleId + '_' + i,
-      soldBy: p.by,
+      // An edit keeps whoever made the sale (b223); a new one is the person asking.
+      soldBy: p._keepSeller ? p._keepSeller.by : p.by,
+      soldById: p._keepSeller ? p._keepSeller.id : _meEmail,
       // Change owed belongs to the transaction, not to each book in it, so it
       // rides on the first line and the bundle reports it once.
       changeamt: i === 0 ? p.changeamt : 0,
@@ -5662,6 +5906,8 @@ function doEditBundle(p) {
      the second try once the screen had caught up. */
   p.keepBundleId = String(p.bundle);
   p.isEdit = true;
+  // Whoever made the sale still made it after an edit (b223).
+  p._keepSeller = { by: String(members[0].soldBy || p.by || ''), id: String(members[0].soldById || '') };
   // The dollars received survive an edit that does not speak to them.
   if (p.usdActual === undefined) {
     var had = members.filter(function (m) { return usdActualIn_(m.usdActual) !== ''; });
@@ -5773,7 +6019,7 @@ function doDonate(p) {
   var loc = placeOf_(p.location);
   appendSale_({
     saleId: p.saleId,               // the app's own name for it, if it gave one
-    soldBy: p.by,
+    soldBy: p.by, soldById: _meEmail,
     changeamt: p.changeamt, changecur: p.changecur,
     location: loc, type: 'DONATION', bookId: '', qty: 0,
     legs: p.legs || [], pending: !!p.pending,
@@ -5808,6 +6054,7 @@ function appendSale_(o) {
     // Who recorded it. Self-declared on a share link, so it's a trail to follow
     // up, not proof — but it answers "who should I ask about this?".
     soldBy: String(o.soldBy || '').trim().slice(0, 40),
+    soldById: String(o.soldById || '').slice(0, 120),
     /* The reverse of a pending payment: they handed over more than the price
        and we could not break it, so we owe them the difference. */
     changeamt: Number(o.changeamt) || 0,
@@ -6055,6 +6302,13 @@ function doDeleteEvent(p) {
   // Whole rows, untouched — rebuilding them field by field is what used to wipe
   // the share links stored alongside them.
   dbDelete_('_events', { eventId: eventId });
+  // Its own prices go with it; a consignment group kept for it serves the region again (b225).
+  dbDelete_('_prices', function (r) { return String(r.regionId) === eventId; });
+  _priceMemo = null;
+  if (dbCols_('_partners').indexOf('eventId') >= 0)
+    objectsOf_('_partners').forEach(function (pt) {
+      if (String(pt.eventId || '') === eventId) dbUpdate_('_partners', { partnerId: String(pt.partnerId) }, { eventId: '' });
+    });
   dbAddCols_('_sales', SALES_HEADERS);
   dbDelete_('_sales', { location: eventId });
 
@@ -6262,6 +6516,7 @@ function doEditSale(p) {
     comments: p.comments !== undefined ? p.comments : old.comments,
     // Who originally recorded it stays put — an edit shouldn't rewrite history.
     soldBy: old.soldBy || '',
+    soldById: old.soldById || '',
     changeamt: p.changeamt !== undefined ? (Number(p.changeamt) || 0) : (Number(old.changeamt) || 0),
     changecur: p.changecur !== undefined ? String(p.changecur) : String(old.changecur || ''),
     usdActual: p.usdActual !== undefined ? usdActualIn_(p.usdActual) : old.usdActual
@@ -6341,6 +6596,63 @@ function doGiveChange(p) {
   markDirtyRegions_([regionOfLoc_(String(p.location || ''))]);
 }
 
+/* ---- Cash handed from a seller to their Event Lead (b223) ----
+   Two taps: the seller says "I am handing you this", the Event Lead confirms
+   they received it (or declines, if it never reached them). Nothing moves in
+   the Cash Tracker — the cash was already the event's; this records which
+   person has it, so a seller's "cash with me" goes down only once confirmed. */
+var HANDOVER_HEADERS = ['id','ts','location','fromId','fromName','toId','toName','amounts','status','answeredAt','answeredBy'];
+function handoversAll_() {
+  if (!dbHas_('_handovers')) return [];
+  return objectsOf_('_handovers').filter(function (h) { return h && h.id; }).map(function (h) {
+    var a = {}; try { a = JSON.parse(String(h.amounts || '{}')) || {}; } catch (e) { a = {}; }
+    return { id: String(h.id), ts: h.ts, location: String(h.location || ''),
+             fromId: String(h.fromId || ''), fromName: String(h.fromName || ''),
+             toId: String(h.toId || ''), toName: String(h.toName || ''), amounts: a,
+             status: String(h.status || 'waiting'), answeredAt: h.answeredAt ? dateText_(h.answeredAt) : '',
+             answeredBy: String(h.answeredBy || '') };
+  });
+}
+/* Does this request's role cover this place? (A link: its events or region.) */
+function whoCovers_(who, loc) {
+  if (who.role === 'admin') return true;
+  if (who.role === 'seller') return (who.eventIds || [who.eventId]).indexOf(String(loc)) >= 0;
+  return locsInRegion_(who.regionId).indexOf(String(loc)) >= 0;
+}
+function doHandoverCash(p, who) {
+  var id = String(p.id || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40);
+  if (!id) throw new Error('That handover has no name; try again.');
+  if (!dbHas_('_handovers')) dbCreate_('_handovers', HANDOVER_HEADERS);
+  if (objectsOf_('_handovers').some(function (h) { return String(h.id) === id; })) return id;   // a resend
+  var loc = placeOf_(p.location);
+  var amounts = {};
+  Object.keys(p.amounts || {}).forEach(function (c) {
+    var n = Math.round((Number(p.amounts[c]) || 0) * 100) / 100;
+    if (n > 0 && /^[A-Z]{3}$/.test(c)) amounts[c] = n;
+  });
+  if (!Object.keys(amounts).length) throw new Error('Enter how much cash you are handing over.');
+  // Allowed after the event closes, like settling a debt: the cash still has to change hands.
+  dbInsert_('_handovers', { id: id, ts: new Date(), location: loc, fromId: _meEmail, fromName: _cashBy,
+    toId: String(p.toId || '').toLowerCase().slice(0, 120), toName: String(p.toName || '').slice(0, 40),
+    amounts: JSON.stringify(amounts), status: 'waiting', answeredAt: '', answeredBy: '' });
+  markDirty_(loc);
+  return id;
+}
+function doHandoverAnswer(p, who) {
+  var id = String(p.id || '');
+  var h = handoversAll_().filter(function (x) { return x.id === id; })[0];
+  if (!h) throw new Error('That handover is no longer listed.');
+  if (h.status !== 'waiting') return h.status;                     // already answered (a resend)
+  var mine = _meEmail && h.toId === _meEmail;
+  var anyLead = !h.toId && _meGrant === 'EL' && whoCovers_(who, h.location);
+  if (!(who.role === 'admin' || mine || anyLead)) throw new Error('Only the person it was handed to can confirm it.');
+  if (_meEmail && h.fromId === _meEmail && who.role !== 'admin') throw new Error('You cannot confirm your own handover.');
+  var status = p.accept === false || String(p.accept) === 'false' ? 'declined' : 'received';
+  dbUpdate_('_handovers', { id: id }, { status: status, answeredAt: new Date(), answeredBy: _cashBy });
+  markDirty_(h.location);
+  return status;
+}
+
 function doMarkPaid(p) {
   var saleId = String(p.saleId);
   var all = objectsOf_('_sales');
@@ -6399,8 +6711,11 @@ function partnersAll_() {
   return objectsOf_('_partners')
     .filter(function (x) { return x && x.partnerId && !truthyCell_(x.archived); })
     .map(function (x) {
-      return { partnerId: String(x.partnerId), regionId: String(x.regionId || ''),
-               name: String(x.name || ''), note: String(x.note || '') };
+      var o = { partnerId: String(x.partnerId), regionId: String(x.regionId || ''),
+                name: String(x.name || ''), note: String(x.note || '') };
+      // A group can belong to one event only (b225); sent only when it does.
+      if (x.eventId) o.eventId = String(x.eventId);
+      return o;
     });
 }
 function partnerById_(id) {
@@ -6459,14 +6774,26 @@ function doSavePartner(p) {
   var regionId = String(p.regionId || '');
   if (!regionById_(regionId)) throw new Error('Pick a region.');
   var id = String(p.partnerId || '');
+  /* Which event it belongs to, if just one (b225): its titles are then offered
+     there and not at the region's other events. '' is the whole region. */
+  var eventId = (p.eventId === undefined || p.eventId === null) ? null : String(p.eventId);
+  if (eventId) {
+    var ev = eventById_(eventId);
+    if (!ev || String(ev.regionId) !== regionId) throw new Error('That event is not in this region.');
+  }
+  if (eventId !== null && (eventId || dbCols_('_partners').indexOf('eventId') >= 0)) dbAddCols_('_partners', ['eventId']);
+  else eventId = null;
   if (id) {
     var pSet = { name: name, note: String(p.note || '').trim() };
     if (p.archived !== undefined) pSet.archived = !!p.archived;
+    if (eventId !== null) pSet.eventId = eventId;
     dbUpdate_('_partners', { partnerId: id }, pSet);
   } else {
     id = 'pt_' + Utilities.getUuid().slice(0, 6);
-    dbInsert_('_partners', { partnerId: id, regionId: regionId, name: name, note: String(p.note || '').trim(),
-                             createdAt: new Date(), archived: false });
+    var row = { partnerId: id, regionId: regionId, name: name, note: String(p.note || '').trim(),
+                createdAt: new Date(), archived: false };
+    if (eventId !== null) row.eventId = eventId;
+    dbInsert_('_partners', row);
   }
   markDirtyRegions_([regionId]);
   return id;
@@ -7110,9 +7437,22 @@ function colLetter_(n) {
 }
 
 
+/* The line at the top of every tab the app draws (b226, the owner's words).
+   These files are rebuilt from the app's records, so a change typed into one is
+   lost at the next rebuild; anyone who wants to work on the figures makes a copy. */
+var SHEET_NOTE_ = 'If you wish to edit this sheet, please make a copy. Note that this sheet is being created ' +
+  'from the app. If you wish for any changes you make to be reflected permanently, you must change them in the app itself.';
+
 /* One place that turns rows + styling hints into a finished tab, so the season
    file and every regional file look identical. */
 function paintSheet_(sh, rows, band, head, tot, money, ints) {
+  /* ---- The note goes first; everything else moves down a row ---- */
+  var down = function (n) { return n + 1; };
+  var downA1 = function (a1) { return String(a1).replace(/([A-Z]+)(\d+)/g, function (x, c, n) { return c + (Number(n) + 1); }); };
+  rows = [[SHEET_NOTE_]].concat(rows);
+  band = band.map(down); head = head.map(down); tot = tot.map(down);
+  money = money.map(downA1); ints = (ints || []).map(downA1);
+
   /* ---- Write values in one call ---- */
   var width = rows.reduce(function (m, x) { return Math.max(m, x.length); }, 1);
   var padded = rows.map(function (x) { while (x.length < width) x.push(''); return x; });
@@ -7138,16 +7478,21 @@ function paintSheet_(sh, rows, band, head, tot, money, ints) {
   all.setFontFamily('Arial').setFontSize(10).setFontColor(TH.ink).setBackground(TH.paper)
      .setVerticalAlignment('middle');
 
-  // Masthead
+  // The note: one wrapped line across the top, plain to see and never mistaken for data.
   sh.getRange('A1:' + last + '1').merge()
+    .setBackground('#FFF1C9').setFontColor(TH.ink).setFontSize(10).setFontWeight('bold')
+    .setWrap(true).setHorizontalAlignment('left').setVerticalAlignment('middle');
+  sh.setRowHeight(1, 40);
+  // Masthead
+  sh.getRange('A2:' + last + '2').merge()
     .setBackground(TH.plum).setFontColor(TH.gold)
     .setFontFamily('Georgia').setFontSize(15).setFontWeight('bold')
     .setHorizontalAlignment('left').setVerticalAlignment('middle');
-  sh.setRowHeight(1, 36);
-  sh.getRange('A2:' + last + '2').merge()
+  sh.setRowHeight(2, 36);
+  sh.getRange('A3:' + last + '3').merge()
     .setBackground(TH.cream).setFontColor(TH.goldD)
     .setFontFamily('Georgia').setFontStyle('italic').setFontSize(11);
-  sh.getRange('A3:' + last + '3').setBackground(TH.cream).setFontColor(TH.muted).setFontSize(9);
+  sh.getRange('A4:' + last + '4').setBackground(TH.cream).setFontColor(TH.muted).setFontSize(9);
 
   if (band.length) {
     sh.getRangeList(band.map(function (n) { return 'A' + n + ':' + last + n; }))
@@ -7171,7 +7516,7 @@ function paintSheet_(sh, rows, band, head, tot, money, ints) {
 
   sh.setColumnWidth(1, 250);
   for (var c = 2; c <= width; c++) sh.setColumnWidth(c, 128);
-  sh.setFrozenRows(3);
+  sh.setFrozenRows(4);
   if (sh.getMaxRows() > padded.length + 2) {
     sh.getRange(padded.length + 1, 1, sh.getMaxRows() - padded.length, sh.getMaxColumns())
       .setBackground(TH.paper);
@@ -8090,7 +8435,8 @@ var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions
 var ACTIVITY_SKIP = {
   sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
   donate:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
-  settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1
+  settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1,
+  handoverCash:1, handoverAnswer:1    // a record of its own, like a sale
 };
 var _cashIds = [];            // cash rows written by the current request
 var _activityBefore = null;   // what a change replaced, noted just before it runs
@@ -8277,6 +8623,7 @@ function describe_(action, p, result, moves, who) {
     case 'reorder':      d = { text: 'Changed the order of ' + (p.kind === 'event' ? 'events' : 'regions') }; break;
     case 'reorderBooks': d = { text: 'Changed the order of the titles' }; break;
     case 'setPrices':    d = { text: 'Changed prices' + (p.regionId ? ' in ' + reg(p.regionId) : '') }; break;
+    case 'setEventPrices': d = { text: 'Changed the prices at ' + locLabel_(p.eventId) }; locs[String(p.eventId)] = 1; break;
     case 'addBook':      d = { text: 'Added a new title: “' + p.name + '”' }; break;
     case 'renameBook':   d = { text: 'Renamed a title to “' + p.name + '”' }; break;
     case 'deleteBook':   d = { text: 'Deleted a title' }; break;
@@ -8320,6 +8667,9 @@ function describe_(action, p, result, moves, who) {
     case 'setKey': case 'sellerLink': d = { text: 'Changed a share link' }; break;
     case 'setDriveFolder': case 'setSeasonFolder': d = { text: 'Changed where the spreadsheets are filed' }; break;
     case 'descriptionsSheet': d = { text: 'Made the AI Descriptions spreadsheet' }; break;
+    case 'mismatchAnswer':
+      d = { text: (String(p.accept) === 'true' || p.accept === true ? 'Accepted a closing count' : 'Settled a closing count') +
+                  ' — “' + String(p.answer || '') + '”' + (mv ? ' (' + mv + ')' : ''), undo: movesUndo }; break;
     default: d = { text: (mv || ('Changed: ' + action)) + note, undo: movesUndo };
   }
   Object.keys(locs).forEach(function (l) { var r = regionOfAnyLoc_(l); if (r) regions[r] = 1; });

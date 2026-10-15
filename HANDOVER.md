@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b222**.
+Handover notes. Current build: **b226**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,116 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b226 — Stage 4: the spreadsheets
+
+- **The note** (the owner's words, `SHEET_NOTE_`) is the first line of every
+  tab the app draws: `paintSheet_` puts it on row 1 and moves everything else
+  down one (band/head/total rows and the money/integer ranges are shifted for
+  it; four frozen rows now). The AI Descriptions file is for writing in, so it
+  has none. Golden: `node test/golden.js --strip-note` shows each tab is
+  otherwise unchanged.
+- **Sharing, per person.** The server works out who should have each file
+  (`people.js` `sheetsWanted`: Universal and ADMIN_EMAILS edit; F/FA view all
+  but the wording file; SL/SA their season's; RL/RA their region's and its
+  consignment groups'; EL/S none) from `sheetFilesForAuth_()` (Code.gs: every
+  file made, from `_meta`, with its season and region). It goes to Google with
+  every `reportExport` as `share`; Google's `shareSpreadsheets_` (run in
+  `withMirror_`) makes Drive match: removals first, then additions; never the
+  script's own account. It records whom it added (`_meta` `sheetShare:<fileId>`),
+  so only those are ever removed — people shared by hand stay — and the whole
+  wish (`sheetShareSig`), so an unchanged wish costs no Drive call. Errors (an
+  address that is not a Google account) are kept in `sheetShareError`, not
+  retried every minute. More than 2 minutes of Drive calls: the rest next run
+  (`shareAgain`).
+- **When it runs:** the minute tick is no longer idle when `shareDirty` is set:
+  on adding or removing a role (People, and the old admins actions), after a
+  run that made a new file (a `*SheetId` key written back), or after one that
+  ran out of time. A run that never reports back gives it back too.
+- **Spreadsheet Links** (was "Spreadsheet folders"): Universal sees it as
+  before, plus **⇪ Rebuild spreadsheets now** (the top bar's Sync sheet button
+  is gone). Anyone else signed in (a Regional Lead today; the button is in the
+  coordinator panel when signed in) gets `driveMap` cut to their own files,
+  with no folders (`people.sheetsMapFor`, in core.js), and a "make a copy"
+  hint. The cached map on the phone is kept per person.
+- Wording that said "Sync sheet" now says "Rebuild spreadsheets now".
+- Tests: `test/sharing.js` (19, in run-all), `test/bridge.js` (a new file is
+  shared on the next minute), `test/seam.js` (`shareSpreadsheets_` may use
+  Drive), `test/browser-sellers.js` (Spreadsheet Links for the owner and a
+  Regional Lead).
+- **For the owner to do after merging:** nothing new in Google's settings: the
+  Drive permission is the one used to file the spreadsheets. Paste the new
+  Code.gs as usual. People with roles are given their files within a minute or
+  two; Google may send them its usual "shared with you" email.
+
+## Done in b225 — Stage 3, part 3: an event's own prices; consignment for one event
+
+- **Event Prices** (💲 button in Books, at an event; admin and Regional
+  Lead): an event can ask its own price for a title, per currency. Only what is
+  typed there is the event's; a blank box shows the region's price in grey and
+  uses it, so later changes to the region's prices still reach every title the
+  event has not set. Stored in `_prices` with the event's id in the `regionId`
+  column (`doSetEventPrices`, action `setEventPrices`, COORD_EXTRA, checked to
+  the coordinator's region; a blank removes the row). Sent as `eventPrices`
+  (only what is set, only once any is). App: `priceIn` = `eventPriceIn` at an
+  event, else `regionPriceIn`. A bundle at the event is split by the event's
+  prices (`priceAtLoc_`). Deleting an event (or its season) takes its prices.
+- **Consignment groups can belong to one event**: `_partners.eventId`
+  (column added the first time a group is tied to an event). "Their titles are
+  offered at": every event in the region, or only at one. Such a group's
+  titles are on that event's shelf only (`partnersHere`), unless copies are on
+  another event's table (stock is a fact). The region lists every group, with
+  "Only at …". Deleting the event returns its groups to the whole region.
+- Not yet: an Event Lead setting their event's prices (they work through a
+  sales link until Stage 2; the table gives them "own").
+- Tests: `test/eventprice.js` (17, in run-all), `test/browser-sellers.js`.
+  Golden identical.
+
+## Done in b224 — Stage 3, part 2: a count that does not match is flagged, not written over
+
+- **Closing an event or region** with counts that differ from the records no
+  longer rewrites the stock. Each differing title goes into `_mismatches`
+  (expected, counted, note, who counted) as **open**, and the place shows it
+  as outstanding (`outstanding.counts`), like unpaid sales.
+- **Counts to Look Into** panel (bottom row; not for Sellers): what was
+  expected, what was counted, by whom. The next person up answers (an event's:
+  its Regional Lead; a region's: Universal until the Seasonal Lead exists in
+  Stage 2) with a reason, required: **Accept the count** applies the
+  difference (counted − expected) to today's stock, logged as an ADJUST stock
+  move "Closing count accepted — reason"; **Settled** leaves the stock (the
+  error was found, e.g. a sale recorded on paper). Server: `doMismatchAnswer`
+  (action `mismatchAnswer`, COORD_EXTRA). Everyone else sees "with …".
+- `_handovers` (b223) and `_mismatches` are now in `TABLE_KEYS_`, so they
+  are copied by copyToCloudflare / cutover.
+- Tests: `test/countflag.js` (13, in run-all), `test/browser-sellers.js`
+  (the panel, a reason required, accepting). Golden: one difference, the
+  `closeLocation` in extra.jsonl now leaves an open count instead of
+  adjusting stock.
+
+## Done in b223 — Stage 3, part 1: who sold it, My sales, cash handover, Sales by Seller
+
+- **Sales remember who made them**: new `_sales` column `soldById` (the
+  signed-in person's address; empty on a link). Code.gs takes it only from the
+  server (`_meEmail`, from `setTrustedWho_`, which core.js now calls for
+  Universal too, with `email`, `name` and `grant` — the role acted in). Edits
+  keep the original seller (`doEditSale`, and `doEditBundle` via `_keepSeller`).
+  The state sends `soldById` only on sales that have one.
+- **A Seller** (role S, or any sales link) sees **My sales** (their own books,
+  `isMine`: by sign-in, else by the name on the link) and **My cash** (cash
+  they took, less what they handed over) instead of the event's tiles
+  (`sellerTilesHTML`).
+- **Cash handover** (`_handovers`, actions `handoverCash` / `handoverAnswer`):
+  "Hand your cash to Gita" — the Event Leads of the event come from the server
+  (`me.grants[].leads`). It waits until the person it was handed to (or, when
+  none was named, an Event Lead there; or Universal) taps Received or Not
+  received; never the seller themself. Allowed after the event closes, like
+  settling. Not in the Activity Log (a record of its own, like sales).
+- **Cash Handed Over** panel (bottom row) for leads, and **Sales by Seller**
+  (region and event pages, not for Sellers): books sold, pre-orders, cash
+  collected, handed to lead, still with them; per event at a region.
+- Test: `test/browser-sellers.js` — a new, faster harness: the real page
+  talking to `server/src/core.js` in-process, with a stand-in Google sign-in.
+- Golden: identical apart from the new column (`--ignore-col=soldById`).
 
 ## Done in b222 — Stage 0 and 1 of logins: people, roles, sign-in for everyone
 

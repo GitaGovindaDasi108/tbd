@@ -169,3 +169,60 @@ export function describe(P, g) {
     place: placeLabel(P, g.role, g.placeId), active: st.active, why: st.why || '',
     usable: st.active && !!worksAs(P, g), addedBy: g.addedBy || '' };
 }
+
+/* ---- The spreadsheets (b226, PERMISSIONS.md "Spreadsheets") ----
+   Universal edits every file. Finance and its assistant see every file but the
+   wording one; a Seasonal Lead or Assistant sees their season's (its summary,
+   its regions', its consignment groups'); a Regional Lead or Assistant sees
+   their region's and its consignment groups'. Event Leads and Sellers see none.
+   Seeing is "view only": they can open a file and make their own copy, not
+   change the one the app keeps rebuilding.
+
+   Files are { id, kind: 'hq'|'season'|'region'|'partner'|'desc', seasonId, regionId }.
+   A role keeps its view after its place closes: the records stay worth reading. */
+const SHEET_VIEW = { F: 'all', FA: 'all', SL: 'season', SA: 'season', RL: 'region', RA: 'region' };
+function sheetInReach(g, f) {
+  const k = SHEET_VIEW[g.role];
+  if (!k || f.kind === 'desc') return false;
+  if (k === 'all') return true;
+  if (f.kind === 'hq') return false;
+  if (k === 'season') return !!f.seasonId && f.seasonId === g.placeId;
+  return (f.kind === 'region' || f.kind === 'partner') && !!f.regionId && f.regionId === g.placeId;
+}
+const lower = e => String(e || '').trim().toLowerCase();
+
+/** Who should have each file, and how: { fileId: { e: [editors], v: [viewers] } }. */
+export function sheetsWanted(grants, owners, files) {
+  const editors = new Set((owners || []).map(lower).filter(Boolean));
+  (grants || []).forEach(g => { if (g.role === 'U') editors.add(lower(g.email)); });
+  const out = {};
+  (files || []).forEach(f => {
+    if (!f || !f.id) return;
+    const e = [...editors];
+    const v = new Set();
+    (grants || []).forEach(g => { const m = lower(g.email); if (!editors.has(m) && sheetInReach(g, f)) v.add(m); });
+    out[f.id] = { e: e.sort(), v: [...v].sort() };
+  });
+  return out;
+}
+/** Does anyone with these roles get any spreadsheet at all? */
+export const seesSheets = grants => (grants || []).some(g => g.role === 'U' || SHEET_VIEW[g.role]);
+
+/* The Spreadsheet Links map (Code.gs driveMap_) cut down to one person's own
+   files, without folders (they are not shared, so their links would not open). */
+export function sheetsMapFor(P, grants, map) {
+  const regionSeason = id => ((P.regions[id] || {}).seasonId) || '';
+  const sees = f => (grants || []).some(g => sheetInReach(g, f));
+  const out = { root: null, driveOk: map.driveOk !== false, viewOnly: true, seasons: [] };
+  if (map.hq && sees({ kind: 'hq' })) out.hq = map.hq;
+  (map.seasons || []).forEach(se => {
+    const asFile = (x, kind) => x.regionId
+      ? { kind, regionId: x.regionId, seasonId: regionSeason(x.regionId) || se.seasonId }
+      : { kind: 'season', seasonId: se.seasonId };
+    const files = (se.files || []).filter(x => sees(asFile(x, 'region')));
+    const consignFiles = (se.consignFiles || []).filter(x => sees(asFile(x, 'partner')));
+    if (files.length || consignFiles.length)
+      out.seasons.push({ seasonId: se.seasonId, name: se.name, folder: null, consign: null, files, consignFiles });
+  });
+  return out;
+}

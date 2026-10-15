@@ -106,13 +106,27 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
         if (action === 'adminsApprove') auth.add(me, p.email);
         if (action === 'adminsDecline') auth.decline(p.email);
         if (action === 'adminsRemove') auth.remove(me, p.email);
+        if (action !== 'adminsList') kv.setProp('shareDirty', '1');       // who may open the spreadsheets changed
         return reply({ ok: true, result: auth.list(me) });
       } catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     // The owner's spreadsheet requests are passed to Google, which does them.
     if (universal && SHEET_ACTIONS.test(action)) return forwardToGoogle(p);
+    /* Anyone else signed in sees only their own files, without the folders (b226). */
+    if (!linkKey && !universal && action === 'driveMap') {
+      const mine = auth.grantsOf(me);
+      if (!people.seesSheets(mine)) return reply({ ok: false, error: 'There are no spreadsheets for your roles.' });
+      const text = await forwardToGoogle(p);
+      try {
+        const o = JSON.parse(text);
+        if (o && o.ok && o.result) o.result = people.sheetsMapFor(places(), mine, o.result);
+        return reply(o);
+      } catch (err) { return text; }
+    }
+    // Who is asking, told to Code.gs directly: the role acted in, their name, their address (b223).
+    if (universal) app.setTrustedWho_({ role: 'admin', name: auth.nameOf(me), email: me, grant: 'U' });
     if (acting) {
-      app.setTrustedWho_(Object.assign({ name: auth.nameOf(me) }, acting.who));
+      app.setTrustedWho_(Object.assign({ name: auth.nameOf(me), email: me, grant: acting.grant.role }, acting.who));
       const out = answer(e);
       // Which role this was answered in, so the page can show it.
       if (action === 'getState' || action === 'setSeason') {
@@ -135,7 +149,14 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   }
   function meInfo(me) {
     const P = places(), mine = auth.grantsOf(me), owner = auth.isOwner(me);
-    const grants = mine.map(g => people.describe(P, g));
+    const all = auth.allGrants();
+    const grants = mine.map(g => {
+      const d = people.describe(P, g);
+      // At an event: its Event Leads by name, so a Seller can "Hand your cash to Gita" (b223).
+      if ((people.ROLES[g.role] || {}).kind === 'event') d.leads = all.filter(x => x.role === 'EL' && x.placeId === g.placeId && x.email !== me)
+        .map(x => ({ email: x.email, name: x.name || x.googleName || x.email.split('@')[0] }));
+      return d;
+    });
     if (owner) grants.unshift({ id: '', role: 'U', roleName: 'Universal', placeId: '', place: 'Everywhere',
       active: true, why: '', usable: true, owner: true });
     return Object.assign(auth.person(me), {
@@ -176,6 +197,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       if (people.ROLES[role].kind !== 'all' && !people.activeState(P, { role, placeId }).active)
         throw new Error('That place is closed, so a role there would do nothing.');
       auth.addGrant(me, p.email, p.name, role, placeId);
+      kv.setProp('shareDirty', '1');           // the spreadsheets may have someone new to share with (b226)
     }
     if (action === 'peopleRemove') {
       const g = auth.grantById(p.id);
@@ -183,6 +205,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       if (!people.mayRemove(P, mine, owner, me, g)) throw new Error(g.email === me
         ? 'You cannot remove your own role. Ask someone above you.' : 'You cannot remove that role.');
       auth.removeGrant(g.id);
+      kv.setProp('shareDirty', '1');
     }
     if (action === 'peopleDecline') {
       if (!people.givesAny(P, mine, owner)) throw new Error('You cannot answer sign-in requests.');
@@ -238,24 +261,35 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       const d = parse(kv.getProp('dirtyLocs'), {});
       Object.keys(flying.set || {}).forEach(k => { d[k] = 1; });
       kv.setProp('dirtyLocs', JSON.stringify(d));
+      if (flying.share) kv.setProp('shareDirty', '1');
       kv.delProp('cfInFlight');
     }
     const dirty = parse(kv.getProp('dirtyLocs'), {});
     const quiet = Date.now() - Number(kv.getProp('lastWriteAt') || 0) >= app.QUIET_MS;
-    // tick: the minute check — only when something needs drawing and nobody is saving.
-    if (mode === 'tick' && (!Object.keys(dirty).length || !quiet || kv.getProp('cfInFlight'))) return { idle: true };
+    const reshare = !!kv.getProp('shareDirty');
+    // tick: the minute check — only when something needs drawing (or sharing) and nobody is saving.
+    if (mode === 'tick' && ((!Object.keys(dirty).length && !reshare) || !quiet || kv.getProp('cfInFlight'))) return { idle: true };
     let claim = '';
     const props = kv.allProps();
     if (mode === 'tick' || mode === 'sync') {
       claim = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-      kv.setProp('cfInFlight', JSON.stringify({ id: claim, at: Date.now(), set: dirty }));
+      kv.setProp('cfInFlight', JSON.stringify({ id: claim, at: Date.now(), set: dirty, share: reshare }));
       kv.setProp('dirtyLocs', '{}');
       props.dirtyLocs = JSON.stringify(dirty);
     } else {
       props.dirtyLocs = '{}';          // (a forwarded request draws nothing by itself)
     }
     delete props.cfInFlight;
-    return { claim, tables: exportAll(), props };
+    delete props.shareDirty;
+    if (mode !== 'forward') kv.delProp('shareDirty');
+    return { claim, tables: exportAll(), props, share: sheetShare() };
+  }
+  /* Who should have each spreadsheet (b226): worked out here, where the roles
+     are; Google only makes Drive match it (Code.gs shareSpreadsheets_). */
+  function sheetShare() {
+    try {
+      return people.sheetsWanted(auth.allGrants(), auth.ownerList(), app.sheetFilesForAuth_());
+    } catch (e) { return null; }
   }
   /* Phase 3: the records copied across from Google, replacing what is here.
      The revision moves on past Google's, so every phone fetches afresh. */
@@ -307,6 +341,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     }
     const flying = parse(kv.getProp('cfInFlight'), null);
     if (flying && back.claim && flying.id === back.claim) kv.delProp('cfInFlight');
+    // Sharing left half done, or a new spreadsheet made: share on the next minute (b226).
+    if (back.shareAgain || Object.keys(back.meta || {}).some(k => /SheetId(:|$)/.test(k))) kv.setProp('shareDirty', '1');
     app.cacheClear_(); app.bumpRev_();
     return { done: true };
   }
