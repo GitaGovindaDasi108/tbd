@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b227';
+var SERVER_BUILD = 'b228';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -2691,7 +2691,7 @@ function doDeleteSeason(p) {
 
 function regionsOrdered_(seasonId) {
   var want = String(seasonId || activeSeasonId_());
-  return objectsOf_('_regions').filter(function (r) {
+  var list = objectsOf_('_regions').filter(function (r) {
     return String(r.seasonId || '') === want;
   }).map(function (r, i) {
     return { regionId: String(r.regionId), name: String(r.name),
@@ -2700,7 +2700,9 @@ function regionsOrdered_(seasonId) {
              books: parseBookList_(r.books), closedAt: r.closedAt || '',
              payTypes: String(r.payTypes || ''),
              bookOrder: String(r.bookOrder || ''), hidden: String(r.hidden || ''), _i: i };
-  }).sort(function (a, b) { return (a.sort - b.sort) || (a._i - b._i); })
+  }).sort(function (a, b) { return (a.sort - b.sort) || (a._i - b._i); });
+  // Closed regions below the open ones, A to Z (b228).
+  return closedLast_(list)
     // Keep payTypes here too, or the region's own list never reaches the app.
     .map(function (r) { return { regionId: r.regionId, name: r.name, whLoc: r.whLoc,
                                  sort: r.sort, currencies: r.currencies, books: r.books,
@@ -3778,7 +3780,7 @@ function getSeasonName_() {
    never shuffle them. Row order is the tie-break, for events created in the
    same second or predating the createdAt column. */
 function eventsOrdered_() {
-  return objectsOf_('_events').map(function (e, i) {
+  return closedLast_(objectsOf_('_events').map(function (e, i) {
     var t = e.createdAt instanceof Date ? e.createdAt.getTime() : Number(new Date(e.createdAt));
     return { eventId: String(e.eventId), name: String(e.name), createdAt: e.createdAt,
              payTypes: parsePayList_(e.payTypes),
@@ -3802,7 +3804,19 @@ function eventsOrdered_() {
     return { eventId: e.eventId, name: e.name, createdAt: e.createdAt,
              payTypes: e.payTypes || [], hidden: e.hidden || '',
              regionId: e.regionId, closedAt: e.closedAt, sort: e.sort };
+  }));
+}
+/* Once a place has closed it drops below the open ones and takes its place in
+   A-to-Z order there (b228, the owner's rule), so the lists lead with where
+   work is still going on. The open ones keep the order chosen for them.
+   Reopening puts it back where it was. */
+function closedLast_(list) {
+  var open = list.filter(function (x) { return !x.closedAt; });
+  var shut = list.filter(function (x) { return !!x.closedAt; }).sort(function (a, b) {
+    return String(a.name).toLowerCase() < String(b.name).toLowerCase() ? -1
+         : String(a.name).toLowerCase() > String(b.name).toLowerCase() ? 1 : 0;
   });
+  return open.concat(shut);
 }
 
 function readState() {
