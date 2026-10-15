@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b223';
+var SERVER_BUILD = 'b224';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -462,6 +462,7 @@ function handle(e) {
         case 'giveChange':       doGiveChange(params);       break;
         case 'handoverCash':     doHandoverCash(params, who); break;
         case 'handoverAnswer':   doHandoverAnswer(params, who); break;
+        case 'mismatchAnswer':   result = doMismatchAnswer(params, who); break;
         case 'markDelivered':    doMarkDelivered(params);    break;
         case 'setWarehouseName': doSetWarehouseName(params); break;
         case 'cashMove':         doCashMove(params);         break;
@@ -663,6 +664,7 @@ function scopedStateBuild_(who) {
   full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return String(x.fulfilBy) === String(regionId); });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
   if (full.handovers) full.handovers = full.handovers.filter(function (h) { return mine[String(h.location)]; });
+  if (full.mismatches) full.mismatches = full.mismatches.filter(function (m) { return mine[String(m.location)]; });
   var drafts = {};
   Object.keys(full.closeDrafts || {}).forEach(function (k) {
     var id = k.split(':').slice(1).join(':');
@@ -735,6 +737,7 @@ function scopeToSeason_(st) {
   });
   st.costs = (st.costs || []).filter(function (c) { return mine[String(c.location)]; });
   if (st.handovers) st.handovers = st.handovers.filter(function (h) { return mine[String(h.location)]; });
+  if (st.mismatches) st.mismatches = st.mismatches.filter(function (m) { return mine[String(m.location)]; });
   // Requests this season's regions were asked to fulfill, wherever they came from.
   st.remote = (st.remote || []).filter(function (x) { return regionOk[String(x.fulfilBy)]; });
   /* Change follows the money, so it can be sitting with a coordinator rather
@@ -835,6 +838,7 @@ function stateJson_() {
     (st.sales || []).forEach(function (x) { if (byId[x.saleId]) x.soldById = byId[x.saleId]; });
   }
   if (dbHas_('_handovers')) st.handovers = handoversAll_();
+  if (dbHas_('_mismatches')) st.mismatches = mismatchesAll_();
   // At HQ, every season's records ride along, taken before HQ's own trim.
   if (isHQ_()) st.everywhere = everywhere_(st.sales, st.inventory);
   var str = JSON.stringify(scopeToSeason_(st));
@@ -1172,7 +1176,11 @@ function outstandingAt_(locs) {
     if (pendingFlag_(r) || (Number(r.dueamt) || 0) > 0) owed++;
     if (String(r.type) === 'PREORDER' && !isDelivered_(r)) undelivered++;
   });
-  return { owed: owed, undelivered: undelivered };
+  var out = { owed: owed, undelivered: undelivered };
+  // A count still to look into is work left too (b224).
+  var counts = mismatchesAll_().filter(function (m) { return m.status === 'open' && mine[m.location]; }).length;
+  if (counts) out.counts = counts;
+  return out;
 }
 
 function setClosed_(kind, id, when) {
@@ -1231,13 +1239,20 @@ function doCloseLocation(p) {
     if (isNaN(counted)) return;
     var expected = getQty_(map, loc, bookId);
     if (counted === expected) return;
-    setQty_(map, loc, bookId, counted);
-    stockMoveAppend_({ kind: 'ADJUST', toLoc: loc, bookId: bookId, qty: counted - expected,
-      note: 'Closing count' + (p.note ? ' — ' + p.note : ''),
-      toBefore: expected, toAfter: counted });
+    /* A count that does not match is not written over the records (b224): it is
+       a cause for investigation. It is flagged to the next person up, who
+       accepts the count or finds the error (see doMismatchAnswer). */
     diffs.push({ loc: loc, bookId: bookId, expected: expected, counted: counted });
   });
-  saveInvMap_(map);
+  if (diffs.length) {
+    if (!dbHas_('_mismatches')) dbCreate_('_mismatches', MISMATCH_HEADERS);
+    dbInsert_('_mismatches', diffs.map(function (d) {
+      return { id: 'M' + Utilities.getUuid().replace(/-/g, '').slice(0, 10), ts: new Date(), kind: kind, placeId: id,
+               location: d.loc, bookId: d.bookId, expected: d.expected, counted: d.counted,
+               note: String(p.note || '').slice(0, 300), by: _cashBy, byId: _meEmail,
+               status: 'open', answeredAt: '', answeredBy: '', answer: '' };
+    }));
+  }
 
   setClosed_(kind, id, new Date());
   // A region's dollars stop moving the day it closes.
@@ -1252,6 +1267,55 @@ function doCloseLocation(p) {
     markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
   }
   return { diffs: diffs, outstanding: outstandingAt_(locs) };
+}
+
+/* ---- Count mismatches (b224) ----
+   A closing count that differs from the records. The records stay as they were
+   until the next person up looks into it: an event's goes to its Regional Lead,
+   a region's to its Seasonal Lead (Universal stands in until Stage 2). They
+   either ACCEPT the count — the difference is applied, with their name and
+   reason — or mark it RESOLVED with what they found (a sale never recorded,
+   books miscounted), and the records stay. */
+var MISMATCH_HEADERS = ['id','ts','kind','placeId','location','bookId','expected','counted','note','by','byId',
+                        'status','answeredAt','answeredBy','answer'];
+function mismatchesAll_() {
+  if (!dbHas_('_mismatches')) return [];
+  return objectsOf_('_mismatches').filter(function (m) { return m && m.id; }).map(function (m) {
+    return { id: String(m.id), ts: m.ts, kind: String(m.kind || 'event'), placeId: String(m.placeId || ''),
+             location: String(m.location || ''), bookId: String(m.bookId || ''),
+             expected: Number(m.expected) || 0, counted: Number(m.counted) || 0, note: String(m.note || ''),
+             by: String(m.by || ''), status: String(m.status || 'open'),
+             answeredAt: m.answeredAt ? dateText_(m.answeredAt) : '', answeredBy: String(m.answeredBy || ''),
+             answer: String(m.answer || '') };
+  });
+}
+function doMismatchAnswer(p, who) {
+  var m = mismatchesAll_().filter(function (x) { return x.id === String(p.id || ''); })[0];
+  if (!m) throw new Error('That count is no longer listed.');
+  if (m.status !== 'open') return m.status;                      // already answered (a resend)
+  var mayAnswer = who.role === 'admin' ||
+    (who.role === 'coordinator' && m.kind === 'event' && locsInRegion_(who.regionId).indexOf(m.location) >= 0);
+  if (!mayAnswer) throw new Error(m.kind === 'event'
+    ? 'Only the Regional Lead (or someone above) can settle this count.'
+    : 'Only the Seasonal Lead (or someone above) can settle this count.');
+  var why = String(p.answer || '').trim().slice(0, 300);
+  if (!why) throw new Error('Say what you found, or why the count is accepted.');
+  var accept = p.accept === true || String(p.accept) === 'true';
+  if (accept) {
+    var map = loadInvMap_();
+    var before = getQty_(map, m.location, m.bookId);
+    var after = Math.max(0, before + (m.counted - m.expected));
+    if (after !== before) {
+      setQty_(map, m.location, m.bookId, after);
+      stockMoveAppend_({ kind: 'ADJUST', toLoc: m.location, bookId: m.bookId, qty: after - before,
+        note: 'Closing count accepted — ' + why, toBefore: before, toAfter: after });
+      saveInvMap_(map);
+    }
+  }
+  dbUpdate_('_mismatches', { id: m.id }, { status: accept ? 'accepted' : 'resolved', answeredAt: new Date(),
+    answeredBy: _cashBy, answer: why });
+  markDirtyRegions_([regionOfLoc_(m.location)]);
+  return accept ? 'accepted' : 'resolved';
 }
 
 /* The currencies a region's money is in: its own list, and any its sales, debts
@@ -1904,7 +1968,9 @@ var COORD_EXTRA = {
   // Activity log: undo, limited inside to this link's own region.
   undoActivity:1, undoActivityPart:1,
   // Pre-orders fulfilled by another region (checked inside).
-  setFulfilBy:1, fulfilRemote:1
+  setFulfilBy:1, fulfilRemote:1,
+  // A closing count that differs, at one of its events (checked inside, b224).
+  mismatchAnswer:1
 };
 
 /* Who is holding this link, and what they can see.
@@ -2866,7 +2932,7 @@ var TABLE_KEYS_ = {
   _holders: ['holderId'], _shipments: ['shipId'], _regions: ['regionId'],
   _seasons: ['seasonId'], _prices: ['regionId', 'bookId', 'cur'], _events: ['eventId'],
   _inventory: ['location', 'bookId'], _sales: ['saleId'], _cash: ['id'], _org: ['id'],
-  _stockmoves: ['id'], _activity: ['id']
+  _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id']
 };
 
 /* Rows read during this request, per table. Any write drops the lot, so a
@@ -3717,6 +3783,11 @@ function readState() {
         var o = out[loc] || (out[loc] = { owed: 0, undelivered: 0 });
         if (pendingFlag_(r) || (Number(r.dueamt) || 0) > 0) o.owed++;
         if (String(r.type) === 'PREORDER' && !isDelivered_(r)) o.undelivered++;
+      });
+      mismatchesAll_().forEach(function (m) {
+        if (m.status !== 'open') return;
+        var o = out[m.location] || (out[m.location] = { owed: 0, undelivered: 0 });
+        o.counts = (o.counts || 0) + 1;
       });
       return out;
     })(),
@@ -8408,6 +8479,9 @@ function describe_(action, p, result, moves, who) {
     case 'setKey': case 'sellerLink': d = { text: 'Changed a share link' }; break;
     case 'setDriveFolder': case 'setSeasonFolder': d = { text: 'Changed where the spreadsheets are filed' }; break;
     case 'descriptionsSheet': d = { text: 'Made the AI Descriptions spreadsheet' }; break;
+    case 'mismatchAnswer':
+      d = { text: (String(p.accept) === 'true' || p.accept === true ? 'Accepted a closing count' : 'Settled a closing count') +
+                  ' — “' + String(p.answer || '') + '”' + (mv ? ' (' + mv + ')' : ''), undo: movesUndo }; break;
     default: d = { text: (mv || ('Changed: ' + action)) + note, undo: movesUndo };
   }
   Object.keys(locs).forEach(function (l) { var r = regionOfAnyLoc_(l); if (r) regions[r] = 1; });

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b223**.
+Handover notes. Current build: **b224**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,27 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b224 — Stage 3, part 2: a count that does not match is flagged, not written over
+
+- **Closing an event or region** with counts that differ from the records no
+  longer rewrites the stock. Each differing title goes into `_mismatches`
+  (expected, counted, note, who counted) as **open**, and the place shows it
+  as outstanding (`outstanding.counts`), like unpaid sales.
+- **Counts to Look Into** panel (bottom row; not for Sellers): what was
+  expected, what was counted, by whom. The next person up answers (an event's:
+  its Regional Lead; a region's: Universal until the Seasonal Lead exists in
+  Stage 2) with a reason, required: **Accept the count** applies the
+  difference (counted − expected) to today's stock, logged as an ADJUST stock
+  move "Closing count accepted — reason"; **Settled** leaves the stock (the
+  error was found, e.g. a sale recorded on paper). Server: `doMismatchAnswer`
+  (action `mismatchAnswer`, COORD_EXTRA). Everyone else sees "with …".
+- `_handovers` (b223) and `_mismatches` are now in `TABLE_KEYS_`, so they
+  are copied by copyToCloudflare / cutover.
+- Tests: `test/countflag.js` (13, in run-all), `test/browser-sellers.js`
+  (the panel, a reason required, accepting). Golden: one difference, the
+  `closeLocation` in extra.jsonl now leaves an open count instead of
+  adjusting stock.
 
 ## Done in b223 — Stage 3, part 1: who sold it, My sales, cash handover, Sales by Seller
 

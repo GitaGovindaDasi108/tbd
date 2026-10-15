@@ -1361,6 +1361,7 @@ body.list-view .mc-name{min-height:0}
 .adm-btns{display:flex;gap:6px;flex-shrink:0}
 /* Sellers and their cash (b223) */
 .my-cash{font-size:22px}
+.cnt-diff{color:var(--clay);font-weight:700}
 .hand-btn{margin-top:6px}
 .ho-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--line);font-size:13px}
 .ho-row.received,.ho-row.declined{opacity:.7}
@@ -1408,7 +1409,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b223</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b224</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1523,6 +1524,10 @@ body.list-view .mc-name{min-height:0}
     <section class="panel transit-panel" id="transitPanel" data-fold="transit" style="display:none">
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
+    </section>
+    <section class="panel count-panel" id="countPanel" data-fold="counts" style="display:none">
+      <h2 class="sec-h2">Counts to Look Into</h2>
+      <div class="body"><div class="log" id="countList"></div></div>
     </section>
     <section class="panel hand-panel" id="handPanel" data-fold="handovers" style="display:none">
       <h2 class="sec-h2">Cash Handed Over</h2>
@@ -5284,8 +5289,8 @@ function renderBottom(){
   pre.style.display = owed.length?'':'none';
   pend.style.display = unpaid.length?'':'none';
   chg.style.display = change.length?'':'none';
-  const hand = renderHandovers();
-  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length, hand].filter(Boolean).length;
+  const hand = renderHandovers(), cnts = renderMismatches();
+  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length, hand, cnts].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
   // These panels exist to be acted on, so they show their details up front.
@@ -5450,6 +5455,75 @@ function renderSellers(){
       }
       return h;
     }).join('')}</tbody></table></div>`;
+}
+
+/* ---- Counts to look into (b224) ----
+   A closing count that differed from the records. The records stay as they
+   were; the next person up accepts the count or settles it with what they found. */
+function mismatchesHere(){
+  const ms = (STATE.mismatches||[]);
+  if(CUR_LEVEL==='season') return ms;
+  const locs = new Set(CUR_LEVEL==='region' ? locsInRegion(CUR_REGION) : [CUR_LOC]);
+  return ms.filter(m=>locs.has(m.location));
+}
+const nextUp = m => m.kind==='event' ? 'the Regional Lead' : 'the Seasonal Lead';
+function mayAnswerCount(m){
+  if(m.status!=='open') return false;
+  if(isAdmin()) return true;
+  return STATE.role==='coordinator' && m.kind==='event';
+}
+function renderMismatches(){
+  const panel = $('#countPanel'); if(!panel) return 0;
+  const ms = plainSeller() ? [] : mismatchesHere().slice().sort((a,b)=>(a.status==='open'?0:1)-(b.status==='open'?0:1) || new Date(b.ts)-new Date(a.ts));
+  const open = ms.filter(m=>m.status==='open');
+  // Settled ones stay a while for the record, but the panel is about open ones.
+  const shown = open.concat(ms.filter(m=>m.status!=='open').slice(0, 10));
+  panel.style.display = open.length ? '' : 'none';
+  if(!open.length) return 0;
+  const bk = id => { const b = bookById(id); return b ? bookTitleHTML(b) : esc(id); };
+  $('#countList').innerHTML = shown.map(m=>`<div class="ho-row ${m.status==='open'?'waiting':'received'}">
+      <div><b>${esc(locName(m.location))}</b> · ${bk(m.bookId)}: expected <b>${m.expected}</b>, counted <b>${m.counted}</b>
+        <span class="cnt-diff">(${m.counted>m.expected?'+':''}${m.counted-m.expected})</span>
+        <div class="muted-note">${m.by?'Counted by '+esc(m.by)+', ':''}${esc(fmtWhen(m.ts))}${m.note?' — “'+esc(m.note)+'”':''}${m.status!=='open'
+          ? `<br>${m.status==='accepted'?'Count accepted':'Settled'} by ${esc(m.answeredBy||'')} — “${esc(m.answer)}”` : ''}</div></div>
+      ${mayAnswerCount(m) ? `<span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="cntanswer" data-id="${esc(m.id)}">Look into…</button></span>`
+        : (m.status==='open' ? `<span class="muted-note">with ${esc(nextUp(m))}</span>` : '')}
+    </div>`).join('');
+  return 1;
+}
+function mismatchModal(id){
+  const m = (STATE.mismatches||[]).find(x=>x.id===id); if(!m) return;
+  const b = bookById(m.bookId), now = invQty(m.location, m.bookId);
+  openModal(`
+    ${mHead('A count to look into')}
+    <div class="m-body">
+      <div class="hint"><b>${esc(locName(m.location))}</b> · ${b?bookTitleHTML(b):esc(m.bookId)}<br>
+        The records said <b>${m.expected}</b>; <b>${m.counted}</b> were counted${m.by?' by '+esc(m.by):''}.
+        ${m.note?'<br>Their note: “'+esc(m.note)+'”':''}</div>
+      <div class="field"><label>What did you find?</label>
+        <textarea id="cntWhy" placeholder="e.g. 2 copies given to the temple and never recorded"></textarea></div>
+      <div class="hint"><b>Accept the count</b> changes the stock by ${m.counted-m.expected>0?'+':''}${m.counted-m.expected}
+        (now ${now}, then ${Math.max(0, now + m.counted - m.expected)}), with your name and reason.
+        <b>Settled</b> leaves the stock as it is — for example, when you found the sale that explains it and recorded it.</div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" id="cntSettle">Settled</button>
+      <button class="btn btn-primary" id="cntAccept">Accept the count</button></div>`);
+  const go = accept => {
+    const why = $('#cntWhy').value.trim();
+    if(!why){ $('#modalErr').textContent = 'Say what you found, or why the count is accepted.'; return; }
+    commit({action:'mismatchAnswer', id, accept, answer: why},
+      st=>{
+        const r = (st.mismatches||[]).find(x=>x.id===id); if(!r) return;
+        r.status = accept ? 'accepted' : 'resolved'; r.answeredBy = myName() || 'main app'; r.answer = why; r.answeredAt = new Date().toISOString();
+        if(accept) invSet(st, m.location, m.bookId, Math.max(0, invQty(m.location, m.bookId) + m.counted - m.expected));
+        const o = (st.outstanding||{})[m.location]; if(o && o.counts) o.counts--;
+      }, accept ? 'Count accepted' : 'Count settled');
+    closeModal();
+  };
+  $('#cntAccept').addEventListener('click', ()=>go(true));
+  $('#cntSettle').addEventListener('click', ()=>go(false));
 }
 
 /** How much change we still owe on a sale, in its own currency. */
@@ -6621,17 +6695,18 @@ function closureOf(loc){
   else if(reg) closed = reg.closedAt || '';
   if(!closed) return '';
   const o = (STATE.outstanding||{})[loc] || {owed:0,undelivered:0};
-  return (o.owed || o.undelivered) ? 'pending' : 'complete';
+  // A count still to look into is work left too (b224).
+  return (o.owed || o.undelivered || o.counts) ? 'pending' : 'complete';
 }
 function regionClosure(regionId){
   const r = regionById(regionId);
   if(!r || !r.closedAt) return '';
-  let owed=0, und=0;
+  let owed=0, und=0, cnt=0;
   locsInRegion(regionId).forEach(l=>{
     const o=(STATE.outstanding||{})[l]||{owed:0,undelivered:0};
-    owed+=o.owed; und+=o.undelivered;
+    owed+=o.owed; und+=o.undelivered; cnt+=(o.counts||0);
   });
-  return (owed||und) ? 'pending' : 'complete';
+  return (owed||und||cnt) ? 'pending' : 'complete';
 }
 function isClosedHere(){
   return CUR_LEVEL==='event' ? !!closureOf(CUR_LOC)
@@ -6762,7 +6837,8 @@ function closeModalFor(kind){
     });
     $('#clSummary').innerHTML = diffs
       ? `<span class="cl-bad">${diffs} title${diffs===1?'':'s'} do not match the expected count.</span>
-         These will be corrected and logged as a closing adjustment.`
+         The records will not be changed: ${diffs===1?'it goes':'they go'} to ${kind==='event'?'the Regional Lead':'the Seasonal Lead'}
+         to look into. Say what you know in the note below.`
       : `<span class="cl-ok">Everything matches.</span>`;
   }
   $('#clRows').addEventListener('input',e=>{ if(e.target.closest('.cl-in')) recount(); });
@@ -6791,12 +6867,19 @@ function closeModalFor(kind){
        already have, so there is nothing worth waiting on. */
     commit({action:'closeLocation',kind,id,counts,note:$('#clNote').value.trim()},
       st=>{
-        Object.keys(counts).forEach(key=>{
+        /* A count that differs is not written over the records (b224): it is
+           flagged to the next person up, shown here at once. */
+        const when=new Date().toISOString(), note=$('#clNote') ? $('#clNote').value.trim() : '';
+        Object.keys(counts).forEach((key,i)=>{
           const bits=key.split('|');
           if(bits.length<2) return;
-          invSet(st, bits[0], bits[1], counts[key]);
+          const exp = invQty(bits[0], bits[1]);
+          if(counts[key]===exp) return;
+          (st.mismatches = st.mismatches || []).push({ id:'tmpM'+i+Date.now(), ts:when, kind, placeId:id, location:bits[0], bookId:bits[1],
+            expected:exp, counted:counts[key], note, by:myName()||'main app', status:'open', answeredAt:'', answeredBy:'', answer:'' });
+          const o = (st.outstanding = st.outstanding || {})[bits[0]] || (st.outstanding[bits[0]] = {owed:0,undelivered:0});
+          o.counts = (o.counts||0) + 1;
         });
-        const when=new Date().toISOString();
         if(st.closeDrafts) delete st.closeDrafts[kind+':'+id];     // finished with
         if(kind==='event'){
           const e=(st.events||[]).find(v=>v.eventId===id); if(e) e.closedAt=when;
@@ -12934,6 +13017,7 @@ document.addEventListener('click',e=>{
   if(a==='whoami'){ if(ME) youModal(); else askWhoAmI(true); return; }
   if(a==='people'){ peopleModal(); return; }
   if(a==='handover'){ handoverModal(); return; }
+  if(a==='cntanswer'){ mismatchModal(t.dataset.id); return; }
   if(a==='hoyes'){ answerHandover(t.dataset.id, true); return; }
   if(a==='hono'){ answerHandover(t.dataset.id, false); return; }
   if(a==='signout'){ signOut(); return; }

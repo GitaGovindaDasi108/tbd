@@ -154,6 +154,26 @@ const API = 'http://api.test/';
     await own.evaluate(() => { document.querySelector('#sellerPanel').scrollIntoView(); });
     await own.screenshot({ path: shot('3-region') });
 
+    /* ---- b224: a closing count that does not match ---- */
+    await O({ action: 'createEvent', eventId: 'ev_park', name: 'Park Stall', regionId: 'rg_it', season: SA });
+    await O({ action: 'adjustStockBulk', location: 'ev_park', items: [{ bookId: B[0], delta: 10 }], override: true, season: SA });
+    await O({ action: 'closeLocation', kind: 'event', id: 'ev_park', counts: { ['ev_park|' + B[0]]: 8 }, note: 'two missing', season: SA });
+    await refresh(own);
+    const cnt = await own.evaluate(() => (document.querySelector('#countPanel') || {}).innerText || '');
+    t.push(['the region shows the count to look into: expected 10, counted 8', /Park Stall[\s\S]*expected\s*10[\s\S]*counted\s*8/i.test(cnt)]);
+    await own.evaluate(() => document.querySelector('#countPanel').scrollIntoView());
+    await own.screenshot({ path: shot('5-count') });
+    await own.click('#countList [data-act="cntanswer"]'); await own.waitForTimeout(300);
+    await own.click('#cntAccept'); await own.waitForTimeout(200);
+    t.push(['accepting without a reason is refused', /Say what you found/.test(await own.evaluate(() => $('#modalErr').textContent))]);
+    await own.fill('#cntWhy', 'two given to the temple'); await own.click('#cntAccept'); await own.waitForTimeout(2000);
+    const after = (await O({ action: 'getState', season: SA })).state;
+    const inv = (after.inventory || []).find(x => x.location === 'ev_park' && x.bookId === B[0]);
+    t.push(['accepted: the stock is now 8, with the owner\'s name', inv && Number(inv.qty) === 8 &&
+      after.mismatches[0].status === 'accepted' && after.mismatches[0].answeredBy === 'The Owner']);
+    await refresh(own);
+    t.push(['…and the panel is gone (nothing open)', await own.evaluate(() => document.querySelector('#countPanel').style.display === 'none')]);
+
     /* ---- Phone ---- */
     const phone = await open('sita@example.com', 'Sita', 390);
     await phone.screenshot({ path: shot('4-phone') });
