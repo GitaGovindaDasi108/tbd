@@ -117,6 +117,9 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     // 3. Quantities only by typing.
     await page.evaluate(() => addStockModal()); await page.waitForTimeout(400);
     await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+    await (async (pg, id) => { const key = await pg.evaluate(id => stockTitleKey(bookById(id)), id);
+      await pg.locator('#spBody .ln-title').last().selectOption(key); await pg.waitForTimeout(150);
+      await pg.locator('#spBody .ln-lang').last().selectOption(id); await pg.waitForTimeout(150); })(page, B0);          // b227: the title, then its language
     const box = `#spBody input.d-delta[data-book="${B0}"]`;
     await page.fill(box, '5'); await page.focus(box);
     await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowUp'); await page.keyboard.press('ArrowDown');

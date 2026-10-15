@@ -73,10 +73,14 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
       const green = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
       const probe = document.createElement('div'); probe.style.background = green; document.body.appendChild(probe);
       const g = getComputedStyle(probe).backgroundColor; probe.remove();
-      return { overlap, sell: getComputedStyle(document.querySelector('.sell-btn:not([disabled])')).backgroundColor, green: g };
+      /* b227: a title in a language sells in its language's colour (its stripe);
+         one with no language keeps Deliver's green. */
+      const btn = document.querySelector('.sell-btn:not([disabled])'), own = btn.closest('.book');
+      const want = own.classList.contains('has-lang') ? getComputedStyle(own).borderLeftColor : g;
+      return { overlap, sell: getComputedStyle(btn).backgroundColor, green: want };
     });
     t.push(['SOLD OUT no longer covers the title', !!card && !card.overlap]);
-    t.push(['Sell is the same green as Deliver', !!card && card.sell === card.green]);
+    t.push(['Sell is in its language\'s colour (Deliver\'s green with none)', !!card && card.sell === card.green]);
     await (await page.$('.book:has(.sold-tag)')).screenshot({ path: shot('1-soldout') });
 
     // 4. Closing checklist: save progress, and it comes back.

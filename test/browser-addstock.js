@@ -69,6 +69,13 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     await page.click(`#spPlace .pp-row:has-text("${text}")`); await page.waitForTimeout(600);
   };
 
+  /* b227: a title is chosen, then its language, on the empty line at the bottom. */
+  const pickBook = async (page, id) => {
+    const key = await page.evaluate(id => stockTitleKey(bookById(id)), id);
+    await page.locator('#spBody .ln-title').last().selectOption(key); await page.waitForTimeout(150);
+    await page.locator('#spBody .ln-lang').last().selectOption(id); await page.waitForTimeout(150);
+  };
+
   let page;
   try{
   // ---- Owner, standing at the season ----
@@ -91,12 +98,17 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   // Already at the destination, Italy's warehouse.
   await page.fill('#spPlace .pp-in', 'Italy'); await page.click('#spPlace .pp-row.pp-region:has-text("Italy")'); await page.waitForTimeout(500);
   await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
-  const rows = await page.evaluate(() => [...document.querySelectorAll('#spBody .bulk-row .bn')].map(x => x.childNodes[0].textContent.trim()));
-  t.push(['only Italy\'s own two titles are listed', rows.length === 2]);
+  const titleOpts = await page.evaluate(() => [...document.querySelectorAll('#spBody .ln-title option')].map(o => o.textContent.trim()));
+  t.push(['one line, a title list: each title once, whatever its languages', titleOpts.filter(x => x === 'Sri Radha').length === 1
+    && titleOpts.includes('Govardhana') && titleOpts.includes('Adventures') && titleOpts.includes('＋ A new book…')]);
+  await pickBook(page, books[0].id);
+  const langOpts = await page.evaluate(() => [...document.querySelectorAll('#spBody .ln-lang')].pop().innerText);
+  t.push(['…then its languages (Sri Radha: English, Russian, and a new one)', /English/.test(langOpts) && /Russian/.test(langOpts) && /A new language/.test(langOpts)]);
+  t.push(['…and a fresh empty line opens below', (await page.$$('#spBody .ln-row')).length === 2]);
   const other = books[3];
-  await page.selectOption('#spOther', other.id); await page.waitForTimeout(200);
-  const rows2 = await page.evaluate(() => [...document.querySelectorAll('#spBody .bulk-row .bn')].map(x => x.textContent));
-  t.push(['a title picked from Other Books joins the list, marked "new here"', rows2.length === 3 && rows2.some(x => /new here/.test(x))]);
+  await pickBook(page, other.id);
+  const rows2 = await page.evaluate(() => [...document.querySelectorAll('#spBody .ln-row .bn')].map(x => x.textContent));
+  t.push(['a title Italy does not offer yet joins the list, marked "new here"', rows2.length === 3 && rows2.some(x => /new here/.test(x))]);
   await page.fill(`#spBody input.d-delta[data-book="${books[0].id}"]`, '5');
   await page.fill(`#spBody input.d-set[data-book], #spBody input[data-set="${other.id}"]`, '7');
   const foot = await page.textContent('#footValue');
@@ -112,6 +124,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
   await pickPlace(page, 'Italy', 'Italy');
   await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+  await pickBook(page, books[0].id);
   await page.click(`#spBody .sign-btn[data-sign="${books[0].id}"]`);
   await page.fill(`#spBody input.d-delta[data-book="${books[0].id}"]`, '2');
   const warn = await page.textContent('#spSubWarn');
@@ -129,6 +142,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   t.push(['"Where are they coming from" is gone', !hasOrigin]);
   await page.fill('#spBody input[data-k="carrier"]', 'Narada Muni');
   await page.fill('#spBody input[data-k="phone"]', '+11081728108');
+  await pickBook(page, books[1].id);
   await page.fill(`#spBody input.sp-q[data-book="${books[1].id}"]`, '3');
   await page.screenshot({ path: shot('3-transit') });
   await page.click('#spSave'); await page.waitForTimeout(1500);
@@ -152,9 +166,33 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   await pickPlace(page, 'Krakow', 'Krakow');
   await page.waitForTimeout(800);
   await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+  await pickBook(page, books[0].id);
   await page.fill(`#spBody input.d-delta[data-book="${books[0].id}"]`, '4');
   await page.click('#spSave'); await page.waitForTimeout(1500);
   t.push(['stock can be added in another season (Krakow, Year-Round Sales)', qty('wh_kr', books[0].id) === 4]);
+
+  // A new language of a title, and a new book, from the lists themselves.
+  await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
+  await pickPlace(page, 'Italy', 'Italy');
+  await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+  const srKey = await page.evaluate(id => stockTitleKey(bookById(id)), books[0].id);
+  await page.locator('#spBody .ln-title').last().selectOption(srKey); await page.waitForTimeout(150);
+  await page.locator('#spBody .ln-lang').last().selectOption('__newlang'); await page.waitForTimeout(150);
+  await page.fill('#spBody .ln-nllang', 'spanish');
+  await page.click('#spBody .ln-add'); await page.waitForTimeout(1800);
+  const es = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Sri Radha (Spanish)');
+  t.push(['"＋ A new language…": Sri Radha (Spanish) is added to the catalogue', !!es]);
+  t.push(['…and is chosen on that line, ready for a number', !!es && !!(await page.$(`#spBody input.d-delta[data-book="${es.id}"]`))]);
+  await page.locator('#spBody .ln-title').last().selectOption('__new'); await page.waitForTimeout(150);
+  await page.fill('#spBody .ln-nbname', 'Bhagavad Gita'); await page.fill('#spBody .ln-nblang', 'Hindi');
+  await page.screenshot({ path: shot('6-newbook') });
+  await page.click('#spBody .ln-add'); await page.waitForTimeout(1800);
+  const bg = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Bhagavad Gita (Hindi)');
+  t.push(['"＋ A new book…": Bhagavad Gita (Hindi) is added and chosen', !!bg && !!(await page.$(`#spBody input.d-delta[data-book="${bg.id}"]`))]);
+  await page.fill(`#spBody input.d-delta[data-book="${es.id}"]`, '6');
+  await page.fill(`#spBody input.d-delta[data-book="${bg.id}"]`, '2');
+  await page.click('#spSave'); await page.waitForTimeout(1500);
+  t.push(['…and both are stocked in Italy', qty('wh_it', es.id) === 6 && qty('wh_it', bg.id) === 2]);
 
   // "Add a new one": an event, then straight back with it chosen.
   await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
@@ -185,6 +223,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   await phone.click('#adminActions button:has-text("Add New Stock")'); await phone.waitForTimeout(300);
   await pickPlace(phone, 'Italy', 'Italy');
   await phone.selectOption('#spWhere', 'there'); await phone.waitForTimeout(300);
+  await pickBook(phone, books[0].id);
   await phone.screenshot({ path: shot('4-phone-there'), fullPage: false });
   const overflow = await phone.evaluate(() => {
     const m = document.querySelector('#modal .m-body'); return m.scrollWidth - m.clientWidth; });
@@ -206,8 +245,9 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   t.push(['regional link: only Italy and its events', clist.every(x => /^S:|Italy|Yoga|Temple/.test(x)) && clist.includes('R:Italy')]);
   await coord.click('#spPlace .pp-row:has-text("Italy")'); await coord.waitForTimeout(400);
   await coord.selectOption('#spWhere', 'transit'); await coord.waitForTimeout(200);
-  t.push(['regional link: "My Book Is Not Listed" is not offered', !(await coord.$('.sp-notlisted'))]);
-  t.push(['regional link: "Other Books" is offered', !!(await coord.$('#spOther'))]);
+  t.push(['regional link: no "＋ A new book…"', !/A new book/.test(await coord.evaluate(() => document.querySelector('#spBody .ln-title').innerText))]);
+  await pickBook(coord, books[0].id);
+  t.push(['regional link: no "＋ A new language…"', !/A new language/.test(await coord.evaluate(() => document.querySelector('#spBody .ln-lang').innerText))]);
   await coord.fill('#spBody input[data-k="carrier"]', 'Sukadeva');
   await coord.fill(`#spBody input.sp-q[data-book="${books[0].id}"]`, '2');
   await coord.click('#spSave'); await coord.waitForTimeout(1500);
