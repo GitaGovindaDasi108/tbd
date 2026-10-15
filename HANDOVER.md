@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b221**.
+Handover notes. Current build: **b222**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,60 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b222 — Stage 0 and 1 of logins: people, roles, sign-in for everyone
+
+**The rules live in `docs/PERMISSIONS.md`** (Stage 0): the nine roles, who may
+give which, the full permission table the owner decided, the new features that
+come with it, and the stages. Read it before touching anything about access.
+
+Stage 1, built here:
+- **Everyone signs in with Google.** A person holds any number of roles, each
+  tied to a place (Seller at an event, Regional Lead for a region, Universal
+  everywhere…). Server: `server/src/auth.js` tables `person` (display name,
+  Google name) and `grant_` (email, role, place). The old `admin` list is moved
+  to Universal roles on first start and emptied. `ADMIN_EMAILS` owners are
+  always Universal.
+- **The rules are in `server/src/people.js`**, pure functions over the places
+  (Code.gs `placesForAuth_`: every season, region and event, and whether
+  closed): who may give which role where (`mayGive`: below your own, within your
+  reach; an Event Lead only Sellers; only Universal gives Finance roles), who
+  may remove (`mayRemove`: the same, an Event Lead only Sellers they added,
+  never your own role), who sees whom (`maySee`), whether a role is in force
+  (`activeState`: not while its place or anything above it is closed — reopening
+  brings it back).
+- **Until Stage 2**, a role works through the nearest permission set Code.gs
+  already enforces, never a wider one (`worksAs`): Universal = the full app,
+  Regional Lead = the regional link for its region, Event Lead and Seller =
+  a sales link for their event. Assistants, Seasonal Lead and Finance roles can
+  be given but show "Not quite yet" until Stage 2.
+- **Who is asking is told to Code.gs directly**: core.js calls
+  `app.setTrustedWho_(who)` just before handing over the request, and `handle()`
+  uses it up at once. Nothing in a request can claim it, and it never outlives
+  its request. On Google nobody sets it.
+- **Names on everything**: for any signed-in request core.js puts the person's
+  display name in `by`, so sales (`soldBy`), cash and the Activity Log carry it,
+  whatever the page sent.
+- **Several roles**: the page sends the chosen one as `g` (`ACTING`, chosen in
+  "You", the 👤 button). The server uses it if it is theirs and usable, else
+  their first usable one, and says which in `acting`.
+- **App**: 👥 People (replaces 🔑 Admins) — people and roles within your reach,
+  sign-in requests (answered by giving a role), add someone / another role
+  (only the roles and places you may give), remove (✕), emergency sales links
+  for your events (Event Lead and above; an event key, works as a sales link,
+  stops at the event's close). 👤 You — display name, which role to work in,
+  sign out. "Not quite yet" — signed in, nothing usable, each role and why.
+- Server actions (core.js, not Code.gs): `me`, `setMyName`, `peopleList`,
+  `peopleAdd`, `peopleRemove`, `peopleDecline`, `emergencyLink`. The old
+  `admins*` actions still work for Universal people (old pages).
+- Regional and sales links are untouched and keep working.
+- Tests: `test/people.js` (47 checks, in run-all), `test/browser-cloudflare.js`
+  (now 33: the People panel, a Regional Lead signing in, choosing a role,
+  "Not quite yet"). That test needs `npm ci` in `server/` first.
+
+Not done (later stages, see PERMISSIONS.md §6): every rule of the table
+enforced (Stage 2), My sales / cash handover / sales by seller / count
+mismatches / event prices and consignment (Stage 3), spreadsheets (Stage 4).
 
 ## Done in b221 — each language has its colour
 

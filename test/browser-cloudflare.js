@@ -189,17 +189,90 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     const note = await helper.evaluate(() => (document.querySelector('#signInErr') || {}).textContent || '');
     t.push(['someone new signs in: their request is sent, kindly said', /request to use the app has been sent/.test(note) && /Helper Das/.test(note) && !!(await helper.$('#signIn'))]);
     await page.evaluate(() => poll()); await page.waitForTimeout(800);
-    t.push(['the owner sees "1 waiting" on the Admins button', /Admins\s*1 waiting/.test(await page.evaluate(() => document.querySelector('#adminActions').innerText))]);
-    await page.click('#adminActions [data-act="admins"]'); await page.waitForTimeout(1500);
-    t.push(['the Admins panel shows the request, with their name', /Helper Das/.test(await page.evaluate(() => document.querySelector('#modal').innerText))]);
-    await page.screenshot({ path: path.join(os.tmpdir(), 'tbs-cf-admins.png') });
-    await page.click('#modal [data-act="admappr"]'); await page.waitForTimeout(1500);
-    t.push(['approving moves them into the admins', await page.evaluate(() => !document.querySelector('#modal [data-act="admappr"]') && /Helper Das/.test(document.querySelector('#modal').innerText))]);
+    t.push(['the owner sees "1 waiting" on the People button', /People\s*1 waiting/.test(await page.evaluate(() => document.querySelector('#adminActions').innerText))]);
+    await page.click('#adminActions [data-act="people"]'); await page.waitForTimeout(1500);
+    t.push(['the People panel shows the request, with their name', /Helper Das/.test(await page.evaluate(() => document.querySelector('#modal').innerText))]);
+    // Give them Universal (the old "admin"), from the request.
+    await page.click('#modal [data-ppl="give"][data-email="helper@example.com"]'); await page.waitForTimeout(300);
+    await page.selectOption('#pplRole', 'U'); await page.click('#pplAdd'); await page.waitForTimeout(1500);
+    t.push(['giving them a role answers the request', await page.evaluate(() => !document.querySelector('#modal [data-ppl="decline"]') &&
+      /Helper Das[\s\S]*Universal/.test(document.querySelector('#modal').innerText))]);
+    await page.screenshot({ path: path.join(os.tmpdir(), 'tbs-cf-people.png') });
     await helper.click('#fakeGsi'); await helper.waitForTimeout(2500);
     t.push(['…and now they are in', !(await helper.$('#signIn')) && await helper.evaluate(() => !!STATE && Array.isArray(STATE.books))]);
-    await page.fill('#admEmail', 'third@example.com'); await page.click('#admAdd'); await page.waitForTimeout(1500);
-    t.push(['adding someone by email', /third@example\.com/.test(await page.evaluate(() => document.querySelector('#modal').innerText))]);
+
+    // A Regional Lead for Italy, added by email from the panel. (Italy gets an event, so she has somewhere to put an Event Lead.)
+    await api({ action: 'createEvent', s, season: sid, eventId: 'ev_fest', name: 'Festival', regionId: 'rg_it' });
+    await page.evaluate(() => closeModal()); await page.click('#adminActions [data-act="people"]'); await page.waitForTimeout(1500);
+    await page.fill('#pplEmail', 'gita@example.com'); await page.fill('#pplName', 'Gita');
+    await page.selectOption('#pplRole', 'RL'); await page.selectOption('#pplPlace', 'rg_it');
+    await page.click('#pplAdd'); await page.waitForTimeout(1500);
+    const addTxt = await page.evaluate(() => document.querySelector('#modal').innerText);
+    t.push(['adding someone by email, as Regional Lead for Italy', /Gita[\s\S]*Regional Lead\s*·\s*Italy/.test(addTxt)]);
+    if (!/Gita[\s\S]*Regional Lead\s*·\s*Italy/.test(addTxt)) console.log('   panel: ' + addTxt.replace(/\s+/g, ' ').slice(0, 900));
     await page.evaluate(() => closeModal());
+    const gctx = await browser.newContext();
+    await gctx.addInitScript(tok => { window.__TOKEN = tok; }, await tokenFor('gita@example.com', 'Gita Devi Dasi'));
+    const gita = await gctx.newPage();
+    gita.on('pageerror', e => errors.push('gita: ' + e.message));
+    gita.on('dialog', d => d.accept());
+    await gita.route('**/*', async r => {
+      if (/accounts\.google\.com\/gsi\/client/.test(r.request().url())) return r.fulfill({ status: 200, contentType: 'text/javascript', body: `
+        window.google = { accounts: { id: {
+          initialize(o){ window.__gsi = o; },
+          renderButton(el){ el.innerHTML = '<button id="fakeGsi">Sign in with Google</button>';
+            el.querySelector('button').onclick = () => window.__gsi.callback({ credential: window.__TOKEN }); },
+          prompt(){} } } };` });
+      return route2(r);
+    });
+    await gita.goto('http://127.0.0.1:8790/index.html'); await gita.waitForTimeout(2500);
+    await gita.click('#fakeGsi'); await gita.waitForTimeout(3000);
+    t.push(['the Regional Lead signs in and gets Italy\'s regional view', !(await gita.$('#signIn')) &&
+      await gita.evaluate(() => STATE && STATE.role === 'coordinator')]);
+    t.push(['…her name shows in the top bar', /Gita/.test(await gita.evaluate(() => document.querySelector('#whoBtn').textContent))]);
+    await gita.click('#adminActions [data-act="people"]'); await gita.waitForTimeout(1500);
+    const roleChoices = await gita.$$eval('#pplRole option', o => o.map(x => x.value));
+    const rolesOk = JSON.stringify(roleChoices.sort()) === JSON.stringify(['EL', 'RA', 'S']);
+    t.push(['…her People panel offers only roles below her own', rolesOk]);
+    if (!rolesOk) console.log('   roles offered: ' + roleChoices);
+    t.push(['…and lists only Italy\'s people (not the owner\'s helper)', !/Helper Das/.test(await gita.evaluate(() => document.querySelector('#modal').innerText))]);
+    await gita.screenshot({ path: path.join(os.tmpdir(), 'tbs-cf-people-rl.png') });
+    await gita.evaluate(() => closeModal());
+    await gita.click('#whoBtn'); await gita.waitForTimeout(400);
+    await gita.fill('#myName', 'Gita'); await gita.click('#myNameSave'); await gita.waitForTimeout(1200);
+    t.push(['…she sets her display name in "You"', /Gita$/.test((await gita.evaluate(() => document.querySelector('#whoBtn').textContent)).trim())]);
+    await gita.evaluate(() => closeModal());
+
+    // Two usable roles: she chooses which to work in.
+    await api({ action: 'peopleAdd', s, email: 'gita@example.com', role: 'EL', placeId: 'ev_fest' });
+    await gita.reload(); await gita.waitForTimeout(3000);
+    t.push(['with two roles, the top bar says which one she is working in', /Gita · Regional Lead/.test(await gita.evaluate(() => document.querySelector('#whoBtn').textContent))]);
+    await gita.click('#whoBtn'); await gita.waitForTimeout(400);
+    const elId = await gita.evaluate(() => ME.grants.find(g => g.role === 'EL').id);
+    await gita.click(`#modal input[name="actAs"][value="${elId}"]`, { noWaitAfter: true }); await gita.waitForTimeout(4000);
+    t.push(['…choosing Event Lead opens the app as that role', await gita.evaluate(() => STATE && STATE.role === 'seller') &&
+      /Gita · Event Lead/.test(await gita.evaluate(() => document.querySelector('#whoBtn').textContent))]);
+
+    // Someone whose only role is not usable yet (Seasonal Assistant) is told so, plainly.
+    await api({ action: 'peopleAdd', s, email: 'sita@example.com', role: 'SA', placeId: sid });
+    const sctx = await browser.newContext();
+    await sctx.addInitScript(tok => { window.__TOKEN = tok; }, await tokenFor('sita@example.com', 'Sita'));
+    const sita = await sctx.newPage();
+    sita.on('pageerror', e => errors.push('sita: ' + e.message));
+    await sita.route('**/*', async r => {
+      if (/accounts\.google\.com\/gsi\/client/.test(r.request().url())) return r.fulfill({ status: 200, contentType: 'text/javascript', body: `
+        window.google = { accounts: { id: {
+          initialize(o){ window.__gsi = o; },
+          renderButton(el){ el.innerHTML = '<button id="fakeGsi">Sign in with Google</button>';
+            el.querySelector('button').onclick = () => window.__gsi.callback({ credential: window.__TOKEN }); },
+          prompt(){} } } };` });
+      return route2(r);
+    });
+    await sita.goto('http://127.0.0.1:8790/index.html'); await sita.waitForTimeout(2500);
+    await sita.click('#fakeGsi'); await sita.waitForTimeout(3000);
+    const na = await sita.evaluate(() => (document.querySelector('#noAccess') || {}).innerText || '');
+    t.push(['a Seasonal Assistant (not usable until Stage 2) sees "Not quite yet", with her role', /Not quite yet/.test(na) && /Seasonal Assistant/.test(na) && /next update/.test(na)]);
+    await sita.screenshot({ path: path.join(os.tmpdir(), 'tbs-cf-noaccess.png') });
 
     await page.evaluate(() => signOut()); await page.waitForTimeout(3000);
     t.push(['signing out locks the app again', await visible('#signIn')]);
