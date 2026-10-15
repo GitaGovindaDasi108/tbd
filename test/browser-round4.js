@@ -161,6 +161,9 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     t.push(['"Can’t find your destination? Click here to add it."', /Can’t find your destination\?\s*Click here to add it\./.test(await page.textContent('#modal .sp-addnew'))]);
     await page.fill('#spSource', 'the printer');
     await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+    await (async (pg, id) => { const key = await pg.evaluate(id => stockTitleKey(bookById(id)), id);
+      await pg.locator('#spBody .ln-title').last().selectOption(key); await pg.waitForTimeout(150);
+      await pg.locator('#spBody .ln-lang').last().selectOption(id); await pg.waitForTimeout(150); })(page, B3);          // b227: the title, then its language
     await page.fill(`#spBody input.d-delta[data-book="${B3}"]`, '7');
     await page.click('#spSave'); await page.waitForTimeout(1500);
     t.push(['the source goes into the record', (state().stockMoves || []).some(x => x.bookId === B3 && /^From the printer/.test(x.note || ''))]);
@@ -195,7 +198,7 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
     t.push(['rewording one changes the same words elsewhere, at once', both.every(x => /^Cash on hand/.test(x))]);
     await page.evaluate(() => { goTo('region', CUR_REGION); addStockModal(); }); await page.waitForTimeout(300);
     await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
-    const li = await page.evaluate(() => { applyLabels(); const el = document.querySelector('#modal .how-to li'); return el ? el.getAttribute('data-key') : ''; });
+    const li = await page.evaluate(() => { applyLabels(); const el = [...document.querySelectorAll('#modal .how-to li')].find(x => /To add stock/.test(x.textContent)); return el ? el.getAttribute('data-key') : ''; });
     t.push(['each instruction is one piece of wording', /To add stock, enter the amount/.test(li)]);
     await page.evaluate(k => editLabelModal(k), li); await page.waitForTimeout(200);
     t.push(['the box opens with the words as they read now', /^\*\*To add stock\*\*, enter the amount/.test(await page.inputValue('#lblText'))]);

@@ -20,6 +20,9 @@ st = m.call({ action: 'getState' }).state;
 c({ action: 'setStockBulk', location: pl.whLoc, override: true,
     items: st.books.filter(b => !b.partnerId).map(b => ({ bookId: b.id, qty: 3 })) });
 c({ action: 'sell', saleId: 's_ru', location: pl.whLoc, bookId: 'sr_ru', legs: [{ type: 'Cash', cur: 'PLN', amt: 150 }] });
+// b227: 4 Sri Radha (Russian) on their way from the printer, for the Warehouse Overview.
+c({ action: 'sendShipment', shipId: 'sh_pr', mode: 'devotee', fromRegion: 'OUTSIDE', origin: 'the printer', toRegion: pl.regionId,
+    toLoc: pl.whLoc, carrier: 'Narada', items: [{ bookId: 'sr_ru', qty: 4 }] });
 
 (async () => {
   const browser = await chromium.launch();
@@ -51,7 +54,8 @@ c({ action: 'sell', saleId: 's_ru', location: pl.whLoc, bookId: 'sr_ru', legs: [
     const tag = e.querySelector('.bname .lang-tag');
     return { title: e.querySelector('.bname').childNodes[0].textContent.trim(), tag: tag ? tag.textContent.trim() : '',
              tagColor: tag ? getComputedStyle(tag).color : '', stripe: getComputedStyle(e).borderLeftColor,
-             stripeW: getComputedStyle(e).borderLeftWidth };
+             stripeW: getComputedStyle(e).borderLeftWidth,
+             sell: getComputedStyle(e.querySelector('.sell-btn')).backgroundColor };
   }));
   const by = (list, title, tag) => list.find(x => x.title === title && x.tag === tag) || {};
 
@@ -70,6 +74,11 @@ c({ action: 'sell', saleId: 's_ru', location: pl.whLoc, bookId: 'sr_ru', legs: [
       new Set([srEn.tagColor, srRu.tagColor, srEs.tagColor]).size === 3]);
     t.push(['each card has a stripe in its language\'s colour', srEn.stripe === srEn.tagColor && srRu.stripe === srRu.tagColor && srEn.stripeW === '4px']);
     t.push(['a title with no language: no label, no stripe', bg.title === 'Bhagavad Gita' && bg.tag === '' && bg.stripeW !== '4px']);
+    t.push(['b227: each Sell button is in its language\'s colour (English blue, Russian red…)',
+      srEn.sell === srEn.tagColor && srRu.sell === srRu.tagColor && srEs.sell === srEs.tagColor && srEn.sell !== srRu.sell && goEn.sell === srEn.sell]);
+    t.push(['…and one with no language keeps the green', !!bg.sell && bg.sell !== srEn.sell && /rgb\(/.test(bg.sell)
+      && bg.sell === await page.evaluate(() => { const p = document.createElement('div'); p.style.background = 'var(--green)';
+        document.body.appendChild(p); const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })]);
     await page.screenshot({ path: shot('1-shelf') });
 
     // The same label in the other places a title stands on its own.
@@ -84,6 +93,26 @@ c({ action: 'sell', saleId: 's_ru', location: pl.whLoc, bookId: 'sr_ru', legs: [
     await page.evaluate(() => goTo('season')); await page.waitForTimeout(300);
     t.push(['Warehouse Overview: labels and stripes', await page.evaluate(() =>
       document.querySelectorAll('#whOverview .stat-card.has-lang .lang-tag').length > 0)]);
+    // b227: where the copies are, behind a toggle; in transit, a click away.
+    const woCard = () => page.evaluate(() => {
+      const c = [...document.querySelectorAll('#whOverview .stat-card')].find(x => /Sri Radha/.test(x.textContent) && /Russian/.test(x.textContent));
+      const chips = c.querySelector('.wo-chips');
+      return { toggle: (c.querySelector('.wo-toggle') || {}).textContent || '', chipsShown: !!chips && !chips.hidden && chips.offsetHeight > 0,
+               transit: (c.querySelector('[data-act="wotransit"]') || {}).textContent || '' };
+    });
+    let wo = await woCard();
+    t.push(['Warehouse Overview: the regions are behind "▸ In 1 region", closed', /In 1 region/.test(wo.toggle) && !wo.chipsShown]);
+    await page.click('#whOverview .stat-card:has-text("Russian"):has-text("Sri Radha") .wo-toggle'); await page.waitForTimeout(200);
+    wo = await woCard();
+    t.push(['…a tap opens them', wo.chipsShown]);
+    await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
+    t.push(['…and they stay open when the page redraws', (await woCard()).chipsShown]);
+    t.push(['"+4 in transit" can be tapped', /\+4 in transit/.test(wo.transit)]);
+    await page.click('#whOverview .stat-card:has-text("Russian"):has-text("Sri Radha") [data-act="wotransit"]'); await page.waitForTimeout(300);
+    const tm = await page.evaluate(() => document.querySelector('#modal').innerText);
+    t.push(['…and shows where they are going: 4, from the printer to Poland, with Narada', /4 of them: the printer → Poland/.test(tm) && /Narada/.test(tm)]);
+    await page.screenshot({ path: shot('5-transit') });
+    await page.evaluate(() => closeModal());
     await page.screenshot({ path: shot('3-season'), fullPage: true });
 
     // A new language: its own colour, and nobody else's colour moves.

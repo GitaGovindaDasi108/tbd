@@ -239,6 +239,12 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .wo-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
 .wo-chip.transit{background:#E7F0FA;border-color:#B9D2EC;color:#2F6FB5;cursor:default}
 .sc-transit{color:#2F6FB5;font-weight:700;font-size:11.5px}
+button.sc-transit{background:none;border:0;padding:2px 0;cursor:pointer;font-family:inherit;text-decoration:underline dotted}
+button.sc-transit:hover{color:#1F4F86}
+.wo-toggle{background:none;border:0;padding:4px 0 0;cursor:pointer;font:inherit;font-size:12px;font-weight:700;
+  color:var(--muted);display:inline-flex;gap:4px;align-items:center}
+.wo-toggle:hover{color:var(--plum)}
+.wt-line{font-size:13px;margin:12px 0 4px;color:var(--ink)}
 .wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
   padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
 .wo-chip:hover{border-color:var(--saffron);background:#FDF3E4}
@@ -729,6 +735,11 @@ body.busy #busyBar{opacity:1}
 .sell-btn:hover{background:#fff;color:var(--green);border-color:var(--green)}
 .sell-btn:disabled{opacity:.4;cursor:not-allowed}
 .sell-btn:active{filter:brightness(.92)}
+/* A title in a language sells in that language's colour (b227): English blue,
+   Russian red… the same colour as its label and stripe, so the button you want
+   is found by colour as well as by name. Titles without a language stay green. */
+.book.has-lang .sell-btn{background:var(--lc);border-color:var(--lc)}
+.book.has-lang .sell-btn:hover{background:#fff;color:var(--lc);border-color:var(--lc)}
 /* Only the LOOK differs — the box is set once on .bk-btns>button above, so the
    two match. This used to redeclare padding, font size and a top margin, which
    is why Pre-order sat shorter and lower than Sell. */
@@ -1195,6 +1206,14 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .sp-new-tag{display:inline-block;font-family:'Inter',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.4px;
   text-transform:uppercase;color:var(--teal);background:var(--teal-l);border:1px solid var(--teal-b);
   border-radius:999px;padding:1px 6px;vertical-align:middle}
+/* Add Stock: a title, then its language (b227). */
+.ln-pick{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-width:0}
+.ln-pick select{min-width:0}
+.ln-pick select{font-family:'Inter',sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid var(--line-d);
+  border-radius:8px;background:#fff;color:var(--ink);max-width:100%;flex:1 1 140px}
+.ln-pick .ln-lang{flex:0 1 150px}
+.ln-new{display:flex;flex-wrap:wrap;gap:5px;width:100%;font-family:'Inter',sans-serif}
+.ln-new input,.ln-new select{flex:1 1 120px;text-align:left;width:auto;font-size:13px;padding:6px 8px;border:1.5px solid var(--line-d);border-radius:8px}
 .bulk-row .sp-x{border:none;background:none;color:var(--muted);font-size:12px;padding:0 3px;margin-left:2px;
   cursor:pointer;vertical-align:middle;width:auto}
 .sp-notlisted{border:1px dashed var(--line-d);border-radius:10px;padding:9px 12px;background:var(--paper2)}
@@ -1315,6 +1334,11 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   .bulk-row.five .d-delta{width:48px}
   .bulk-row.five .d-set{width:42px}
   .bulk-row .bn{font-size:13.5px}
+  /* Add Stock's title and language take the whole width of a phone; the numbers
+     sit beneath them, under their own headings (b227). */
+  .ln-row .ln-pick{grid-column:1/-1}
+  .ln-row>div:nth-child(2){grid-column:2}
+  .ln-row>div:nth-child(2):empty{display:none}
   .overlay{padding:10px}
   .modal .m-body{padding:14px 13px}
   .li-row{flex-wrap:wrap;row-gap:4px}
@@ -1410,7 +1434,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b226</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b227</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4088,6 +4112,22 @@ function regionStockOf(regionId, bookId){
 /* ---- FE11: Warehouse Overview — where every title sits across the tour ---- */
 /* Where every title sits, as shelf cards: the total is the headline, and each
    region is a tappable chip that takes you straight there. */
+const WO_OPEN = new Set();       // Warehouse Overview cards showing where their copies are
+/* Every batch on the road carrying this title: how many, from where to where (b227). */
+function transitOfBookModal(bookId){
+  const b = bookById(bookId); if(!b) return;
+  const live = (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && invQty(x.shipId, bookId)>0)
+    .sort((x,y)=>new Date(y.createdAt||0)-new Date(x.createdAt||0));
+  const n = live.reduce((t,x)=>t+invQty(x.shipId, bookId),0);
+  openModal(`
+    ${mHead('In transit')}
+    <div class="m-body">
+      <div class="hint">${bookTitleHTML(b)} — <b>${n}</b> on the way${live.length>1?` in ${live.length} batches`:''}.</div>
+      ${live.map(x=>`<div class="wt-line"><b>${invQty(x.shipId, bookId)}</b> of them: ${esc(shipLabel(x))}</div>
+        ${shipCardHTML(x, false)}`).join('') || '<div class="cash-empty">Nothing on the way.</div>'}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+}
 function renderWarehouseOverview(){
   const regions = regionsList();
   // The tour's own titles; consignment stays in its own region's view.
@@ -4106,6 +4146,14 @@ function renderWarehouseOverview(){
       `<button class="wo-chip" data-act="${UNIT.act}" data-${UNIT.attr}="${esc(x.r.regionId)}"
          title="Go to ${esc(x.r.name)}"><b>${x.n}</b> ${esc(x.r.name)}</button>`).join('')
 ;   // in transit is shown once, beneath the number — no separate bubble
+    /* Where the copies are, one chip per region, behind a toggle (b227): open
+       on request, and kept open across redraws (WO_OPEN). */
+    const open = WO_OPEN.has(b.id);
+    const where = per.length
+      ? `<button type="button" class="wo-toggle" data-act="wotoggle" data-book="${esc(b.id)}" aria-expanded="${open}">
+           <span class="tw">${open?'▾':'▸'}</span> In ${per.length} ${per.length===1?UNIT.word:UNIT.words}</button>
+         <div class="wo-chips"${open?'':' hidden'}>${chips}</div>`
+      : '<div class="wo-chips"><span class="sc-none">nowhere yet</span></div>';
     const lc = langCard(b);
     return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style}>
       <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
@@ -4114,8 +4162,9 @@ function renderWarehouseOverview(){
         <span class="sc-big wo-big ${total?'':'zero'}">${total}</span>
         <span class="sc-lbl">in stock</span>
       </div>
-      ${transit?`<div class="sc-sub"><span class="sc-transit">+${transit} in transit</span></div>`:''}
-      <div class="wo-chips">${chips||'<span class="sc-none">nowhere yet</span>'}</div>
+      ${transit?`<div class="sc-sub"><button type="button" class="sc-transit" data-act="wotransit" data-book="${esc(b.id)}"
+        title="Where these are going">+${transit} in transit ›</button></div>`:''}
+      ${where}
     </div>`;
   }).join('');
   return `<div class="stat-grid">${cards}</div>`;
@@ -9937,28 +9986,24 @@ function otherBooks(ctx){
   const on = new Set(stockBooks(ctx).map(b=>b.id));
   return (ctx.st.books||[]).filter(b=>!b.partnerId && !on.has(b.id));
 }
-/* Rows grouped as everywhere else: Big Books, Adventures, Other. */
-function stockRows(ctx, books, cols){
-  const row = b=>{
-    const c = cols(b);
-    const five = c.input2 !== undefined;
-    const isNew = ctx.extra.has(b.id);
-    return `<div class="bulk-row${five?' five':''}">
-      <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}${isNew
-        ? ` <span class="sp-new-tag">new here</span><button type="button" class="sp-x" data-unpick="${esc(b.id)}" title="Take it off this list">✕</button>`:''}</div>
-      <div class="num" data-now="${esc(b.id)}">${c.left}</div>
-      <div>${c.input}</div>
-      ${five?`<div>${c.input2}</div>`:''}
-      <div class="num next" data-next="${esc(b.id)}">${c.right}</div>
-    </div>`;
-  };
-  const groups = [['big','Big Books'],['aotm','AoTM — Adventures'],['other','Other']];
-  return '<div class="bulk">' + groups.map(([cat,label])=>{
-    const mine = books.filter(b=>catOfBook(b)===cat);
-    return mine.length ? `<div class="bulk-sec">${label}</div>` + mine.map(row).join('') : '';
-  }).join('') + '</div>';
+/* Add Stock picks a title, then its language (b227). A "title" is every book
+   sharing a name before the brackets — Sri Radha (English), (Russian) and
+   (Spanish) are one title in three languages — and, for consignment, one group. */
+function stockTitleKey(b){ return bookLang(b).base.trim().toLowerCase() + '|' + (b.partnerId||''); }
+function stockTitles(ctx){
+  const groups = new Set((ctx.st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
+  const carried = stockBooks(ctx), seen = new Set(carried.map(b=>b.id));
+  // What this place carries first, in its order; then the rest of the catalogue, A to Z.
+  const rest = (ctx.st.books||[]).filter(b=>!seen.has(b.id) && (!b.partnerId || groups.has(b.partnerId)))
+    .sort((a,c)=>a.name.localeCompare(c.name));
+  const map = new Map();
+  carried.concat(rest).forEach(b=>{
+    const k = stockTitleKey(b);
+    if(!map.has(k)) map.set(k, {key:k, base:bookLang(b).base, cat:catOfBook(b), partnerId:b.partnerId||'', books:[]});
+    map.get(k).books.push(b);
+  });
+  return [...map.values()];
 }
-
 const SUBTRACT_WARNING = 'Subtracting is only for correcting a data entry mistake. '
   + 'If you are moving books, please use “Transfer Existing Stock” instead of subtracting '
   + 'here or lowering the stock numbers by hand.';
@@ -9971,6 +10016,7 @@ function addStockModal(opts){
   const startLoc = opts.loc
     || (CUR_LEVEL==='event' ? CUR_LOC : (CUR_LEVEL==='region' && reg ? reg.whLoc : ''));
   let ctx = null, where = opts.where || '', loadToken = 0;
+  let lines = [{t:'', b:''}];  // the titles chosen, each { t: title key, b: book id }
   const typed = {};           // what has been typed, kept across redraws
 
   openModal(`
@@ -10032,9 +10078,6 @@ function addStockModal(opts){
      does need the form redrawn. */
   function refreshCounts(){
     if(!ctx || !where){ draw(); return; }
-    const want = stockBooks(ctx).map(b=>b.id).join(',');
-    const have = [...document.querySelectorAll('#spBody [data-now]')].map(c=>c.dataset.now).join(',');
-    if(want!==have){ draw(); return; }
     document.querySelectorAll('#spBody [data-now]').forEach(c=>{ c.textContent = ctx.qty(ctx.loc, c.dataset.now); });
     recalc(); saveState();
   }
@@ -10067,7 +10110,7 @@ function addStockModal(opts){
     if(!ctx){ $('#spBody').innerHTML = `<div class="hint sp-loading"><span class="spin-d"></span> Opening ${esc(placeLabel(picker.value))}…</div>`;
               save.disabled=true; return; }
     if(!where){ $('#spBody').innerHTML=''; save.disabled=true; save.textContent='Save'; return; }
-    $('#spBody').innerHTML = (where==='there' ? thereHTML() : transitHTML()) + extrasHTML()
+    $('#spBody').innerHTML = (where==='there' ? thereHTML() : transitHTML())
       + `<div class="field"><label>Note (optional)</label>
           <input type="text" data-k="note" placeholder="${where==='there'
             ? 'e.g. carton from Kraków, damaged copies removed' : 'e.g. two boxes, one bag'}"></div>`;
@@ -10079,20 +10122,20 @@ function addStockModal(opts){
 
   /* 3A — already there: the count as it stands, what to add, or the number on the shelf. */
   function thereHTML(){
-    const books = stockBooks(ctx);
     return `<ol class="how-to">
+        <li><b>Choose the title, then its language.</b><span class="how-rest"> A new line opens below for the next one.</span></li>
         <li><b>To add stock</b><span class="how-rest">, enter the amount to be added in the field next to the “+” sign.</span></li>
         <li><b>To subtract stock</b><span class="how-rest">, click the “+” sign, and then enter the number to be subtracted.</span></li>
         <li><b>To manually change stock</b><span class="how-rest">, enter number in the “Set” column.</span></li>
       </ol>
-      <div class="sp-table"><div class="bulk-head five"><span>Title</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
-      ${stockRows(ctx, books, b=>({
+      <div class="sp-table"><div class="bulk-head five"><span>Title and language</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
+      ${linesHTML(b=>({
         left: ctx.qty(ctx.loc,b.id),
         input:`<span class="delta-wrap"><button type="button" class="sign-btn" data-sign="${esc(b.id)}" data-dir="1" title="Adding — tap to subtract instead">＋</button>`
              +`<input class="d-delta" type="number" step="1" min="0" inputmode="numeric" data-book="${esc(b.id)}" data-k="d:${esc(b.id)}"></span>`,
         input2:`<input class="d-set" type="number" min="0" step="1" inputmode="numeric" data-set="${esc(b.id)}" data-k="s:${esc(b.id)}">`,
         right: ctx.qty(ctx.loc,b.id)
-      }))}</div>
+      }), true)}</div>
       ${totalsHTML()}
       <div id="spSubWarn"></div>
       <div id="preWarn"></div>`;
@@ -10100,7 +10143,6 @@ function addStockModal(opts){
 
   /* 3B — not there yet: who is bringing them, and what is coming. */
   function transitHTML(){
-    const books = stockBooks(ctx);
     return `<div class="field"><label>Courier for Books</label>
         <select id="spCourier" data-k="courier">
           <option value="devotee">Devotee</option>
@@ -10122,13 +10164,13 @@ function addStockModal(opts){
       </div>
       <div class="hint">Nothing is added to the shelf yet. The books show as <b>in transit</b> to
         ${esc(placeLabel(ctx.place))} until someone marks them arrived in “Books in transit”.</div>
-      <div class="sp-table"><div class="bulk-head"><span>Title</span><span>Now</span><span>Coming</span><span>Expected</span></div>
-      ${stockRows(ctx, books, b=>({
+      <div class="sp-table"><div class="bulk-head"><span>Title and language</span><span>Now</span><span>Coming</span><span>Expected</span></div>
+      ${linesHTML(b=>({
         left: ctx.qty(ctx.loc,b.id),
         input:`<input class="sp-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
                  data-book="${esc(b.id)}" data-k="q:${esc(b.id)}">`,
         right: ctx.qty(ctx.loc,b.id)
-      }))}</div>
+      }), false)}</div>
       ${totalsHTML()}`;
   }
   function totalsHTML(){
@@ -10140,28 +10182,68 @@ function addStockModal(opts){
       </div>`;
   }
 
-  /* 3A1/3B1 and 3A2/3B2 — a title this region does not carry yet, or one the app has never heard of. */
-  function extrasHTML(){
-    const others = otherBooks(ctx);
-    const regName = ctx.region.name || ctx.place.regionName;
-    return `<div class="field"><label>Other Books</label>
-        <div class="hint">Titles ${esc(regName)} does not offer yet. Choosing one switches it on for the region
-          with the region’s price — the same as ticking it in Edit region.</div>
-        <select id="spOther" ${others.length?'':'disabled'}>
-          <option value="">${others.length?'Choose a title to add…':'Every title is already listed'}</option>
-          ${others.map(b=>`<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}
-        </select></div>
-      ${isAdmin() ? `<details class="sp-notlisted"><summary>My Book Is Not Listed</summary>
-        <div class="hint">Please look carefully at the “Other Books” list before using this function.</div>
-        <div class="rp-add">
-          <input id="spNewName" type="text" placeholder="Add a title — e.g. Sri Radha (Spanish)">
-          <select id="spNewCat">
-            <option value="big">Big Book</option>
-            <option value="aotm">Adventures</option>
-            <option value="other">Other</option>
-          </select>
-          <button type="button" class="btn btn-ghost btn-sm" id="spNewAdd">Add</button>
-        </div></details>` : ''}`;
+  /* The lines of the table (b227): each picks a title, then its language. A
+     fresh empty line is always waiting at the bottom. A title this region does
+     not offer yet is switched on for it when saved ("new here"). Universal can
+     also add a new book, or a new language of a title, from the same lists. */
+  function chosen(){
+    const all = ctx ? (ctx.st.books||[]) : [];
+    return lines.map(l=>all.find(b=>b.id===l.b)).filter(Boolean);
+  }
+  function carriedHere(b){
+    if(b.partnerId) return true;
+    const list = asIdList(ctx.region.books);
+    return !list.length || list.includes(b.id) || ctx.qty(ctx.loc,b.id)>0;
+  }
+  function tidyLines(){
+    lines = lines.filter((l,i)=>l.t || l.mode || i===lines.length-1);
+    if(!lines.length || lines[lines.length-1].t || lines[lines.length-1].mode) lines.push({t:'', b:''});
+  }
+  function linesHTML(cols, five){
+    tidyLines();
+    const titles = stockTitles(ctx), byKey = new Map(titles.map(x=>[x.key, x]));
+    const used = new Set(lines.map(l=>l.b).filter(Boolean));
+    const admin = isAdmin();
+    const groupsOf = [['big','Big Books'],['aotm','Adventures'],['other','Other']];
+    const titleOpts = cur => `<option value="">Choose a title…</option>` + groupsOf.map(([cat,label])=>{
+        const mine = titles.filter(x=>!x.partnerId && x.cat===cat);
+        return mine.length ? `<optgroup label="${label}">${mine.map(x=>
+          `<option value="${esc(x.key)}" ${x.key===cur?'selected':''}>${esc(x.base)}</option>`).join('')}</optgroup>` : '';
+      }).join('') + (function(){
+        const con = titles.filter(x=>x.partnerId);
+        return con.length ? `<optgroup label="Consignment">${con.map(x=>`<option value="${esc(x.key)}" ${x.key===cur?'selected':''}>${
+          esc(x.base)} — ${esc((partnerById(x.partnerId)||{}).name||'consignment')}</option>`).join('')}</optgroup>` : '';
+      })() + (admin ? `<option value="__new" ${cur==='__new'?'selected':''}>＋ A new book…</option>` : '');
+    return '<div class="bulk">' + lines.map((l,i)=>{
+      const g = byKey.get(l.t);
+      const b = l.b ? (ctx.st.books||[]).find(x=>x.id===l.b) : null;
+      let pick = `<select class="ln-title" data-i="${i}" aria-label="Title">${titleOpts(l.mode==='newbook'?'__new':l.t)}</select>`;
+      if(g) pick += `<select class="ln-lang" data-i="${i}" aria-label="Language">
+          <option value="">Choose the language…</option>
+          ${g.books.map(x=>`<option value="${esc(x.id)}" ${x.id===l.b?'selected':''} ${used.has(x.id)&&x.id!==l.b?'disabled':''}>${
+            esc(bookLang(x).lang||'(no language given)')}${used.has(x.id)&&x.id!==l.b?' — already above':''}</option>`).join('')}
+          ${admin && !g.partnerId ? `<option value="__newlang" ${l.mode==='newlang'?'selected':''}>＋ A new language…</option>` : ''}
+        </select>`;
+      if(l.mode==='newbook') pick += `<div class="ln-new">
+          <input type="text" class="ln-nbname" placeholder="Title, e.g. Bhagavad Gita">
+          <input type="text" class="ln-nblang" placeholder="Language, e.g. Spanish">
+          <select class="ln-nbcat"><option value="big">Big Book</option><option value="aotm">Adventures</option><option value="other">Other</option></select>
+          <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="book">Add this book</button></div>`;
+      if(l.mode==='newlang') pick += `<div class="ln-new">
+          <input type="text" class="ln-nllang" placeholder="Language, e.g. Hindi">
+          <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="lang">Add ${esc(g?g.base:'')} in this language</button></div>`;
+      if(b && !carriedHere(b)) pick += ` <span class="sp-new-tag" title="Saving switches it on for ${esc(ctx.region.name||'the region')}">new here</span>`;
+      const x = (l.t || l.mode) ? `<button type="button" class="sp-x" data-unline="${i}" title="Take this line off">✕</button>` : '';
+      const c = b ? cols(b) : null;
+      const bid = b ? esc(b.id) : '';
+      return `<div class="bulk-row ln-row${five?' five':''}${b?' '+catOfBook(b):''}" data-i="${i}">
+        <div class="bn ln-pick">${pick}${x}</div>
+        <div class="num"${b?` data-now="${bid}"`:''}>${c?c.left:''}</div>
+        <div>${c?c.input:''}</div>
+        ${five?`<div>${c?c.input2:''}</div>`:''}
+        <div class="num next"${b?` data-next="${bid}"`:''}>${c?c.right:''}</div>
+      </div>`;
+    }).join('') + '</div>';
   }
 
   function syncCourier(){
@@ -10194,7 +10276,7 @@ function addStockModal(opts){
   function recalc(){
     if(!ctx || !where) return;
     let big=0, aotm=0, other=0, lowered=false;
-    stockBooks(ctx).forEach(b=>{
+    chosen().forEach(b=>{
       const now = ctx.qty(ctx.loc,b.id);
       let shown, count;
       if(where==='there'){
@@ -10222,7 +10304,7 @@ function addStockModal(opts){
     const pw = $('#preWarn');
     if(pw){
       const lines = (where==='there' && ctx.here && ctx.place.kind==='region' && ctx.regionId===CUR_REGION && isWarehouseLoc(CUR_LOC))
-        ? stockBooks(ctx).map(b=>shortfallLine(b.id, nextFor(b.id), CUR_LOC)).filter(Boolean) : [];
+        ? chosen().map(b=>shortfallLine(b.id, nextFor(b.id), CUR_LOC)).filter(Boolean) : [];
       pw.innerHTML = preorderWarning(lines, ['reduce this count','reduce these counts']);
     }
   }
@@ -10240,36 +10322,75 @@ function addStockModal(opts){
       sb.title = minus ? 'Subtracting — tap to add instead' : 'Adding — tap to subtract instead';
       recalc(); return;
     }
-    const x = e.target.closest('[data-unpick]');
-    if(x){ ctx.extra.delete(x.dataset.unpick); draw(); return; }
-    if(e.target.closest('#spNewAdd')) addTitle();
+    const x = e.target.closest('[data-unline]');
+    if(x){ lines.splice(Number(x.dataset.unline), 1); draw(); return; }
+    const add = e.target.closest('.ln-add');
+    if(add) addTitle(Number(add.dataset.i), add.dataset.kind, add.closest('.ln-pick'));
   });
   body.addEventListener('change', e=>{
     if(e.target.id==='spCourier'){ syncCourier(); return; }
-    if(e.target.id==='spOther' && e.target.value){ ctx.extra.add(e.target.value); draw(); }
-  });
-
-  async function addTitle(){
-    const btn = $('#spNewAdd'), name = $('#spNewName').value.trim();
-    if(!name){ $('#modalErr').textContent='Type the title first.'; return; }
-    if((STATE.books||[]).some(b=>b.name.toLowerCase()===name.toLowerCase())){
-      $('#modalErr').textContent='There is already a title with that name — look for it under Other Books.'; return;
+    const tl = e.target.closest('.ln-title');
+    if(tl){
+      const l = lines[Number(tl.dataset.i)]; if(!l) return;
+      if(tl.value==='__new'){ l.t=''; l.b=''; l.mode='newbook'; draw(); return; }
+      l.t = tl.value; l.b = ''; l.mode = '';
+      // A title in one language only has nothing to choose: it is picked.
+      const g = stockTitles(ctx).find(x=>x.key===l.t);
+      const used = new Set(lines.map(z=>z.b));
+      const free = g ? g.books.filter(b=>!used.has(b.id)) : [];
+      if(g && g.books.length===1 && free.length===1) l.b = free[0].id;
+      draw(); focusLine(l);
+      return;
     }
+    const lg = e.target.closest('.ln-lang');
+    if(lg){
+      const l = lines[Number(lg.dataset.i)]; if(!l) return;
+      if(lg.value==='__newlang'){ l.b=''; l.mode='newlang'; draw(); return; }
+      l.b = lg.value; l.mode = '';
+      draw(); focusLine(l);
+    }
+  });
+  // After choosing, the cursor goes to that line's number box.
+  function focusLine(l){
+    if(!l.b) return;
+    const inp = document.querySelector(`#spBody input[data-book="${l.b}"]`);
+    if(inp) inp.focus();
+  }
+
+  /* A new book, or a new language of a title, straight from the line (Universal). */
+  async function addTitle(i, kind, box){
+    const l = lines[i]; if(!l) return;
+    const val = c => ((box.querySelector(c)||{}).value||'').trim();
+    const cap = w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+    let name, cat;
+    if(kind==='book'){
+      const t = val('.ln-nbname'), lang = cap(val('.ln-nblang'));
+      if(!t){ $('#modalErr').textContent='Type the title first.'; return; }
+      name = lang ? `${t} (${lang})` : t; cat = val('.ln-nbcat') || 'big';
+    }else{
+      const g = stockTitles(ctx).find(x=>x.key===l.t), lang = cap(val('.ln-nllang'));
+      if(!g || !lang){ $('#modalErr').textContent='Type the language first.'; return; }
+      name = `${g.base} (${lang})`; cat = g.cat;
+    }
+    if((STATE.books||[]).some(b=>b.name.toLowerCase()===name.toLowerCase())){
+      $('#modalErr').textContent = name + ' is already in the catalogue — choose it from the lists.'; return;
+    }
+    const btn = box.querySelector('.ln-add');
     $('#modalErr').textContent=''; btn.disabled=true; btn.textContent='Adding…';
     try{
-      await postWrite({action:'addBook', name, cat:$('#spNewCat').value});
+      await postWrite({action:'addBook', name, cat});
       await pull();
       const nb = (STATE.books||[]).find(b=>b.name.toLowerCase()===name.toLowerCase());
       if(nb){
-        // Another season's copy of the catalog learns of it too.
+        // Another season's copy of the catalogue learns of it too.
         if(!ctx.here && !(ctx.st.books||[]).some(b=>b.id===nb.id)) (ctx.st.books=ctx.st.books||[]).push(nb);
-        ctx.extra.add(nb.id);
+        l.t = stockTitleKey(nb); l.b = nb.id; l.mode = '';
       }
       toast('Added ' + name);
-      draw();
+      draw(); focusLine(l);
     }catch(err){
       $('#modalErr').textContent = err.message || 'Could not add that title.';
-      btn.disabled=false; btn.textContent='Add';
+      btn.disabled=false; btn.textContent = kind==='book' ? 'Add this book' : 'Add';
     }
   }
 
@@ -10277,12 +10398,13 @@ function addStockModal(opts){
     if(!ctx || !where) return;
     const err = m=>{ $('#modalErr').textContent = m; };
     const place = ctx.place, season = ctx.seasonId, here = ctx.here;
-    const books = stockBooks(ctx);
+    const books = chosen();
     const typedNote = ((document.querySelector('#spBody input[data-k="note"]')||{}).value||'').trim();
     const source = (($('#spSource')||{}).value||'').trim();
     // Where they came from leads the note, so the log reads "From the printer — …".
     const note = source ? ('From ' + source + (typedNote ? ' — ' + typedNote : '')) : typedNote;
-    const extras = [...ctx.extra].filter(id=>books.some(b=>b.id===id));
+    // Titles the region did not offer yet are switched on for it with the save.
+    const extras = books.filter(b=>!carriedHere(b)).map(b=>b.id);
     const switchOn = extras.length && asIdList(ctx.region.books).length
       ? {action:'regionAddBooks', regionId:ctx.regionId, bookIds:extras.join(','), season} : null;
     const applyOn = st=>{
@@ -13084,6 +13206,14 @@ document.addEventListener('click',e=>{
   if(a==='cash'){ cashModal(); return; }
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
+  if(a==='wotoggle'){
+    const id = t.dataset.book, open = !WO_OPEN.has(id);
+    if(open) WO_OPEN.add(id); else WO_OPEN.delete(id);
+    const chips = t.nextElementSibling; if(chips) chips.hidden = !open;
+    t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
+    return;
+  }
+  if(a==='wotransit'){ transitOfBookModal(t.dataset.book); return; }
   if(a==='toggle'){
     const el=document.getElementById(t.dataset.target);
     if(el){ const open=el.style.display!=='none';

@@ -69,11 +69,11 @@ const LAG = 2000;   // a typical Apps Script round trip
   await time('pick Italy (this season)', () => page.click('#spPlace .pp-row.pp-region:has-text("Italy")'),
     () => !document.querySelector('#spWhereWrap').hidden && !/Opening/.test(document.querySelector('#spBody').textContent));
   await time('choose "Not there yet" (this season)', () => page.selectOption('#spWhere','transit'),
-    () => !!document.querySelector('#spBody .sp-q'));
+    () => !!document.querySelector('#spBody .ln-title'));
   // other season
   await page.click('#spPlace .pp-in'); await page.fill('#spPlace .pp-in', 'Krakow');
   await time('pick Krakow (other season) until form usable', async () => { await page.click('#spPlace .pp-row:has-text("Krakow")'); },
-    () => !!document.querySelector('#spBody .sp-q'));
+    () => !!document.querySelector('#spBody .ln-title'));
   await time('...until its latest counts are in, in the background', async () => {},
     () => !document.querySelector('#spSave').disabled);
   // add new -> region (this season)

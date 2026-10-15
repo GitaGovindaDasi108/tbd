@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b226**.
+Handover notes. Current build: **b227**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,34 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b227 — coloured Sell buttons; Add Stock by title, then language; Warehouse Overview
+
+- **Sell buttons in the language's colour**: a shelf card's Sell button takes
+  its language's colour (`--lc`, the same as its label and stripe): English
+  blue, Russian red… A title with no language keeps Deliver's green. CSS only
+  (`.book.has-lang .sell-btn`). Selling stays one tap per title-and-language.
+- **Add Stock: a title, then its language.** The table of every title is now
+  lines: choose the title (each once, grouped Big Books / Adventures / Other /
+  Consignment: what the place carries first, then the rest of the catalogue),
+  then its language; the number boxes appear for that line, and a fresh empty
+  line opens below (`lines`, `linesHTML`, `stockTitles`, `stockTitleKey`: the
+  name before the brackets, plus the consignment group). A language already on
+  another line is greyed out. A title the region does not offer yet is marked
+  "new here" and switched on for it when saved (replaces "Other Books").
+  **＋ A new book…** (title, language, kind) and **＋ A new language…**
+  (adds "Title (Language)" with the title's kind) are in the lists themselves
+  for Universal (replaces "My Book Is Not Listed"); either is added to the
+  catalogue at once and chosen on that line. New titles have no price until one
+  is set in Edit Region. On a phone the two lists take the full width with the
+  numbers beneath.
+- **Warehouse Overview**: "+N in transit" opens a list of every batch carrying
+  that title: how many, from where to where, with the batch's card
+  (`transitOfBookModal`). The per-region chips sit behind "▸ In N regions"
+  (`wotoggle`), closed by default and kept open across redraws (`WO_OPEN`).
+- Tests: `browser-addstock.js` (rewritten for the lines, plus a new language
+  and a new book), `browser-lang.js` (Sell colours, the toggle, the transit
+  list), `browser-round3/4/7.js` and `browser-speed.js` adjusted.
 
 ## Done in b226 — Stage 4: the spreadsheets
 
