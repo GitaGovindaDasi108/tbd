@@ -30,11 +30,26 @@ const API = 'http://api.test/';
     const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', pair.privateKey, new TextEncoder().encode(head + '.' + body));
     return head + '.' + body + '.' + Buffer.from(sig).toString('base64url');
   }
-  const fetchImpl = async url => {
+  // Google's spreadsheet side, standing in: the folder map, and a rebuild (b226).
+  const GOOGLE = 'https://script.google.com/macros/s/TEST/exec', forwarded = [];
+  const fakeMap = sid => ({ driveOk: true, root: { name: 'Transcendental Book Sales', url: 'https://drive.google.com/drive/folders/ROOT' },
+    seasons: [{ seasonId: sid, name: 'Europe Tour', folder: { name: 'Europe Tour', url: 'https://drive.google.com/drive/folders/EU' },
+      consign: null, folderChosen: false, consignChosen: false,
+      files: [{ name: '1 — Europe Tour — Season Summary', url: 'https://docs.google.com/spreadsheets/d/SUM' },
+              { name: 'Italy — Europe Tour — Book Sales', url: 'https://docs.google.com/spreadsheets/d/ITA', regionId: 'rg_it' },
+              { name: 'Spain — Europe Tour — Book Sales', url: 'https://docs.google.com/spreadsheets/d/ESP', regionId: 'rg_es' }],
+      consignFiles: [] }] });
+  let SID = '';
+  const fetchImpl = async (url, init) => {
     if (/oauth2\/v3\/certs/.test(url)) return { ok: true, status: 200, json: async () => ({ keys: [pub] }) };
+    if (url === GOOGLE) {
+      const a = JSON.parse(init.body).params.action; forwarded.push(a);
+      return { status: 200, text: async () => JSON.stringify(a === 'driveMap' ? { ok: true, result: fakeMap(SID) } : { ok: true }) };
+    }
     throw new Error('offline');
   };
-  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com' });
+  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com',
+                           reportUrl: GOOGLE, reportSecret: 'sec' });
   console.log = quiet;
   const ask = async p => JSON.parse(await srv.request({ postData: { contents: JSON.stringify(p) } }));
   const sessionOf = async (email, name) => (await ask({ action: 'signIn', idToken: await token(email, name) })).result.session;
@@ -43,7 +58,7 @@ const API = 'http://api.test/';
   const owner = await sessionOf('owner@example.com', 'The Owner');
   const O = p => ask(Object.assign({ s: owner }, p));
   await O({ action: 'saveSeason', name: 'Europe Tour' });
-  const st0 = (await O({ action: 'getState' })).state, SA = st0.activeSeason;
+  const st0 = (await O({ action: 'getState' })).state, SA = st0.activeSeason; SID = SA;
   const B = st0.books.filter(b => !b.partnerId).map(b => b.id);
   await O({ action: 'createRegion', regionId: 'rg_it', whLoc: 'wh_it', name: 'Italy', currencies: 'EUR,USD', season: SA });
   await O({ action: 'createEvent', eventId: 'ev_yoga', name: 'Yoga Studio', regionId: 'rg_it', season: SA });
@@ -203,6 +218,22 @@ const API = 'http://api.test/';
     t.push(['at the region the group shows "Only at Yoga Studio"', /Yoga Friends[\s\S]*Only at Yoga Studio/.test(await own.evaluate(() => document.querySelector('.modal').innerText))]);
     await own.screenshot({ path: shot('7-consign') });
     await own.evaluate(() => closeModal());
+
+    /* ---- b226: Spreadsheet Links ---- */
+    t.push(['no "Sync sheet" in the top bar any more', !(await own.$('#syncBtn')) && !/Sync sheet/.test(await own.evaluate(() => document.querySelector('.util-bar').innerText))]);
+    await own.click('[data-act="drivefolder"]'); await own.waitForTimeout(800);
+    let dm = await own.evaluate(() => document.querySelector('#modal').innerText);
+    t.push(['Universal: Spreadsheet Links has "Rebuild spreadsheets now", the folders and every file', /Rebuild spreadsheets now/.test(dm) && /Top-Level Folder/i.test(dm) && /Spain/.test(dm)]);
+    await own.screenshot({ path: shot('8-links-owner') });
+    await own.click('#modal [data-act="syncsheet"]'); await own.waitForTimeout(1500);
+    t.push(['…pressing it rebuilds them (Google is asked)', forwarded.includes('syncSheets')]);
+    await O({ action: 'peopleAdd', email: 'rita@example.com', name: 'Rita', role: 'RL', placeId: 'rg_it' });
+    const rita = await open('rita@example.com', 'Rita');
+    await rita.click('[data-act="drivefolder"]'); await rita.waitForTimeout(800);
+    dm = await rita.evaluate(() => document.querySelector('#modal').innerText);
+    t.push(['a Regional Lead: Spreadsheet Links shows only Italy\'s file', /Italy — Europe Tour/.test(dm) && !/Spain|Season Summary/.test(dm)]);
+    t.push(['…to view, with how to make a copy; no folders, no rebuild', /Make a copy/.test(dm) && !/Top-Level Folder|Rebuild/i.test(dm)]);
+    await rita.screenshot({ path: shot('9-links-lead') });
 
     /* ---- Phone ---- */
     const phone = await open('sita@example.com', 'Sita', 390);

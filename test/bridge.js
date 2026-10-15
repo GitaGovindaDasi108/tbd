@@ -81,6 +81,10 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['nothing is left waiting to be drawn', srv.kv.getProp('dirtyLocs') === '{}' && !srv.kv.getProp('cfInFlight')]);
   t.push(['Google\'s own sheets are untouched', m.sheet('_sales').grid.length === googleSalesBefore]);
 
+  // A new file: shared with its people on the next minute (b226).
+  calls.length = 0;
+  m.sync(false);
+  t.push(['a new spreadsheet is shared on the next minute', calls.join() === 'reportExport:tick,reportWriteBack']);
   calls.length = 0;
   m.sync(false);
   t.push(['with nothing new, the trigger only asks', calls.join() === 'reportExport:tick']);

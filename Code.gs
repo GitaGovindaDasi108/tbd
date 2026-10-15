@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b225';
+var SERVER_BUILD = 'b226';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -277,6 +277,85 @@ function placesForAuth_() {
              closed: !!e.closedAt, key: String(e.key || '') };
   });
   return { seasons: seasons, regions: regions, events: events };
+}
+
+/* Every spreadsheet the app keeps, and whose it is (b226): for the server, which
+   decides who may open each one (people.js sheetsWanted). Only files made already. */
+function sheetFilesForAuth_() {
+  var meta = {};
+  objectsOf_('_meta').forEach(function (r) { meta[String(r.key)] = String(r.value || ''); });
+  var out = [], regSeason = {};
+  objectsOf_('_regions').forEach(function (r) { regSeason[String(r.regionId)] = String(r.seasonId || ''); });
+  seasonsAll_().forEach(function (se) {
+    var id = meta['seasonSheetId:' + se.seasonId];
+    if (id) out.push({ id: id, kind: 'season', seasonId: String(se.seasonId) });
+  });
+  Object.keys(regSeason).forEach(function (rid) {
+    var id = meta['regionSheetId:' + rid];
+    if (!id) return;
+    out.push(rid === HQ_REGION ? { id: id, kind: 'hq' } : { id: id, kind: 'region', regionId: rid, seasonId: regSeason[rid] });
+  });
+  objectsOf_('_partners').forEach(function (pt) {
+    var id = meta['partnerSheetId:' + pt.partnerId];
+    if (!id || truthyCell_(pt.archived)) return;
+    out.push({ id: id, kind: 'partner', regionId: String(pt.regionId || ''), seasonId: regSeason[String(pt.regionId || '')] || '' });
+  });
+  if (meta.descSheetId) out.push({ id: meta.descSheetId, kind: 'desc' });
+  return out;
+}
+
+/* ---- Sharing each spreadsheet with its people (b226) ----
+   The server sends who should have each file ({ fileId: { e: editors, v: viewers } });
+   this makes Drive match. Only people the app itself added are ever taken off:
+   anyone you shared a file with by hand stays. What the app added is kept in
+   _meta ("sheetShare:<fileId>"), and the whole wish in "sheetShareSig", so an
+   unchanged wish costs no Drive calls at all. Viewers can open the file and use
+   File › Make a copy; they cannot change it. */
+var _shareAgain = false;
+function shareSpreadsheets_(wanted) {
+  _shareAgain = false;
+  if (!wanted) return;
+  var sig = JSON.stringify(wanted);
+  if (String(getMeta_('sheetShareSig', '')) === sig) return;
+  var me = '';
+  try { me = String(Session.getEffectiveUser().getEmail() || '').toLowerCase(); } catch (e) {}
+  var had = {};
+  objectsOf_('_meta').forEach(function (r) {
+    var k = String(r.key);
+    if (k.indexOf('sheetShare:') === 0) { try { had[k.slice(11)] = JSON.parse(String(r.value || '')); } catch (e) {} }
+  });
+  var ids = {};
+  Object.keys(wanted).concat(Object.keys(had)).forEach(function (id) { ids[id] = 1; });
+  var started = Date.now(), errors = [], unfinished = false;
+  Object.keys(ids).forEach(function (fid) {
+    if (Date.now() - started > 120000) { unfinished = true; return; }       // the rest next time
+    var w = wanted[fid] || { e: [], v: [] }, h = had[fid] || { e: [], v: [] };
+    var now = { e: h.e.slice(), v: h.v.slice() };
+    var file = null;
+    var drive = function () { return file || (file = DriveApp.getFileById(fid)); };
+    var step = function (fn, email, list, add) {
+      try {
+        fn(email);
+        if (add) { if (list.indexOf(email) < 0) list.push(email); }
+        else { var i = list.indexOf(email); if (i >= 0) list.splice(i, 1); }
+      } catch (err) { errors.push(email + ': ' + (err && err.message || err)); }
+    };
+    // Taken off first, so someone moving from editor to viewer ends up a viewer.
+    h.e.filter(function (m) { return w.e.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().removeEditor(x); }, m, now.e, false); });
+    h.v.filter(function (m) { return w.v.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().removeViewer(x); }, m, now.v, false); });
+    w.e.filter(function (m) { return m !== me && now.e.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().addEditor(x); }, m, now.e, true); });
+    w.v.filter(function (m) { return m !== me && now.v.indexOf(m) < 0; }).forEach(function (m) {
+      step(function (x) { drive().addViewer(x); }, m, now.v, true); });
+    var val = (now.e.length || now.v.length) ? JSON.stringify({ e: now.e.sort(), v: now.v.sort() }) : '';
+    if (val !== (had[fid] ? JSON.stringify(had[fid]) : '')) setMeta_('sheetShare:' + fid, val);
+  });
+  if (errors.length) setMeta_('sheetShareError', errors.slice(0, 5).join(' · ').slice(0, 900));
+  else if (getMeta_('sheetShareError', '')) setMeta_('sheetShareError', '');
+  if (unfinished) _shareAgain = true;
+  else setMeta_('sheetShareSig', sig);       // a failure (say, not a Google address) is not retried every minute
 }
 
 function handle(e) {
@@ -890,7 +969,7 @@ function checkDriveAccess() {
     DriveApp.getRootFolder().getName();          // needs the Drive permission
     var f = driveRoot_();
     msg = 'OK — Drive access is working. Spreadsheets will be filed in the folder "' +
-          f.getName() + '". Press Sync sheet in the app to file them now.';
+          f.getName() + '". Press "Rebuild spreadsheets now" (in Spreadsheet Links) to file them now.';
   } catch (e) {
     msg = 'NOT YET — the app cannot use Google Drive. ' +
           'Google said: ' + String(e && e.message || e) + '. ' +
@@ -922,7 +1001,7 @@ function installTrigger_() {
     if (!have) ScriptApp.newTrigger('syncSheets').timeBased().everyMinutes(1).create();
   } catch (err) {
     Logger.log('Could not install the auto-sync trigger (' + err + '). ' +
-      'The app still works — use the "Sync sheet" button, or add the ' +
+      'The app still works — use "Rebuild spreadsheets now" in Spreadsheet Links, or add the ' +
       'script.scriptapp scope to appsscript.json to enable auto-refresh.');
   }
 }
@@ -3487,7 +3566,7 @@ function driveMap_() {
   /* Keyed by the folder only, NOT by the data revision: folders change when you
      move them, not every time a book is sold. Keying it to the revision meant
      any save threw the map away, so it was rebuilt on almost every open. */
-  var ck = 'drivemap_' + String(getMeta_('driveRootFolderId', '')) + '_' + String(getMeta_('driveMapStamp', '0'));
+  var ck = 'drivemap_' + String(getMeta_('driveRootFolderId', '')) + '_' + String(getMeta_('driveMapStamp', '0')) + '_' + SERVER_BUILD;
   try { var hit = tempGet_(ck); if (hit) return JSON.parse(hit); } catch (e) {}
 
   var out = { root: null, driveOk: true, seasons: [] };
@@ -3545,21 +3624,25 @@ function driveMap_() {
         }
       } catch (e) { /* show what we can */ }
     }
-    var file = function (metaKey, title) {
+    /* Each file says whose it is (b226), so the server can show a person only
+       the files their roles reach (see people.js sheetsFor). */
+    var file = function (metaKey, title, regionId) {
       var id = String(getMeta_(metaKey, ''));
-      return { name: title, url: id ? sheetUrl_(id) : '' };
+      var f = { name: title, url: id ? sheetUrl_(id) : '' };
+      if (regionId) f.regionId = regionId;
+      return f;
     };
     entry.files.push(file('seasonSheetId:' + sid, nm + ' — Season Summary'));
     var regs = regionsOrdered_(sid);
     var regIds = {};
     regs.forEach(function (r) {
       regIds[r.regionId] = 1;
-      entry.files.push(file('regionSheetId:' + r.regionId, r.name + ' — ' + nm + ' — Book Sales'));
+      entry.files.push(file('regionSheetId:' + r.regionId, r.name + ' — ' + nm + ' — Book Sales', r.regionId));
     });
     parts.forEach(function (pt) {
       if (!pt || !pt.partnerId || !regIds[String(pt.regionId)] || truthyCell_(pt.archived)) return;
       entry.consignFiles.push(file('partnerSheetId:' + pt.partnerId,
-        String(pt.name) + ' — ' + nm + ' — Consignment Sales'));
+        String(pt.name) + ' — ' + nm + ' — Consignment Sales', String(pt.regionId)));
     });
     out.seasons.push(entry);
   });
@@ -4310,7 +4393,7 @@ function syncSheets(force) {
           sh.getRange(1, 1, 3, 1).setValues([
             ['Could not build the season summary'],
             [lastErr],
-            ['Press "Sync sheet" in the app to try again. The regional files are unaffected.']
+            ['Press "Rebuild spreadsheets now" in Spreadsheet Links to try again. The regional files are unaffected.']
           ]);
         }
       } catch (e2) { /* nothing more we can do */ }
@@ -4414,6 +4497,8 @@ function withMirror_(ex, fn) {
     if (mirror.has('_activity')) objectsOf_('_activity').forEach(function (r) { actBefore[String(r.id)] = 1; });
     out = fn();
     flushStockMoves_();
+    // Who may open each spreadsheet, as the server wants it (b226).
+    if (ex.share) { try { shareSpreadsheets_(ex.share); } catch (e) { _shareAgain = true; } }
     var meta = {};
     if (mirror.has('_meta')) objectsOf_('_meta').forEach(function (r) {
       var k = String(r.key); if (k && metaBefore[k] !== String(r.value)) meta[k] = String(r.value);
@@ -4429,6 +4514,7 @@ function withMirror_(ex, fn) {
     var failed = {}; try { failed = JSON.parse(props.dirtyLocs || '{}'); } catch (e) {}
     back = { claim: ex.claim || '', meta: meta, activity: activity, failed: failed,
              props: { lastRenderError: props.lastRenderError || '' } };
+    if (_shareAgain) back.shareAgain = true;
   } finally {
     STORE_ = saved.store; KV_ = saved.kv; MIRROR_ = false;
     sheetMemoClear_(); fileMemoClear_(); _priceMemo = null;
@@ -7351,9 +7437,22 @@ function colLetter_(n) {
 }
 
 
+/* The line at the top of every tab the app draws (b226, the owner's words).
+   These files are rebuilt from the app's records, so a change typed into one is
+   lost at the next rebuild; anyone who wants to work on the figures makes a copy. */
+var SHEET_NOTE_ = 'If you wish to edit this sheet, please make a copy. Note that this sheet is being created ' +
+  'from the app. If you wish for any changes you make to be reflected permanently, you must change them in the app itself.';
+
 /* One place that turns rows + styling hints into a finished tab, so the season
    file and every regional file look identical. */
 function paintSheet_(sh, rows, band, head, tot, money, ints) {
+  /* ---- The note goes first; everything else moves down a row ---- */
+  var down = function (n) { return n + 1; };
+  var downA1 = function (a1) { return String(a1).replace(/([A-Z]+)(\d+)/g, function (x, c, n) { return c + (Number(n) + 1); }); };
+  rows = [[SHEET_NOTE_]].concat(rows);
+  band = band.map(down); head = head.map(down); tot = tot.map(down);
+  money = money.map(downA1); ints = (ints || []).map(downA1);
+
   /* ---- Write values in one call ---- */
   var width = rows.reduce(function (m, x) { return Math.max(m, x.length); }, 1);
   var padded = rows.map(function (x) { while (x.length < width) x.push(''); return x; });
@@ -7379,16 +7478,21 @@ function paintSheet_(sh, rows, band, head, tot, money, ints) {
   all.setFontFamily('Arial').setFontSize(10).setFontColor(TH.ink).setBackground(TH.paper)
      .setVerticalAlignment('middle');
 
-  // Masthead
+  // The note: one wrapped line across the top, plain to see and never mistaken for data.
   sh.getRange('A1:' + last + '1').merge()
+    .setBackground('#FFF1C9').setFontColor(TH.ink).setFontSize(10).setFontWeight('bold')
+    .setWrap(true).setHorizontalAlignment('left').setVerticalAlignment('middle');
+  sh.setRowHeight(1, 40);
+  // Masthead
+  sh.getRange('A2:' + last + '2').merge()
     .setBackground(TH.plum).setFontColor(TH.gold)
     .setFontFamily('Georgia').setFontSize(15).setFontWeight('bold')
     .setHorizontalAlignment('left').setVerticalAlignment('middle');
-  sh.setRowHeight(1, 36);
-  sh.getRange('A2:' + last + '2').merge()
+  sh.setRowHeight(2, 36);
+  sh.getRange('A3:' + last + '3').merge()
     .setBackground(TH.cream).setFontColor(TH.goldD)
     .setFontFamily('Georgia').setFontStyle('italic').setFontSize(11);
-  sh.getRange('A3:' + last + '3').setBackground(TH.cream).setFontColor(TH.muted).setFontSize(9);
+  sh.getRange('A4:' + last + '4').setBackground(TH.cream).setFontColor(TH.muted).setFontSize(9);
 
   if (band.length) {
     sh.getRangeList(band.map(function (n) { return 'A' + n + ':' + last + n; }))
@@ -7412,7 +7516,7 @@ function paintSheet_(sh, rows, band, head, tot, money, ints) {
 
   sh.setColumnWidth(1, 250);
   for (var c = 2; c <= width; c++) sh.setColumnWidth(c, 128);
-  sh.setFrozenRows(3);
+  sh.setFrozenRows(4);
   if (sh.getMaxRows() > padded.length + 2) {
     sh.getRange(padded.length + 1, 1, sh.getMaxRows() - padded.length, sh.getMaxColumns())
       .setBackground(TH.paper);

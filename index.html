@@ -471,6 +471,7 @@ body.busy #busyBar{opacity:1}
 .lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
   margin:4px 0 12px;font-size:13.5px}
 .df-stale{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px}
+.df-rebuild{margin:4px 0 12px}
 .df-loading{padding:20px;text-align:center;color:var(--muted)}
 .df-folder,.df-file{display:flex;align-items:flex-start;gap:10px;padding:8px 4px;border-bottom:1px solid var(--line)}
 .df-folder{background:var(--paper2);border-radius:8px;padding:9px 8px;border-bottom:none;margin:4px 0}
@@ -1409,12 +1410,11 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b225</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b226</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
     <button class="btn-refresh" data-act="refresh">↻ Refresh</button>
-    <button class="btn-refresh" data-act="syncsheet" id="syncBtn" title="Rebuild the Google Sheet tabs now">⇪ Sync sheet</button>
   </div>
 </header>
 
@@ -3482,11 +3482,14 @@ function liveWake(){
   else if(LIVE.open){ try{ LIVE.ws.send('rev'); }catch(e){} }
 }
 
+/* Rebuild every spreadsheet now (Universal, from Spreadsheet Links). They are
+   rebuilt on their own a minute or so after the last change anyway; this is for
+   when you want them this moment. */
 async function syncSheet(){
-  setStatus('load','Rebuilding sheet…');
+  setStatus('load','Rebuilding the spreadsheets…');
   try{ const d=await post({action:'syncSheets'}); BASE=d.state; REV=d.rev;
     OPS=OPS.filter(o=>o.rev===undefined||o.rev>REV); STATE=derive(); cacheSave(); renderAll();
-    toast('Google Sheet rebuilt'); setStatus('ok','Up to date · '+clock());
+    toast('Spreadsheets rebuilt'); setStatus('ok','Up to date · '+clock());
   }catch(err){ toast(err.message,true); setStatus('bad','Error'); }
 }
 
@@ -3967,6 +3970,7 @@ function renderAdmin(){
       `<div class="adm-grid"><div class="adm-col">
          <div class="adm-lbl">Admin</div>
          ${coord ? `<button class="btn adm-c1-1" data-act="activity">🗒 Activity Log</button>` : ''}
+         ${coord && ME ? `<button class="btn adm-c1-2" data-act="drivefolder">📁 Spreadsheet Links</button>` : ''}
          <button class="btn adm-c1-${coord?2:1}" data-act="org">👥 App and Sales Support</button>
          ${ME && ME.seesPeople ? `<button class="btn adm-c1-3" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : ''}
          ${ME ? `<button class="btn adm-c1-4" data-act="signout">🚪 Sign Out</button>` : ''}
@@ -7586,20 +7590,23 @@ async function descriptionsSheet(){
 /* The last map is kept on this device and drawn at once, with a fresh one
    fetched behind it — reading Google Drive is slow however little work it is,
    so there is no reason to stare at an empty dialog while it happens. */
-const DRIVE_MAP_KEY = 'tbs_drivemap';
+/* One per person (b226): someone signing in on a shared phone never sees the
+   map of whoever used it before. */
+const DRIVE_MAP_BASE = 'tbs_drivemap';
+function driveMapKey(){ return DRIVE_MAP_BASE + (ME && ME.email ? ':' + ME.email : ''); }
 function driveMapCached(){
-  try{ return JSON.parse(localStorage.getItem(DRIVE_MAP_KEY)||'null'); }catch(e){ return null; }
+  try{ return JSON.parse(localStorage.getItem(driveMapKey())||'null'); }catch(e){ return null; }
 }
 function driveFolderModal(){
   const seen = driveMapCached();
   openModal(`
-    ${mHead('Spreadsheet folders')}
+    ${mHead('Spreadsheet Links')}
     <div class="m-body"><div class="df-loading">Spreadsheet map takes time to load. Thanks for your patience.</div></div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   // Last time's map, drawn at once, while the current one is fetched behind it.
   if(seen) renderDriveMap(seen, 'Showing last time’s map while the current one loads…');
   post({action:'driveMap'}).then(d=>{
-    try{ localStorage.setItem(DRIVE_MAP_KEY, JSON.stringify(d.result)); }catch(e){}
+    try{ localStorage.setItem(driveMapKey(), JSON.stringify(d.result)); }catch(e){}
     if($('#modal .m-body')) renderDriveMap(d.result);
   }).catch(err=>{
     const b=$('#modal .m-body'); if(!b) return;
@@ -7652,8 +7659,26 @@ function renderDriveMap(map, note){
     </details>`).join('');
 
   const body = $('#modal .m-body'); if(!body) return;
+  /* Anyone but Universal gets only their own files, to view (b226): no folders,
+     nothing to change, and the way to work on the figures is their own copy. */
+  if(map.viewOnly){
+    const all = (map.hq?[map.hq]:[]).concat(...(map.seasons||[]).map(se=>se.files.concat(se.consignFiles)));
+    body.innerHTML = `${note?`<div class="df-stale">${esc(note)}</div>`:''}
+      <div class="hint">The spreadsheets your roles give you, to view. To work on the figures, open one and choose
+        <b>File › Make a copy</b>: the originals are rebuilt from the app, so changes belong in the app itself.</div>
+      ${map.hq ? `<div class="cash-sub">Earthly HQ</div>${fileRow(map.hq)}` : ''}
+      ${(map.seasons||[]).map(se=>`<div class="cash-sub">${esc(se.name)}</div>${se.files.map(fileRow).join('')}${
+        se.consignFiles.length?`<div class="muted-note" style="margin-top:6px">Consignment</div>${se.consignFiles.map(fileRow).join('')}`:''}`).join('')}
+      ${all.length ? '' : '<div class="cash-empty">No spreadsheets for your roles yet.</div>'}
+      <div class="err" id="modalErr"></div>`;
+    try{ applyLabels($('#modal')); }catch(e){}
+    return;
+  }
   body.innerHTML = `${note?`<div class="df-stale">${esc(note)}</div>`:''}
-    <div class="hint">Data from the sales tracker in spreadsheet form.</div>
+    <div class="hint">Data from the sales tracker in spreadsheet form. Each person is given their own files, to view:
+      Regional Leads their region's, Seasonal Leads their season's, Finance all. They are rebuilt by themselves
+      a minute or so after each change.</div>
+    <div class="df-rebuild"><button class="btn btn-primary btn-sm" data-act="syncsheet">⇪ Rebuild spreadsheets now</button></div>
     ${map.driveOk ? '' : `<div class="warn">Google Drive access is not set up yet, so folders cannot be
       shown or changed. The spreadsheet links below still work.</div>`}
     <div class="cash-sub">Top-Level Folder</div>
@@ -13051,7 +13076,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
-  if(a==='syncsheet'){ syncSheet(); return; }
+  if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
   if(a==='deleteevent'){ deleteEventModal(); return; }

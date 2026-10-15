@@ -212,6 +212,8 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       exec('DELETE FROM grant_ WHERE id = ?', String(id || ''));
       if (g && !mayEnter(g.email)) exec('DELETE FROM session WHERE email = ?', g.email);   // nothing left: signed out at once
     },
+    /** The permanent admins (ADMIN_EMAILS): Universal everywhere, spreadsheets included. */
+    ownerList() { return owners(); },
     allGrants() {
       return exec('SELECT g.id, g.email, g.role, g.placeId, g.addedBy, g.addedAt, p.name, p.googleName FROM grant_ g LEFT JOIN person p ON p.email = g.email ORDER BY g.addedAt');
     },

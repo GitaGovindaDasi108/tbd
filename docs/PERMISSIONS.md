@@ -166,8 +166,8 @@ Notes on the table:
 | 0 | This file | done |
 | 1 | People and sign-in: People panel, several roles per person, giving and removing within your limits, requests, display names, emergency links, roles ending when their place closes | **built** — see below for what each role can use yet |
 | 2 | Every rule in section 4 enforced by the server; each person sees only what their roles allow | to do |
-| 3 | Section 5 features 1–5 | to do |
-| 4 | Spreadsheets: the note at the top, per-person view-only sharing, each person's own files listed | to do |
+| 3 | Section 5 features 1–5 | **built** (b223–b225) — see below |
+| 4 | Spreadsheets: the note at the top, per-person view-only sharing, each person's own files listed | **built** (b226) — see below |
 | later | Payment emails matched automatically; the printing-to-warehouse work merged in | not planned yet |
 
 ### What Stage 1 lets each role do, until Stage 2
@@ -183,6 +183,26 @@ one**:
 | Event Lead | a sales link for their event, plus the People panel (add Sellers, emergency links) |
 | Seller | a sales link for their event |
 | Regional / Seasonal Assistant, Seasonal Lead, Finance, Finance Assistant | can sign in and be given roles, but see "your access starts with the next update" |
+
+### Stages 3 and 4, as built
+
+- **My sales, My cash, cash handover, Sales by Seller** (b223): as in section 5.
+- **Count mismatches** (b224): an event's go to its Regional Lead; a region's
+  go to Universal until the Seasonal Lead can sign in (Stage 2).
+- **Event prices and event consignment** (b225): set by Universal and the
+  Regional Lead. An Event Lead's "own" comes with Stage 2.
+- **Spreadsheets** (b226): the note is the first line of every tab. Each file
+  is shared in Google Drive with the people whose roles reach it — Universal
+  as editors, everyone else as viewers (they can use *File › Make a copy*):
+  Finance and Finance Assistant every file; Seasonal Lead and Assistant their
+  season's; Regional Lead and Assistant their region's and its consignment
+  groups'; Event Leads and Sellers none. This already applies to the roles
+  that cannot use the app yet: they find their files under "Shared with me" in
+  Google Drive. Taking a role away takes its access away on the next minute;
+  anyone a file was shared with by hand is left alone. A role keeps its view
+  after its place closes. **Spreadsheet Links** in the app shows a person only
+  their own files (no folders); "Rebuild spreadsheets now" (Universal only)
+  replaces the old Sync sheet button.
 
 ## 7. For the printing-to-warehouse work
 
