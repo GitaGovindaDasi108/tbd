@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b227**.
+Handover notes. Current build: **b228**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,29 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b228 — closed places sorted A to Z; in transit at Earthly HQ; the toggle hides
+
+- **Closed events and regions drop below the open ones, in A-to-Z order**
+  (`closedLast_` in Code.gs, applied in `eventsOrdered_` and
+  `regionsOrdered_`, so the app's lists and the spreadsheet tabs agree). The
+  open ones keep their chosen order; reopening puts a place back where it was.
+  The app shows a close at once (`closedLast` in the optimistic close).
+  Golden: the one difference is browser-round4's closed Festival now listed
+  after Yoga Studio.
+- **In transit at Earthly HQ**: the HQ overview adds up every season, but the
+  list it opened was drawn from HQ's own batches only, so it was empty. It is
+  now drawn the way the overview is (`withRollup`), read-only there (the
+  arrival and edit buttons belong to the batch's own season). Each batch, at
+  HQ and in a season, has **Go to <place> ›**, which opens where it is heading,
+  switching season if needed (`goToShipHTML`, action `gotoship`, via
+  `gsGoPlace`).
+- **The region toggle really hides the bubbles now**: `.wo-chips` set
+  `display:flex`, which beat the `hidden` attribute, so b227's toggle changed
+  its arrow but the bubbles stayed. `.wo-chips[hidden]{display:none}`. (b227's
+  test looked at the attribute, not at what showed; the tests now measure.)
+- Tests: `test/closedorder.js` (in run-all), `browser-hq.js` (HQ in-transit
+  list, Go to Barcelona, the toggle hides and shows).
 
 ## Done in b227 — coloured Sell buttons; Add Stock by title, then language; Warehouse Overview
 

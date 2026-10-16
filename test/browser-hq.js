@@ -19,6 +19,9 @@ const S2 = c({ action: 'saveSeason', name: 'Year-Round' }).result;
 c({ action: 'createRegion', season: S2, regionId: 'rg_bcn', whLoc: 'wh_bcn', name: 'Barcelona', currencies: 'EUR' });
 c({ action: 'setStockBulk', season: S2, location: 'wh_bcn', items: [{ bookId: B, qty: 6 }], override: true });
 c({ action: 'sell', season: S2, saleId: 'S2', location: 'wh_bcn', bookId: B, legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] });
+// b228: 3 copies on their way from the printer to Barcelona, in the other season.
+c({ action: 'sendShipment', season: S2, shipId: 'sh_bcn', mode: 'devotee', fromRegion: 'OUTSIDE', origin: 'the printer',
+    toRegion: 'rg_bcn', toLoc: 'wh_bcn', carrier: 'Narada', items: [{ bookId: B, qty: 3 }] });
 c({ action: 'setSeason', seasonId: SA });
 
 (async () => {
@@ -62,7 +65,8 @@ c({ action: 'setSeason', seasonId: SA });
     t.push(['collections by season: one row per season, and HQ', /Europe Tour/.test(coll) && /Year-Round/.test(coll) && /Earthly HQ/.test(coll) && /All seasons/.test(coll)]);
     t.push(['…with each season\'s takings (150 PLN, 35 EUR)', /150/.test(coll) && /35/.test(coll)]);
     t.push(['sales by season lists the seasons', /Europe Tour/.test(await text('#hqSalesBy')) && /Year-Round/.test(await text('#hqSalesBy'))]);
-    const wo = await text('#hqWhOverview');
+    // (the bubbles sit behind each card's "▸ In N seasons" since b227, so read past the fold)
+    const wo = await page.evaluate(() => document.querySelector('#hqWhOverview').textContent);
     t.push(['seasonal warehouse overview: where books are, by season', /3\s*Europe Tour/.test(wo) && /5\s*Year-Round/.test(wo)]);
     t.push(['the top tiles add up every season (2 big books sold)', /2\s*SOLD/i.test(await text('#totals'))]);
     const adm = await text('#adminActions');
@@ -113,6 +117,25 @@ c({ action: 'setSeason', seasonId: SA });
     t.push(['…where the portals are not shown', !(await visible('#salesPortal .portal-h')) && !(await visible('#summaryPortal'))]);
     await page.click('[data-act="gohq"]'); await page.waitForTimeout(1200);
     t.push(['🌍 goes back up to HQ', await page.evaluate(() => isHQ())]);
+
+    // b228: in transit, from Earthly HQ's Seasonal Warehouse Overview.
+    const tr = '#hqWhOverview [data-act="wotransit"]';
+    t.push(['HQ overview: "+3 in transit" can be tapped', /\+3 in transit/.test(await text(tr))]);
+    await page.click(tr); await page.waitForTimeout(300);
+    const tm = await text('#modal');
+    t.push(['…and lists the batch: 3, from the printer to Barcelona, with Narada', /3 of them: the printer → Barcelona/.test(tm) && /Narada/.test(tm)]);
+    t.push(['…read-only at HQ (its own season has the buttons)', !(await page.$('#modal [data-act="shdel"]')) && !(await page.$('#modal [data-act="sharriveall"]'))]);
+    await page.screenshot({ path: shot('transit') });
+    await page.click('#modal [data-act="gotoship"]'); await page.waitForTimeout(2000);
+    t.push(['"Go to Barcelona ›" opens Barcelona, in its own season', await page.evaluate(() => !isHQ() && CUR_LEVEL === 'region' && CUR_REGION === 'rg_bcn')]);
+    // The toggle hides and shows the bubbles.
+    await page.click('[data-act="gohq"]'); await page.waitForTimeout(1500);
+    const bubbles = () => page.evaluate(() => { const c = document.querySelector('#hqWhOverview .wo-chips'); return !!c && c.offsetHeight > 0; });
+    t.push(['the region bubbles start hidden', !(await bubbles())]);
+    await page.click('#hqWhOverview .wo-toggle'); await page.waitForTimeout(200);
+    t.push(['…the dropdown shows them', await bubbles()]);
+    await page.click('#hqWhOverview .wo-toggle'); await page.waitForTimeout(200);
+    t.push(['…and hides them again', !(await bubbles())]);
     t.push(['no errors in the page', !errors.length]);
     if (errors.length) console.log(errors);
   } catch (e) { t.push(['ran to the end: ' + e.message, false]); }

@@ -237,6 +237,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .wo-book.aotm{color:var(--gold)}
 .wo-total{font-weight:800;font-size:13px;color:var(--lvl,var(--plum));white-space:nowrap}
 .wo-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.wo-chips[hidden]{display:none}       /* the toggle's "closed" must win over display:flex */
 .wo-chip.transit{background:#E7F0FA;border-color:#B9D2EC;color:#2F6FB5;cursor:default}
 .sc-transit{color:#2F6FB5;font-weight:700;font-size:11.5px}
 button.sc-transit{background:none;border:0;padding:2px 0;cursor:pointer;font-family:inherit;text-decoration:underline dotted}
@@ -244,7 +245,7 @@ button.sc-transit:hover{color:#1F4F86}
 .wo-toggle{background:none;border:0;padding:4px 0 0;cursor:pointer;font:inherit;font-size:12px;font-weight:700;
   color:var(--muted);display:inline-flex;gap:4px;align-items:center}
 .wo-toggle:hover{color:var(--plum)}
-.wt-line{font-size:13px;margin:12px 0 4px;color:var(--ink)}
+.wt-line{font-size:13px;margin:12px 0 4px;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
   padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
 .wo-chip:hover{border-color:var(--saffron);background:#FDF3E4}
@@ -1434,7 +1435,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b227</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b228</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1937,6 +1938,13 @@ function amountLabel(s){
    A "warehouse" is no longer one place: every region has one. These resolve a
    location back to its region so the rest of the app can stay level-agnostic. */
 function regionsList(){ return STATE.regions||[]; }
+/* Closed places below the open ones, A to Z (b228) — as the server sends them;
+   this shows a close at once, before the server's answer. */
+function closedLast(list){
+  const key = x => String(x.name||'').toLowerCase();
+  return list.filter(x=>!x.closedAt).concat(list.filter(x=>x.closedAt)
+    .sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0));
+}
 function regionById(id){ return regionsList().find(r=>r.regionId===id)||null; }
 function isWarehouseLoc(loc){ return regionsList().some(r=>r.whLoc===loc); }
 function regionOfLoc(loc){
@@ -4113,20 +4121,38 @@ function regionStockOf(regionId, bookId){
 /* Where every title sits, as shelf cards: the total is the headline, and each
    region is a tappable chip that takes you straight there. */
 const WO_OPEN = new Set();       // Warehouse Overview cards showing where their copies are
-/* Every batch on the road carrying this title: how many, from where to where (b227). */
-function transitOfBookModal(bookId){
-  const b = bookById(bookId); if(!b) return;
-  const live = (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && invQty(x.shipId, bookId)>0)
-    .sort((x,y)=>new Date(y.createdAt||0)-new Date(x.createdAt||0));
-  const n = live.reduce((t,x)=>t+invQty(x.shipId, bookId),0);
-  openModal(`
-    ${mHead('In transit')}
-    <div class="m-body">
-      <div class="hint">${bookTitleHTML(b)} — <b>${n}</b> on the way${live.length>1?` in ${live.length} batches`:''}.</div>
-      ${live.map(x=>`<div class="wt-line"><b>${invQty(x.shipId, bookId)}</b> of them: ${esc(shipLabel(x))}</div>
-        ${shipCardHTML(x, false)}`).join('') || '<div class="cash-empty">Nothing on the way.</div>'}
-    </div>
-    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+/* Every batch on the road carrying this title: how many, from where to where
+   (b227), and a button to go to where it is heading (b228). At Earthly HQ the
+   overview adds up every season, so the list is drawn from every season's
+   batches too (withRollup) — read-only there, as those batches live in other
+   seasons; their own pages have the arrival and edit buttons. */
+function transitOfBookModal(bookId, everySeason){
+  const draw = () => {
+    const b = bookById(bookId); if(!b) return;
+    const live = (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && invQty(x.shipId, bookId)>0)
+      .sort((x,y)=>new Date(y.createdAt||0)-new Date(x.createdAt||0));
+    const n = live.reduce((t,x)=>t+invQty(x.shipId, bookId),0);
+    openModal(`
+      ${mHead('In transit')}
+      <div class="m-body">
+        <div class="hint">${bookTitleHTML(b)} — <b>${n}</b> on the way${live.length>1?` in ${live.length} batches`:''}.</div>
+        ${live.map(x=>`<div class="wt-line"><span><b>${invQty(x.shipId, bookId)}</b> of them: ${esc(shipLabel(x))}</span>
+          ${goToShipHTML(x)}</div>
+          ${shipCardHTML(x, false, everySeason)}`).join('') || '<div class="cash-empty">Nothing on the way.</div>'}
+      </div>
+      <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  };
+  if(everySeason) withRollup(draw); else draw();
+}
+/* "Go to London ›": the page of the place a batch is heading for, in its own season. */
+function goToShipHTML(x){
+  if(x.toRegion===HQ_REGION) return `<button type="button" class="btn btn-ghost btn-sm" data-act="gotoship" data-hq="1">Go to Earthly HQ ›</button>`;
+  const r = (STATE.allRegions||[]).find(a=>a.regionId===x.toRegion) || regionById(x.toRegion);
+  if(!r) return '';
+  const season = r.seasonId || STATE.activeSeason;
+  const ev = (x.toLoc && x.toLoc!==r.whLoc) ? x.toLoc : '';
+  return `<button type="button" class="btn btn-ghost btn-sm" data-act="gotoship" data-season="${esc(season)}"
+    data-region="${esc(r.regionId)}" data-event="${esc(ev)}">Go to ${esc(r.name)} ›</button>`;
 }
 function renderWarehouseOverview(){
   const regions = regionsList();
@@ -4162,7 +4188,7 @@ function renderWarehouseOverview(){
         <span class="sc-big wo-big ${total?'':'zero'}">${total}</span>
         <span class="sc-lbl">in stock</span>
       </div>
-      ${transit?`<div class="sc-sub"><button type="button" class="sc-transit" data-act="wotransit" data-book="${esc(b.id)}"
+      ${transit?`<div class="sc-sub"><button type="button" class="sc-transit" data-act="wotransit" data-book="${esc(b.id)}" data-all="${UNIT===UNIT_SEASON?1:''}"
         title="Where these are going">+${transit} in transit ›</button></div>`:''}
       ${where}
     </div>`;
@@ -6963,8 +6989,10 @@ function closeModalFor(kind){
         if(st.closeDrafts) delete st.closeDrafts[kind+':'+id];     // finished with
         if(kind==='event'){
           const e=(st.events||[]).find(v=>v.eventId===id); if(e) e.closedAt=when;
+          st.events = closedLast(st.events||[]);
         }else{
           const r=(st.regions||[]).find(v=>v.regionId===id); if(r) r.closedAt=when;
+          st.regions = closedLast(st.regions||[]);
         }
       }, 'Closed');
     closeModal();
@@ -11484,10 +11512,11 @@ function partnerEditModal(id){
 /* One batch on the road, as a card. Used in the Books in transit dialog and in
    the Books in Transit section on the main screen, so both read the same.
    Where it is heading, the two arrival buttons: all of it came, or only some. */
-function shipCardHTML(x, incoming){
+function shipCardHTML(x, incoming, readOnly){
   const books = shipBooks(x);
   const eta = x.eta ? new Date(x.eta).toLocaleDateString(LOCALE,{day:'numeric',month:'short'}) : '';
-  const admin = isAdmin();
+  const admin = isAdmin() && !readOnly;
+  if(readOnly) incoming = false;
   return `<div class="sh-card ${x.status==='PARTIAL'?'part':''}">
     <div class="sh-top">
       <span class="sh-route">${esc(shipLabel(x))}</span>
@@ -13213,7 +13242,12 @@ document.addEventListener('click',e=>{
     t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
     return;
   }
-  if(a==='wotransit'){ transitOfBookModal(t.dataset.book); return; }
+  if(a==='wotransit'){ transitOfBookModal(t.dataset.book, t.dataset.all==='1'); return; }
+  if(a==='gotoship'){
+    closeModal();
+    gsGoPlace(t.dataset.hq ? {hq:true} : {season:t.dataset.season, region:t.dataset.region, event:t.dataset.event||''});
+    return;
+  }
   if(a==='toggle'){
     const el=document.getElementById(t.dataset.target);
     if(el){ const open=el.style.display!=='none';
