@@ -226,3 +226,82 @@ export function sheetsMapFor(P, grants, map) {
   });
   return out;
 }
+
+/* ---- Permissions, as Universal sets them (b234) ----
+   The table of PERMISSIONS.md §4, one row per thing a person can do, one
+   column per role, as the starting point: y can · o only their own · v see
+   but not change · n no. Universal can change it for a whole level (a role),
+   and for one person (an override that wins over their roles). It is kept
+   now; the app follows it once Stage 2 enforces every rule. */
+export const PERM_ROLES = ['S', 'EL', 'RL', 'RA', 'SL', 'SA', 'F', 'FA', 'U'];
+export const PERM_CAPS = [
+  { group: "Selling", key: "sell_books_take_pre_orders_r", label: "Sell books, take pre-orders, record donations", def: "yyyvyvvvy" },
+  { group: "Selling", key: "edit_or_delete_a_sale", label: "Edit or delete a sale", def: "oyynynnny" },
+  { group: "Selling", key: "deliver_a_pre_order", label: "Deliver a pre-order", def: "nyynynnny" },
+  { group: "Selling", key: "mark_a_pending_payment_as_pa", label: "Mark a pending payment as paid", def: "oyynynnny" },
+  { group: "Selling", key: "hand_over_change_owed_to_a_c", label: "Hand over change owed to a customer", def: "oyynynnny" },
+  { group: "Selling", key: "accept_or_decline_another_re", label: "Accept or decline another region’s pre-order request", def: "nnynynnny" },
+  { group: "Selling", key: "my_sales_tile_on_the_top_bar", label: "“My sales” tile on the top bar", def: "ynnnnnnnn" },
+  { group: "Money", key: "see_money_totals", label: "See money totals", def: "oyyvyvyyy" },
+  { group: "Money", key: "deliver_cash_to_the_event_le", label: "Deliver cash to the Event Lead (two taps)", def: "yynnnnnnn" },
+  { group: "Money", key: "cash_tracker", label: "Cash Tracker", def: "nyyvyvyvy" },
+  { group: "Money", key: "change_owed_and_pending_paym", label: "Change owed and Pending Payments lists", def: "oyyvyvvvy" },
+  { group: "Money", key: "received_the_dollars_that_ac", label: "“$ Received”: the dollars that actually arrived", def: "nyyyyyyyy" },
+  { group: "Money", key: "record_a_cost", label: "Record a cost", def: "yyyyyyyyy" },
+  { group: "Money", key: "see_cost_totals_and_money_af", label: "See cost totals and money after costs", def: "nnnnnnyvy" },
+  { group: "Stock", key: "see_stock_in_their_region", label: "See stock in their region", def: "nvvvvvvvv" },
+  { group: "Stock", key: "see_stock_in_every_warehouse", label: "See stock in every warehouse, everywhere", def: "nnvvvvvvv" },
+  { group: "Stock", key: "transfer_between_the_regions", label: "Transfer between the region’s warehouse and its events", def: "noyvyvvvy" },
+  { group: "Stock", key: "move_stock_between_warehouse", label: "Move stock between warehouses (regions, seasons, Earthly HQ)", def: "nnyvyvvvy" },
+  { group: "Stock", key: "receive_books_in_transit", label: "Receive books in transit", def: "noyvyvvvy" },
+  { group: "Stock", key: "add_stock_from_outside_the_t", label: "Add Stock from outside the tour", def: "nnyvyvvvy" },
+  { group: "Stock", key: "set_a_count_outright_correct", label: "Set a count outright; correct or delete a shipment", def: "nnnnnnnny" },
+  { group: "Stock", key: "closing_counts", label: "Closing counts", def: "noyvyvvvy" },
+  { group: "Stock", key: "devotee_storage_sub_warehous", label: "Devotee storage (sub-warehouses)", def: "noyvyvvvy" },
+  { group: "Setup", key: "create_places", label: "Create places", def: "nnyvyvvvy" },
+  { group: "Setup", key: "close_or_reopen_places", label: "Close or reopen places", def: "noyvyvnny" },
+  { group: "Setup", key: "add_new_book_titles", label: "Add new book titles", def: "nnyvyvnny" },
+  { group: "Setup", key: "prices_and_currencies", label: "Prices and currencies", def: "noyvyvvvy" },
+  { group: "Setup", key: "payment_types", label: "Payment types", def: "noyvyvvvy" },
+  { group: "Setup", key: "payment_qr_codes", label: "Payment QR codes", def: "noyvyvvvy" },
+  { group: "Setup", key: "edit_book_display", label: "Edit Book Display", def: "noyvyvvvy" },
+  { group: "Setup", key: "consignment_groups_books_pri", label: "Consignment: groups, books, prices, payouts", def: "noyvyvvvy" },
+  { group: "Setup", key: "sell_consignment_books", label: "Sell consignment books", def: "yyyvyvvvy" },
+  { group: "Setup", key: "edit_wording", label: "Edit Wording", def: "nnnnnnnny" },
+  { group: "People", key: "give_logins", label: "Give logins", def: "nyyvyvnny" },
+  { group: "People", key: "emergency_sales_links", label: "Emergency sales links", def: "nyynynnny" },
+  { group: "People", key: "remove_someones_access", label: "Remove someone’s access", def: "noyvyvnny" },
+  { group: "Records", key: "whatsapp_and_speciality_repo", label: "WhatsApp and Speciality Reports", def: "nyyyyyyyy" },
+  { group: "Records", key: "see_the_activity_log", label: "See the Activity Log", def: "oyyvyvvvy" },
+  { group: "Records", key: "undo_from_the_activity_log", label: "Undo from the Activity Log", def: "oyynynnny" },
+  { group: "Records", key: "google_spreadsheets", label: "Google spreadsheets", def: "nnvvvvvvy" },
+];
+
+export const PERM_VALUES = ['y', 'o', 'v', 'n'];
+export function permDefaults() {
+  const out = {};
+  PERM_CAPS.forEach(c => { out[c.key] = {}; PERM_ROLES.forEach((r, i) => { out[c.key][r] = c.def[i]; }); });
+  return out;
+}
+/* Only known rows, roles and values are kept; anything else is dropped. */
+export function cleanPermTable(t) {
+  const out = {}, caps = new Set(PERM_CAPS.map(c => c.key));
+  Object.keys(t || {}).forEach(k => {
+    if (!caps.has(k)) return;
+    Object.keys(t[k] || {}).forEach(r => {
+      if (PERM_ROLES.indexOf(r) >= 0 && PERM_VALUES.indexOf(t[k][r]) >= 0) (out[k] = out[k] || {})[r] = t[k][r];
+    });
+  });
+  return out;
+}
+export function cleanPermPeople(t) {
+  const out = {}, caps = new Set(PERM_CAPS.map(c => c.key));
+  Object.keys(t || {}).forEach(email => {
+    const m = String(email).trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+$/.test(m)) return;
+    Object.keys(t[email] || {}).forEach(k => {
+      if (caps.has(k) && PERM_VALUES.indexOf(t[email][k]) >= 0) (out[m] = out[m] || {})[k] = t[email][k];
+    });
+  });
+  return out;
+}

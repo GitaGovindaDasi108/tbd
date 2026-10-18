@@ -337,36 +337,81 @@ const API = 'http://api.test/';
     t.push(['…but is in practice', !!prState && prState.sales.some(x => x.saleId === 'PRS1')]);
     t.push(['"Leave practice" goes back to the live app\'s address', await pr.evaluate(() => !/practice/.test(document.querySelector('#practiceBar a').getAttribute('href')))]);
     await pr.screenshot({ path: shot('11-practice') });
-    // b233: in practice, the admin buttons live in a left-hand menu (a mock-up).
+    // b233–b234: in practice, the admin buttons live in a left-hand menu, like Cloudflare's.
     const sn = () => pr.evaluate(() => ({
       panel: document.querySelector('#adminPanel').offsetHeight,
-      strip: [...document.querySelectorAll('#sideNav .sn-strip .sn-ico')].map(b => b.title),
-      open: document.querySelector('#sideNav .sn-panel').getBoundingClientRect().left >= 0,
-      groups: [...document.querySelectorAll('#sideNav .sn-gh')].map(b => b.innerText.replace(/\s+/g, ' ').trim()) }));
+      width: document.querySelector('#sideNav').getBoundingClientRect().width,
+      secs: [...document.querySelectorAll('#sideNav .sn-gh')].map(b => b.innerText.replace(/\s+/g, ' ').replace(/[▾▸]/g, '').trim()),
+      solo: (document.querySelector('#sideNav .sn-solo') || {}).innerText || '',
+      foot: (document.querySelector('#sideNav .sn-foot') || {}).innerText || '',
+      bg: getComputedStyle(document.querySelector('#sideNav')).backgroundColor,
+      cream: (() => { const x = document.createElement('div'); x.style.background = 'var(--cream)'; document.body.appendChild(x); const c = getComputedStyle(x).backgroundColor; x.remove(); return c; })() }));
     let snv = await sn();
-    t.push(['practice: no App Admin panel; a strip down the left: ☰, the place, Admin, Money, Books', snv.panel === 0
-      && JSON.stringify(snv.strip) === JSON.stringify(['Open the menu', 'Europe Tour', 'Admin', 'Money', 'Books']) && !snv.open]);
-    await pr.click('#sideNav .sn-ico[data-fam="money"]'); await pr.waitForTimeout(300);
+    t.push(['practice: no App Admin panel; a slim column down the left, the page\'s own cream', snv.panel === 0 && snv.width < 70 && snv.bg === snv.cream]);
+    t.push(['…sections in the owner\'s order: Books, Money, Season Admin, Advanced, App Development, Settings', /Books.*Money.*Season Admin.*Advanced.*App Development.*Settings/.test(snv.secs.join('|'))]);
+    t.push(['…then Support; Sign Out at the foot', /Support/.test(snv.solo) && /Sign Out/.test(snv.foot)]);
+    await pr.hover('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(350);
     snv = await sn();
-    t.push(['…tapping 💵 opens the menu: the place first, then Admin, Money, Books', snv.open && /Europe Tour/i.test(snv.groups[0]) && snv.groups.length === 4]);
+    t.push(['the pointer over it opens it out, icons and words together', snv.width > 250]);
+    const adv = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="advanced"] .sn-item .sn-t')].map(x => x.textContent));
+    t.push(['Advanced: Spreadsheets, Specialty Reports, Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access'])]);
+    const dev = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="dev"] .sn-item .sn-t')].map(x => x.textContent));
+    t.push(['App Development: Edit Wording, (Leave) Practice, Permissions', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Leave Practice', 'Permissions'])]);
+    await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
+    t.push(['a section folds and opens from its heading', await pr.evaluate(() => document.querySelector('#sideNav .sn-group[data-sec="books"] .sn-items').offsetHeight === 0)]);
+    await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
     await pr.screenshot({ path: shot('13-sidenav') });
-    await pr.click('#sideNav .sn-item[data-act="activity"]'); await pr.waitForTimeout(400);
-    t.push(['…an action from it works (Activity Log opens) and the menu folds away', await pr.evaluate(() =>
-      document.querySelector('#overlay').classList.contains('show')) && !(await sn()).open]);
+    await pr.mouse.move(900, 600); await pr.waitForTimeout(350);
+    t.push(['…and it folds back when the pointer leaves', (await sn()).width < 70]);
+    t.push(['the Activity Log is in the top bar, not in the menu', await pr.evaluate(() =>
+      !!document.querySelector('.util-bar [data-act="activity"]') && !document.querySelector('#sideNav [data-act="activity"]'))]);
+    await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    await pr.click('#sideNav .sn-item[data-act="cash"]'); await pr.waitForTimeout(400);
+    t.push(['an action from it works (Track Cash opens)', await pr.evaluate(() => document.querySelector('#overlay').classList.contains('show'))]);
     await pr.evaluate(() => closeModal());
-    await pr.click('#sideNav .sn-ico[data-fam="books"]'); await pr.waitForTimeout(250);
+    await pr.hover('#sideNav'); await pr.waitForTimeout(300);
     await pr.click('#sideNav [data-act="snpin"]'); await pr.waitForTimeout(250);
-    t.push(['📌 keeps it open beside the page (the page moves over)', (await sn()).open && await pr.evaluate(() => parseInt(getComputedStyle(document.body).paddingLeft) > 250)]);
+    await pr.mouse.move(900, 600); await pr.waitForTimeout(300);
+    t.push(['"Keep the menu open" keeps it beside the page (the page moves over)', (await sn()).width > 250 && await pr.evaluate(() => parseInt(getComputedStyle(document.body).paddingLeft) > 250)]);
     await pr.screenshot({ path: shot('14-sidenav-pinned') });
     await pr.click('#sideNav [data-act="snpin"]'); await pr.waitForTimeout(250);
+    // Profile and Permissions.
+    await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    await pr.click('#sideNav .sn-item[data-act="whoami"]'); await pr.waitForTimeout(300);
+    t.push(['Settings › Profile: your name, to change', /Profile/.test(await pr.evaluate(() => document.querySelector('#modal h3').textContent)) && !!(await pr.$('#myName'))]);
+    await pr.evaluate(() => closeModal());
+    await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    await pr.click('#sideNav .sn-item[data-act="permissions"]'); await pr.waitForTimeout(800);
+    t.push(['App Development › Permissions: the table, every role, every row', await pr.evaluate(() => document.querySelectorAll('#modal .pm-lv').length === 40 * 9)]);
+    await pr.selectOption('#modal .pm-lv[data-cap="deliver_a_pre_order"][data-role="S"]', 'y'); await pr.waitForTimeout(100);
+    t.push(['…a changed box is highlighted', await pr.evaluate(() => !!document.querySelector('#modal .pm-lv[data-cap="deliver_a_pre_order"][data-role="S"]').closest('.pm-changed'))]);
+    await pr.click('#modal [data-pmtab="person"]'); await pr.waitForTimeout(150);
+    await pr.selectOption('#pmWho', 'tulasi@example.com'); await pr.waitForTimeout(100);
+    await pr.selectOption('#modal .pm-pv[data-cap="edit_or_delete_a_sale"]', 'n'); await pr.waitForTimeout(100);
+    await pr.screenshot({ path: shot('16-permissions') });
+    await pr.click('#pmSave'); await pr.waitForTimeout(800);
+    const pm = JSON.parse(await prSrv.request({ postData: { contents: JSON.stringify({ action: 'permGet', s: 'Ptest' }) } })).result;
+    t.push(['…saved: Sellers may now deliver pre-orders; Tulasi alone may not edit or delete a sale',
+      pm.table.deliver_a_pre_order.S === 'y' && pm.people['tulasi@example.com'].edit_or_delete_a_sale === 'n']);
+    t.push(['…and only Universal may', !JSON.parse(await srv.request({ postData: { contents: JSON.stringify({ action: 'permGet', s: tulasi }) } })).ok]);
+    // Cards or a list, section by section.
+    await pr.evaluate(() => goTo('region', 'rg_it')); await pr.waitForTimeout(500);
+    t.push(['card/list view: a switch on each section with cards, none in the top bar', await pr.evaluate(() =>
+      !!document.querySelector('#titlePanel .view-tg') && document.querySelector('#viewBtn').style.display === 'none')]);
+    await pr.click('#titlePanel .view-tg'); await pr.waitForTimeout(200);
+    t.push(['…one section switches to a list on its own', await pr.evaluate(() =>
+      document.querySelector('#titlePanel').classList.contains('list-view') && !document.body.classList.contains('list-view'))]);
     const live = await open('owner@example.com', 'The Owner');
+    t.push(['the build number and status light: Universal sees them', await live.evaluate(() => document.querySelector('#bld').offsetHeight > 0)]);
+    const sel = await open('tulasi@example.com', 'Tulasi');
+    t.push(['…a Seller does not', await sel.evaluate(() => document.querySelector('#bld').offsetHeight === 0 && document.querySelector('.util-bar .status').offsetHeight === 0)]);
     t.push(['the live app keeps App Admin as it is (no left-hand menu)', await live.evaluate(() => !document.querySelector('#sideNav') && document.querySelector('#adminPanel').offsetHeight > 0)]);
     const prPhone = await open('owner@example.com', 'The Owner', 390, '?practice');
-    t.push(['practice on a phone: no strip, a round ☰ at the bottom left', await prPhone.evaluate(() =>
-      getComputedStyle(document.querySelector('.sn-strip')).display === 'none' && document.querySelector('.sn-fab').offsetHeight > 40)]);
-    await prPhone.click('.sn-fab'); await prPhone.waitForTimeout(300);
+    t.push(['practice on a phone: no column, a round ☰ at the bottom left', await prPhone.evaluate(() =>
+      document.querySelector('#sideNav').getBoundingClientRect().right <= 0 && document.querySelector('#snFab').offsetHeight > 40)]);
+    await prPhone.click('#snFab'); await prPhone.waitForTimeout(300);
     t.push(['…which slides the menu in, without the page going wider than the screen', await prPhone.evaluate(() =>
-      document.querySelector('.sn-panel').getBoundingClientRect().left >= 0 && document.documentElement.scrollWidth <= innerWidth)]);
+      document.querySelector('#sideNav').getBoundingClientRect().left >= 0 && document.documentElement.scrollWidth <= innerWidth)]);
     await prPhone.screenshot({ path: shot('15-sidenav-phone') });
     t.push(['the live app shows no banner, and offers "🧪 Practice Space"', await live.evaluate(() => !document.querySelector('#practiceBar')
       && [...document.querySelectorAll('#adminActions a')].some(a => /Practice Space/.test(a.textContent) && /practice/.test(a.getAttribute('href'))))]);

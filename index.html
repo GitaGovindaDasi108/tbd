@@ -1057,46 +1057,69 @@ body.busy #busyBar{opacity:1}
 .tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
 .tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
-/* ---- The left-hand menu (b233, practice mock-up) ---- */
-.side-nav{--snw:270px;font-family:'Inter',sans-serif}
-.sn-strip{position:fixed;left:0;top:0;bottom:0;width:52px;z-index:60;background:#3B2A45;display:flex;flex-direction:column;
-  align-items:center;gap:6px;padding:10px 0;box-shadow:2px 0 10px rgba(0,0,0,.12)}
-.sn-ico{width:40px;height:40px;border-radius:11px;border:0;background:rgba(255,255,255,.08);color:#F6E7C1;font-size:18px;cursor:pointer;
-  border-left:3px solid var(--fc, transparent)}
-.sn-ico:hover{background:rgba(255,255,255,.18)}
-.sn-menu{font-size:20px;border-left:0;margin-bottom:6px}
-.sn-panel{position:fixed;left:52px;top:0;bottom:0;width:var(--snw);z-index:61;background:#FFFBF3;border-right:1px solid var(--line-d);
-  box-shadow:4px 0 18px rgba(0,0,0,.14);overflow-y:auto;transform:translateX(calc(-100% - 60px));transition:transform .18s ease;padding-bottom:40px}
-body.sn-open .sn-panel{transform:none}
-.sn-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);
-  position:sticky;top:0;background:#FFFBF3;z-index:1;color:var(--plum)}
-.sn-head button{border:0;background:none;font-size:15px;cursor:pointer;padding:4px 6px;border-radius:7px;opacity:.55}
-.sn-head .sn-pin.on{opacity:1;background:var(--paper2)}
-.sn-group{border-bottom:1px solid var(--line)}
-.sn-gh{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:10px 14px;cursor:pointer;
-  font:inherit;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--fc)}
-.sn-group.shut .sn-items{display:none}
-.sn-items{display:flex;flex-direction:column;padding:0 8px 8px}
-.sn-item{display:flex;align-items:center;gap:6px;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;
-  font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;border-left:3px solid transparent}
-.sn-item:hover{background:var(--paper2);border-left-color:var(--fc)}
-.sn-scrim{position:fixed;inset:0;background:rgba(30,20,35,.28);z-index:59;display:none}
-body.sn-open:not(.sn-pinned) .sn-scrim{display:block}
+/* Permissions (b234) */
+.pm-wrap{overflow-x:auto;margin:8px 0}
+.pm-note{background:#FFF6DF;border:1px solid #EBCB7A;color:#7A5A12;border-radius:10px;padding:8px 11px;font-size:12.5px;margin-bottom:10px}
+.pm-table{border-collapse:collapse;font-size:12.5px;width:100%;min-width:640px}
+.pm-table th{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;padding:4px 3px;position:sticky;top:0;background:var(--paper)}
+.pm-table td{padding:2px 3px;border-bottom:1px solid var(--line)}
+.pm-cap{min-width:200px;color:var(--ink)}
+.pm-grp td{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--plum);padding-top:10px;border-bottom:1px solid var(--line-d)}
+.pm-sel{font:inherit;font-size:11.5px;padding:3px 2px;border:1px solid var(--line-d);border-radius:6px;background:#fff;width:100%;min-width:62px}
+.pm-y{color:#1F6B45} .pm-o{color:#9A6A12} .pm-v{color:#2F6FB5} .pm-n{color:#9B9B9B}
+.pm-changed .pm-sel{background:#FFF1C9;border-color:#E2B33F}
+.pm-person{min-width:420px} .pm-base{color:var(--muted)}
+.view-tg{border:1px solid var(--line-d);background:var(--paper);color:var(--muted);border-radius:7px;font-size:13px;line-height:1;
+  padding:4px 7px;cursor:pointer;margin-left:6px;vertical-align:middle}
+.view-tg:hover{color:var(--plum);border-color:var(--plum)}
+/* Build number and status light: Universal only; others see the status only when something is wrong. */
+body:not(.is-u) #bld{display:none}
+body:not(.is-u) .util-bar .status{display:none}
+body:not(.is-u) .util-bar .status.warn{display:flex}
+/* ---- The left-hand menu (b233–b234, practice mock-up) ----
+   The page's own colours: cream like the background, one accent, no rainbow. */
+.side-nav{position:fixed;left:0;top:0;bottom:0;z-index:60;width:56px;background:var(--cream);border-right:1px solid var(--line-d);
+  display:flex;flex-direction:column;font-family:'Inter',sans-serif;overflow:hidden;transition:width .16s ease,box-shadow .16s ease}
+body.sn-open .side-nav{width:268px;box-shadow:6px 0 22px rgba(60,40,20,.14)}
+body.sn-pinned .side-nav{box-shadow:none}
+.sn-scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px 0}
+.sn-foot{border-top:1px solid var(--line);padding:6px 0 8px}
+.sn-ic{flex:0 0 56px;width:56px;display:inline-flex;justify-content:center;font-size:16px}
+.sn-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transition:opacity .12s ease}
+body.sn-open .sn-t, body.sn-open .sn-chev, body.sn-open .sn-count, body.sn-open .side-nav .req-badge{opacity:1}
+.sn-top{display:flex;align-items:center;height:40px;color:var(--plum);font-weight:800;margin-bottom:4px}
+.sn-title{font-family:'Marcellus',serif;font-size:17px;font-weight:400}
+.sn-gh,.sn-item{display:flex;align-items:center;width:100%;border:0;background:none;cursor:pointer;font:inherit;text-align:left;
+  color:var(--ink);text-decoration:none;min-height:38px;padding:0 10px 0 0;border-radius:0}
+.sn-gh{font-size:13px;font-weight:700;color:var(--plum)}
+.sn-gh:hover,.sn-item:hover{background:var(--paper2)}
+.sn-gh:hover .sn-ic,.sn-item:hover .sn-ic{color:var(--saffron-d)}
+.sn-chev{margin-left:auto;color:var(--muted);font-size:11px;opacity:0}
+.sn-items{display:none}
+body.sn-open .sn-group:not(.shut) .sn-items{display:block}
+.sn-items .sn-item{font-size:13px;font-weight:500;min-height:32px}
+.sn-items .sn-item .sn-ic{font-size:13px;opacity:.75}
+body.sn-open .sn-items .sn-item{padding-left:0}
+.sn-items .sn-item .sn-t{padding-left:2px}
+.sn-count,.side-nav .req-badge{margin-left:auto;opacity:0;font-size:10.5px;font-weight:800;background:var(--paper2);border:1px solid var(--line-d);
+  border-radius:999px;padding:1px 7px;color:var(--muted)}
+.side-nav .req-badge{background:#E0372F;color:#fff;border:0}
+.sn-solo{border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
+.sn-solo .sn-item{font-weight:700;color:var(--plum)}
+.sn-pinbtn{color:var(--muted);font-size:12.5px}
+.sn-scrim{position:fixed;inset:0;background:rgba(60,40,20,.18);z-index:59;display:none}
 .sn-fab{display:none}
-body.has-sn{padding-left:52px}
-@media (min-width:900px){
-  body.has-sn.sn-pinned{padding-left:calc(52px + var(--snw, 270px))}
-  body.sn-pinned .sn-panel{transform:none;box-shadow:none}
-  body.sn-pinned .sn-x{display:none}
-}
-/* Phones: no strip; a round ☰ at the bottom left slides the menu in. */
+body.has-sn{padding-left:56px}
+@media (min-width:900px){ body.has-sn.sn-pinned{padding-left:268px} }
+/* Phones: no column; a round ☰ at the bottom left slides the whole menu in. */
 @media (max-width:899px){
   body.has-sn{padding-left:0}
-  .sn-strip{display:none}
-  .sn-panel{left:0;width:min(86vw, 300px)}
-  .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:0;
-    background:#3B2A45;color:#F6E7C1;font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}
-  .sn-pin{display:none}
+  .side-nav{width:min(86vw,300px);transform:translateX(-102%);transition:transform .18s ease}
+  body.sn-open .side-nav{width:min(86vw,300px);transform:none}
+  body.sn-open:not(.sn-pinned) .sn-scrim, body.sn-open .sn-scrim{display:block}
+  .sn-pinbtn{display:none}
+  .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:1px solid var(--line-d);
+    background:var(--cream);color:var(--plum);font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(60,40,20,.22);cursor:pointer}
 }
 .practice-bar{background:repeating-linear-gradient(135deg,#E6F4EA 0 14px,#D6EEDD 14px 28px);border:1.5px solid #8CC9A0;
   color:#1F5E36;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px;line-height:1.5}
@@ -1411,30 +1434,30 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   .li-btns{width:100%;justify-content:flex-end}
 }
 /* ---------- List view: every card grid as compact rows ---------- */
-body.list-view .inv-grid{grid-template-columns:1fr;gap:6px}
-body.list-view .book{flex-direction:row;align-items:center;min-height:0;padding:8px 10px;gap:12px}
-body.list-view .book .top{order:1;flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(120px,1fr) auto;
+.list-view .inv-grid{grid-template-columns:1fr;gap:6px}
+.list-view .book{flex-direction:row;align-items:center;min-height:0;padding:8px 10px;gap:12px}
+.list-view .book .top{order:1;flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(120px,1fr) auto;
   align-items:center;gap:14px}
-body.list-view .book .qtyrow{margin-top:0;gap:16px;justify-content:flex-end}
-body.list-view .book .qty-label{white-space:nowrap}
-body.list-view .book .qtyrow>div{white-space:nowrap}
-body.list-view .book .qtyrow .region{white-space:normal}
+.list-view .book .qtyrow{margin-top:0;gap:16px;justify-content:flex-end}
+.list-view .book .qty-label{white-space:nowrap}
+.list-view .book .qtyrow>div{white-space:nowrap}
+.list-view .book .qtyrow .region{white-space:normal}
 /* A red 0 and a greyed-out Sell already say it in a row. */
-body.list-view .book .sold-tag{display:none}
-body.list-view .book .bk-btns{order:3;margin-top:0;flex:0 0 196px}
-body.list-view .book .bk-btns>button{white-space:nowrap}
-body.list-view .book .bk-btns>button{min-height:34px;padding:6px 8px}
-body.list-view .stat-grid{grid-template-columns:1fr;gap:5px}
-body.list-view .stat-card{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;
+.list-view .book .sold-tag{display:none}
+.list-view .book .bk-btns{order:3;margin-top:0;flex:0 0 196px}
+.list-view .book .bk-btns>button{white-space:nowrap}
+.list-view .book .bk-btns>button{min-height:34px;padding:6px 8px}
+.list-view .stat-grid{grid-template-columns:1fr;gap:5px}
+.list-view .stat-card{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;
   min-height:0;padding:7px 11px;column-gap:14px;row-gap:2px}
-body.list-view .stat-card .sc-name{flex:1 1 180px}
-body.list-view .mini-grid{grid-template-columns:1fr;gap:4px}
-body.list-view .mini-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
-body.list-view .mc-name{min-height:0}
+.list-view .stat-card .sc-name{flex:1 1 180px}
+.list-view .mini-grid{grid-template-columns:1fr;gap:4px}
+.list-view .mini-card{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.list-view .mc-name{min-height:0}
 @media (max-width:560px){
-  body.list-view .book{flex-wrap:wrap}
-  body.list-view .book .top{grid-template-columns:1fr;gap:4px;flex-basis:100%}
-  body.list-view .book .bk-btns{flex:1 1 100%}
+  .list-view .book{flex-wrap:wrap}
+  .list-view .book .top{grid-template-columns:1fr;gap:4px;flex-basis:100%}
+  .list-view .book .bk-btns{flex:1 1 100%}
 }
 
 @media (prefers-reduced-motion:reduce){ *{animation:none!important;transition:none!important} }
@@ -1519,7 +1542,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b233</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b234</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1851,6 +1874,8 @@ function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isEr
   clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',isErr?5000:2600);}
 function setStatus(kind,text){
   $('#dot').className='dot '+kind;
+  // Shown to everyone when something is wrong (offline, a save refused); otherwise for Universal only.
+  const st = document.querySelector('.util-bar .status'); if(st) st.classList.toggle('warn', kind==='bad');
   $('#statusText').textContent=text;
   // A spinning ring while anything is in flight, so a slow save looks like work
   // in progress rather than a frozen page.
@@ -2938,7 +2963,7 @@ function youModal(){
   const usable = (ME.grants||[]).filter(g=>g.usable), cur = actingGrant();
   const others = (ME.grants||[]).filter(g=>!g.usable);
   openModal(`
-    ${mHead('You')}
+    ${mHead(SIDE_NAV ? 'Profile' : 'You')}
     <div class="m-body">
       <div class="field"><label>Your name, as others see it</label>
         <div class="rp-add"><input id="myName" type="text" maxlength="40" value="${esc(ME.name)}">
@@ -2965,6 +2990,75 @@ function youModal(){
     try{ localStorage.removeItem(CACHE_KEY); }catch(e){}
     location.reload();
   }));
+}
+
+/* ---- 🔐 Permissions (b234, Universal) ----
+   The permission table (PERMISSIONS.md §4) to change: for a whole level —
+   every Seller, every Regional Lead… — or for one person, which wins over
+   their roles. Saved now; the app follows it once Stage 2 enforces every rule. */
+const PERM_WORD = {y:'Can', o:'Own only', v:'View', n:'No'};
+async function permissionsModal(){
+  openModal(`${mHead('Permissions')}<div class="m-body"><div class="df-loading">Loading…</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  let d;
+  try{ d = (await post({action:'permGet'})).result; }
+  catch(err){ const b=$('#modal .m-body'); if(b) b.innerHTML = `<div class="err">${esc(err.message)}</div>`; return; }
+  const table = JSON.parse(JSON.stringify(d.table||{})), ppl = JSON.parse(JSON.stringify(d.people||{}));
+  let tab = 'level', who = (d.persons[0]||{}).email || '';
+  const val = (k,r) => (table[k] && table[k][r]) || d.defaults[k][r];
+  // A person's standing from their roles: the most their roles give (can > own > view > no).
+  const rank = {y:3, o:2, v:1, n:0};
+  const fromRoles = (k, roles) => roles.reduce((best, r)=> rank[val(k,r)] > rank[best] ? val(k,r) : best, 'n');
+  const sel = (cls, cur, attrs, withRole) => `<select class="pm-sel pm-${cur||'r'} ${cls}" ${attrs}>${
+    (withRole ? `<option value="" ${!cur?'selected':''}>As their roles</option>` : '') +
+    ['y','o','v','n'].map(v=>`<option value="${v}" ${cur===v?'selected':''}>${PERM_WORD[v]}</option>`).join('')}</select>`;
+  const groups = [...new Set(d.caps.map(c=>c.group))];
+  function draw(){
+    const body = $('#modal .m-body'); if(!body) return;
+    const levelHTML = `<div class="pm-wrap"><table class="pm-table"><thead><tr><th></th>${d.roles.map(r=>`<th title="${esc(d.names[r])}">${esc(r)}</th>`).join('')}</tr></thead>
+      <tbody>${groups.map(g=>`<tr class="pm-grp"><td colspan="${d.roles.length+1}">${esc(g)}</td></tr>` + d.caps.filter(c=>c.group===g).map(c=>`<tr><td class="pm-cap">${esc(c.label)}</td>${
+        d.roles.map(r=>{ const v = val(c.key, r), changed = v !== d.defaults[c.key][r];
+          return `<td class="${changed?'pm-changed':''}">${sel('pm-lv', v, `data-cap="${c.key}" data-role="${r}" title="${esc(d.names[r])}: ${esc(c.label)}"`)}</td>`; }).join('')}</tr>`).join('')).join('')}</tbody></table></div>
+      <div class="hint">${d.roles.map(r=>`<b>${esc(r)}</b> ${esc(d.names[r])}`).join(' · ')}. A highlighted box differs from the standard table.</div>`;
+    const person = d.persons.find(x=>x.email===who);
+    const mine = ppl[who] || {};
+    const personHTML = d.persons.length ? `<div class="field"><label>Person</label><select id="pmWho">${d.persons.map(x=>
+        `<option value="${esc(x.email)}" ${x.email===who?'selected':''}>${esc(x.name)} — ${esc(x.roles.map(r=>d.names[r]).join(', '))}</option>`).join('')}</select></div>
+      <div class="pm-wrap"><table class="pm-table pm-person"><thead><tr><th></th><th>From their roles</th><th>For ${esc(person ? person.name : '')}</th></tr></thead>
+      <tbody>${groups.map(g=>`<tr class="pm-grp"><td colspan="3">${esc(g)}</td></tr>` + d.caps.filter(c=>c.group===g).map(c=>{
+        const base = person ? fromRoles(c.key, person.roles) : 'n';
+        return `<tr><td class="pm-cap">${esc(c.label)}</td><td class="pm-base">${PERM_WORD[base]}</td>
+          <td class="${mine[c.key]?'pm-changed':''}">${sel('pm-pv', mine[c.key]||'', `data-cap="${c.key}"`, true)}</td></tr>`; }).join('')).join('')}</tbody></table></div>`
+      : '<div class="cash-empty">No one has a role yet. Give roles in App Access first.</div>';
+    body.innerHTML = `
+      <div class="pm-note">Saved now. The app starts following these when the full rules (Stage 2) are switched on — until then each role works as it does today.</div>
+      <div class="todo-tabs"><button type="button" class="todo-tab${tab==='level'?' on':''}" data-pmtab="level">By level</button>
+        <button type="button" class="todo-tab${tab==='person'?' on':''}" data-pmtab="person">By person</button></div>
+      ${tab==='level' ? levelHTML : personHTML}
+      <div class="err" id="modalErr"></div>`;
+    body.querySelectorAll('[data-pmtab]').forEach(b=>b.onclick=()=>{ tab = b.dataset.pmtab; draw(); });
+    const w = $('#pmWho'); if(w) w.onchange = ()=>{ who = w.value; draw(); };
+    body.querySelectorAll('.pm-lv').forEach(x=>x.onchange=()=>{
+      const k = x.dataset.cap, r = x.dataset.role;
+      if(x.value === d.defaults[k][r]){ if(table[k]){ delete table[k][r]; if(!Object.keys(table[k]).length) delete table[k]; } }
+      else (table[k] = table[k] || {})[r] = x.value;
+      draw();
+    });
+    body.querySelectorAll('.pm-pv').forEach(x=>x.onchange=()=>{
+      const k = x.dataset.cap;
+      if(!x.value){ if(ppl[who]){ delete ppl[who][k]; if(!Object.keys(ppl[who]).length) delete ppl[who]; } }
+      else (ppl[who] = ppl[who] || {})[k] = x.value;
+      draw();
+    });
+  }
+  $('#modal .m-foot').innerHTML = `<button class="btn btn-ghost" id="pmStd">Back to the standard table</button>
+    <button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="pmSave">Save</button>`;
+  $('#pmStd').onclick = ()=>{ if(!confirm('Put every level back to the standard table? Changes for individual people stay.')) return;
+    Object.keys(table).forEach(k=>delete table[k]); draw(); };
+  $('#pmSave').onclick = async ()=>{
+    if(await commitSync({action:'permSet', table, people: ppl}, 'Permissions saved')) closeModal();
+  };
+  draw();
 }
 
 /* 👥 People: who has which role, within your reach; giving and removing roles
@@ -3727,6 +3821,27 @@ function checkServerBuild(){
 
 /* Cards or a compact list, for every card view at once. Only the layout changes —
    the same numbers and the same buttons — and the choice is kept on this device. */
+/* Card or list view, one switch per section that has cards (b234, with the
+   left-hand menu): each section remembers its own. Outside the mock-up the
+   one button in the top bar still switches every section at once. */
+let VIEWS = {};
+try{ VIEWS = JSON.parse(localStorage.getItem('tbs_views')||'{}') || {}; }catch(e){ VIEWS = {}; }
+function sectionViews(){
+  if(!SIDE_NAV) return;
+  const vb = document.getElementById('viewBtn'); if(vb) vb.style.display = 'none';
+  document.body.classList.remove('list-view');
+  document.querySelectorAll('.panel[id]').forEach(p=>{
+    if(!p.querySelector('.inv-grid, .stat-grid, .mini-grid')) return;
+    const h = p.querySelector(':scope > h2'); if(!h) return;
+    const list = VIEWS[p.id]==='list';
+    p.classList.toggle('list-view', list);
+    let b = h.querySelector('.view-tg');
+    if(!b){ b = document.createElement('button'); b.type = 'button'; b.className = 'view-tg no-edit'; b.dataset.act = 'viewpanel'; b.dataset.panel = p.id;
+            const rep = h.querySelector('.sec-rep'); h.insertBefore(b, rep || null); }
+    b.textContent = list ? '▦' : '☰';
+    b.title = list ? 'Show as cards' : 'Show as a list';
+  });
+}
 function setViewMode(mode){
   const list = mode==='list';
   document.body.classList.toggle('list-view', list);
@@ -3738,6 +3853,9 @@ try{ if(localStorage.getItem('tbs_view')==='list') setTimeout(()=>setViewMode('l
 
 function renderAll(){
   practiceBanner();
+  // The build number and the status light are for Universal; others see the light only when something is wrong (b234).
+  document.body.classList.toggle('is-u', !!(STATE && isAdmin()));
+  setTimeout(sectionViews, 0);
   if(!STATE) return;
   // Whatever wording you have rewritten is put in place after every redraw.
   setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 0);
@@ -4245,21 +4363,72 @@ function drawAdmin(fams){
     }).join('')}</div>`;
 }
 
-/* ---- The admin buttons as a left-hand menu (b233, a mock-up in the practice space only) ----
-   Wide screens: a narrow strip of icons down the left; tap one to open the
-   menu at that family, 📌 to keep it open beside the page. Phones: a round ☰
-   button at the bottom left slides the same menu in. The place you are
-   looking at comes first, with its own actions. Same buttons, same actions as
-   the App Admin panel — only where they live changes. */
+/* ---- The admin buttons as a left-hand menu (b233–b234, a mock-up in the practice space only) ----
+   Like Cloudflare's: a slim column of icons down the left that opens out when
+   the pointer is over it (a tap on a touch screen), icons and words together,
+   each section a dropdown that opens or folds. 📌 keeps it open beside the
+   page. Phones: a round ☰ at the bottom left slides it in. The same buttons
+   and actions as the App Admin panel, in the owner's order (b234):
+   Books · Money · <Level> Admin · Advanced · App Development · Settings ·
+   Support, and Sign Out at the foot. The Activity Log moves to the top bar. */
 const SIDE_NAV = PRACTICE;
 let SN = { open:false, pinned:false, closed:{} };
 try{ Object.assign(SN, JSON.parse(localStorage.getItem('tbs_sidenav')||'{}'), {open:false}); }catch(e){}
 function snSave(){ try{ localStorage.setItem('tbs_sidenav', JSON.stringify({pinned:SN.pinned, closed:SN.closed})); }catch(e){} }
-function snPlaceName(){
-  if(isHQ()) return 'Earthly HQ';
-  if(CUR_LEVEL==='season') return (STATE && STATE.seasonName) || 'This season';
-  if(CUR_LEVEL==='region') return (currentRegion()||{}).name || 'This region';
-  return locName(CUR_LOC);
+function snLevelLabel(){
+  if(isHQ()) return 'Earthly HQ Admin';
+  return ({season:'Season', region:'Region', event:'Event'})[CUR_LEVEL] + ' Admin';
+}
+/* What each action is called, and its icon, in the menu (the owner's names). */
+const SN_ITEMS = {
+  addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], partners:['🤝','Consignment Books'],
+  bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
+  cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
+  drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
+  editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
+  whoami:['👤','Profile']
+};
+if(PRACTICE) SN_ITEMS.practice = ['🧪','Leave Practice'];
+function snTopActivity(show){
+  let b = document.getElementById('actTopBtn');
+  if(show && !b){
+    b = document.createElement('button'); b.id = 'actTopBtn'; b.className = 'btn-refresh'; b.dataset.act = 'activity';
+    b.title = 'Everything recorded, with undo'; b.textContent = '🗒 Activity Log';
+    const bar = document.querySelector('.util-bar'), ref = bar.querySelector('[data-act="report"]');
+    bar.insertBefore(b, ref || null);
+  }
+  if(b) b.style.display = show ? '' : 'none';
+}
+const SN_SECTIONS = [
+  {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
+  {key:'money',    icon:'💵', label:()=>'Money',           acts:['cash','costs','paytypes']},
+  {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
+  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['drivefolder','specreport','sharelinks','people']},
+  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions']},
+  {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
+];
+/* One menu row from a panel button: its own attributes (so it does exactly
+   what the button does), the menu's icon and words, and any count it carried. */
+function snRow(html, key){
+  const m = html.match(/^<(button|a)\b([^>]*)>([\s\S]*)<\/\1>$/);
+  if(!m) return '';
+  const attrs = m[2].replace(/\sclass="[^"]*"/, '');
+  const inner = m[3];
+  const badge = (inner.match(/<span class="req-badge">[\s\S]*?<\/span>/) || [''])[0]
+    || ((inner.replace(/<[^>]+>/g,'').match(/\((\d+)[^)]*\)\s*$/) || [])[1] ? `<span class="sn-count">${inner.replace(/<[^>]+>/g,'').match(/\((\d+)[^)]*\)\s*$/)[1]}</span>` : '');
+  const named = SN_ITEMS[key];
+  const text = named ? named[1] : inner.replace(/<[^>]+>/g,'').replace(/\s*\(\d+[^)]*\)\s*$/,'').replace(/^[^\w(]+/, '').trim();
+  // A place's own actions get an icon from what they do.
+  const guess = t => /order/i.test(t) ? '↕' : /reopen/i.test(t) ? '🔓' : /close/i.test(t) ? '🔒' : /delete/i.test(t) ? '🗑'
+    : /rename|edit/i.test(t) ? '✎' : '•';
+  const icon = named ? named[0] : guess(text);
+  return `<${m[1]} class="sn-item"${attrs}><span class="sn-ic">${icon}</span><span class="sn-t">${esc(text)}</span>${badge}</${m[1]}>`;
+}
+function snKey(html){
+  if(/Practice Space/.test(html)) return 'practice';
+  const act = (html.match(/data-act="([^"]+)"/) || [])[1] || '';
+  if(act==='pick') return (html.match(/data-then="([^"]+)"/) || [])[1] || act;
+  return act;
 }
 function renderSideNav(fams){
   let nav = document.getElementById('sideNav');
@@ -4268,45 +4437,57 @@ function renderSideNav(fams){
     document.body.appendChild(nav);
     const scrim = document.createElement('div'); scrim.id = 'snScrim'; scrim.className = 'sn-scrim'; scrim.dataset.act = 'snclose';
     document.body.appendChild(scrim);
-    // An action chosen from the menu closes it, unless it is pinned open.
-    nav.addEventListener('click', e=>{ if(e.target.closest('.sn-item') && !(SN.pinned && innerWidth>=900)) setTimeout(()=>snShow(false), 0); });
+    // Opens while the pointer is over it, as Cloudflare's does; folds away when it leaves.
+    const fine = window.matchMedia && matchMedia('(hover: hover) and (min-width: 900px)');
+    nav.addEventListener('mouseenter', ()=>{ if(fine && fine.matches && !SN.pinned) snShow(true); });
+    nav.addEventListener('mouseleave', ()=>{ if(fine && fine.matches && !SN.pinned) snShow(false); });
+    // A touch screen has no hover: the first tap opens it, and does nothing else.
+    nav.addEventListener('click', e=>{
+      if(!SN.open && !SN.pinned && innerWidth >= 900 && !(fine && fine.matches)){ e.stopPropagation(); e.preventDefault(); snShow(true); return; }
+      if(e.target.closest('.sn-item') && !(SN.pinned && innerWidth>=900)) setTimeout(()=>snShow(false), 0);
+    }, true);
   }
-  // The place first, then Admin, Money, Books.
-  const order = ['location','admin','money','books'];
-  fams = fams.slice().sort((a,b)=>order.indexOf(a.key)-order.indexOf(b.key));
-  const title = f => f.key==='location' ? snPlaceName() : ADMIN_FAMS[f.key].label;
-  const icon = f => ADMIN_FAMS[f.key].icon;
+  const byKey = {}, famOf = {};
+  fams.forEach(f=>f.items.forEach(h=>{ const k = snKey(h); byKey[k] = h; famOf[k] = f.key; }));
+  // Things the menu has that the panel did not: Permissions (Universal) and Profile.
+  if(isAdmin() && !byKey.permissions) byKey.permissions = `<button class="btn" data-act="permissions">🔐 Permissions</button>`;
+  if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
+  const sections = SN_SECTIONS.map(sec=>{
+    const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
+    return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
+  }).filter(x=>x.rows.length);
+  const support = byKey.org ? snRow(byKey.org, 'org').replace('<span class="sn-ic">•</span><span class="sn-t">App and Sales Support</span>', '<span class="sn-ic">🛟</span><span class="sn-t">Support</span>') : '';
+  const signout = byKey.signout ? snRow(byKey.signout, 'signout').replace(/<span class="sn-ic">•<\/span><span class="sn-t">[^<]*<\/span>/, '<span class="sn-ic">🚪</span><span class="sn-t">Sign Out</span>') : '';
   nav.innerHTML = `
-    <div class="sn-strip">
-      <button type="button" class="sn-ico sn-menu" data-act="snopen" title="Open the menu">☰</button>
-      ${fams.map(f=>`<button type="button" class="sn-ico" data-act="snopen" data-fam="${f.key}" title="${esc(title(f))}"
-        style="--fc:${ADMIN_FAMS[f.key].fc}">${icon(f)}</button>`).join('')}
-    </div>
-    <div class="sn-panel">
-      <div class="sn-head"><b>Menu</b>
-        <span><button type="button" class="sn-pin${SN.pinned?' on':''}" data-act="snpin" title="${SN.pinned?'Let it fold away':'Keep it open beside the page'}">📌</button>
-        <button type="button" class="sn-x" data-act="snclose" title="Close">✕</button></span></div>
-      ${fams.map(f=>`<div class="sn-group${SN.closed[f.key]?' shut':''}" data-fam="${f.key}" style="--fc:${ADMIN_FAMS[f.key].fc}">
-          <button type="button" class="sn-gh" data-act="sngroup" data-fam="${f.key}"><span>${icon(f)} ${esc(title(f))}</span><span class="tw">${SN.closed[f.key]?'▸':'▾'}</span></button>
-          <div class="sn-items">${f.items.map(b=>b.replace(/class="btn( [^"]*)?"/, 'class="sn-item"')).join('')}</div>
+    <div class="sn-scroll">
+      <div class="sn-top"><span class="sn-ic">☰</span><span class="sn-t sn-title">Menu</span></div>
+      ${sections.map(({sec, rows})=>`<div class="sn-group${SN.closed[sec.key]?' shut':''}" data-sec="${sec.key}">
+          <button type="button" class="sn-gh" data-act="sngroup" data-sec="${sec.key}" title="${esc(sec.label())}">
+            <span class="sn-ic">${sec.icon}</span><span class="sn-t">${esc(sec.label())}</span><span class="sn-chev">${SN.closed[sec.key]?'▸':'▾'}</span></button>
+          <div class="sn-items">${rows.join('')}</div>
         </div>`).join('')}
+      ${support ? `<div class="sn-solo">${support}</div>` : ''}
     </div>
-    <button type="button" class="sn-fab" data-act="snopen" title="Menu">☰</button>`;
+    <div class="sn-foot">
+      ${signout}
+      <button type="button" class="sn-item sn-pinbtn" data-act="snpin" title="${SN.pinned?'Let it fold away':'Keep it open beside the page'}">
+        <span class="sn-ic">${SN.pinned?'⇤':'📌'}</span><span class="sn-t">${SN.pinned?'Collapse the menu':'Keep the menu open'}</span></button>
+    </div>`;
+  // Phones: the ☰ that slides it in lives outside it, so it stays on screen.
+  if(!document.getElementById('snFab')){
+    const fab = document.createElement('button'); fab.type = 'button'; fab.id = 'snFab'; fab.className = 'sn-fab no-edit';
+    fab.dataset.act = 'snopen'; fab.title = 'Menu'; fab.textContent = '☰'; document.body.appendChild(fab);
+  }
+  // The Activity Log sits in the top bar instead, where it is always at hand (b234).
+  snTopActivity(!!byKey.activity);
   document.body.classList.add('has-sn');
   snApply();
 }
 function snApply(){
-  document.body.classList.toggle('sn-open', SN.open);
+  document.body.classList.toggle('sn-open', SN.open || SN.pinned);
   document.body.classList.toggle('sn-pinned', SN.pinned);
 }
-function snShow(open, fam){
-  SN.open = open; snApply();
-  if(open && fam){
-    if(SN.closed[fam]){ delete SN.closed[fam]; snSave(); renderAdmin(); SN.open = true; snApply(); }
-    const g = document.querySelector(`#sideNav .sn-group[data-fam="${fam}"]`);
-    if(g) g.scrollIntoView({block:'nearest'});
-  }
-}
+function snShow(open){ SN.open = open; snApply(); }
 
 // A small footnote showing which USD conversion rates are in effect.
 function rateNote(){
@@ -13612,10 +13793,21 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
-  if(a==='snopen'){ snShow(true, t.dataset.fam); return; }
+  if(a==='viewpanel'){
+    const id = t.dataset.panel; VIEWS[id] = VIEWS[id]==='list' ? 'cards' : 'list';
+    try{ localStorage.setItem('tbs_views', JSON.stringify(VIEWS)); }catch(e){}
+    sectionViews(); return;
+  }
+  if(a==='snopen'){ snShow(true); return; }
   if(a==='snclose'){ snShow(false); return; }
-  if(a==='snpin'){ SN.pinned = !SN.pinned; snSave(); if(SN.pinned) SN.open = true; renderAdmin(); return; }
-  if(a==='sngroup'){ const f = t.dataset.fam; if(SN.closed[f]) delete SN.closed[f]; else SN.closed[f] = 1; snSave(); renderAdmin(); return; }
+  if(a==='snpin'){ SN.pinned = !SN.pinned; snSave(); SN.open = SN.pinned; renderAdmin(); return; }
+  if(a==='sngroup'){
+    const k = t.dataset.sec; if(SN.closed[k]) delete SN.closed[k]; else SN.closed[k] = 1; snSave();
+    const g = t.closest('.sn-group'); g.classList.toggle('shut', !!SN.closed[k]);
+    t.querySelector('.sn-chev').textContent = SN.closed[k] ? '▸' : '▾';
+    return;
+  }
+  if(a==='permissions'){ permissionsModal(); return; }
   if(a==='todotab'){ TODO.tab = t.dataset.tab; todoSave(); renderBottom(); return; }
   if(a==='todosort'){
     const k = t.dataset.sort;
