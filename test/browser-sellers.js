@@ -380,14 +380,15 @@ const API = 'http://api.test/';
     const adv = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="advanced"] .sn-item .sn-t')].map(x => x.textContent));
     t.push(['Advanced: Spreadsheets, Specialty Reports, Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access'])]);
     const dev = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="dev"] .sn-item .sn-t')].map(x => x.textContent));
-    t.push(['App Development: Edit Wording, (Leave) Practice, Permissions', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Leave Practice', 'Permissions'])]);
+    t.push(['App Development: Edit Wording, (Leave) Practice, Permissions, View as', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Leave Practice', 'Permissions', 'View as'])]);
     t.push(['b236: every section starts folded', await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group')].every(g =>
       g.classList.contains('shut') && g.querySelector('.sn-items').offsetHeight === 0))]);
     await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
     t.push(['a section opens and folds from its heading', await pr.evaluate(() => document.querySelector('#sideNav .sn-group[data-sec="books"] .sn-items').offsetHeight > 0)]);
     t.push(['b236: no count on Consignment Books', await pr.evaluate(() => !document.querySelector('#sideNav [data-act="partners"] .sn-count'))]);
     await pr.click('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(150);
-    t.push(['b236: no count on Record Costs', await pr.evaluate(() => !!document.querySelector('#sideNav [data-act="costs"]') && !document.querySelector('#sideNav [data-act="costs"] .sn-count'))]);
+    // In practice Record Costs is one with Expenses (b238).
+    t.push(['b236: no count on Record Costs (Expenses, in practice)', await pr.evaluate(() => !!document.querySelector('#sideNav [data-act="expenses"]') && !document.querySelector('#sideNav [data-act="expenses"] .sn-count'))]);
     await pr.click('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(150);
     await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
     t.push(['…and folds again', await pr.evaluate(() => document.querySelector('#sideNav .sn-group[data-sec="books"] .sn-items').offsetHeight === 0)]);

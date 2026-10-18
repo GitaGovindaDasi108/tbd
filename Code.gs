@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b238';
+var SERVER_BUILD = 'b239';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -307,7 +307,7 @@ function financeFacts_() {
     if (!reg) return;                                // a place since deleted
     var b = bookById_(String(s.bookId || ''));
     pending.push({ saleId: String(s.saleId), ts: s.ts instanceof Date ? s.ts.toISOString() : String(s.ts || ''),
-      seasonId: reg.seasonId, season: seasonName[reg.seasonId] || '', regionId: reg.id, region: reg.name,
+      seasonId: reg.seasonId, season: seasonName[reg.seasonId] || '', regionId: reg.id, region: reg.name, eventId: ev ? String(ev.id) : '',
       place: ev ? ev.name : reg.name + ' (Warehouse)', name: String(s.name || ''), phone: String(s.phone || ''),
       book: b ? String(b.name || '') : String(s.type || ''), qty: Number(s.qty) || 1,
       soldBy: String(s.soldBy || ''), owed: outstanding_(s) });

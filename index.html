@@ -1187,6 +1187,25 @@ body.has-sn{padding-left:56px}
   .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:1px solid var(--line-d);
     background:var(--cream);color:var(--plum);font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(60,40,20,.22);cursor:pointer}
 }
+/* Finance as a place of its own (b239): its own colour, its own page. */
+body.fin-mode{background:#EEF3FA;--lvl:#2B4C7E;--lvl-soft:#E1EAF6;--lvl-line:#A9C0E0}
+body.fin-mode header.masthead{background:linear-gradient(180deg,#46679A 0%,#2F5288 55%,#243F6B 100%)}
+body.fin-mode main > :not(#finPage):not(#practiceBar):not(#buildWarn){display:none !important}
+body.fin-mode #noAccess{display:none}
+body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app refusing them is not news here */
+.fin-page[hidden]{display:none}
+.fp-secs{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 12px;align-items:center}
+.fp-sec{border:1.5px solid var(--lvl-line);background:var(--paper);color:var(--lvl);border-radius:10px;padding:7px 13px;
+  font:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
+.fp-sec.on{background:var(--lvl);color:#fff;border-color:var(--lvl)}
+.fp-sec .fin-n{margin-left:4px}
+.fp-gap{flex:1}
+.fp-body{background:var(--paper);border:1px solid var(--lvl-line);border-radius:14px;padding:14px 16px;min-height:200px}
+.fp-body .m-foot{border:0;padding:12px 0 0;background:none}
+.fp-h{font-size:20px;margin:0 0 4px;color:var(--lvl)}
+.fp-sub{color:var(--muted);font-size:13px;margin-bottom:8px}
+.fin-go{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--lvl);cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:2px}
+@media (max-width:600px){ .fp-body{padding:10px} .fp-sec{padding:6px 10px;font-size:12.5px} }
 /* Finance section and View as (b238, practice) */
 #modal.fin-wide{max-width:1180px;width:100%}
 @media (min-width:700px){ #modal.fin-wide{max-width:min(1180px,calc(100vw - 150px))} }
@@ -1637,7 +1656,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b238</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b239</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1646,6 +1665,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 </header>
 
 <main>
+  <!-- Finance, a place of its own (b239): shown instead of everything else in main. -->
+  <section id="finPage" class="fin-page no-edit" hidden>
+    <div class="toolbar"><div class="loc-tabs" id="fpNav"></div></div>
+    <div class="fp-secs" id="fpSecs"></div>
+    <div class="fp-body" id="fpBody"></div>
+  </section>
   <div class="toolbar">
     <div class="loc-tabs" id="locTabs"></div>
     <!-- Search: any place, any action (b215). no-edit: its results are not wording. -->
@@ -2513,6 +2538,7 @@ function eventPriceIn(eventId,bookId,cur){
 }
 /** Move the whole app to a level. Keeps CUR_REGION consistent with CUR_LOC. */
 function goTo(level, loc){
+  if(typeof FINP!=='undefined' && FINP.on) finLeave({quiet:true});
   // At Earthly HQ there is no season page: "up" is HQ's own page.
   if(level==='season' && isHQ()){ level='region'; loc=HQ_REGION; }
   clearLogFilters();              // filters belong to the page they were set on (b212)
@@ -2538,7 +2564,10 @@ const POS_KEY = 'tbs_pos';
 let TAB_SEASON = '';
 /** Bumped on every season change, so replies from before it can be recognized. */
 let SEASON_EPOCH = 0;
-function posKey(){ return POS_KEY + (SHARE_KEY?'_'+SHARE_KEY:''); }
+/* Viewing the app as someone else (b239) keeps its own place: theirs is not
+   yours, and asking for your season on their behalf had every answer thrown
+   away as out of date, so nothing loaded. */
+function posKey(){ return POS_KEY + (SHARE_KEY?'_'+SHARE_KEY:'') + (VIEW_AS.get()?'_va':''); }
 function savePos(){
   const here = JSON.stringify({l:CUR_LEVEL, r:CUR_REGION, c:CUR_LOC,
                                s:(BASE && BASE.activeSeason) || ''});
@@ -3026,6 +3055,8 @@ const signedInHere = () => !SHARE_KEY && !!CONFIG.GOOGLE_CLIENT_ID && !!SESSION.
 async function loadMe(){
   if(!signedInHere()) return;
   try{ ME = (await post({action:'me'})).result; renderAll(); }catch(e){}
+  // Opened at a Finance address (a bookmark, a refresh, Back): go straight there.
+  const fh = finParseHash(); if(fh && !FINP.on) finGo(fh.sec, fh.scope, {fromHistory:true});
 }
 /* The role this device works in: the one chosen, else the first usable — as the server picks. */
 function actingGrant(){
@@ -3046,6 +3077,7 @@ function showNoAccess(me){
   const box = document.createElement('div');
   box.id = 'noAccess'; box.className = 'signin-wrap';
   document.body.classList.add('has-na');     // its windows (expenses, b238) open above it
+  FINP.me = me;
   const roles = (me && me.grants) || [];
   box.innerHTML = `<div class="signin">
       <h2>Not quite yet</h2>
@@ -3064,6 +3096,8 @@ function showNoAccess(me){
         <button class="btn btn-primary" onclick="location.reload()">Try again</button></div>
     </div>`;
   document.body.appendChild(box);
+  // Finance people have Finance as their app meanwhile (b239): they start there.
+  if(PRACTICE && financeMe(me) && !FINP.on){ const fh = finParseHash(); setTimeout(()=>finGo(fh ? fh.sec : 'overview', fh ? fh.scope : '', {fromHistory:!!fh}), 0); }
   $('#naOut').addEventListener('click', async ()=>{ try{ await post({action:'signOut'}); }catch(e){} SESSION.clear(); ACTING.set(''); location.reload(); });
 }
 
@@ -3918,7 +3952,7 @@ function addTooltipsToClipped(){
    - the server is newer than this page: the browser is showing an old copy of
      the page, and a refresh fixes it.
    Bump NEEDS_SERVER only when the page starts relying on new server code. */
-const NEEDS_SERVER = 'b238';
+const NEEDS_SERVER = 'b239';
 /* The server's version as it answered this session. Never taken from the copy
    saved on the device, which can be older than the server now is. */
 let LIVE_BUILD = '';
@@ -3990,6 +4024,7 @@ function renderAll(){
   try{ checkServerBuild(); }catch(e){}
   // The title names where you actually are, not just the warehouse.
   $('#whTitle').textContent = ': ' + scopeLabel();
+  if(typeof FINP!=='undefined' && FINP.on){ try{ finNav(); }catch(e){} }
   /* And which season — the same region can exist in more than one (Croatia in
      Europe Tour and in Year-Round), so the name alone left you guessing. Small,
      above the title; at season level the title already names it. */
@@ -8340,7 +8375,8 @@ async function receiptOpen(id){
 
 /* ---- Finance's own To do: payments still owed, and expenses to pay back, across the system ---- */
 async function financeTodoModal(){
-  openModal(`${mHead('Finance To do')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  if(PRACTICE) return finGo('todo');
+  if(FINP.on) $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>'; else openModal(`${mHead('Finance To do')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
     const [todo, all, opt] = await Promise.all([post({action:'expTodo'}), post({action:'expList', scope:'all'}),
       EXP.opt ? Promise.resolve({result:EXP.opt}) : post({action:'expOptions'})]);
@@ -8358,11 +8394,11 @@ function finTotals(list, amt){
   return Object.keys(by).sort().map(c=>cashFmt(by[c], c)).join(' + ');
 }
 function finDraw(){
-  const T = EXP.todo, q = EXP.q.trim().toLowerCase();
+  const T = finScopedTodo(), q = EXP.q.trim().toLowerCase();
   const hit = (...xs) => !q || xs.some(s=>String(s||'').toLowerCase().includes(q));
   const reimb = T.reimb.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method));
   const pend = T.pending.filter(p=>hit(p.name, p.phone, p.book, p.place, p.region, p.season, p.soldBy));
-  const all = EXP.all.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, EXP_STATUS[x.status]));
+  const all = T.all.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, EXP_STATUS[x.status]));
   const tab = (k, label, n, col) => `<button type="button" class="fin-tab${EXP.tab===k?' on':''}" data-act="fintab" data-tab="${k}" style="--tc:${col}">
     ${esc(label)} <span class="fin-n">${n}</span></button>`;
   let body = '';
@@ -8377,17 +8413,14 @@ function finDraw(){
         ${p.phone?`<div>📞 <b class="exp-copy">${esc(p.phone)}</b></div>`:''}</div>`).join('')}`
     : '<div class="cash-empty">No payments pending anywhere.</div>';
   if(EXP.tab==='all') body = all.length ? all.map(x=>expCardHTML(x, true)).join('') : '<div class="cash-empty">No expenses yet.</div>';
-  openModal(`
-    ${mHead('Finance To do')}
-    <div class="m-body">
+  finHost('Finance To do', `
       <div class="fin-tabs">${tab('reimb','Reimbursements pending', T.reimb.length, '#2E8065')}${tab('pay','Payments pending', T.pending.length, '#C0392B')}
-        ${tab('all','Every expense', EXP.all.length, '#3E6FA8')}</div>
+        ${tab('all','Every expense', T.all.length, '#3E6FA8')}</div>
       <input id="finQ" class="fin-q" type="search" placeholder="Search names, places, descriptions…" value="${esc(EXP.q)}">
-      ${body}
-    </div>
-    <div class="m-foot"><button class="btn btn-ghost" data-act="expenses">🧾 Add an expense</button>
-      ${EXP.opt && EXP.opt.mayPay ? `<button class="btn btn-ghost" data-act="reimbset">⚙️ Reimbursement Settings</button>` : ''}
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+      ${body}`,
+    `<button class="btn btn-ghost" data-act="expenses">🧾 Add an expense</button>
+      ${EXP.opt && EXP.opt.mayPay ? `<button class="btn btn-ghost" data-act="reimbset">⚙️ Reimbursement Settings</button>` : ''}`);
+  if(FINP.on) finNav();
   const qi = $('#finQ');
   qi.addEventListener('input', ()=>{ EXP.q = qi.value; const pos = qi.selectionStart; finDraw(); const n = $('#finQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
 }
@@ -8410,7 +8443,8 @@ async function finMark(id, status){
    for one person, whose setting wins over every place. ---- */
 const RS = { d:null, mode:'place', id:'', email:'' };
 async function reimbSettingsModal(){
-  openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  if(PRACTICE) return finGo('settings');
+  if(FINP.on) $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>'; else openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{ RS.d = (await post({action:'expRulesGet'})).result; }
   catch(e){ openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true); return; }
@@ -8451,9 +8485,7 @@ function rsDraw(){
         <span>${esc(aboveWord)}${RS.mode==='place' ? ': ' + esc(above.curs.join(', ')) : ''}</span></label>
       <label class="ppl-pick"><input type="radio" name="rsCurMode" value="own" ${own?'checked':''} ${dis}><span>Only these:</span></label>
       <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${(own||[]).includes(c)?'checked':''} ${own&&!ro?'':'disabled'}> ${esc(c)}</label>`).join('')}</div>` : '';
-  openModal(`
-    ${mHead('Reimbursement Settings')}
-    <div class="m-body">
+  finHost('Reimbursement Settings', `
       <div class="hint">Which ways of paying people back, and which currencies, are offered. Each place follows the one above it unless
         you set it here: switch PayPal off for everywhere, say, and on again for one region. A person's own setting wins over every place.</div>
       ${ro ? '<div class="muted-note">You can see these; only Finance can change them.</div>' : ''}
@@ -8466,32 +8498,30 @@ function rsDraw(){
       : `<div class="field"><label>Person</label><select id="rsPerson">${opt('','Choose someone…',!RS.email)}${d.people.map(p=>opt(p.email,
           p.name + ' (' + p.email + ')' + (d.rules.people[p.email]?' •':''), p.email===RS.email)).join('')}</select></div>`}
       ${target ? `<div class="cash-sub">Ways of paying back</div><div class="rs-rows">${rows}</div>${curBox}` : ''}
-      <div class="err" id="modalErr"></div>
-    </div>
-    <div class="m-foot"><button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
-      ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}</div>`, true);
+      <div class="err" id="rsErr"></div>`,
+    `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
+      ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
   const ps = $('#rsPlace'); if(ps) ps.addEventListener('change', ()=>{ RS.id = ps.value; rsDraw(); });
   const pp = $('#rsPerson'); if(pp) pp.addEventListener('change', ()=>{ RS.email = pp.value; rsDraw(); });
-  document.querySelectorAll('#modal input[name="rsCurMode"]').forEach(r=>r.addEventListener('change', ()=>{
-    document.querySelectorAll('#modal [data-rsc]').forEach(c=>{ c.disabled = r.value!=='own'; });
+  finRoot().querySelectorAll('input[name="rsCurMode"]').forEach(r=>r.addEventListener('change', ()=>{
+    finRoot().querySelectorAll('[data-rsc]').forEach(c=>{ c.disabled = r.value!=='own'; });
   }));
   const sv = $('#rsSave'); if(sv) sv.addEventListener('click', rsSave);
 }
 async function rsSave(){
   const d = RS.d, rules = JSON.parse(JSON.stringify(d.rules));
   const x = {}, methods = {};
-  document.querySelectorAll('#modal [data-rsm]').forEach(s=>{ if(s.value) methods[s.dataset.rsm] = s.value==='on'; });
+  finRoot().querySelectorAll('[data-rsm]').forEach(s=>{ if(s.value) methods[s.dataset.rsm] = s.value==='on'; });
   if(Object.keys(methods).length) x.methods = methods;
-  const mode = (document.querySelector('#modal input[name="rsCurMode"]:checked')||{}).value;
+  const mode = (finRoot().querySelector('input[name="rsCurMode"]:checked')||{}).value;
   if(mode==='own'){
-    x.curs = [...document.querySelectorAll('#modal [data-rsc]:checked')].map(c=>c.dataset.rsc);
-    if(!x.curs.length){ $('#modalErr').textContent = 'Tick at least one currency, or choose "' + (RS.mode==='place'?'As above':'As the place says') + '".'; return; }
+    x.curs = [...finRoot().querySelectorAll('[data-rsc]:checked')].map(c=>c.dataset.rsc);
+    if(!x.curs.length){ $('#rsErr').textContent = 'Tick at least one currency, or choose "' + (RS.mode==='place'?'As above':'As the place says') + '".'; return; }
   }
   const bag = RS.mode==='place' ? rules.levels : rules.people, key = RS.mode==='place' ? RS.id : RS.email;
   if(Object.keys(x).length) bag[key] = x; else delete bag[key];
   try{ RS.d = (await post({action:'expRulesSet', rules})).result; toast('Saved'); rsDraw(); }
-  catch(e){ $('#modalErr').textContent = e.message; }
+  catch(e){ $('#rsErr').textContent = e.message; }
 }
 
 // A screenshot pasted while the expense form is open becomes a receipt.
@@ -8556,80 +8586,53 @@ function finFiltered(f){
     (!f.from || x.d >= f.from) && (!f.to || x.d <= f.to);
   return { sales: D.sales.filter(ok), exps: D.expenses.filter(ok) };
 }
-async function financeModal(tab){
-  if(tab) FIN.tab = tab;
-  openModal(`${mHead('Finance')}<div class="m-body"><div class="cash-empty">Adding everything up…</div></div>`, true);
-  try{ FIN.D = (await post({action:'finData'})).result; }
-  catch(e){ openModal(`${mHead('Finance')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
-    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true); return; }
-  finDrawAll();
-}
-function finDrawAll(){
-  const tab = (k,l) => `<button type="button" class="fin-tab${FIN.tab===k?' on':''}" data-act="fintab2" data-tab="${k}">${esc(l)}</button>`;
-  const body = FIN.tab==='report' ? finReportHTML() : FIN.tab==='compare' ? finCompareHTML() : finOverviewHTML();
-  openModal(`
-    ${mHead('Finance')}
-    <div class="m-body fin-body">
-      <div class="fin-tabs">${tab('overview','Overview')}${tab('report','Reports')}${tab('compare','Compare')}</div>
-      ${body}
-    </div>
-    <div class="m-foot"><button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
-  const m = $('#modal'); m.classList.add('fin-wide');
-  finBind();
-}
+function financeModal(tab){ return finGo(tab || 'overview'); }
+function finDrawAll(){ finRender(); }
 /* Season › region › event pickers and dates, shared by Overview and Reports. */
 function finFiltersHTML(f){
-  const D = FIN.D, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
-  const regs = D.regions.filter(r=>!f.s || r.seasonId===f.s), evs = D.events.filter(e=>f.r ? e.regionId===f.r : regs.some(r=>r.id===e.regionId));
   return `<div class="fin-filters">
-    <label>Season<select data-ff="s">${opt('','All seasons',!f.s)}${D.seasons.map(s=>opt(s.id,s.name,s.id===f.s)).join('')}</select></label>
-    <label>Region<select data-ff="r">${opt('','All regions',!f.r)}${regs.map(r=>opt(r.id, r.name + (f.s?'':' · '+((D.seasons.find(s=>s.id===r.seasonId)||{}).name||'')), r.id===f.r)).join('')}</select></label>
-    <label>Event<select data-ff="e">${opt('','All events',!f.e)}${evs.map(e=>opt(e.id,e.name,e.id===f.e)).join('')}</select></label>
     <label>From<input type="date" data-ff="from" value="${esc(f.from)}"></label>
     <label>To<input type="date" data-ff="to" value="${esc(f.to)}"></label>
   </div>`;
 }
 function finOverviewHTML(){
-  const f = FIN.f, {sales, exps} = finFiltered(f), a = finAgg(sales, exps), I = finIdx();
+  const f = FIN.f, {sales, exps} = finFiltered(f), a = finAgg(sales, exps), I = finIdx(), D = FIN.D;
   const tiles = FIN_M.filter(m=>m.k!=='sales').map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
     <div class="fin-tv">${finVal(m, a[m.k])}</div></div>`).join('');
-  // Every level: seasons, opening to their regions, opening to their events.
   const cols = FIN_M.filter(m=>m.k!=='sales');
-  const row = (label, lvl, key, s, e, canOpen) => {
-    const x = finAgg(s, e);
-    return `<tr class="fin-l${lvl}">${`<th>${canOpen?`<button type="button" class="fin-open" data-act="finopen" data-key="${esc(key)}">${FIN.open[key]?'▾':'▸'}</button>`:''}${esc(label)}</th>`}
-      ${cols.map(m=>`<td>${finVal(m, x[m.k])}</td>`).join('')}</tr>`;
-  };
-  let rows = '';
-  const seasons = FIN.D.seasons.filter(x=>!f.s || x.id===f.s);
-  seasons.forEach(se=>{
-    const sS = sales.filter(x=>x.s===se.id), sE = exps.filter(x=>x.s===se.id);
-    if(!sS.length && !sE.length && f.s!==se.id) return;
-    rows += row(se.name, 0, 's:'+se.id, sS, sE, true);
-    if(!FIN.open['s:'+se.id] && !f.r) return;
-    FIN.D.regions.filter(r=>r.seasonId===se.id && (!f.r || r.id===f.r)).forEach(r=>{
-      const rS = sS.filter(x=>x.r===r.id), rE = sE.filter(x=>x.r===r.id);
-      rows += row(r.name, 1, 'r:'+r.id, rS, rE, true);
-      if(!FIN.open['r:'+r.id] && !f.e) return;
-      const wS = rS.filter(x=>!x.e), wE = rE.filter(x=>!x.e);
-      if(wS.length || wE.length) rows += row(r.name + ' (warehouse, and the region as a whole)', 2, '', wS, wE, false);
-      FIN.D.events.filter(ev=>ev.regionId===r.id && (!f.e || ev.id===f.e)).forEach(ev=>{
-        rows += row(ev.name, 2, '', rS.filter(x=>x.e===ev.id), rE.filter(x=>x.e===ev.id), false);
-      });
-    });
-    const wide = sE.filter(x=>!x.r);
-    if(wide.length) rows += row('Season-wide expenses', 1, '', [], wide, false);
-  });
-  void I;
+  const row = (label, go, s, e, cls) => { const x = finAgg(s, e);
+    return `<tr${cls?` class="${cls}"`:''}><th>${go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(go)}">${esc(label)}</button>` : esc(label)}</th>
+      ${cols.map(m=>`<td>${finVal(m, x[m.k])}</td>`).join('')}</tr>`; };
+  /* One level down from where you are: every season, a season's regions, a
+     region's events, an event's titles. A name takes you there. */
+  let rows = '', what = '';
+  if(f.e){
+    what = 'By title';
+    const by = {}; sales.forEach(x=>{ const k = x.t || (x.k==='DONATION' ? '(donation)' : '(no title)'); (by[k] = by[k] || []).push(x); });
+    rows = Object.keys(by).sort().map(k=>row(k, '', by[k], [])).join('');
+    if(exps.length) rows += row('Expenses', '', [], exps);
+  } else if(f.r){
+    what = 'Its events';
+    const wS = sales.filter(x=>!x.e), wE = exps.filter(x=>!x.e);
+    if(wS.length || wE.length) rows += row((I.r[f.r]||{}).name + ' (warehouse, and the region as a whole)', '', wS, wE);
+    D.events.filter(ev=>ev.regionId===f.r).forEach(ev=>{ rows += row(ev.name, ev.id, sales.filter(x=>x.e===ev.id), exps.filter(x=>x.e===ev.id)); });
+  } else if(f.s){
+    what = 'Its regions';
+    D.regions.filter(r=>r.seasonId===f.s).forEach(r=>{ rows += row(r.name, r.id, sales.filter(x=>x.r===r.id), exps.filter(x=>x.r===r.id)); });
+    const wide = exps.filter(x=>!x.r); if(wide.length) rows += row('Season-wide expenses', '', [], wide);
+  } else {
+    what = 'Every season';
+    D.seasons.forEach(se=>{ const sS = sales.filter(x=>x.s===se.id), sE = exps.filter(x=>x.s===se.id);
+      if(sS.length || sE.length) rows += row(se.name, se.id, sS, sE); });
+  }
   return `${finFiltersHTML(f)}
     <div class="fin-tiles">${tiles}</div>
     <div class="muted-note">In dollars, at each place's own rates. Net = collections − consignment − expenses; margin = net ÷ our own takings
       (collections − consignment). Book printing costs are not in the app, so they are not taken off.</div>
-    <div class="cash-sub">At every level <span class="muted-note">(▸ opens a season or region)</span></div>
+    <div class="cash-sub">${esc(what)} ${f.e ? '' : '<span class="muted-note">(a name opens it)</span>'}</div>
     <div class="fin-scroll"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${cols.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
-      <tbody>${rows || `<tr><td colspan="${cols.length+1}">Nothing recorded for these choices.</td></tr>`}</tbody>
-      <tfoot>${row('All of it', 0, '', sales, exps, false).replace('<tr class="fin-l0">','<tr class="fin-tot">')}</tfoot></table></div>`;
+      <tbody>${rows || `<tr><td colspan="${cols.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
+      <tfoot>${row('All of it', '', sales, exps, 'fin-tot')}</tfoot></table></div>`;
 }
 
 /* ---- Reports: any rows, any figures, any filter ---- */
@@ -8672,7 +8675,7 @@ function finRepDefault(){
     q:'', sort:{k:'', dir:1} };
 }
 function finReportRows(){
-  const R = FIN.rep, {sales, exps} = finFiltered(R.f), dims = R.rows.filter(Boolean);
+  const R = FIN.rep, {sales, exps} = finFiltered(Object.assign({}, R.f, finScopeF())), dims = R.rows.filter(Boolean);
   const q = R.q.trim().toLowerCase();
   const sOk = x => !q || [x.t, x.by, x.pay.join(' '), x.con].some(v=>String(v||'').toLowerCase().includes(q));
   const eOk = x => !q || [x.cat, x.who, x.con].some(v=>String(v||'').toLowerCase().includes(q));
@@ -8784,17 +8787,13 @@ function finCompareHTML(){
       ${D.mayEdit ? `<div class="muted-note">Rename a group here to move it: type the name of another group to join it, or a new name to start one.</div>` : ''}</div>`;
 }
 function finBind(){
-  const m = $('#modal');
+  const m = finRoot();
   m.querySelectorAll('[data-ff]').forEach(el=>el.addEventListener('change', ()=>{
-    FIN.f[el.dataset.ff] = el.value;
-    if(el.dataset.ff==='s'){ FIN.f.r = ''; FIN.f.e = ''; } if(el.dataset.ff==='r') FIN.f.e = '';
-    finDrawAll();
+    FIN.f[el.dataset.ff] = el.value; finDrawAll();
   }));
   const R = FIN.rep, save = () => { try{ localStorage.setItem('tbs_finrep', JSON.stringify(R)); }catch(e){} finDrawAll(); };
   m.querySelectorAll('[data-rf]').forEach(el=>el.addEventListener('change', ()=>{
-    R.f[el.dataset.rf] = el.value;
-    if(el.dataset.rf==='s'){ R.f.r = ''; R.f.e = ''; } if(el.dataset.rf==='r') R.f.e = '';
-    save();
+    R.f[el.dataset.rf] = el.value; save();
   }));
   m.querySelectorAll('[data-rd]').forEach(el=>el.addEventListener('change', ()=>{
     R.rows[Number(el.dataset.rd)] = el.value; R.rows = R.rows.filter((v,i)=>v || i===0).slice(0,3); R.sort = {k:'', dir:1}; save();
@@ -8812,6 +8811,147 @@ function finBind(){
       FIN.cmp.series = el.value.trim() || FIN.cmp.series; toast('Grouping saved'); finDrawAll();
     }catch(e){ toast(e.message, true); }
   }));
+}
+
+/* ---- Finance, a place of its own (b239, the practice space) ----
+   Not a window over the app but somewhere you go, like a season or a region:
+   its own colour, its own address (#finance/<section>/<place>, so Back,
+   Refresh and a bookmark all work), its own sections, and the same season ›
+   region › event path to walk down — except that what you see there is the
+   money. Finance people, who cannot use the rest of the app yet, land here. */
+var FINP = { on:false, sec:'overview', scope:'', me:null };
+const FIN_SECS = [['overview','📈','Overview'], ['report','📋','Reports'], ['compare','⚖️','Compare'],
+  ['todo','💼','To do'], ['settings','⚙️','Reimbursement Settings']];
+const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
+function finHash(sec, scope){ return '#finance/' + sec + (scope ? '/' + encodeURIComponent(scope) : ''); }
+function finParseHash(){
+  const m = /^#finance(?:\/([a-z]+))?(?:\/([^/?#]+))?/.exec(location.hash || '');
+  return m ? { sec: m[1] || 'overview', scope: m[2] ? decodeURIComponent(m[2]) : '' } : null;
+}
+/* The place being looked at, as season / region / event ids. */
+function finScopeF(){
+  const D = FIN.D, id = FINP.scope, out = { s:'', r:'', e:'' };
+  if(!D || !id) return out;
+  const se = D.seasons.find(x=>x.id===id), rg = D.regions.find(x=>x.id===id), ev = D.events.find(x=>x.id===id);
+  if(se) out.s = se.id;
+  else if(rg){ out.r = rg.id; out.s = rg.seasonId; }
+  else if(ev){ const r = D.regions.find(x=>x.id===ev.regionId) || {}; out.e = ev.id; out.r = r.id || ''; out.s = r.seasonId || ''; }
+  return out;
+}
+/* Write a section into the page, or (outside the page) into a window. */
+function finHost(title, body, foot){
+  if(FINP.on){
+    $('#fpBody').innerHTML = `<h2 class="fp-h">${esc(title)}</h2>${finScopeNote()}${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
+    return;
+  }
+  openModal(`${mHead(title)}<div class="m-body">${body}</div>
+    <div class="m-foot">${foot || ''}<button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+}
+function finScopeNote(){
+  const n = finScopeName();
+  return `<div class="fp-sub">${n ? 'For ' + esc(n) : 'Everywhere, every season'}</div>`;
+}
+function finScopeName(){
+  const f = finScopeF(), D = FIN.D; if(!D) return '';
+  const nm = (list, id) => (list.find(x=>x.id===id)||{}).name || '';
+  return [nm(D.events, f.e), nm(D.regions, f.r), nm(D.seasons, f.s)].filter(Boolean).join(' · ');
+}
+/* The To do, for the place being looked at only. */
+function finScopedTodo(){
+  const T = EXP.todo, all = EXP.all || [], f = FINP.on ? finScopeF() : {s:'', r:'', e:''};
+  const okX = x => (!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e);
+  const okP = p => (!f.s || p.seasonId===f.s) && (!f.r || p.regionId===f.r) && (!f.e || p.eventId===f.e);
+  return { reimb: T.reimb.filter(okX), pending: T.pending.filter(okP), all: all.filter(okX) };
+}
+async function finGo(sec, scope, opt){
+  opt = opt || {};
+  if(!PRACTICE || !financeMe(ME || FINP.me)) return;
+  if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
+  if(scope===undefined) scope = FINP.scope;
+  const fresh = !FINP.on || opt.reload;
+  if(!opt.fromHistory && location.hash !== finHash(sec, scope)) history.pushState(null, '', finHash(sec, scope));
+  try{ closeModal(); }catch(e){}
+  FINP.on = true; FINP.sec = sec; FINP.scope = scope;
+  document.body.classList.add('fin-mode'); $('#finPage').hidden = false;
+  if(fresh || !FIN.D){
+    $('#fpBody').innerHTML = '<div class="cash-empty">Adding everything up…</div>'; finNav();
+    try{
+      const [d, todo, all, o] = await Promise.all([post({action:'finData'}), post({action:'expTodo'}), post({action:'expList', scope:'all'}),
+        post({action:'expOptions'})]);
+      FIN.D = d.result; EXP.todo = todo.result; EXP.all = all.result || []; EXP.opt = o.result;
+    }catch(e){ $('#fpBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  }
+  // Compare starts at the same kind of place, and its own group.
+  const f = finScopeF(), here = f.e ? ['events', f.e] : f.r ? ['regions', f.r] : f.s ? ['seasons', f.s] : null;
+  if(here && FIN.cmp.at !== FINP.scope){ FIN.cmp.kind = here[0]; FIN.cmp.series = ((FIN.D[here[0]].find(x=>x.id===here[1]))||{}).series || ''; FIN.cmp.at = FINP.scope; }
+  finRender();
+  if(!opt.fromHistory) window.scrollTo(0, 0);
+}
+function finLeave(opt){
+  opt = opt || {};
+  if(!FINP.on) return;
+  FINP.on = false; document.body.classList.remove('fin-mode'); $('#finPage').hidden = true;
+  if(!opt.fromHistory && /^#finance/.test(location.hash)) history.pushState(null, '', location.pathname + location.search);
+  if(!opt.quiet) renderAll();
+}
+window.addEventListener('popstate', ()=>{
+  const h = finParseHash();
+  if(h) finGo(h.sec, h.scope, {fromHistory:true}); else finLeave({fromHistory:true});
+});
+/* The bar at the top: where you are, walked down like the rest of the app. */
+function finNav(){
+  const D = FIN.D, f = finScopeF(), opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  const lvl = f.e ? 'Event' : f.r ? 'Region' : f.s ? 'Season' : 'Everywhere';
+  let h = `<div class="navbar"><span class="lvl-chip">Finance · ${lvl}</span><div class="crumbs">
+    <button type="button" class="crumb-btn${FINP.scope?'':' on'}" data-act="fingo" data-scope="">All seasons</button>`;
+  if(D){
+    h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.s && !f.r?' on':''}" data-fpick="s">
+      ${opt('', 'Choose a season…', !f.s)}${D.seasons.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.s)).join('')}</select></span>`;
+    if(f.s){
+      const regs = D.regions.filter(r=>r.seasonId===f.s);
+      if(regs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.r && !f.e?' on':''}" data-fpick="r">
+        ${opt('', 'The whole season', !f.r)}${regs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.r)).join('')}</select></span>`;
+    }
+    if(f.r){
+      const evs = D.events.filter(e=>e.regionId===f.r);
+      if(evs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.e?' on':''}" data-fpick="e">
+        ${opt('', 'The whole region', !f.e)}${evs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.e)).join('')}</select></span>`;
+    }
+  }
+  $('#fpNav').innerHTML = h + '</div></div>';
+  $('#fpNav').querySelectorAll('[data-fpick]').forEach(sel=>sel.addEventListener('change', ()=>{
+    const k = sel.dataset.fpick, cur = finScopeF();
+    finGo(FINP.sec, sel.value || (k==='e' ? cur.r : k==='r' ? cur.s : ''));
+  }));
+  const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
+  $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
+      k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : ''}</button>`).join('') +
+    `<span class="fp-gap"></span><button type="button" class="btn btn-ghost btn-sm" data-act="expenses">🧾 Add an expense</button>
+     <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Back to the app' : 'Leave Finance'}</button>`;
+  void fin;
+  // The masthead says where you are.
+  const wt = $('#whTitle'); if(wt) wt.textContent = ': Finance';
+  const sl = $('#seasonLine'); if(sl){ sl.textContent = finScopeName(); sl.style.display = sl.textContent ? '' : 'none'; }
+}
+function finRender(){
+  if(!FINP.on) return;
+  finNav();
+  const sec = FINP.sec, f = finScopeF();
+  if(sec==='todo'){ finDraw(); return; }
+  if(sec==='settings'){
+    if(!RS.d){ $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>';
+      post({action:'expRulesGet'}).then(d=>{ RS.d = d.result; if(FINP.on && FINP.sec==='settings') finRender(); })
+        .catch(e=>{ $('#fpBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; }); return; }
+    // Start at the place being looked at.
+    const id = f.e || f.r || f.s || '';
+    if(RS.d.levels.some(l=>l.id===id) && RS.at !== FINP.scope){ RS.id = id; RS.mode = 'place'; RS.at = FINP.scope; }
+    rsDraw(); return;
+  }
+  FIN.f = Object.assign({}, FIN.f, f);
+  const title = sec==='report' ? 'Reports' : sec==='compare' ? 'Compare' : 'Overview';
+  const body = sec==='report' ? finReportHTML() : sec==='compare' ? finCompareHTML() : finOverviewHTML();
+  $('#fpBody').innerHTML = `<h2 class="fp-h">${title}</h2>${sec==='compare' ? '' : finScopeNote()}${body}`;
+  finBind();
 }
 
 /* The Finance buttons a person gets: Finance and its assistant see the figures and
@@ -8880,6 +9020,8 @@ function vaDraw(){
     viewAsStart({email:b.dataset.email, label:b.dataset.name})));
 }
 function viewAsStart(v){
+  // Whoever is viewed starts where they would, not where the last one was.
+  try{ sessionStorage.removeItem(POS_KEY + '_va'); localStorage.removeItem(POS_KEY + '_va'); }catch(e){}
   VIEW_AS.set(v); ACTING.set('');
   try{ localStorage.removeItem(CACHE_KEY); }catch(e){}
   location.reload();
@@ -15206,18 +15348,19 @@ document.addEventListener('click',e=>{
   }
   if(a==='xrcptdel'){ expRead(); EXP.form.receipts.splice(Number(t.dataset.i), 1); expDraw(); return; }
   if(a==='rcptopen'){ receiptOpen(t.dataset.id); return; }
-  if(a==='fintodo'){ financeTodoModal(); return; }
+  if(a==='fintodo'){ if(PRACTICE) finGo('todo'); else financeTodoModal(); return; }
   if(a==='fintab'){ EXP.tab = t.dataset.tab; finDraw(); return; }
   if(a==='exppaid'){ finMark(t.dataset.id, 'paid'); return; }
   if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
-  if(a==='reimbset'){ reimbSettingsModal(); return; }
+  if(a==='reimbset'){ if(PRACTICE) finGo('settings'); else reimbSettingsModal(); return; }
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
-  if(a==='finoverview'){ financeModal('overview'); return; }
-  if(a==='finreport'){ financeModal('report'); return; }
-  if(a==='fincompare'){ financeModal('compare'); return; }
-  if(a==='fintab2'){ FIN.tab = t.dataset.tab; finDrawAll(); return; }
-  if(a==='finopen'){ FIN.open[t.dataset.key] = !FIN.open[t.dataset.key]; finDrawAll(); return; }
+  if(a==='finoverview'){ finGo('overview'); return; }
+  if(a==='finreport'){ finGo('report'); return; }
+  if(a==='fincompare'){ finGo('compare'); return; }
+  if(a==='finsec'){ finGo(t.dataset.sec, undefined, {reload:true}); return; }
+  if(a==='fingo'){ finGo(FINP.sec, t.dataset.scope); return; }
+  if(a==='finleave'){ finLeave(); return; }
   if(a==='finsort'){ const R = FIN.rep, k = t.dataset.k; R.sort = {k, dir: R.sort.k===k ? -R.sort.dir : (k.startsWith('d')?1:-1)}; finDrawAll(); return; }
   if(a==='fincsv'){ finCsv(); return; }
   if(a==='finrepreset'){ FIN.rep = finRepDefault(); try{ localStorage.removeItem('tbs_finrep'); }catch(e){} finDrawAll(); return; }
