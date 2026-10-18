@@ -8,6 +8,7 @@ import { makeSqlStore } from './sqlstore.js';
 import { makeGoogle, makeWebCache } from './google.js';
 import { makeAuth } from './auth.js';
 import * as people from './people.js';
+import { makeExpenses } from './expenses.js';
 
 // Where the exchange rates come from (the first source Code.gs tries).
 export const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
@@ -26,6 +27,44 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   const web = makeWebCache(kv, 6 * 3600 * 1000);
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
 
+  /* Expenses and their receipts (b238): kept and decided here, where the people are. */
+  const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv, practice: !!practice,
+    // A cost kept for an expense is written by Code.gs's own saveCost/deleteCost, as the owner's app would.
+    asOwner: (params, name) => {
+      app.setTrustedWho_({ role: 'admin', name: name || 'Expenses', email: '', grant: 'U' });
+      const r = JSON.parse(answer({ postData: { contents: JSON.stringify(Object.assign({ opId: 'xc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8) }, params)) } }));
+      if (!r.ok) throw new Error(r.error || 'The cost could not be kept.');
+      return r;
+    } });
+
+  /* ---- View as (b238, the practice space only) ----
+     Universal sees the app as someone else would: a person (with their own
+     roles), or a role at a place nobody holds. The page sends "va"; for that
+     one request the server answers as that person — or as a stand-in holding
+     only that role — so what is shown and what is allowed are exactly theirs.
+     Never on the live server. */
+  const PREVIEW = 'preview@practice.invalid';
+  let VIEW = null;
+  const realAuth = { grantsOf: auth.grantsOf, isAdmin: auth.isAdmin, isOwner: auth.isOwner, nameOf: auth.nameOf, person: auth.person };
+  auth.grantsOf = e => (VIEW && VIEW.grants && e === PREVIEW) ? VIEW.grants : realAuth.grantsOf(e);
+  auth.isAdmin = e => (VIEW && e === PREVIEW) ? VIEW.role === 'U' : realAuth.isAdmin(e);
+  auth.isOwner = e => (VIEW && e === PREVIEW) ? false : realAuth.isOwner(e);
+  auth.nameOf = e => (VIEW && e === PREVIEW) ? VIEW.name : realAuth.nameOf(e);
+  auth.person = e => (VIEW && e === PREVIEW) ? { email: PREVIEW, name: VIEW.name, googleName: '', owner: false } : realAuth.person(e);
+  function viewAs(me, va) {
+    if (!practice || !va || !realAuth.isAdmin(me)) return me;
+    if (va.email) {
+      const email = String(va.email).trim().toLowerCase();
+      return realAuth.grantsOf(email).length || realAuth.isOwner(email) ? email : me;
+    }
+    const role = String(va.role || ''), kind = (people.ROLES[role] || {}).kind;
+    if (!kind) return me;
+    const placeId = kind === 'all' ? '' : String(va.placeId || '');
+    VIEW = { role, name: 'Preview (' + people.ROLES[role].name + ')',
+      grants: [{ id: 'gPREVIEW', email: PREVIEW, role, placeId, addedBy: '', addedAt: 0 }] };
+    return PREVIEW;
+  }
+
   /* One request, as Apps Script hands it to doPost/doGet: a POST's body, or a
      GET's parameters. Returns the reply text. */
   function answer(e) { return app.handle(e).getContent(); }
@@ -42,6 +81,10 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
      the owner's app needs a signed-in admin's session. */
   const reply = o => JSON.stringify(o);
   async function request(e) {
+    VIEW = null;
+    try { return await request1(e); } finally { VIEW = null; }
+  }
+  async function request1(e) {
     let p = {};
     try { p = e.postData ? JSON.parse(e.postData.contents || '{}') : (e.parameter || {}); }
     catch (err) { return reply({ ok: false, error: 'That request could not be read.' }); }
@@ -70,7 +113,19 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     // A phone still pointed at Google, passed on by Google (Phase 3): answered as it always was.
     if (action === 'relay') return relay(p);
     const linkKey = String(p.k || '').trim();
-    const me = linkKey ? null : auth.check(p.s);
+    let me = linkKey ? null : auth.check(p.s);
+    // View as someone else (practice only, Universal only).
+    if (me && p.va && typeof p.va === 'object') me = viewAs(me, p.va);
+    // The people Universal may view the app as (practice only).
+    if (action === 'viewAsList') {
+      if (!practice || !me || !realAuth.isAdmin(me)) return reply({ ok: false, error: 'View as is for Universal, in the practice space.' });
+      const P = places(), by = {};
+      auth.allGrants().forEach(g => { (by[g.email] = by[g.email] || { email: g.email, name: g.name || g.googleName || g.email.split('@')[0], roles: [] })
+        .roles.push(people.describe(P, g)); });
+      return reply({ ok: true, result: { people: Object.values(by).sort((a, b) => a.name.localeCompare(b.name)),
+        roles: people.ROLE_ORDER.map(r => ({ role: r, name: people.ROLES[r].name, kind: people.ROLES[r].kind })),
+        places: { seasons: P.raw.seasons, regions: P.raw.regions, events: P.raw.events } } });
+    }
     if (action === 'ping') {                                       // the revision number, nothing more
       const out = answer(e);
       // ...and, for someone who can give logins, how many sign-in requests are waiting.
@@ -95,6 +150,12 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
         if (x.roles.indexOf(g.role) < 0) x.roles.push(g.role); });
       return reply({ ok: true, result: { caps: people.PERM_CAPS, roles: people.PERM_ROLES, names: Object.fromEntries(people.PERM_ROLES.map(r => [r, people.ROLES[r].name])),
         defaults: people.permDefaults(), table: parse('permTable', {}), people: parse('permPeople', {}), persons: Object.values(persons) } });
+    }
+    /* Expenses (b238): anyone signed in, in any role (even one the rest of the
+       app cannot use yet), and any link. expenses.js decides who may do what. */
+    if (expenses.isAction(action)) {
+      try { return reply({ ok: true, result: expenses.handle(action, p, me, linkKey) }); }
+      catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     // Who I am, my roles, and the People panel (b222).
     if (!linkKey && /^(me|setMyName|people(List|Add|Remove|Decline)|emergencyLink)$/.test(action)) {
@@ -458,6 +519,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     try { app.flushStockMoves_(); } catch (e) {}
     kv.sweepTemp();
     auth.sweep();
+    try { expenses.sweep(); } catch (e) { console.log('expenses.sweep: ' + e); }
   }
   /* The revision number: it changes on every save (Phase 4 sends it to the
      phones the moment it does). */

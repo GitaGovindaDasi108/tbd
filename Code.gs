@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b236';
+var SERVER_BUILD = 'b238';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -277,6 +277,109 @@ function placesForAuth_() {
              closed: !!e.closedAt, key: String(e.key || '') };
   });
   return { seasons: seasons, regions: regions, events: events };
+}
+
+/* What the expenses need to know about the tour (b238, server/src/expenses.js):
+   each region's currencies, every payment type the tour takes and the currency
+   each arrives in, and every payment still owed, in every season — for the
+   Finance To do. Read-only. */
+function financeFacts_() {
+  var seasonName = {}, regs = {}, evs = {}, whOf = {}, types = {};
+  seasonsAll_().forEach(function (s) { seasonName[s.seasonId] = s.name; });
+  PAY_TYPES.forEach(function (t) { types[t] = 1; });
+  objectsOf_('_regions').forEach(function (r) {
+    if (!r || !r.regionId) return;
+    regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: String(r.seasonId || ''),
+      currencies: parseCurList_(r.currencies), whLoc: String(r.whLoc || '') };
+    if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+    parsePayList_(r.payTypes).forEach(function (t) { types[t] = 1; });
+  });
+  objectsOf_('_events').forEach(function (e) {
+    if (!e || !e.eventId) return;
+    evs[String(e.eventId)] = { id: String(e.eventId), name: String(e.name || ''), regionId: String(e.regionId || '') };
+    parsePayList_(e.payTypes).forEach(function (t) { types[t] = 1; });
+  });
+  var pending = [];
+  objectsOf_('_sales').forEach(function (s) {
+    if (!s || !s.saleId || isPaid_(s)) return;
+    var loc = String(s.location || ''), ev = evs[loc];
+    var reg = regs[ev ? ev.regionId : (whOf[loc] || '')];
+    if (!reg) return;                                // a place since deleted
+    var b = bookById_(String(s.bookId || ''));
+    pending.push({ saleId: String(s.saleId), ts: s.ts instanceof Date ? s.ts.toISOString() : String(s.ts || ''),
+      seasonId: reg.seasonId, season: seasonName[reg.seasonId] || '', regionId: reg.id, region: reg.name,
+      place: ev ? ev.name : reg.name + ' (Warehouse)', name: String(s.name || ''), phone: String(s.phone || ''),
+      book: b ? String(b.name || '') : String(s.type || ''), qty: Number(s.qty) || 1,
+      soldBy: String(s.soldBy || ''), owed: outstanding_(s) });
+  });
+  // Consignment groups, for "Belongs to" on an expense (a group's cost comes off what it is owed).
+  var partners = partnersAll_().map(function (p) { return { id: p.partnerId, name: p.name, regionId: p.regionId, eventId: p.eventId || '' }; });
+  return { regions: regs, events: evs, payTypes: Object.keys(types), payTypeCur: payTypeCurrencies_(), pending: pending,
+           partners: partners, categories: COST_CATEGORIES.slice() };
+}
+
+/* The finance section's figures (b238): every sale and every expense, in every
+   season, as plain rows the page adds up any way it is asked — by season,
+   region, event, title, language, seller, payment type, month... Dollars at
+   each place's own rates (a closed season's frozen ones), dollars received
+   where entered, exactly as the totals elsewhere. Read-only. */
+function financeData_() {
+  var seasons = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name, closed: !!s.closedAt }; });
+  var regs = {}, evs = {}, whOf = {}, partners = {};
+  objectsOf_('_regions').forEach(function (r) {
+    if (!r || !r.regionId || String(r.regionId) === HQ_REGION || String(r.seasonId || '') === HQ_ID) return;
+    regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: String(r.seasonId || ''),
+      whLoc: String(r.whLoc || ''), closed: !!r.closedAt };
+    if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+  });
+  objectsOf_('_events').forEach(function (e) {
+    if (!e || !e.eventId || !regs[String(e.regionId || '')]) return;
+    evs[String(e.eventId)] = { id: String(e.eventId), name: String(e.name || ''), regionId: String(e.regionId || ''), closed: !!e.closedAt };
+  });
+  partnersAll_().forEach(function (p) { partners[p.partnerId] = p.name; });
+  var day = function (v) {
+    var d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  };
+  var where = function (loc) {
+    loc = String(loc || '');
+    var ev = evs[loc], rid = ev ? ev.regionId : (whOf[loc] || (regs[loc] ? loc : ''));
+    return rid ? { r: rid, e: ev ? ev.id : '', s: regs[rid].seasonId } : null;
+  };
+  var r2 = function (n) { return Math.round(n * 100) / 100; };
+  var sales = [];
+  objectsOf_('_sales').forEach(function (s) {
+    if (!s || !s.saleId) return;
+    var w = where(s.location);
+    if (!w) return;                                   // a place since deleted
+    var b = s.bookId ? bookById_(String(s.bookId)) : null;
+    var type = String(s.type || 'SALE'), got = received_(s);
+    var f = saleFactor_(s), gross = 0, cur = {}, pays = {};
+    eachLeg_(s, function (l) {
+      if (!l.amt || l.type === 'Gift') return;
+      gross += legTruthUsd_(s, l, f);
+      pays[l.type] = 1;
+      if (got) cur[l.cur] = r2((cur[l.cur] || 0) + l.amt);
+    });
+    var pend = dueUsd_(s);
+    sales.push({ id: String(s.saleId), d: day(s.ts), s: w.s, r: w.r, e: w.e, k: type,
+      b: b ? String(b.id) : '', t: b ? String(b.name || '') : '', c: b ? String(b.cat || '') : '',
+      q: (type === 'SALE' || type === 'PREORDER') && s.bookId ? (Number(s.qty) || 1) : 0,
+      by: String(s.soldBy || ''), pay: Object.keys(pays), con: isPartnerSale_(s) ? (partners[partnerOfBook_(String(s.bookId))] || 'Consignment') : '',
+      gu: r2(got ? gross : 0), pu: r2(pend), cur: cur });
+  });
+  var expenses = [];
+  objectsOf_('_expenses').forEach(function (x) {
+    if (!x || !x.id) return;
+    var w = where(x.location), s = w ? w.s : String(x.seasonId || '');
+    var loc = w ? (w.e || regs[w.r].whLoc) : '';
+    expenses.push({ id: String(x.id), d: String(x.date || day(x.ts)), s: s, r: w ? w.r : '', e: w ? w.e : '',
+      cat: String(x.category || 'Other'), kind: String(x.kind || 'record'), st: String(x.status || ''),
+      who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
+      cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(loc ? toUsdAt_(x.amt, x.cur, loc) : toUSD_(Number(x.amt) || 0, String(x.cur || ''))) });
+  });
+  var list = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
+  return { seasons: seasons, regions: list(regs), events: list(evs), sales: sales, expenses: expenses };
 }
 
 /* Every spreadsheet the app keeps, and whose it is (b226): for the server, which
@@ -2232,7 +2335,10 @@ function suppliedKey_(v, prefix) {
    A card-machine fee, a bank charge — recorded against the place it belongs to
    so the totals can show what was actually kept. Kept out of the cash box on
    purpose: a card fee is taken by the processor, not from the till. */
-var COST_CATEGORIES = ['Card machine fee', 'Bank fee', 'Other'];
+/* The kinds of cost (b238: also the kinds of expense, since the two are one in
+   practice — Record Costs and Expenses merged). Other stays last. */
+var COST_CATEGORIES = ['Card machine fee', 'Bank fee', 'Travel', 'Food', 'Printing and shipping', 'Venue',
+                       'Supplies', 'Other'];
 function doSaveCost(p) {
   var amt = Number(p.amt);
   if (!(amt > 0)) throw new Error('Give the cost an amount.');
@@ -3072,7 +3178,8 @@ var TABLE_KEYS_ = {
   _holders: ['holderId'], _shipments: ['shipId'], _regions: ['regionId'],
   _seasons: ['seasonId'], _prices: ['regionId', 'bookId', 'cur'], _events: ['eventId'],
   _inventory: ['location', 'bookId'], _sales: ['saleId'], _cash: ['id'], _org: ['id'],
-  _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id']
+  _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id'],
+  _expenses: ['id']          // b238: kept by the server (server/src/expenses.js), never written here
 };
 
 /* Rows read during this request, per table. Any write drops the lot, so a

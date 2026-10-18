@@ -514,6 +514,60 @@ body.busy #busyBar{opacity:1}
 .cash-cell.change-out{color:var(--clay);font-weight:800;text-decoration:underline dashed 1px;text-underline-offset:3px}
 .cash-cell.change-out.has-change{color:var(--plum);text-decoration-color:var(--clay)}
 .cash-logamt.with-change{color:var(--plum)}
+/* Expenses, Finance To do, Reimbursement Settings (b238). */
+.exp-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
+.exp-kind{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.exp-k{display:flex;flex-direction:column;gap:2px;border:1.5px solid var(--line);border-radius:10px;padding:9px 10px;cursor:pointer;background:#fff}
+.exp-k input{position:absolute;opacity:0;pointer-events:none}
+.exp-k span{font-size:.8rem;color:#6b6070}
+.exp-k.on{border-color:#2E8065;background:#EEF7F3}
+.exp-form .row2 .cost-amt-row select{width:auto;flex:none}
+.exp-reimb{border-left:3px solid #2E8065;padding-left:10px;margin:6px 0 10px}
+.exp-drop{border:1.5px dashed var(--line);border-radius:10px;padding:8px;background:#fff}
+.exp-drop.over{border-color:#2E8065;background:#EEF7F3}
+.exp-rbtns{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0}
+.exp-rbtns label.btn{cursor:pointer}
+.exp-rlist{display:flex;flex-wrap:wrap;gap:6px}
+.exp-chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:3px 4px 3px 6px;
+  font-size:.82rem;max-width:100%;background:var(--paper2)}
+.exp-chip img{width:32px;height:32px;object-fit:cover;border-radius:4px}
+.exp-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.exp-chip.sending{opacity:.6}
+.exp-chip.failed{border-color:#C0392B;color:#C0392B}
+.exp-chip .x{border:0;background:none;font-size:1.1rem;cursor:pointer;color:inherit;padding:0 4px}
+.exp-card{border:1px solid var(--line);border-left:4px solid #3E6FA8;border-radius:10px;padding:9px 11px;margin:8px 0;background:#fff;
+  display:flex;flex-direction:column;gap:4px;overflow-wrap:anywhere}
+.exp-card.exp-k-reimburse{border-left-color:#2E8065}
+.exp-top{display:flex;justify-content:space-between;gap:10px}
+.exp-amt{font-weight:700;white-space:nowrap}
+.exp-meta{font-size:.82rem;color:#6b6070}
+.exp-st{display:inline-block;font-size:.75rem;font-weight:600;border-radius:999px;padding:1px 8px;background:#EEE}
+.exp-pending{background:#FFF1D6;color:#8A5A00}
+.exp-paid{background:#DFF3E8;color:#1E6B4A}
+.exp-declined{background:#FBE3E0;color:#A0281B}
+.exp-recorded{background:#E6EEF8;color:#2C5689}
+.exp-payto{font-size:.88rem;background:var(--paper2);border-radius:8px;padding:5px 8px}
+.exp-copy{user-select:all}
+.exp-note{font-size:.88rem}
+.exp-rc{display:flex;flex-wrap:wrap;gap:4px}
+.exp-btns{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
+.fin-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.fin-tab{border:1.5px solid var(--line);background:#fff;border-radius:999px;padding:5px 12px;cursor:pointer;font:inherit;font-size:.88rem}
+.fin-tab.on{border-color:var(--tc,#2E8065);background:var(--tc,#2E8065);color:#fff}
+.fin-n{font-weight:700;margin-left:2px}
+.fin-q{width:100%;margin-bottom:6px}
+.rs-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.rs-curs{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 0 26px}
+.na-exp{display:flex;flex-direction:column;gap:8px;margin:4px 0 16px}
+body.has-na .overlay{z-index:10000}
+.rcpt-view{position:fixed;inset:0;z-index:10002;background:rgba(43,34,48,.8);display:flex;align-items:center;justify-content:center;padding:16px}
+.rcpt-view[hidden]{display:none}
+.rcpt-box{background:#fff;border-radius:12px;padding:10px;max-width:min(900px,100%);width:100%;max-height:100%;display:flex;flex-direction:column;gap:8px}
+.rcpt-head{display:flex;align-items:center;gap:8px}
+.rcpt-head b{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rcpt-box img{max-width:100%;max-height:78vh;object-fit:contain;margin:0 auto}
+.rcpt-box iframe{width:100%;height:78vh;border:0}
+@media (max-width:560px){ .exp-kind{grid-template-columns:1fr} }
 .cost-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
 .cost-amt-row{display:flex;gap:8px}
 .cost-amt-row input{flex:1;min-width:0}
@@ -1133,6 +1187,33 @@ body.has-sn{padding-left:56px}
   .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:1px solid var(--line-d);
     background:var(--cream);color:var(--plum);font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(60,40,20,.22);cursor:pointer}
 }
+/* Finance section and View as (b238, practice) */
+#modal.fin-wide{max-width:1180px;width:100%}
+@media (min-width:700px){ #modal.fin-wide{max-width:min(1180px,calc(100vw - 150px))} }
+.fin-filters{display:flex;flex-wrap:wrap;gap:8px 12px;margin:8px 0}
+.fin-filters label{display:flex;flex-direction:column;font-size:12px;color:var(--ink-s,#6b5a4a);gap:3px}
+.fin-filters select,.fin-filters input{min-width:130px}
+.fin-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:10px 0}
+.fin-tile{border:1px solid var(--line-d,#ddd);border-radius:10px;padding:8px 10px;background:var(--cream,#fff)}
+.fin-tile.fin-net{border-width:2px}
+.fin-tl{font-size:12px;opacity:.75}.fin-tv{font-size:18px;font-weight:600;margin-top:2px}
+.fin-scroll{overflow-x:auto;max-width:100%;margin:6px 0}
+.fin-tbl{min-width:100%;white-space:nowrap}.fin-tbl td{text-align:right}.fin-tbl th{text-align:left}
+.fin-tbl tr.fin-l1 th{padding-left:22px}.fin-tbl tr.fin-l2 th{padding-left:44px;font-weight:400}
+.fin-tbl tr.fin-tot th,.fin-tbl tr.fin-tot td{font-weight:700;border-top:2px solid var(--line-d,#ccc)}
+.fin-open{border:0;background:none;cursor:pointer;width:20px;padding:0;font-size:13px}
+.fin-sort{cursor:pointer;user-select:none}
+.fin-chg{font-size:11px}.fin-chg.up{color:#2E7D4F}.fin-chg.down{color:#B5442F}
+.fin-rep-ctl{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.fin-rows{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fin-cols{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px}
+.fin-group .rs-row input{min-width:180px}
+.va-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.va-list{display:flex;flex-direction:column;gap:6px;max-height:46vh;overflow-y:auto;margin-top:8px}
+.va-person{text-align:left;border:1px solid var(--line-d,#ddd);border-radius:10px;padding:8px 10px;background:var(--cream,#fff);cursor:pointer}
+.va-bar{position:fixed;top:0;left:0;right:0;z-index:10005;background:#3B2A55;color:#fff;padding:7px 12px;font-size:13.5px;
+  display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+body.has-va{padding-top:44px}
 .practice-bar{background:repeating-linear-gradient(135deg,#E6F4EA 0 14px,#D6EEDD 14px 28px);border:1.5px solid #8CC9A0;
   color:#1F5E36;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px;line-height:1.5}
 .practice-bar .pb-when{color:#3C7A52}
@@ -1556,7 +1637,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b237</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b238</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1768,6 +1849,12 @@ const CONFIG = Object.assign({
    — the saved state, the queue of unsent saves, the sign-in — is kept apart
    under "practice:", so practice and live can never mix. */
 const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
+/* View as (b238): Universal sees the practice app as someone else would, kept
+   for this tab only. The server answers as them (core.js viewAs). */
+const VIEW_AS = {
+  get(){ if(!PRACTICE) return null; try{ return JSON.parse(sessionStorage.getItem('tbs_viewas')||'null'); }catch(e){ return null; } },
+  set(v){ try{ v ? sessionStorage.setItem('tbs_viewas', JSON.stringify(v)) : sessionStorage.removeItem('tbs_viewas'); }catch(e){} }
+};
 function practiceUrl(){
   if(CONFIG.PRACTICE_URL) return CONFIG.PRACTICE_URL;
   const m = String(CONFIG.APPS_SCRIPT_URL||'').match(/^(https?:\/\/)tbs-server(\.[^/]+\.workers\.dev.*)$/);
@@ -2733,7 +2820,8 @@ async function post(payload, opts){
   if(!CONFIG.APPS_SCRIPT_URL) throw new Error('No Apps Script address set in config.js.');
   if(SHARE_KEY) payload = Object.assign({k:SHARE_KEY, by:whoAmI()}, payload);
   // The owner's app on the Cloudflare server: this device's sign-in goes with every request.
-  else if(CONFIG.GOOGLE_CLIENT_ID && SESSION.get()) payload = Object.assign({s:SESSION.get()}, ACTING.get()?{g:ACTING.get()}:{}, payload);
+  else if(CONFIG.GOOGLE_CLIENT_ID && SESSION.get()) payload = Object.assign({s:SESSION.get()}, ACTING.get()?{g:ACTING.get()}:{},
+    VIEW_AS.get()?{va:VIEW_AS.get()}:{}, payload);
   /* Say which season this device is looking at, so the server answers for
      it — not for whichever season another device last opened. (A share link
      is pinned to its own season by the server, so it sends nothing.) */
@@ -2957,6 +3045,7 @@ function showNoAccess(me){
   if($('#noAccess')) return;
   const box = document.createElement('div');
   box.id = 'noAccess'; box.className = 'signin-wrap';
+  document.body.classList.add('has-na');     // its windows (expenses, b238) open above it
   const roles = (me && me.grants) || [];
   box.innerHTML = `<div class="signin">
       <h2>Not quite yet</h2>
@@ -2966,6 +3055,11 @@ function showNoAccess(me){
           <span class="muted-note">— ${esc(grantStatus(g))}</span></div>`).join('')}</div>` : ''}
       <div class="hint">Roles at a closed event or region come back if it reopens. Roles marked
         “starts with the next update” will work once the app’s next update is in.</div>
+      ${PRACTICE && (roles.some(g=>g.active) || (me && me.universal)) ? `<div class="na-exp">
+        <div class="hint">Meanwhile you can record your expenses${financeMe(me)?', and look after Finance':''}:</div>
+        <button class="btn btn-primary" data-act="expenses">🧾 Expenses</button>
+        ${FIN_BTNS(financeMe(me)).map(b=>b.replace('class="btn"', 'class="btn btn-ghost"')).join('')}
+      </div>` : ''}
       <div class="btn-row"><button class="btn btn-ghost" id="naOut">Sign out</button>
         <button class="btn btn-primary" onclick="location.reload()">Try again</button></div>
     </div>`;
@@ -3824,7 +3918,7 @@ function addTooltipsToClipped(){
    - the server is newer than this page: the browser is showing an old copy of
      the page, and a refresh fixes it.
    Bump NEEDS_SERVER only when the page starts relying on new server code. */
-const NEEDS_SERVER = 'b236';
+const NEEDS_SERVER = 'b238';
 /* The server's version as it answered this session. Never taken from the copy
    saved on the device, which can be older than the server now is. */
 let LIVE_BUILD = '';
@@ -4353,6 +4447,8 @@ function renderAdmin(){
         `<button class="btn" data-act="org">👥 App and Sales Support</button>`,
         ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
         ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
+      // Expenses, for every link and role (b238); Finance's To do for a Finance person working in another role.
+      {key:'money', items: PRACTICE ? [`<button class="btn" data-act="expenses">🧾 Expenses</button>`].concat(FIN_BTNS(financeMe())) : []},
       {key:'books', items: coord ? [
         `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
         `<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`,
@@ -4391,6 +4487,13 @@ function renderAdmin(){
     // No count on Record Costs or Consignment Books: the owner found it noise (b236).
     cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs</button>`);
     if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
+  }
+  /* Expenses for everyone, one with Record Costs; Finance's own section (b238).
+     The practice space only, for now: the owner tries it there first. */
+  if(PRACTICE){
+    cols[1] = cols[1].filter(b=>!/data-act="costs"/.test(b));
+    cols[1].push(`<button class="btn" data-act="expenses">🧾 Expenses</button>`);
+    cols[1].push(...FIN_BTNS('U'));
   }
 
   // Books
@@ -4480,6 +4583,8 @@ const SN_ITEMS = {
   addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], partners:['🤝','Consignment Books'],
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
+  expenses:['🧾','Expenses'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
+  finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'],
   drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -4497,10 +4602,11 @@ function snTopActivity(show){
 }
 const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
-  {key:'money',    icon:'💵', label:()=>'Money',           acts:['cash','costs','paytypes']},
+  {key:'money',    icon:'💵', label:()=>'Money',           acts:['cash','costs','paytypes','expenses']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finreport','fincompare','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['drivefolder','specreport','sharelinks','people']},
-  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions']},
+  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
 /* One menu row from a panel button: its own attributes (so it does exactly
@@ -4548,6 +4654,8 @@ function renderSideNav(fams){
   // Things the menu has that the panel did not: Permissions (Universal) and Profile.
   if(isAdmin() && !byKey.permissions) byKey.permissions = `<button class="btn" data-act="permissions">🔐 Permissions</button>`;
   if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
+  // View as (b238): Universal, in the practice space.
+  if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
   const sections = SN_SECTIONS.map(sec=>{
     const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
@@ -7890,6 +7998,900 @@ function costsModal(editId, presetPartner){
       }, edit ? 'Cost updated' : 'Cost added', {keepOpen:true});
     costsModal();
   });
+}
+
+/* ---- Expenses (b238): what people spent for the tour ----
+   Everyone records them: for the records, or to be paid back. Paying back asks
+   how (cash, UPI, Zelle…) and in which currency, and then exactly what Finance
+   needs to send it (a phone number for cash, the UPI ID for UPI…). Receipts
+   are photos or PDFs, as many as needed: taken there and then, chosen, dropped
+   or pasted in. Each is sent the moment it is added, so Save only has to send
+   the words. The server (server/src/expenses.js) decides who may record where,
+   and which ways and currencies Finance offers; the page asks it each time
+   the place or the person changes. Finance (and Universal) also get their own
+   To do, every expense, and the settings. */
+const EXP = { opt:null, form:null, list:[], tab:'reimb', todo:null, all:null, q:'' };
+const expId = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+/* Is the person signed in here Finance (or Universal)? Their grants say, whichever role they are working in. */
+function financeMe(me){
+  me = me || ME;
+  if(!me) return '';
+  if(me.universal) return 'U';
+  const g = (me.grants||[]).filter(x=>x.active!==false);
+  return g.some(x=>x.role==='F') ? 'F' : g.some(x=>x.role==='FA') ? 'FA' : '';
+}
+/* Where the person is standing, as a place the server knows. */
+function expHere(){
+  if(!STATE || isHQ()) return '';
+  if(CUR_LEVEL==='event') return CUR_LOC;
+  if(CUR_LEVEL==='region') return CUR_REGION;
+  return STATE.activeSeason || '';
+}
+const EXP_STATUS = { recorded:'Recorded', pending:'Waiting to be paid back', paid:'Paid back', declined:'Declined' };
+function expStatusHTML(x){
+  return `<span class="exp-st exp-${esc(x.status)}">${esc(EXP_STATUS[x.status]||x.status)}</span>`;
+}
+/* The payment details given, as lines Finance can read and copy. */
+function expPayToHTML(x){
+  const m = (EXP.opt && EXP.opt.methods || []).find(mm=>mm.name===x.method);
+  const label = k => ((m && m.fields || []).find(f=>f.k===k) || {}).label || ({phone:'Phone', upi:'UPI ID', name:'Name', holder:'Account holder',
+    iban:'IBAN / account', bic:'SWIFT/BIC', bank:'Bank', zelle:'Zelle', paypal:'PayPal', wise:'Wise', venmo:'Venmo', cashtag:'$Cashtag',
+    revolut:'Revolut', last4:'Last 4 digits', details:'Details'})[k] || k;
+  const keys = Object.keys(x.payTo||{});
+  if(!keys.length) return '';
+  return `<div class="exp-payto">${keys.map(k=>`<div><span class="muted-note">${esc(label(k))}:</span> <b class="exp-copy">${esc(x.payTo[k])}</b></div>`).join('')}</div>`;
+}
+function expReceiptsHTML(x){
+  return (x.receipts||[]).length ? `<div class="exp-rc">${x.receipts.map(r=>`<button type="button" class="btn btn-ghost btn-xs" data-act="rcptopen"
+    data-id="${esc(r.id)}">${/pdf/.test(r.mime)?'📄':'🧾'} ${esc(r.name)}</button>`).join('')}</div>` : '<div class="muted-note">No receipt</div>';
+}
+/* One expense as a card. `fin`: Finance's view, with who it is for and the buttons to pay it back. */
+function expCardHTML(x, fin){
+  const who = x.forName ? esc(x.forName) + (fin ? ` <span class="muted-note">(entered by ${esc(x.byName)})</span>` : ' (entered by Finance)') : esc(x.byName||'');
+  const paidBack = x.kind==='reimburse' ? `<div>Pay back by <b>${esc(x.method)}</b> in <b>${esc(x.reimbCur)}</b></div>${expPayToHTML(x)}` : '';
+  const done = (x.status==='paid'||x.status==='declined') && x.doneAt
+    ? `<div class="muted-note">${esc(EXP_STATUS[x.status])} by ${esc(x.doneBy)}, ${esc(String(x.doneAt).slice(0,10))}${x.doneNote?' · '+esc(x.doneNote):''}</div>` : '';
+  const mayChange = x.status!=='paid' || (EXP.opt && EXP.opt.mayPay);
+  const btns = [];
+  if(fin && EXP.opt && EXP.opt.mayPay && x.kind==='reimburse'){
+    if(x.status==='pending'){
+      btns.push(`<button class="btn btn-primary btn-xs" data-act="exppaid" data-id="${esc(x.id)}">✓ Mark paid back</button>`);
+      btns.push(`<button class="btn btn-ghost btn-xs" data-act="expdecline" data-id="${esc(x.id)}">Decline</button>`);
+    } else btns.push(`<button class="btn btn-ghost btn-xs" data-act="expreopen" data-id="${esc(x.id)}">Back to waiting</button>`);
+  }
+  if((!fin || (EXP.opt && EXP.opt.mayPay)) && mayChange){
+    btns.push(`<button class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">Edit</button>`);
+    btns.push(`<button class="btn btn-danger btn-xs" data-act="expdel" data-id="${esc(x.id)}">Delete</button>`);
+  }
+  return `<div class="exp-card exp-k-${esc(x.kind)}">
+      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt">${esc(cashFmt(x.amt, x.cur))}</span></div>
+      <div class="exp-meta">${esc(x.date)} · ${who} · ${esc(x.placeLabel)}</div>
+      ${x.category||x.payType||x.partnerId ? `<div class="exp-meta">${esc(x.category||'')}${x.payType?' · paid with '+esc(x.payType):''}${
+        x.partnerId?` <span class="con-tag">${esc(((STATE&&STATE.partners)||[]).find(g=>g.partnerId===x.partnerId)?.name||'consignment')}</span>`:''}</div>` : ''}
+      <div>${expStatusHTML(x)}</div>
+      ${paidBack}${x.notes?`<div class="exp-note">💬 ${esc(x.notes)}</div>`:''}
+      ${expReceiptsHTML(x)}${done}
+      ${btns.length?`<div class="exp-btns">${btns.join('')}</div>`:''}
+    </div>`;
+}
+
+/* The Expenses window: the form, then the person's own expenses. */
+async function expensesModal(editId, presetPartner){
+  openModal(`${mHead('Expenses')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  try{
+    const [opt, list] = await Promise.all([
+      post({action:'expOptions', location: expHere()}),
+      post({action:'expList'})]);
+    EXP.opt = opt.result; EXP.list = list.result || [];
+  }catch(e){
+    openModal(`${mHead('Expenses')}<div class="m-body"><div class="err">${esc(e.message)}</div>
+      <div class="hint">Expenses need a connection to the server.</div></div>
+      <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+    return;
+  }
+  let edit = editId ? EXP.list.find(x=>x.id===editId) : null;
+  // Finance (and Universal) may change anyone's: a cost recorded at the place, say.
+  if(editId && !edit && EXP.opt.fin){ try{ edit = ((await post({action:'expList', scope:'all'})).result||[]).find(x=>x.id===editId) || null; }catch(e){} }
+  EXP.form = edit ? {id:edit.id, editing:true, kind:edit.kind, location:edit.location, date:edit.date, desc:edit.desc, cur:edit.cur, amt:edit.amt,
+      category:edit.category||'Other', payType:edit.payType||'', partnerId:edit.partnerId||'',
+      method:edit.method, reimbCur:edit.reimbCur, payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
+      forEmail:edit.forEmail||'', forName:edit.forName||''}
+    : {id:expId('X'), kind:presetPartner ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
+      cur:EXP.opt.defaultCur, amt:'', category:'Other', payType:'', partnerId:presetPartner||'',
+      method:'', reimbCur:'', payTo:{}, notes:'', receipts:[], forEmail:'', forName:''};
+  if(edit && edit.location!==EXP.opt.location) await expReloadOptions();
+  expDraw();
+}
+async function expReloadOptions(){
+  try{ EXP.opt = (await post({action:'expOptions', location:EXP.form.location, forEmail:EXP.form.forEmail})).result; }
+  catch(e){ toast(e.message, true); }
+}
+/* Payment details from last time, kept on this device, so nobody types their UPI ID twice. */
+function expSavedPayTo(method){
+  try{ return (JSON.parse(localStorage.getItem('tbs_payto')||'{}')||{})[method] || {}; }catch(e){ return {}; }
+}
+function expKeepPayTo(method, payTo){
+  try{ const all = JSON.parse(localStorage.getItem('tbs_payto')||'{}')||{}; all[method] = payTo; localStorage.setItem('tbs_payto', JSON.stringify(all)); }catch(e){}
+}
+function expDraw(){
+  const o = EXP.opt, f = EXP.form, edit = !!f.editing;
+  const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  const method = o.methods.find(m=>m.name===f.method) || null;
+  if(f.kind==='reimburse' && !o.curs.includes(f.reimbCur))
+    f.reimbCur = (method && o.curs.includes(method.cur)) ? method.cur : (o.curs.includes(f.cur) ? f.cur : o.curs[0] || '');
+  const bySeason = {};
+  o.places.forEach(pl=>{ const s = pl.label.split(' · ').pop(); (bySeason[s] = bySeason[s] || []).push(pl); });
+  const placeSel = o.places.length > 1 ? `<div class="field"><label>Where</label>
+      <select id="xLoc">${f.location ? '' : opt('', 'Choose…', true)}${Object.keys(bySeason).map(s=>`<optgroup label="${esc(s)}">${bySeason[s].map(pl=>
+        opt(pl.id, pl.label.split(' · ').slice(0,-1).join(' · ') || pl.label + ' (the whole season)', pl.id===f.location)).join('')}</optgroup>`).join('')}</select></div>`
+    : (o.places[0] ? `<div class="hint">For <b>${esc(o.places[0].label)}</b></div>` : '<div class="err">There is nowhere you can record an expense yet.</div>');
+  const forPick = o.fin ? `<div class="field"><label>Whose expense?</label>
+      <div class="pp" id="xFor"><input class="pp-in" type="text" autocomplete="off" spellcheck="false"
+        placeholder="Search for a name" value="${esc(f.forName || 'Mine (' + o.me.name + ')')}"><div class="pp-list" hidden></div></div>
+      <div class="muted-note">Finance can record an expense on someone's behalf; it goes in their list too.</div></div>` : '';
+  const whoBox = o.me.link && !o.me.name ? `<div class="field"><label>Your name</label>
+      <input id="xWho" type="text" maxlength="40" placeholder="So Finance knows who it was"></div>` : '';
+  const fields = method ? method.fields.map(fl=>`<div class="field"><label>${esc(fl.label)}${fl.req?'':' (optional)'}</label>
+      <input data-payto="${esc(fl.k)}" type="${fl.type==='tel'?'tel':'text'}" value="${esc(f.payTo[fl.k]||'')}" placeholder="${esc(fl.ph||'')}">
+      ${fl.hint?`<div class="muted-note">${esc(fl.hint)}</div>`:''}</div>`).join('') : '';
+  openModal(`
+    ${mHead(edit ? 'Edit expense' : 'Expenses')}
+    <div class="m-body">
+      <div class="exp-form">
+        ${forPick}${whoBox}
+        <div class="exp-kind">
+          <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
+            <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
+          <label class="exp-k${f.kind==='reimburse'?' on':''}"><input type="radio" name="xKind" value="reimburse" ${f.kind==='reimburse'?'checked':''}>
+            <b>For reimbursement</b><span>You paid; Finance pays you back.</span></label>
+        </div>
+        ${placeSel}
+        <div class="row2">
+          <div class="field"><label>Date</label><input id="xDate" type="date" value="${esc(f.date)}"></div>
+          <div class="field cost-amt"><label>Amount</label><div class="cost-amt-row">
+            <input id="xAmt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(f.amt)}" placeholder="0.00">
+            <select id="xCur">${o.spendCurs.map(c=>opt(c,c,c===f.cur)).join('')}</select></div></div>
+        </div>
+        <div class="field"><label>What was it for?</label>
+          <input id="xDesc" type="text" maxlength="300" value="${esc(f.desc)}" placeholder="e.g. Taxi to the festival with the book boxes"></div>
+        <div class="row2">
+          <div class="field"><label>Kind</label>
+            <select id="xCat">${(o.categories||[]).map(c=>opt(c,c,c===f.category)).join('')}</select></div>
+          <div class="field"><label>Paid with (optional)</label>
+            <select id="xPay">${opt('','—',!f.payType)}${(o.payTypes||[]).map(t=>opt(t,t,t===f.payType)).join('')}</select></div>
+        </div>
+        ${(o.partners||[]).length ? `<div class="field"><label>Belongs to</label>
+          <select id="xOwner">${opt('','Our own sales',!f.partnerId)}${o.partners.map(g=>opt(g.id, g.name+' (consignment)', g.id===f.partnerId)).join('')}</select>
+          <div class="muted-note">A consignment group's expense comes off what the group is owed, not off our own net.</div></div>` : ''}
+        <div class="field"><label>Receipts</label>
+          <div class="exp-drop" id="xDrop">
+            <div class="exp-rlist">${f.receipts.map((r,i)=>`<span class="exp-chip${r.sending?' sending':''}${r.failed?' failed':''}">
+              ${r.thumb?`<img src="${esc(r.thumb)}" alt="">`:(/pdf/.test(r.mime)?'📄':'🧾')}
+              <span>${esc(r.name)}${r.sending?' · sending…':r.failed?' · not sent':''}</span>
+              <button type="button" class="x" data-act="xrcptdel" data-i="${i}" aria-label="Remove">×</button></span>`).join('')}</div>
+            <div class="exp-rbtns">
+              <label class="btn btn-ghost btn-sm">📷 Take a photo<input id="xCam" type="file" accept="image/*" capture="environment" hidden></label>
+              <label class="btn btn-ghost btn-sm">📎 Add photos or PDFs<input id="xFiles" type="file" accept="image/*,application/pdf" multiple hidden></label>
+            </div>
+            <div class="muted-note">Or drop files here, or paste a screenshot.</div>
+          </div></div>
+        ${f.kind==='reimburse' ? `
+        <div class="exp-reimb">
+          <div class="row2">
+            <div class="field"><label>Pay me back by</label>
+              <select id="xMethod">${opt('','Choose…',!method)}${o.methods.map(m=>opt(m.name,m.name,m.name===f.method)).join('')}</select></div>
+            <div class="field"><label>Pay me back in</label>
+              <select id="xRCur">${o.curs.map(c=>opt(c,c,c===f.reimbCur)).join('')}</select></div>
+          </div>
+          ${fields}
+          ${o.methods.length ? '' : '<div class="err">Finance has not switched on any way of paying back here. Ask them.</div>'}
+        </div>` : ''}
+        <div class="field"><label>Notes (optional)</label>
+          <textarea id="xNotes" rows="2" maxlength="1000" placeholder="Anything Finance should know">${esc(f.notes)}</textarea></div>
+        <div class="err" id="modalErr"></div>
+        <div class="cost-acts">
+          ${edit?`<button class="btn btn-ghost btn-sm" data-act="expnew">Cancel edit</button>`:''}
+          <button class="btn btn-primary btn-sm" id="xSave">${edit?'Save changes':'Save expense'}</button>
+        </div>
+      </div>
+      ${edit ? '' : `<div class="cash-sub">Your expenses</div>
+      ${EXP.list.length ? EXP.list.map(x=>expCardHTML(x, false)).join('') : '<div class="cash-empty">None recorded yet.</div>'}`}
+    </div>
+    <div class="m-foot">${o.fin ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  expBind();
+}
+/* Whatever has been typed, kept as the form is redrawn. */
+function expRead(){
+  const f = EXP.form, v = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  if(v('xLoc')!==null) f.location = v('xLoc');
+  f.date = v('xDate') || f.date; f.amt = v('xAmt'); f.cur = v('xCur') || f.cur; f.desc = v('xDesc');
+  f.notes = v('xNotes') || '';
+  if(v('xCat')!==null) f.category = v('xCat');
+  if(v('xPay')!==null) f.payType = v('xPay');
+  if(v('xOwner')!==null) f.partnerId = v('xOwner');
+  if(v('xMethod')!==null) f.method = v('xMethod');
+  if(v('xRCur')!==null) f.reimbCur = v('xRCur');
+  document.querySelectorAll('#modal [data-payto]').forEach(i=>{ f.payTo[i.dataset.payto] = i.value.trim(); });
+  if(v('xWho')!==null && v('xWho').trim()) setWhoAmI(v('xWho'));
+}
+function expBind(){
+  const f = EXP.form, o = EXP.opt;
+  document.querySelectorAll('#modal input[name="xKind"]').forEach(r=>r.addEventListener('change', ()=>{ expRead(); f.kind = r.value; expDraw(); }));
+  const loc = $('#xLoc');
+  if(loc) loc.addEventListener('change', async ()=>{ expRead(); f.reimbCur = ''; await expReloadOptions();
+    if(!EXP.opt.spendCurs.includes(f.cur) || !f.amt) f.cur = EXP.opt.defaultCur; expDraw(); });
+  const m = $('#xMethod');
+  if(m) m.addEventListener('change', ()=>{
+    expRead();
+    if(!f.forEmail) f.payTo = Object.assign(expSavedPayTo(f.method), f.payTo);
+    const mm = o.methods.find(x=>x.name===f.method);
+    if(mm && o.curs.includes(mm.cur)) f.reimbCur = mm.cur;
+    expDraw();
+  });
+  const add = files => { expRead(); [...files].forEach(expAddReceipt); };
+  $('#xCam').addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
+  $('#xFiles').addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
+  const drop = $('#xDrop');
+  drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('over'); });
+  drop.addEventListener('dragleave', ()=>drop.classList.remove('over'));
+  drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); add(e.dataTransfer.files); });
+  if(o.fin) expBindFor();
+  $('#xSave').addEventListener('click', expSave);
+}
+/* Finance's searchable list of people. */
+function expBindFor(){
+  const f = EXP.form, o = EXP.opt, box = $('#xFor');
+  const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
+  const mineLabel = 'Mine (' + o.me.name + ')';
+  const draw = q => {
+    q = q.trim().toLowerCase();
+    const rows = [{email:'', name:mineLabel}].concat(o.people.filter(p=>p.email!==o.me.email))
+      .filter(p=>!q || p.name.toLowerCase().includes(q) || p.email.includes(q));
+    list.innerHTML = rows.map(p=>`<div class="pp-row${p.email===f.forEmail?' on':''}" data-email="${esc(p.email)}">${esc(p.name)}${
+      p.email?` <span class="pp-tag">${esc(p.email)}</span>`:''}</div>`).join('') || '<div class="pp-empty">Nobody by that name.</div>';
+    list.hidden = false;
+  };
+  inp.addEventListener('focus', ()=>{ inp.select(); draw(''); });
+  inp.addEventListener('input', ()=>draw(inp.value));
+  list.addEventListener('mousedown', e=>e.preventDefault());
+  list.addEventListener('click', async e=>{
+    const r = e.target.closest('.pp-row'); if(!r) return;
+    expRead();
+    f.forEmail = r.dataset.email; f.forName = f.forEmail ? (o.people.find(p=>p.email===f.forEmail)||{}).name || '' : '';
+    if(f.forEmail) f.payTo = {};             // someone else's details, not this device's
+    await expReloadOptions(); expDraw();
+  });
+  inp.addEventListener('blur', ()=>setTimeout(()=>{ list.hidden = true; inp.value = f.forName || mineLabel; }, 150));
+}
+/* A photo is made smaller on the phone first (long side 1800px, JPEG): a
+   receipt stays readable, and a 6 MB camera picture sends as about 400 KB. */
+function expShrink(file){
+  return new Promise(resolve=>{
+    if(!/^image\//.test(file.type) || /gif|svg/.test(file.type)) return resolve(null);
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = ()=>{
+      const k = Math.min(1, 1800 / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url);
+      try{ resolve(c.toDataURL('image/jpeg', 0.8)); }catch(e){ resolve(null); }
+    };
+    img.onerror = ()=>{ URL.revokeObjectURL(url); resolve(null); };
+    img.src = url;
+  });
+}
+const expReadFile = file => new Promise((res, rej)=>{ const r = new FileReader(); r.onload = ()=>res(r.result); r.onerror = ()=>rej(r.error); r.readAsDataURL(file); });
+async function expAddReceipt(file){
+  const f = EXP.form;
+  if(!/^image\//.test(file.type) && file.type!=='application/pdf'){ toast('Receipts can be photos or PDFs.', true); return; }
+  const r = { id: expId('R'), name: file.name || 'receipt', mime: file.type, sending: true };
+  f.receipts.push(r); expDraw();
+  try{
+    let data = await expShrink(file);
+    if(data){ r.mime = 'image/jpeg'; r.name = r.name.replace(/\.(heic|heif|png|webp)$/i, '.jpg'); r.thumb = data; }
+    else data = await expReadFile(file);
+    if(data.length * 0.75 > 8 * 1024 * 1024) throw new Error('That file is too big (over 8 MB).');
+    await post({action:'receiptPut', id:r.id, name:r.name, mime:r.mime, data});
+    r.sending = false;
+  }catch(e){ r.sending = false; r.failed = true; toast(e.message || 'The receipt could not be sent.', true); }
+  if(EXP.form===f && document.getElementById('xDrop')){ expRead(); expDraw(); }
+}
+async function expSave(){
+  expRead();
+  const f = EXP.form, err = $('#modalErr');
+  if(f.receipts.some(r=>r.sending)){ err.textContent = 'A receipt is still sending. One moment…'; return; }
+  if(f.receipts.some(r=>r.failed)){ err.textContent = 'A receipt was not sent. Remove it (×) and add it again.'; return; }
+  if(!f.location){ err.textContent = 'Choose where the expense belongs.'; return; }
+  if(!(Number(f.amt) > 0)){ err.textContent = 'Give the expense an amount.'; return; }
+  if(!String(f.desc||'').trim()){ err.textContent = 'Say what the expense was for.'; return; }
+  if(f.kind==='reimburse' && !f.method){ err.textContent = 'Choose how you would like to be paid back.'; return; }
+  const btn = $('#xSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  try{
+    const r = await post({action:'expSave', id:f.id, kind:f.kind, location:f.location, date:f.date, desc:f.desc, cur:f.cur,
+      amt:Number(f.amt), category:f.category, payType:f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
+      receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: whoAmI()});
+    if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
+    toast(f.kind==='reimburse' ? 'Saved. Finance will pay you back.' : 'Expense recorded');
+    const i = EXP.list.findIndex(x=>x.id===f.id);
+    if(i>=0) EXP.list[i] = r.result; else EXP.list.unshift(r.result);
+    expensesModal();
+  }catch(e){ err.textContent = e.message; btn.disabled = false; btn.textContent = 'Save expense'; }
+}
+
+/* A receipt, shown over everything (the noAccess page too), with a download. */
+async function receiptOpen(id){
+  let v = document.getElementById('rcptView');
+  if(!v){ v = document.createElement('div'); v.id = 'rcptView'; v.className = 'rcpt-view'; document.body.appendChild(v);
+    v.addEventListener('click', e=>{ if(e.target===v || e.target.closest('[data-rcclose]')){ v.hidden = true; v.innerHTML = ''; } }); }
+  v.hidden = false; v.innerHTML = '<div class="rcpt-box"><div class="cash-empty">Opening the receipt…</div></div>';
+  try{
+    const r = (await post({action:'receiptGet', id})).result;
+    const bin = atob(r.data), bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    const url = URL.createObjectURL(new Blob([bytes], {type:r.mime}));
+    v.innerHTML = `<div class="rcpt-box"><div class="rcpt-head"><b>${esc(r.name)}</b>
+        <a class="btn btn-ghost btn-xs" href="${url}" download="${esc(r.name)}">⬇ Download</a>
+        <button type="button" class="btn btn-ghost btn-xs" data-rcclose="1">Close</button></div>
+      ${/pdf/.test(r.mime) ? `<iframe src="${url}" title="${esc(r.name)}"></iframe>` : `<img src="${url}" alt="${esc(r.name)}">`}</div>`;
+  }catch(e){ v.innerHTML = `<div class="rcpt-box"><div class="err">${esc(e.message)}</div><button class="btn btn-ghost btn-sm" data-rcclose="1">Close</button></div>`; }
+}
+
+/* ---- Finance's own To do: payments still owed, and expenses to pay back, across the system ---- */
+async function financeTodoModal(){
+  openModal(`${mHead('Finance To do')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  try{
+    const [todo, all, opt] = await Promise.all([post({action:'expTodo'}), post({action:'expList', scope:'all'}),
+      EXP.opt ? Promise.resolve({result:EXP.opt}) : post({action:'expOptions'})]);
+    EXP.todo = todo.result; EXP.all = all.result || []; EXP.opt = opt.result;
+  }catch(e){
+    openModal(`${mHead('Finance To do')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
+      <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+    return;
+  }
+  finDraw();
+}
+function finOwed(p){ return (p.owed||[]).map(o=>cashFmt(o.amt, o.cur)).join(' + '); }
+function finTotals(list, amt){
+  const by = {}; list.forEach(x=>amt(x).forEach(([a,c])=>{ by[c] = (by[c]||0) + a; }));
+  return Object.keys(by).sort().map(c=>cashFmt(by[c], c)).join(' + ');
+}
+function finDraw(){
+  const T = EXP.todo, q = EXP.q.trim().toLowerCase();
+  const hit = (...xs) => !q || xs.some(s=>String(s||'').toLowerCase().includes(q));
+  const reimb = T.reimb.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method));
+  const pend = T.pending.filter(p=>hit(p.name, p.phone, p.book, p.place, p.region, p.season, p.soldBy));
+  const all = EXP.all.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, EXP_STATUS[x.status]));
+  const tab = (k, label, n, col) => `<button type="button" class="fin-tab${EXP.tab===k?' on':''}" data-act="fintab" data-tab="${k}" style="--tc:${col}">
+    ${esc(label)} <span class="fin-n">${n}</span></button>`;
+  let body = '';
+  if(EXP.tab==='reimb') body = reimb.length
+    ? `<div class="hint">To pay back: <b>${esc(finTotals(reimb, x=>[[x.amt, x.cur]]))}</b></div>${reimb.map(x=>expCardHTML(x, true)).join('')}`
+    : '<div class="cash-empty">Nothing waiting to be paid back.</div>';
+  if(EXP.tab==='pay') body = pend.length
+    ? `<div class="hint">Still owed to the tour: <b>${esc(finTotals(pend, p=>(p.owed||[]).map(o=>[o.amt, o.cur])))}</b></div>
+      ${pend.map(p=>`<div class="exp-card"><div class="exp-top"><b>${esc(p.name||'(no name)')}</b><span class="exp-amt">${esc(finOwed(p))}</span></div>
+        <div class="exp-meta">${esc(String(p.ts).slice(0,10))} · ${esc(p.qty>1?p.qty+' × ':'')}${esc(p.book)}</div>
+        <div class="exp-meta">${esc(p.place)} · ${esc(p.region)} · ${esc(p.season)}${p.soldBy?' · sold by '+esc(p.soldBy):''}</div>
+        ${p.phone?`<div>📞 <b class="exp-copy">${esc(p.phone)}</b></div>`:''}</div>`).join('')}`
+    : '<div class="cash-empty">No payments pending anywhere.</div>';
+  if(EXP.tab==='all') body = all.length ? all.map(x=>expCardHTML(x, true)).join('') : '<div class="cash-empty">No expenses yet.</div>';
+  openModal(`
+    ${mHead('Finance To do')}
+    <div class="m-body">
+      <div class="fin-tabs">${tab('reimb','Reimbursements pending', T.reimb.length, '#2E8065')}${tab('pay','Payments pending', T.pending.length, '#C0392B')}
+        ${tab('all','Every expense', EXP.all.length, '#3E6FA8')}</div>
+      <input id="finQ" class="fin-q" type="search" placeholder="Search names, places, descriptions…" value="${esc(EXP.q)}">
+      ${body}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" data-act="expenses">🧾 Add an expense</button>
+      ${EXP.opt && EXP.opt.mayPay ? `<button class="btn btn-ghost" data-act="reimbset">⚙️ Reimbursement Settings</button>` : ''}
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  const qi = $('#finQ');
+  qi.addEventListener('input', ()=>{ EXP.q = qi.value; const pos = qi.selectionStart; finDraw(); const n = $('#finQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
+}
+async function finMark(id, status){
+  let note = '';
+  if(status==='paid'){ note = prompt('Paid back. A note for the record? (optional — e.g. the transfer reference)', ''); if(note===null) return; }
+  if(status==='declined'){ note = prompt('Why is it declined? (they will see this)', ''); if(note===null) return; }
+  try{
+    const r = (await post({action:'expMark', id, status, note})).result;
+    EXP.todo.reimb = EXP.todo.reimb.filter(x=>x.id!==id);
+    if(r.status==='pending') EXP.todo.reimb.unshift(r);
+    const i = EXP.all.findIndex(x=>x.id===id); if(i>=0) EXP.all[i] = r;
+    toast(status==='paid' ? 'Marked as paid back' : status==='declined' ? 'Declined' : 'Back on the list');
+    finDraw();
+  }catch(e){ toast(e.message, true); }
+}
+
+/* ---- Reimbursement Settings (Finance): which ways of paying back, and which
+   currencies, at every level — everywhere, a season, a region, an event — and
+   for one person, whose setting wins over every place. ---- */
+const RS = { d:null, mode:'place', id:'', email:'' };
+async function reimbSettingsModal(){
+  openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  try{ RS.d = (await post({action:'expRulesGet'})).result; }
+  catch(e){ openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true); return; }
+  rsDraw();
+}
+/* What a place gets from the levels above it (everything on, the region's currencies, unless set higher up). */
+function rsInherited(level){
+  const d = RS.d, on = {}; d.methods.forEach(m=>{ on[m] = true; });
+  let curs = null;
+  level.chain.slice(0, -1).forEach(id=>{
+    const x = d.rules.levels[id]; if(!x) return;
+    Object.keys(x.methods||{}).forEach(m=>{ if(m in on) on[m] = x.methods[m]; });
+    if(x.curs) curs = x.curs;
+  });
+  return { on, curs: curs || d.regionCurs[level.id] || [] };
+}
+function rsDraw(){
+  const d = RS.d, ro = !d.mayEdit, dis = ro ? 'disabled' : '';
+  const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  let target, above;
+  if(RS.mode==='place'){
+    const level = d.levels.find(l=>l.id===RS.id) || d.levels[0];
+    target = d.rules.levels[level.id] || {};
+    above = rsInherited(level);
+  } else {
+    target = RS.email ? (d.rules.people[RS.email] || {}) : null;
+    above = { on: Object.fromEntries(d.methods.map(m=>[m, true])), curs: null };
+  }
+  const aboveWord = RS.mode==='place' ? 'As above' : 'As the place says';
+  const rows = target ? d.methods.map(m=>{
+    const set = target.methods && (m in target.methods) ? (target.methods[m] ? 'on' : 'off') : '';
+    return `<div class="rs-row"><span>${esc(m)}</span><select data-rsm="${esc(m)}" ${dis}>
+      ${opt('', aboveWord + (RS.mode==='place' ? ' (' + (above.on[m] ? 'on' : 'off') + ')' : ''), !set)}${opt('on','On',set==='on')}${opt('off','Off',set==='off')}</select></div>`;
+  }).join('') : '';
+  const own = target && target.curs;
+  const curBox = target ? `<div class="cash-sub">Currencies people can be paid back in</div>
+      <label class="ppl-pick"><input type="radio" name="rsCurMode" value="" ${own?'':'checked'} ${dis}>
+        <span>${esc(aboveWord)}${RS.mode==='place' ? ': ' + esc(above.curs.join(', ')) : ''}</span></label>
+      <label class="ppl-pick"><input type="radio" name="rsCurMode" value="own" ${own?'checked':''} ${dis}><span>Only these:</span></label>
+      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${(own||[]).includes(c)?'checked':''} ${own&&!ro?'':'disabled'}> ${esc(c)}</label>`).join('')}</div>` : '';
+  openModal(`
+    ${mHead('Reimbursement Settings')}
+    <div class="m-body">
+      <div class="hint">Which ways of paying people back, and which currencies, are offered. Each place follows the one above it unless
+        you set it here: switch PayPal off for everywhere, say, and on again for one region. A person's own setting wins over every place.</div>
+      ${ro ? '<div class="muted-note">You can see these; only Finance can change them.</div>' : ''}
+      <div class="fin-tabs">
+        <button type="button" class="fin-tab${RS.mode==='place'?' on':''}" data-act="rsmode" data-mode="place">By place</button>
+        <button type="button" class="fin-tab${RS.mode==='person'?' on':''}" data-act="rsmode" data-mode="person">By person</button></div>
+      ${RS.mode==='place' ? `<div class="field"><label>Place</label><select id="rsPlace">${d.levels.map(l=>opt(l.id,
+          (l.kind==='region'?'— ':l.kind==='event'?'—— ':'') + l.label + (l.closed?' (closed)':'') + (d.rules.levels[l.id]?' •':''), l.id===RS.id)).join('')}</select>
+          <div class="muted-note">• has its own settings</div></div>`
+      : `<div class="field"><label>Person</label><select id="rsPerson">${opt('','Choose someone…',!RS.email)}${d.people.map(p=>opt(p.email,
+          p.name + ' (' + p.email + ')' + (d.rules.people[p.email]?' •':''), p.email===RS.email)).join('')}</select></div>`}
+      ${target ? `<div class="cash-sub">Ways of paying back</div><div class="rs-rows">${rows}</div>${curBox}` : ''}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button>
+      ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}</div>`, true);
+  const ps = $('#rsPlace'); if(ps) ps.addEventListener('change', ()=>{ RS.id = ps.value; rsDraw(); });
+  const pp = $('#rsPerson'); if(pp) pp.addEventListener('change', ()=>{ RS.email = pp.value; rsDraw(); });
+  document.querySelectorAll('#modal input[name="rsCurMode"]').forEach(r=>r.addEventListener('change', ()=>{
+    document.querySelectorAll('#modal [data-rsc]').forEach(c=>{ c.disabled = r.value!=='own'; });
+  }));
+  const sv = $('#rsSave'); if(sv) sv.addEventListener('click', rsSave);
+}
+async function rsSave(){
+  const d = RS.d, rules = JSON.parse(JSON.stringify(d.rules));
+  const x = {}, methods = {};
+  document.querySelectorAll('#modal [data-rsm]').forEach(s=>{ if(s.value) methods[s.dataset.rsm] = s.value==='on'; });
+  if(Object.keys(methods).length) x.methods = methods;
+  const mode = (document.querySelector('#modal input[name="rsCurMode"]:checked')||{}).value;
+  if(mode==='own'){
+    x.curs = [...document.querySelectorAll('#modal [data-rsc]:checked')].map(c=>c.dataset.rsc);
+    if(!x.curs.length){ $('#modalErr').textContent = 'Tick at least one currency, or choose "' + (RS.mode==='place'?'As above':'As the place says') + '".'; return; }
+  }
+  const bag = RS.mode==='place' ? rules.levels : rules.people, key = RS.mode==='place' ? RS.id : RS.email;
+  if(Object.keys(x).length) bag[key] = x; else delete bag[key];
+  try{ RS.d = (await post({action:'expRulesSet', rules})).result; toast('Saved'); rsDraw(); }
+  catch(e){ $('#modalErr').textContent = e.message; }
+}
+
+// A screenshot pasted while the expense form is open becomes a receipt.
+document.addEventListener('paste', e=>{
+  if(!document.getElementById('xDrop') || !EXP.form) return;
+  const files = [...((e.clipboardData && e.clipboardData.files) || [])].filter(f=>/^image\/|pdf$/.test(f.type));
+  if(!files.length) return;
+  e.preventDefault(); expRead(); files.forEach(expAddReceipt);
+});
+
+/* ---- The Finance section (b238, the practice space): figures, reports, comparisons ----
+   The server hands over every sale and every expense, in every season, as
+   plain rows (Code.gs financeData_), already in dollars at each place's own
+   rates; the page adds them up whichever way it is asked. Dollars, so seasons
+   and regions in different currencies can be set side by side.
+     Gross sales   the books' value, paid or still owed (donations apart)
+     Collections   money in hand, donations included
+     Consignment   money in hand that belongs to the consignment groups
+     Expenses      our own expenses (a group's come off what it is owed; declined ones not at all)
+     Net           Collections − Consignment − Expenses
+     Margin        Net as a share of our own takings (Collections − Consignment)
+   Book printing costs are not in the app, so the margin is after expenses only. */
+const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open:{}, rep:null, cmp:{kind:'seasons', series:''} };
+const FIN_M = [
+  {k:'books', l:'Books sold', n:true}, {k:'sales', l:'Sales (count)', n:true}, {k:'gross', l:'Gross sales'}, {k:'coll', l:'Collections'},
+  {k:'don', l:'Donations'}, {k:'pend', l:'Pending payments'}, {k:'con', l:'Consignment'}, {k:'exp', l:'Expenses'},
+  {k:'net', l:'Net'}, {k:'margin', l:'Margin', pct:true}, {k:'reimb', l:'Pending reimbursements'}];
+const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
+function finAgg(sales, exps){
+  const a = {books:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0};
+  sales.forEach(x=>{
+    a.books += x.q; if(x.k!=='DONATION') a.sales++;
+    a.coll += x.gu; a.pend += x.pu;
+    if(x.k==='DONATION') a.don += x.gu; else a.gross += x.gu + x.pu;
+    if(x.con) a.con += x.gu;
+  });
+  exps.forEach(x=>{
+    if(x.st==='declined') return;
+    if(!x.con) a.exp += x.usd;
+    if(x.kind==='reimburse' && x.st==='pending') a.reimb += x.usd;
+  });
+  a.net = a.coll - a.con - a.exp;
+  const own = a.coll - a.con;
+  a.margin = own > 0 ? a.net / own * 100 : null;
+  return a;
+}
+const finUsd = n => (n<0?'−':'') + '$' + fmt(Math.abs(Math.round(n*100)/100));
+function finVal(m, v){
+  if(v===null || v===undefined) return '—';
+  if(m.pct) return Math.round(v*10)/10 + '%';
+  return m.n ? String(Math.round(v)) : finUsd(v);
+}
+/* Names, and the series each season, region and event belongs to. */
+function finIdx(){
+  const D = FIN.D, I = {s:{}, r:{}, e:{}};
+  D.seasons.forEach(x=>I.s[x.id]=x); D.regions.forEach(x=>I.r[x.id]=x); D.events.forEach(x=>I.e[x.id]=x);
+  return I;
+}
+function finFiltered(f){
+  const D = FIN.D;
+  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) &&
+    (!f.from || x.d >= f.from) && (!f.to || x.d <= f.to);
+  return { sales: D.sales.filter(ok), exps: D.expenses.filter(ok) };
+}
+async function financeModal(tab){
+  if(tab) FIN.tab = tab;
+  openModal(`${mHead('Finance')}<div class="m-body"><div class="cash-empty">Adding everything up…</div></div>`, true);
+  try{ FIN.D = (await post({action:'finData'})).result; }
+  catch(e){ openModal(`${mHead('Finance')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true); return; }
+  finDrawAll();
+}
+function finDrawAll(){
+  const tab = (k,l) => `<button type="button" class="fin-tab${FIN.tab===k?' on':''}" data-act="fintab2" data-tab="${k}">${esc(l)}</button>`;
+  const body = FIN.tab==='report' ? finReportHTML() : FIN.tab==='compare' ? finCompareHTML() : finOverviewHTML();
+  openModal(`
+    ${mHead('Finance')}
+    <div class="m-body fin-body">
+      <div class="fin-tabs">${tab('overview','Overview')}${tab('report','Reports')}${tab('compare','Compare')}</div>
+      ${body}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  const m = $('#modal'); m.classList.add('fin-wide');
+  finBind();
+}
+/* Season › region › event pickers and dates, shared by Overview and Reports. */
+function finFiltersHTML(f){
+  const D = FIN.D, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  const regs = D.regions.filter(r=>!f.s || r.seasonId===f.s), evs = D.events.filter(e=>f.r ? e.regionId===f.r : regs.some(r=>r.id===e.regionId));
+  return `<div class="fin-filters">
+    <label>Season<select data-ff="s">${opt('','All seasons',!f.s)}${D.seasons.map(s=>opt(s.id,s.name,s.id===f.s)).join('')}</select></label>
+    <label>Region<select data-ff="r">${opt('','All regions',!f.r)}${regs.map(r=>opt(r.id, r.name + (f.s?'':' · '+((D.seasons.find(s=>s.id===r.seasonId)||{}).name||'')), r.id===f.r)).join('')}</select></label>
+    <label>Event<select data-ff="e">${opt('','All events',!f.e)}${evs.map(e=>opt(e.id,e.name,e.id===f.e)).join('')}</select></label>
+    <label>From<input type="date" data-ff="from" value="${esc(f.from)}"></label>
+    <label>To<input type="date" data-ff="to" value="${esc(f.to)}"></label>
+  </div>`;
+}
+function finOverviewHTML(){
+  const f = FIN.f, {sales, exps} = finFiltered(f), a = finAgg(sales, exps), I = finIdx();
+  const tiles = FIN_M.filter(m=>m.k!=='sales').map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
+    <div class="fin-tv">${finVal(m, a[m.k])}</div></div>`).join('');
+  // Every level: seasons, opening to their regions, opening to their events.
+  const cols = FIN_M.filter(m=>m.k!=='sales');
+  const row = (label, lvl, key, s, e, canOpen) => {
+    const x = finAgg(s, e);
+    return `<tr class="fin-l${lvl}">${`<th>${canOpen?`<button type="button" class="fin-open" data-act="finopen" data-key="${esc(key)}">${FIN.open[key]?'▾':'▸'}</button>`:''}${esc(label)}</th>`}
+      ${cols.map(m=>`<td>${finVal(m, x[m.k])}</td>`).join('')}</tr>`;
+  };
+  let rows = '';
+  const seasons = FIN.D.seasons.filter(x=>!f.s || x.id===f.s);
+  seasons.forEach(se=>{
+    const sS = sales.filter(x=>x.s===se.id), sE = exps.filter(x=>x.s===se.id);
+    if(!sS.length && !sE.length && f.s!==se.id) return;
+    rows += row(se.name, 0, 's:'+se.id, sS, sE, true);
+    if(!FIN.open['s:'+se.id] && !f.r) return;
+    FIN.D.regions.filter(r=>r.seasonId===se.id && (!f.r || r.id===f.r)).forEach(r=>{
+      const rS = sS.filter(x=>x.r===r.id), rE = sE.filter(x=>x.r===r.id);
+      rows += row(r.name, 1, 'r:'+r.id, rS, rE, true);
+      if(!FIN.open['r:'+r.id] && !f.e) return;
+      const wS = rS.filter(x=>!x.e), wE = rE.filter(x=>!x.e);
+      if(wS.length || wE.length) rows += row(r.name + ' (warehouse, and the region as a whole)', 2, '', wS, wE, false);
+      FIN.D.events.filter(ev=>ev.regionId===r.id && (!f.e || ev.id===f.e)).forEach(ev=>{
+        rows += row(ev.name, 2, '', rS.filter(x=>x.e===ev.id), rE.filter(x=>x.e===ev.id), false);
+      });
+    });
+    const wide = sE.filter(x=>!x.r);
+    if(wide.length) rows += row('Season-wide expenses', 1, '', [], wide, false);
+  });
+  void I;
+  return `${finFiltersHTML(f)}
+    <div class="fin-tiles">${tiles}</div>
+    <div class="muted-note">In dollars, at each place's own rates. Net = collections − consignment − expenses; margin = net ÷ our own takings
+      (collections − consignment). Book printing costs are not in the app, so they are not taken off.</div>
+    <div class="cash-sub">At every level <span class="muted-note">(▸ opens a season or region)</span></div>
+    <div class="fin-scroll"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${cols.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
+      <tbody>${rows || `<tr><td colspan="${cols.length+1}">Nothing recorded for these choices.</td></tr>`}</tbody>
+      <tfoot>${row('All of it', 0, '', sales, exps, false).replace('<tr class="fin-l0">','<tr class="fin-tot">')}</tfoot></table></div>`;
+}
+
+/* ---- Reports: any rows, any figures, any filter ---- */
+const FIN_DIMS = [
+  {k:'season', l:'Season', both:true}, {k:'seasonSeries', l:'Season series', both:true},
+  {k:'region', l:'Region', both:true}, {k:'regionSeries', l:'Region series', both:true},
+  {k:'event', l:'Event', both:true}, {k:'eventSeries', l:'Event series', both:true},
+  {k:'month', l:'Month', both:true}, {k:'week', l:'Week', both:true}, {k:'day', l:'Day', both:true},
+  {k:'title', l:'Title'}, {k:'language', l:'Language'}, {k:'kind', l:'Kind of book'}, {k:'seller', l:'Seller'},
+  {k:'pay', l:'Payment type'}, {k:'type', l:'Sale, pre-order or donation'}, {k:'group', l:'Ours or a consignment group', both:true},
+  {k:'category', l:'Kind of expense', exp:true}, {k:'person', l:'Whose expense', exp:true}, {k:'status', l:'Expense status', exp:true}];
+function finDimVal(k, x, isExp){
+  const I = FIN.I, se = I.s[x.s] || {}, r = I.r[x.r] || {}, ev = I.e[x.e] || {};
+  switch(k){
+    case 'season': return se.name || '(none)';
+    case 'seasonSeries': return se.series || '(none)';
+    case 'region': return x.r ? r.name + ' · ' + (se.name||'') : 'Season-wide';
+    case 'regionSeries': return x.r ? r.series : 'Season-wide';
+    case 'event': return x.e ? ev.name + ' · ' + (r.name||'') : x.r ? r.name + ' (warehouse)' : 'Season-wide';
+    case 'eventSeries': return x.e ? ev.series : x.r ? r.series + ' (warehouse)' : 'Season-wide';
+    case 'month': return (x.d||'').slice(0,7) || '(no date)';
+    case 'day': return x.d || '(no date)';
+    case 'week': { const d = new Date((x.d||'') + 'T00:00:00Z'); if(isNaN(d)) return '(no date)';
+      d.setUTCDate(d.getUTCDate() - ((d.getUTCDay()+6)%7)); return 'Week of ' + d.toISOString().slice(0,10); }
+    case 'group': return x.con || 'Ours';
+    case 'title': return isExp ? null : (x.t || (x.k==='DONATION' ? '(donation)' : '(no title)'));
+    case 'language': return isExp ? null : ((x.t||'').match(/\(([^)]+)\)\s*$/)||[])[1] || (x.t ? '(no language)' : '(no title)');
+    case 'kind': return isExp ? null : (x.c==='aotm' ? 'AoTM' : x.c ? 'Big books' : '(no title)');
+    case 'seller': return isExp ? null : (x.by || '(not recorded)');
+    case 'pay': return isExp ? null : (x.pay.slice().sort().join(' + ') || '(none)');
+    case 'type': return isExp ? null : ({SALE:'Sale', PREORDER:'Pre-order', DONATION:'Donation'})[x.k] || x.k;
+    case 'category': return isExp ? x.cat : null;
+    case 'person': return isExp ? (x.who || '(not recorded)') : null;
+    case 'status': return isExp ? ({recorded:'Recorded', pending:'Waiting to be paid back', paid:'Paid back', declined:'Declined'})[x.st] || x.st : null;
+  }
+  return '';
+}
+function finRepDefault(){
+  return { rows:['season'], cols:['books','gross','coll','con','exp','net','margin'], f:{s:'', r:'', e:'', from:'', to:''},
+    q:'', sort:{k:'', dir:1} };
+}
+function finReportRows(){
+  const R = FIN.rep, {sales, exps} = finFiltered(R.f), dims = R.rows.filter(Boolean);
+  const q = R.q.trim().toLowerCase();
+  const sOk = x => !q || [x.t, x.by, x.pay.join(' '), x.con].some(v=>String(v||'').toLowerCase().includes(q));
+  const eOk = x => !q || [x.cat, x.who, x.con].some(v=>String(v||'').toLowerCase().includes(q));
+  const S = sales.filter(sOk), E = exps.filter(eOk);
+  const groups = new Map(), key = vals => vals.join(' › ');
+  const put = (x, isExp) => {
+    const vals = dims.map(k=>finDimVal(k, x, isExp));
+    if(vals.some(v=>v===null)) return;              // this kind of row cannot be split this way
+    const kk = key(vals);
+    if(!groups.has(kk)) groups.set(kk, {vals, s:[], e:[]});
+    groups.get(kk)[isExp?'e':'s'].push(x);
+  };
+  S.forEach(x=>put(x, false)); E.forEach(x=>put(x, true));
+  const salesOnly = dims.some(k=>!(FIN_DIMS.find(d=>d.k===k)||{}).both && !(FIN_DIMS.find(d=>d.k===k)||{}).exp);
+  const expOnly = dims.some(k=>(FIN_DIMS.find(d=>d.k===k)||{}).exp);
+  let rows = [...groups.values()].map(g=>Object.assign({vals:g.vals}, finAgg(g.s, g.e)));
+  const sk = R.sort.k;
+  rows.sort((a,b)=>{
+    if(!sk) return a.vals.join('\u0000').localeCompare(b.vals.join('\u0000'));
+    const va = sk.startsWith('d') ? a.vals[Number(sk.slice(1))] : a[sk], vb = sk.startsWith('d') ? b.vals[Number(sk.slice(1))] : b[sk];
+    return (typeof va==='number' && typeof vb==='number' ? va - vb : String(va).localeCompare(String(vb))) * R.sort.dir;
+  });
+  return { rows, total: finAgg(S, E), dims, salesOnly, expOnly };
+}
+function finReportHTML(){
+  if(!FIN.rep){ try{ FIN.rep = JSON.parse(localStorage.getItem('tbs_finrep')||'null'); }catch(e){} FIN.rep = FIN.rep || finRepDefault(); }
+  FIN.I = finIdx();
+  const R = FIN.rep, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  const out = finReportRows();
+  const cols = FIN_M.filter(m=>R.cols.includes(m.k));
+  const blank = m => (out.salesOnly && FIN_EXP_KEYS[m.k]) || (out.expOnly && !FIN_EXP_KEYS[m.k]);
+  const arrow = k => R.sort.k===k ? (R.sort.dir>0?' ▲':' ▼') : '';
+  const dimSel = i => `<select data-rd="${i}">${i?opt('','— none —',!R.rows[i]):''}${FIN_DIMS.map(d=>opt(d.k,d.l,R.rows[i]===d.k)).join('')}</select>`;
+  return `
+    <div class="fin-rep-ctl">
+      <div class="fin-rows"><span class="muted-note">Rows:</span> ${dimSel(0)} <span class="muted-note">then</span> ${dimSel(1)}
+        <span class="muted-note">then</span> ${dimSel(2)}</div>
+      <div class="fin-cols">${FIN_M.map(m=>`<label><input type="checkbox" data-rc="${m.k}" ${R.cols.includes(m.k)?'checked':''}> ${esc(m.l)}</label>`).join('')}</div>
+      ${finFiltersHTML(R.f).replace(/data-ff=/g, 'data-rf=')}
+      <input class="fin-q" type="search" id="finRepQ" placeholder="Only rows mentioning… (a title, seller, payment type, kind of expense, person)" value="${esc(R.q)}">
+    </div>
+    ${out.salesOnly && cols.some(m=>FIN_EXP_KEYS[m.k]) ? '<div class="muted-note">Expenses are not split by title, language, seller or payment type: their figures show in the total only.</div>' : ''}
+    ${out.expOnly && cols.some(m=>!FIN_EXP_KEYS[m.k]) ? '<div class="muted-note">Sales are not split by kind of expense or person: their figures show in the total only.</div>' : ''}
+    <div class="fin-scroll"><table class="cash-tbl fin-tbl" id="finRepTbl"><thead><tr>
+      ${out.dims.map((k,i)=>`<th class="fin-sort" data-act="finsort" data-k="d${i}">${esc((FIN_DIMS.find(d=>d.k===k)||{}).l)}${arrow('d'+i)}</th>`).join('')}
+      ${cols.map(m=>`<th class="fin-sort" data-act="finsort" data-k="${m.k}">${esc(m.l)}${arrow(m.k)}</th>`).join('')}</tr></thead>
+      <tbody>${out.rows.map(r=>`<tr>${r.vals.map(v=>`<th>${esc(v)}</th>`).join('')}${cols.map(m=>`<td>${blank(m)?'—':finVal(m, r[m.k])}</td>`).join('')}</tr>`).join('')
+        || `<tr><td colspan="${out.dims.length+cols.length}">Nothing recorded for these choices.</td></tr>`}</tbody>
+      <tfoot><tr class="fin-tot"><th colspan="${out.dims.length}">Total (${out.rows.length} row${out.rows.length===1?"":"s"})</th>${cols.map(m=>`<td>${finVal(m, out.total[m.k])}</td>`).join('')}</tr></tfoot>
+    </table></div>
+    <div class="btn-row"><button class="btn btn-ghost btn-sm" data-act="fincsv">⬇ Download (CSV, for Excel or Sheets)</button>
+      <button class="btn btn-ghost btn-sm" data-act="finrepreset">Start the report over</button></div>`;
+}
+function finCsv(){
+  const R = FIN.rep, out = finReportRows(), cols = FIN_M.filter(m=>R.cols.includes(m.k));
+  const cell = v => { const s = String(v==null?'':v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const num = (m, v) => v===null || v===undefined ? '' : m.n ? Math.round(v) : Math.round(v*100)/100;
+  const lines = [out.dims.map(k=>(FIN_DIMS.find(d=>d.k===k)||{}).l).concat(cols.map(m=>m.l + (m.pct?' (%)':m.n?'':' (USD)'))).map(cell).join(',')];
+  out.rows.forEach(r=>lines.push(r.vals.concat(cols.map(m=>num(m, r[m.k]))).map(cell).join(',')));
+  lines.push(['Total'].concat(out.dims.slice(1).map(()=>'')).concat(cols.map(m=>num(m, out.total[m.k]))).map(cell).join(','));
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], {type:'text/csv'}));
+  a.download = 'Finance report ' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+/* ---- Compare: seasons, regions or events that repeat, side by side and added up ---- */
+function finCompareHTML(){
+  const D = FIN.D, C = FIN.cmp, I = finIdx(); FIN.I = I;
+  const list = D[C.kind];
+  const series = {};
+  list.forEach(x=>{ (series[x.series] = series[x.series] || []).push(x); });
+  const names = Object.keys(series).sort((a,b)=>(series[b].length - series[a].length) || a.localeCompare(b));
+  if(!C.series || !series[C.series]) C.series = names[0] || '';
+  const members = (series[C.series]||[]).slice();
+  const seasonOrder = id => D.seasons.findIndex(s=>s.id===id);
+  const seasonOf = x => C.kind==='seasons' ? x.id : C.kind==='regions' ? x.seasonId : (I.r[x.regionId]||{}).seasonId;
+  members.sort((a,b)=>seasonOrder(seasonOf(a)) - seasonOrder(seasonOf(b)));
+  const pick = x => C.kind==='seasons' ? (y=>y.s===x.id) : C.kind==='regions' ? (y=>y.r===x.id) : (y=>y.e===x.id);
+  const label = x => C.kind==='seasons' ? x.name : C.kind==='regions' ? x.name + ' · ' + ((I.s[x.seasonId]||{}).name||'')
+    : x.name + ' · ' + ((I.r[x.regionId]||{}).name||'') + ' · ' + ((I.s[(I.r[x.regionId]||{}).seasonId]||{}).name||'');
+  const aggs = members.map(x=>finAgg(D.sales.filter(pick(x)), D.expenses.filter(pick(x))));
+  const allS = D.sales.filter(y=>members.some(x=>pick(x)(y))), allE = D.expenses.filter(y=>members.some(x=>pick(x)(y)));
+  const tot = finAgg(allS, allE);
+  const change = (m, i) => {
+    if(!i || m.pct) return '';
+    const a = aggs[i-1][m.k], b = aggs[i][m.k];
+    if(!a) return '';
+    const p = Math.round((b - a) / Math.abs(a) * 100);
+    return ` <span class="fin-chg ${p>=0?'up':'down'}">${p>=0?'▲':'▼'}${Math.abs(p)}%</span>`;
+  };
+  const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  const kinds = {seasons:'Seasons', regions:'Regions', events:'Events'};
+  return `
+    <div class="fin-filters">
+      <label>Compare<select id="finCk">${Object.keys(kinds).map(k=>opt(k,kinds[k],k===C.kind)).join('')}</select></label>
+      <label>Which<select id="finCs">${names.map(n=>opt(n, n + ' (' + series[n].length + ')', n===C.series)).join('')}</select></label>
+    </div>
+    <div class="muted-note">The same ${esc(kinds[C.kind].toLowerCase().replace(/s$/,''))} in different years is matched by its name with the year left out.
+      Finance can regroup any of them below. ▲▼ is the change from the column before.</div>
+    ${members.length ? `<div class="fin-scroll"><table class="cash-tbl fin-tbl fin-cmp"><thead><tr><th></th>${members.map(x=>`<th>${esc(label(x))}</th>`).join('')}
+        <th>All together</th><th>Average</th></tr></thead>
+      <tbody>${FIN_M.map(m=>`<tr><th>${esc(m.l)}</th>${aggs.map((a,i)=>`<td>${finVal(m, a[m.k])}${change(m,i)}</td>`).join('')}
+        <td><b>${finVal(m, tot[m.k])}</b></td><td>${m.pct ? finVal(m, tot[m.k]) : finVal(m, tot[m.k]/members.length)}</td></tr>`).join('')}</tbody>
+    </table></div>` : '<div class="cash-empty">Nothing to compare yet.</div>'}
+    <div class="cash-sub">Grouping</div>
+    <div class="fin-group">${members.map(x=>`<div class="rs-row"><span>${esc(label(x))}</span>
+      ${D.mayEdit ? `<input type="text" data-series="${esc(x.id)}" value="${esc(x.series)}" maxlength="80">` : `<span>${esc(x.series)}</span>`}</div>`).join('')}
+      ${D.mayEdit ? `<div class="muted-note">Rename a group here to move it: type the name of another group to join it, or a new name to start one.</div>` : ''}</div>`;
+}
+function finBind(){
+  const m = $('#modal');
+  m.querySelectorAll('[data-ff]').forEach(el=>el.addEventListener('change', ()=>{
+    FIN.f[el.dataset.ff] = el.value;
+    if(el.dataset.ff==='s'){ FIN.f.r = ''; FIN.f.e = ''; } if(el.dataset.ff==='r') FIN.f.e = '';
+    finDrawAll();
+  }));
+  const R = FIN.rep, save = () => { try{ localStorage.setItem('tbs_finrep', JSON.stringify(R)); }catch(e){} finDrawAll(); };
+  m.querySelectorAll('[data-rf]').forEach(el=>el.addEventListener('change', ()=>{
+    R.f[el.dataset.rf] = el.value;
+    if(el.dataset.rf==='s'){ R.f.r = ''; R.f.e = ''; } if(el.dataset.rf==='r') R.f.e = '';
+    save();
+  }));
+  m.querySelectorAll('[data-rd]').forEach(el=>el.addEventListener('change', ()=>{
+    R.rows[Number(el.dataset.rd)] = el.value; R.rows = R.rows.filter((v,i)=>v || i===0).slice(0,3); R.sort = {k:'', dir:1}; save();
+  }));
+  m.querySelectorAll('[data-rc]').forEach(el=>el.addEventListener('change', ()=>{
+    R.cols = FIN_M.map(x=>x.k).filter(k=>k===el.dataset.rc ? el.checked : R.cols.includes(k)); save();
+  }));
+  const q = $('#finRepQ');
+  if(q) q.addEventListener('change', ()=>{ R.q = q.value; save(); });
+  const ck = $('#finCk'); if(ck) ck.addEventListener('change', ()=>{ FIN.cmp.kind = ck.value; FIN.cmp.series = ''; finDrawAll(); });
+  const cs = $('#finCs'); if(cs) cs.addEventListener('change', ()=>{ FIN.cmp.series = cs.value; finDrawAll(); });
+  m.querySelectorAll('[data-series]').forEach(el=>el.addEventListener('change', async ()=>{
+    try{
+      FIN.D = (await post({action:'finSeriesSet', kind:FIN.cmp.kind, id:el.dataset.series, series:el.value.trim()})).result;
+      FIN.cmp.series = el.value.trim() || FIN.cmp.series; toast('Grouping saved'); finDrawAll();
+    }catch(e){ toast(e.message, true); }
+  }));
+}
+
+/* The Finance buttons a person gets: Finance and its assistant see the figures and
+   the To do; only Finance (and Universal) set how people are paid back. */
+function FIN_BTNS(fin){
+  if(!fin) return [];
+  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`, `<button class="btn" data-act="finreport">📋 Finance Reports</button>`,
+    `<button class="btn" data-act="fincompare">⚖️ Compare Seasons</button>`, `<button class="btn" data-act="fintodo">💼 Finance To do</button>`];
+  if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
+  return b;
+}
+
+/* ---- View as (b238, the practice space): Universal sees the app as a person,
+   or as any role at any place, without signing in as them. The server answers
+   every request as them while this tab is viewing (core.js viewAs). ---- */
+const VA = { D:null, q:'', role:'S', placeId:'' };
+async function viewAsModal(){
+  openModal(`${mHead('View as')}<div class="m-body"><div class="cash-empty">Loading…</div></div>`);
+  try{ VA.D = (await post({action:'viewAsList', va:null})).result; }
+  catch(e){ openModal(`${mHead('View as')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`); return; }
+  vaDraw();
+}
+function vaPlaces(kind){
+  const P = VA.D.places, sName = id => (P.seasons.find(s=>s.id===id)||{}).name || '';
+  const rOf = id => P.regions.find(r=>r.id===id) || {};
+  if(kind==='season') return P.seasons.map(s=>({id:s.id, label:s.name}));
+  if(kind==='region') return P.regions.map(r=>({id:r.id, label:r.name + ' · ' + sName(r.seasonId)}));
+  if(kind==='event') return P.events.map(e=>({id:e.id, label:e.name + ' · ' + (rOf(e.regionId).name||'') + ' · ' + sName(rOf(e.regionId).seasonId)}));
+  return [];
+}
+function vaDraw(){
+  const D = VA.D, q = VA.q.trim().toLowerCase();
+  const role = D.roles.find(r=>r.role===VA.role) || D.roles[0], places = vaPlaces(role.kind);
+  if(places.length && !places.some(p=>p.id===VA.placeId)) VA.placeId = places[0].id;
+  const ppl = D.people.filter(p=>!q || (p.name + ' ' + p.email + ' ' + p.roles.join(' ')).toLowerCase().includes(q));
+  const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  openModal(`
+    ${mHead('View as')}
+    <div class="m-body">
+      <div class="hint">See the practice app exactly as someone else would: their menu, their places, what they may change.
+        Only this browser tab changes, and anything done while viewing is done as them, in practice only.</div>
+      <div class="cash-sub">A role, at a place</div>
+      <div class="va-pick">
+        <select id="vaRole">${D.roles.map(r=>opt(r.role, r.name, r.role===role.role)).join('')}</select>
+        ${places.length ? `<select id="vaPlace">${places.map(p=>opt(p.id, p.label, p.id===VA.placeId)).join('')}</select>` : '<span class="muted-note">Everywhere</span>'}
+        <button class="btn btn-primary btn-sm" id="vaGo">View</button>
+      </div>
+      <div class="cash-sub">A person</div>
+      <input type="search" id="vaQ" class="fin-q" placeholder="Search names, emails or roles" value="${esc(VA.q)}">
+      <div class="va-list">${ppl.map(p=>`<button type="button" class="va-person" data-email="${esc(p.email)}" data-name="${esc(p.name)}">
+          <b>${esc(p.name)}</b> <span class="muted-note">${esc(p.email)}</span><div class="muted-note">${p.roles.map(esc).join(' · ')}</div></button>`).join('')
+        || '<div class="cash-empty">No one matches.</div>'}</div>
+    </div>
+    <div class="m-foot">${VIEW_AS.get() ? '<button class="btn btn-ghost" data-act="viewstop">Stop viewing</button>' : ''}
+      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+  $('#vaRole').addEventListener('change', e=>{ VA.role = e.target.value; VA.placeId = ''; vaDraw(); });
+  const pl = $('#vaPlace'); if(pl) pl.addEventListener('change', e=>{ VA.placeId = e.target.value; });
+  $('#vaGo').addEventListener('click', ()=>{
+    const p = places.find(x=>x.id===VA.placeId);
+    viewAsStart({role:role.role, placeId: places.length ? VA.placeId : '', label: role.name + (p ? ' · ' + p.label : '')});
+  });
+  const qi = $('#vaQ');
+  qi.addEventListener('input', ()=>{ VA.q = qi.value; vaDraw(); const n = $('#vaQ'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); });
+  $('#modal').querySelectorAll('.va-person').forEach(b=>b.addEventListener('click', ()=>
+    viewAsStart({email:b.dataset.email, label:b.dataset.name})));
+}
+function viewAsStart(v){
+  VIEW_AS.set(v); ACTING.set('');
+  try{ localStorage.removeItem(CACHE_KEY); }catch(e){}
+  location.reload();
+}
+function viewAsBanner(){
+  const v = VIEW_AS.get();
+  if(!v || $('#viewAsBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'viewAsBar'; bar.className = 'va-bar no-edit';
+  bar.innerHTML = `👁 Viewing the app as <b>${esc(v.label || v.email || v.role)}</b>
+    <button class="btn btn-sm" data-act="viewas">Someone else</button> <button class="btn btn-sm" data-act="viewstop">Stop viewing</button>`;
+  document.body.appendChild(bar); document.body.classList.add('has-va');
 }
 
 /* ---- Spreadsheet folder: a map of everything the app has filed ----
@@ -14189,7 +15191,38 @@ document.addEventListener('click',e=>{
       }, 'Change returned');
     cashReopen(); return;
   }
+  // In practice Record Costs is one with Expenses (b238).
+  if(PRACTICE && (a==='costs' || a==='concost' || a==='costedit')){
+    expensesModal(a==='costedit' ? t.dataset.id : null, a==='concost' ? t.dataset.id : null); return; }
   if(a==='costs'){ costsModal(); return; }
+  // Expenses and Finance (b238).
+  if(a==='expenses'){ expensesModal(); return; }
+  if(a==='expnew'){ expensesModal(); return; }
+  if(a==='expedit'){ expensesModal(t.dataset.id); return; }
+  if(a==='expdel'){
+    if(!confirm('Delete this expense, and its receipts?')) return;
+    post({action:'expDelete', id:t.dataset.id}).then(()=>{ toast('Expense deleted'); expensesModal(); }).catch(e=>toast(e.message, true));
+    return;
+  }
+  if(a==='xrcptdel'){ expRead(); EXP.form.receipts.splice(Number(t.dataset.i), 1); expDraw(); return; }
+  if(a==='rcptopen'){ receiptOpen(t.dataset.id); return; }
+  if(a==='fintodo'){ financeTodoModal(); return; }
+  if(a==='fintab'){ EXP.tab = t.dataset.tab; finDraw(); return; }
+  if(a==='exppaid'){ finMark(t.dataset.id, 'paid'); return; }
+  if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
+  if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
+  if(a==='reimbset'){ reimbSettingsModal(); return; }
+  if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
+  if(a==='finoverview'){ financeModal('overview'); return; }
+  if(a==='finreport'){ financeModal('report'); return; }
+  if(a==='fincompare'){ financeModal('compare'); return; }
+  if(a==='fintab2'){ FIN.tab = t.dataset.tab; finDrawAll(); return; }
+  if(a==='finopen'){ FIN.open[t.dataset.key] = !FIN.open[t.dataset.key]; finDrawAll(); return; }
+  if(a==='finsort'){ const R = FIN.rep, k = t.dataset.k; R.sort = {k, dir: R.sort.k===k ? -R.sort.dir : (k.startsWith('d')?1:-1)}; finDrawAll(); return; }
+  if(a==='fincsv'){ finCsv(); return; }
+  if(a==='finrepreset'){ FIN.rep = finRepDefault(); try{ localStorage.removeItem('tbs_finrep'); }catch(e){} finDrawAll(); return; }
+  if(a==='viewas'){ viewAsModal(); return; }
+  if(a==='viewstop'){ viewAsStart(null); return; }
   if(a==='concost'){ costsModal(null, t.dataset.id); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }
   if(a==='costdel'){
@@ -14348,7 +15381,7 @@ document.addEventListener('click',e=>{
   loadMe();
   // The practice space says so, and when it was copied (b231).
   if(PRACTICE){
-    practiceBanner();
+    practiceBanner(); viewAsBanner();
     post({action:'practiceInfo'}).then(d=>{ PRACTICE_INFO = (d && d.result) || null; practiceBanner(); }).catch(()=>{});
   }
   // Draw last session's data straight away so the page is usable on open.
