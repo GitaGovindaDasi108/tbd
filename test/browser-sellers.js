@@ -103,7 +103,7 @@ const API = 'http://api.test/';
       if (url.startsWith('http://app.test/')) {
         const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
         if (rel === 'config.js') return route.fulfill({ status: 200, contentType: 'text/javascript',
-          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, LIVE_URL: '', PRACTICE_URL: '${PRAC}' };` });
+          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, LIVE_URL: '', PRACTICE_URL: '${PRAC}', CLASSIC_ADMIN: !/[?&](practice|menu)/.test(location.search) };` });
         const f = path.join(ROOT, rel);
         if (fs.existsSync(f) && fs.statSync(f).isFile())
           return route.fulfill({ status: 200, body: fs.readFileSync(f), contentType: f.endsWith('.html') ? 'text/html' : 'text/javascript' });
@@ -239,19 +239,32 @@ const API = 'http://api.test/';
       tabs: [...document.querySelectorAll('#todoTabs .todo-tab')].map(b => b.innerText.replace(/\s+/g, ' ').trim()),
       colours: [...document.querySelectorAll('#todoTabs .todo-tab')].map(b => getComputedStyle(b).borderColor),
       old: ['#pendingPanel', '#prePanel', '#countPanel'].filter(id => { const e = document.querySelector(id); return e && e.closest('#todoPanel'); }).length }));
-    t.push(['b232: one To do panel, a tab each with its count: Pending Payments 1, Pre-Orders 1, Counts to Look Into 1',
+    t.push(['b232: one To do panel, a filter for each kind with its count: Pending Payments 1, Pre-Orders 1, Counts to Look Into 1',
       JSON.stringify(todo.tabs) === JSON.stringify(['Pending Payments 1', 'Pre-Orders 1', 'Counts to Look Into 1']) && todo.old === 3]);
     t.push(['…each kind in its own colour', new Set(todo.colours).size === 3]);
-    t.push(['…the first tab shows the pending payment, the others wait', await own.evaluate(() =>
-      /Ananda/.test(document.querySelector('#pendingList').innerText) && document.querySelector('#prePanel').offsetHeight === 0)]);
-    await own.click('#todoTabs [data-tab="pre"]'); await own.waitForTimeout(200);
-    t.push(['a tap on "Pre-Orders": Bhakti\'s pre-order, with its 📋 Count and 📋 Details', await own.evaluate(() =>
-      /Bhakti/.test(document.querySelector('#preList').innerText) && /Count/.test(document.querySelector('#todoRep').innerText) && document.querySelector('#pendingPanel').offsetHeight === 0)]);
+    const panes = () => own.evaluate(() => ['#pendingPanel', '#prePanel', '#countPanel'].map(id => document.querySelector(id).offsetHeight > 0));
+    t.push(['b235: all three shown to begin with, each under its own heading', JSON.stringify(await panes()) === '[true,true,true]'
+      && await own.evaluate(() => document.querySelectorAll('#todoPanel .todo-h').length === 3 && /Ananda/.test(document.querySelector('#pendingList').innerText))]);
+    t.push(['…no sort buttons any more', await own.evaluate(() => !document.querySelector('#todoPanel [data-act="todosort"]'))]);
+    await own.click('#todoTabs [data-tab="pending"]'); await own.waitForTimeout(200);
+    t.push(['a tap on "Pending Payments" hides them; the others stay', JSON.stringify(await panes()) === '[false,true,true]']);
     await own.evaluate(() => document.querySelector('#todoPanel').scrollIntoView());
     await own.screenshot({ path: shot('12-todo') });
-    await own.click('#todoSort [data-sort="name"]'); await own.waitForTimeout(150);
-    t.push(['sorting by name, like the sales log ("Name ↑")', /Name ↑/.test(await own.evaluate(() => document.querySelector('#todoSort').innerText))]);
-    await own.click('#todoTabs [data-tab="counts"]'); await own.waitForTimeout(200);
+    // The report: kind by kind, only the kinds ticked (to begin with, what is shown).
+    await own.click('#todoRep [data-act="todoreport"]'); await own.waitForTimeout(300);
+    const rp = async () => own.evaluate(() => ({ text: document.querySelector('#repText').value,
+      ticks: [...document.querySelectorAll('#modal [data-rp]')].map(c => c.dataset.rp + ':' + c.checked) }));
+    let r1 = await rp();
+    t.push(['📋 To Do report: a tick per kind — pending off (hidden), pre-orders and counts on',
+      r1.ticks.join() === 'pending:false,preorders:true,prepeople:true,counts:true']);
+    t.push(['…the text goes kind by kind: pre-orders, then the count, no pending payments',
+      /PRE-ORDERS PENDING[\s\S]*WHO IS WAITING[\s\S]*Bhakti[\s\S]*COUNTS TO LOOK INTO[\s\S]*Park Stall/.test(r1.text) && !/PAYMENTS PENDING\*/.test(r1.text.replace(/PRE-ORDERS PENDING/g, ''))]);
+    await own.click('#modal [data-rp="preorders"]'); await own.click('#modal [data-rp="prepeople"]'); await own.click('#modal [data-rp="counts"]');
+    await own.click('#modal [data-rp="pending"]'); await own.waitForTimeout(150);
+    r1 = await rp();
+    t.push(['…untick all but Pending Payments: a report of pending payments only', /PAYMENTS PENDING/.test(r1.text) && /Western/.test(r1.text) && !/PRE-ORDERS|COUNTS/.test(r1.text)]);
+    await own.evaluate(() => closeModal());
+    await own.click('#todoTabs [data-tab="pending"]'); await own.waitForTimeout(150);
     const cnt = await own.evaluate(() => (document.querySelector('#countPanel') || {}).innerText || '');
     t.push(['the region shows the count to look into: expected 10, counted 8', /Park Stall[\s\S]*expected\s*10[\s\S]*counted\s*8/i.test(cnt)]);
     await own.evaluate(() => document.querySelector('#countPanel').scrollIntoView());
@@ -265,7 +278,7 @@ const API = 'http://api.test/';
     t.push(['accepted: the stock is now 8, with the owner\'s name', inv && Number(inv.qty) === 8 &&
       after.mismatches[0].status === 'accepted' && after.mismatches[0].answeredBy === 'The Owner']);
     await refresh(own);
-    t.push(['…and its tab is gone (nothing open)', await own.evaluate(() => !document.querySelector('#todoTabs [data-tab="counts"]') && document.querySelector('#countPanel').style.display === 'none')]);
+    t.push(['…and its filter is gone (nothing open)', await own.evaluate(() => !document.querySelector('#todoTabs [data-tab="counts"]') && document.querySelector('#countPanel').style.display === 'none')]);
     // Prices: the shelf shows the local one; the sell window shows them all.
     await own.evaluate(() => goTo('event', 'ev_yoga')); await own.waitForTimeout(400);
     const price = await own.evaluate(() => document.querySelector('#invGrid .book .price').innerText.trim());
@@ -374,7 +387,9 @@ const API = 'http://api.test/';
     await pr.mouse.move(900, 600); await pr.waitForTimeout(300);
     t.push(['"Keep the menu open" keeps it beside the page (the page moves over)', (await sn()).width > 250 && await pr.evaluate(() => parseInt(getComputedStyle(document.body).paddingLeft) > 250)]);
     await pr.screenshot({ path: shot('14-sidenav-pinned') });
-    await pr.click('#sideNav [data-act="snpin"]'); await pr.waitForTimeout(250);
+    await pr.reload(); await pr.waitForTimeout(2500);
+    t.push(['b235: after a reload the menu starts closed, even if it was kept open', (await sn()).width < 70
+      && await pr.evaluate(() => parseInt(getComputedStyle(document.body).paddingLeft) < 70)]);
     // Profile and Permissions.
     await pr.hover('#sideNav'); await pr.waitForTimeout(300);
     await pr.click('#sideNav .sn-item[data-act="whoami"]'); await pr.waitForTimeout(300);
@@ -405,7 +420,14 @@ const API = 'http://api.test/';
     t.push(['the build number and status light: Universal sees them', await live.evaluate(() => document.querySelector('#bld').offsetHeight > 0)]);
     const sel = await open('tulasi@example.com', 'Tulasi');
     t.push(['…a Seller does not', await sel.evaluate(() => document.querySelector('#bld').offsetHeight === 0 && document.querySelector('.util-bar .status').offsetHeight === 0)]);
-    t.push(['the live app keeps App Admin as it is (no left-hand menu)', await live.evaluate(() => !document.querySelector('#sideNav') && document.querySelector('#adminPanel').offsetHeight > 0)]);
+    const liveMenu = await open('owner@example.com', 'The Owner', 1150, '?menu');
+    t.push(['b235: the live app has the left-hand menu too, and no App Admin panel', await liveMenu.evaluate(() =>
+      !!document.querySelector('#sideNav') && document.querySelector('#adminPanel').offsetHeight === 0 && !document.querySelector('#practiceBar'))]);
+    await liveMenu.hover('#sideNav'); await liveMenu.waitForTimeout(350);
+    const look = await liveMenu.evaluate(() => { const h = document.querySelector('#sideNav .sn-gh'), it = document.querySelector('#sideNav .sn-items .sn-item');
+      return { hw: getComputedStyle(h).fontWeight, ic: getComputedStyle(it).color, hx: h.querySelector('.sn-t').getBoundingClientRect().left, ix: it.querySelector('.sn-t').getBoundingClientRect().left }; });
+    t.push(['…headings not bold; sub-items dark grey and indented under them', Number(look.hw) < 600 && look.ic === 'rgb(74, 74, 74)' && look.ix >= look.hx + 8]);
+    await liveMenu.screenshot({ path: shot('17-live-menu') });
     const prPhone = await open('owner@example.com', 'The Owner', 390, '?practice');
     t.push(['practice on a phone: no column, a round ☰ at the bottom left', await prPhone.evaluate(() =>
       document.querySelector('#sideNav').getBoundingClientRect().right <= 0 && document.querySelector('#snFab').offsetHeight > 40)]);
@@ -414,7 +436,7 @@ const API = 'http://api.test/';
       document.querySelector('#sideNav').getBoundingClientRect().left >= 0 && document.documentElement.scrollWidth <= innerWidth)]);
     await prPhone.screenshot({ path: shot('15-sidenav-phone') });
     t.push(['the live app shows no banner, and offers "🧪 Practice Space"', await live.evaluate(() => !document.querySelector('#practiceBar')
-      && [...document.querySelectorAll('#adminActions a')].some(a => /Practice Space/.test(a.textContent) && /practice/.test(a.getAttribute('href'))))]);
+      && [...document.querySelectorAll('#adminActions a, #sideNav a')].some(a => /Practice/.test(a.textContent) && /practice/.test(a.getAttribute('href'))))]);
 
     /* ---- Phone ---- */
     const phone = await open('sita@example.com', 'Sita', 390);

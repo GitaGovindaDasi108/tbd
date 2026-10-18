@@ -79,7 +79,7 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     if (url.startsWith('http://127.0.0.1:8790/')) {
       const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
       if (rel === 'config.js') return route.fulfill({ status: 200, contentType: 'text/javascript',
-        body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600 };` });
+        body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, CLASSIC_ADMIN: true };` });
       const f = path.join(ROOT, rel);
       if (fs.existsSync(f) && fs.statSync(f).isFile())
         return route.fulfill({ status: 200, body: fs.readFileSync(f),
@@ -130,7 +130,7 @@ const API = 'http://127.0.0.1:' + PORT + '/';
       if (url.startsWith('http://127.0.0.1:8790/')) {
         const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
         if (rel === 'config.js') return r.fulfill({ status: 200, contentType: 'text/javascript',
-          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600 };` });
+          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, CLASSIC_ADMIN: true };` });
         const f = path.join(ROOT, rel);
         if (fs.existsSync(f) && fs.statSync(f).isFile()) return r.fulfill({ status: 200, body: fs.readFileSync(f),
           contentType: f.endsWith('.html') ? 'text/html' : f.endsWith('.js') ? 'text/javascript' : undefined });

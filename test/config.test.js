@@ -5,5 +5,7 @@ window.TBS_CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/TEST/exec',
   PRABHUPADA_IMG: 'Srila_Prabhupada.jpeg',
   GURUDEVA_IMG:   'Gurudeva.jpeg',
-  AUTO_REFRESH_SECONDS: 15
+  AUTO_REFRESH_SECONDS: 15,
+  // These tests drive the old App Admin panel; browser-sellers.js covers the left-hand menu (b235).
+  CLASSIC_ADMIN: true
 };

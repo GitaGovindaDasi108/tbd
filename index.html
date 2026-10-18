@@ -1052,6 +1052,9 @@ body.busy #busyBar{opacity:1}
 .todo-n{background:#E0372F;color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;min-width:18px;height:18px;
   display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .todo-tab.on .todo-n{box-shadow:0 0 0 2px #fff}
+.todo-tab:not(.on){opacity:.7}
+.todo-show{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);align-self:center;margin-right:2px}
+.todo-h{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--tc);margin:10px 0 4px}
 .tt-pending{--tc:#C0392B} .tt-pre{--tc:#2F6FB5} .tt-change{--tc:#B7841C} .tt-counts{--tc:#7A4FA0}
 .todo-pane .log-item{border-left:4px solid var(--tc)}
 .tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
@@ -1091,21 +1094,24 @@ body.sn-open .sn-t, body.sn-open .sn-chev, body.sn-open .sn-count, body.sn-open 
 .sn-title{font-family:'Marcellus',serif;font-size:17px;font-weight:400}
 .sn-gh,.sn-item{display:flex;align-items:center;width:100%;border:0;background:none;cursor:pointer;font:inherit;text-align:left;
   color:var(--ink);text-decoration:none;min-height:38px;padding:0 10px 0 0;border-radius:0}
-.sn-gh{font-size:13px;font-weight:700;color:var(--plum)}
+.sn-gh{font-size:13.5px;font-weight:400;color:var(--plum)}
 .sn-gh:hover,.sn-item:hover{background:var(--paper2)}
 .sn-gh:hover .sn-ic,.sn-item:hover .sn-ic{color:var(--saffron-d)}
 .sn-chev{margin-left:auto;color:var(--muted);font-size:11px;opacity:0}
 .sn-items{display:none}
 body.sn-open .sn-group:not(.shut) .sn-items{display:block}
-.sn-items .sn-item{font-size:13px;font-weight:500;min-height:32px}
+/* Sub-items sit indented under their heading, in dark grey, so they read as a sub-menu (b235). */
+.sn-items .sn-item{font-size:13px;font-weight:400;min-height:32px;color:#4A4A4A}
 .sn-items .sn-item .sn-ic{font-size:13px;opacity:.75}
-body.sn-open .sn-items .sn-item{padding-left:0}
+.sn-items .sn-item .sn-ic{flex-basis:30px;width:30px}
+.sn-items{border-left:1px solid var(--line-d);margin-left:27px}
+.sn-items .sn-item{padding-left:6px}
 .sn-items .sn-item .sn-t{padding-left:2px}
 .sn-count,.side-nav .req-badge{margin-left:auto;opacity:0;font-size:10.5px;font-weight:800;background:var(--paper2);border:1px solid var(--line-d);
   border-radius:999px;padding:1px 7px;color:var(--muted)}
 .side-nav .req-badge{background:#E0372F;color:#fff;border:0}
 .sn-solo{border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
-.sn-solo .sn-item{font-weight:700;color:var(--plum)}
+.sn-solo .sn-item{font-weight:400;color:var(--plum)}
 .sn-pinbtn{color:var(--muted);font-size:12.5px}
 .sn-scrim{position:fixed;inset:0;background:rgba(60,40,20,.18);z-index:59;display:none}
 .sn-fab{display:none}
@@ -1542,7 +1548,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b234</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b235</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4371,10 +4377,14 @@ function drawAdmin(fams){
    and actions as the App Admin panel, in the owner's order (b234):
    Books · Money · <Level> Admin · Advanced · App Development · Settings ·
    Support, and Sign Out at the foot. The Activity Log moves to the top bar. */
-const SIDE_NAV = PRACTICE;
+/* Live for everyone since b235. CONFIG.CLASSIC_ADMIN brings back the old
+   four-column panel — only the older browser tests use it, as they drive it. */
+const SIDE_NAV = !CONFIG.CLASSIC_ADMIN;
+/* The menu always starts closed, on phones and computers (b235): "Keep the
+   menu open" lasts until the page is left. Which sections are folded is kept. */
 let SN = { open:false, pinned:false, closed:{} };
-try{ Object.assign(SN, JSON.parse(localStorage.getItem('tbs_sidenav')||'{}'), {open:false}); }catch(e){}
-function snSave(){ try{ localStorage.setItem('tbs_sidenav', JSON.stringify({pinned:SN.pinned, closed:SN.closed})); }catch(e){} }
+try{ const v = JSON.parse(localStorage.getItem('tbs_sidenav')||'{}'); if(v && v.closed) SN.closed = v.closed; }catch(e){}
+function snSave(){ try{ localStorage.setItem('tbs_sidenav', JSON.stringify({closed:SN.closed})); }catch(e){} }
 function snLevelLabel(){
   if(isHQ()) return 'Earthly HQ Admin';
   return ({season:'Season', region:'Region', event:'Event'})[CUR_LEVEL] + ' Admin';
@@ -5799,52 +5809,84 @@ function renderBottom(){
   renderSellers();
 }
 
-/* ---- To do (b232) ----
-   One panel for what is waiting to be done, a tab each, coloured so each kind
-   reads apart at a glance, with a red count on every tab: payments still
-   owed, pre-orders still to deliver, change we still owe, closing counts to
-   look into. Tabs with nothing in them are left out; the chosen tab and sort
-   are kept on this device. Sorting works like the sales log's. */
+/* ---- To do (b232; filters and its own report since b235) ----
+   One panel for what is waiting to be done: payments still owed, pre-orders
+   still to deliver, change we still owe, closing counts to look into. Each
+   kind has its colour and a red count, and is a filter: tap to show or hide
+   it (all shown to begin with; kept on this device). What is shown is listed
+   by kind, newest first. 📋 makes a report of it, kind by kind, with a tick
+   for each kind to include. */
 const TODO_TABS = [
-  {key:'pending', label:'Pending Payments', rep:[['pending','📋']]},
-  {key:'pre',     label:'Pre-Orders',       rep:[['preorders','📋 Count'],['prepeople','📋 Details']]},
-  {key:'change',  label:'Change We Owe',    rep:[['change','📋']]},
-  {key:'counts',  label:'Counts to Look Into', rep:[]}
+  {key:'pending', label:'Pending Payments',    title:'PAYMENTS PENDING'},
+  {key:'pre',     label:'Pre-Orders',          title:'PRE-ORDERS PENDING'},
+  {key:'change',  label:'Change We Owe',       title:'CHANGE WE OWE'},
+  {key:'counts',  label:'Counts to Look Into', title:'COUNTS TO LOOK INTO'}
 ];
-let TODO = { tab:'', sort:'time', dir:-1 };
-try{ Object.assign(TODO, JSON.parse(localStorage.getItem('tbs_todo')||'{}')); }catch(e){}
-function todoSave(){ try{ localStorage.setItem('tbs_todo', JSON.stringify(TODO)); }catch(e){} }
-function todoSorted(list, tab){
-  const t = x => new Date(x.ts).getTime() || 0;
-  const name = x => String(x.name || x.by || (bookById(x.bookId)||{}).name || '').toLowerCase();
-  const amt = x => tab==='pending' ? dueUSD(x) : tab==='change' ? toUSDAt(changeOwed(x), changeCur(x), x.location)
-    : tab==='counts' ? Math.abs((x.counted||0)-(x.expected||0)) : (x._preCount || 1);
-  const by = TODO.sort==='name' ? (a,b)=>name(a)<name(b)?-1:name(a)>name(b)?1:0
-    : TODO.sort==='amount' ? (a,b)=>amt(a)-amt(b) : (a,b)=>t(a)-t(b);
-  return list.slice().sort((a,b)=>by(a,b)*TODO.dir);
-}
+let TODO = { off:{}, rep:null };
+try{ const v = JSON.parse(localStorage.getItem('tbs_todo')||'{}'); if(v && v.off) TODO.off = v.off; if(v && Array.isArray(v.rep)) TODO.rep = v.rep; }catch(e){}
+function todoSave(){ try{ localStorage.setItem('tbs_todo', JSON.stringify({off:TODO.off, rep:TODO.rep})); }catch(e){} }
+const newestFirst = list => list.slice().sort((a,b)=>(new Date(b.ts).getTime()||0)-(new Date(a.ts).getTime()||0));
+let TODO_LISTS = null;
 function renderTodo(lists){
   const panel = $('#todoPanel'); if(!panel) return 0;
   const counts = plainSeller() ? [] : mismatchesHere().filter(m=>m.status==='open');
-  const all = {pending:lists.pending, pre:lists.pre, change:lists.change, counts};
+  const all = TODO_LISTS = {pending:lists.pending, pre:lists.pre, change:lists.change, counts};
   const live = TODO_TABS.filter(x=>all[x.key].length);
   panel.style.display = live.length ? '' : 'none';
   if(!live.length) return 0;
-  if(!live.some(x=>x.key===TODO.tab)) TODO.tab = live[0].key;
-  const on = TODO.tab;
-  $('#todoTabs').innerHTML = live.map(x=>`<button type="button" class="todo-tab tt-${x.key}${x.key===on?' on':''}" role="tab"
-      aria-selected="${x.key===on}" data-act="todotab" data-tab="${x.key}">${esc(x.label)} <span class="todo-n">${all[x.key].length}</span></button>`).join('');
-  const sorts = [['time','Date'],['name', on==='counts'?'Title':'Name'],['amount', on==='pre'?'Books':on==='counts'?'Difference':'Amount']];
-  $('#todoSort').innerHTML = 'Sort ' + sorts.map(([k,l])=>`<button class="sort-btn${TODO.sort===k?' on':''}" data-act="todosort" data-sort="${k}">${l}${
-    TODO.sort===k ? (TODO.dir<0?' ↓':' ↑') : ''}</button>`).join('');
-  const tab = TODO_TABS.find(x=>x.key===on);
-  $('#todoRep').innerHTML = tab.rep.map(([part,l])=>`<button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="${part}" title="Copy for WhatsApp">${l}</button>`).join(' ');
-  document.querySelectorAll('#todoPanel .todo-pane').forEach(p=>{ p.style.display = p.dataset.tab===on ? '' : 'none'; });
-  if(on==='pending') $('#pendingList').innerHTML = todoSorted(lists.pending,'pending').map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
-  if(on==='pre') $('#preList').innerHTML = todoSorted(lists.pre,'pre').map(x=>logItemHTML(x,{context:'pre'})).join('');
-  if(on==='change') $('#changeList').innerHTML = todoSorted(lists.change,'change').map(x=>logItemHTML(x,{context:'change'})).join('');
-  if(on==='counts'){ renderMismatches(todoSorted(counts,'counts')); $('#countPanel').style.display = ''; }
+  $('#todoTabs').innerHTML = '<span class="todo-show">Show</span>' + live.map(x=>`<button type="button" class="todo-tab tt-${x.key}${TODO.off[x.key]?'':' on'}"
+      aria-pressed="${!TODO.off[x.key]}" data-act="todofilter" data-tab="${x.key}">${esc(x.label)} <span class="todo-n">${all[x.key].length}</span></button>`).join('');
+  $('#todoSort').innerHTML = '';
+  $('#todoRep').innerHTML = `<button class="btn btn-gold btn-sm sec-rep" data-act="todoreport" title="Copy for WhatsApp">📋</button>`;
+  const shown = live.filter(x=>!TODO.off[x.key]);
+  const heads = shown.length > 1;
+  document.querySelectorAll('#todoPanel .todo-pane').forEach(p=>{
+    const on = shown.some(x=>x.key===p.dataset.tab);
+    p.style.display = on ? '' : 'none';
+    let h = p.querySelector('.todo-h');
+    if(on && heads){ if(!h){ h = document.createElement('div'); h.className = 'todo-h'; p.insertBefore(h, p.firstChild); }
+      h.textContent = TODO_TABS.find(x=>x.key===p.dataset.tab).label; }
+    else if(h) h.remove();
+  });
+  const on = k => shown.some(x=>x.key===k);
+  if(on('pending')) $('#pendingList').innerHTML = newestFirst(lists.pending).map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
+  if(on('pre')) $('#preList').innerHTML = newestFirst(lists.pre).map(x=>logItemHTML(x,{context:'pre'})).join('');
+  if(on('change')) $('#changeList').innerHTML = newestFirst(lists.change).map(x=>logItemHTML(x,{context:'change'})).join('');
+  if(on('counts')) renderMismatches(newestFirst(counts));
+  if(!shown.length) $('#todoSort').innerHTML = '<span class="muted-note">Everything is hidden — tap a kind above to show it.</span>';
   return 1;
+}
+/* The To do report: kind by kind, in the panel's order, only the kinds ticked.
+   Pre-orders can go as the counts per title, the people waiting, or both. */
+function todoReport(){
+  const all = TODO_LISTS || {};
+  const has = k => (all[k]||[]).length;
+  const offered = [];
+  if(has('pending')) offered.push(['pending','Pending payments']);
+  if(has('pre')){ offered.push(['preorders','Pre-orders — counts']); offered.push(['prepeople','Pre-orders — who is waiting']); }
+  if(has('change')) offered.push(['change','Change we owe']);
+  if(has('counts')) offered.push(['counts','Counts to look into']);
+  if(!offered.length){ toast('Nothing waiting here.'); return; }
+  const keys = offered.map(x=>x[0]);
+  // Ticked: what was ticked last time, or else what the panel is showing now.
+  const shownNow = k => !TODO.off[k==='preorders'||k==='prepeople' ? 'pre' : k];
+  const picks = new Set((TODO.rep && TODO.rep.some(k=>keys.includes(k))) ? TODO.rep.filter(k=>keys.includes(k)) : keys.filter(shownNow));
+  const TITLE = {pending:'PAYMENTS PENDING', preorders:'PRE-ORDERS PENDING', prepeople:'PRE-ORDERS — WHO IS WAITING',
+    change:'CHANGE WE OWE', counts:'COUNTS TO LOOK INTO'};
+  const make = () => {
+    const out = [];
+    keys.filter(k=>picks.has(k)).forEach(k=>{
+      const body = k==='counts'
+        ? newestFirst(all.counts).map(m=>`${locName(m.location)} · ${(bookById(m.bookId)||{}).name||m.bookId}: expected ${m.expected}, counted ${m.counted} (${m.counted>m.expected?'+':''}${m.counted-m.expected})`).join('\n')
+        : buildReport(k);
+      if(body) out.push('*' + TITLE[k] + '*', body, '');
+    });
+    if(!out.length) return '';
+    const where = CUR_LEVEL==='season' ? (STATE.seasonName||'Season')
+      : [ (currentRegion()||{}).name, CUR_LEVEL==='event' ? locName(CUR_LOC) : '' ].filter(Boolean).join(' — ');
+    return ('*' + where + ' — To Do*\n\n' + out.join('\n')).replace(/\n{3,}/g,'\n\n').trim();
+  };
+  reportDialog({ title:'To Do report', picks, offered, make, save: p=>{ TODO.rep = [...p]; todoSave(); } });
 }
 
 /* ---- Sellers, their sales and their cash (b223) ----
@@ -8689,7 +8731,17 @@ function saveReportPicks(set){ try{ localStorage.setItem(REP_PICK_KEY, JSON.stri
 function shareReport(part){
   const full = !part;
   const picks = full ? reportPicks() : null;
-  const make = () => buildReport(part, full ? {sections:picks} : null);
+  // Money sections are left off the list where money is not shown at all.
+  const offered = REPORT_SECTIONS.filter(([k])=>!(k==='cash' && hideMoney()))
+    .map(([k,t])=>[k, t.charAt(0)+t.slice(1).toLowerCase()]);
+  reportDialog({ title: full ? 'Full report' : 'Report', picks, offered: full ? offered : null,
+    make: () => buildReport(part, full ? {sections:picks} : null), save: saveReportPicks });
+}
+/* The report window: the text, with a tick per section when there is a choice
+   (ticking rewrites it at once), Copy and Send. Used by the full report and the
+   To do report (b235). */
+function reportDialog({title, picks, offered, make, save}){
+  const full = !!offered;
   let text;
   try{
     text = make();
@@ -8698,15 +8750,13 @@ function shareReport(part){
     return;
   }
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
-  // Money sections are left off the list where money is not shown at all.
-  const offered = REPORT_SECTIONS.filter(([k])=>!(k==='cash' && hideMoney()));
   const chooser = full ? `
       <div class="rep-picks">${offered.map(([k,t])=>`
         <label class="rep-pick"><input type="checkbox" data-rp="${k}" ${picks.has(k)?'checked':''}>
-          <span>${esc(t.charAt(0)+t.slice(1).toLowerCase())}</span></label>`).join('')}
+          <span>${esc(t)}</span></label>`).join('')}
       </div>` : '';
   openModal(`
-    ${mHead(full ? 'Full report' : 'Report')}
+    ${mHead(title)}
     <div class="m-body">
       ${full ? '<div class="hint">select reports you\'d like to send</div>' : ''}
       ${chooser}
@@ -8724,7 +8774,7 @@ function shareReport(part){
   // Ticking a section rewrites the report straight away, and is remembered.
   if(full) document.querySelectorAll('#modal [data-rp]').forEach(cb=>cb.onchange=()=>{
     cb.checked ? picks.add(cb.dataset.rp) : picks.delete(cb.dataset.rp);
-    saveReportPicks(picks);
+    if(save) save(picks);
     try{ box.value = make() || '(nothing chosen)'; }catch(err){ box.value = 'Could not build the report — ' + err.message; }
   });
   /* What is copied is what you are looking at.
@@ -13808,12 +13858,8 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='permissions'){ permissionsModal(); return; }
-  if(a==='todotab'){ TODO.tab = t.dataset.tab; todoSave(); renderBottom(); return; }
-  if(a==='todosort'){
-    const k = t.dataset.sort;
-    if(TODO.sort===k) TODO.dir *= -1; else { TODO.sort = k; TODO.dir = k==='time' ? -1 : 1; }
-    todoSave(); renderBottom(); return;
-  }
+  if(a==='todofilter'){ const k = t.dataset.tab; if(TODO.off[k]) delete TODO.off[k]; else TODO.off[k] = 1; todoSave(); renderBottom(); return; }
+  if(a==='todoreport'){ todoReport(); return; }
   if(a==='practicereset'){ practiceReset(); return; }
   if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
