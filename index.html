@@ -514,7 +514,7 @@ body.busy #busyBar{opacity:1}
 .cash-cell.change-out{color:var(--clay);font-weight:800;text-decoration:underline dashed 1px;text-underline-offset:3px}
 .cash-cell.change-out.has-change{color:var(--plum);text-decoration-color:var(--clay)}
 .cash-logamt.with-change{color:var(--plum)}
-/* Expenses, Finance To do, Reimbursement Settings (b237). */
+/* Expenses, Finance To do, Reimbursement Settings (b238). */
 .exp-form{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--paper2);margin:6px 0 14px}
 .exp-kind{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
 .exp-k{display:flex;flex-direction:column;gap:2px;border:1.5px solid var(--line);border-radius:10px;padding:9px 10px;cursor:pointer;background:#fff}
@@ -1187,7 +1187,7 @@ body.has-sn{padding-left:56px}
   .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:1px solid var(--line-d);
     background:var(--cream);color:var(--plum);font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(60,40,20,.22);cursor:pointer}
 }
-/* Finance section and View as (b237, practice) */
+/* Finance section and View as (b238, practice) */
 #modal.fin-wide{max-width:1180px;width:100%}
 @media (min-width:700px){ #modal.fin-wide{max-width:min(1180px,calc(100vw - 150px))} }
 .fin-filters{display:flex;flex-wrap:wrap;gap:8px 12px;margin:8px 0}
@@ -1637,7 +1637,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b237</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b238</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1849,7 +1849,7 @@ const CONFIG = Object.assign({
    — the saved state, the queue of unsent saves, the sign-in — is kept apart
    under "practice:", so practice and live can never mix. */
 const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
-/* View as (b237): Universal sees the practice app as someone else would, kept
+/* View as (b238): Universal sees the practice app as someone else would, kept
    for this tab only. The server answers as them (core.js viewAs). */
 const VIEW_AS = {
   get(){ if(!PRACTICE) return null; try{ return JSON.parse(sessionStorage.getItem('tbs_viewas')||'null'); }catch(e){ return null; } },
@@ -3045,7 +3045,7 @@ function showNoAccess(me){
   if($('#noAccess')) return;
   const box = document.createElement('div');
   box.id = 'noAccess'; box.className = 'signin-wrap';
-  document.body.classList.add('has-na');     // its windows (expenses, b237) open above it
+  document.body.classList.add('has-na');     // its windows (expenses, b238) open above it
   const roles = (me && me.grants) || [];
   box.innerHTML = `<div class="signin">
       <h2>Not quite yet</h2>
@@ -3908,25 +3908,38 @@ function addTooltipsToClipped(){
   });
 }
 
-/* If the Google side is running a different version from this page, new
-   features fail with "Unknown action" — which is what a missed Apps Script
-   deploy looks like. Say so plainly, with what to do. */
+/* The server and the page have their own build numbers (b237). A build that
+   changes only the page leaves the server where it is, so the two often
+   differ, and that is fine. Only two cases are worth a word:
+   - the server is older than this page needs (NEEDS_SERVER): new features
+     would be refused. The server deploys itself a minute or two after a merge
+     that changes Code.gs or server/ (.github/workflows/deploy-server.yml), so
+     this is usually a moment's wait;
+   - the server is newer than this page: the browser is showing an old copy of
+     the page, and a refresh fixes it.
+   Bump NEEDS_SERVER only when the page starts relying on new server code. */
+const NEEDS_SERVER = 'b238';
 /* The server's version as it answered this session. Never taken from the copy
    saved on the device, which can be older than the server now is. */
 let LIVE_BUILD = '';
+function buildNo(b){ const m = /b(\d+)/.exec(b || ''); return m ? +m[1] : 0; }
 function checkServerBuild(){
   let bar = document.getElementById('buildWarn');
   const page = ($('#bld')||{}).textContent || '';
   const server = LIVE_BUILD;
-  const off = isAdmin() && server && page && server!==page;
-  if(!off){ if(bar) bar.remove(); return; }
+  const s = buildNo(server), p = buildNo(page);
+  const behind = s && s < buildNo(NEEDS_SERVER), stalePage = s && p && s > p;
+  if(!isAdmin() || !(behind || stalePage)){ if(bar) bar.remove(); return; }
   if(!bar){
     bar = document.createElement('div'); bar.id = 'buildWarn'; bar.className = 'build-warn no-edit';
     const main = document.querySelector('main'); main.insertBefore(bar, main.firstChild);
   }
-  bar.innerHTML = `<b>The Google Sheets side is running ${esc(server)}, but this page is ${esc(page)}.</b>
-    Some changes will be refused until it is updated: in Apps Script, paste the latest Code.gs, Save, then
-    <b>Deploy → Manage deployments → ✏️ → Version: New version → Deploy</b>.`;
+  bar.innerHTML = behind
+    ? `<b>The server is still on ${esc(server)}; this page needs ${esc(NEEDS_SERVER)}.</b>
+       It updates itself a minute or two after a merge, so refresh the page in a moment. If this stays,
+       the server's deploy did not run: look at the Actions tab of the repository on GitHub.`
+    : `<b>A newer version of the app is out (${esc(server)}; this page is ${esc(page)}).</b>
+       <button type="button" class="btn btn-sm" onclick="location.reload()">Refresh to get it</button>`;
 }
 
 /* Cards or a compact list, for every card view at once. Only the layout changes —
@@ -4434,7 +4447,7 @@ function renderAdmin(){
         `<button class="btn" data-act="org">👥 App and Sales Support</button>`,
         ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
         ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
-      // Expenses, for every link and role (b237); Finance's To do for a Finance person working in another role.
+      // Expenses, for every link and role (b238); Finance's To do for a Finance person working in another role.
       {key:'money', items: PRACTICE ? [`<button class="btn" data-act="expenses">🧾 Expenses</button>`].concat(FIN_BTNS(financeMe())) : []},
       {key:'books', items: coord ? [
         `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
@@ -4475,7 +4488,7 @@ function renderAdmin(){
     cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs</button>`);
     if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
   }
-  /* Expenses for everyone, one with Record Costs; Finance's own section (b237).
+  /* Expenses for everyone, one with Record Costs; Finance's own section (b238).
      The practice space only, for now: the owner tries it there first. */
   if(PRACTICE){
     cols[1] = cols[1].filter(b=>!/data-act="costs"/.test(b));
@@ -4641,7 +4654,7 @@ function renderSideNav(fams){
   // Things the menu has that the panel did not: Permissions (Universal) and Profile.
   if(isAdmin() && !byKey.permissions) byKey.permissions = `<button class="btn" data-act="permissions">🔐 Permissions</button>`;
   if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
-  // View as (b237): Universal, in the practice space.
+  // View as (b238): Universal, in the practice space.
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
   const sections = SN_SECTIONS.map(sec=>{
     const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
@@ -7987,7 +8000,7 @@ function costsModal(editId, presetPartner){
   });
 }
 
-/* ---- Expenses (b237): what people spent for the tour ----
+/* ---- Expenses (b238): what people spent for the tour ----
    Everyone records them: for the records, or to be paid back. Paying back asks
    how (cash, UPI, Zelle…) and in which currency, and then exactly what Finance
    needs to send it (a phone number for cash, the UPI ID for UPI…). Receipts
@@ -8489,7 +8502,7 @@ document.addEventListener('paste', e=>{
   e.preventDefault(); expRead(); files.forEach(expAddReceipt);
 });
 
-/* ---- The Finance section (b237, the practice space): figures, reports, comparisons ----
+/* ---- The Finance section (b238, the practice space): figures, reports, comparisons ----
    The server hands over every sale and every expense, in every season, as
    plain rows (Code.gs financeData_), already in dollars at each place's own
    rates; the page adds them up whichever way it is asked. Dollars, so seasons
@@ -8811,7 +8824,7 @@ function FIN_BTNS(fin){
   return b;
 }
 
-/* ---- View as (b237, the practice space): Universal sees the app as a person,
+/* ---- View as (b238, the practice space): Universal sees the app as a person,
    or as any role at any place, without signing in as them. The server answers
    every request as them while this tab is viewing (core.js viewAs). ---- */
 const VA = { D:null, q:'', role:'S', placeId:'' };
@@ -15178,11 +15191,11 @@ document.addEventListener('click',e=>{
       }, 'Change returned');
     cashReopen(); return;
   }
-  // In practice Record Costs is one with Expenses (b237).
+  // In practice Record Costs is one with Expenses (b238).
   if(PRACTICE && (a==='costs' || a==='concost' || a==='costedit')){
     expensesModal(a==='costedit' ? t.dataset.id : null, a==='concost' ? t.dataset.id : null); return; }
   if(a==='costs'){ costsModal(); return; }
-  // Expenses and Finance (b237).
+  // Expenses and Finance (b238).
   if(a==='expenses'){ expensesModal(); return; }
   if(a==='expnew'){ expensesModal(); return; }
   if(a==='expedit'){ expensesModal(t.dataset.id); return; }

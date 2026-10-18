@@ -27,7 +27,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   const web = makeWebCache(kv, 6 * 3600 * 1000);
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
 
-  /* Expenses and their receipts (b237): kept and decided here, where the people are. */
+  /* Expenses and their receipts (b238): kept and decided here, where the people are. */
   const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv, practice: !!practice,
     // A cost kept for an expense is written by Code.gs's own saveCost/deleteCost, as the owner's app would.
     asOwner: (params, name) => {
@@ -37,7 +37,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       return r;
     } });
 
-  /* ---- View as (b237, the practice space only) ----
+  /* ---- View as (b238, the practice space only) ----
      Universal sees the app as someone else would: a person (with their own
      roles), or a role at a place nobody holds. The page sends "va"; for that
      one request the server answers as that person — or as a stand-in holding
@@ -151,7 +151,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       return reply({ ok: true, result: { caps: people.PERM_CAPS, roles: people.PERM_ROLES, names: Object.fromEntries(people.PERM_ROLES.map(r => [r, people.ROLES[r].name])),
         defaults: people.permDefaults(), table: parse('permTable', {}), people: parse('permPeople', {}), persons: Object.values(persons) } });
     }
-    /* Expenses (b237): anyone signed in, in any role (even one the rest of the
+    /* Expenses (b238): anyone signed in, in any role (even one the rest of the
        app cannot use yet), and any link. expenses.js decides who may do what. */
     if (expenses.isAction(action)) {
       try { return reply({ ok: true, result: expenses.handle(action, p, me, linkKey) }); }

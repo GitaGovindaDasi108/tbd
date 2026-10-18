@@ -1,5 +1,5 @@
-/* Expenses (b237): what people spent for the tour, kept for the records or
-   to be paid back, with their receipts. See TRACKER.md "Done in b237".
+/* Expenses (b238): what people spent for the tour, kept for the records or
+   to be paid back, with their receipts. See TRACKER.md "Done in b238".
 
    Everyone can record one: signed in in any role (Finance, Seasonal Lead and
    the assistants too, who cannot use the rest of the app until Stage 2), or on
@@ -15,7 +15,7 @@
    practice space never carry them. Each is split into parts well under the
    database's 2 MB limit for one value.
 
-   Record Costs and Expenses are one (b237, the owner's wish): an expense has
+   Record Costs and Expenses are one (b238, the owner's wish): an expense has
    the cost's kind (card fee, travel...), the payment type it was paid with,
    and may belong to a consignment group. Every expense at a region or event
    is also kept as a cost in `_costs`, under the same id, through Code.gs's own
@@ -304,7 +304,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     app.dbInsert_(T, add);
   }
 
-  /* ---- The finance section (b237): every sale and expense, as rows ----
+  /* ---- The finance section (b238): every sale and expense, as rows ----
      A season, region or event that repeats (Kartika every year, the Polish
      tour, the Chowpatty program) is one "series": its name without the year,
      unless Finance has named it otherwise (finSeries). */

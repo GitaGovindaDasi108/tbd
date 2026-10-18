@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b237**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b238**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -30,8 +30,11 @@ There is no framework, no bundler, no npm install. Edit the two files directly.
 3. Push `index.html` to the repo; hard-refresh the page.
 4. Run `initialize` in Apps Script after any change that adds a sheet or column.
 
-`SERVER_BUILD` in `Code.gs` and the build tag in `index.html` should match. The
-server reports its build in the state payload (not shown in the UI any more) —
+Since b237 the page and the server have their own build numbers. Bump
+`SERVER_BUILD` in `Code.gs` only when Code.gs or server/ changes (a merge that
+changes them deploys the server by itself, `.github/workflows/deploy-server.yml`).
+Bump `NEEDS_SERVER` in `index.html` only when the page starts relying on new
+server code. The server reports its build in the state payload (not shown in the UI any more) —
 useful when a bug refuses to go away.
 
 ---
@@ -906,11 +909,44 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
-## Done in b237 — Expenses, phase 1: recording, receipts, paying back, Finance's To do and settings
+## Done in b238 — Expenses and the Finance section, in the practice space first
 
-The start of "cradle to grave" cost tracking. Phase 2 (the finance section's
-figures and reports) and phase 3 (comparing repeating seasons, regions and
-events) are still to do.
+"Cradle to grave" cost tracking, all of it (spreadsheets apart), **only in the
+practice space** for now: the live server refuses every expense and finance
+action ("being tried in the practice space first", `handle` in expenses.js)
+and the live page shows none of it (`PRACTICE` gates the buttons). Going live
+is removing that gate once Gita is happy.
+
+- **Record Costs and Expenses are one form** (practice). Record Costs, its
+  ✏️ and the consignment group's cost button all open Expenses, which gains
+  Record Costs' *Kind of expense* (`COST_CATEGORIES`, now also Travel, Food,
+  Printing and shipping, Venue, Supplies), *Paid with* (the place's payment
+  types) and *Whose cost* (ours or a consignment group's). An expense at an
+  event or a region (not a season-wide one, not a declined one) is mirrored
+  into `_costs` (`syncCost`, through the owner's `saveCost`), so every net
+  total, the consignment balances and the reports take it off exactly as a
+  cost; declining or deleting it removes the cost. Costs recorded before are
+  taken in as expenses, "recorded by Record Costs" (`adopt`).
+- **📈 Finance section** (menu › Finance, Finance / Finance Assistant /
+  Universal; `financeModal`; data from Code.gs `financeData_` via `finData`,
+  all in dollars at each place's rates): *Overview* — tiles (books sold, gross
+  sales, collections, donations, pending payments, consignment, expenses, net,
+  margin, pending reimbursements) and the same at every level, season ›
+  region › event, with season/region/event and date filters. *Reports* — rows
+  by up to three of season, region, event (or their series), month, week, day,
+  title, language, kind of book, seller, payment type, sale/pre-order/donation,
+  ours or a group, kind of expense, person, expense status; any figures; the
+  same filters and a search; sort by any column; ⬇ CSV; kept on the device
+  (`tbs_finrep`). *Compare* — seasons, regions or events that repeat (matched
+  by name without the year, regroupable by Finance; setting `finSeries`) side
+  by side with ▲▼ change, all together and the average. Net = collections −
+  consignment − expenses; margin = net ÷ (collections − consignment); book
+  printing costs are not in the app.
+- **👁 View as** (App Development, practice, Universal only): a person from a
+  searchable list, or any role at any place. The server answers as them for
+  this tab only (`viewAs` in core.js; `va` on every request, `VIEW_AS` in
+  sessionStorage); a bar across the top says who, with Someone else and Stop
+  viewing.
 
 - **🧾 Expenses** (menu › Money, for everyone: Universal, every signed-in role,
   regional and sales links; `expensesModal`). Choose *For record-keeping* or
@@ -963,13 +999,30 @@ events) are still to do.
   `_expenses` (Code.gs's store, so they travel with the practice copy and
   the spreadsheet bridge; in `TABLE_KEYS_`). Code.gs is unchanged except
   `financeFacts_()` (read-only) and the build number.
-- **Not done yet**: expenses are not in any total, the Activity Log or the
-  spreadsheets (phase 2); Record Costs is unchanged and separate; there is no
-  emailing of receipts into the app; the Permissions window has no rows for
-  expenses yet.
-- Tests: `test/expenses.js` (47 checks, in run-all), `test/browser-expenses.js`
-  (34: a Seller's form, UPI ID, the receipt, Finance's page, To do, receipt
-  viewer, paying back, on behalf, settings, phone width, the owner's menu).
+- **Not done yet**: not live (practice only); not in the spreadsheets or the
+  Activity Log; no emailing of receipts into the app; the Permissions window
+  has no rows for expenses; no printing cost per title, so margins are after
+  expenses only.
+- Tests: `test/expenses.js` (71 checks, in run-all), `test/browser-expenses.js`
+  (55: the Seller's form, UPI ID, the receipt, Finance's page, To do, receipt
+  viewer, paying back, on behalf, settings, phone width, the merged form and
+  its cost, Finance overview/reports/CSV/compare, View as and stopping it).
+
+## Done in b237 — no false "update the Google code" warning
+
+- The warning compared the page's build with the server's and fired on any
+  difference. After b236 merged, a browser still showing the b235 page saw a
+  b236 server and was told to redeploy Apps Script, which was wrong twice over:
+  the server is on Cloudflare and deploys itself, and the fix was a refresh.
+- Now (`checkServerBuild`, `NEEDS_SERVER`, `buildNo`): the server older than
+  the page needs gives "the server is still on bX; this page needs bY",
+  usually a moment's wait after a merge, else look at the Actions tab. The
+  server newer than the page gives "A newer version of the app is out" with a
+  Refresh button. Any other difference says nothing.
+- Page-only builds no longer bump `SERVER_BUILD` (this one does not), so no
+  server deploy runs for them.
+- Test: `browser-round2.js` (older server, newer server, a page ahead of a
+  server that is new enough).
 
 ## Done in b236 — menu sections start folded; no counts on Costs and Consignment; To do scrolls; panels pack and end level
 

@@ -1,4 +1,4 @@
-/* Expenses (b237): recording, receipts, paying back, Finance's rules and To do.
+/* Expenses (b238): recording, receipts, paying back, Finance's rules and To do.
    The real server code (server/src/core.js) on Node's own SQLite, with a
    stand-in Google sign-in, as test/auth.js does. */
 const path = require('path');
@@ -27,7 +27,7 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
     if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80, PLN: 4, EUR: 0.9 }, time_last_update_utc: 'today' }) };
     throw new Error('offline');
   };
-  // The practice space (b237: expenses are tried there first). A live server alongside, which refuses them.
+  // The practice space (b238: expenses are tried there first). A live server alongside, which refuses them.
   const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com', practice: true });
   const liveDb = new DatabaseSync(':memory:');
   const live = makeServer({ exec: (sql, ...p) => { const st = liveDb.prepare(sql); return /^\s*select/i.test(sql) ? st.all(...p) : (st.run(...p), []); },

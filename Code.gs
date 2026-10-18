@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b237';
+var SERVER_BUILD = 'b238';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -279,7 +279,7 @@ function placesForAuth_() {
   return { seasons: seasons, regions: regions, events: events };
 }
 
-/* What the expenses need to know about the tour (b237, server/src/expenses.js):
+/* What the expenses need to know about the tour (b238, server/src/expenses.js):
    each region's currencies, every payment type the tour takes and the currency
    each arrives in, and every payment still owed, in every season — for the
    Finance To do. Read-only. */
@@ -318,7 +318,7 @@ function financeFacts_() {
            partners: partners, categories: COST_CATEGORIES.slice() };
 }
 
-/* The finance section's figures (b237): every sale and every expense, in every
+/* The finance section's figures (b238): every sale and every expense, in every
    season, as plain rows the page adds up any way it is asked — by season,
    region, event, title, language, seller, payment type, month... Dollars at
    each place's own rates (a closed season's frozen ones), dollars received
@@ -2335,7 +2335,7 @@ function suppliedKey_(v, prefix) {
    A card-machine fee, a bank charge — recorded against the place it belongs to
    so the totals can show what was actually kept. Kept out of the cash box on
    purpose: a card fee is taken by the processor, not from the till. */
-/* The kinds of cost (b237: also the kinds of expense, since the two are one in
+/* The kinds of cost (b238: also the kinds of expense, since the two are one in
    practice — Record Costs and Expenses merged). Other stays last. */
 var COST_CATEGORIES = ['Card machine fee', 'Bank fee', 'Travel', 'Food', 'Printing and shipping', 'Venue',
                        'Supplies', 'Other'];
@@ -3179,7 +3179,7 @@ var TABLE_KEYS_ = {
   _seasons: ['seasonId'], _prices: ['regionId', 'bookId', 'cur'], _events: ['eventId'],
   _inventory: ['location', 'bookId'], _sales: ['saleId'], _cash: ['id'], _org: ['id'],
   _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id'],
-  _expenses: ['id']          // b237: kept by the server (server/src/expenses.js), never written here
+  _expenses: ['id']          // b238: kept by the server (server/src/expenses.js), never written here
 };
 
 /* Rows read during this request, per table. Any write drops the lot, so a

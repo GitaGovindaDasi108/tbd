@@ -1,5 +1,5 @@
 /* Optional, needs Playwright + Chromium: node test/browser-expenses.js
-   b237: expenses in the real page, against the real server code
+   b238: expenses in the real page, against the real server code
    (server/src/core.js) in this process, with a stand-in Google sign-in.
    A Seller records one to be paid back by UPI, with a photo of the receipt;
    Finance (who cannot use the rest of the app yet) finds it in the Finance
