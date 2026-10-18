@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b236**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b237**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,71 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b237 — Expenses, phase 1: recording, receipts, paying back, Finance's To do and settings
+
+The start of "cradle to grave" cost tracking. Phase 2 (the finance section's
+figures and reports) and phase 3 (comparing repeating seasons, regions and
+events) are still to do.
+
+- **🧾 Expenses** (menu › Money, for everyone: Universal, every signed-in role,
+  regional and sales links; `expensesModal`). Choose *For record-keeping* or
+  *For reimbursement*; date (today), what for, amount and currency (the
+  region's own to start), receipts, notes, where (the place you are on, or a
+  choice of the places your roles reach). The name is logged automatically
+  (the display name; on a link, the name the phone was given).
+- **Receipts**: 📷 Take a photo (the phone's camera), 📎 Add photos or PDFs
+  (several), drag and drop, or paste a screenshot. Each is sent the moment it
+  is added; photos are shrunk on the phone first (long side 1800px, JPEG);
+  up to 8 MB a file, 10 per expense. Opened in a viewer with ⬇ Download.
+  **Kept on the Cloudflare server, in a table of their own (`receipt`, in
+  expenses.js), split into parts under the database's 2 MB limit.** Nothing
+  copies them: not the state, not the spreadsheet copies, not the practice
+  space. Receipts of an expense never saved are cleared after a day (the
+  hourly housekeeping).
+- **For reimbursement** adds *Pay me back by* and *Pay me back in*, then what
+  that way needs (`METHOD_FIELDS`, expenses.js): Cash → phone/WhatsApp; UPI →
+  UPI ID (+ name); Zelle → email or US phone + name; PayPal → email or phone;
+  Wise → email or Wisetag + name; Venmo → @username (+ last 4 digits); Cash
+  App → $Cashtag; Revolut → Revtag or phone (+ name); Bank transfer → holder,
+  IBAN/account, SWIFT/BIC (IFSC, sort code, routing), bank. Any other payment
+  type the tour has asks for its account details as text. The ways offered are
+  Cash, every payment type the tour takes anywhere (not Card, Gift or Other)
+  and Bank transfer. The currency to be paid in starts at the way's own
+  (UPI → INR, from Edit Payment Types). The details are remembered on the
+  device for next time (`tbs_payto`).
+- **Your expenses** under the form: status (Recorded / Waiting to be paid back
+  / Paid back / Declined), Edit and Delete until paid back.
+- **💼 Finance To do** (Finance, Finance Assistant, Universal;
+  `financeTodoModal`): *Reimbursements pending* (with how to pay each person,
+  totals by currency, ✓ Mark paid back with an optional reference, Decline
+  with a reason, Back to waiting), *Payments pending* across every season
+  (Code.gs `financeFacts_`: name, phone, book, what is owed, place, sold by),
+  and *Every expense*; one search box for all three.
+- **On someone's behalf** (Finance and Universal): "Whose expense?" is a
+  searchable list of everyone with a role; their name goes on it, Finance's
+  as who entered it, and it shows in their own list.
+- **⚙️ Reimbursement Settings** (Finance and Universal change; the Finance
+  Assistant sees): *By place* — everywhere, each season, region and event:
+  each way On, Off or "As above", and the currencies "As above" or only
+  chosen ones. *By person* — a person's own setting wins over every place.
+  No currencies set anywhere: the region's own. Kept in the setting
+  `reimbRules`. The server refuses a way or currency that is not offered.
+- **Finance, Seasonal Leads and assistants**, who still see "Not quite yet"
+  until Stage 2, now get Expenses (and Finance its To do and settings) on that
+  page; its windows open above it (`body.has-na`).
+- **Server**: `server/src/expenses.js` (core.js routes `exp*` and `receipt*`
+  actions there before the role check). Records in the app table
+  `_expenses` (Code.gs's store, so they travel with the practice copy and
+  the spreadsheet bridge; in `TABLE_KEYS_`). Code.gs is unchanged except
+  `financeFacts_()` (read-only) and the build number.
+- **Not done yet**: expenses are not in any total, the Activity Log or the
+  spreadsheets (phase 2); Record Costs is unchanged and separate; there is no
+  emailing of receipts into the app; the Permissions window has no rows for
+  expenses yet.
+- Tests: `test/expenses.js` (47 checks, in run-all), `test/browser-expenses.js`
+  (34: a Seller's form, UPI ID, the receipt, Finance's page, To do, receipt
+  viewer, paying back, on behalf, settings, phone width, the owner's menu).
 
 ## Done in b236 — menu sections start folded; no counts on Costs and Consignment; To do scrolls; panels pack and end level
 

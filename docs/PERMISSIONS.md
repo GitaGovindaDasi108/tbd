@@ -85,6 +85,9 @@ whatever any of their roles allows, each only within that role's reach.
 | Change owed and Pending Payments lists | own | ✓ | ✓ | view | ✓ | view | view | view | ✓ |
 | “$ Received”: the dollars that actually arrived | – | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Record a cost | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Record an expense (for the records or to be paid back), with receipts | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| See every expense and the Finance To do; record one for someone else | – | – | – | – | – | – | ✓ | ✓ | ✓ |
+| Pay back or decline an expense; Reimbursement Settings | – | – | – | – | – | – | ✓ | view | ✓ |
 | See cost totals and money after costs | – | – | – | – | – | – | ✓ | view | ✓ |
 | **Stock** | | | | | | | | | |
 | See stock in their region | – | view | view | view | view | view | view | view | view |
@@ -118,6 +121,9 @@ whatever any of their roles allows, each only within that role's reach.
 | Google spreadsheets | – | – | view | view | view | view | view | view | ✓ |
 
 Notes on the table:
+- **Expenses** (b237) are enforced by the server already (server/src/expenses.js),
+  ahead of Stage 2, and work for every role, including those that still see
+  "Not quite yet". Not yet rows in the 🔐 Permissions window.
 - **Deliver a pre-order** is for leads, not Sellers: a pre-order means there was
   no copy to give, so handing it over happens higher up.
 - **Set a count outright** is Universal only. A **closing count that does not

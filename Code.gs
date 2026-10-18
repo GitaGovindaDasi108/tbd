@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b236';
+var SERVER_BUILD = 'b237';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -277,6 +277,42 @@ function placesForAuth_() {
              closed: !!e.closedAt, key: String(e.key || '') };
   });
   return { seasons: seasons, regions: regions, events: events };
+}
+
+/* What the expenses need to know about the tour (b237, server/src/expenses.js):
+   each region's currencies, every payment type the tour takes and the currency
+   each arrives in, and every payment still owed, in every season — for the
+   Finance To do. Read-only. */
+function financeFacts_() {
+  var seasonName = {}, regs = {}, evs = {}, whOf = {}, types = {};
+  seasonsAll_().forEach(function (s) { seasonName[s.seasonId] = s.name; });
+  PAY_TYPES.forEach(function (t) { types[t] = 1; });
+  objectsOf_('_regions').forEach(function (r) {
+    if (!r || !r.regionId) return;
+    regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: String(r.seasonId || ''),
+      currencies: parseCurList_(r.currencies) };
+    if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+    parsePayList_(r.payTypes).forEach(function (t) { types[t] = 1; });
+  });
+  objectsOf_('_events').forEach(function (e) {
+    if (!e || !e.eventId) return;
+    evs[String(e.eventId)] = { id: String(e.eventId), name: String(e.name || ''), regionId: String(e.regionId || '') };
+    parsePayList_(e.payTypes).forEach(function (t) { types[t] = 1; });
+  });
+  var pending = [];
+  objectsOf_('_sales').forEach(function (s) {
+    if (!s || !s.saleId || isPaid_(s)) return;
+    var loc = String(s.location || ''), ev = evs[loc];
+    var reg = regs[ev ? ev.regionId : (whOf[loc] || '')];
+    if (!reg) return;                                // a place since deleted
+    var b = bookById_(String(s.bookId || ''));
+    pending.push({ saleId: String(s.saleId), ts: s.ts instanceof Date ? s.ts.toISOString() : String(s.ts || ''),
+      seasonId: reg.seasonId, season: seasonName[reg.seasonId] || '', regionId: reg.id, region: reg.name,
+      place: ev ? ev.name : reg.name + ' (Warehouse)', name: String(s.name || ''), phone: String(s.phone || ''),
+      book: b ? String(b.name || '') : String(s.type || ''), qty: Number(s.qty) || 1,
+      soldBy: String(s.soldBy || ''), owed: outstanding_(s) });
+  });
+  return { regions: regs, events: evs, payTypes: Object.keys(types), payTypeCur: payTypeCurrencies_(), pending: pending };
 }
 
 /* Every spreadsheet the app keeps, and whose it is (b226): for the server, which
@@ -3072,7 +3108,8 @@ var TABLE_KEYS_ = {
   _holders: ['holderId'], _shipments: ['shipId'], _regions: ['regionId'],
   _seasons: ['seasonId'], _prices: ['regionId', 'bookId', 'cur'], _events: ['eventId'],
   _inventory: ['location', 'bookId'], _sales: ['saleId'], _cash: ['id'], _org: ['id'],
-  _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id']
+  _stockmoves: ['id'], _activity: ['id'], _handovers: ['id'], _mismatches: ['id'],
+  _expenses: ['id']          // b237: kept by the server (server/src/expenses.js), never written here
 };
 
 /* Rows read during this request, per table. Any write drops the lot, so a

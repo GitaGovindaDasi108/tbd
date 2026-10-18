@@ -8,6 +8,7 @@ import { makeSqlStore } from './sqlstore.js';
 import { makeGoogle, makeWebCache } from './google.js';
 import { makeAuth } from './auth.js';
 import * as people from './people.js';
+import { makeExpenses } from './expenses.js';
 
 // Where the exchange rates come from (the first source Code.gs tries).
 export const RATES_URL = 'https://open.er-api.com/v6/latest/USD';
@@ -25,6 +26,9 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   const auth = makeAuth({ exec, clientId: googleClientId, adminEmails: owners, fetchImpl, certsUrl: googleCertsUrl });
   const web = makeWebCache(kv, 6 * 3600 * 1000);
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
+
+  /* Expenses and their receipts (b237): kept and decided here, where the people are. */
+  const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv });
 
   /* One request, as Apps Script hands it to doPost/doGet: a POST's body, or a
      GET's parameters. Returns the reply text. */
@@ -95,6 +99,12 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
         if (x.roles.indexOf(g.role) < 0) x.roles.push(g.role); });
       return reply({ ok: true, result: { caps: people.PERM_CAPS, roles: people.PERM_ROLES, names: Object.fromEntries(people.PERM_ROLES.map(r => [r, people.ROLES[r].name])),
         defaults: people.permDefaults(), table: parse('permTable', {}), people: parse('permPeople', {}), persons: Object.values(persons) } });
+    }
+    /* Expenses (b237): anyone signed in, in any role (even one the rest of the
+       app cannot use yet), and any link. expenses.js decides who may do what. */
+    if (expenses.isAction(action)) {
+      try { return reply({ ok: true, result: expenses.handle(action, p, me, linkKey) }); }
+      catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     // Who I am, my roles, and the People panel (b222).
     if (!linkKey && /^(me|setMyName|people(List|Add|Remove|Decline)|emergencyLink)$/.test(action)) {
@@ -458,6 +468,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     try { app.flushStockMoves_(); } catch (e) {}
     kv.sweepTemp();
     auth.sweep();
+    try { expenses.sweep(); } catch (e) { console.log('expenses.sweep: ' + e); }
   }
   /* The revision number: it changes on every save (Phase 4 sends it to the
      phones the moment it does). */
