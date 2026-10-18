@@ -31,8 +31,13 @@ export class TbsServer extends DurableObject {
       adminEmails: env.ADMIN_EMAILS || '',
       googleCertsUrl: env.GOOGLE_CERTS_URL || '',    // never set in production
       // Google's side, which still builds the spreadsheets (see core.js, the bridge).
-      reportUrl: env.REPORT_URL || '',
-      reportSecret: env.REPORT_SECRET || ''
+      // Never on the practice server: practice must not touch the real spreadsheets.
+      reportUrl: env.PRACTICE ? '' : (env.REPORT_URL || ''),
+      reportSecret: env.PRACTICE ? '' : (env.REPORT_SECRET || ''),
+      // The practice server (b231): a copy of the live records to try things on.
+      practice: !!env.PRACTICE, liveUrl: env.LIVE_URL || '', liveSecret: env.LIVE_SECRET || '',
+      // On the live server: the phrase that lets the practice server read a copy.
+      practiceSecret: env.PRACTICE ? '' : (env.PRACTICE_SECRET || '')
     });
   }
 

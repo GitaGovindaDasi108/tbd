@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b229**.
+Handover notes. Current build: **b233**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,100 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b233 — a left-hand menu for the admin buttons (mock-up, practice space only)
+
+- **Only in the practice space** (`SIDE_NAV = PRACTICE`), for the owner to try
+  before deciding. The live app keeps App Admin as it is.
+- The App Admin buttons are now built as families (`drawAdmin(fams)`: admin,
+  money, books, location; `ADMIN_FAMS` names, icons and colours) and drawn
+  either as the old four-column panel or, in practice, as a menu
+  (`renderSideNav`). Same buttons, same actions.
+- **Wide screens (900px and up)**: a narrow dark strip down the left (☰ and
+  one icon per family); a tap opens the menu at that family. 📌 keeps it open
+  beside the page (the page moves over); otherwise choosing an action, ✕, or
+  tapping outside folds it away. The place you are looking at comes first, with
+  its own actions (Edit/Close/Delete…), headed by its name. Each family folds
+  (remembered, `tbs_sidenav`, with the pin).
+- **Phones**: no strip; a round ☰ at the bottom left slides the menu in.
+- Tests: `browser-sellers.js` (in practice: strip, menu, an action from it,
+  pin; on a phone: the ☰ and no sideways scroll; the live app unchanged).
+
+## Done in b232 — one To do panel; the local price on the shelf; phones lose heading notes
+
+- **To do** (`#todoPanel`, `renderTodo`): Pending Payments, Pre-Orders
+  (awaiting delivery), Change We Owe and Counts to Look Into are one panel, a
+  tab each with a red count, each kind in its own colour (tab and the left
+  edge of its items: red, blue, gold, purple). Empty tabs are left out. Sort
+  like the sales log: Date / Name (Title for counts) / Amount (Books for
+  pre-orders, Difference for counts), tap again to reverse. The tab and sort
+  are kept on the device (`tbs_todo`). The 📋 report buttons of the chosen tab
+  sit on the heading. The old ids (`#pendingPanel`, `#prePanel`,
+  `#changePanel`, `#countPanel` and their lists) are the tabs' panes now.
+  Books in Transit and Pre-Orders to Fulfill for Other Regions stay as they
+  were.
+- **Shelf cards show the local price only** (the region's first currency); the
+  sell window lists every currency's ("Price: 35 € · $40").
+- **Phones**: the small grey notes beside panel headings are hidden, except
+  Sales by Seller's instruction (`.hint.keep`).
+- The owner kept, on purpose: Totals by Payment Type as it is, the shelf
+  cards' "Stored At / At events / Total / In transit" lines, the header, and
+  the sales log as long as the panel beside it.
+- Tests: `browser-sellers.js` (tabs, counts, colours, panes, sort, the prices).
+
+## Done in b231 — the practice space
+
+- **A second server, tbs-practice** (`[env.practice]` in wrangler.toml, deployed
+  by the same workflow, `wrangler deploy --env practice`): the same code, its
+  own Durable Object, so its own database. `PRACTICE=1` there.
+- **Its copy**: on its first request (and on **Start over**, action
+  `practiceReset`, Universal only) it asks the live server for
+  `practiceExport` with `LIVE_SECRET`; live answers only to its own
+  `PRACTICE_SECRET` (read-only: tables, settings without the spreadsheet
+  bookkeeping, people and roles, the owner list). `importAll` replaces the
+  records; `auth.replacePeople` the people and roles (its own sign-ins stay).
+  The owners come across as `liveOwners` (auth's `adminEmails` can now be a
+  function). The revision moves past both, so every phone refetches.
+- **Never the spreadsheets**: no `REPORT_URL`/`REPORT_SECRET` on practice
+  (forced empty in worker.js), and its sheet actions answer "The practice space
+  does not build spreadsheets".
+- **The page**: `?practice` in the address points it at the practice server
+  (`practiceUrl`: the live address with tbs-practice for tbs-server, or
+  `CONFIG.PRACTICE_URL`) and prefixes every localStorage/sessionStorage key
+  with `practice:` (Storage.prototype), so the saved state, the unsent saves
+  and the sign-in never mix with live. A striped banner (`practiceBanner`, with
+  when it was copied, from `practiceInfo`), **Start over from the live app**
+  (Universal), **Leave practice**; the tab title starts "🧪 Practice". App
+  Admin has **🧪 Practice Space** (opens it in a new tab) / **Leave Practice
+  Space**.
+- **Owner's setup, once**: `PRACTICE_SECRET` on tbs-server and `LIVE_SECRET`
+  on tbs-practice, the same phrase (server/README.md, "The practice space").
+- Tests: `test/practice.js` (15, in run-all: the copy, the people, nothing
+  reaches live, no spreadsheets, start over, the phrase), `browser-sellers.js`
+  (the page in practice: banner, the practice server, storage apart).
+
+## Done in b230 — Sales by Seller in half a screen; more dropdowns; out-of-stock in one tap
+
+- **Sales by Seller** is a half-width panel now (no `data-full`), one line per
+  seller: **Big Books** sold (pre-orders included), **Adventures** sold, and
+  everything **collected** (every payment type, digital included). The arrow
+  (`sbtoggle`, `SB_OPEN`, kept open across redraws) opens their cash:
+  **Received** (cash taken), **Pending submission** (still with them),
+  **Submitted** (handed to the lead, waiting or confirmed, plus what Track Cash
+  shows was moved on — "forced via an admin"). Same split as b229
+  (`cashPeopleAt`). No totals, as asked. Heading note: "To manage seller cash,
+  click dropdown arrow."
+- **Handover requests** are answered inside the seller's dropdown (Received /
+  Not received); the separate "Cash Handed Over" panel is no longer shown
+  (`renderHandovers` hides it). A **red badge** with the number waiting sits on
+  the seller's line.
+- **Distribution by Title**: the per-place bubbles sit behind "▸ At N places",
+  as in the Warehouse Overview (`chipsToggleHTML`, shared; keys `wo:` / `dt:`).
+- **Edit Book Display**: "Hide all out of stock books (N)" at the top (no
+  copies on this shelf); once they are all hidden it reads "Show all out of
+  stock books (N)". Applied with Save, like the ticks.
+- Tests: `browser-sellers.js` (the lines, the badge, the dropdown, answering
+  there), `browser-lang.js` (Distribution dropdown, out-of-stock button).
 
 ## Done in b229 — Sales by Seller in step with Track Cash
 

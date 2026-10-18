@@ -17,9 +17,12 @@ const SHEET_ACTIONS = /^(driveMap|syncSheets|setDriveFolder|setSeasonFolder|desc
 const IN_FLIGHT_MS = 15 * 60 * 1000;          // a spreadsheet run that never reported back
 
 export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, adminEmails, googleCertsUrl,
-                             reportUrl, reportSecret }) {
+                             reportUrl, reportSecret, practice, liveUrl, liveSecret, practiceSecret }) {
   const { store, kv, forget, dump, exportAll, importAll } = makeSqlStore(exec);
-  const auth = makeAuth({ exec, clientId: googleClientId, adminEmails, fetchImpl, certsUrl: googleCertsUrl });
+  /* On the practice server the owners are the live server's (copied with the
+     records), unless ADMIN_EMAILS is set on it as well. */
+  const owners = practice ? () => adminEmails || kv.getProp('liveOwners') || '' : adminEmails;
+  const auth = makeAuth({ exec, clientId: googleClientId, adminEmails: owners, fetchImpl, certsUrl: googleCertsUrl });
   const web = makeWebCache(kv, 6 * 3600 * 1000);
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
 
@@ -43,6 +46,13 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     try { p = e.postData ? JSON.parse(e.postData.contents || '{}') : (e.parameter || {}); }
     catch (err) { return reply({ ok: false, error: 'That request could not be read.' }); }
     const action = String(p.action || 'getState');
+    // The live server, asked for a copy by the practice server (b231).
+    if (action === 'practiceExport') return reply(practiceExport(p));
+    // The practice server fills itself from live the first time it is used.
+    if (practice && !kv.getProp('practiceSeeded') && liveUrl && liveSecret) {
+      try { await practiceReset(); } catch (err) { console.log('practice copy: ' + err); }
+    }
+    if (action === 'practiceInfo') return reply({ ok: true, result: { practice: !!practice, copiedAt: Number(kv.getProp('practiceSeeded')) || 0 } });
     if (action === 'signIn') {
       if (!googleClientId) return reply({ ok: false, error: 'Sign-in is not set up on this server yet.' });
       try {
@@ -110,6 +120,15 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
         return reply({ ok: true, result: auth.list(me) });
       } catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
+    // Practice: start over from a fresh copy of the live records (Universal).
+    if (action === 'practiceReset') {
+      if (!practice) return reply({ ok: false, error: 'This is the live app, not the practice space.' });
+      if (!universal) return reply({ ok: false, error: 'Only Universal can start the practice space over.' });
+      try { await practiceReset(); return reply({ ok: true, result: { copiedAt: Number(kv.getProp('practiceSeeded')) } }); }
+      catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
+    }
+    if (practice && SHEET_ACTIONS.test(action))
+      return reply({ ok: false, error: 'The practice space does not build spreadsheets. Your real spreadsheets are untouched.' });
     // The owner's spreadsheet requests are passed to Google, which does them.
     if (universal && SHEET_ACTIONS.test(action)) return forwardToGoogle(p);
     /* Anyone else signed in sees only their own files, without the folders (b226). */
@@ -367,6 +386,37 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       return answer({ postData: { contents: JSON.stringify({ action: 'getState', season: p.season }) } });
     }
     return text;
+  }
+
+  /* ---- The practice space (b231) ----
+     A second server, the same code, with its own database. It fills itself
+     with a copy of the live records and people, read from the live server
+     with a phrase that allows reading a copy and nothing else (PRACTICE_SECRET
+     on live, LIVE_SECRET on practice). Nothing is ever sent back, and the
+     practice server never reaches the spreadsheets. */
+  function practiceExport(p) {
+    if (!practiceSecret || String(p.secret || '') !== practiceSecret) return { ok: false, error: 'Not allowed.' };
+    app.sheetMemoClear_(); app.setSeasonContext_(''); app.flushStockMoves_();
+    const props = kv.allProps();
+    Object.keys(props).forEach(k => { if (/^(dirtyLocs|cfInFlight|shareDirty|CF_|lastRenderError)/.test(k)) delete props[k]; });
+    return { ok: true, result: { tables: exportAll(), props, people: auth.peopleRows(), owners: auth.ownerList() } };
+  }
+  async function practiceReset() {
+    if (!practice || !liveUrl || !liveSecret) throw new Error('The practice space is not connected to the live app yet (LIVE_URL and LIVE_SECRET).');
+    let r;
+    try {
+      const res = await fetchImpl(liveUrl, { method: 'POST', body: JSON.stringify({ action: 'practiceExport', secret: liveSecret }) });
+      r = JSON.parse(await res.text());
+    } catch (err) { throw new Error('The live app could not be reached. Try again in a moment.'); }
+    if (!r || !r.ok) throw new Error('The live app would not share a copy: ' + ((r && r.error) || 'no answer'));
+    const rev = Number(kv.getProp('rev') || 0);
+    importAll(r.result.tables || {}, r.result.props || {});
+    auth.replacePeople(r.result.people || {});
+    kv.setProp('liveOwners', (r.result.owners || []).join(','));
+    kv.setProp('practiceSeeded', String(Date.now()));
+    // On past both copies' revisions, so every phone in practice fetches afresh.
+    kv.setProp('rev', String(Math.max(rev, Number((r.result.props || {}).rev || 0)) + 1));
+    app.sheetMemoClear_(); app.setSeasonContext_(''); app.cacheClear_();
   }
 
   /* Fetch what the rules asked for and could not have (see google.js). */

@@ -116,6 +116,37 @@ Tested end to end in `test/browser-cloudflare.js`: two apps, with their own
 checks set to once an hour, see each other's sales within a second. A dropped
 line comes back by itself.
 
+## The practice space (b231)
+
+A second server, **tbs-practice**: the same code with a database of its own,
+holding a copy of the live records and the live people and roles. Everyone can
+practise there together (sell, move stock, close events, delete things)
+without touching the real records or the spreadsheets. It is deployed beside
+the live one by the same GitHub step, and costs nothing (the same free plan).
+
+To open it: the app's usual address with `?practice` at the end (the
+**🧪 Practice Space** button in App Admin opens it). A green striped banner says
+you are in practice; **Leave practice** goes back. Anything the page keeps on
+the phone is kept apart from the live app's, so the two never mix. Links work
+there too: add `&practice` to a regional or sales link.
+
+**Setting it up (once), after the first deploy:**
+
+1. Make up a long phrase (it only lets the practice server *read a copy*).
+2. In Cloudflare: Workers & Pages › **tbs-server** › Settings › Variables and
+   Secrets › Add › type **Secret**, name `PRACTICE_SECRET`, value: the phrase.
+3. Workers & Pages › **tbs-practice** › Settings › Variables and Secrets › Add ›
+   type **Secret**, name `LIVE_SECRET`, value: the same phrase.
+
+That is all. The first time anyone opens the practice space it copies the live
+app. **Start over from the live app** (in the banner, Universal only) replaces
+everything done in practice with a fresh copy. The owners (`ADMIN_EMAILS`) come
+across with the copy; set `ADMIN_EMAILS` on tbs-practice only to change them.
+
+The practice server never builds spreadsheets and never shares files, and the
+live server only hands a copy to the right phrase: nothing in practice can
+reach the live records.
+
 ## Trying it on your own computer
 
 ```

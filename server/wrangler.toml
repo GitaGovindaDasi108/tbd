@@ -23,3 +23,30 @@ class_name = "TbsServer"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TbsServer"]
+
+# ---- The practice space (b231) ----
+# A second server, the same code, with a database of its own: a copy of the
+# live records and people to try things on, together, without touching the
+# real ones or the spreadsheets. Deployed beside the live one by the same
+# GitHub step. Its one setting made by hand, in the Cloudflare dashboard
+# (tbs-practice › Settings › Variables and Secrets):
+#   LIVE_SECRET  (a Secret) the same phrase as PRACTICE_SECRET on tbs-server,
+#                which lets it READ a copy of the live records, nothing more.
+[env.practice]
+name = "tbs-practice"
+keep_vars = true
+
+[env.practice.vars]
+TIME_ZONE = "UTC"
+PRACTICE = "1"
+LIVE_URL = "https://tbs-server.gitagovinda.workers.dev/"
+# The same public sign-in id as the live app (it is in config.js too).
+GOOGLE_CLIENT_ID = "29414235907-a1hvfe3pq2707vbu8bbkfc2hude19o41.apps.googleusercontent.com"
+
+[[env.practice.durable_objects.bindings]]
+name = "TBS"
+class_name = "TbsServer"
+
+[[env.practice.migrations]]
+tag = "v1"
+new_sqlite_classes = ["TbsServer"]

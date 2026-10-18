@@ -245,6 +245,9 @@ button.sc-transit:hover{color:#1F4F86}
 .wo-toggle{background:none;border:0;padding:4px 0 0;cursor:pointer;font:inherit;font-size:12px;font-weight:700;
   color:var(--muted);display:inline-flex;gap:4px;align-items:center}
 .wo-toggle:hover{color:var(--plum)}
+.bd-oos{margin:2px 0 10px}
+/* The shelf shows the local price only (b232); every currency's is here. */
+.sale-prices{font-size:12.5px;color:var(--muted);margin:-2px 0 10px}
 .wt-line{font-size:13px;margin:12px 0 4px;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
   padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
@@ -1040,6 +1043,65 @@ body.busy #busyBar{opacity:1}
 .rq-log-t{font-size:13px;color:#4A3470}
 .rq-log-m{font-size:11.5px;color:var(--muted);margin-top:2px}
 .bottom-panels .body{padding:10px 12px}
+/* To do (b232): a colour for each kind of thing waiting. */
+.todo-panel{--tp:var(--plum)}
+.todo-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.todo-tab{--tc:var(--plum);border:1.5px solid var(--tc);background:#fff;color:var(--tc);border-radius:999px;padding:5px 10px;
+  font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.todo-tab.on{background:var(--tc);color:#fff}
+.todo-n{background:#E0372F;color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;min-width:18px;height:18px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.todo-tab.on .todo-n{box-shadow:0 0 0 2px #fff}
+.tt-pending{--tc:#C0392B} .tt-pre{--tc:#2F6FB5} .tt-change{--tc:#B7841C} .tt-counts{--tc:#7A4FA0}
+.todo-pane .log-item{border-left:4px solid var(--tc)}
+.tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
+.tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+/* ---- The left-hand menu (b233, practice mock-up) ---- */
+.side-nav{--snw:270px;font-family:'Inter',sans-serif}
+.sn-strip{position:fixed;left:0;top:0;bottom:0;width:52px;z-index:60;background:#3B2A45;display:flex;flex-direction:column;
+  align-items:center;gap:6px;padding:10px 0;box-shadow:2px 0 10px rgba(0,0,0,.12)}
+.sn-ico{width:40px;height:40px;border-radius:11px;border:0;background:rgba(255,255,255,.08);color:#F6E7C1;font-size:18px;cursor:pointer;
+  border-left:3px solid var(--fc, transparent)}
+.sn-ico:hover{background:rgba(255,255,255,.18)}
+.sn-menu{font-size:20px;border-left:0;margin-bottom:6px}
+.sn-panel{position:fixed;left:52px;top:0;bottom:0;width:var(--snw);z-index:61;background:#FFFBF3;border-right:1px solid var(--line-d);
+  box-shadow:4px 0 18px rgba(0,0,0,.14);overflow-y:auto;transform:translateX(calc(-100% - 60px));transition:transform .18s ease;padding-bottom:40px}
+body.sn-open .sn-panel{transform:none}
+.sn-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:#FFFBF3;z-index:1;color:var(--plum)}
+.sn-head button{border:0;background:none;font-size:15px;cursor:pointer;padding:4px 6px;border-radius:7px;opacity:.55}
+.sn-head .sn-pin.on{opacity:1;background:var(--paper2)}
+.sn-group{border-bottom:1px solid var(--line)}
+.sn-gh{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:10px 14px;cursor:pointer;
+  font:inherit;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--fc)}
+.sn-group.shut .sn-items{display:none}
+.sn-items{display:flex;flex-direction:column;padding:0 8px 8px}
+.sn-item{display:flex;align-items:center;gap:6px;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;
+  font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;border-left:3px solid transparent}
+.sn-item:hover{background:var(--paper2);border-left-color:var(--fc)}
+.sn-scrim{position:fixed;inset:0;background:rgba(30,20,35,.28);z-index:59;display:none}
+body.sn-open:not(.sn-pinned) .sn-scrim{display:block}
+.sn-fab{display:none}
+body.has-sn{padding-left:52px}
+@media (min-width:900px){
+  body.has-sn.sn-pinned{padding-left:calc(52px + var(--snw, 270px))}
+  body.sn-pinned .sn-panel{transform:none;box-shadow:none}
+  body.sn-pinned .sn-x{display:none}
+}
+/* Phones: no strip; a round ☰ at the bottom left slides the menu in. */
+@media (max-width:899px){
+  body.has-sn{padding-left:0}
+  .sn-strip{display:none}
+  .sn-panel{left:0;width:min(86vw, 300px)}
+  .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:0;
+    background:#3B2A45;color:#F6E7C1;font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}
+  .sn-pin{display:none}
+}
+.practice-bar{background:repeating-linear-gradient(135deg,#E6F4EA 0 14px,#D6EEDD 14px 28px);border:1.5px solid #8CC9A0;
+  color:#1F5E36;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px;line-height:1.5}
+.practice-bar .pb-when{color:#3C7A52}
+.practice-bar .pb-btns{display:inline-flex;gap:6px;margin-left:6px;flex-wrap:wrap;vertical-align:middle}
 .build-warn{background:var(--clay-l);border:1.5px solid #E7A89E;color:var(--clay);border-radius:12px;
   padding:11px 14px;font-size:13.5px;line-height:1.5;margin-bottom:12px}
 .bottom-panels .log{gap:5px}
@@ -1335,6 +1397,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   .bulk-row.five .d-delta{width:48px}
   .bulk-row.five .d-set{width:42px}
   .bulk-row .bn{font-size:13.5px}
+  /* Phones: the small grey notes beside panel headings make way (b232) — except
+     an instruction that is needed to use the panel. */
+  .sec-h2 .hint:not(.keep){display:none}
   /* Add Stock's title and language take the whole width of a phone; the numbers
      sit beneath them, under their own headings (b227). */
   .ln-row .ln-pick{grid-column:1/-1}
@@ -1399,6 +1464,22 @@ body.list-view .mc-name{min-height:0}
 .sb-table .sb-name{font-weight:700;color:var(--plum)}
 .sb-table tr.sb-sub td{font-size:12px;color:var(--muted);padding-top:3px;padding-bottom:3px}
 .sb-table tr.sb-sub .sb-name{font-weight:500;padding-left:18px;color:var(--muted)}
+/* Sales by Seller (b230): one line each, cash behind the arrow. */
+.sb-seller{border-bottom:1px solid var(--line)}
+.sb-seller:last-child{border-bottom:0}
+.sb-line{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:9px 2px;cursor:pointer;
+  font:inherit;font-size:13px;color:var(--ink);text-align:left;flex-wrap:wrap}
+.sb-line .tw{color:var(--muted);width:12px}
+.sb-who{font-weight:700;color:var(--plum);flex:1 1 110px;display:inline-flex;align-items:center;gap:6px}
+.sb-fig{white-space:nowrap;color:var(--muted)}
+.sb-fig b{color:var(--ink);font-size:14px}
+.sb-money b{color:var(--green)}
+.sb-badge{background:#E0372F;color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;min-width:18px;height:18px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #fff}
+.sb-cash{padding:0 0 10px 22px}
+.sb-cash[hidden]{display:none}
+.sb-cash .sb-table{min-width:0}
+.sb-cash .sb-place{color:var(--muted);font-size:12px}
 .cash-who td{font-size:11.5px;color:var(--muted);padding:0 8px 6px;border-top:0}
 .sb-table tfoot td{font-size:12.5px;color:var(--plum);border-bottom:0;padding-top:8px}
 .sb-table tfoot tr.sb-tc td{border-top:1px solid var(--line-d);font-weight:700}
@@ -1438,7 +1519,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b229</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b233</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1536,13 +1617,18 @@ body.list-view .mc-name{min-height:0}
 
   <!-- WAREHOUSE INFORMATION — what still needs chasing, and where stock sits -->
   <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
-    <section class="panel pend-panel" id="pendingPanel" data-fold="pending" style="display:none">
-      <h2 class="sec-h2">Pending Payments <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="pending" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div class="log" id="pendingList"></div></div>
-    </section>
-    <section class="panel pre-panel" id="prePanel" data-fold="preorders" style="display:none">
-      <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy the counts for WhatsApp">📋 Count</button> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="prepeople" title="Copy names, phone numbers, books and comments for WhatsApp">📋 Details</button></h2>
-      <div class="body"><div class="log" id="preList"></div></div>
+    <!-- To do (b232): what is waiting to be done, one tab each — pending payments,
+         pre-orders to deliver, change we owe, counts to look into. -->
+    <section class="panel todo-panel" id="todoPanel" data-fold="todo" style="display:none">
+      <h2 class="sec-h2">To Do <span id="todoRep"></span></h2>
+      <div class="body">
+        <div class="todo-tabs" id="todoTabs" role="tablist"></div>
+        <div class="log-tools"><span class="sortbar" id="todoSort"></span></div>
+        <div class="todo-pane tp-pending" id="pendingPanel" data-tab="pending"><div class="log" id="pendingList"></div></div>
+        <div class="todo-pane tp-pre" id="prePanel" data-tab="pre"><div class="log" id="preList"></div></div>
+        <div class="todo-pane tp-change" id="changePanel" data-tab="change"><div class="log" id="changeList"></div></div>
+        <div class="todo-pane tp-counts" id="countPanel" data-tab="counts"><div class="log" id="countList"></div></div>
+      </div>
     </section>
     <section class="panel rq-panel" id="remotePanel" data-fold="remote" style="display:none">
       <h2 class="sec-h2">Pre-Orders to Fulfill for Other Regions
@@ -1553,17 +1639,9 @@ body.list-view .mc-name{min-height:0}
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
-    <section class="panel count-panel" id="countPanel" data-fold="counts" style="display:none">
-      <h2 class="sec-h2">Counts to Look Into</h2>
-      <div class="body"><div class="log" id="countList"></div></div>
-    </section>
     <section class="panel hand-panel" id="handPanel" data-fold="handovers" style="display:none">
       <h2 class="sec-h2">Cash Handed Over</h2>
       <div class="body"><div class="log" id="handList"></div></div>
-    </section>
-    <section class="panel change-panel" id="changePanel" data-fold="change" style="display:none">
-      <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div class="log" id="changeList"></div></div>
     </section>
   </div>
 
@@ -1578,8 +1656,8 @@ body.list-view .mc-name{min-height:0}
     </section>
   </div>
   <!-- Sales by seller (b223): each seller's books and cash, at a region or event. data-full: a wide table. -->
-  <section class="panel" id="sellerPanel" data-fold="sellers" data-full style="display:none">
-    <h2 class="sec-h2">Sales by Seller <span class="hint">books sold and the cash each one holds — in step with Track Cash</span></h2>
+  <section class="panel" id="sellerPanel" data-fold="sellers" style="display:none">
+    <h2 class="sec-h2">Sales by Seller <span class="hint keep">To manage seller cash, click dropdown arrow.</span></h2>
     <div class="body"><div id="sellerList"></div></div>
   </section>
   </div>
@@ -1642,6 +1720,61 @@ const CONFIG = Object.assign({
      in with Google. Links never sign in. */
   GOOGLE_CLIENT_ID: ''
 }, window.TBS_CONFIG || {});
+
+/* ---- The practice space (b231) ----
+   The same page with ?practice in its address talks to the practice server: a
+   copy of the live records and people, for trying things out together. Its
+   address is the live server's with tbs-practice in place of tbs-server
+   (CONFIG.PRACTICE_URL, if set, wins). Everything the page keeps on the device
+   — the saved state, the queue of unsent saves, the sign-in — is kept apart
+   under "practice:", so practice and live can never mix. */
+const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
+function practiceUrl(){
+  if(CONFIG.PRACTICE_URL) return CONFIG.PRACTICE_URL;
+  const m = String(CONFIG.APPS_SCRIPT_URL||'').match(/^(https?:\/\/)tbs-server(\.[^/]+\.workers\.dev.*)$/);
+  return m ? m[1] + 'tbs-practice' + m[2] : '';
+}
+if(PRACTICE){
+  CONFIG.APPS_SCRIPT_URL = practiceUrl();
+  delete CONFIG.LIVE_URL;                     // live updates come from the practice server too
+  ['getItem','setItem','removeItem'].forEach(fn=>{
+    const orig = Storage.prototype[fn];
+    Storage.prototype[fn] = function(k, ...rest){ return orig.call(this, 'practice:' + k, ...rest); };
+  });
+}
+/** The other side: the practice space from the live app, or the live app from practice. */
+function practiceLink(on){
+  const q = new URLSearchParams(location.search);
+  if(on) q.set('practice', '1'); else q.delete('practice');
+  const qs = q.toString().replace(/practice=1/, 'practice');
+  return location.pathname + (qs ? '?' + qs : '') + location.hash;
+}
+function practiceBanner(){
+  if(!PRACTICE) return;
+  let bar = document.getElementById('practiceBar');
+  if(!bar){
+    bar = document.createElement('div'); bar.id = 'practiceBar'; bar.className = 'practice-bar no-edit';
+    const main = document.querySelector('main'); main.insertBefore(bar, main.firstChild);
+    document.title = '🧪 Practice — Transcendental Book Sales';
+  }
+  const when = PRACTICE_INFO && PRACTICE_INFO.copiedAt ? new Date(PRACTICE_INFO.copiedAt).toLocaleString(LOCALE, {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+  bar.innerHTML = `<b>🧪 Practice space</b> — a copy of the real app to try things in, together. Nothing done here touches the real
+    records or the spreadsheets.${when ? ` <span class="pb-when">Copied from the live app ${esc(when)}.</span>` : ''}
+    <span class="pb-btns">${isAdmin() ? '<button class="btn btn-sm btn-ghost" data-act="practicereset">Start over from the live app</button>' : ''}
+    <a class="btn btn-sm btn-ghost" href="${esc(practiceLink(false))}">Leave practice</a></span>`;
+}
+let PRACTICE_INFO = null;
+async function practiceReset(){
+  if(!confirm('Start the practice space over? Everything everyone has done in practice is replaced by a fresh copy of the live app.')) return;
+  setStatus('load', 'Copying the live app…');
+  try{
+    const d = await post({action:'practiceReset'});
+    PRACTICE_INFO = Object.assign({}, PRACTICE_INFO, d.result || {});
+    try{ outboxSave([]); }catch(e){}          // unsent practice saves belong to the old copy
+    await pull();
+    toast('Practice space started over from the live app');
+  }catch(err){ toast(err.message, true); setStatus('bad', 'Error'); }
+}
 
 const WAREHOUSE = 'WAREHOUSE';
 /* Must match Code.gs. Older records used the previous wording. */
@@ -3604,6 +3737,7 @@ function setViewMode(mode){
 try{ if(localStorage.getItem('tbs_view')==='list') setTimeout(()=>setViewMode('list'), 0); }catch(e){}
 
 function renderAll(){
+  practiceBanner();
   if(!STATE) return;
   // Whatever wording you have rewritten is put in place after every redraw.
   setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 0);
@@ -4001,20 +4135,18 @@ function renderAdmin(){
     $('#adminPanel').style.display='';
     /* A regional link may add stock within its own region; a sales link may not. */
     const coord = STATE && STATE.role==='coordinator';
-    $('#adminActions').innerHTML =
-      `<div class="adm-grid"><div class="adm-col">
-         <div class="adm-lbl">Admin</div>
-         ${coord ? `<button class="btn adm-c1-1" data-act="activity">🗒 Activity Log</button>` : ''}
-         ${coord && ME ? `<button class="btn adm-c1-2" data-act="drivefolder">📁 Spreadsheet Links</button>` : ''}
-         <button class="btn adm-c1-${coord?2:1}" data-act="org">👥 App and Sales Support</button>
-         ${ME && ME.seesPeople ? `<button class="btn adm-c1-3" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : ''}
-         ${ME ? `<button class="btn adm-c1-4" data-act="signout">🚪 Sign Out</button>` : ''}
-       </div>${coord ? `<div class="adm-col">
-         <div class="adm-lbl">Books</div>
-         <button class="btn adm-c3-1" data-act="addstock">＋ Add New Stock</button>
-         <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
-         ${CUR_LEVEL==='event' ? eventPricesBtn('adm-c3-3') : ''}
-       </div>` : ''}</div>`;
+    drawAdmin([
+      {key:'admin', items:[
+        coord ? `<button class="btn" data-act="activity">🗒 Activity Log</button>` : '',
+        coord && ME ? `<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>` : '',
+        `<button class="btn" data-act="org">👥 App and Sales Support</button>`,
+        ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
+        ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
+      {key:'books', items: coord ? [
+        `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
+        `<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`,
+        CUR_LEVEL==='event' ? eventPricesBtn() : ''] : []}
+    ]);
     return;
   }
   $('#adminPanel').style.display='';
@@ -4033,6 +4165,9 @@ function renderAdmin(){
     : `<button class="btn" data-act="sharelinks">🔗 Sales Links</button>`);
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
+  // A copy of the app to try things in (b231): the practice space, or back from it.
+  cols[0].push(PRACTICE ? `<a class="btn" href="${esc(practiceLink(false))}">🧪 Leave Practice Space</a>`
+    : `<a class="btn" href="${esc(practiceLink(true))}" target="_blank" rel="noopener">🧪 Practice Space</a>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
   if(CONFIG.GOOGLE_CLIENT_ID){
     cols[0].push(`<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>`);
@@ -4087,17 +4222,90 @@ function renderAdmin(){
   }
   }
 
-  const labels = ['Admin', 'Money', 'Books', 'Location'];
+  drawAdmin([{key:'admin', items:cols[0]}, {key:'money', items:cols[1]}, {key:'books', items:cols[2]}, {key:'location', items:cols[3]}]);
+}
+/* The four families of admin buttons, in the panel's order and colours. */
+const ADMIN_FAMS = {
+  admin:    {label:'Admin',    icon:'⚙️', col:1, fc:'#C9822B'},
+  money:    {label:'Money',    icon:'💵', col:2, fc:'#2E8065'},
+  books:    {label:'Books',    icon:'📚', col:3, fc:'#3E6FA8'},
+  location: {label:'Location', icon:'📍', col:4, fc:'#7A3F6B'}
+};
+function drawAdmin(fams){
+  fams = fams.map(f=>Object.assign({}, f, {items:(f.items||[]).filter(Boolean)})).filter(f=>f.items.length);
+  if(SIDE_NAV){ $('#adminPanel').style.display='none'; renderSideNav(fams); return; }
   /* Each column is a family, and each button sits a shade deeper than the one
      above it — so the panel reads as a gradient rather than a bag of colors. */
   $('#adminActions').innerHTML = `<div class="adm-grid">${
-    cols.map((c,i)=>{
-      const live = c.filter(Boolean);
-      if(!live.length) return '';
-      const shaded = live.map((btn,j)=>
-        btn.replace('class="btn', `class="btn adm-c${i+1}-${Math.min(j+1,5)}`));
-      return `<div class="adm-col"><div class="adm-lbl">${esc(labels[i])}</div>${shaded.join('')}</div>`;
+    fams.map(f=>{
+      const fam = ADMIN_FAMS[f.key];
+      const shaded = f.items.map((btn,j)=>
+        btn.replace('class="btn', `class="btn adm-c${fam.col}-${Math.min(j+1,5)}`));
+      return `<div class="adm-col"><div class="adm-lbl">${esc(fam.label)}</div>${shaded.join('')}</div>`;
     }).join('')}</div>`;
+}
+
+/* ---- The admin buttons as a left-hand menu (b233, a mock-up in the practice space only) ----
+   Wide screens: a narrow strip of icons down the left; tap one to open the
+   menu at that family, 📌 to keep it open beside the page. Phones: a round ☰
+   button at the bottom left slides the same menu in. The place you are
+   looking at comes first, with its own actions. Same buttons, same actions as
+   the App Admin panel — only where they live changes. */
+const SIDE_NAV = PRACTICE;
+let SN = { open:false, pinned:false, closed:{} };
+try{ Object.assign(SN, JSON.parse(localStorage.getItem('tbs_sidenav')||'{}'), {open:false}); }catch(e){}
+function snSave(){ try{ localStorage.setItem('tbs_sidenav', JSON.stringify({pinned:SN.pinned, closed:SN.closed})); }catch(e){} }
+function snPlaceName(){
+  if(isHQ()) return 'Earthly HQ';
+  if(CUR_LEVEL==='season') return (STATE && STATE.seasonName) || 'This season';
+  if(CUR_LEVEL==='region') return (currentRegion()||{}).name || 'This region';
+  return locName(CUR_LOC);
+}
+function renderSideNav(fams){
+  let nav = document.getElementById('sideNav');
+  if(!nav){
+    nav = document.createElement('aside'); nav.id = 'sideNav'; nav.className = 'side-nav no-edit';
+    document.body.appendChild(nav);
+    const scrim = document.createElement('div'); scrim.id = 'snScrim'; scrim.className = 'sn-scrim'; scrim.dataset.act = 'snclose';
+    document.body.appendChild(scrim);
+    // An action chosen from the menu closes it, unless it is pinned open.
+    nav.addEventListener('click', e=>{ if(e.target.closest('.sn-item') && !(SN.pinned && innerWidth>=900)) setTimeout(()=>snShow(false), 0); });
+  }
+  // The place first, then Admin, Money, Books.
+  const order = ['location','admin','money','books'];
+  fams = fams.slice().sort((a,b)=>order.indexOf(a.key)-order.indexOf(b.key));
+  const title = f => f.key==='location' ? snPlaceName() : ADMIN_FAMS[f.key].label;
+  const icon = f => ADMIN_FAMS[f.key].icon;
+  nav.innerHTML = `
+    <div class="sn-strip">
+      <button type="button" class="sn-ico sn-menu" data-act="snopen" title="Open the menu">☰</button>
+      ${fams.map(f=>`<button type="button" class="sn-ico" data-act="snopen" data-fam="${f.key}" title="${esc(title(f))}"
+        style="--fc:${ADMIN_FAMS[f.key].fc}">${icon(f)}</button>`).join('')}
+    </div>
+    <div class="sn-panel">
+      <div class="sn-head"><b>Menu</b>
+        <span><button type="button" class="sn-pin${SN.pinned?' on':''}" data-act="snpin" title="${SN.pinned?'Let it fold away':'Keep it open beside the page'}">📌</button>
+        <button type="button" class="sn-x" data-act="snclose" title="Close">✕</button></span></div>
+      ${fams.map(f=>`<div class="sn-group${SN.closed[f.key]?' shut':''}" data-fam="${f.key}" style="--fc:${ADMIN_FAMS[f.key].fc}">
+          <button type="button" class="sn-gh" data-act="sngroup" data-fam="${f.key}"><span>${icon(f)} ${esc(title(f))}</span><span class="tw">${SN.closed[f.key]?'▸':'▾'}</span></button>
+          <div class="sn-items">${f.items.map(b=>b.replace(/class="btn( [^"]*)?"/, 'class="sn-item"')).join('')}</div>
+        </div>`).join('')}
+    </div>
+    <button type="button" class="sn-fab" data-act="snopen" title="Menu">☰</button>`;
+  document.body.classList.add('has-sn');
+  snApply();
+}
+function snApply(){
+  document.body.classList.toggle('sn-open', SN.open);
+  document.body.classList.toggle('sn-pinned', SN.pinned);
+}
+function snShow(open, fam){
+  SN.open = open; snApply();
+  if(open && fam){
+    if(SN.closed[fam]){ delete SN.closed[fam]; snSave(); renderAdmin(); SN.open = true; snApply(); }
+    const g = document.querySelector(`#sideNav .sn-group[data-fam="${fam}"]`);
+    if(g) g.scrollIntoView({block:'nearest'});
+  }
 }
 
 // A small footnote showing which USD conversion rates are in effect.
@@ -4123,7 +4331,15 @@ function regionStockOf(regionId, bookId){
 /* ---- FE11: Warehouse Overview — where every title sits across the tour ---- */
 /* Where every title sits, as shelf cards: the total is the headline, and each
    region is a tappable chip that takes you straight there. */
-const WO_OPEN = new Set();       // Warehouse Overview cards showing where their copies are
+const WO_OPEN = new Set();       // cards showing their bubbles (Warehouse Overview, Distribution by Title)
+/* A card's detail bubbles behind a small dropdown (b227, b230): closed until
+   asked for, and kept open across redraws. `key` names the card. */
+function chipsToggleHTML(key, label, chips){
+  const open = WO_OPEN.has(key);
+  return `<button type="button" class="wo-toggle" data-act="wotoggle" data-key="${esc(key)}" aria-expanded="${open}">
+      <span class="tw">${open?'▾':'▸'}</span> ${esc(label)}</button>
+    <div class="wo-chips"${open?'':' hidden'}>${chips}</div>`;
+}
 /* Every batch on the road carrying this title: how many, from where to where
    (b227), and a button to go to where it is heading (b228). At Earthly HQ the
    overview adds up every season, so the list is drawn from every season's
@@ -4177,11 +4393,8 @@ function renderWarehouseOverview(){
 ;   // in transit is shown once, beneath the number — no separate bubble
     /* Where the copies are, one chip per region, behind a toggle (b227): open
        on request, and kept open across redraws (WO_OPEN). */
-    const open = WO_OPEN.has(b.id);
     const where = per.length
-      ? `<button type="button" class="wo-toggle" data-act="wotoggle" data-book="${esc(b.id)}" aria-expanded="${open}">
-           <span class="tw">${open?'▾':'▸'}</span> In ${per.length} ${per.length===1?UNIT.word:UNIT.words}</button>
-         <div class="wo-chips"${open?'':' hidden'}>${chips}</div>`
+      ? chipsToggleHTML('wo:' + b.id, `In ${per.length} ${per.length===1?UNIT.word:UNIT.words}`, chips)
       : '<div class="wo-chips"><span class="sc-none">nowhere yet</span></div>';
     const lc = langCard(b);
     return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style}>
@@ -4351,7 +4564,7 @@ function renderInventory(){
         <div>
           <div class="bname ${catOfBook(b)}">${bookTitleHTML(b)}${
             b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
-          <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
+          <div class="price">${(c=>cashFmt(priceFor(b,c),c))(curCurrencies()[0])}</div>
         </div>
         <div class="qtyrow">
           <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
@@ -4500,13 +4713,15 @@ function renderTitleList(target){
     const {sold, pre, gift} = bookCounts(mine);
     const dim = (!sold && !pre && !gift) ? ' dim' : '';
     // Each place shows what it sold for money, with its gifts beside it.
-    const chips = places.map(pl=>{
+    const chipList = places.map(pl=>{
       const c = bookCounts(mine.filter(x=>x.location===pl.id));
       if(!c.sold && !c.gift) return '';
       return `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
         title="Go to ${esc(pl.name)}"><b>${c.sold}</b> ${esc(pl.name)}${
         c.gift?` <span class="chip-gift">+${c.gift} gift${c.gift===1?'':'s'}</span>`:''}</button>`;
-    }).filter(Boolean).join('');
+    }).filter(Boolean);
+    // Where it sold, behind a dropdown (b230), as in the Warehouse Overview.
+    const chips = chipList.length ? chipsToggleHTML('dt:' + b.id, `At ${chipList.length} place${chipList.length===1?'':'s'}`, chipList.join('')) : '';
     const lc = langCard(b);
     return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}"${lc.style}>
       <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
@@ -4519,7 +4734,7 @@ function renderTitleList(target){
       <div class="sc-sub">
         ${gift?`<span class="sc-gift">${giftNote({sold,gift})}</span>`:'<span class="sc-none">&nbsp;</span>'}
       </div>
-      ${chips?`<div class="wo-chips">${chips}</div>`:''}
+      ${chips}
     </div>`;
   }).join('');
   $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
@@ -5386,7 +5601,7 @@ function renderBottom(){
   const unpaid=g.filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   // The reverse of a pending payment: they overpaid and we could not break it.
   const change=g.filter(x=>changeOwed(x)>0).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow'), chg=$('#changePanel');
+  const row=$('#bottomRow');
   // Books on the road: shown in full, to be received from right here.
   const road = transitHere();
   // Requests from other regions to deliver their pre-orders from here.
@@ -5395,18 +5610,60 @@ function renderBottom(){
   if(asks.length) $('#remoteList').innerHTML = asks.map(remoteCardHTML).join('');
   $('#transitPanel').style.display = road.length?'':'none';
   if(road.length) $('#transitList').innerHTML = road.map(r=>shipCardHTML(r.x, r.incoming)).join('');
-  pre.style.display = owed.length?'':'none';
-  pend.style.display = unpaid.length?'':'none';
-  chg.style.display = change.length?'':'none';
-  const hand = renderHandovers(), cnts = renderMismatches();
-  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length, hand, cnts].filter(Boolean).length;
+  const hand = renderHandovers();
+  const todo = renderTodo({pending:unpaid, pre:owed, change});
+  const showing = [todo, road.length, asks.length, hand].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
-  // These panels exist to be acted on, so they show their details up front.
-  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,{context:'pre'})).join('');
-  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
-  if(change.length) $('#changeList').innerHTML=change.map(x=>logItemHTML(x,{context:'change'})).join('');
   renderSellers();
+}
+
+/* ---- To do (b232) ----
+   One panel for what is waiting to be done, a tab each, coloured so each kind
+   reads apart at a glance, with a red count on every tab: payments still
+   owed, pre-orders still to deliver, change we still owe, closing counts to
+   look into. Tabs with nothing in them are left out; the chosen tab and sort
+   are kept on this device. Sorting works like the sales log's. */
+const TODO_TABS = [
+  {key:'pending', label:'Pending Payments', rep:[['pending','📋']]},
+  {key:'pre',     label:'Pre-Orders',       rep:[['preorders','📋 Count'],['prepeople','📋 Details']]},
+  {key:'change',  label:'Change We Owe',    rep:[['change','📋']]},
+  {key:'counts',  label:'Counts to Look Into', rep:[]}
+];
+let TODO = { tab:'', sort:'time', dir:-1 };
+try{ Object.assign(TODO, JSON.parse(localStorage.getItem('tbs_todo')||'{}')); }catch(e){}
+function todoSave(){ try{ localStorage.setItem('tbs_todo', JSON.stringify(TODO)); }catch(e){} }
+function todoSorted(list, tab){
+  const t = x => new Date(x.ts).getTime() || 0;
+  const name = x => String(x.name || x.by || (bookById(x.bookId)||{}).name || '').toLowerCase();
+  const amt = x => tab==='pending' ? dueUSD(x) : tab==='change' ? toUSDAt(changeOwed(x), changeCur(x), x.location)
+    : tab==='counts' ? Math.abs((x.counted||0)-(x.expected||0)) : (x._preCount || 1);
+  const by = TODO.sort==='name' ? (a,b)=>name(a)<name(b)?-1:name(a)>name(b)?1:0
+    : TODO.sort==='amount' ? (a,b)=>amt(a)-amt(b) : (a,b)=>t(a)-t(b);
+  return list.slice().sort((a,b)=>by(a,b)*TODO.dir);
+}
+function renderTodo(lists){
+  const panel = $('#todoPanel'); if(!panel) return 0;
+  const counts = plainSeller() ? [] : mismatchesHere().filter(m=>m.status==='open');
+  const all = {pending:lists.pending, pre:lists.pre, change:lists.change, counts};
+  const live = TODO_TABS.filter(x=>all[x.key].length);
+  panel.style.display = live.length ? '' : 'none';
+  if(!live.length) return 0;
+  if(!live.some(x=>x.key===TODO.tab)) TODO.tab = live[0].key;
+  const on = TODO.tab;
+  $('#todoTabs').innerHTML = live.map(x=>`<button type="button" class="todo-tab tt-${x.key}${x.key===on?' on':''}" role="tab"
+      aria-selected="${x.key===on}" data-act="todotab" data-tab="${x.key}">${esc(x.label)} <span class="todo-n">${all[x.key].length}</span></button>`).join('');
+  const sorts = [['time','Date'],['name', on==='counts'?'Title':'Name'],['amount', on==='pre'?'Books':on==='counts'?'Difference':'Amount']];
+  $('#todoSort').innerHTML = 'Sort ' + sorts.map(([k,l])=>`<button class="sort-btn${TODO.sort===k?' on':''}" data-act="todosort" data-sort="${k}">${l}${
+    TODO.sort===k ? (TODO.dir<0?' ↓':' ↑') : ''}</button>`).join('');
+  const tab = TODO_TABS.find(x=>x.key===on);
+  $('#todoRep').innerHTML = tab.rep.map(([part,l])=>`<button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="${part}" title="Copy for WhatsApp">${l}</button>`).join(' ');
+  document.querySelectorAll('#todoPanel .todo-pane').forEach(p=>{ p.style.display = p.dataset.tab===on ? '' : 'none'; });
+  if(on==='pending') $('#pendingList').innerHTML = todoSorted(lists.pending,'pending').map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
+  if(on==='pre') $('#preList').innerHTML = todoSorted(lists.pre,'pre').map(x=>logItemHTML(x,{context:'pre'})).join('');
+  if(on==='change') $('#changeList').innerHTML = todoSorted(lists.change,'change').map(x=>logItemHTML(x,{context:'change'})).join('');
+  if(on==='counts'){ renderMismatches(todoSorted(counts,'counts')); $('#countPanel').style.display = ''; }
+  return 1;
 }
 
 /* ---- Sellers, their sales and their cash (b223) ----
@@ -5581,6 +5838,8 @@ function answerHandover(id, accept){
 /* Leads: the cash handed over here, waiting ones first. */
 function renderHandovers(){
   const panel = $('#handPanel'); if(!panel) return 0;
+  // Handover requests are answered inside Sales by Seller now (b230).
+  panel.style.display = 'none'; return 0;
   const hs = plainSeller() ? [] : handoversHere().slice().sort((a,b)=>(a.status==='waiting'?0:1)-(b.status==='waiting'?0:1) || new Date(b.ts)-new Date(a.ts));
   panel.style.display = hs.length ? '' : 'none';
   if(!hs.length) return 0;
@@ -5594,62 +5853,70 @@ function renderHandovers(){
     </div>`).join('');
   return 1;
 }
-/* Sales by seller: each seller's books and cash, and where that cash is now —
-   in step with Track Cash (cashPeopleAt): money moved on there is not "still
-   with" anyone here, and the rows add up to what Track Cash shows at the place. */
+/* Sales by seller (b230: half a screen). One line per seller: Big Books sold
+   (pre-orders included), Adventures sold, and everything collected, digital
+   included. The arrow opens their cash — Received, Pending submission,
+   Submitted — and any handover waiting for an answer, which used to have a
+   panel of its own; a red badge on the line says one is waiting. The cash is
+   in step with Track Cash (cashPeopleAt): what was moved on there counts as
+   submitted, whoever recorded it. */
+const SB_OPEN = new Set();
+function collectedAll(list){
+  const m = {};
+  list.forEach(x=>{ if(!received(x)) return; legs(x).forEach(l=>{ if(l.amt && l.type!=='Gift') m[l.cur] = (m[l.cur]||0) + Number(l.amt); }); });
+  return m;
+}
 function renderSellers(){
   const panel = $('#sellerPanel'); if(!panel) return;
   const show = !plainSeller() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
-  const s = show ? scopedSales().filter(x=>x.type!=='DONATION') : [];
+  const s = show ? scopedSales() : [];
   panel.style.display = s.length ? '' : 'none';
   if(!s.length) return;
   const add = (into, o) => Object.keys(o||{}).forEach(c=>{ into[c] = Math.round(((into[c]||0) + o[c])*100)/100; });
-  const splits = cashPlacesHere().map(loc=>({loc, at:cashPeopleAt(loc)}));
-  // Each seller across the places here, and place by place.
   const sellers = {};
-  splits.forEach(({loc, at})=>Object.values(at.people).forEach(p=>{
-    const g = sellers[p.key] || (sellers[p.key] = {name:'', tot:{list:[], taken:{}, received:{}, waiting:{}, movedOn:{}, withThem:{}}, at:[]});
+  cashPlacesHere().forEach(loc=>Object.values(cashPeopleAt(loc).people).forEach(p=>{
+    const g = sellers[p.key] || (sellers[p.key] = {key:p.key, name:'', list:[], taken:{}, received:{}, waiting:{}, movedOn:{}, withThem:{}, at:[]});
     if(p.name) g.name = p.name;
-    g.tot.list = g.tot.list.concat(p.list);
-    ['taken','received','waiting','movedOn','withThem'].forEach(k=>add(g.tot[k], p[k]));
-    if(p.list.length) g.at.push({loc, p});
+    g.list = g.list.concat(p.list);
+    ['taken','received','waiting','movedOn','withThem'].forEach(k=>add(g[k], p[k]));
+    g.at.push({loc, p});
   }));
+  const asks = handoversHere().filter(h=>h.status==='waiting');
   const cell = m => esc(moneyLine(m)) || '—';
-  const row = (name, p, sub) => {
-    const c = bookCounts(p.list.filter(x=>x.bookId && x.type!=='DONATION'));
-    return `<tr class="${sub?'sb-sub':''}"><td class="sb-name">${esc(name)}</td><td class="num">${c.sold}</td><td class="num">${c.pre||''}</td>
-      <td>${cell(p.taken)}</td>
-      <td>${cell(p.received)}${moneyLine(p.waiting)?`<div class="muted-note">${esc(moneyLine(p.waiting))} waiting</div>`:''}</td>
-      <td>${cell(p.movedOn)}</td>
-      <td><b>${cell(p.withThem)}</b></td></tr>`;
+  const sold = (list, cat) => list.filter(x=>x.bookId && (x.type==='SALE' || x.type==='PREORDER') && !isGift(x) && catOf(x.bookId)===cat).length;
+  const cashRow = (label, p) => {
+    const sub = {}; add(sub, p.received); add(sub, p.waiting); add(sub, p.movedOn);
+    return `<tr>${label!==null?`<td class="sb-place">${esc(label)}</td>`:''}<td>${cell(p.taken)}</td><td><b>${cell(p.withThem)}</b></td>
+      <td>${cell(sub)}${moneyLine(p.waiting)?`<div class="muted-note">${esc(moneyLine(p.waiting))} awaiting confirmation</div>`:''}</td></tr>`;
   };
-  const keys = Object.keys(sellers).filter(k=>sellers[k].tot.list.length || moneyLine(sellers[k].tot.received))
-    .sort((a,b)=>sellers[b].tot.list.length-sellers[a].tot.list.length);
-  const lead = {}, waitLeft = {}, moved = {}, held = {};
-  splits.forEach(({at})=>{ add(lead, at.lead.holds); add(waitLeft, at.lead.waitingLeft); add(moved, at.movedOn); add(held, at.held); });
-  const withLead = {}; add(withLead, lead); add(withLead, waitLeft);
-  // Money moved INTO these places in Track Cash (say an event's takings, to the warehouse) belongs to no seller here.
-  const people = {}; keys.forEach(k=>add(people, sellers[k].tot.withThem)); add(people, withLead);
-  const other = minusAmounts(held, people);
-  Object.keys(other).forEach(c=>{ if(other[c] < 0) delete other[c]; });
-  const leadWord = CUR_LEVEL==='event' ? 'the Event Lead' : 'the Event Leads';
-  const where = CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'this region');
-  $('#sellerList').innerHTML = `<div class="sb-wrap"><table class="sb-table">
-    <thead><tr><th>Seller</th><th class="num">Sold</th><th class="num">Pre-orders</th><th>Cash collected</th><th>Handed to lead</th>
-      <th title="Moved on from here in Track Cash">Moved on</th><th>Still with them</th></tr></thead>
-    <tbody>${keys.map(k=>{
-      const g = sellers[k];
-      let h = row(g.name || '(no name given)', g.tot);
-      // At a region: the same seller, place by place.
-      if(CUR_LEVEL==='region' && g.at.length>1) h += g.at.map(x=>row('· ' + locName(x.loc), x.p, true)).join('');
-      return h;
-    }).join('')}</tbody>
-    <tfoot>
-      ${moneyLine(withLead) ? `<tr class="sb-foot"><td colspan="6">With ${leadWord}, handed over and not yet moved on</td><td><b>${cell(withLead)}</b></td></tr>` : ''}
-      ${moneyLine(other) ? `<tr class="sb-foot"><td colspan="6">Brought here from other places in Track Cash</td><td><b>${cell(other)}</b></td></tr>` : ''}
-      <tr class="sb-foot sb-tc"><td colspan="6">Still at ${esc(where)} in Track Cash${moneyLine(moved) ? ` · <span class="muted-note">${esc(moneyLine(moved))} moved on from here</span>` : ''}</td>
-        <td><b>${cell(held)}</b></td></tr>
-    </tfoot></table></div>`;
+  const keys = Object.keys(sellers).filter(k=>sellers[k].list.length || moneyLine(sellers[k].received) || moneyLine(sellers[k].waiting))
+    .sort((a,b)=>sellers[b].list.length-sellers[a].list.length);
+  $('#sellerList').innerHTML = keys.map(k=>{
+    const g = sellers[k], open = SB_OPEN.has(k);
+    const mineAsks = asks.filter(h=>handKey(h)===k);
+    const places = CUR_LEVEL==='region' && g.at.filter(x=>x.p.list.length || moneyLine(x.p.received)).length>1;
+    return `<div class="sb-seller${open?' open':''}">
+      <button type="button" class="sb-line" data-act="sbtoggle" data-key="${esc(k)}" aria-expanded="${open}">
+        <span class="tw">${open?'▾':'▸'}</span>
+        <span class="sb-who">${esc(g.name || '(no name given)')}${mineAsks.length
+          ? `<span class="sb-badge" title="${mineAsks.length} cash handover${mineAsks.length===1?'':'s'} waiting">${mineAsks.length}</span>` : ''}</span>
+        <span class="sb-fig"><b>${sold(g.list,'big')}</b> Big Books</span>
+        <span class="sb-fig"><b>${sold(g.list,'aotm')}</b> Adventures</span>
+        <span class="sb-fig sb-money"><b>${cell(collectedAll(g.list))}</b></span>
+      </button>
+      <div class="sb-cash"${open?'':' hidden'}>
+        <table class="sb-table"><thead><tr>${places?'<th></th>':''}<th>Received</th><th>Pending submission</th><th>Submitted</th></tr></thead>
+          <tbody>${places ? g.at.filter(x=>x.p.list.length || moneyLine(x.p.received)).map(x=>cashRow(locName(x.loc), x.p)).join('') : cashRow(null, g)}</tbody></table>
+        ${mineAsks.map(h=>`<div class="ho-row waiting">
+            <div><b>${esc(moneyLine(h.amounts))}</b> handed to ${esc(h.toName||'the Event Lead')}
+              <div class="muted-note">${esc(locName(h.location))} · ${esc(fmtWhen(h.ts))}</div></div>
+            ${mayAnswer(h) ? `<span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="hoyes" data-id="${esc(h.id)}">Received</button>
+              <button class="btn btn-ghost btn-sm" data-act="hono" data-id="${esc(h.id)}">Not received</button></span>`
+              : '<span class="muted-note">waiting</span>'}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ---- Counts to look into (b224) ----
@@ -5667,13 +5934,12 @@ function mayAnswerCount(m){
   if(isAdmin()) return true;
   return STATE.role==='coordinator' && m.kind==='event';
 }
-function renderMismatches(){
+function renderMismatches(sortedOpen){
   const panel = $('#countPanel'); if(!panel) return 0;
   const ms = plainSeller() ? [] : mismatchesHere().slice().sort((a,b)=>(a.status==='open'?0:1)-(b.status==='open'?0:1) || new Date(b.ts)-new Date(a.ts));
-  const open = ms.filter(m=>m.status==='open');
-  // Settled ones stay a while for the record, but the panel is about open ones.
+  const open = sortedOpen || ms.filter(m=>m.status==='open');
+  // Settled ones stay a while for the record, but the tab is about open ones.
   const shown = open.concat(ms.filter(m=>m.status!=='open').slice(0, 10));
-  panel.style.display = open.length ? '' : 'none';
   if(!open.length) return 0;
   const bk = id => { const b = bookById(id); return b ? bookTitleHTML(b) : esc(id); };
   $('#countList').innerHTML = shown.map(m=>`<div class="ho-row ${m.status==='open'?'waiting':'received'}">
@@ -6009,6 +6275,7 @@ function saleModal(opts){
   openModal(`
     ${mHead(title+' — '+book.name)}
     <div class="m-body">
+      ${curCurrencies().length>1 ? `<div class="sale-prices">Price: ${curCurrencies().map(c=>esc(cashFmt(priceFor(book,c),c))).join(' · ')}</div>` : ''}
       ${(!isPre && !edit && onHand<=0) ? `<div class="err-box" id="noStock">There are no copies of <b>${esc(book.name)}</b> at
         ${esc(locName(loc))} to sell. <button type="button" class="btn btn-ghost btn-sm" id="preInstead">Pre-order it instead</button></div>` : ''}
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
@@ -12930,7 +13197,19 @@ function bookDisplayModal(){
   if(!list.length){ toast('No titles here yet.', true); return; }
   const where = season ? 'this season' : (CUR_LEVEL==='region' ? 'this region' : 'this event');
 
+  /* Out of stock: no copies on this shelf (b230). One button hides them all,
+     or, once they are all hidden, shows them all again. Saved with Save. */
+  const outOf = x => invQty(CUR_LOC, x.id) <= 0;
+  function oosButton(){
+    const el = $('#bdOos'); if(!el || season) return;
+    const oos = list.filter(outOf);
+    el.hidden = !oos.length;
+    const anyShown = oos.some(x=>x.on);
+    el.textContent = anyShown ? `Hide all out of stock books (${oos.filter(x=>x.on).length})` : `Show all out of stock books (${oos.length})`;
+    el.dataset.mode = anyShown ? 'hide' : 'show';
+  }
   function draw(){
+    oosButton();
     $('#bdList').innerHTML = list.map((x,i)=>`
       <div class="ro-row${x.on?'':' bd-off'}" data-id="${esc(x.id)}">
         <span class="ro-grip" title="Drag to move">⠿</span>
@@ -12958,6 +13237,7 @@ function bookDisplayModal(){
         ${season ? '' : `<li>Select which books should be displayed ${CUR_LEVEL==='region'?'in the warehouse in this region':'at this event'}.</li>`}
         <li>Drag and drop to change the order in which books are displayed${season?' across the whole season':''}.</li>
       </ol>
+      ${season ? '' : '<div class="bd-oos"><button type="button" class="btn btn-ghost btn-sm" id="bdOos" hidden></button></div>'}
       <div id="bdList"></div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -12966,6 +13246,13 @@ function bookDisplayModal(){
       <button class="btn btn-primary" id="bdSave">Save</button>
     </div>`, true);
   draw();
+  if($('#bdOos')) $('#bdOos').addEventListener('click', ()=>{
+    const hide = $('#bdOos').dataset.mode === 'hide';
+    list.filter(outOf).forEach(x=>{ x.on = !hide; });
+    // Something must stay on the shelf.
+    if(!list.some(x=>x.on)){ list.filter(outOf).forEach(x=>{ x.on = true; }); $('#modalErr').textContent='Every title here is out of stock, so they stay shown.'; }
+    draw();
+  });
   $('#bdSave').addEventListener('click', ()=>{
     const ids = list.map(x=>x.id);
     const off = list.filter(x=>!x.on).map(x=>x.id);
@@ -13325,6 +13612,17 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
+  if(a==='snopen'){ snShow(true, t.dataset.fam); return; }
+  if(a==='snclose'){ snShow(false); return; }
+  if(a==='snpin'){ SN.pinned = !SN.pinned; snSave(); if(SN.pinned) SN.open = true; renderAdmin(); return; }
+  if(a==='sngroup'){ const f = t.dataset.fam; if(SN.closed[f]) delete SN.closed[f]; else SN.closed[f] = 1; snSave(); renderAdmin(); return; }
+  if(a==='todotab'){ TODO.tab = t.dataset.tab; todoSave(); renderBottom(); return; }
+  if(a==='todosort'){
+    const k = t.dataset.sort;
+    if(TODO.sort===k) TODO.dir *= -1; else { TODO.sort = k; TODO.dir = k==='time' ? -1 : 1; }
+    todoSave(); renderBottom(); return;
+  }
+  if(a==='practicereset'){ practiceReset(); return; }
   if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
@@ -13334,7 +13632,7 @@ document.addEventListener('click',e=>{
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
   if(a==='wotoggle'){
-    const id = t.dataset.book, open = !WO_OPEN.has(id);
+    const id = t.dataset.key, open = !WO_OPEN.has(id);
     if(open) WO_OPEN.add(id); else WO_OPEN.delete(id);
     const chips = t.nextElementSibling; if(chips) chips.hidden = !open;
     t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
@@ -13390,6 +13688,14 @@ document.addEventListener('click',e=>{
   if(a==='people'){ peopleModal(); return; }
   if(a==='handover'){ handoverModal(); return; }
   if(a==='cntanswer'){ mismatchModal(t.dataset.id); return; }
+  if(a==='sbtoggle'){
+    const k = t.dataset.key, open = !SB_OPEN.has(k);
+    if(open) SB_OPEN.add(k); else SB_OPEN.delete(k);
+    const box = t.nextElementSibling; if(box) box.hidden = !open;
+    t.closest('.sb-seller').classList.toggle('open', open);
+    t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
+    return;
+  }
   if(a==='hoyes'){ answerHandover(t.dataset.id, true); return; }
   if(a==='hono'){ answerHandover(t.dataset.id, false); return; }
   if(a==='signout'){ signOut(); return; }
@@ -13716,6 +14022,11 @@ document.addEventListener('click',e=>{
   if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
   // Signed in: who this is, and their roles (b222).
   loadMe();
+  // The practice space says so, and when it was copied (b231).
+  if(PRACTICE){
+    practiceBanner();
+    post({action:'practiceInfo'}).then(d=>{ PRACTICE_INFO = (d && d.result) || null; practiceBanner(); }).catch(()=>{});
+  }
   // Draw last session's data straight away so the page is usable on open.
   if(cacheLoad()) setStatus('load','Checking for changes…');
   applyLevelTheme();
