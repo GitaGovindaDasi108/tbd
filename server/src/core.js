@@ -82,6 +82,20 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     if (!linkKey && !me) {
       return reply({ ok: false, signIn: true, error: 'Please sign in with Google to use the app.' });
     }
+    // Permissions (b234): Universal reads and changes the table.
+    if (!linkKey && /^perm(Get|Set)$/.test(action)) {
+      if (!auth.isAdmin(me)) return reply({ ok: false, error: 'Only Universal can change permissions.' });
+      const parse = (k, d) => { try { return JSON.parse(kv.getProp(k) || '') || d; } catch (e) { return d; } };
+      if (action === 'permSet') {
+        kv.setProp('permTable', JSON.stringify(people.cleanPermTable(p.table)));
+        kv.setProp('permPeople', JSON.stringify(people.cleanPermPeople(p.people)));
+      }
+      const persons = {};
+      auth.allGrants().forEach(g => { const x = persons[g.email] || (persons[g.email] = { email: g.email, name: g.name || g.googleName || g.email, roles: [] });
+        if (x.roles.indexOf(g.role) < 0) x.roles.push(g.role); });
+      return reply({ ok: true, result: { caps: people.PERM_CAPS, roles: people.PERM_ROLES, names: Object.fromEntries(people.PERM_ROLES.map(r => [r, people.ROLES[r].name])),
+        defaults: people.permDefaults(), table: parse('permTable', {}), people: parse('permPeople', {}), persons: Object.values(persons) } });
+    }
     // Who I am, my roles, and the People panel (b222).
     if (!linkKey && /^(me|setMyName|people(List|Add|Remove|Decline)|emergencyLink)$/.test(action)) {
       try { return reply({ ok: true, result: peopleAction(me, action, p) }); }

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b233**.
+Handover notes. Current build: **b234**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,41 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b234 — the left-hand menu, round two (practice); Permissions; build number for Universal only
+
+- **The menu (practice only, `SIDE_NAV`)**, reworked to the owner's notes:
+  the page's own cream (`--cream`), one accent, no rainbow. Like Cloudflare's:
+  a 56px column of section icons that opens out to 268px while the pointer is
+  over it (a first tap on a touch screen), icons and words together; each
+  section a dropdown (folded state remembered, `tbs_sidenav`); "Keep the menu
+  open" pins it beside the page. Phones: the round ☰ (`#snFab`, outside the
+  menu so it stays on screen) slides it in.
+- **Sections, in order** (`SN_SECTIONS`, names in `SN_ITEMS`): Books ·
+  Money · <Season/Region/Event/Earthly HQ> Admin (the place's actions) ·
+  Advanced (Spreadsheets, Specialty Reports, Sales Links, App Access — was
+  People) · App Development (Edit Wording, Practice, Permissions) · Settings
+  (Profile: the 👤 You window, titled Profile) · Support (was App and Sales
+  Support) · Sign Out at the foot. Each row is the panel's own button
+  (`snRow`, its attributes kept), so it does exactly what the button does.
+- **Activity Log** moves to the top bar in the new layout (`snTopActivity`).
+- **Card or list, per section** in the new layout (`sectionViews`, `VIEWS`,
+  `tbs_views`): a ☰/▦ switch on each panel heading that has cards; the
+  top-bar button is hidden there. The list-view CSS now keys on `.list-view`
+  on any ancestor, so it works for the body (live) and for one panel.
+- **🔐 Permissions** (Universal; in the menu, App Development): the table of
+  PERMISSIONS.md §4 (`PERM_CAPS`, 40 rows × 9 roles, in people.js) to change
+  **by level** (a role) or **by person** (an override that wins over their
+  roles). Server actions `permGet` / `permSet` (core.js, Universal only),
+  kept in `permTable` / `permPeople` (cleaned: only known rows, roles,
+  values). Saved now; **not yet enforced** — the app follows it once Stage 2
+  is built, as the window says.
+- **Build number and status light** (live too): Universal only
+  (`body.is-u`); others see the status only when something is wrong
+  (`.status.warn`, set by `setStatus('bad')`).
+- Tests: `browser-sellers.js` (the menu: colour, order, hover, fold, pin,
+  Track Cash, Profile, Permissions saved by level and by person, refused for a
+  Seller; the view switch; the phone ☰; build number hidden for a Seller).
 
 ## Done in b233 — a left-hand menu for the admin buttons (mock-up, practice space only)
 
