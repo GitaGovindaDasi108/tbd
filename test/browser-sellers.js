@@ -169,6 +169,38 @@ const API = 'http://api.test/';
     await own.evaluate(() => { document.querySelector('#sellerPanel').scrollIntoView(); });
     await own.screenshot({ path: shot('3-region') });
 
+    /* ---- b229: Sales by Seller in step with Track Cash ---- */
+    const sbt = async page => { await refresh(page); return page.evaluate(() => {
+      const rows = {}; document.querySelectorAll('#sellerList tbody tr:not(.sb-sub)').forEach(tr => {
+        const td = [...tr.children].map(x => x.innerText.trim()); rows[td[0]] = { moved: td[5], still: td[6] }; });
+      return { rows, foot: (document.querySelector('#sellerList tfoot') || {}).innerText || '' }; }); };
+    let v = await sbt(gita);
+    t.push(['(before: Tulasi still holds her €35; €105 at Yoga Studio in Track Cash)', /35/.test(v.rows.Tulasi.still) && /Still at Yoga Studio in Track Cash\s*105/.test(v.foot)]);
+    await O({ action: 'cashMove', cashId: 'cm1', fromAcct: 'ev_yoga', toAcct: 'BANK', cur: 'EUR', amt: 50, season: SA });
+    v = await sbt(gita);
+    t.push(['€50 moved on in Track Cash comes out of what the Event Lead received first: €20 still with her, Tulasi still €35',
+      /With the Event Lead[^\n]*\s*20/.test(v.foot) && /35/.test(v.rows.Tulasi.still) && /55/.test(v.foot)]);
+    await O({ action: 'cashMove', cashId: 'cm2', fromAcct: 'ev_yoga', toAcct: 'BANK', cur: 'EUR', amt: 55, season: SA });
+    v = await sbt(gita);
+    t.push(['all of it with the Global Coordinator: nobody still holds any (Tulasi —, moved on €35)',
+      v.rows.Tulasi.still === '—' && /35/.test(v.rows.Tulasi.moved) && !/With the Event Lead/.test(v.foot) && /Still at Yoga Studio in Track Cash[^\n]*105 € moved on[^\n]*\s*—/.test(v.foot)]);
+    await gita.evaluate(() => { document.querySelector('#sellerPanel').scrollIntoView(); });
+    await gita.screenshot({ path: shot('10-in-step') });
+    const tul = await open('tulasi@example.com', 'Tulasi');
+    t.push(['…and Tulasi\'s own "My cash" agrees: nothing with her, no handover button',
+      /my cash\s*—/i.test(await tiles(tul)) && !(await tul.$('[data-act="handover"]'))]);
+    await own.evaluate(() => goTo('event', 'ev_yoga')); await own.waitForTimeout(400);
+    // (this page has not heard of the moves yet: it shows who held the cash before them)
+    await own.click('[data-act="cash"]'); await own.waitForTimeout(400);
+    t.push(['Track Cash says who holds a place\'s cash: "held by Tulasi 35 € · Event Lead 70 €"',
+      /held by Tulasi 35 € · Event Lead 70 €/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
+    await own.evaluate(() => closeModal()); await refresh(own);
+    await own.click('[data-act="cash"]'); await own.waitForTimeout(400);
+    const tc = await own.evaluate(() => document.querySelector('#modal').innerText);
+    t.push(['Track Cash names no one holding Yoga Studio\'s cash any more', !/held by/.test(tc)]);
+    await own.evaluate(() => closeModal());
+    await own.evaluate(() => goTo('region', 'rg_it')); await own.waitForTimeout(400);
+
     /* ---- b224: a closing count that does not match ---- */
     await O({ action: 'createEvent', eventId: 'ev_park', name: 'Park Stall', regionId: 'rg_it', season: SA });
     await O({ action: 'adjustStockBulk', location: 'ev_park', items: [{ bookId: B[0], delta: 10 }], override: true, season: SA });
