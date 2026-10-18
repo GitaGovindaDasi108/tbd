@@ -24,9 +24,15 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   }
   const fetchImpl = async url => {
     if (/oauth2\/v3\/certs/.test(url)) return { ok: true, status: 200, json: async () => ({ keys: [pub] }) };
+    if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80, PLN: 4, EUR: 0.9 }, time_last_update_utc: 'today' }) };
     throw new Error('offline');
   };
-  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com' });
+  // The practice space (b237: expenses are tried there first). A live server alongside, which refuses them.
+  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com', practice: true });
+  const liveDb = new DatabaseSync(':memory:');
+  const live = makeServer({ exec: (sql, ...p) => { const st = liveDb.prepare(sql); return /^\s*select/i.test(sql) ? st.all(...p) : (st.run(...p), []); },
+    timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com' });
+  await srv.warm();                     // today's rates, fetched ahead as the worker does
   console.log = quiet;
   const ask = async p => JSON.parse(await srv.request({ postData: { contents: JSON.stringify(p) } }));
   const sessionOf = async (email, name) => (await ask({ action: 'signIn', idToken: await token(email, name) })).result.session;
@@ -52,6 +58,13 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   const fa = await sessionOf('fa@example.com', 'Asst'), ra = await sessionOf('ra@example.com', 'Radha');
   const S = p => ask(Object.assign({ s: sita }, p)), Fi = p => ask(Object.assign({ s: fin }, p));
   const t = [];
+  {
+    const ls = (JSON.parse(await live.request({ postData: { contents: JSON.stringify({ action: 'signIn', idToken: await token('owner@example.com', 'O') }) } }))).result.session;
+    const r0 = JSON.parse(await live.request({ postData: { contents: JSON.stringify({ s: ls, action: 'expOptions' }) } }));
+    t.push(['the live server refuses expenses (practice space first)', !r0.ok && /practice space/.test(r0.error)]);
+  }
+  // A cost recorded the old way, before the two were one.
+  await O({ action: 'saveCost', id: 'Cold1', location: 'ev_cp', category: 'Card machine fee', cur: 'INR', amt: 25, note: 'SumUp', season: SA });
 
   // A Seller: one place to record at, Delhi's rupees first, UPI and cash, never card.
   let r = await S({ action: 'expOptions' });
@@ -158,7 +171,69 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   r = await S({ action: 'expDelete', id: 'Xs2aaaaa' });
   t.push(['someone may delete their own unpaid expense', r.ok && (await S({ action: 'expList' })).result.length === 2]);
   r = await O({ action: 'expList', scope: 'all' });
-  t.push(['Universal sees every expense', r.ok && r.result.length === 4]);
+  t.push(['Universal sees every expense, the cost recorded before among them', r.ok && r.result.length === 5 &&
+    r.result.some(x => x.id === 'Cold1' && x.byName === 'Record Costs' && x.category === 'Card machine fee' && x.amt === 25)]);
+
+  // One with Record Costs: every expense at a region or event is a cost too, so it comes off the net.
+  let costs = (await O({ action: 'getState', season: SA })).state.costs;
+  t.push(['an expense at an event is kept as a cost there (comes off the net)', costs.some(c => c.id === 'Xk1aaaaa' && c.location === 'ev_cp' && Number(c.amt) === 120)]);
+  t.push(['…one at a region, against its warehouse', costs.some(c => c.id === 'Xf1aaaaa' && c.location === 'wh_pl')]);
+  r = await Fi({ action: 'expMark', id: 'Xk1aaaaa', status: 'declined', note: 'No receipt' });
+  costs = (await O({ action: 'getState', season: SA })).state.costs;
+  t.push(['a declined expense leaves the costs', r.ok && !costs.some(c => c.id === 'Xk1aaaaa')]);
+  await Fi({ action: 'expMark', id: 'Xk1aaaaa', status: 'pending' });
+  costs = (await O({ action: 'getState', season: SA })).state.costs;
+  t.push(['…and comes back if it is waiting again', costs.some(c => c.id === 'Xk1aaaaa')]);
+  r = await S({ action: 'expOptions' });
+  t.push(['the form offers the kinds of cost and the payment types', r.ok && r.result.categories.includes('Travel') && r.result.categories.includes('Card machine fee') && r.result.payTypes.includes('Card')]);
+  const PT = (await O({ action: 'savePartner', regionId: 'rg_in', name: 'ISKCON Juhu', season: SA })).result;
+  r = await S({ action: 'expOptions' });
+  t.push(['…and the region\'s consignment groups', r.ok && r.result.partners.some(g => g.id === PT)]);
+  r = await S({ action: 'expSave', id: 'Xs9aaaaa', kind: 'record', location: 'ev_cp', desc: 'Card fee for Juhu books', cur: 'INR', amt: 12,
+    category: 'Card machine fee', payType: 'Card', partnerId: PT });
+  costs = (await O({ action: 'getState', season: SA })).state.costs;
+  t.push(['a group\'s expense is its cost (off what it is owed)', r.ok && costs.some(c => c.id === 'Xs9aaaaa' && c.partnerId === PT && c.category === 'Card machine fee' && c.payType === 'Card')]);
+  r = await S({ action: 'expDelete', id: 'Xs9aaaaa' });
+  costs = (await O({ action: 'getState', season: SA })).state.costs;
+  t.push(['deleting the expense deletes its cost', r.ok && !costs.some(c => c.id === 'Xs9aaaaa')]);
+
+  // The finance section's rows.
+  r = await S({ action: 'finData' });
+  t.push(['the finance figures are Finance\'s only', !r.ok]);
+  r = await Fi({ action: 'finData' });
+  const D = r.result;
+  t.push(['Finance gets every sale as a row: place, title, books, dollars', r.ok && D.sales.some(x => x.id === 'sP1' && x.r === 'rg_in' && x.e === 'ev_cp' && x.q === 1 && x.pu > 0 && x.gu === 0)]);
+  t.push(['…and every expense, in dollars', r.ok && D.expenses.some(x => x.id === 'Xf1aaaaa' && x.r === 'rg_pl' && x.usd > 0 && x.kind === 'reimburse')]);
+  t.push(['…seasons, regions and events, each with its series', r.ok && D.seasons.some(x => x.name === 'Europe Tour' && x.series === 'Europe Tour') && D.events.some(x => x.id === 'ev_cp')]);
+  await O({ action: 'saveSeason', name: 'Kartika 2025' }); await O({ action: 'saveSeason', name: 'Kartika 2026' });
+  r = await Fi({ action: 'finData' });
+  t.push(['seasons that repeat are one series (the year left out)', r.result.seasons.filter(x => x.series === 'Kartika').length === 2]);
+  const k25 = r.result.seasons.find(x => x.name === 'Kartika 2025').id;
+  r = await Fi({ action: 'finSeriesSet', kind: 'seasons', id: k25, series: 'Kartika (Vrindavan)' });
+  t.push(['Finance can regroup one', r.ok && r.result.seasons.find(x => x.id === k25).series === 'Kartika (Vrindavan)']);
+  r = await ask({ s: fa, action: 'finSeriesSet', kind: 'seasons', id: k25, series: 'x' });
+  t.push(['…the Finance Assistant cannot', !r.ok]);
+
+  // View as (practice, Universal only).
+  r = await O({ action: 'viewAsList' });
+  t.push(['Universal gets the list of people to view the app as', r.ok && r.result.people.some(x => x.email === 'sita@example.com')]);
+  r = await O({ action: 'getState', va: { email: 'sita@example.com' } });
+  t.push(['viewing as Sita, the app is hers: one event only', r.ok && r.state.role === 'seller' && r.state.lockedEvent === 'ev_cp']);
+  r = await O({ action: 'me', va: { role: 'RL', placeId: 'rg_pl' } });
+  t.push(['viewing as a role nobody holds: a Regional Lead for Poland', r.ok && r.result.grants.length === 1 && r.result.grants[0].role === 'RL' && !r.result.universal]);
+  r = await O({ action: 'getState', va: { role: 'RL', placeId: 'rg_pl' } });
+  t.push(['…who sees Poland\'s regional page', r.ok && r.state.role === 'coordinator' && r.state.lockedRegion === 'rg_pl']);
+  r = await O({ action: 'getState', va: { role: 'F' } });
+  t.push(['…as Finance: "Not quite yet", as a Finance person sees it', !r.ok && r.noAccess]);
+  r = await S({ action: 'getState', va: { email: 'owner@example.com' } });
+  t.push(['someone not Universal cannot view as anyone', r.ok && r.state.role === 'seller']);
+  r = await O({ action: 'getState' });
+  t.push(['…and afterwards Universal is Universal again', r.ok && (r.state.role || 'admin') === 'admin']);
+  {
+    const ls = (JSON.parse(await live.request({ postData: { contents: JSON.stringify({ action: 'signIn', idToken: await token('owner@example.com', 'O') }) } }))).result.session;
+    const r1 = JSON.parse(await live.request({ postData: { contents: JSON.stringify({ s: ls, action: 'viewAsList' }) } }));
+    t.push(['View as is refused on the live server', !r1.ok]);
+  }
 
   // Receipts are not in the state, nor in the copies.
   const state = JSON.stringify((await O({ action: 'getState' })).state);

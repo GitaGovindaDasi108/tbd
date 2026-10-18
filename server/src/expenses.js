@@ -13,7 +13,19 @@
    Receipts are files, so they are kept apart, in their own database table
    `receipt`, which nothing copies: the state, the spreadsheet copies and the
    practice space never carry them. Each is split into parts well under the
-   database's 2 MB limit for one value. */
+   database's 2 MB limit for one value.
+
+   Record Costs and Expenses are one (b237, the owner's wish): an expense has
+   the cost's kind (card fee, travel...), the payment type it was paid with,
+   and may belong to a consignment group. Every expense at a region or event
+   is also kept as a cost in `_costs`, under the same id, through Code.gs's own
+   saveCost — so every total that takes costs off (net sales, a group's money
+   owed, the spreadsheets) takes expenses off, unchanged. A declined expense
+   leaves the costs. Costs recorded before, with Record Costs, are taken into
+   the expenses list as they are (adopt()).
+
+   For now all of this is the practice space's only (the owner's wish: try it
+   there first); the live server refuses it. */
 
 /* Ways of being paid back, and what each needs from the person (the owner's
    list: cash, or any app the tour takes payments with). A payment type the
@@ -43,6 +55,7 @@ const NOT_METHODS = { card: 1, gift: 1, other: 1 };
 const fieldsFor = m => METHOD_FIELDS[m] || [{ k: 'details', label: 'Your ' + m + ' account details', req: true }];
 
 const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'date', 'desc', 'cur', 'amt', 'kind',
+  'category', 'payType', 'partnerId',
   'method', 'reimbCur', 'payTo', 'notes', 'receipts', 'byName', 'byEmail', 'byLink', 'forName', 'forEmail',
   'status', 'doneAt', 'doneBy', 'doneNote'];
 const T = '_expenses';
@@ -51,7 +64,7 @@ const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk
 const MAX_FILES = 10;
 const CUR = /^[A-Z]{3}$/;
 
-export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
+export function makeExpenses({ exec, app, auth, people, places, kv, now, practice, asOwner }) {
   now = now || (() => Date.now());
   exec('CREATE TABLE IF NOT EXISTS receipt (id TEXT NOT NULL, part INTEGER NOT NULL, parts INTEGER NOT NULL, name TEXT NOT NULL, ' +
        'mime TEXT NOT NULL, size INTEGER NOT NULL, owner TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (id, part))');
@@ -204,6 +217,10 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
     return {
       places: list, location: pl ? pl.id : '', defaultCur: regionCurs(F, pl)[0] || 'USD',
       spendCurs: [...spend], methods: eff.methods.map(m => methodInfo(F, m)), curs: eff.curs,
+      categories: F.categories, payTypes: F.payTypes.filter(t => String(t).toLowerCase() !== 'gift'),
+      // The consignment groups of the place's region (and only the place's own event's, for an event group).
+      partners: pl && pl.regionId ? F.partners.filter(g => g.regionId === pl.regionId && (!g.eventId || g.eventId === pl.eventId))
+        .map(g => ({ id: g.id, name: g.name })) : [],
       me: { name: w.name, email: w.email, link: !!w.link }, fin: w.fin, mayPay: mayPay(w),
       people: isFin(w) ? peopleList() : []
     };
@@ -245,6 +262,80 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
     });
   }
 
+  /* ---- One with Record Costs ---- */
+  // The shelf a cost is kept against: an event, or its region's warehouse. A season-wide expense has none.
+  function costLoc(F, r) {
+    if (F.events[r.location]) return r.location;
+    if (F.regions[r.location]) return F.regions[r.location].whLoc;
+    return '';
+  }
+  const costIds = () => new Set(app.dbHas_('_costs') ? app.objectsOf_('_costs').map(c => String(c.id)) : []);
+  function syncCost(r, F, w) {
+    const loc = costLoc(F, r);
+    if (!loc || r.status === 'declined') return dropCost(r, w);
+    asOwner({ action: 'saveCost', id: r.id, ts: r.ts, location: loc, category: r.category || 'Other', payType: r.payType || '',
+      cur: r.cur, amt: Number(r.amt), note: String(r.desc || '').slice(0, 200), partnerId: r.partnerId || '', season: r.seasonId }, w.name);
+  }
+  function dropCost(r, w) {
+    if (costIds().has(String(r.id))) asOwner({ action: 'deleteCost', id: r.id, season: r.seasonId }, w.name);
+  }
+  /* Costs recorded with Record Costs before the two were one: each becomes an
+     expense for the records, under its own id, so there is one list. */
+  function adopt() {
+    if (!app.dbHas_('_costs')) return;
+    fresh();
+    const have = new Set(rows().map(r => String(r.id)));
+    const F = app.financeFacts_(), byWh = {};
+    Object.values(F.regions).forEach(r => { if (r.whLoc) byWh[r.whLoc] = r.id; });
+    const P = places(), add = [];
+    app.objectsOf_('_costs').forEach(c => {
+      if (!c || !c.id || have.has(String(c.id))) return;
+      const loc = String(c.location || ''), pl = placeOf(P, F.events[loc] ? loc : (byWh[loc] || ''));
+      if (!pl) return;                                  // a place since deleted
+      const ts = c.ts instanceof Date ? c.ts.toISOString() : String(c.ts || new Date(now()).toISOString());
+      add.push({ id: String(c.id), ts, seasonId: pl.seasonId, regionId: pl.regionId, location: pl.id, placeLabel: labelOf(P, pl),
+        date: ts.slice(0, 10), desc: String(c.note || '') || String(c.category || 'Cost'), cur: String(c.cur || ''), amt: Number(c.amt) || 0,
+        kind: 'record', category: String(c.category || 'Other'), payType: String(c.payType || ''), partnerId: String(c.partnerId || ''),
+        method: '', reimbCur: '', payTo: '{}', notes: '', receipts: '[]', byName: 'Record Costs', byEmail: '', byLink: '',
+        forName: '', forEmail: '', status: 'recorded', doneAt: '', doneBy: '', doneNote: '' });
+    });
+    if (!add.length) return;
+    app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
+    app.dbInsert_(T, add);
+  }
+
+  /* ---- The finance section (b237): every sale and expense, as rows ----
+     A season, region or event that repeats (Kartika every year, the Polish
+     tour, the Chowpatty program) is one "series": its name without the year,
+     unless Finance has named it otherwise (finSeries). */
+  const seriesOf = name => String(name || '').replace(/\b(19|20)\d{2}\b/g, '').replace(/[\s\-–—,·:()]+$/g, '')
+    .replace(/^[\s\-–—,·:()]+/g, '').replace(/\s{2,}/g, ' ').trim() || String(name || '');
+  function finData(w) {
+    if (!isFin(w)) throw new Error('The finance section is for Finance.');
+    fresh();
+    const D = app.financeData_(), own = cleanSeries(parse(kv.getProp('finSeries'), {}));
+    ['seasons', 'regions', 'events'].forEach(k => D[k].forEach(x => { x.series = own[k][x.id] || seriesOf(x.name); }));
+    D.mayEdit = mayPay(w);
+    return D;
+  }
+  function cleanSeries(o) {
+    const out = { seasons: {}, regions: {}, events: {} };
+    Object.keys(out).forEach(k => Object.keys((o && o[k]) || {}).slice(0, 5000).forEach(id => {
+      const v = clip(o[k][id], 80); if (v) out[k][clip(id, 60)] = v;
+    }));
+    return out;
+  }
+  function seriesSet(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can change how seasons, regions and events are grouped.');
+    const cur = cleanSeries(parse(kv.getProp('finSeries'), {}));
+    const k = ['seasons', 'regions', 'events'].indexOf(p.kind) >= 0 ? p.kind : '';
+    if (!k) throw new Error('Seasons, regions or events?');
+    const id = clip(p.id, 60), v = clip(p.series, 80);
+    if (v) cur[k][id] = v; else delete cur[k][id];
+    kv.setProp('finSeries', JSON.stringify(cur));
+    return finData(w);
+  }
+
   /* ---- The expenses ---- */
   function mine(w, r) {
     if (w.email) return String(r.byEmail) === w.email || String(r.forEmail) === w.email;
@@ -255,7 +346,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
     fresh();
     const F = app.financeFacts_(), rules = getRules();
     const id = clip(p.id, 40);
-    if (!/^X[0-9a-z]{6,39}$/.test(id)) throw new Error('That expense could not be named.');
+    if (!/^[XC][0-9A-Za-z_-]{3,39}$/.test(id)) throw new Error('That expense could not be named.');
     const old = rows().find(r => String(r.id) === id);
     if (old && !(isFin(w) && mayPay(w)) && !mine(w, old)) throw new Error('That expense is not yours to change.');
     if (old && old.status === 'paid' && !mayPay(w)) throw new Error('That expense has been paid back, so it cannot be changed. Ask Finance.');
@@ -298,9 +389,13 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
       if (!h || (!kept && h.owner !== ownerTag(w))) throw new Error('A receipt did not finish sending. Add it again.');
       return { id: rid, name: h.name, mime: h.mime, size: h.size };
     });
+    const category = F.categories.indexOf(String(p.category)) >= 0 ? String(p.category) : 'Other';
+    const payType = clip(p.payType, 40);
+    const partnerId = clip(p.partnerId, 40);
+    if (partnerId && !F.partners.some(g => g.id === partnerId && g.regionId === pl.regionId)) throw new Error('That consignment group is not in this region.');
     const row = {
       id, ts: old ? old.ts : new Date(now()).toISOString(), seasonId: pl.seasonId, regionId: pl.regionId, location: pl.id,
-      placeLabel: labelOf(w.P, pl), date, desc, cur, amt, kind, method, reimbCur, payTo: JSON.stringify(payTo),
+      placeLabel: labelOf(w.P, pl), date, desc, cur, amt, kind, category, payType, partnerId, method, reimbCur, payTo: JSON.stringify(payTo),
       notes: clip(p.notes, 1000), receipts: JSON.stringify(receipts),
       byName: old ? old.byName : w.name, byEmail: old ? old.byEmail : w.email, byLink: old ? old.byLink : w.link,
       forName, forEmail,
@@ -311,6 +406,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
     if (!row.byName && !forName) throw new Error('Say who you are first.');
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
     if (old) app.dbUpdate_(T, { id }, row); else app.dbInsert_(T, row);
+    syncCost(row, F, w);
     return shown(row);
   }
   function remove(w, p) {
@@ -320,6 +416,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
     if (!mayPay(w) && !mine(w, old)) throw new Error('That expense is not yours to delete.');
     if (old.status === 'paid' && !mayPay(w)) throw new Error('That expense has been paid back, so it cannot be deleted. Ask Finance.');
     app.dbDelete_(T, { id });
+    dropCost(old, w);
     parse(old.receipts, []).forEach(x => exec('DELETE FROM receipt WHERE id = ?', x.id));
     return { id };
   }
@@ -333,7 +430,9 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
     const set = status === 'pending' ? { status, doneAt: '', doneBy: '', doneNote: '' }
       : { status, doneAt: new Date(now()).toISOString(), doneBy: w.name, doneNote: clip(p.note, 300) };
     app.dbUpdate_(T, { id }, set);
-    return shown(Object.assign({}, old, set));
+    const now2 = Object.assign({}, old, set);
+    syncCost(now2, facts(), w);
+    return shown(now2);
   }
   function list(w, p) {
     fresh();
@@ -373,10 +472,12 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now }) {
   }
 
   const ACTIONS = { expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, receiptPut, receiptGet };
+    expRulesGet: rulesGet, expRulesSet: rulesSet, receiptPut, receiptGet, finData, finSeriesSet: seriesSet };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
+    if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');
     const w = whoFor(p, me, linkKey);
+    if (/^(expList|expTodo|finData)$/.test(action)) adopt();
     return ACTIONS[action](w, p);
   }
   return { handle, sweep, isAction: a => Object.prototype.hasOwnProperty.call(ACTIONS, a), effective, METHOD_FIELDS };

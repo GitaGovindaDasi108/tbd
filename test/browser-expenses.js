@@ -4,7 +4,10 @@
    A Seller records one to be paid back by UPI, with a photo of the receipt;
    Finance (who cannot use the rest of the app yet) finds it in the Finance
    To do, opens the receipt, pays it back, records one on someone's behalf,
-   and switches UPI off — after which the Seller is no longer offered it. */
+   and switches UPI off — after which the Seller is no longer offered it.
+   All of it in the practice space, where expenses are tried first: Record
+   Costs opens the same form, the Finance section adds everything up, and
+   Universal can view the app as anyone (App Development › View as). */
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){
   return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -32,9 +35,11 @@ const API = 'http://api.test/';
   }
   const fetchImpl = async url => {
     if (/oauth2\/v3\/certs/.test(url)) return { ok: true, status: 200, json: async () => ({ keys: [pub] }) };
+    if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80 }, time_last_update_utc: 'today' }) };
     throw new Error('offline');
   };
-  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com' });
+  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com', practice: true });
+  await srv.warm();
   console.log = quiet;
   const ask = async p => JSON.parse(await srv.request({ postData: { contents: JSON.stringify(p) } }));
   const sessionOf = async (email, name) => (await ask({ action: 'signIn', idToken: await token(email, name) })).result.session;
@@ -80,7 +85,7 @@ const API = 'http://api.test/';
       if (url.startsWith('http://app.test/')) {
         const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
         if (rel === 'config.js') return route.fulfill({ status: 200, contentType: 'text/javascript',
-          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, LIVE_URL: '' };` });
+          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, LIVE_URL: '', PRACTICE_URL: '${API}' };` });
         const f = path.join(ROOT, rel);
         if (fs.existsSync(f) && fs.statSync(f).isFile())
           return route.fulfill({ status: 200, body: fs.readFileSync(f), contentType: f.endsWith('.html') ? 'text/html' : 'text/javascript' });
@@ -88,7 +93,7 @@ const API = 'http://api.test/';
       }
       return route.fulfill({ status: 204, body: '' });
     });
-    await page.goto('http://app.test/index.html'); await page.waitForTimeout(1500);
+    await page.goto('http://app.test/index.html?practice'); await page.waitForTimeout(1500);
     await page.click('#fakeGsi'); await page.waitForTimeout(2500);
     return page;
   }
@@ -196,8 +201,69 @@ const API = 'http://api.test/';
 
     /* ---- The owner ---- */
     const own = await open('owner@example.com', 'The Owner');
-    const omenu = await own.evaluate(() => [...document.querySelectorAll('#sideNav .sn-item')].map(b => b.innerText.trim()).join('|'));
-    t.push(['Universal has Expenses, Finance To do and Reimbursement Settings in Money', /Expenses/.test(omenu) && /Finance To do/.test(omenu) && /Reimbursement Settings/.test(omenu)]);
+    const snText = () => own.evaluate(() => [...document.querySelectorAll('#sideNav [data-act]')].map(b => b.dataset.act).join('|'));
+    const omenu = await snText();
+    t.push(['Universal has Expenses, Finance To do and Reimbursement Settings', /\bexpenses\b/.test(omenu) && /fintodo/.test(omenu) && /reimbset/.test(omenu)]);
+    t.push(['…a Finance section: Overview, Reports, Compare', /finoverview/.test(omenu) && /finreport/.test(omenu) && /fincompare/.test(omenu)]);
+    t.push(['…View as in App Development', /viewas/.test(omenu)]);
+    t.push(['…and no separate Record Costs (it is the Expenses form now)', !/\bcosts\b/.test(omenu)]);
+
+    // Record Costs, merged: the same form, with the kind of expense and how it was paid.
+    await own.evaluate(() => expensesModal()); await own.waitForTimeout(1000);
+    const cats = await own.$$eval('#xCat option', os => os.map(o => o.value));
+    t.push(['the form has the kinds of expense from Record Costs (card machine fee, venue…)', cats.includes('Card machine fee') && cats.includes('Venue')]);
+    await own.selectOption('#xLoc', 'ev_cp'); await own.waitForTimeout(600);
+    await own.click('.exp-k:has(input[value="record"])'); await own.waitForTimeout(200);
+    t.push(['…and "Paid with" (the place\'s payment types), as Record Costs had', !!(await own.$('#xPay'))]);
+    await own.selectOption('#xCat', 'Venue'); await own.fill('#xAmt', '800'); await own.fill('#xDesc', 'Hall hire');
+    await own.click('#xSave'); await own.waitForTimeout(1500);
+    const st = (await O({ action: 'getState', season: SA })).state;
+    t.push(['…saved: the venue expense is also a cost at the event, so net totals take it off', (st.costs || []).some(c => c.location === 'ev_cp' && Number(c.amt) === 800 && c.category === 'Venue')]);
+
+    // The Finance section.
+    await own.evaluate(() => financeModal('overview')); await own.waitForTimeout(1500);
+    m = await modal(own);
+    t.push(['Finance › Overview: figures in dollars', /Gross sales/i.test(m) && /Collections/i.test(m) && /Net/i.test(m) && /Margin/i.test(m)]);
+    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending payments\s*\$3\.75/i.test(m)]);
+    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*\$17\.63/i.test(m)]);
+    t.push(['…pending reimbursements: the ₹120 chai, $1.50', /Pending reimbursements\s*\$1\.5/i.test(m)]);
+    t.push(['…at every level: the season row', /Kartika/.test(m)]);
+    await own.click('[data-act="finopen"][data-key^="s:"]'); await own.waitForTimeout(300);
+    await own.click('[data-act="finopen"][data-key^="r:"]'); await own.waitForTimeout(300);
+    m = await modal(own);
+    t.push(['…opening the season and region shows Delhi and the Chowpatty Program', /Delhi/.test(m) && /Chowpatty Program/.test(m)]);
+    t.push(['…the window is wide, and scrolls its table rather than the page', await own.evaluate(() => document.querySelector('#modal').classList.contains('fin-wide'))]);
+    await own.screenshot({ path: shot('fin-overview') });
+    await own.click('[data-act="fintab2"][data-tab="report"]'); await own.waitForTimeout(400);
+    await own.selectOption('[data-rd="0"]', 'category'); await own.waitForTimeout(400);
+    m = await modal(own);
+    t.push(['Reports: rows by kind of expense', /Venue/.test(m) && /Total \(\d+ rows?\)/.test(m)]);
+    await own.selectOption('[data-rd="0"]', 'title'); await own.waitForTimeout(400);
+    m = await modal(own);
+    t.push(['…by title, with books sold', /Books sold/i.test(m) && /\(English\)|\(no title\)|\w/.test(m)]);
+    const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"]')]);
+    const csv = fs.readFileSync(await dl.path(), 'utf8');
+    t.push(['…downloads as a CSV for Excel or Sheets', /^﻿?Title,/.test(csv) && /Total/.test(csv)]);
+    await own.screenshot({ path: shot('fin-report') });
+    await own.click('[data-act="fintab2"][data-tab="compare"]'); await own.waitForTimeout(400);
+    m = await modal(own);
+    t.push(['Compare: seasons of the same name side by side, added up', /Kartika/.test(m) && /All together/i.test(m) && /Average/i.test(m)]);
+    await own.evaluate(() => closeModal());
+
+    // View as: a Seller at the Chowpatty Program.
+    await own.evaluate(() => viewAsModal()); await own.waitForTimeout(800);
+    m = await modal(own);
+    t.push(['View as lists the people, with their roles', /Sita/.test(m) && /Madhava/.test(m)]);
+    await own.selectOption('#vaRole', 'S'); await own.waitForTimeout(200);
+    await own.selectOption('#vaPlace', 'ev_cp');
+    await Promise.all([own.waitForNavigation(), own.click('#vaGo')]); await own.waitForTimeout(2500);
+    const bar = await own.evaluate(() => (document.querySelector('#viewAsBar') || {}).innerText || '');
+    t.push(['…viewing as a Seller: the bar says so', /Viewing the app as\s*Seller · Chowpatty Program/i.test(bar)]);
+    const vmenu = await snText();
+    t.push(['…and the menu is a Seller\'s: Expenses, no Finance, no View as', /\bexpenses\b/.test(vmenu) && !/fintodo|finoverview|viewas/.test(vmenu)]);
+    await own.screenshot({ path: shot('viewas') });
+    await Promise.all([own.waitForNavigation(), own.click('#viewAsBar [data-act="viewstop"]')]); await own.waitForTimeout(2500);
+    t.push(['Stop viewing: back to Universal', !(await own.$('#viewAsBar')) && /finoverview/.test(await snText())]);
   } catch (e) { errors.push('test: ' + (e.stack || e.message)); }
   await browser.close();
 
