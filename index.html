@@ -1041,6 +1041,10 @@ body.busy #busyBar{opacity:1}
 .rq-log-t{font-size:13px;color:#4A3470}
 .rq-log-m{font-size:11.5px;color:var(--muted);margin-top:2px}
 .bottom-panels .body{padding:10px 12px}
+.practice-bar{background:repeating-linear-gradient(135deg,#E6F4EA 0 14px,#D6EEDD 14px 28px);border:1.5px solid #8CC9A0;
+  color:#1F5E36;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px;line-height:1.5}
+.practice-bar .pb-when{color:#3C7A52}
+.practice-bar .pb-btns{display:inline-flex;gap:6px;margin-left:6px;flex-wrap:wrap;vertical-align:middle}
 .build-warn{background:var(--clay-l);border:1.5px solid #E7A89E;color:var(--clay);border-radius:12px;
   padding:11px 14px;font-size:13.5px;line-height:1.5;margin-bottom:12px}
 .bottom-panels .log{gap:5px}
@@ -1455,7 +1459,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b230</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b231</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1659,6 +1663,61 @@ const CONFIG = Object.assign({
      in with Google. Links never sign in. */
   GOOGLE_CLIENT_ID: ''
 }, window.TBS_CONFIG || {});
+
+/* ---- The practice space (b231) ----
+   The same page with ?practice in its address talks to the practice server: a
+   copy of the live records and people, for trying things out together. Its
+   address is the live server's with tbs-practice in place of tbs-server
+   (CONFIG.PRACTICE_URL, if set, wins). Everything the page keeps on the device
+   — the saved state, the queue of unsent saves, the sign-in — is kept apart
+   under "practice:", so practice and live can never mix. */
+const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
+function practiceUrl(){
+  if(CONFIG.PRACTICE_URL) return CONFIG.PRACTICE_URL;
+  const m = String(CONFIG.APPS_SCRIPT_URL||'').match(/^(https?:\/\/)tbs-server(\.[^/]+\.workers\.dev.*)$/);
+  return m ? m[1] + 'tbs-practice' + m[2] : '';
+}
+if(PRACTICE){
+  CONFIG.APPS_SCRIPT_URL = practiceUrl();
+  delete CONFIG.LIVE_URL;                     // live updates come from the practice server too
+  ['getItem','setItem','removeItem'].forEach(fn=>{
+    const orig = Storage.prototype[fn];
+    Storage.prototype[fn] = function(k, ...rest){ return orig.call(this, 'practice:' + k, ...rest); };
+  });
+}
+/** The other side: the practice space from the live app, or the live app from practice. */
+function practiceLink(on){
+  const q = new URLSearchParams(location.search);
+  if(on) q.set('practice', '1'); else q.delete('practice');
+  const qs = q.toString().replace(/practice=1/, 'practice');
+  return location.pathname + (qs ? '?' + qs : '') + location.hash;
+}
+function practiceBanner(){
+  if(!PRACTICE) return;
+  let bar = document.getElementById('practiceBar');
+  if(!bar){
+    bar = document.createElement('div'); bar.id = 'practiceBar'; bar.className = 'practice-bar no-edit';
+    const main = document.querySelector('main'); main.insertBefore(bar, main.firstChild);
+    document.title = '🧪 Practice — Transcendental Book Sales';
+  }
+  const when = PRACTICE_INFO && PRACTICE_INFO.copiedAt ? new Date(PRACTICE_INFO.copiedAt).toLocaleString(LOCALE, {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
+  bar.innerHTML = `<b>🧪 Practice space</b> — a copy of the real app to try things in, together. Nothing done here touches the real
+    records or the spreadsheets.${when ? ` <span class="pb-when">Copied from the live app ${esc(when)}.</span>` : ''}
+    <span class="pb-btns">${isAdmin() ? '<button class="btn btn-sm btn-ghost" data-act="practicereset">Start over from the live app</button>' : ''}
+    <a class="btn btn-sm btn-ghost" href="${esc(practiceLink(false))}">Leave practice</a></span>`;
+}
+let PRACTICE_INFO = null;
+async function practiceReset(){
+  if(!confirm('Start the practice space over? Everything everyone has done in practice is replaced by a fresh copy of the live app.')) return;
+  setStatus('load', 'Copying the live app…');
+  try{
+    const d = await post({action:'practiceReset'});
+    PRACTICE_INFO = Object.assign({}, PRACTICE_INFO, d.result || {});
+    try{ outboxSave([]); }catch(e){}          // unsent practice saves belong to the old copy
+    await pull();
+    toast('Practice space started over from the live app');
+  }catch(err){ toast(err.message, true); setStatus('bad', 'Error'); }
+}
 
 const WAREHOUSE = 'WAREHOUSE';
 /* Must match Code.gs. Older records used the previous wording. */
@@ -3621,6 +3680,7 @@ function setViewMode(mode){
 try{ if(localStorage.getItem('tbs_view')==='list') setTimeout(()=>setViewMode('list'), 0); }catch(e){}
 
 function renderAll(){
+  practiceBanner();
   if(!STATE) return;
   // Whatever wording you have rewritten is put in place after every redraw.
   setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 0);
@@ -4050,6 +4110,9 @@ function renderAdmin(){
     : `<button class="btn" data-act="sharelinks">🔗 Sales Links</button>`);
   cols[0].push(`<button class="btn" data-act="specreport">📊 Speciality Reports</button>`);
   cols[0].push(`<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>`);
+  // A copy of the app to try things in (b231): the practice space, or back from it.
+  cols[0].push(PRACTICE ? `<a class="btn" href="${esc(practiceLink(false))}">🧪 Leave Practice Space</a>`
+    : `<a class="btn" href="${esc(practiceLink(true))}" target="_blank" rel="noopener">🧪 Practice Space</a>`);
   cols[0].push(`<button class="btn" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>`);
   if(CONFIG.GOOGLE_CLIENT_ID){
     cols[0].push(`<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>`);
@@ -13379,6 +13442,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
+  if(a==='practicereset'){ practiceReset(); return; }
   if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
@@ -13778,6 +13842,11 @@ document.addEventListener('click',e=>{
   if(SHARE_KEY && !whoAmI()) setTimeout(()=>askWhoAmI(false), 300);
   // Signed in: who this is, and their roles (b222).
   loadMe();
+  // The practice space says so, and when it was copied (b231).
+  if(PRACTICE){
+    practiceBanner();
+    post({action:'practiceInfo'}).then(d=>{ PRACTICE_INFO = (d && d.result) || null; practiceBanner(); }).catch(()=>{});
+  }
   // Draw last session's data straight away so the page is usable on open.
   if(cacheLoad()) setStatus('load','Checking for changes…');
   applyLevelTheme();

@@ -52,7 +52,8 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       exec('INSERT INTO grant_ (id, email, role, placeId, addedBy, addedAt) VALUES (?, ?, ?, ?, ?, ?)', 'gU_' + a.email, a.email, 'U', '', a.addedBy, a.addedAt);
   });
   exec('DELETE FROM admin');
-  const owners = () => String(adminEmails || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+  // (A function on the practice server: its owners are the live server's, b231.)
+  const owners = () => String((typeof adminEmails === 'function' ? adminEmails() : adminEmails) || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
   const grantsOf = email => exec('SELECT id, email, role, placeId, addedBy, addedAt FROM grant_ WHERE email = ? ORDER BY addedAt', String(email || '').toLowerCase());
   const isOwner = email => owners().indexOf(String(email || '').toLowerCase()) >= 0;
   /* Universal: an owner, or holding the Universal role. (Never closes.) */
@@ -214,6 +215,20 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
     },
     /** The permanent admins (ADMIN_EMAILS): Universal everywhere, spreadsheets included. */
     ownerList() { return owners(); },
+    /* The people and their roles, as rows — for the practice server's copy (b231). */
+    peopleRows() {
+      return { person: exec('SELECT email, name, googleName, addedBy, addedAt FROM person'),
+               grants: exec('SELECT id, email, role, placeId, addedBy, addedAt FROM grant_') };
+    },
+    /* The practice server takes the live people and roles as they are. Its own
+       sign-ins stay, so whoever pressed "Start over" is still signed in. */
+    replacePeople(rows) {
+      exec('DELETE FROM person'); exec('DELETE FROM grant_'); exec('DELETE FROM access_request');
+      (rows.person || []).forEach(r => exec('INSERT INTO person (email, name, googleName, addedBy, addedAt) VALUES (?, ?, ?, ?, ?)',
+        String(r.email), String(r.name || ''), String(r.googleName || ''), String(r.addedBy || ''), Number(r.addedAt) || 0));
+      (rows.grants || []).forEach(r => exec('INSERT INTO grant_ (id, email, role, placeId, addedBy, addedAt) VALUES (?, ?, ?, ?, ?, ?)',
+        String(r.id), String(r.email), String(r.role), String(r.placeId || ''), String(r.addedBy || ''), Number(r.addedAt) || 0));
+    },
     allGrants() {
       return exec('SELECT g.id, g.email, g.role, g.placeId, g.addedBy, g.addedAt, p.name, p.googleName FROM grant_ g LEFT JOIN person p ON p.email = g.email ORDER BY g.addedAt');
     },

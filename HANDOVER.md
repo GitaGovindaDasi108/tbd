@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b230**.
+Handover notes. Current build: **b231**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,37 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b231 — the practice space
+
+- **A second server, tbs-practice** (`[env.practice]` in wrangler.toml, deployed
+  by the same workflow, `wrangler deploy --env practice`): the same code, its
+  own Durable Object, so its own database. `PRACTICE=1` there.
+- **Its copy**: on its first request (and on **Start over**, action
+  `practiceReset`, Universal only) it asks the live server for
+  `practiceExport` with `LIVE_SECRET`; live answers only to its own
+  `PRACTICE_SECRET` (read-only: tables, settings without the spreadsheet
+  bookkeeping, people and roles, the owner list). `importAll` replaces the
+  records; `auth.replacePeople` the people and roles (its own sign-ins stay).
+  The owners come across as `liveOwners` (auth's `adminEmails` can now be a
+  function). The revision moves past both, so every phone refetches.
+- **Never the spreadsheets**: no `REPORT_URL`/`REPORT_SECRET` on practice
+  (forced empty in worker.js), and its sheet actions answer "The practice space
+  does not build spreadsheets".
+- **The page**: `?practice` in the address points it at the practice server
+  (`practiceUrl`: the live address with tbs-practice for tbs-server, or
+  `CONFIG.PRACTICE_URL`) and prefixes every localStorage/sessionStorage key
+  with `practice:` (Storage.prototype), so the saved state, the unsent saves
+  and the sign-in never mix with live. A striped banner (`practiceBanner`, with
+  when it was copied, from `practiceInfo`), **Start over from the live app**
+  (Universal), **Leave practice**; the tab title starts "🧪 Practice". App
+  Admin has **🧪 Practice Space** (opens it in a new tab) / **Leave Practice
+  Space**.
+- **Owner's setup, once**: `PRACTICE_SECRET` on tbs-server and `LIVE_SECRET`
+  on tbs-practice, the same phrase (server/README.md, "The practice space").
+- Tests: `test/practice.js` (15, in run-all: the copy, the people, nothing
+  reaches live, no spreadsheets, start over, the phrase), `browser-sellers.js`
+  (the page in practice: banner, the practice server, storage apart).
 
 ## Done in b230 — Sales by Seller in half a screen; more dropdowns; out-of-stock in one tap
 

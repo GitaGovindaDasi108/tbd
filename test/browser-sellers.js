@@ -49,7 +49,15 @@ const API = 'http://api.test/';
     throw new Error('offline');
   };
   const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com',
-                           reportUrl: GOOGLE, reportSecret: 'sec' });
+                           reportUrl: GOOGLE, reportSecret: 'sec', practiceSecret: 'prac' });
+  // b231: the practice space, a second server reading its copy from the one above.
+  const PRAC = 'http://practice.test/', LIVE_IN = 'http://live.internal/';
+  const prDb = new DatabaseSync(':memory:');
+  const prExec = (sql, ...p) => { const st = prDb.prepare(sql); return /^\s*select/i.test(sql) ? st.all(...p) : (st.run(...p), []); };
+  const prSrv = makeServer({ exec: prExec, timeZone: 'UTC', googleClientId: 'client-123', adminEmails: '',
+    practice: true, liveUrl: LIVE_IN, liveSecret: 'prac',
+    fetchImpl: async (url, init) => url === LIVE_IN
+      ? { status: 200, text: async () => srv.request({ postData: { contents: init.body } }) } : fetchImpl(url, init) });
   console.log = quiet;
   const ask = async p => JSON.parse(await srv.request({ postData: { contents: JSON.stringify(p) } }));
   const sessionOf = async (email, name) => (await ask({ action: 'signIn', idToken: await token(email, name) })).result.session;
@@ -71,7 +79,7 @@ const API = 'http://api.test/';
 
   const browser = await chromium.launch();
   const t = [], errors = [];
-  async function open(email, name, width) {
+  async function open(email, name, width, query) {
     const ctx = await browser.newContext({ viewport: { width: width || 1150, height: 1000 } });
     await ctx.addInitScript(tok => { window.__TOKEN = tok; }, await token(email, name));
     const page = await ctx.newPage();
@@ -79,6 +87,10 @@ const API = 'http://api.test/';
     page.on('dialog', d => d.accept());
     await page.route('**/*', async route => {
       const req = route.request(), url = req.url();
+      if (url.startsWith(PRAC)) {
+        const body = await prSrv.request({ postData: { contents: req.postData() || '{}' } });
+        return route.fulfill({ status: 200, contentType: 'application/json', body, headers: { 'Access-Control-Allow-Origin': '*' } });
+      }
       if (url.startsWith(API)) {
         const body = await srv.request({ postData: { contents: req.postData() || '{}' } });
         return route.fulfill({ status: 200, contentType: 'application/json', body, headers: { 'Access-Control-Allow-Origin': '*' } });
@@ -91,7 +103,7 @@ const API = 'http://api.test/';
       if (url.startsWith('http://app.test/')) {
         const rel = new URL(url).pathname.replace(/^\/+/, '') || 'index.html';
         if (rel === 'config.js') return route.fulfill({ status: 200, contentType: 'text/javascript',
-          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, LIVE_URL: '' };` });
+          body: `window.TBS_CONFIG = { APPS_SCRIPT_URL: '${API}', GOOGLE_CLIENT_ID: 'client-123', POLL_SECONDS: 3600, LIVE_URL: '', PRACTICE_URL: '${PRAC}' };` });
         const f = path.join(ROOT, rel);
         if (fs.existsSync(f) && fs.statSync(f).isFile())
           return route.fulfill({ status: 200, body: fs.readFileSync(f), contentType: f.endsWith('.html') ? 'text/html' : 'text/javascript' });
@@ -99,7 +111,7 @@ const API = 'http://api.test/';
       }
       return route.fulfill({ status: 204, body: '' });
     });
-    await page.goto('http://app.test/index.html'); await page.waitForTimeout(1500);
+    await page.goto('http://app.test/index.html' + (query || '')); await page.waitForTimeout(1500);
     await page.click('#fakeGsi'); await page.waitForTimeout(2500);
     return page;
   }
@@ -280,6 +292,26 @@ const API = 'http://api.test/';
     t.push(['a Regional Lead: Spreadsheet Links shows only Italy\'s file', /Italy — Europe Tour/.test(dm) && !/Spain|Season Summary/.test(dm)]);
     t.push(['…to view, with how to make a copy; no folders, no rebuild', /Make a copy/.test(dm) && !/Top-Level Folder|Rebuild/i.test(dm)]);
     await rita.screenshot({ path: shot('9-links-lead') });
+
+    /* ---- b231: the practice space ---- */
+    const pr = await open('owner@example.com', 'The Owner', 1150, '?practice');
+    const bar = await pr.evaluate(() => (document.querySelector('#practiceBar') || {}).innerText || '');
+    t.push(['?practice: the practice banner, with "Start over" and "Leave practice"', /Practice space/.test(bar) && /Start over from the live app/.test(bar) && /Leave practice/.test(bar)]);
+    t.push(['…the page talks to the practice server, which holds a copy (Italy is there)', await pr.evaluate(() => CONFIG.APPS_SCRIPT_URL === 'http://practice.test/' && (STATE.regions||[]).some(r => r.regionId === 'rg_it'))]);
+    t.push(['…and keeps everything on this device apart from the live app ("practice:")', await pr.evaluate(() =>
+      Object.keys(localStorage).length > 0 && Object.keys(localStorage).every(k => /^practice:/.test(k)))]);
+    await pr.evaluate(B0 => commit({ action: 'sell', saleId: 'PRS1', location: 'ev_yoga', bookId: B0, legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] }, () => {}, null), B[0]);
+    await pr.waitForTimeout(1500);
+    const both = [(await O({ action: 'getState', season: SA })).state];
+    t.push(['a sale made in practice is not in the live records', !both[0].sales.some(x => x.saleId === 'PRS1')]);
+    prExec('INSERT INTO session (token, email, exp, made) VALUES (?, ?, ?, ?)', 'Ptest', 'owner@example.com', Date.now() + 864e5, Date.now());
+    const prState = JSON.parse(await prSrv.request({ postData: { contents: JSON.stringify({ action: 'getState', season: SA, s: 'Ptest' }) } })).state;
+    t.push(['…but is in practice', !!prState && prState.sales.some(x => x.saleId === 'PRS1')]);
+    t.push(['"Leave practice" goes back to the live app\'s address', await pr.evaluate(() => !/practice/.test(document.querySelector('#practiceBar a').getAttribute('href')))]);
+    await pr.screenshot({ path: shot('11-practice') });
+    const live = await open('owner@example.com', 'The Owner');
+    t.push(['the live app shows no banner, and offers "🧪 Practice Space"', await live.evaluate(() => !document.querySelector('#practiceBar')
+      && [...document.querySelectorAll('#adminActions a')].some(a => /Practice Space/.test(a.textContent) && /practice/.test(a.getAttribute('href'))))]);
 
     /* ---- Phone ---- */
     const phone = await open('sita@example.com', 'Sita', 390);
