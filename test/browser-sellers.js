@@ -246,6 +246,17 @@ const API = 'http://api.test/';
     t.push(['b235: all three shown to begin with, each under its own heading', JSON.stringify(await panes()) === '[true,true,true]'
       && await own.evaluate(() => document.querySelectorAll('#todoPanel .todo-h').length === 3 && /Ananda/.test(document.querySelector('#pendingList').innerText))]);
     t.push(['…no sort buttons any more', await own.evaluate(() => !document.querySelector('#todoPanel [data-act="todosort"]'))]);
+    // b236: a long To do list scrolls inside its panel on a computer (it was cut off at the foot).
+    const scrolls = await own.evaluate(() => {
+      const list = document.querySelector('#pendingList'), keep = list.innerHTML;
+      list.innerHTML += Array.from({ length: 40 }, (_, i) => `<div class="log-item">filler ${i}</div>`).join('');
+      const sc = document.querySelector('#todoPanel .todo-scroll'), panel = document.querySelector('#todoPanel').getBoundingClientRect();
+      sc.scrollTop = sc.scrollHeight;
+      const last = list.lastElementChild.getBoundingClientRect();
+      const ok = sc.scrollHeight > sc.clientHeight + 100 && sc.scrollTop > 100 && last.bottom <= panel.bottom + 1;
+      list.innerHTML = keep; sc.scrollTop = 0; return ok;
+    });
+    t.push(['b236: a long To do list scrolls inside the panel, down to its last item', scrolls]);
     await own.click('#todoTabs [data-tab="pending"]'); await own.waitForTimeout(200);
     t.push(['a tap on "Pending Payments" hides them; the others stay', JSON.stringify(await panes()) === '[false,true,true]']);
     await own.evaluate(() => document.querySelector('#todoPanel').scrollIntoView());
@@ -370,15 +381,25 @@ const API = 'http://api.test/';
     t.push(['Advanced: Spreadsheets, Specialty Reports, Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access'])]);
     const dev = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="dev"] .sn-item .sn-t')].map(x => x.textContent));
     t.push(['App Development: Edit Wording, (Leave) Practice, Permissions', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Leave Practice', 'Permissions'])]);
+    t.push(['b236: every section starts folded', await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group')].every(g =>
+      g.classList.contains('shut') && g.querySelector('.sn-items').offsetHeight === 0))]);
     await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
-    t.push(['a section folds and opens from its heading', await pr.evaluate(() => document.querySelector('#sideNav .sn-group[data-sec="books"] .sn-items').offsetHeight === 0)]);
+    t.push(['a section opens and folds from its heading', await pr.evaluate(() => document.querySelector('#sideNav .sn-group[data-sec="books"] .sn-items').offsetHeight > 0)]);
+    t.push(['b236: no count on Consignment Books', await pr.evaluate(() => !document.querySelector('#sideNav [data-act="partners"] .sn-count'))]);
+    await pr.click('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(150);
+    t.push(['b236: no count on Record Costs', await pr.evaluate(() => !!document.querySelector('#sideNav [data-act="costs"]') && !document.querySelector('#sideNav [data-act="costs"] .sn-count'))]);
+    await pr.click('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(150);
     await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
+    t.push(['…and folds again', await pr.evaluate(() => document.querySelector('#sideNav .sn-group[data-sec="books"] .sn-items').offsetHeight === 0)]);
     await pr.screenshot({ path: shot('13-sidenav') });
     await pr.mouse.move(900, 600); await pr.waitForTimeout(350);
     t.push(['…and it folds back when the pointer leaves', (await sn()).width < 70]);
     t.push(['the Activity Log is in the top bar, not in the menu', await pr.evaluate(() =>
       !!document.querySelector('.util-bar [data-act="activity"]') && !document.querySelector('#sideNav [data-act="activity"]'))]);
+    const snOpen = async sec => { if (await pr.evaluate(k => document.querySelector(`#sideNav .sn-group[data-sec="${k}"]`).classList.contains('shut'), sec)) {
+      await pr.click(`#sideNav .sn-gh[data-sec="${sec}"]`); await pr.waitForTimeout(150); } };
     await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    await snOpen('money');
     await pr.click('#sideNav .sn-item[data-act="cash"]'); await pr.waitForTimeout(400);
     t.push(['an action from it works (Track Cash opens)', await pr.evaluate(() => document.querySelector('#overlay').classList.contains('show'))]);
     await pr.evaluate(() => closeModal());
@@ -390,12 +411,18 @@ const API = 'http://api.test/';
     await pr.reload(); await pr.waitForTimeout(2500);
     t.push(['b235: after a reload the menu starts closed, even if it was kept open', (await sn()).width < 70
       && await pr.evaluate(() => parseInt(getComputedStyle(document.body).paddingLeft) < 70)]);
+    await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    t.push(['b236: …and its sections folded, even one opened before the reload', await pr.evaluate(() =>
+      [...document.querySelectorAll('#sideNav .sn-group')].every(g => g.classList.contains('shut')))]);
+    await pr.mouse.move(900, 600); await pr.waitForTimeout(300);
     // Profile and Permissions.
     await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    await snOpen('settings');
     await pr.click('#sideNav .sn-item[data-act="whoami"]'); await pr.waitForTimeout(300);
     t.push(['Settings › Profile: your name, to change', /Profile/.test(await pr.evaluate(() => document.querySelector('#modal h3').textContent)) && !!(await pr.$('#myName'))]);
     await pr.evaluate(() => closeModal());
     await pr.hover('#sideNav'); await pr.waitForTimeout(300);
+    await snOpen('dev');
     await pr.click('#sideNav .sn-item[data-act="permissions"]'); await pr.waitForTimeout(800);
     t.push(['App Development › Permissions: the table, every role, every row', await pr.evaluate(() => document.querySelectorAll('#modal .pm-lv').length === 40 * 9)]);
     await pr.selectOption('#modal .pm-lv[data-cap="deliver_a_pre_order"][data-role="S"]', 'y'); await pr.waitForTimeout(100);
@@ -416,6 +443,12 @@ const API = 'http://api.test/';
     await pr.click('#titlePanel .view-tg'); await pr.waitForTimeout(200);
     t.push(['…one section switches to a list on its own', await pr.evaluate(() =>
       document.querySelector('#titlePanel').classList.contains('list-view') && !document.body.classList.contains('list-view'))]);
+    // b236: the season's Distribution by Title has the switch too.
+    await pr.evaluate(() => goTo('season')); await pr.waitForTimeout(500);
+    t.push(['b236: the season\'s Distribution by Title has the card/list switch', await pr.evaluate(() => !!document.querySelector('#seasonTitlePanel .view-tg'))]);
+    await pr.click('#seasonTitlePanel .view-tg'); await pr.waitForTimeout(200);
+    t.push(['…and it switches that section to a list', await pr.evaluate(() => document.querySelector('#seasonTitlePanel').classList.contains('list-view'))]);
+    await pr.click('#seasonTitlePanel .view-tg'); await pr.waitForTimeout(200);
     const live = await open('owner@example.com', 'The Owner');
     t.push(['the build number and status light: Universal sees them', await live.evaluate(() => document.querySelector('#bld').offsetHeight > 0)]);
     const sel = await open('tulasi@example.com', 'Tulasi');
@@ -424,6 +457,7 @@ const API = 'http://api.test/';
     t.push(['b235: the live app has the left-hand menu too, and no App Admin panel', await liveMenu.evaluate(() =>
       !!document.querySelector('#sideNav') && document.querySelector('#adminPanel').offsetHeight === 0 && !document.querySelector('#practiceBar'))]);
     await liveMenu.hover('#sideNav'); await liveMenu.waitForTimeout(350);
+    await liveMenu.click('#sideNav .sn-gh'); await liveMenu.waitForTimeout(150);
     const look = await liveMenu.evaluate(() => { const h = document.querySelector('#sideNav .sn-gh'), it = document.querySelector('#sideNav .sn-items .sn-item');
       return { hw: getComputedStyle(h).fontWeight, ic: getComputedStyle(it).color, hx: h.querySelector('.sn-t').getBoundingClientRect().left, ix: it.querySelector('.sn-t').getBoundingClientRect().left }; });
     t.push(['…headings not bold; sub-items dark grey and indented under them', Number(look.hw) < 600 && look.ic === 'rgb(74, 74, 74)' && look.ix >= look.hx + 8]);
