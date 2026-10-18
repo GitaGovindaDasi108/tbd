@@ -98,6 +98,9 @@ const API = 'http://api.test/';
     return page;
   }
   const modal = page => page.evaluate(() => document.querySelector('#modal').innerText);
+  // The Finance page (b239): a place of its own, not a window.
+  const fpage = page => page.evaluate(() => document.querySelector('#fpBody').innerText);
+  const onFin = page => page.evaluate(() => document.body.classList.contains('fin-mode') && !document.querySelector('#finPage').hidden);
 
   try {
     /* ---- A Seller records an expense to be paid back ---- */
@@ -144,11 +147,14 @@ const API = 'http://api.test/';
 
     /* ---- Finance ---- */
     const fin = await open('fin@example.com', 'Madhava');
-    let na = await fin.evaluate(() => (document.querySelector('#noAccess') || {}).innerText || '');
-    t.push(['Finance (no rest-of-app view yet) gets Expenses and the Finance To do on its page', /Not quite yet/.test(na) && /Expenses/.test(na) && /Finance To do/.test(na) && /Reimbursement Settings/.test(na)]);
-    await fin.click('#noAccess [data-act="fintodo"]'); await fin.waitForTimeout(1000);
-    m = await modal(fin);
-    t.push(['the Finance To do opens above that page', await fin.evaluate(() => { const o = document.querySelector('#overlay'); return o.classList.contains('show') && Number(getComputedStyle(o).zIndex) > 9999; })]);
+    t.push(['Finance (no rest-of-app view yet) lands on the Finance page, at its own address', await onFin(fin) && /#finance\/overview/.test(fin.url())]);
+    let secs = await fin.evaluate(() => document.querySelector('#fpSecs').innerText);
+    t.push(['…with its sections: Overview, Reports, Compare, To do, Reimbursement Settings, and Add an expense', /Overview/.test(secs) && /Reports/.test(secs) && /Compare/.test(secs) && /To do/.test(secs) && /Reimbursement Settings/.test(secs) && /Add an expense/.test(secs)]);
+    t.push(['…the masthead says Finance, in Finance\'s own colour', /Finance/.test(await fin.$eval('#whTitle', e => e.textContent)) &&
+      await fin.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(238, 243, 250)')]);
+    await fin.click('[data-act="finsec"][data-sec="todo"]'); await fin.waitForTimeout(1200);
+    m = await fpage(fin);
+    t.push(['the To do is a section of the page (#finance/todo), not a window', /#finance\/todo/.test(fin.url()) && !(await fin.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
     t.push(['…reimbursements pending: Sita\'s taxi, with her UPI ID', /Reimbursements pending\s*1/.test(m) && /Taxi with the book boxes/.test(m) && /sita@okbank/.test(m)]);
     t.push(['…the record-keeping one is not on it', !/Packing tape/.test(m)]);
     t.push(['…the amount to pay back is added up', /To pay back:\s*₹450/.test(m)]);
@@ -156,19 +162,19 @@ const API = 'http://api.test/';
     t.push(['Finance opens the receipt', await fin.evaluate(() => { const v = document.querySelector('#rcptView'); return !!v && !v.hidden && !!v.querySelector('img') && v.querySelector('img').naturalWidth > 0; })]);
     await fin.click('#rcptView [data-rcclose]');
     await fin.click('[data-act="fintab"][data-tab="pay"]'); await fin.waitForTimeout(300);
-    m = await modal(fin);
+    m = await fpage(fin);
     t.push(['…payments pending across the system: Arjuna owes 300 rupees, with his phone', /Payments pending\s*1/.test(m) && /Arjuna/.test(m) && /300/.test(m) && /\+91 22 1234/.test(m) && /Chowpatty Program · Delhi · Kartika/.test(m)]);
     await fin.click('[data-act="fintab"][data-tab="reimb"]'); await fin.waitForTimeout(300);
     await fin.click('[data-act="exppaid"]'); await fin.waitForTimeout(1000);
-    m = await modal(fin);
+    m = await fpage(fin);
     t.push(['Finance marks it paid back: it leaves the list', /Nothing waiting to be paid back/.test(m)]);
     await fin.click('[data-act="fintab"][data-tab="all"]'); await fin.waitForTimeout(300);
-    m = await modal(fin);
+    m = await fpage(fin);
     t.push(['…and every expense shows it paid back, with the reference', /Paid back by Madhava/.test(m) && /UPI ref 4471/.test(m) && /Packing tape/.test(m)]);
     await fin.screenshot({ path: shot('finance') });
 
     // On Sita's behalf, found by typing part of her name.
-    await fin.click('.m-foot [data-act="expenses"]'); await fin.waitForTimeout(1000);
+    await fin.click('#fpBody .m-foot [data-act="expenses"]'); await fin.waitForTimeout(1000);
     await fin.click('#xFor .pp-in'); await fin.fill('#xFor .pp-in', 'sit'); await fin.waitForTimeout(200);
     const rows = await fin.$$eval('#xFor .pp-row', rs => rs.map(r => r.innerText));
     t.push(['Finance\'s "Whose expense?" list narrows as a name is typed', rows.length === 1 && /Sita/.test(rows[0])]);
@@ -183,7 +189,7 @@ const API = 'http://api.test/';
 
     // Settings: UPI off everywhere.
     await fin.evaluate(() => reimbSettingsModal()); await fin.waitForTimeout(800);
-    m = await modal(fin);
+    m = await fpage(fin);
     t.push(['Reimbursement Settings: by place and by person', /By place/.test(m) && /By person/.test(m) && /UPI/.test(m)]);
     await fin.selectOption('[data-rsm="UPI"]', 'off'); await fin.click('#rsSave'); await fin.waitForTimeout(800);
     await fin.selectOption('#rsPlace', 'rg_in'); await fin.waitForTimeout(200);
@@ -221,35 +227,54 @@ const API = 'http://api.test/';
     t.push(['…saved: the venue expense is also a cost at the event, so net totals take it off', (st.costs || []).some(c => c.location === 'ev_cp' && Number(c.amt) === 800 && c.category === 'Venue')]);
 
     // The Finance section.
-    await own.evaluate(() => financeModal('overview')); await own.waitForTimeout(1500);
-    m = await modal(own);
+    await own.evaluate(() => document.querySelector('#sideNav [data-act="finoverview"]').click()); await own.waitForTimeout(1500);
+    m = await fpage(own);
+    t.push(['Universal: Menu › Finance goes to the Finance page', await onFin(own) && /#finance\/overview/.test(own.url())]);
+    t.push(['…the app\'s own panels are out of the way', await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display === 'none')]);
     t.push(['Finance › Overview: figures in dollars', /Gross sales/i.test(m) && /Collections/i.test(m) && /Net/i.test(m) && /Margin/i.test(m)]);
     t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending payments\s*\$3\.75/i.test(m)]);
     t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*\$17\.63/i.test(m)]);
     t.push(['…pending reimbursements: the ₹120 chai, $1.50', /Pending reimbursements\s*\$1\.5/i.test(m)]);
     t.push(['…at every level: the season row', /Kartika/.test(m)]);
-    await own.click('[data-act="finopen"][data-key^="s:"]'); await own.waitForTimeout(300);
-    await own.click('[data-act="finopen"][data-key^="r:"]'); await own.waitForTimeout(300);
-    m = await modal(own);
-    t.push(['…opening the season and region shows Delhi and the Chowpatty Program', /Delhi/.test(m) && /Chowpatty Program/.test(m)]);
-    t.push(['…the window is wide, and scrolls its table rather than the page', await own.evaluate(() => document.querySelector('#modal').classList.contains('fin-wide'))]);
+    await own.click('#fpBody [data-act="fingo"]'); await own.waitForTimeout(500);       // Kartika
+    t.push(['…a season\'s name takes you into it: its regions', /#finance\/overview\/./.test(own.url()) && /Its regions/i.test(await fpage(own)) && /Delhi/.test(await fpage(own))]);
+    await own.click('#fpBody [data-act="fingo"][data-scope="rg_in"]'); await own.waitForTimeout(500);
+    m = await fpage(own);
+    t.push(['…Delhi\'s name: its events, the Chowpatty Program', /Its events/i.test(m) && /Chowpatty Program/.test(m) && /#finance\/overview\/rg_in/.test(own.url())]);
+    t.push(['…the path at the top shows Kartika › Delhi, to walk back up', await own.$eval('[data-fpick="r"]', x => x.value) === 'rg_in' && /Finance · Region/i.test(await own.$eval('#fpNav', x => x.innerText))]);
+    await own.selectOption('[data-fpick="e"]', 'ev_cp'); await own.waitForTimeout(500);
+    m = await fpage(own);
+    t.push(['…choosing the event: its titles, and only its figures', /By title/i.test(m) && /Sri Radha/.test(m) && /#finance\/overview\/ev_cp/.test(own.url())]);
+    await own.goBack(); await own.waitForTimeout(600);
+    t.push(['the browser\'s Back goes back up to Delhi', /#finance\/overview\/rg_in/.test(own.url()) && /Its events/i.test(await fpage(own))]);
+    await own.reload(); await own.waitForTimeout(3500);
+    t.push(['a refresh stays on Finance, at Delhi', await onFin(own) && /Its events/i.test(await fpage(own))]);
+    await own.click('[data-act="fingo"][data-scope=""]'); await own.waitForTimeout(500);
     await own.screenshot({ path: shot('fin-overview') });
-    await own.click('[data-act="fintab2"][data-tab="report"]'); await own.waitForTimeout(400);
+    await own.click('[data-act="finsec"][data-sec="report"]'); await own.waitForTimeout(1200);
     await own.selectOption('[data-rd="0"]', 'category'); await own.waitForTimeout(400);
-    m = await modal(own);
+    m = await fpage(own);
     t.push(['Reports: rows by kind of expense', /Venue/.test(m) && /Total \(\d+ rows?\)/.test(m)]);
     await own.selectOption('[data-rd="0"]', 'title'); await own.waitForTimeout(400);
-    m = await modal(own);
+    m = await fpage(own);
     t.push(['…by title, with books sold', /Books sold/i.test(m) && /\(English\)|\(no title\)|\w/.test(m)]);
     const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"]')]);
     const csv = fs.readFileSync(await dl.path(), 'utf8');
     t.push(['…downloads as a CSV for Excel or Sheets', /^﻿?Title,/.test(csv) && /Total/.test(csv)]);
     await own.screenshot({ path: shot('fin-report') });
-    await own.click('[data-act="fintab2"][data-tab="compare"]'); await own.waitForTimeout(400);
-    m = await modal(own);
+    await own.click('[data-act="finsec"][data-sec="compare"]'); await own.waitForTimeout(1200);
+    m = await fpage(own);
     t.push(['Compare: seasons of the same name side by side, added up', /Kartika/.test(m) && /All together/i.test(m) && /Average/i.test(m)]);
-    await own.evaluate(() => closeModal());
+    await own.click('[data-act="finleave"]'); await own.waitForTimeout(500);
+    t.push(['← Back to the app leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
+      await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display !== 'none')]);
 
+    /* View as: a Seller at the Chowpatty Program — while the owner's own tab is
+       looking at another season (Gita's "nothing loads": the page asked for the
+       owner's season, the server answered with the Seller's, and the page threw
+       every answer away as out of date). */
+    const other = (await O({ action: 'getState' })).state.seasons.find(x => x.seasonId !== SA).seasonId;
+    await own.evaluate(sid => switchSeason(sid), other); await own.waitForTimeout(1500);
     // View as: a Seller at the Chowpatty Program.
     await own.evaluate(() => viewAsModal()); await own.waitForTimeout(800);
     m = await modal(own);
@@ -258,12 +283,21 @@ const API = 'http://api.test/';
     await own.selectOption('#vaPlace', 'ev_cp');
     await Promise.all([own.waitForNavigation(), own.click('#vaGo')]); await own.waitForTimeout(2500);
     const bar = await own.evaluate(() => (document.querySelector('#viewAsBar') || {}).innerText || '');
+    t.push(['…the Seller\'s page loads: her event, with Sri Radha on the shelf', await own.evaluate(() => !!STATE && CUR_LOC === 'ev_cp') &&
+      /Sri Radha/.test(await own.evaluate(() => (document.querySelector('#inventory') || document.body).innerText))]);
     t.push(['…viewing as a Seller: the bar says so', /Viewing the app as\s*Seller · Chowpatty Program/i.test(bar)]);
     const vmenu = await snText();
     t.push(['…and the menu is a Seller\'s: Expenses, no Finance, no View as', /\bexpenses\b/.test(vmenu) && !/fintodo|finoverview|viewas/.test(vmenu)]);
     await own.screenshot({ path: shot('viewas') });
     await Promise.all([own.waitForNavigation(), own.click('#viewAsBar [data-act="viewstop"]')]); await own.waitForTimeout(2500);
-    t.push(['Stop viewing: back to Universal', !(await own.$('#viewAsBar')) && /finoverview/.test(await snText())]);
+    t.push(['Stop viewing: back to Universal, in the season she was looking at', !(await own.$('#viewAsBar')) && /finoverview/.test(await snText()) &&
+      await own.evaluate(sid => !!STATE && STATE.activeSeason === sid, other)]);
+    /* ---- Finance on a phone ---- */
+    const ophone = await open('owner@example.com', 'The Owner', 390);
+    await ophone.evaluate(() => finGo('overview', '')); await ophone.waitForTimeout(1500);
+    t.push(['on a phone the Finance page fits (its tables scroll inside themselves)', await onFin(ophone) &&
+      await ophone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)]);
+    await ophone.screenshot({ path: shot('fin-phone'), fullPage: true });
   } catch (e) { errors.push('test: ' + (e.stack || e.message)); }
   await browser.close();
 

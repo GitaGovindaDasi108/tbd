@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b238**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b239**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,34 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b239 — Finance is a place of its own; View as loads (practice)
+
+- **Finance is somewhere you go, not a window** (Gita: "its own app within the
+  larger app"). `#finPage` in `<main>`; `body.fin-mode` hides the rest of the
+  page and gives Finance its own colour (blue masthead and wash). Its address
+  is `#finance/<section>/<place>` (`finGo`, `finParseHash`, `popstate`), so
+  Back, Refresh and a bookmark all land in the right place; `goTo` anywhere
+  else leaves it.
+- **Sections**: Overview, Reports, Compare, To do, Reimbursement Settings
+  (`FIN_SECS`), plus Add an expense and ← Back to the app. The To do and the
+  settings draw into the page (`finHost`, `finRoot`) instead of a window.
+- **Walking down**: the bar at the top is the same season › region › event
+  path as the rest of the app, as dropdowns, and every name in the Overview
+  table opens that place. Overview shows one level down (seasons › regions ›
+  events › titles); Reports and the To do count only that place
+  (`finScopeF`, `finScopedTodo`; Code.gs `financeFacts_` now gives each
+  pending payment its `eventId`); Compare starts at the same kind of place and
+  its group; Settings starts at that place.
+- **Finance people** (who still get "Not quite yet" elsewhere) land on the
+  Finance page; the red "sign in" status is hidden there.
+- **View as loaded nothing**: the tab kept Universal's season, the server
+  answered with the viewed person's, and `pull` threw every answer away as out
+  of date. Viewing now keeps its own place (`posKey` + `_va`, cleared each time
+  View as starts). Test: `browser-expenses.js` reproduces it (fails without the
+  fix) with Universal looking at another season.
+- Tests: `browser-expenses.js` (66), `browser-sellers.js` updated for the b238
+  menu (View as in App Development; Record Costs is Expenses in practice).
 
 ## Done in b238 — Expenses and the Finance section, in the practice space first
 
