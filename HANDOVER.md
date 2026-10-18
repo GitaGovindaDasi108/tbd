@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b228**.
+Handover notes. Current build: **b229**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,32 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b229 — Sales by Seller in step with Track Cash
+
+- **The owner's rule:** if Track Cash shows a place's money has gone on (say,
+  all of it is with the Global Coordinator), nobody at that place can still be
+  holding it. Before, Sales by Seller only knew about seller → Event Lead
+  handovers, so a seller kept "still holding" cash that Track Cash showed long
+  gone.
+- **One split, used everywhere** (`cashPeopleAt(loc)`): per place and
+  currency, what has left the place in Track Cash (`cashCollected −
+  cashBalance`) comes first out of what Event Leads confirmed receiving, then
+  out of handovers still waiting, then out of what sellers still hold, in
+  proportion to what each holds. What is left with each seller, plus the
+  Event Lead's, is what Track Cash shows still at the place. Money moved INTO
+  a place belongs to the place, not to a seller ("Brought here from other
+  places in Track Cash").
+- **Sales by Seller** now has a **Moved on** column and a footer: what is with
+  the Event Lead(s), and "Still at <place> in Track Cash", which is Track Cash's
+  own figure, so the panel visibly adds up to it.
+- **A Seller's "My cash"** uses the same split, so their tile and the
+  handover button agree with Track Cash.
+- **Track Cash** shows under each place who holds its cash ("held by Tulasi
+  35 € · Event Lead 70 €"), from the same split.
+- Client only; the build number moves in Code.gs too, so the two match.
+- Test: `browser-sellers.js` (moving €50, then the rest, to the Global
+  Coordinator; Tulasi's own tile; Track Cash's "held by").
 
 ## Done in b228 — closed places sorted A to Z; in transit at Earthly HQ; the toggle hides
 

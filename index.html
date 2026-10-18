@@ -1399,6 +1399,9 @@ body.list-view .mc-name{min-height:0}
 .sb-table .sb-name{font-weight:700;color:var(--plum)}
 .sb-table tr.sb-sub td{font-size:12px;color:var(--muted);padding-top:3px;padding-bottom:3px}
 .sb-table tr.sb-sub .sb-name{font-weight:500;padding-left:18px;color:var(--muted)}
+.cash-who td{font-size:11.5px;color:var(--muted);padding:0 8px 6px;border-top:0}
+.sb-table tfoot td{font-size:12.5px;color:var(--plum);border-bottom:0;padding-top:8px}
+.sb-table tfoot tr.sb-tc td{border-top:1px solid var(--line-d);font-weight:700}
 /* People and roles (b222) */
 .ppl-person{padding:9px 0;border-bottom:1px solid var(--line)}
 .ppl-roles{display:flex;flex-direction:column;gap:4px;margin-top:5px}
@@ -1435,7 +1438,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b228</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b229</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1576,7 +1579,7 @@ body.list-view .mc-name{min-height:0}
   </div>
   <!-- Sales by seller (b223): each seller's books and cash, at a region or event. data-full: a wide table. -->
   <section class="panel" id="sellerPanel" data-fold="sellers" data-full style="display:none">
-    <h2 class="sec-h2">Sales by Seller <span class="hint">books sold and the cash each one holds</span></h2>
+    <h2 class="sec-h2">Sales by Seller <span class="hint">books sold and the cash each one holds — in step with Track Cash</span></h2>
     <div class="body"><div id="sellerList"></div></div>
   </section>
   </div>
@@ -5439,14 +5442,79 @@ function handoversHere(){
   if(CUR_LEVEL==='region') locsInRegion(CUR_REGION).forEach(l=>locs.add(l));
   return (STATE.handovers||[]).filter(h=>CUR_LEVEL==='season' || locs.has(h.location));
 }
-/* My cash at this event: taken, less what I have handed over (confirmed or waiting). */
+/* ---- Who holds a place's cash, in step with Track Cash (b229) ----
+   Track Cash follows the box: what was collected at a place, less what was
+   moved on from it (to the warehouse, a coordinator…). Sales by Seller follows
+   the people: what each seller took, less what they handed their Event Lead.
+   They are the same money, so they must agree: when Track Cash shows a place's
+   money has gone on — say all of it is with the Global Coordinator — nobody at
+   that place can still be holding it.
+
+   So the money that has left a place (collected − its Track Cash balance) is
+   taken, in this order, out of: what the Event Lead confirmed receiving (they
+   are the ones who pass it on), then handovers still waiting to be confirmed,
+   then what sellers still hold, shared in proportion to what each holds. What
+   is left with each person, plus the Event Lead's, is what Track Cash shows
+   still at the place. Money moved INTO a place is the place's, not a seller's. */
+const sellerKey = x => x.soldById || ('n:' + (x.soldBy || ''));
+const handKey = h => h.fromId || ('n:' + (h.fromName || ''));
+function cashPeopleAt(loc){
+  const sales = (STATE.sales||[]).filter(x=>x && x.location===loc);
+  const hs = (STATE.handovers||[]).filter(h=>h.location===loc && (h.status==='received' || h.status==='waiting'));
+  const people = {};
+  const who = (k, name) => people[k] || (people[k] = {key:k, name:'', list:[], taken:{}, received:{}, waiting:{},
+    movedOn:{}, withThem:{}, mine:false});
+  sales.forEach(x=>{
+    const p = who(sellerKey(x)); p.list.push(x); if(x.soldBy) p.name = x.soldBy;
+    if(isMine(x)) p.mine = true;
+  });
+  hs.forEach(h=>{
+    const p = who(handKey(h)); if(!p.name) p.name = h.fromName || '';
+    if(handoverIsMine(h)) p.mine = true;
+    const bag = h.status==='received' ? p.received : p.waiting;
+    Object.keys(h.amounts||{}).forEach(c=>{ bag[c] = (bag[c]||0) + Number(h.amounts[c]); });
+  });
+  Object.values(people).forEach(p=>{ p.taken = cashTaken(p.list); });
+  const curs = new Set();
+  Object.values(people).forEach(p=>[p.taken, p.received, p.waiting].forEach(o=>Object.keys(o).forEach(c=>curs.add(c))));
+  const r2 = v => Math.round(v*100)/100;
+  const lead = {holds:{}, waitingLeft:{}}, movedOn = {}, held = {};
+  curs.forEach(c=>{
+    const bal = cashBalance(loc, c);
+    held[c] = bal;
+    let left = Math.max(0, r2(cashCollected(loc, c) - bal));        // what has gone on from here
+    if(left) movedOn[c] = left;
+    const list = Object.values(people);
+    const R = list.reduce((t,p)=>t+(p.received[c]||0),0), W = list.reduce((t,p)=>t+(p.waiting[c]||0),0);
+    const fromR = Math.min(left, R); left = r2(left - fromR);
+    const fromW = Math.min(left, W); left = r2(left - fromW);
+    if(R - fromR > 0.004) lead.holds[c] = r2(R - fromR);
+    if(W - fromW > 0.004) lead.waitingLeft[c] = r2(W - fromW);
+    const owes = list.map(p=>Math.max(0, r2((p.taken[c]||0) - (p.received[c]||0) - (p.waiting[c]||0))));
+    const O = owes.reduce((t,v)=>t+v,0), fromS = Math.min(left, O);
+    list.forEach((p,i)=>{
+      const share = O ? r2(owes[i] * fromS / O) : 0;
+      if(share > 0.004) p.movedOn[c] = share;
+      if(owes[i] - share > 0.004) p.withThem[c] = r2(owes[i] - share);
+    });
+  });
+  return {people, lead, movedOn, held};
+}
+/* The places the page is looking at: an event, or a region's warehouse and events. */
+function cashPlacesHere(){
+  return CUR_LEVEL==='region' ? locsInRegion(CUR_REGION) : (CUR_LOC && CUR_LOC!==SEASON ? [CUR_LOC] : []);
+}
+/* My cash here: taken, less what I handed over, less my part of what Track Cash shows has gone on. */
 function myCash(){
-  const mine = scopedSales().filter(isMine);
-  const hs = handoversHere().filter(handoverIsMine);
-  const taken = cashTaken(mine);
-  const done = sumAmounts(hs.filter(h=>h.status==='received'));
-  const waiting = hs.filter(h=>h.status==='waiting');
-  return { taken, done, waiting, withMe: minusAmounts(minusAmounts(taken, done), sumAmounts(waiting)) };
+  const taken={}, done={}, withMe={}, waiting=[];
+  const add = (into, o) => Object.keys(o).forEach(c=>{ into[c] = Math.round(((into[c]||0) + o[c])*100)/100; });
+  cashPlacesHere().forEach(loc=>{
+    Object.values(cashPeopleAt(loc).people).filter(p=>p.mine).forEach(p=>{
+      add(taken, p.taken); add(done, p.received); add(withMe, p.withThem);
+    });
+  });
+  handoversHere().filter(h=>handoverIsMine(h) && h.status==='waiting').forEach(h=>waiting.push(h));
+  return { taken, done, waiting, withMe };
 }
 /* The top tiles for a Seller: their own books and their own cash, never the event's totals. */
 function sellerTilesHTML(){
@@ -5526,41 +5594,62 @@ function renderHandovers(){
     </div>`).join('');
   return 1;
 }
-/* Sales by seller: each seller's books and cash, and where that cash is now. */
+/* Sales by seller: each seller's books and cash, and where that cash is now —
+   in step with Track Cash (cashPeopleAt): money moved on there is not "still
+   with" anyone here, and the rows add up to what Track Cash shows at the place. */
 function renderSellers(){
   const panel = $('#sellerPanel'); if(!panel) return;
   const show = !plainSeller() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
   const s = show ? scopedSales().filter(x=>x.type!=='DONATION') : [];
   panel.style.display = s.length ? '' : 'none';
   if(!s.length) return;
-  const key = x => x.soldById || ('n:' + (x.soldBy || ''));
-  const hKey = h => h.fromId || ('n:' + (h.fromName || ''));
-  const groups = {};
-  s.forEach(x=>{ const k=key(x); (groups[k] = groups[k] || {name:'', list:[]}).list.push(x); if(x.soldBy) groups[k].name = x.soldBy; });
-  const hs = handoversHere();
-  const row = (name, list, hlist, sub) => {
-    const c = bookCounts(list.filter(x=>x.bookId));
-    const taken = cashTaken(list);
-    const done = sumAmounts(hlist.filter(h=>h.status==='received'));
-    const wait = sumAmounts(hlist.filter(h=>h.status==='waiting'));
-    const left = minusAmounts(minusAmounts(taken, done), wait);
+  const add = (into, o) => Object.keys(o||{}).forEach(c=>{ into[c] = Math.round(((into[c]||0) + o[c])*100)/100; });
+  const splits = cashPlacesHere().map(loc=>({loc, at:cashPeopleAt(loc)}));
+  // Each seller across the places here, and place by place.
+  const sellers = {};
+  splits.forEach(({loc, at})=>Object.values(at.people).forEach(p=>{
+    const g = sellers[p.key] || (sellers[p.key] = {name:'', tot:{list:[], taken:{}, received:{}, waiting:{}, movedOn:{}, withThem:{}}, at:[]});
+    if(p.name) g.name = p.name;
+    g.tot.list = g.tot.list.concat(p.list);
+    ['taken','received','waiting','movedOn','withThem'].forEach(k=>add(g.tot[k], p[k]));
+    if(p.list.length) g.at.push({loc, p});
+  }));
+  const cell = m => esc(moneyLine(m)) || '—';
+  const row = (name, p, sub) => {
+    const c = bookCounts(p.list.filter(x=>x.bookId && x.type!=='DONATION'));
     return `<tr class="${sub?'sb-sub':''}"><td class="sb-name">${esc(name)}</td><td class="num">${c.sold}</td><td class="num">${c.pre||''}</td>
-      <td>${esc(moneyLine(taken))||'—'}</td><td>${esc(moneyLine(done))||'—'}${moneyLine(wait)?`<div class="muted-note">${esc(moneyLine(wait))} waiting</div>`:''}</td>
-      <td><b>${esc(moneyLine(left))||'—'}</b></td></tr>`;
+      <td>${cell(p.taken)}</td>
+      <td>${cell(p.received)}${moneyLine(p.waiting)?`<div class="muted-note">${esc(moneyLine(p.waiting))} waiting</div>`:''}</td>
+      <td>${cell(p.movedOn)}</td>
+      <td><b>${cell(p.withThem)}</b></td></tr>`;
   };
-  const keys = Object.keys(groups).sort((a,b)=>groups[b].list.length-groups[a].list.length);
+  const keys = Object.keys(sellers).filter(k=>sellers[k].tot.list.length || moneyLine(sellers[k].tot.received))
+    .sort((a,b)=>sellers[b].tot.list.length-sellers[a].tot.list.length);
+  const lead = {}, waitLeft = {}, moved = {}, held = {};
+  splits.forEach(({at})=>{ add(lead, at.lead.holds); add(waitLeft, at.lead.waitingLeft); add(moved, at.movedOn); add(held, at.held); });
+  const withLead = {}; add(withLead, lead); add(withLead, waitLeft);
+  // Money moved INTO these places in Track Cash (say an event's takings, to the warehouse) belongs to no seller here.
+  const people = {}; keys.forEach(k=>add(people, sellers[k].tot.withThem)); add(people, withLead);
+  const other = minusAmounts(held, people);
+  Object.keys(other).forEach(c=>{ if(other[c] < 0) delete other[c]; });
+  const leadWord = CUR_LEVEL==='event' ? 'the Event Lead' : 'the Event Leads';
+  const where = CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'this region');
   $('#sellerList').innerHTML = `<div class="sb-wrap"><table class="sb-table">
-    <thead><tr><th>Seller</th><th class="num">Sold</th><th class="num">Pre-orders</th><th>Cash collected</th><th>Handed to lead</th><th>Still with them</th></tr></thead>
+    <thead><tr><th>Seller</th><th class="num">Sold</th><th class="num">Pre-orders</th><th>Cash collected</th><th>Handed to lead</th>
+      <th title="Moved on from here in Track Cash">Moved on</th><th>Still with them</th></tr></thead>
     <tbody>${keys.map(k=>{
-      const g = groups[k], mineH = hs.filter(h=>hKey(h)===k);
-      let h = row(g.name || '(no name given)', g.list, mineH);
-      // At a region: the same seller, event by event.
-      if(CUR_LEVEL==='region'){
-        const locs = [...new Set(g.list.map(x=>x.location))];
-        if(locs.length>1) h += locs.map(l=>row('· ' + locName(l), g.list.filter(x=>x.location===l), mineH.filter(x=>x.location===l), true)).join('');
-      }
+      const g = sellers[k];
+      let h = row(g.name || '(no name given)', g.tot);
+      // At a region: the same seller, place by place.
+      if(CUR_LEVEL==='region' && g.at.length>1) h += g.at.map(x=>row('· ' + locName(x.loc), x.p, true)).join('');
       return h;
-    }).join('')}</tbody></table></div>`;
+    }).join('')}</tbody>
+    <tfoot>
+      ${moneyLine(withLead) ? `<tr class="sb-foot"><td colspan="6">With ${leadWord}, handed over and not yet moved on</td><td><b>${cell(withLead)}</b></td></tr>` : ''}
+      ${moneyLine(other) ? `<tr class="sb-foot"><td colspan="6">Brought here from other places in Track Cash</td><td><b>${cell(other)}</b></td></tr>` : ''}
+      <tr class="sb-foot sb-tc"><td colspan="6">Still at ${esc(where)} in Track Cash${moneyLine(moved) ? ` · <span class="muted-note">${esc(moneyLine(moved))} moved on from here</span>` : ''}</td>
+        <td><b>${cell(held)}</b></td></tr>
+    </tfoot></table></div>`;
 }
 
 /* ---- Counts to look into (b224) ----
@@ -9021,6 +9110,15 @@ function cashModal(){
       cells += changeCell(a.id, cur, v);
     });
     balRows += `<tr><th>${esc(a.name)}</th>${cells}</tr>`;
+    /* Who is holding a place's cash (b229): the same split as Sales by Seller,
+       so the two always say the same thing. */
+    if(!isBank && !isRegionBank(a.id)){
+      const at = cashPeopleAt(a.id), parts = [];
+      Object.values(at.people).forEach(p=>{ const m = moneyLine(p.withThem); if(m) parts.push(`${esc(p.name||'a seller')} ${esc(m)}`); });
+      const lead = {}; [at.lead.holds, at.lead.waitingLeft].forEach(o=>Object.keys(o).forEach(c=>{ lead[c]=(lead[c]||0)+o[c]; }));
+      if(moneyLine(lead)) parts.push(`Event Lead ${esc(moneyLine(lead))}`);
+      if(parts.length) balRows += `<tr class="cash-who"><td colspan="${1+cashCurs().length}">held by ${parts.join(' · ')}</td></tr>`;
+    }
   });
 
   // ---------- cash collected (plain loop, always shows) ----------
