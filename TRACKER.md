@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b235**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b236**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,37 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b236 — menu sections start folded; no counts on Costs and Consignment; To do scrolls; panels pack and end level
+
+- **Menu sections start folded** (`SN.opened`): the menu itself already
+  started closed (b235), but every section in it was open, which read as the
+  menu starting open. Now each section starts folded on every page load, and
+  opening one lasts until the page is left. Nothing about the menu is kept on
+  the device any more (`tbs_sidenav` is cleared).
+- **No count on Record Costs or Consignment Books**, in the menu and the
+  classic panel.
+- **To do scrolls on a computer.** Since b235 several kinds show one under
+  another; each list had no height of its own to scroll in, so the panel cut
+  them off at its foot. They now sit in one scrolling area (`.todo-scroll`).
+- **Distribution by Title has the card/list switch** on the season and
+  Earthly HQ pages too (`#seasonTitlePanel`, `#hqTitlePanel`; `sectionViews`
+  also knows a panel by its fold name when it has no id).
+- **Panels side by side, the owner's two rules, in order** (`foldRows`):
+  1. two shorter panels that fit one above the other beside a taller one
+     stand there together (the next two beside a tall one, or this one and the
+     next beside a tall one after them; "fit" allows `FLOW_FIT` = 40px over);
+  2. otherwise they pair as before, and the shorter one stretches so
+     neighbouring columns end level. A panel with a height limit (To do and
+     its neighbours) is let out to the foot of its row.
+  How: `.flow` is now a grid of 40 narrow columns (a pair 20 + 20, the shelf
+  and sales log 23 + 17, as before); `foldRows` measures each open panel at
+  half width (`.f-measure`), then gives each its row and columns, and re-runs
+  when the window is resized. Phones: one column, as before.
+- Tests: `browser-fold.js` (two short panels stacked beside a tall one; every
+  column ends level, season and region), `browser-sellers.js` (sections start
+  folded, also after a reload; no counts; To do scrolls to its last item; the
+  season's Distribution by Title switch).
 
 ## Done in b235 — the left-hand menu goes live; To do filters and its own report; HANDOVER.md is now TRACKER.md
 

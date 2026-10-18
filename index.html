@@ -685,14 +685,15 @@ body.busy #busyBar{opacity:1}
    its own partner folds. foldRows gives each panel its width: a pair, the
    shelf beside the sales log (wider, as always), or the whole line. The
    second of a pair grows into what is left, so rounding never wraps it. */
-.flow{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start;margin-top:16px}
+.flow{display:grid;grid-template-columns:repeat(40,minmax(0,1fr));gap:16px;align-items:stretch;margin-top:16px}
 .flow > .cols, .flow > .cols-2{display:contents}
 .flow.empty{display:none}
-.flow .f-full{flex:0 0 100%;min-width:0}
-.flow .f-half{flex:0 0 calc((100% - 16px) / 2);min-width:0}
-.flow .f-half2{flex:1 1 calc((100% - 16px) / 2 - 1px);min-width:0}
-.flow .f-inv{flex:0 0 calc((100% - 16px) * .575);min-width:0}
-.flow .f-log{flex:1 1 calc((100% - 16px) * .425 - 1px);min-width:0;align-self:stretch}
+/* b236: a grid of 40 narrow columns, so a pair is 20 + 20 and the shelf
+   beside the sales log 23 + 17 (the old 1.15 : 0.85). foldRows places each
+   panel on its row; side by side, the shorter one stretches to the taller,
+   so neighbouring panels end level. .f-measure is foldRows measuring. */
+.flow .f-full, .flow .f-half, .flow .f-half2, .flow .f-inv, .flow .f-log{min-width:0}
+.flow.f-measure > *, .flow.f-measure > .cols > *, .flow.f-measure > .cols-2 > *{align-self:start}
 /* Beside anything but the shelf, the sales log has no height to borrow: its
    own, up to about a screen, and it scrolls inside that. */
 .flow .log-col:not(.f-log) > .panel{position:static;max-height:85vh}
@@ -1057,6 +1058,11 @@ body.busy #busyBar{opacity:1}
 .todo-h{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--tc);margin:10px 0 4px}
 .tt-pending{--tc:#C0392B} .tt-pre{--tc:#2F6FB5} .tt-change{--tc:#B7841C} .tt-counts{--tc:#7A4FA0}
 .todo-pane .log-item{border-left:4px solid var(--tc)}
+/* Since b235 several kinds show at once, one under another, so the panel
+   scrolls them together: each list on its own had no height to scroll in and
+   was cut off at the panel's foot on desktop (b236). */
+.todo-scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding-right:6px;scrollbar-width:thin;scrollbar-color:var(--line-d) transparent}
+.todo-scroll .log{overflow:visible;flex:none;padding-right:0;max-height:none}
 .tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
 .tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
@@ -1406,7 +1412,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 @media (max-width:1080px){ .totals{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
-  .flow .f-half, .flow .f-half2, .flow .f-inv, .flow .f-log{flex:0 0 100%}
+  /* One column: forty columns' gaps alone would be wider than a phone. */
+  .flow{grid-template-columns:minmax(0,1fr)}
+  .flow .f-full, .flow .f-half, .flow .f-half2, .flow .f-inv, .flow .f-log{grid-column:1 / -1 !important;grid-row:auto !important}
   .log{max-height:420px}
   .deity{height:62px} .deity img{height:62px}
   .masthead-inner{gap:10px;padding:4px 12px 11px}
@@ -1548,7 +1556,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b235</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b236</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1577,7 +1585,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
        close ranks when one folds (b217, see foldRows). -->
   <div class="flow" id="seasonFlow">
   <div class="cols-2" id="seasonTotals" style="display:none">
-    <section class="panel" data-fold="titles">
+    <section class="panel" id="seasonTitlePanel" data-fold="titles">
       <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div class="title-list" id="seasonTitleList"></div></div>
     </section>
@@ -1653,10 +1661,12 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <div class="body">
         <div class="todo-tabs" id="todoTabs" role="tablist"></div>
         <div class="log-tools"><span class="sortbar" id="todoSort"></span></div>
+        <div class="todo-scroll">
         <div class="todo-pane tp-pending" id="pendingPanel" data-tab="pending"><div class="log" id="pendingList"></div></div>
         <div class="todo-pane tp-pre" id="prePanel" data-tab="pre"><div class="log" id="preList"></div></div>
         <div class="todo-pane tp-change" id="changePanel" data-tab="change"><div class="log" id="changeList"></div></div>
         <div class="todo-pane tp-counts" id="countPanel" data-tab="counts"><div class="log" id="countList"></div></div>
+        </div>
       </div>
     </section>
     <section class="panel rq-panel" id="remotePanel" data-fold="remote" style="display:none">
@@ -1697,7 +1707,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
     <div class="flow" id="summaryFlow">
     <div class="cols-2">
-      <section class="panel" data-fold="sumTitles">
+      <section class="panel" id="hqTitlePanel" data-fold="sumTitles">
         <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
         <div class="body"><div class="title-list" id="hqTitleList"></div></div>
       </section>
@@ -3836,13 +3846,16 @@ function sectionViews(){
   if(!SIDE_NAV) return;
   const vb = document.getElementById('viewBtn'); if(vb) vb.style.display = 'none';
   document.body.classList.remove('list-view');
-  document.querySelectorAll('.panel[id]').forEach(p=>{
+  // A panel is known by its id, or by its fold name where it has none (b236:
+  // the season's and Earthly HQ's Distribution by Title had no id, so no switch).
+  document.querySelectorAll('.panel[id], .panel[data-fold]').forEach(p=>{
     if(!p.querySelector('.inv-grid, .stat-grid, .mini-grid')) return;
     const h = p.querySelector(':scope > h2'); if(!h) return;
-    const list = VIEWS[p.id]==='list';
+    const key = p.id || 'fold-' + p.dataset.fold;
+    const list = VIEWS[key]==='list';
     p.classList.toggle('list-view', list);
     let b = h.querySelector('.view-tg');
-    if(!b){ b = document.createElement('button'); b.type = 'button'; b.className = 'view-tg no-edit'; b.dataset.act = 'viewpanel'; b.dataset.panel = p.id;
+    if(!b){ b = document.createElement('button'); b.type = 'button'; b.className = 'view-tg no-edit'; b.dataset.act = 'viewpanel'; b.dataset.panel = key;
             const rep = h.querySelector('.sec-rep'); h.insertBefore(b, rep || null); }
     b.textContent = list ? '▦' : '☰';
     b.title = list ? 'Show as cards' : 'Show as a list';
@@ -4055,12 +4068,26 @@ function flowItems(flow){
   });
   return out.filter(k=>getComputedStyle(k).display!=='none');
 }
+/* b236, the owner's two rules for panels side by side, in this order:
+   1. two shorter panels that fit, one above the other, beside a taller one
+      stand there together (the next two beside a tall one, or this one and
+      the next beside a tall one after them);
+   2. otherwise, panels pair up as before, and the shorter of a pair (or of a
+      stack) stretches so the two columns end level.
+   The flow is a grid (see .flow); each panel gets its row and columns here. */
+const FLOW_FIT = 40;                      // px a stack may run past the tall panel and still count as fitting
 function foldRows(){
+  const wide = innerWidth > 900;          // phones: one panel per line (CSS)
   document.querySelectorAll('.flow').forEach(flow=>{
     const items = flowItems(flow);
     const alone = k => k.hasAttribute('data-full') || k.classList.contains('folded') ||
       !!k.querySelector(':scope > .panel.folded');
     const set = (k, cls) => { k.classList.remove('f-full','f-half','f-half2','f-inv','f-log'); k.classList.add(cls); };
+    const place = (k, col, row) => { k.style.gridColumn = col; k.style.gridRow = row; };
+    // What stretches: the panel itself, or the sales log's panel inside its column.
+    const box = k => k.matches('.panel') ? k : (k.querySelector(':scope > .panel') || k);
+    items.forEach(k=>{ const b = box(k); b.style.minHeight = b.style.maxHeight = ''; });
+    // First the plain pairing, as before (b217): it gives every panel its width.
     let waiting = null;                   // an open panel still looking for a partner
     items.forEach(k=>{
       if(alone(k)){
@@ -4078,8 +4105,55 @@ function foldRows(){
     if(waiting) set(waiting, 'f-full');
     // Nothing showing in it (a season has no shelf): no gap left behind either.
     flow.classList.toggle('empty', !items.length);
+    if(!items.length) return;
+    if(!wide){ items.forEach(k=>place(k, '', '')); return; }
+    // Each open panel's own height at half width, before anything stretches.
+    const half = k => !alone(k) && !k.classList.contains('f-inv') && !k.classList.contains('f-log');
+    flow.classList.add('f-measure');
+    items.forEach(k=>place(k, k.classList.contains('f-full') ? '1 / -1' : k.classList.contains('f-inv') ? '1 / span 23'
+      : k.classList.contains('f-log') ? '24 / -1' : 'span 20', ''));
+    const h = new Map(items.map(k=>[k, k.getBoundingClientRect().height]));
+    flow.classList.remove('f-measure');
+    const fits = (a, b, tall) => h.get(a) + 16 + h.get(b) <= h.get(tall) + FLOW_FIT;
+    let row = 1, i = 0;
+    while(i < items.length){
+      const a = items[i], b = items[i+1], c = items[i+2];
+      if(a.classList.contains('f-full')){ place(a, '1 / -1', `${row}`); row++; i++; continue; }
+      if(a.classList.contains('f-inv')){ place(a, '1 / span 23', `${row}`); place(b, '24 / -1', `${row}`); row++; i += 2; continue; }
+      // A stack before it can leave a without its old partner: then it takes the line.
+      if(!b || !half(b)){ set(a, 'f-full'); place(a, '1 / -1', `${row}`); row++; i++; continue; }
+      // a is the first of a plain pair; c, if open and plain, may join them.
+      if(c && half(c)){
+        if(fits(b, c, a)){                  // rule 1: b and c, one above the other, beside a taller a
+          set(a, 'f-half'); set(b, 'f-half2'); set(c, 'f-half2');
+          place(a, '1 / span 20', `${row} / span 2`); place(b, '21 / -1', `${row}`); place(c, '21 / -1', `${row+1}`);
+          row += 2; i += 3; continue;
+        }
+        if(fits(a, b, c)){                  // rule 1: a and b, one above the other, beside a taller c
+          set(a, 'f-half'); set(b, 'f-half'); set(c, 'f-half2');
+          place(a, '1 / span 20', `${row}`); place(b, '1 / span 20', `${row+1}`); place(c, '21 / -1', `${row} / span 2`);
+          row += 2; i += 3; continue;
+        }
+      }
+      set(a, 'f-half'); set(b, 'f-half2');
+      place(a, '1 / span 20', `${row}`); place(b, '21 / -1', `${row}`); row++; i += 2;
+    }
+    // Rule 2: the grid stretches the shorter panel of a row, but a panel with a
+    // height limit (To do and its neighbours, the sales log) stops at its limit;
+    // let it reach the foot of its row too, so neighbours still end level.
+    const tracks = getComputedStyle(flow).gridTemplateRows.split(' ').map(parseFloat);
+    items.forEach(k=>{
+      if(k.classList.contains('f-full')) return;
+      const m = /^(\d+)(?: \/ span (\d+))?$/.exec(k.style.gridRow); if(!m) return;
+      const r0 = +m[1] - 1, n = +(m[2] || 1);
+      const room = tracks.slice(r0, r0 + n).reduce((t, x)=>t + (x || 0), 0) + 16 * (n - 1);
+      const b = box(k);
+      if(room && b.getBoundingClientRect().height < room - 1){ b.style.minHeight = b.style.maxHeight = room + 'px'; }
+    });
   });
 }
+let FLOW_RESIZE = 0;
+if(typeof window!=='undefined' && window.addEventListener) window.addEventListener('resize', ()=>{ clearTimeout(FLOW_RESIZE); FLOW_RESIZE = setTimeout(()=>{ try{ foldRows(); }catch(e){} }, 150); });
 
 /* A tap on a heading folds it — but not a tap on a button, link, field or a
    wording pencil inside the heading, which keep doing what they do. */
@@ -4301,16 +4375,15 @@ function renderAdmin(){
   // Money
   if(!hideMoney()){
     cols[1].push(`<button class="btn" data-act="cash">💵 Track Cash</button>`);
-    cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs${
-      scopedAllCosts().length?` (${scopedAllCosts().length})`:''}</button>`);
+    // No count on Record Costs or Consignment Books: the owner found it noise (b236).
+    cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs</button>`);
     if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
   }
 
   // Books
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
   cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
-  const conCount = (season ? (STATE.partners||[]) : partnersHere()).length;
-  cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books${conCount?` (${conCount})`:''}</button>`);
+  cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books</button>`);
   cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
     (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
   if(CUR_LEVEL==='event') cols[2].push(eventPricesBtn());
@@ -4380,11 +4453,11 @@ function drawAdmin(fams){
 /* Live for everyone since b235. CONFIG.CLASSIC_ADMIN brings back the old
    four-column panel — only the older browser tests use it, as they drive it. */
 const SIDE_NAV = !CONFIG.CLASSIC_ADMIN;
-/* The menu always starts closed, on phones and computers (b235): "Keep the
-   menu open" lasts until the page is left. Which sections are folded is kept. */
-let SN = { open:false, pinned:false, closed:{} };
-try{ const v = JSON.parse(localStorage.getItem('tbs_sidenav')||'{}'); if(v && v.closed) SN.closed = v.closed; }catch(e){}
-function snSave(){ try{ localStorage.setItem('tbs_sidenav', JSON.stringify({closed:SN.closed})); }catch(e){} }
+/* The menu always starts closed, on phones and computers (b235), and so does
+   every section in it (b236): opening one lasts until the page is left, as
+   "Keep the menu open" does. Nothing about it is remembered on the device. */
+let SN = { open:false, pinned:false, opened:{} };
+try{ localStorage.removeItem('tbs_sidenav'); }catch(e){}
 function snLevelLabel(){
   if(isHQ()) return 'Earthly HQ Admin';
   return ({season:'Season', region:'Region', event:'Event'})[CUR_LEVEL] + ' Admin';
@@ -4471,9 +4544,9 @@ function renderSideNav(fams){
   nav.innerHTML = `
     <div class="sn-scroll">
       <div class="sn-top"><span class="sn-ic">☰</span><span class="sn-t sn-title">Menu</span></div>
-      ${sections.map(({sec, rows})=>`<div class="sn-group${SN.closed[sec.key]?' shut':''}" data-sec="${sec.key}">
+      ${sections.map(({sec, rows})=>`<div class="sn-group${SN.opened[sec.key]?'':' shut'}" data-sec="${sec.key}">
           <button type="button" class="sn-gh" data-act="sngroup" data-sec="${sec.key}" title="${esc(sec.label())}">
-            <span class="sn-ic">${sec.icon}</span><span class="sn-t">${esc(sec.label())}</span><span class="sn-chev">${SN.closed[sec.key]?'▸':'▾'}</span></button>
+            <span class="sn-ic">${sec.icon}</span><span class="sn-t">${esc(sec.label())}</span><span class="sn-chev">${SN.opened[sec.key]?'▾':'▸'}</span></button>
           <div class="sn-items">${rows.join('')}</div>
         </div>`).join('')}
       ${support ? `<div class="sn-solo">${support}</div>` : ''}
@@ -13850,11 +13923,11 @@ document.addEventListener('click',e=>{
   }
   if(a==='snopen'){ snShow(true); return; }
   if(a==='snclose'){ snShow(false); return; }
-  if(a==='snpin'){ SN.pinned = !SN.pinned; snSave(); SN.open = SN.pinned; renderAdmin(); return; }
+  if(a==='snpin'){ SN.pinned = !SN.pinned; SN.open = SN.pinned; renderAdmin(); return; }
   if(a==='sngroup'){
-    const k = t.dataset.sec; if(SN.closed[k]) delete SN.closed[k]; else SN.closed[k] = 1; snSave();
-    const g = t.closest('.sn-group'); g.classList.toggle('shut', !!SN.closed[k]);
-    t.querySelector('.sn-chev').textContent = SN.closed[k] ? '▸' : '▾';
+    const k = t.dataset.sec; if(SN.opened[k]) delete SN.opened[k]; else SN.opened[k] = 1;
+    const g = t.closest('.sn-group'); g.classList.toggle('shut', !SN.opened[k]);
+    t.querySelector('.sn-chev').textContent = SN.opened[k] ? '▾' : '▸';
     return;
   }
   if(a==='permissions'){ permissionsModal(); return; }

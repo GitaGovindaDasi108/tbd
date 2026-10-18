@@ -129,10 +129,36 @@ for (let i = 0; i < 25; i++) m.call({ action: 'sell', season: st.activeSeason, s
     ti = await box('titles'); cb = await box('collBy');
     t.push(['…opened again: side by side', cb.left >= ti.right - 1]);
     await tap('payments');
-    const sb = await box('salesBy'), py = await box('payments');
-    t.push(['season: folding the right-hand panel moves it under the left one, which widens',
-      py.h < 70 && py.top >= sb.bottom - 1 && sb.w > full * 0.95]);
+    const sb = await box('salesBy'), py = await box('payments'), ti2 = await box('titles'), cb2 = await box('collBy');
+    t.push(['season: the folded right-hand panel becomes a bar under the others', py.h < 70 && py.top >= sb.bottom - 1 && py.w > full * 0.95]);
+    // b236, rule 1: Sales by Region, left without a partner, fits under Collections by Region
+    // beside the taller Distribution by Title, and the two columns end level (rule 2).
+    t.push(['b236: two shorter panels stand one above the other beside a taller one',
+      same(cb2.top, ti2.top) && cb2.left >= ti2.right - 1 && same(sb.left, cb2.left) && sb.top >= cb2.bottom - 1 && sb.top < ti2.bottom]);
+    t.push(['…and the columns end level', Math.abs(sb.bottom - ti2.bottom) < 2]);
     await tap('payments');
+
+    // b236, rule 2: side by side, every column ends level with its neighbour.
+    const level = () => page.evaluate(() => {
+      const bad = [];
+      document.querySelectorAll('.flow').forEach(f => {
+        const fw = f.getBoundingClientRect().width;
+        const bx = [...f.querySelectorAll('.f-half, .f-half2, .f-inv, .f-log')].filter(k => k.offsetParent !== null)
+          .map(k => ({ k: k.dataset.fold || k.className, r: k.getBoundingClientRect() })).filter(x => x.r.width < fw * 0.9);
+        bx.forEach(x => {
+          const below = bx.some(y => Math.abs(y.r.left - x.r.left) < 2 && Math.abs(y.r.top - x.r.bottom - 16) < 3);
+          const beside = bx.some(y => Math.abs(y.r.left - x.r.left) > 2 && Math.abs(y.r.bottom - x.r.bottom) < 2);
+          if (!below && !beside) bad.push(x.k);
+        });
+      });
+      return bad;
+    });
+    let uneven = await level();
+    t.push(['b236: season, every column ends level with its neighbour' + (uneven.length ? ' — ' + uneven.join(', ') : ''), !uneven.length]);
+    await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(400);
+    uneven = await level();
+    t.push(['b236: region, every column ends level with its neighbour' + (uneven.length ? ' — ' + uneven.join(', ') : ''), !uneven.length]);
+    await page.screenshot({ path: shot('6-region-level'), fullPage: true });
 
     // A phone shows one panel per line, folded or not.
     await page.setViewportSize({ width: 390, height: 850 });
