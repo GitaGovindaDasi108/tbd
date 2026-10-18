@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b232**.
+Handover notes. Current build: **b233**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,24 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b233 — a left-hand menu for the admin buttons (mock-up, practice space only)
+
+- **Only in the practice space** (`SIDE_NAV = PRACTICE`), for the owner to try
+  before deciding. The live app keeps App Admin as it is.
+- The App Admin buttons are now built as families (`drawAdmin(fams)`: admin,
+  money, books, location; `ADMIN_FAMS` names, icons and colours) and drawn
+  either as the old four-column panel or, in practice, as a menu
+  (`renderSideNav`). Same buttons, same actions.
+- **Wide screens (900px and up)**: a narrow dark strip down the left (☰ and
+  one icon per family); a tap opens the menu at that family. 📌 keeps it open
+  beside the page (the page moves over); otherwise choosing an action, ✕, or
+  tapping outside folds it away. The place you are looking at comes first, with
+  its own actions (Edit/Close/Delete…), headed by its name. Each family folds
+  (remembered, `tbs_sidenav`, with the pin).
+- **Phones**: no strip; a round ☰ at the bottom left slides the menu in.
+- Tests: `browser-sellers.js` (in practice: strip, menu, an action from it,
+  pin; on a phone: the ☰ and no sideways scroll; the live app unchanged).
 
 ## Done in b232 — one To do panel; the local price on the shelf; phones lose heading notes
 

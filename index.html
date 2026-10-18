@@ -1057,6 +1057,47 @@ body.busy #busyBar{opacity:1}
 .tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
 .tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
+/* ---- The left-hand menu (b233, practice mock-up) ---- */
+.side-nav{--snw:270px;font-family:'Inter',sans-serif}
+.sn-strip{position:fixed;left:0;top:0;bottom:0;width:52px;z-index:60;background:#3B2A45;display:flex;flex-direction:column;
+  align-items:center;gap:6px;padding:10px 0;box-shadow:2px 0 10px rgba(0,0,0,.12)}
+.sn-ico{width:40px;height:40px;border-radius:11px;border:0;background:rgba(255,255,255,.08);color:#F6E7C1;font-size:18px;cursor:pointer;
+  border-left:3px solid var(--fc, transparent)}
+.sn-ico:hover{background:rgba(255,255,255,.18)}
+.sn-menu{font-size:20px;border-left:0;margin-bottom:6px}
+.sn-panel{position:fixed;left:52px;top:0;bottom:0;width:var(--snw);z-index:61;background:#FFFBF3;border-right:1px solid var(--line-d);
+  box-shadow:4px 0 18px rgba(0,0,0,.14);overflow-y:auto;transform:translateX(calc(-100% - 60px));transition:transform .18s ease;padding-bottom:40px}
+body.sn-open .sn-panel{transform:none}
+.sn-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);
+  position:sticky;top:0;background:#FFFBF3;z-index:1;color:var(--plum)}
+.sn-head button{border:0;background:none;font-size:15px;cursor:pointer;padding:4px 6px;border-radius:7px;opacity:.55}
+.sn-head .sn-pin.on{opacity:1;background:var(--paper2)}
+.sn-group{border-bottom:1px solid var(--line)}
+.sn-gh{width:100%;display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:10px 14px;cursor:pointer;
+  font:inherit;font-size:12px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--fc)}
+.sn-group.shut .sn-items{display:none}
+.sn-items{display:flex;flex-direction:column;padding:0 8px 8px}
+.sn-item{display:flex;align-items:center;gap:6px;text-align:left;border:0;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;
+  font:inherit;font-size:13.5px;font-weight:600;color:var(--ink);text-decoration:none;border-left:3px solid transparent}
+.sn-item:hover{background:var(--paper2);border-left-color:var(--fc)}
+.sn-scrim{position:fixed;inset:0;background:rgba(30,20,35,.28);z-index:59;display:none}
+body.sn-open:not(.sn-pinned) .sn-scrim{display:block}
+.sn-fab{display:none}
+body.has-sn{padding-left:52px}
+@media (min-width:900px){
+  body.has-sn.sn-pinned{padding-left:calc(52px + var(--snw, 270px))}
+  body.sn-pinned .sn-panel{transform:none;box-shadow:none}
+  body.sn-pinned .sn-x{display:none}
+}
+/* Phones: no strip; a round ☰ at the bottom left slides the menu in. */
+@media (max-width:899px){
+  body.has-sn{padding-left:0}
+  .sn-strip{display:none}
+  .sn-panel{left:0;width:min(86vw, 300px)}
+  .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:0;
+    background:#3B2A45;color:#F6E7C1;font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.25);cursor:pointer}
+  .sn-pin{display:none}
+}
 .practice-bar{background:repeating-linear-gradient(135deg,#E6F4EA 0 14px,#D6EEDD 14px 28px);border:1.5px solid #8CC9A0;
   color:#1F5E36;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px;line-height:1.5}
 .practice-bar .pb-when{color:#3C7A52}
@@ -1478,7 +1519,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b232</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b233</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4094,20 +4135,18 @@ function renderAdmin(){
     $('#adminPanel').style.display='';
     /* A regional link may add stock within its own region; a sales link may not. */
     const coord = STATE && STATE.role==='coordinator';
-    $('#adminActions').innerHTML =
-      `<div class="adm-grid"><div class="adm-col">
-         <div class="adm-lbl">Admin</div>
-         ${coord ? `<button class="btn adm-c1-1" data-act="activity">🗒 Activity Log</button>` : ''}
-         ${coord && ME ? `<button class="btn adm-c1-2" data-act="drivefolder">📁 Spreadsheet Links</button>` : ''}
-         <button class="btn adm-c1-${coord?2:1}" data-act="org">👥 App and Sales Support</button>
-         ${ME && ME.seesPeople ? `<button class="btn adm-c1-3" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : ''}
-         ${ME ? `<button class="btn adm-c1-4" data-act="signout">🚪 Sign Out</button>` : ''}
-       </div>${coord ? `<div class="adm-col">
-         <div class="adm-lbl">Books</div>
-         <button class="btn adm-c3-1" data-act="addstock">＋ Add New Stock</button>
-         <button class="btn adm-c3-2" data-act="xfer">⇄ Transfer Existing Stock</button>
-         ${CUR_LEVEL==='event' ? eventPricesBtn('adm-c3-3') : ''}
-       </div>` : ''}</div>`;
+    drawAdmin([
+      {key:'admin', items:[
+        coord ? `<button class="btn" data-act="activity">🗒 Activity Log</button>` : '',
+        coord && ME ? `<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>` : '',
+        `<button class="btn" data-act="org">👥 App and Sales Support</button>`,
+        ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
+        ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
+      {key:'books', items: coord ? [
+        `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
+        `<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`,
+        CUR_LEVEL==='event' ? eventPricesBtn() : ''] : []}
+    ]);
     return;
   }
   $('#adminPanel').style.display='';
@@ -4183,17 +4222,90 @@ function renderAdmin(){
   }
   }
 
-  const labels = ['Admin', 'Money', 'Books', 'Location'];
+  drawAdmin([{key:'admin', items:cols[0]}, {key:'money', items:cols[1]}, {key:'books', items:cols[2]}, {key:'location', items:cols[3]}]);
+}
+/* The four families of admin buttons, in the panel's order and colours. */
+const ADMIN_FAMS = {
+  admin:    {label:'Admin',    icon:'⚙️', col:1, fc:'#C9822B'},
+  money:    {label:'Money',    icon:'💵', col:2, fc:'#2E8065'},
+  books:    {label:'Books',    icon:'📚', col:3, fc:'#3E6FA8'},
+  location: {label:'Location', icon:'📍', col:4, fc:'#7A3F6B'}
+};
+function drawAdmin(fams){
+  fams = fams.map(f=>Object.assign({}, f, {items:(f.items||[]).filter(Boolean)})).filter(f=>f.items.length);
+  if(SIDE_NAV){ $('#adminPanel').style.display='none'; renderSideNav(fams); return; }
   /* Each column is a family, and each button sits a shade deeper than the one
      above it — so the panel reads as a gradient rather than a bag of colors. */
   $('#adminActions').innerHTML = `<div class="adm-grid">${
-    cols.map((c,i)=>{
-      const live = c.filter(Boolean);
-      if(!live.length) return '';
-      const shaded = live.map((btn,j)=>
-        btn.replace('class="btn', `class="btn adm-c${i+1}-${Math.min(j+1,5)}`));
-      return `<div class="adm-col"><div class="adm-lbl">${esc(labels[i])}</div>${shaded.join('')}</div>`;
+    fams.map(f=>{
+      const fam = ADMIN_FAMS[f.key];
+      const shaded = f.items.map((btn,j)=>
+        btn.replace('class="btn', `class="btn adm-c${fam.col}-${Math.min(j+1,5)}`));
+      return `<div class="adm-col"><div class="adm-lbl">${esc(fam.label)}</div>${shaded.join('')}</div>`;
     }).join('')}</div>`;
+}
+
+/* ---- The admin buttons as a left-hand menu (b233, a mock-up in the practice space only) ----
+   Wide screens: a narrow strip of icons down the left; tap one to open the
+   menu at that family, 📌 to keep it open beside the page. Phones: a round ☰
+   button at the bottom left slides the same menu in. The place you are
+   looking at comes first, with its own actions. Same buttons, same actions as
+   the App Admin panel — only where they live changes. */
+const SIDE_NAV = PRACTICE;
+let SN = { open:false, pinned:false, closed:{} };
+try{ Object.assign(SN, JSON.parse(localStorage.getItem('tbs_sidenav')||'{}'), {open:false}); }catch(e){}
+function snSave(){ try{ localStorage.setItem('tbs_sidenav', JSON.stringify({pinned:SN.pinned, closed:SN.closed})); }catch(e){} }
+function snPlaceName(){
+  if(isHQ()) return 'Earthly HQ';
+  if(CUR_LEVEL==='season') return (STATE && STATE.seasonName) || 'This season';
+  if(CUR_LEVEL==='region') return (currentRegion()||{}).name || 'This region';
+  return locName(CUR_LOC);
+}
+function renderSideNav(fams){
+  let nav = document.getElementById('sideNav');
+  if(!nav){
+    nav = document.createElement('aside'); nav.id = 'sideNav'; nav.className = 'side-nav no-edit';
+    document.body.appendChild(nav);
+    const scrim = document.createElement('div'); scrim.id = 'snScrim'; scrim.className = 'sn-scrim'; scrim.dataset.act = 'snclose';
+    document.body.appendChild(scrim);
+    // An action chosen from the menu closes it, unless it is pinned open.
+    nav.addEventListener('click', e=>{ if(e.target.closest('.sn-item') && !(SN.pinned && innerWidth>=900)) setTimeout(()=>snShow(false), 0); });
+  }
+  // The place first, then Admin, Money, Books.
+  const order = ['location','admin','money','books'];
+  fams = fams.slice().sort((a,b)=>order.indexOf(a.key)-order.indexOf(b.key));
+  const title = f => f.key==='location' ? snPlaceName() : ADMIN_FAMS[f.key].label;
+  const icon = f => ADMIN_FAMS[f.key].icon;
+  nav.innerHTML = `
+    <div class="sn-strip">
+      <button type="button" class="sn-ico sn-menu" data-act="snopen" title="Open the menu">☰</button>
+      ${fams.map(f=>`<button type="button" class="sn-ico" data-act="snopen" data-fam="${f.key}" title="${esc(title(f))}"
+        style="--fc:${ADMIN_FAMS[f.key].fc}">${icon(f)}</button>`).join('')}
+    </div>
+    <div class="sn-panel">
+      <div class="sn-head"><b>Menu</b>
+        <span><button type="button" class="sn-pin${SN.pinned?' on':''}" data-act="snpin" title="${SN.pinned?'Let it fold away':'Keep it open beside the page'}">📌</button>
+        <button type="button" class="sn-x" data-act="snclose" title="Close">✕</button></span></div>
+      ${fams.map(f=>`<div class="sn-group${SN.closed[f.key]?' shut':''}" data-fam="${f.key}" style="--fc:${ADMIN_FAMS[f.key].fc}">
+          <button type="button" class="sn-gh" data-act="sngroup" data-fam="${f.key}"><span>${icon(f)} ${esc(title(f))}</span><span class="tw">${SN.closed[f.key]?'▸':'▾'}</span></button>
+          <div class="sn-items">${f.items.map(b=>b.replace(/class="btn( [^"]*)?"/, 'class="sn-item"')).join('')}</div>
+        </div>`).join('')}
+    </div>
+    <button type="button" class="sn-fab" data-act="snopen" title="Menu">☰</button>`;
+  document.body.classList.add('has-sn');
+  snApply();
+}
+function snApply(){
+  document.body.classList.toggle('sn-open', SN.open);
+  document.body.classList.toggle('sn-pinned', SN.pinned);
+}
+function snShow(open, fam){
+  SN.open = open; snApply();
+  if(open && fam){
+    if(SN.closed[fam]){ delete SN.closed[fam]; snSave(); renderAdmin(); SN.open = true; snApply(); }
+    const g = document.querySelector(`#sideNav .sn-group[data-fam="${fam}"]`);
+    if(g) g.scrollIntoView({block:'nearest'});
+  }
 }
 
 // A small footnote showing which USD conversion rates are in effect.
@@ -13500,6 +13612,10 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
+  if(a==='snopen'){ snShow(true, t.dataset.fam); return; }
+  if(a==='snclose'){ snShow(false); return; }
+  if(a==='snpin'){ SN.pinned = !SN.pinned; snSave(); if(SN.pinned) SN.open = true; renderAdmin(); return; }
+  if(a==='sngroup'){ const f = t.dataset.fam; if(SN.closed[f]) delete SN.closed[f]; else SN.closed[f] = 1; snSave(); renderAdmin(); return; }
   if(a==='todotab'){ TODO.tab = t.dataset.tab; todoSave(); renderBottom(); return; }
   if(a==='todosort'){
     const k = t.dataset.sort;

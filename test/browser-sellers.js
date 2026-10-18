@@ -337,7 +337,37 @@ const API = 'http://api.test/';
     t.push(['…but is in practice', !!prState && prState.sales.some(x => x.saleId === 'PRS1')]);
     t.push(['"Leave practice" goes back to the live app\'s address', await pr.evaluate(() => !/practice/.test(document.querySelector('#practiceBar a').getAttribute('href')))]);
     await pr.screenshot({ path: shot('11-practice') });
+    // b233: in practice, the admin buttons live in a left-hand menu (a mock-up).
+    const sn = () => pr.evaluate(() => ({
+      panel: document.querySelector('#adminPanel').offsetHeight,
+      strip: [...document.querySelectorAll('#sideNav .sn-strip .sn-ico')].map(b => b.title),
+      open: document.querySelector('#sideNav .sn-panel').getBoundingClientRect().left >= 0,
+      groups: [...document.querySelectorAll('#sideNav .sn-gh')].map(b => b.innerText.replace(/\s+/g, ' ').trim()) }));
+    let snv = await sn();
+    t.push(['practice: no App Admin panel; a strip down the left: ☰, the place, Admin, Money, Books', snv.panel === 0
+      && JSON.stringify(snv.strip) === JSON.stringify(['Open the menu', 'Europe Tour', 'Admin', 'Money', 'Books']) && !snv.open]);
+    await pr.click('#sideNav .sn-ico[data-fam="money"]'); await pr.waitForTimeout(300);
+    snv = await sn();
+    t.push(['…tapping 💵 opens the menu: the place first, then Admin, Money, Books', snv.open && /Europe Tour/i.test(snv.groups[0]) && snv.groups.length === 4]);
+    await pr.screenshot({ path: shot('13-sidenav') });
+    await pr.click('#sideNav .sn-item[data-act="activity"]'); await pr.waitForTimeout(400);
+    t.push(['…an action from it works (Activity Log opens) and the menu folds away', await pr.evaluate(() =>
+      document.querySelector('#overlay').classList.contains('show')) && !(await sn()).open]);
+    await pr.evaluate(() => closeModal());
+    await pr.click('#sideNav .sn-ico[data-fam="books"]'); await pr.waitForTimeout(250);
+    await pr.click('#sideNav [data-act="snpin"]'); await pr.waitForTimeout(250);
+    t.push(['📌 keeps it open beside the page (the page moves over)', (await sn()).open && await pr.evaluate(() => parseInt(getComputedStyle(document.body).paddingLeft) > 250)]);
+    await pr.screenshot({ path: shot('14-sidenav-pinned') });
+    await pr.click('#sideNav [data-act="snpin"]'); await pr.waitForTimeout(250);
     const live = await open('owner@example.com', 'The Owner');
+    t.push(['the live app keeps App Admin as it is (no left-hand menu)', await live.evaluate(() => !document.querySelector('#sideNav') && document.querySelector('#adminPanel').offsetHeight > 0)]);
+    const prPhone = await open('owner@example.com', 'The Owner', 390, '?practice');
+    t.push(['practice on a phone: no strip, a round ☰ at the bottom left', await prPhone.evaluate(() =>
+      getComputedStyle(document.querySelector('.sn-strip')).display === 'none' && document.querySelector('.sn-fab').offsetHeight > 40)]);
+    await prPhone.click('.sn-fab'); await prPhone.waitForTimeout(300);
+    t.push(['…which slides the menu in, without the page going wider than the screen', await prPhone.evaluate(() =>
+      document.querySelector('.sn-panel').getBoundingClientRect().left >= 0 && document.documentElement.scrollWidth <= innerWidth)]);
+    await prPhone.screenshot({ path: shot('15-sidenav-phone') });
     t.push(['the live app shows no banner, and offers "🧪 Practice Space"', await live.evaluate(() => !document.querySelector('#practiceBar')
       && [...document.querySelectorAll('#adminActions a')].some(a => /Practice Space/.test(a.textContent) && /practice/.test(a.getAttribute('href'))))]);
 
