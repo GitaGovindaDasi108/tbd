@@ -65,15 +65,24 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     await page.click(`#${which} .pp-in`); await page.fill(`#${which} .pp-in`, search);
     await page.click(`#${which} .pp-row:has-text("${text}")`); await page.waitForTimeout(400);
   };
+  const NEEDS = (fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8').match(/const NEEDS_SERVER = '(b\d+)'/) || [])[1];
   let page;
   try {
     // 1. Version warning.
     // A genuinely older Apps Script: it has no version stamp of its own, and its data says b180.
     const old = await open('', 1100, out => { if (out && out.state) { out.state.serverBuild = 'b180'; delete out.build; } });
     const warn = await old.evaluate(() => (document.getElementById('buildWarn') || {}).textContent || '');
-    const pageBuild = await old.evaluate(() => document.getElementById('bld').textContent);
-    t.push(['older Apps Script: a red warning names both versions and what to do', /running b180/.test(warn) && warn.includes(pageBuild) && /New version/.test(warn)]);
+    t.push(['older server: a warning names its version and the one this page needs', /still on b180/.test(warn) && /needs b\d+/.test(warn) && /Actions/.test(warn)]);
     await old.close();
+    // b237: a server newer than the page (an old copy of the page in the browser): offer a refresh, not a server fix.
+    const newer = await open('', 1100, out => { if (out) { out.build = 'b999'; if (out.state) out.state.serverBuild = 'b999'; } });
+    const nw = await newer.evaluate(() => (document.getElementById('buildWarn') || {}).textContent || '');
+    t.push(['b237: server newer than the page: "Refresh to get it", nothing about the server', /Refresh to get it/.test(nw) && !/Apps Script|Actions/.test(nw)]);
+    await newer.close();
+    // b237: a page-only build ahead of the server it needs: no warning.
+    const ahead = await open('', 1100, out => { if (out) { out.build = NEEDS; if (out.state) out.state.serverBuild = NEEDS; } });
+    t.push(['b237: the server behind the page but new enough for it: no warning', !(await ahead.$('#buildWarn'))]);
+    await ahead.close();
     // Today's case: the new Apps Script is running, but hands out a copy saved by the old one.
     const stale = await open('', 1100, out => { if (out && out.state) out.state.serverBuild = 'b180'; });
     t.push(['new Apps Script with an old saved copy: no false warning', !(await stale.$('#buildWarn'))]);

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b236**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b237**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -30,8 +30,11 @@ There is no framework, no bundler, no npm install. Edit the two files directly.
 3. Push `index.html` to the repo; hard-refresh the page.
 4. Run `initialize` in Apps Script after any change that adds a sheet or column.
 
-`SERVER_BUILD` in `Code.gs` and the build tag in `index.html` should match. The
-server reports its build in the state payload (not shown in the UI any more) —
+Since b237 the page and the server have their own build numbers. Bump
+`SERVER_BUILD` in `Code.gs` only when Code.gs or server/ changes (a merge that
+changes them deploys the server by itself, `.github/workflows/deploy-server.yml`).
+Bump `NEEDS_SERVER` in `index.html` only when the page starts relying on new
+server code. The server reports its build in the state payload (not shown in the UI any more) —
 useful when a bug refuses to go away.
 
 ---
@@ -905,6 +908,22 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b237 — no false "update the Google code" warning
+
+- The warning compared the page's build with the server's and fired on any
+  difference. After b236 merged, a browser still showing the b235 page saw a
+  b236 server and was told to redeploy Apps Script, which was wrong twice over:
+  the server is on Cloudflare and deploys itself, and the fix was a refresh.
+- Now (`checkServerBuild`, `NEEDS_SERVER`, `buildNo`): the server older than
+  the page needs gives "the server is still on bX; this page needs bY",
+  usually a moment's wait after a merge, else look at the Actions tab. The
+  server newer than the page gives "A newer version of the app is out" with a
+  Refresh button. Any other difference says nothing.
+- Page-only builds no longer bump `SERVER_BUILD` (this one does not), so no
+  server deploy runs for them.
+- Test: `browser-round2.js` (older server, newer server, a page ahead of a
+  server that is new enough).
 
 ## Done in b236 — menu sections start folded; no counts on Costs and Consignment; To do scrolls; panels pack and end level
 

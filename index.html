@@ -1556,7 +1556,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b236</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b237</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3814,25 +3814,38 @@ function addTooltipsToClipped(){
   });
 }
 
-/* If the Google side is running a different version from this page, new
-   features fail with "Unknown action" — which is what a missed Apps Script
-   deploy looks like. Say so plainly, with what to do. */
+/* The server and the page have their own build numbers (b237). A build that
+   changes only the page leaves the server where it is, so the two often
+   differ, and that is fine. Only two cases are worth a word:
+   - the server is older than this page needs (NEEDS_SERVER): new features
+     would be refused. The server deploys itself a minute or two after a merge
+     that changes Code.gs or server/ (.github/workflows/deploy-server.yml), so
+     this is usually a moment's wait;
+   - the server is newer than this page: the browser is showing an old copy of
+     the page, and a refresh fixes it.
+   Bump NEEDS_SERVER only when the page starts relying on new server code. */
+const NEEDS_SERVER = 'b236';
 /* The server's version as it answered this session. Never taken from the copy
    saved on the device, which can be older than the server now is. */
 let LIVE_BUILD = '';
+function buildNo(b){ const m = /b(\d+)/.exec(b || ''); return m ? +m[1] : 0; }
 function checkServerBuild(){
   let bar = document.getElementById('buildWarn');
   const page = ($('#bld')||{}).textContent || '';
   const server = LIVE_BUILD;
-  const off = isAdmin() && server && page && server!==page;
-  if(!off){ if(bar) bar.remove(); return; }
+  const s = buildNo(server), p = buildNo(page);
+  const behind = s && s < buildNo(NEEDS_SERVER), stalePage = s && p && s > p;
+  if(!isAdmin() || !(behind || stalePage)){ if(bar) bar.remove(); return; }
   if(!bar){
     bar = document.createElement('div'); bar.id = 'buildWarn'; bar.className = 'build-warn no-edit';
     const main = document.querySelector('main'); main.insertBefore(bar, main.firstChild);
   }
-  bar.innerHTML = `<b>The Google Sheets side is running ${esc(server)}, but this page is ${esc(page)}.</b>
-    Some changes will be refused until it is updated: in Apps Script, paste the latest Code.gs, Save, then
-    <b>Deploy → Manage deployments → ✏️ → Version: New version → Deploy</b>.`;
+  bar.innerHTML = behind
+    ? `<b>The server is still on ${esc(server)}; this page needs ${esc(NEEDS_SERVER)}.</b>
+       It updates itself a minute or two after a merge, so refresh the page in a moment. If this stays,
+       the server's deploy did not run: look at the Actions tab of the repository on GitHub.`
+    : `<b>A newer version of the app is out (${esc(server)}; this page is ${esc(page)}).</b>
+       <button type="button" class="btn btn-sm" onclick="location.reload()">Refresh to get it</button>`;
 }
 
 /* Cards or a compact list, for every card view at once. Only the layout changes —
