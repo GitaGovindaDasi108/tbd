@@ -144,12 +144,29 @@ const API = 'http://api.test/';
 
     /* ---- The Event Lead ---- */
     const gita = await open('gita@example.com', 'Gita');
-    const hand = await gita.evaluate(() => (document.querySelector('#handPanel') || {}).innerText || '');
-    t.push(['the Event Lead sees "Sita → Gita · €70" with a Received button', /Sita[\s\S]*Gita[\s\S]*70/.test(hand) && !!(await gita.$('#handList [data-act="hoyes"]'))]);
-    const sellers = await gita.evaluate(() => (document.querySelector('#sellerPanel') || {}).innerText || '');
-    t.push(['…and Sales by Seller: Sita and Tulasi, each with their own books and cash', /Sita/.test(sellers) && /Tulasi/.test(sellers)]);
-    await gita.screenshot({ path: shot('2-lead'), fullPage: true });
-    await gita.click('#handList [data-act="hoyes"]'); await gita.waitForTimeout(2000);
+    /* b230: one line per seller — Big Books, Adventures, everything collected —
+       and the cash, with any handover waiting, behind the arrow. */
+    const lines = page => page.evaluate(() => {
+      const o = {}; document.querySelectorAll('#sellerList .sb-seller').forEach(el => {
+        const who = el.querySelector('.sb-who').childNodes[0].textContent.trim();
+        const td = [...el.querySelectorAll('.sb-cash tbody tr:first-child td')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
+        o[who] = { line: el.querySelector('.sb-line').innerText.replace(/\s+/g, ' '), badge: (el.querySelector('.sb-badge') || {}).textContent || '',
+          shown: el.querySelector('.sb-cash').offsetHeight > 0, received: td[0], pending: td[1], submitted: td[2] }; });
+      return o; });
+    let L = await lines(gita);
+    t.push(['the Event Lead\'s Sales by Seller: one line each — Sita: 3 Big Books, 0 Adventures, 105 € collected (card too)',
+      /3 Big Books/.test(L.Sita.line) && /0 Adventures/.test(L.Sita.line) && /105/.test(L.Sita.line) && !!L.Tulasi]);
+    t.push(['…a red badge on Sita\'s line: a handover is waiting', L.Sita.badge === '1' && !L.Tulasi.badge]);
+    t.push(['…the cash is closed until the arrow is tapped', !L.Sita.shown]);
+    t.push(['…and there is no separate "Cash Handed Over" panel', await gita.evaluate(() => { const p = document.querySelector('#handPanel'); return !p || p.offsetHeight === 0; })]);
+    await gita.click('#sellerList .sb-seller:has-text("Sita") .sb-line'); await gita.waitForTimeout(200);
+    L = await lines(gita);
+    t.push(['the arrow opens Sita\'s cash: Received 70 €, Pending —, Submitted 70 € awaiting confirmation',
+      L.Sita.shown && /70/.test(L.Sita.received) && L.Sita.pending === '—' && /70.*awaiting confirmation/.test(L.Sita.submitted)]);
+    t.push(['…with the request and its Received button', !!(await gita.$('#sellerList [data-act="hoyes"]'))]);
+    await gita.evaluate(() => { document.querySelector('#sellerPanel').scrollIntoView(); });
+    await gita.screenshot({ path: shot('2-lead') });
+    await gita.click('#sellerList [data-act="hoyes"]'); await gita.waitForTimeout(2000);
     r = (await O({ action: 'getState', season: SA })).state.handovers[0];
     t.push(['she taps Received: confirmed, with her name', r.status === 'received' && r.answeredBy === 'Gita']);
 
@@ -164,26 +181,23 @@ const API = 'http://api.test/';
     /* ---- The owner, at the region ---- */
     const own = await open('owner@example.com', 'The Owner');
     await own.evaluate(() => goTo('region', 'rg_it')); await own.waitForTimeout(600);
-    const sb = await own.evaluate(() => document.querySelector('#sellerPanel').innerText);
-    t.push(['the region\'s Sales by Seller: Sita handed €70, nothing still with her', /Sita[^\n]*\n?[\s\S]*70/.test(sb)]);
+    L = await lines(own);
+    t.push(['the region\'s Sales by Seller: Sita submitted 70 €, nothing pending, no badge', /70/.test(L.Sita.submitted) && L.Sita.pending === '—' && !L.Sita.badge]);
     await own.evaluate(() => { document.querySelector('#sellerPanel').scrollIntoView(); });
     await own.screenshot({ path: shot('3-region') });
 
     /* ---- b229: Sales by Seller in step with Track Cash ---- */
-    const sbt = async page => { await refresh(page); return page.evaluate(() => {
-      const rows = {}; document.querySelectorAll('#sellerList tbody tr:not(.sb-sub)').forEach(tr => {
-        const td = [...tr.children].map(x => x.innerText.trim()); rows[td[0]] = { moved: td[5], still: td[6] }; });
-      return { rows, foot: (document.querySelector('#sellerList tfoot') || {}).innerText || '' }; }); };
+    const sbt = async page => { await refresh(page); return lines(page); };
     let v = await sbt(gita);
-    t.push(['(before: Tulasi still holds her €35; €105 at Yoga Studio in Track Cash)', /35/.test(v.rows.Tulasi.still) && /Still at Yoga Studio in Track Cash\s*105/.test(v.foot)]);
+    t.push(['(before: Tulasi has 35 € pending submission)', /35/.test(v.Tulasi.pending) && v.Tulasi.submitted === '—']);
     await O({ action: 'cashMove', cashId: 'cm1', fromAcct: 'ev_yoga', toAcct: 'BANK', cur: 'EUR', amt: 50, season: SA });
     v = await sbt(gita);
-    t.push(['€50 moved on in Track Cash comes out of what the Event Lead received first: €20 still with her, Tulasi still €35',
-      /With the Event Lead[^\n]*\s*20/.test(v.foot) && /35/.test(v.rows.Tulasi.still) && /55/.test(v.foot)]);
+    t.push(['€50 moved on in Track Cash comes out of what the Event Lead received first: Tulasi still has 35 € pending', /35/.test(v.Tulasi.pending)]);
     await O({ action: 'cashMove', cashId: 'cm2', fromAcct: 'ev_yoga', toAcct: 'BANK', cur: 'EUR', amt: 55, season: SA });
     v = await sbt(gita);
-    t.push(['all of it with the Global Coordinator: nobody still holds any (Tulasi —, moved on €35)',
-      v.rows.Tulasi.still === '—' && /35/.test(v.rows.Tulasi.moved) && !/With the Event Lead/.test(v.foot) && /Still at Yoga Studio in Track Cash[^\n]*105 € moved on[^\n]*\s*—/.test(v.foot)]);
+    t.push(['all of it with the Global Coordinator: Tulasi has nothing pending, 35 € submitted (moved on by an admin)',
+      v.Tulasi.pending === '—' && /35/.test(v.Tulasi.submitted)]);
+    await gita.click('#sellerList .sb-seller:has-text("Tulasi") .sb-line'); await gita.waitForTimeout(200);
     await gita.evaluate(() => { document.querySelector('#sellerPanel').scrollIntoView(); });
     await gita.screenshot({ path: shot('10-in-step') });
     const tul = await open('tulasi@example.com', 'Tulasi');

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b229**.
+Handover notes. Current build: **b230**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,29 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b230 — Sales by Seller in half a screen; more dropdowns; out-of-stock in one tap
+
+- **Sales by Seller** is a half-width panel now (no `data-full`), one line per
+  seller: **Big Books** sold (pre-orders included), **Adventures** sold, and
+  everything **collected** (every payment type, digital included). The arrow
+  (`sbtoggle`, `SB_OPEN`, kept open across redraws) opens their cash:
+  **Received** (cash taken), **Pending submission** (still with them),
+  **Submitted** (handed to the lead, waiting or confirmed, plus what Track Cash
+  shows was moved on — "forced via an admin"). Same split as b229
+  (`cashPeopleAt`). No totals, as asked. Heading note: "To manage seller cash,
+  click dropdown arrow."
+- **Handover requests** are answered inside the seller's dropdown (Received /
+  Not received); the separate "Cash Handed Over" panel is no longer shown
+  (`renderHandovers` hides it). A **red badge** with the number waiting sits on
+  the seller's line.
+- **Distribution by Title**: the per-place bubbles sit behind "▸ At N places",
+  as in the Warehouse Overview (`chipsToggleHTML`, shared; keys `wo:` / `dt:`).
+- **Edit Book Display**: "Hide all out of stock books (N)" at the top (no
+  copies on this shelf); once they are all hidden it reads "Show all out of
+  stock books (N)". Applied with Save, like the ticks.
+- Tests: `browser-sellers.js` (the lines, the badge, the dropdown, answering
+  there), `browser-lang.js` (Distribution dropdown, out-of-stock button).
 
 ## Done in b229 — Sales by Seller in step with Track Cash
 

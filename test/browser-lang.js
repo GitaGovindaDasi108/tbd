@@ -113,6 +113,32 @@ c({ action: 'sendShipment', shipId: 'sh_pr', mode: 'devotee', fromRegion: 'OUTSI
     t.push(['…and shows where they are going: 4, from the printer to Poland, with Narada', /4 of them: the printer → Poland/.test(tm) && /Narada/.test(tm)]);
     await page.screenshot({ path: shot('5-transit') });
     await page.evaluate(() => closeModal());
+
+    // b230: Distribution by Title keeps where each title sold behind a dropdown too.
+    await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(400);
+    const dt = () => page.evaluate(() => {
+      const c = [...document.querySelectorAll('#titleList .stat-card')].find(x => /Sri Radha/.test(x.textContent) && /Russian/.test(x.textContent));
+      const chips = c.querySelector('.wo-chips');
+      return { toggle: (c.querySelector('.wo-toggle') || {}).textContent || '', shown: !!chips && chips.offsetHeight > 0 }; });
+    let d = await dt();
+    t.push(['Distribution by Title: "▸ At 1 place", closed', /At 1 place/.test(d.toggle) && !d.shown]);
+    await page.click('#titleList .stat-card:has-text("Russian"):has-text("Sri Radha") .wo-toggle'); await page.waitForTimeout(200);
+    t.push(['…a tap shows where it sold', (await dt()).shown]);
+
+    // b230: Edit Book Display hides (and shows) every out-of-stock title at once.
+    c({ action: 'setStockBulk', location: pl.whLoc, override: true, items: [{ bookId: bgId, qty: 0 }] });
+    await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
+    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    t.push(['Edit Book Display: "Hide all out of stock books (1)" at the top', /Hide all out of stock books \(1\)/.test(await page.textContent('#bdOos'))]);
+    await page.click('#bdOos'); await page.waitForTimeout(150);
+    t.push(['…unticks Bhagavad Gita, and turns into "Show all out of stock books (1)"',
+      !(await page.isChecked(`#bdList [data-bd="${bgId}"]`)) && /Show all out of stock books \(1\)/.test(await page.textContent('#bdOos'))]);
+    await page.click('#bdSave'); await page.waitForTimeout(1200);
+    t.push(['…saved: it is off the shelf', await page.evaluate(id => !shelfBooks().some(b => b.id === id), bgId)]);
+    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.click('#bdOos'); await page.waitForTimeout(150);
+    t.push(['"Show all out of stock books" ticks it again', await page.isChecked(`#bdList [data-bd="${bgId}"]`)]);
+    await page.click('#bdSave'); await page.waitForTimeout(1200);
     await page.screenshot({ path: shot('3-season'), fullPage: true });
 
     // A new language: its own colour, and nobody else's colour moves.

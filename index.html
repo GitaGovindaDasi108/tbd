@@ -245,6 +245,7 @@ button.sc-transit:hover{color:#1F4F86}
 .wo-toggle{background:none;border:0;padding:4px 0 0;cursor:pointer;font:inherit;font-size:12px;font-weight:700;
   color:var(--muted);display:inline-flex;gap:4px;align-items:center}
 .wo-toggle:hover{color:var(--plum)}
+.bd-oos{margin:2px 0 10px}
 .wt-line{font-size:13px;margin:12px 0 4px;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
   padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
@@ -1399,6 +1400,22 @@ body.list-view .mc-name{min-height:0}
 .sb-table .sb-name{font-weight:700;color:var(--plum)}
 .sb-table tr.sb-sub td{font-size:12px;color:var(--muted);padding-top:3px;padding-bottom:3px}
 .sb-table tr.sb-sub .sb-name{font-weight:500;padding-left:18px;color:var(--muted)}
+/* Sales by Seller (b230): one line each, cash behind the arrow. */
+.sb-seller{border-bottom:1px solid var(--line)}
+.sb-seller:last-child{border-bottom:0}
+.sb-line{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;padding:9px 2px;cursor:pointer;
+  font:inherit;font-size:13px;color:var(--ink);text-align:left;flex-wrap:wrap}
+.sb-line .tw{color:var(--muted);width:12px}
+.sb-who{font-weight:700;color:var(--plum);flex:1 1 110px;display:inline-flex;align-items:center;gap:6px}
+.sb-fig{white-space:nowrap;color:var(--muted)}
+.sb-fig b{color:var(--ink);font-size:14px}
+.sb-money b{color:var(--green)}
+.sb-badge{background:#E0372F;color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;min-width:18px;height:18px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #fff}
+.sb-cash{padding:0 0 10px 22px}
+.sb-cash[hidden]{display:none}
+.sb-cash .sb-table{min-width:0}
+.sb-cash .sb-place{color:var(--muted);font-size:12px}
 .cash-who td{font-size:11.5px;color:var(--muted);padding:0 8px 6px;border-top:0}
 .sb-table tfoot td{font-size:12.5px;color:var(--plum);border-bottom:0;padding-top:8px}
 .sb-table tfoot tr.sb-tc td{border-top:1px solid var(--line-d);font-weight:700}
@@ -1438,7 +1455,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b229</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b230</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1578,8 +1595,8 @@ body.list-view .mc-name{min-height:0}
     </section>
   </div>
   <!-- Sales by seller (b223): each seller's books and cash, at a region or event. data-full: a wide table. -->
-  <section class="panel" id="sellerPanel" data-fold="sellers" data-full style="display:none">
-    <h2 class="sec-h2">Sales by Seller <span class="hint">books sold and the cash each one holds — in step with Track Cash</span></h2>
+  <section class="panel" id="sellerPanel" data-fold="sellers" style="display:none">
+    <h2 class="sec-h2">Sales by Seller <span class="hint">To manage seller cash, click dropdown arrow.</span></h2>
     <div class="body"><div id="sellerList"></div></div>
   </section>
   </div>
@@ -4123,7 +4140,15 @@ function regionStockOf(regionId, bookId){
 /* ---- FE11: Warehouse Overview — where every title sits across the tour ---- */
 /* Where every title sits, as shelf cards: the total is the headline, and each
    region is a tappable chip that takes you straight there. */
-const WO_OPEN = new Set();       // Warehouse Overview cards showing where their copies are
+const WO_OPEN = new Set();       // cards showing their bubbles (Warehouse Overview, Distribution by Title)
+/* A card's detail bubbles behind a small dropdown (b227, b230): closed until
+   asked for, and kept open across redraws. `key` names the card. */
+function chipsToggleHTML(key, label, chips){
+  const open = WO_OPEN.has(key);
+  return `<button type="button" class="wo-toggle" data-act="wotoggle" data-key="${esc(key)}" aria-expanded="${open}">
+      <span class="tw">${open?'▾':'▸'}</span> ${esc(label)}</button>
+    <div class="wo-chips"${open?'':' hidden'}>${chips}</div>`;
+}
 /* Every batch on the road carrying this title: how many, from where to where
    (b227), and a button to go to where it is heading (b228). At Earthly HQ the
    overview adds up every season, so the list is drawn from every season's
@@ -4177,11 +4202,8 @@ function renderWarehouseOverview(){
 ;   // in transit is shown once, beneath the number — no separate bubble
     /* Where the copies are, one chip per region, behind a toggle (b227): open
        on request, and kept open across redraws (WO_OPEN). */
-    const open = WO_OPEN.has(b.id);
     const where = per.length
-      ? `<button type="button" class="wo-toggle" data-act="wotoggle" data-book="${esc(b.id)}" aria-expanded="${open}">
-           <span class="tw">${open?'▾':'▸'}</span> In ${per.length} ${per.length===1?UNIT.word:UNIT.words}</button>
-         <div class="wo-chips"${open?'':' hidden'}>${chips}</div>`
+      ? chipsToggleHTML('wo:' + b.id, `In ${per.length} ${per.length===1?UNIT.word:UNIT.words}`, chips)
       : '<div class="wo-chips"><span class="sc-none">nowhere yet</span></div>';
     const lc = langCard(b);
     return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style}>
@@ -4500,13 +4522,15 @@ function renderTitleList(target){
     const {sold, pre, gift} = bookCounts(mine);
     const dim = (!sold && !pre && !gift) ? ' dim' : '';
     // Each place shows what it sold for money, with its gifts beside it.
-    const chips = places.map(pl=>{
+    const chipList = places.map(pl=>{
       const c = bookCounts(mine.filter(x=>x.location===pl.id));
       if(!c.sold && !c.gift) return '';
       return `<button class="wo-chip" data-act="loc" data-loc="${esc(pl.id)}"
         title="Go to ${esc(pl.name)}"><b>${c.sold}</b> ${esc(pl.name)}${
         c.gift?` <span class="chip-gift">+${c.gift} gift${c.gift===1?'':'s'}</span>`:''}</button>`;
-    }).filter(Boolean).join('');
+    }).filter(Boolean);
+    // Where it sold, behind a dropdown (b230), as in the Warehouse Overview.
+    const chips = chipList.length ? chipsToggleHTML('dt:' + b.id, `At ${chipList.length} place${chipList.length===1?'':'s'}`, chipList.join('')) : '';
     const lc = langCard(b);
     return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}"${lc.style}>
       <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
@@ -4519,7 +4543,7 @@ function renderTitleList(target){
       <div class="sc-sub">
         ${gift?`<span class="sc-gift">${giftNote({sold,gift})}</span>`:'<span class="sc-none">&nbsp;</span>'}
       </div>
-      ${chips?`<div class="wo-chips">${chips}</div>`:''}
+      ${chips}
     </div>`;
   }).join('');
   $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
@@ -5581,6 +5605,8 @@ function answerHandover(id, accept){
 /* Leads: the cash handed over here, waiting ones first. */
 function renderHandovers(){
   const panel = $('#handPanel'); if(!panel) return 0;
+  // Handover requests are answered inside Sales by Seller now (b230).
+  panel.style.display = 'none'; return 0;
   const hs = plainSeller() ? [] : handoversHere().slice().sort((a,b)=>(a.status==='waiting'?0:1)-(b.status==='waiting'?0:1) || new Date(b.ts)-new Date(a.ts));
   panel.style.display = hs.length ? '' : 'none';
   if(!hs.length) return 0;
@@ -5594,62 +5620,70 @@ function renderHandovers(){
     </div>`).join('');
   return 1;
 }
-/* Sales by seller: each seller's books and cash, and where that cash is now —
-   in step with Track Cash (cashPeopleAt): money moved on there is not "still
-   with" anyone here, and the rows add up to what Track Cash shows at the place. */
+/* Sales by seller (b230: half a screen). One line per seller: Big Books sold
+   (pre-orders included), Adventures sold, and everything collected, digital
+   included. The arrow opens their cash — Received, Pending submission,
+   Submitted — and any handover waiting for an answer, which used to have a
+   panel of its own; a red badge on the line says one is waiting. The cash is
+   in step with Track Cash (cashPeopleAt): what was moved on there counts as
+   submitted, whoever recorded it. */
+const SB_OPEN = new Set();
+function collectedAll(list){
+  const m = {};
+  list.forEach(x=>{ if(!received(x)) return; legs(x).forEach(l=>{ if(l.amt && l.type!=='Gift') m[l.cur] = (m[l.cur]||0) + Number(l.amt); }); });
+  return m;
+}
 function renderSellers(){
   const panel = $('#sellerPanel'); if(!panel) return;
   const show = !plainSeller() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
-  const s = show ? scopedSales().filter(x=>x.type!=='DONATION') : [];
+  const s = show ? scopedSales() : [];
   panel.style.display = s.length ? '' : 'none';
   if(!s.length) return;
   const add = (into, o) => Object.keys(o||{}).forEach(c=>{ into[c] = Math.round(((into[c]||0) + o[c])*100)/100; });
-  const splits = cashPlacesHere().map(loc=>({loc, at:cashPeopleAt(loc)}));
-  // Each seller across the places here, and place by place.
   const sellers = {};
-  splits.forEach(({loc, at})=>Object.values(at.people).forEach(p=>{
-    const g = sellers[p.key] || (sellers[p.key] = {name:'', tot:{list:[], taken:{}, received:{}, waiting:{}, movedOn:{}, withThem:{}}, at:[]});
+  cashPlacesHere().forEach(loc=>Object.values(cashPeopleAt(loc).people).forEach(p=>{
+    const g = sellers[p.key] || (sellers[p.key] = {key:p.key, name:'', list:[], taken:{}, received:{}, waiting:{}, movedOn:{}, withThem:{}, at:[]});
     if(p.name) g.name = p.name;
-    g.tot.list = g.tot.list.concat(p.list);
-    ['taken','received','waiting','movedOn','withThem'].forEach(k=>add(g.tot[k], p[k]));
-    if(p.list.length) g.at.push({loc, p});
+    g.list = g.list.concat(p.list);
+    ['taken','received','waiting','movedOn','withThem'].forEach(k=>add(g[k], p[k]));
+    g.at.push({loc, p});
   }));
+  const asks = handoversHere().filter(h=>h.status==='waiting');
   const cell = m => esc(moneyLine(m)) || '—';
-  const row = (name, p, sub) => {
-    const c = bookCounts(p.list.filter(x=>x.bookId && x.type!=='DONATION'));
-    return `<tr class="${sub?'sb-sub':''}"><td class="sb-name">${esc(name)}</td><td class="num">${c.sold}</td><td class="num">${c.pre||''}</td>
-      <td>${cell(p.taken)}</td>
-      <td>${cell(p.received)}${moneyLine(p.waiting)?`<div class="muted-note">${esc(moneyLine(p.waiting))} waiting</div>`:''}</td>
-      <td>${cell(p.movedOn)}</td>
-      <td><b>${cell(p.withThem)}</b></td></tr>`;
+  const sold = (list, cat) => list.filter(x=>x.bookId && (x.type==='SALE' || x.type==='PREORDER') && !isGift(x) && catOf(x.bookId)===cat).length;
+  const cashRow = (label, p) => {
+    const sub = {}; add(sub, p.received); add(sub, p.waiting); add(sub, p.movedOn);
+    return `<tr>${label!==null?`<td class="sb-place">${esc(label)}</td>`:''}<td>${cell(p.taken)}</td><td><b>${cell(p.withThem)}</b></td>
+      <td>${cell(sub)}${moneyLine(p.waiting)?`<div class="muted-note">${esc(moneyLine(p.waiting))} awaiting confirmation</div>`:''}</td></tr>`;
   };
-  const keys = Object.keys(sellers).filter(k=>sellers[k].tot.list.length || moneyLine(sellers[k].tot.received))
-    .sort((a,b)=>sellers[b].tot.list.length-sellers[a].tot.list.length);
-  const lead = {}, waitLeft = {}, moved = {}, held = {};
-  splits.forEach(({at})=>{ add(lead, at.lead.holds); add(waitLeft, at.lead.waitingLeft); add(moved, at.movedOn); add(held, at.held); });
-  const withLead = {}; add(withLead, lead); add(withLead, waitLeft);
-  // Money moved INTO these places in Track Cash (say an event's takings, to the warehouse) belongs to no seller here.
-  const people = {}; keys.forEach(k=>add(people, sellers[k].tot.withThem)); add(people, withLead);
-  const other = minusAmounts(held, people);
-  Object.keys(other).forEach(c=>{ if(other[c] < 0) delete other[c]; });
-  const leadWord = CUR_LEVEL==='event' ? 'the Event Lead' : 'the Event Leads';
-  const where = CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'this region');
-  $('#sellerList').innerHTML = `<div class="sb-wrap"><table class="sb-table">
-    <thead><tr><th>Seller</th><th class="num">Sold</th><th class="num">Pre-orders</th><th>Cash collected</th><th>Handed to lead</th>
-      <th title="Moved on from here in Track Cash">Moved on</th><th>Still with them</th></tr></thead>
-    <tbody>${keys.map(k=>{
-      const g = sellers[k];
-      let h = row(g.name || '(no name given)', g.tot);
-      // At a region: the same seller, place by place.
-      if(CUR_LEVEL==='region' && g.at.length>1) h += g.at.map(x=>row('· ' + locName(x.loc), x.p, true)).join('');
-      return h;
-    }).join('')}</tbody>
-    <tfoot>
-      ${moneyLine(withLead) ? `<tr class="sb-foot"><td colspan="6">With ${leadWord}, handed over and not yet moved on</td><td><b>${cell(withLead)}</b></td></tr>` : ''}
-      ${moneyLine(other) ? `<tr class="sb-foot"><td colspan="6">Brought here from other places in Track Cash</td><td><b>${cell(other)}</b></td></tr>` : ''}
-      <tr class="sb-foot sb-tc"><td colspan="6">Still at ${esc(where)} in Track Cash${moneyLine(moved) ? ` · <span class="muted-note">${esc(moneyLine(moved))} moved on from here</span>` : ''}</td>
-        <td><b>${cell(held)}</b></td></tr>
-    </tfoot></table></div>`;
+  const keys = Object.keys(sellers).filter(k=>sellers[k].list.length || moneyLine(sellers[k].received) || moneyLine(sellers[k].waiting))
+    .sort((a,b)=>sellers[b].list.length-sellers[a].list.length);
+  $('#sellerList').innerHTML = keys.map(k=>{
+    const g = sellers[k], open = SB_OPEN.has(k);
+    const mineAsks = asks.filter(h=>handKey(h)===k);
+    const places = CUR_LEVEL==='region' && g.at.filter(x=>x.p.list.length || moneyLine(x.p.received)).length>1;
+    return `<div class="sb-seller${open?' open':''}">
+      <button type="button" class="sb-line" data-act="sbtoggle" data-key="${esc(k)}" aria-expanded="${open}">
+        <span class="tw">${open?'▾':'▸'}</span>
+        <span class="sb-who">${esc(g.name || '(no name given)')}${mineAsks.length
+          ? `<span class="sb-badge" title="${mineAsks.length} cash handover${mineAsks.length===1?'':'s'} waiting">${mineAsks.length}</span>` : ''}</span>
+        <span class="sb-fig"><b>${sold(g.list,'big')}</b> Big Books</span>
+        <span class="sb-fig"><b>${sold(g.list,'aotm')}</b> Adventures</span>
+        <span class="sb-fig sb-money"><b>${cell(collectedAll(g.list))}</b></span>
+      </button>
+      <div class="sb-cash"${open?'':' hidden'}>
+        <table class="sb-table"><thead><tr>${places?'<th></th>':''}<th>Received</th><th>Pending submission</th><th>Submitted</th></tr></thead>
+          <tbody>${places ? g.at.filter(x=>x.p.list.length || moneyLine(x.p.received)).map(x=>cashRow(locName(x.loc), x.p)).join('') : cashRow(null, g)}</tbody></table>
+        ${mineAsks.map(h=>`<div class="ho-row waiting">
+            <div><b>${esc(moneyLine(h.amounts))}</b> handed to ${esc(h.toName||'the Event Lead')}
+              <div class="muted-note">${esc(locName(h.location))} · ${esc(fmtWhen(h.ts))}</div></div>
+            ${mayAnswer(h) ? `<span class="adm-btns"><button class="btn btn-primary btn-sm" data-act="hoyes" data-id="${esc(h.id)}">Received</button>
+              <button class="btn btn-ghost btn-sm" data-act="hono" data-id="${esc(h.id)}">Not received</button></span>`
+              : '<span class="muted-note">waiting</span>'}
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ---- Counts to look into (b224) ----
@@ -12930,7 +12964,19 @@ function bookDisplayModal(){
   if(!list.length){ toast('No titles here yet.', true); return; }
   const where = season ? 'this season' : (CUR_LEVEL==='region' ? 'this region' : 'this event');
 
+  /* Out of stock: no copies on this shelf (b230). One button hides them all,
+     or, once they are all hidden, shows them all again. Saved with Save. */
+  const outOf = x => invQty(CUR_LOC, x.id) <= 0;
+  function oosButton(){
+    const el = $('#bdOos'); if(!el || season) return;
+    const oos = list.filter(outOf);
+    el.hidden = !oos.length;
+    const anyShown = oos.some(x=>x.on);
+    el.textContent = anyShown ? `Hide all out of stock books (${oos.filter(x=>x.on).length})` : `Show all out of stock books (${oos.length})`;
+    el.dataset.mode = anyShown ? 'hide' : 'show';
+  }
   function draw(){
+    oosButton();
     $('#bdList').innerHTML = list.map((x,i)=>`
       <div class="ro-row${x.on?'':' bd-off'}" data-id="${esc(x.id)}">
         <span class="ro-grip" title="Drag to move">⠿</span>
@@ -12958,6 +13004,7 @@ function bookDisplayModal(){
         ${season ? '' : `<li>Select which books should be displayed ${CUR_LEVEL==='region'?'in the warehouse in this region':'at this event'}.</li>`}
         <li>Drag and drop to change the order in which books are displayed${season?' across the whole season':''}.</li>
       </ol>
+      ${season ? '' : '<div class="bd-oos"><button type="button" class="btn btn-ghost btn-sm" id="bdOos" hidden></button></div>'}
       <div id="bdList"></div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -12966,6 +13013,13 @@ function bookDisplayModal(){
       <button class="btn btn-primary" id="bdSave">Save</button>
     </div>`, true);
   draw();
+  if($('#bdOos')) $('#bdOos').addEventListener('click', ()=>{
+    const hide = $('#bdOos').dataset.mode === 'hide';
+    list.filter(outOf).forEach(x=>{ x.on = !hide; });
+    // Something must stay on the shelf.
+    if(!list.some(x=>x.on)){ list.filter(outOf).forEach(x=>{ x.on = true; }); $('#modalErr').textContent='Every title here is out of stock, so they stay shown.'; }
+    draw();
+  });
   $('#bdSave').addEventListener('click', ()=>{
     const ids = list.map(x=>x.id);
     const off = list.filter(x=>!x.on).map(x=>x.id);
@@ -13334,7 +13388,7 @@ document.addEventListener('click',e=>{
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
   if(a==='wotoggle'){
-    const id = t.dataset.book, open = !WO_OPEN.has(id);
+    const id = t.dataset.key, open = !WO_OPEN.has(id);
     if(open) WO_OPEN.add(id); else WO_OPEN.delete(id);
     const chips = t.nextElementSibling; if(chips) chips.hidden = !open;
     t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
@@ -13390,6 +13444,14 @@ document.addEventListener('click',e=>{
   if(a==='people'){ peopleModal(); return; }
   if(a==='handover'){ handoverModal(); return; }
   if(a==='cntanswer'){ mismatchModal(t.dataset.id); return; }
+  if(a==='sbtoggle'){
+    const k = t.dataset.key, open = !SB_OPEN.has(k);
+    if(open) SB_OPEN.add(k); else SB_OPEN.delete(k);
+    const box = t.nextElementSibling; if(box) box.hidden = !open;
+    t.closest('.sb-seller').classList.toggle('open', open);
+    t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
+    return;
+  }
   if(a==='hoyes'){ answerHandover(t.dataset.id, true); return; }
   if(a==='hono'){ answerHandover(t.dataset.id, false); return; }
   if(a==='signout'){ signOut(); return; }
