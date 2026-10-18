@@ -246,6 +246,8 @@ button.sc-transit:hover{color:#1F4F86}
   color:var(--muted);display:inline-flex;gap:4px;align-items:center}
 .wo-toggle:hover{color:var(--plum)}
 .bd-oos{margin:2px 0 10px}
+/* The shelf shows the local price only (b232); every currency's is here. */
+.sale-prices{font-size:12.5px;color:var(--muted);margin:-2px 0 10px}
 .wt-line{font-size:13px;margin:12px 0 4px;color:var(--ink);display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .wo-chip{border:1px solid var(--line-d);background:var(--paper);border-radius:999px;
   padding:3px 10px;font-size:12px;color:var(--plum);cursor:pointer}
@@ -1041,6 +1043,20 @@ body.busy #busyBar{opacity:1}
 .rq-log-t{font-size:13px;color:#4A3470}
 .rq-log-m{font-size:11.5px;color:var(--muted);margin-top:2px}
 .bottom-panels .body{padding:10px 12px}
+/* To do (b232): a colour for each kind of thing waiting. */
+.todo-panel{--tp:var(--plum)}
+.todo-tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.todo-tab{--tc:var(--plum);border:1.5px solid var(--tc);background:#fff;color:var(--tc);border-radius:999px;padding:5px 10px;
+  font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.todo-tab.on{background:var(--tc);color:#fff}
+.todo-n{background:#E0372F;color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;min-width:18px;height:18px;
+  display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
+.todo-tab.on .todo-n{box-shadow:0 0 0 2px #fff}
+.tt-pending{--tc:#C0392B} .tt-pre{--tc:#2F6FB5} .tt-change{--tc:#B7841C} .tt-counts{--tc:#7A4FA0}
+.todo-pane .log-item{border-left:4px solid var(--tc)}
+.tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
+.tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .practice-bar{background:repeating-linear-gradient(135deg,#E6F4EA 0 14px,#D6EEDD 14px 28px);border:1.5px solid #8CC9A0;
   color:#1F5E36;border-radius:12px;padding:10px 14px;margin:0 0 12px;font-size:13px;line-height:1.5}
 .practice-bar .pb-when{color:#3C7A52}
@@ -1340,6 +1356,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   .bulk-row.five .d-delta{width:48px}
   .bulk-row.five .d-set{width:42px}
   .bulk-row .bn{font-size:13.5px}
+  /* Phones: the small grey notes beside panel headings make way (b232) — except
+     an instruction that is needed to use the panel. */
+  .sec-h2 .hint:not(.keep){display:none}
   /* Add Stock's title and language take the whole width of a phone; the numbers
      sit beneath them, under their own headings (b227). */
   .ln-row .ln-pick{grid-column:1/-1}
@@ -1459,7 +1478,7 @@ body.list-view .mc-name{min-height:0}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b231</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b232</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1557,13 +1576,18 @@ body.list-view .mc-name{min-height:0}
 
   <!-- WAREHOUSE INFORMATION — what still needs chasing, and where stock sits -->
   <div class="cols-2 bottom-panels" id="bottomRow" style="display:none">
-    <section class="panel pend-panel" id="pendingPanel" data-fold="pending" style="display:none">
-      <h2 class="sec-h2">Pending Payments <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="pending" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div class="log" id="pendingList"></div></div>
-    </section>
-    <section class="panel pre-panel" id="prePanel" data-fold="preorders" style="display:none">
-      <h2 class="sec-h2">Pre-Orders Awaiting Delivery <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="preorders" title="Copy the counts for WhatsApp">📋 Count</button> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="prepeople" title="Copy names, phone numbers, books and comments for WhatsApp">📋 Details</button></h2>
-      <div class="body"><div class="log" id="preList"></div></div>
+    <!-- To do (b232): what is waiting to be done, one tab each — pending payments,
+         pre-orders to deliver, change we owe, counts to look into. -->
+    <section class="panel todo-panel" id="todoPanel" data-fold="todo" style="display:none">
+      <h2 class="sec-h2">To Do <span id="todoRep"></span></h2>
+      <div class="body">
+        <div class="todo-tabs" id="todoTabs" role="tablist"></div>
+        <div class="log-tools"><span class="sortbar" id="todoSort"></span></div>
+        <div class="todo-pane tp-pending" id="pendingPanel" data-tab="pending"><div class="log" id="pendingList"></div></div>
+        <div class="todo-pane tp-pre" id="prePanel" data-tab="pre"><div class="log" id="preList"></div></div>
+        <div class="todo-pane tp-change" id="changePanel" data-tab="change"><div class="log" id="changeList"></div></div>
+        <div class="todo-pane tp-counts" id="countPanel" data-tab="counts"><div class="log" id="countList"></div></div>
+      </div>
     </section>
     <section class="panel rq-panel" id="remotePanel" data-fold="remote" style="display:none">
       <h2 class="sec-h2">Pre-Orders to Fulfill for Other Regions
@@ -1574,17 +1598,9 @@ body.list-view .mc-name{min-height:0}
       <h2 class="sec-h2">Books in Transit</h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
-    <section class="panel count-panel" id="countPanel" data-fold="counts" style="display:none">
-      <h2 class="sec-h2">Counts to Look Into</h2>
-      <div class="body"><div class="log" id="countList"></div></div>
-    </section>
     <section class="panel hand-panel" id="handPanel" data-fold="handovers" style="display:none">
       <h2 class="sec-h2">Cash Handed Over</h2>
       <div class="body"><div class="log" id="handList"></div></div>
-    </section>
-    <section class="panel change-panel" id="changePanel" data-fold="change" style="display:none">
-      <h2 class="sec-h2">Change We Owe <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="change" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div class="log" id="changeList"></div></div>
     </section>
   </div>
 
@@ -1600,7 +1616,7 @@ body.list-view .mc-name{min-height:0}
   </div>
   <!-- Sales by seller (b223): each seller's books and cash, at a region or event. data-full: a wide table. -->
   <section class="panel" id="sellerPanel" data-fold="sellers" style="display:none">
-    <h2 class="sec-h2">Sales by Seller <span class="hint">To manage seller cash, click dropdown arrow.</span></h2>
+    <h2 class="sec-h2">Sales by Seller <span class="hint keep">To manage seller cash, click dropdown arrow.</span></h2>
     <div class="body"><div id="sellerList"></div></div>
   </section>
   </div>
@@ -4436,7 +4452,7 @@ function renderInventory(){
         <div>
           <div class="bname ${catOfBook(b)}">${bookTitleHTML(b)}${
             b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
-          <div class="price">${curCurrencies().map(c=>cashFmt(priceFor(b,c),c)).join(' · ')}</div>
+          <div class="price">${(c=>cashFmt(priceFor(b,c),c))(curCurrencies()[0])}</div>
         </div>
         <div class="qtyrow">
           <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
@@ -5473,7 +5489,7 @@ function renderBottom(){
   const unpaid=g.filter(x=>!isPaid(x)).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
   // The reverse of a pending payment: they overpaid and we could not break it.
   const change=g.filter(x=>changeOwed(x)>0).sort((a,b)=>new Date(b.ts)-new Date(a.ts));
-  const pre=$('#prePanel'), pend=$('#pendingPanel'), row=$('#bottomRow'), chg=$('#changePanel');
+  const row=$('#bottomRow');
   // Books on the road: shown in full, to be received from right here.
   const road = transitHere();
   // Requests from other regions to deliver their pre-orders from here.
@@ -5482,18 +5498,60 @@ function renderBottom(){
   if(asks.length) $('#remoteList').innerHTML = asks.map(remoteCardHTML).join('');
   $('#transitPanel').style.display = road.length?'':'none';
   if(road.length) $('#transitList').innerHTML = road.map(r=>shipCardHTML(r.x, r.incoming)).join('');
-  pre.style.display = owed.length?'':'none';
-  pend.style.display = unpaid.length?'':'none';
-  chg.style.display = change.length?'':'none';
-  const hand = renderHandovers(), cnts = renderMismatches();
-  const showing = [owed.length, unpaid.length, change.length, road.length, asks.length, hand, cnts].filter(Boolean).length;
+  const hand = renderHandovers();
+  const todo = renderTodo({pending:unpaid, pre:owed, change});
+  const showing = [todo, road.length, asks.length, hand].filter(Boolean).length;
   row.style.display = showing?'':'none';
   row.classList.toggle('single', showing<2);
-  // These panels exist to be acted on, so they show their details up front.
-  if(owed.length) $('#preList').innerHTML=owed.map(x=>logItemHTML(x,{context:'pre'})).join('');
-  if(unpaid.length) $('#pendingList').innerHTML=unpaid.map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
-  if(change.length) $('#changeList').innerHTML=change.map(x=>logItemHTML(x,{context:'change'})).join('');
   renderSellers();
+}
+
+/* ---- To do (b232) ----
+   One panel for what is waiting to be done, a tab each, coloured so each kind
+   reads apart at a glance, with a red count on every tab: payments still
+   owed, pre-orders still to deliver, change we still owe, closing counts to
+   look into. Tabs with nothing in them are left out; the chosen tab and sort
+   are kept on this device. Sorting works like the sales log's. */
+const TODO_TABS = [
+  {key:'pending', label:'Pending Payments', rep:[['pending','📋']]},
+  {key:'pre',     label:'Pre-Orders',       rep:[['preorders','📋 Count'],['prepeople','📋 Details']]},
+  {key:'change',  label:'Change We Owe',    rep:[['change','📋']]},
+  {key:'counts',  label:'Counts to Look Into', rep:[]}
+];
+let TODO = { tab:'', sort:'time', dir:-1 };
+try{ Object.assign(TODO, JSON.parse(localStorage.getItem('tbs_todo')||'{}')); }catch(e){}
+function todoSave(){ try{ localStorage.setItem('tbs_todo', JSON.stringify(TODO)); }catch(e){} }
+function todoSorted(list, tab){
+  const t = x => new Date(x.ts).getTime() || 0;
+  const name = x => String(x.name || x.by || (bookById(x.bookId)||{}).name || '').toLowerCase();
+  const amt = x => tab==='pending' ? dueUSD(x) : tab==='change' ? toUSDAt(changeOwed(x), changeCur(x), x.location)
+    : tab==='counts' ? Math.abs((x.counted||0)-(x.expected||0)) : (x._preCount || 1);
+  const by = TODO.sort==='name' ? (a,b)=>name(a)<name(b)?-1:name(a)>name(b)?1:0
+    : TODO.sort==='amount' ? (a,b)=>amt(a)-amt(b) : (a,b)=>t(a)-t(b);
+  return list.slice().sort((a,b)=>by(a,b)*TODO.dir);
+}
+function renderTodo(lists){
+  const panel = $('#todoPanel'); if(!panel) return 0;
+  const counts = plainSeller() ? [] : mismatchesHere().filter(m=>m.status==='open');
+  const all = {pending:lists.pending, pre:lists.pre, change:lists.change, counts};
+  const live = TODO_TABS.filter(x=>all[x.key].length);
+  panel.style.display = live.length ? '' : 'none';
+  if(!live.length) return 0;
+  if(!live.some(x=>x.key===TODO.tab)) TODO.tab = live[0].key;
+  const on = TODO.tab;
+  $('#todoTabs').innerHTML = live.map(x=>`<button type="button" class="todo-tab tt-${x.key}${x.key===on?' on':''}" role="tab"
+      aria-selected="${x.key===on}" data-act="todotab" data-tab="${x.key}">${esc(x.label)} <span class="todo-n">${all[x.key].length}</span></button>`).join('');
+  const sorts = [['time','Date'],['name', on==='counts'?'Title':'Name'],['amount', on==='pre'?'Books':on==='counts'?'Difference':'Amount']];
+  $('#todoSort').innerHTML = 'Sort ' + sorts.map(([k,l])=>`<button class="sort-btn${TODO.sort===k?' on':''}" data-act="todosort" data-sort="${k}">${l}${
+    TODO.sort===k ? (TODO.dir<0?' ↓':' ↑') : ''}</button>`).join('');
+  const tab = TODO_TABS.find(x=>x.key===on);
+  $('#todoRep').innerHTML = tab.rep.map(([part,l])=>`<button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="${part}" title="Copy for WhatsApp">${l}</button>`).join(' ');
+  document.querySelectorAll('#todoPanel .todo-pane').forEach(p=>{ p.style.display = p.dataset.tab===on ? '' : 'none'; });
+  if(on==='pending') $('#pendingList').innerHTML = todoSorted(lists.pending,'pending').map(x=>logItemHTML(x,{showOwed:true,context:'pending'})).join('');
+  if(on==='pre') $('#preList').innerHTML = todoSorted(lists.pre,'pre').map(x=>logItemHTML(x,{context:'pre'})).join('');
+  if(on==='change') $('#changeList').innerHTML = todoSorted(lists.change,'change').map(x=>logItemHTML(x,{context:'change'})).join('');
+  if(on==='counts'){ renderMismatches(todoSorted(counts,'counts')); $('#countPanel').style.display = ''; }
+  return 1;
 }
 
 /* ---- Sellers, their sales and their cash (b223) ----
@@ -5764,13 +5822,12 @@ function mayAnswerCount(m){
   if(isAdmin()) return true;
   return STATE.role==='coordinator' && m.kind==='event';
 }
-function renderMismatches(){
+function renderMismatches(sortedOpen){
   const panel = $('#countPanel'); if(!panel) return 0;
   const ms = plainSeller() ? [] : mismatchesHere().slice().sort((a,b)=>(a.status==='open'?0:1)-(b.status==='open'?0:1) || new Date(b.ts)-new Date(a.ts));
-  const open = ms.filter(m=>m.status==='open');
-  // Settled ones stay a while for the record, but the panel is about open ones.
+  const open = sortedOpen || ms.filter(m=>m.status==='open');
+  // Settled ones stay a while for the record, but the tab is about open ones.
   const shown = open.concat(ms.filter(m=>m.status!=='open').slice(0, 10));
-  panel.style.display = open.length ? '' : 'none';
   if(!open.length) return 0;
   const bk = id => { const b = bookById(id); return b ? bookTitleHTML(b) : esc(id); };
   $('#countList').innerHTML = shown.map(m=>`<div class="ho-row ${m.status==='open'?'waiting':'received'}">
@@ -6106,6 +6163,7 @@ function saleModal(opts){
   openModal(`
     ${mHead(title+' — '+book.name)}
     <div class="m-body">
+      ${curCurrencies().length>1 ? `<div class="sale-prices">Price: ${curCurrencies().map(c=>esc(cashFmt(priceFor(book,c),c))).join(' · ')}</div>` : ''}
       ${(!isPre && !edit && onHand<=0) ? `<div class="err-box" id="noStock">There are no copies of <b>${esc(book.name)}</b> at
         ${esc(locName(loc))} to sell. <button type="button" class="btn btn-ghost btn-sm" id="preInstead">Pre-order it instead</button></div>` : ''}
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
@@ -13442,6 +13500,12 @@ document.addEventListener('click',e=>{
   }
   if(a==='loc'){ const L=t.dataset.loc; goTo(isWarehouseLoc(L)?'region':'event', isWarehouseLoc(L)?regionOfLoc(L):L); return; }
   if(a==='refresh'){ setStatus('load','Refreshing…'); pull().catch(err=>{setStatus('bad','Offline');toast(err.message,true);}); return; }
+  if(a==='todotab'){ TODO.tab = t.dataset.tab; todoSave(); renderBottom(); return; }
+  if(a==='todosort'){
+    const k = t.dataset.sort;
+    if(TODO.sort===k) TODO.dir *= -1; else { TODO.sort = k; TODO.dir = k==='time' ? -1 : 1; }
+    todoSave(); renderBottom(); return;
+  }
   if(a==='practicereset'){ practiceReset(); return; }
   if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }

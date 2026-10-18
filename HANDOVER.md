@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b231**.
+Handover notes. Current build: **b232**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,28 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b232 — one To do panel; the local price on the shelf; phones lose heading notes
+
+- **To do** (`#todoPanel`, `renderTodo`): Pending Payments, Pre-Orders
+  (awaiting delivery), Change We Owe and Counts to Look Into are one panel, a
+  tab each with a red count, each kind in its own colour (tab and the left
+  edge of its items: red, blue, gold, purple). Empty tabs are left out. Sort
+  like the sales log: Date / Name (Title for counts) / Amount (Books for
+  pre-orders, Difference for counts), tap again to reverse. The tab and sort
+  are kept on the device (`tbs_todo`). The 📋 report buttons of the chosen tab
+  sit on the heading. The old ids (`#pendingPanel`, `#prePanel`,
+  `#changePanel`, `#countPanel` and their lists) are the tabs' panes now.
+  Books in Transit and Pre-Orders to Fulfill for Other Regions stay as they
+  were.
+- **Shelf cards show the local price only** (the region's first currency); the
+  sell window lists every currency's ("Price: 35 € · $40").
+- **Phones**: the small grey notes beside panel headings are hidden, except
+  Sales by Seller's instruction (`.hint.keep`).
+- The owner kept, on purpose: Totals by Payment Type as it is, the shelf
+  cards' "Stored At / At events / Total / In transit" lines, the header, and
+  the sales log as long as the panel beside it.
+- Tests: `browser-sellers.js` (tabs, counts, colours, panes, sort, the prices).
 
 ## Done in b231 — the practice space
 

@@ -231,7 +231,27 @@ const API = 'http://api.test/';
     await O({ action: 'createEvent', eventId: 'ev_park', name: 'Park Stall', regionId: 'rg_it', season: SA });
     await O({ action: 'adjustStockBulk', location: 'ev_park', items: [{ bookId: B[0], delta: 10 }], override: true, season: SA });
     await O({ action: 'closeLocation', kind: 'event', id: 'ev_park', counts: { ['ev_park|' + B[0]]: 8 }, note: 'two missing', season: SA });
+    // b232: and two more things waiting, so the To do panel has three tabs.
+    await O({ action: 'sell', saleId: 'sPend', location: 'ev_yoga', bookId: B[1], legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }], pending: true, name: 'Ananda', season: SA });
+    await O({ action: 'sell', saleId: 'sPre', location: 'ev_yoga', bookId: B[2], legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }], isPreorder: true, name: 'Bhakti', season: SA });
     await refresh(own);
+    const todo = await own.evaluate(() => ({
+      tabs: [...document.querySelectorAll('#todoTabs .todo-tab')].map(b => b.innerText.replace(/\s+/g, ' ').trim()),
+      colours: [...document.querySelectorAll('#todoTabs .todo-tab')].map(b => getComputedStyle(b).borderColor),
+      old: ['#pendingPanel', '#prePanel', '#countPanel'].filter(id => { const e = document.querySelector(id); return e && e.closest('#todoPanel'); }).length }));
+    t.push(['b232: one To do panel, a tab each with its count: Pending Payments 1, Pre-Orders 1, Counts to Look Into 1',
+      JSON.stringify(todo.tabs) === JSON.stringify(['Pending Payments 1', 'Pre-Orders 1', 'Counts to Look Into 1']) && todo.old === 3]);
+    t.push(['…each kind in its own colour', new Set(todo.colours).size === 3]);
+    t.push(['…the first tab shows the pending payment, the others wait', await own.evaluate(() =>
+      /Ananda/.test(document.querySelector('#pendingList').innerText) && document.querySelector('#prePanel').offsetHeight === 0)]);
+    await own.click('#todoTabs [data-tab="pre"]'); await own.waitForTimeout(200);
+    t.push(['a tap on "Pre-Orders": Bhakti\'s pre-order, with its 📋 Count and 📋 Details', await own.evaluate(() =>
+      /Bhakti/.test(document.querySelector('#preList').innerText) && /Count/.test(document.querySelector('#todoRep').innerText) && document.querySelector('#pendingPanel').offsetHeight === 0)]);
+    await own.evaluate(() => document.querySelector('#todoPanel').scrollIntoView());
+    await own.screenshot({ path: shot('12-todo') });
+    await own.click('#todoSort [data-sort="name"]'); await own.waitForTimeout(150);
+    t.push(['sorting by name, like the sales log ("Name ↑")', /Name ↑/.test(await own.evaluate(() => document.querySelector('#todoSort').innerText))]);
+    await own.click('#todoTabs [data-tab="counts"]'); await own.waitForTimeout(200);
     const cnt = await own.evaluate(() => (document.querySelector('#countPanel') || {}).innerText || '');
     t.push(['the region shows the count to look into: expected 10, counted 8', /Park Stall[\s\S]*expected\s*10[\s\S]*counted\s*8/i.test(cnt)]);
     await own.evaluate(() => document.querySelector('#countPanel').scrollIntoView());
@@ -245,7 +265,15 @@ const API = 'http://api.test/';
     t.push(['accepted: the stock is now 8, with the owner\'s name', inv && Number(inv.qty) === 8 &&
       after.mismatches[0].status === 'accepted' && after.mismatches[0].answeredBy === 'The Owner']);
     await refresh(own);
-    t.push(['…and the panel is gone (nothing open)', await own.evaluate(() => document.querySelector('#countPanel').style.display === 'none')]);
+    t.push(['…and its tab is gone (nothing open)', await own.evaluate(() => !document.querySelector('#todoTabs [data-tab="counts"]') && document.querySelector('#countPanel').style.display === 'none')]);
+    // Prices: the shelf shows the local one; the sell window shows them all.
+    await own.evaluate(() => goTo('event', 'ev_yoga')); await own.waitForTimeout(400);
+    const price = await own.evaluate(() => document.querySelector('#invGrid .book .price').innerText.trim());
+    t.push(['b232: a shelf card shows the local price only ("35 €")', /^35\s*€$/.test(price)]);
+    await own.click('#invGrid .book .sell-btn'); await own.waitForTimeout(300);
+    t.push(['…the sell window shows every currency\'s ("35 € · $40")', /Price: 35 € · \$40/.test(await own.evaluate(() => document.querySelector('.sale-prices').innerText))]);
+    await own.evaluate(() => closeModal());
+    await own.evaluate(() => goTo('region', 'rg_it')); await own.waitForTimeout(300);
 
     /* ---- b225: an event's own prices; a consignment group for one event ---- */
     await O({ action: 'createEvent', eventId: 'ev_cafe', name: 'Cafe', regionId: 'rg_it', season: SA });
