@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Handover notes. Current build: **b234**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b235**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -905,6 +905,33 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b235 — the left-hand menu goes live; To do filters and its own report; HANDOVER.md is now TRACKER.md
+
+- **The menu is live for everyone** (`SIDE_NAV = !CONFIG.CLASSIC_ADMIN`). The
+  old four-column App Admin panel only comes back with `CLASSIC_ADMIN: true`
+  in the config, which the older browser tests use because they drive it;
+  `browser-sellers.js` covers the menu (its live pages open without it).
+- **Look, the owner's notes**: section headings not bold; the sub-items
+  indented under their heading (a thin line down the left) and dark grey
+  (#4A4A4A), so they read as a sub-menu.
+- **Always starts closed**, on phones and computers: "Keep the menu open"
+  lasts until the page is left (it is no longer remembered); which sections
+  are folded still is.
+- **To do: filters, not sorting.** Each kind (Pending Payments, Pre-Orders,
+  Change We Owe, Counts to Look Into) is an on/off filter with its colour and
+  count, all on to begin with (kept on the device, `tbs_todo`). What is shown
+  is listed kind by kind under small headings, newest first. The sort buttons
+  are gone.
+- **To Do report** (📋 on the panel, `todoReport`): kind by kind, in the
+  panel's order, with a tick for each kind (pending payments, pre-orders as
+  counts and/or who is waiting, change we owe, counts to look into); ticked to
+  begin with is what the panel shows, then whatever was ticked last time. The
+  report window is now shared (`reportDialog`) by the full report and this one.
+- **HANDOVER.md → TRACKER.md**, at the owner's request.
+- Tests: `browser-sellers.js` (the live menu, its look, starting closed, the
+  To do filters and report), `config.test.js` / `browser-cloudflare.js`
+  (`CLASSIC_ADMIN`).
 
 ## Done in b234 — the left-hand menu, round two (practice); Permissions; build number for Universal only
 
