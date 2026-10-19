@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b246**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b247**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,13 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b247 — new titles wait for Save; a mistaken title can be deleted
+
+- **Bug:** in Add Stock, "＋ A new book…" or "＋ A new language…" added the title to the catalogue the moment its button was pressed, so a slip ("Sri Radha Hindi") was in the system even if the stock was never saved.
+- **Now:** the title waits on its line, marked "new title, added when you save". Save adds the titles its lines use (addBook with orExisting, so a title that already exists is reused, never doubled), then saves the stock with the real ids. Taking the line off or closing the dialog adds nothing. With no connection, Save says the title could not be added, saves nothing, and keeps the lines to try again.
+- **Delete:** Edit Book Display shows 🗑 on titles added in the app (ids `bk_…`, Universal only; the standard titles are built in). It uses the existing deleteBook action: refused while any sale is recorded against the title, and any stock entered for it is taken off.
+- **Test:** test/browser-newtitle.js (14 checks; 6 fail on b246). test/browser-stalelang.js updated: the b245 case now checks the stock lands on the existing title at Save.
 
 ## Done in b246 — Earthly HQ refreshes again (signed in)
 

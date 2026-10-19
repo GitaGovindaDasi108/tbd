@@ -1690,7 +1690,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b246</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b247</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -12068,11 +12068,11 @@ function makeStockCtx(place, other){
        its lists while still counting as "already in the catalogue". The screen's
        catalogue fills the gaps, and its names are the newest. */
     get books(){
-      const own = this.st.books || [];
-      if(this.here) return own;
+      const own = this.st.books || [], staged = this.staged || [];
+      if(this.here) return own.concat(staged);
       const fresh = new Map((STATE.books||[]).map(b=>[b.id, b]));
       const ids = new Set(own.map(b=>b.id));
-      return own.map(b=>fresh.get(b.id)||b).concat((STATE.books||[]).filter(b=>!ids.has(b.id)));
+      return own.map(b=>fresh.get(b.id)||b).concat((STATE.books||[]).filter(b=>!ids.has(b.id)), staged);
     },
     qty(loc, bookId){
       const row = (this.st.inventory||[]).find(i=>i.location===loc && i.bookId===bookId);
@@ -12139,6 +12139,10 @@ function addStockModal(opts){
   const startLoc = opts.loc
     || (CUR_LEVEL==='event' ? CUR_LOC : (CUR_LEVEL==='region' && reg ? reg.whLoc : ''));
   let ctx = null, where = opts.where || '', loadToken = 0;
+  /* New titles typed here wait on this device until Save (b247), so a slip
+     ("Sri Radha Hindi") never reaches the catalogue unless it is saved. */
+  const staged = [];
+  const newCtx = (p, other) => Object.assign(makeStockCtx(p, other), {staged});
   let lines = [{t:'', b:''}];  // the titles chosen, each { t: title key, b: book id }
   const typed = {};           // what has been typed, kept across redraws
 
@@ -12179,9 +12183,9 @@ function addStockModal(opts){
     $('#modalErr').textContent = '';
     const mine = ++loadToken;
     ctx = null;
-    if(p.seasonId===STATE.activeSeason){ ctx = makeStockCtx(p, null); draw(); return; }
+    if(p.seasonId===STATE.activeSeason){ ctx = newCtx(p, null); draw(); return; }
     const cached = seasonCacheLoad(p.seasonId);
-    if(cached && cached.state){ ctx = makeStockCtx(p, cached.state); ctx.fresh = false; }
+    if(cached && cached.state){ ctx = newCtx(p, cached.state); ctx.fresh = false; }
     draw();
     try{
       const d = await post({action:'getState', season:p.seasonId});
@@ -12189,7 +12193,7 @@ function addStockModal(opts){
       if(!d || !d.state) throw new Error('Could not open that season.');
       seasonCacheSave(p.seasonId, d.state, d.rev);
       if(ctx){ ctx.setOther(d.state); ctx.fresh = true; refreshCounts(); }
-      else { ctx = makeStockCtx(p, d.state); draw(); }
+      else { ctx = newCtx(p, d.state); draw(); }
     }catch(err){
       if(mine!==loadToken) return;
       if(ctx){ ctx.fresh = true; refreshCounts(); }  // the saved copy will have to do
@@ -12355,7 +12359,8 @@ function addStockModal(opts){
       if(l.mode==='newlang') pick += `<div class="ln-new">
           <input type="text" class="ln-nllang" placeholder="Language, e.g. Hindi">
           <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="lang">Add ${esc(g?g.base:'')} in this language</button></div>`;
-      if(b && !carriedHere(b)) pick += ` <span class="sp-new-tag" title="Saving switches it on for ${esc(ctx.region.name||'the region')}">new here</span>`;
+      if(b && b.staged) pick += ` <span class="sp-new-tag" title="Not in the catalogue yet: Save adds it. Take the line off (✕) and it is never added.">new title, added when you save</span>`;
+      else if(b && !carriedHere(b)) pick += ` <span class="sp-new-tag" title="Saving switches it on for ${esc(ctx.region.name||'the region')}">new here</span>`;
       const x = (l.t || l.mode) ? `<button type="button" class="sp-x" data-unline="${i}" title="Take this line off">✕</button>` : '';
       const c = b ? cols(b) : null;
       const bid = b ? esc(b.id) : '';
@@ -12508,34 +12513,39 @@ function addStockModal(opts){
       draw(); focusLine(l);
     };
     const have = named();
-    if(have){ useIt(have, have.name + ' is already in the catalogue — chosen for you.'); return; }
-    const btn = box.querySelector('.ln-add');
-    $('#modalErr').textContent=''; btn.disabled=true; btn.textContent='Adding…';
-    try{
-      /* New or not, the server answers with the title's id (b245), so the line
-         never waits on a refresh of the whole catalogue: one that is slow, or
-         held back by a save still on its way, left "Govardhana (Hindi)"
-         added but impossible to choose. */
-      let id = '';
-      try{ id = (await postWrite({action:'addBook', name, cat, orExisting:true}) || {}).result || ''; }
-      catch(err){ if(!/already exists/i.test(err.message||'')) throw err; }   // an older server
-      let nb = named();
-      if(!nb && id){
-        nb = {id, name, cat, usd:0, pln:0, eur:0, partnerId:''};
-        [BASE, STATE].forEach(s=>{ if(s && !(s.books||[]).some(b=>b.id===id)) (s.books=s.books||[]).push(nb); });
-        cacheSave();
-      }
-      pull().catch(()=>{});                  // the rest catches up behind it
-      if(!nb){ await pull().catch(()=>{}); nb = named(); }
-      if(!nb) throw new Error(name + ' is in the catalogue, but this screen has not caught up yet — wait for "Up to date" at the top, then choose it.');
-      useIt(nb, 'Added ' + name);
-    }catch(err){
-      $('#modalErr').textContent = err.message || 'Could not add that title.';
-      btn.disabled=false; btn.textContent = kind==='book' ? 'Add this book' : 'Add';
-    }
+    if(have){ useIt(have, have.staged ? have.name + ' is already on its way in, from a line above.' : have.name + ' is already in the catalogue — chosen for you.'); return; }
+    /* Nothing is added yet (b247): the title waits here, and Save adds it to
+       the catalogue just before the stock. Taking the line off, or closing
+       without saving, leaves the catalogue as it was. */
+    const nb = {id:'new_'+Math.random().toString(36).slice(2,9), name, cat, usd:0, pln:0, eur:0, partnerId:'', staged:true};
+    staged.push(nb);
+    useIt(nb, name + ' will be added to the catalogue when you save.');
   }
 
-  $('#spSave').addEventListener('click', ()=>{
+  /* Save adds the new titles its lines use, and answers with their real ids.
+     The server answers with the id of a title that already exists, too, so a
+     screen behind the catalogue never makes a second copy (b245). Only what
+     the save carries is added; a line taken off is never added. */
+  async function addStaged(ids){
+    const map = {};
+    for(const nb of staged){
+      if(!ids.includes(nb.id)) continue;
+      if(!nb.realId){
+        let id = '';
+        try{ id = (await postWrite({action:'addBook', name:nb.name, cat:nb.cat, orExisting:true}) || {}).result || ''; }
+        catch(e){ throw new Error('Could not add ' + nb.name + ' to the catalogue (' + (e.message||'no answer') + '). Nothing was saved; press Save again.'); }
+        if(!id) throw new Error('Could not add ' + nb.name + ' to the catalogue. Nothing was saved; press Save again.');
+        nb.realId = id;
+        const row = {id, name:nb.name, cat:nb.cat, usd:0, pln:0, eur:0, partnerId:''};
+        [BASE, STATE].forEach(st=>{ if(st && !(st.books||[]).some(b=>b.id===id)) (st.books=st.books||[]).push(row); });
+        cacheSave();
+      }
+      map[nb.id] = nb.realId;
+    }
+    return map;
+  }
+
+  $('#spSave').addEventListener('click', async ()=>{
     if(!ctx || !where) return;
     const err = m=>{ $('#modalErr').textContent = m; };
     const place = ctx.place, season = ctx.seasonId, here = ctx.here;
@@ -12545,9 +12555,23 @@ function addStockModal(opts){
     // Where they came from leads the note, so the log reads "From the printer — …".
     const note = source ? ('From ' + source + (typedNote ? ' — ' + typedNote : '')) : typedNote;
     // Titles the region did not offer yet are switched on for it with the save.
-    const extras = books.filter(b=>!carriedHere(b)).map(b=>b.id);
-    const switchOn = extras.length && asIdList(ctx.region.books).length
+    let extras = books.filter(b=>!carriedHere(b)).map(b=>b.id);
+    const switchOn = ()=> extras.length && asIdList(ctx.region.books).length
       ? {action:'regionAddBooks', regionId:ctx.regionId, bookIds:extras.join(','), season} : null;
+    /* New titles first; then every id below is the catalogue's own. */
+    const btn = $('#spSave');
+    const realise = async used => {
+      if(!used.some(id=>staged.some(nb=>nb.id===id))) return true;
+      btn.disabled = true;
+      try{
+        const map = await addStaged(used), rid = id => map[id] || id;
+        extras = extras.map(rid);
+        lines.forEach(l=>{ if(map[l.b]) l.b = map[l.b]; });
+        for(let k=staged.length-1; k>=0; k--) if(map[staged[k].id]) staged.splice(k, 1);
+        return rid;
+      }catch(e){ err(e.message); return false; }
+      finally{ btn.disabled = false; }
+    };
     const applyOn = st=>{
       const r=(st.regions||[]).find(x=>x.regionId===ctx.regionId);
       if(r && asIdList(r.books).length) r.books = asIdList(r.books).concat(extras.filter(id=>!asIdList(r.books).includes(id)));
@@ -12569,9 +12593,12 @@ function addStockModal(opts){
       const lowers = deltaItems.some(it=>it.delta<0) || setItems.some(it=>it.qty<ctx.qty(ctx.loc,it.bookId));
       if(lowers && !confirm(SUBTRACT_WARNING+'\n\nSave anyway?')) return;
       err('');
+      const rid = await realise(setItems.concat(deltaItems).map(it=>it.bookId));
+      if(!rid) return;
+      if(rid!==true) setItems.concat(deltaItems).forEach(it=>{ it.bookId = rid(it.bookId); });
       const loc = ctx.loc;
-      const before = {}; books.forEach(b=>{ before[b.id]=ctx.qty(loc,b.id); });
-      if(switchOn) commit(switchOn, here?applyOn:()=>{}, null);
+      const before = {}; books.forEach(b=>{ const id = rid===true ? b.id : rid(b.id); before[id]=ctx.qty(loc,id); });
+      if(switchOn()) commit(switchOn(), here?applyOn:()=>{}, null);
       if(deltaItems.length){
         const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
         commit({action:'adjustStockBulk', location:loc, items:deltaItems, note, override:true, movePrefix, season},
@@ -12599,13 +12626,16 @@ function addStockModal(opts){
     const mode = v('courier')==='shipping' ? 'shipping' : 'devotee';
     if(mode==='devotee' && !v('carrier')) return err('Who is bringing them? Enter the devotee’s name.');
     err('');
+    const rid = await realise(items.map(it=>it.bookId));
+    if(!rid) return;
+    if(rid!==true) items.forEach(it=>{ it.bookId = rid(it.bookId); });
     const shipId = 'sh_' + Math.random().toString(36).slice(2,10);
     const payload = {action:'sendShipment', mode, fromRegion:OUTSIDE_ORIGIN, toRegion:ctx.regionId,
       toLoc:ctx.loc, shipId, season,
       carrier: mode==='devotee' ? v('carrier') : '', phone: mode==='devotee' ? v('phone') : '',
       tracking: mode==='shipping' ? v('tracking') : '', trackingUrl: mode==='shipping' ? v('trackingUrl') : '',
       eta: mode==='devotee' ? v('etaD') : v('etaS'), note:typedNote, origin:source, items};
-    if(switchOn) commit(switchOn, here?applyOn:()=>{}, null);
+    if(switchOn()) commit(switchOn(), here?applyOn:()=>{}, null);
     commit(payload, here ? st=>{
       const manifest={}; items.forEach(it=>{ manifest[it.bookId]=it.qty; });
       (st.shipments=st.shipments||[]).push({shipId, fromRegion:OUTSIDE_ORIGIN, toRegion:ctx.regionId,
@@ -15185,6 +15215,18 @@ function bookDisplayModal(){
     el.textContent = anyShown ? `Hide all out of stock books (${oos.filter(x=>x.on).length})` : `Show all out of stock books (${oos.length})`;
     el.dataset.mode = anyShown ? 'hide' : 'show';
   }
+  /* A title added by mistake can be deleted (b247): Universal only, and only
+     one added in the app (the standard titles are built in). The server
+     refuses while any sale is recorded against it, in any season. */
+  const deletable = x => isAdmin() && !x.partner && /^bk_/.test(x.id);
+  function deleteTitle(id){
+    const b = bookById(id) || {name:id};
+    const sold = (STATE.sales||[]).filter(v=>v.bookId===id).length;
+    if(sold){ $('#modalErr').textContent = b.name+' has '+sold+' sale'+(sold===1?'':'s')+' recorded against it, so it cannot be deleted.'; return; }
+    if(!confirm('Delete '+b.name+' from the catalogue?\n\nIt disappears from every season, and any copies entered for it are taken off. '
+      +'Use this only for a title added by mistake. It cannot be undone.')) return;
+    commitSync({action:'deleteBook', bookId:id}, b.name+' deleted').then(ok=>{ if(ok) bookDisplayModal(); });
+  }
   function draw(){
     oosButton();
     $('#bdList').innerHTML = list.map((x,i)=>`
@@ -15197,12 +15239,14 @@ function bookDisplayModal(){
         <span class="ro-btns">
           <button class="cash-mini" data-bd-up="${i}" ${i===0?'disabled':''}>↑</button>
           <button class="cash-mini" data-bd-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
+          ${deletable(x)?`<button class="cash-mini" data-bd-del="${esc(x.id)}" title="Delete this title from the catalogue (for one added by mistake)">🗑</button>`:''}
         </span>
       </div>`).join('');
     document.querySelectorAll('#modal [data-bd-up]').forEach(b=>b.onclick=()=>{
       const i=+b.dataset.bdUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw(); });
     document.querySelectorAll('#modal [data-bd-dn]').forEach(b=>b.onclick=()=>{
       const i=+b.dataset.bdDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw(); });
+    document.querySelectorAll('#modal [data-bd-del]').forEach(b=>b.onclick=()=>deleteTitle(b.dataset.bdDel));
     document.querySelectorAll('#modal [data-bd]').forEach(c=>c.onchange=()=>{
       const x=list.find(v=>v.id===c.dataset.bd); if(x){ x.on=c.checked; draw(); } });
     makeSortable($('#bdList'), order=>{ list = order.map(id=>list.find(x=>x.id===id)).filter(Boolean); draw(); });
@@ -15213,6 +15257,7 @@ function bookDisplayModal(){
       <ol class="how-to">
         ${season ? '' : `<li>Select which books should be displayed ${CUR_LEVEL==='region'?'in the warehouse in this region':'at this event'}.</li>`}
         <li>Drag and drop to change the order in which books are displayed${season?' across the whole season':''}.</li>
+        ${isAdmin() ? '<li>A title added by mistake can be deleted with 🗑.</li>' : ''}
         ${PRACTICE ? '<li>This is everyone\'s order. Anyone can also put the books in their own order, on the shelf, with ↕ Arrange.</li>' : ''}
       </ol>
       ${season ? '' : '<div class="bd-oos"><button type="button" class="btn btn-ghost btn-sm" id="bdOos" hidden></button></div>'}
