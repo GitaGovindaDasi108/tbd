@@ -1684,7 +1684,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b243</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b245</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3489,7 +3489,11 @@ async function pull(){
      now discarded. */
   const askedSeason = (BASE && BASE.activeSeason) || TAB_SEASON || '';
   const askedEpoch  = SEASON_EPOCH;
-  const d = await post({action:'getState'});
+  /* A time limit (b245). A read that hangs — a phone moving between networks,
+     a reply lost on the way — never answered at all, so "Checking for changes…"
+     stayed on screen and the page kept showing its old copy for good. Now it
+     gives up after a while, says so, and the regular check asks again. */
+  const d = await post({action:'getState'}, {timeoutMs: 40000});
   const gotSeason = (d.state && d.state.activeSeason) || '';
   if(askedEpoch !== SEASON_EPOCH || (askedSeason && gotSeason && gotSeason !== askedSeason)){
     return;                       // stale: you have moved on since this was asked for
@@ -12493,17 +12497,22 @@ function addStockModal(opts){
     const btn = box.querySelector('.ln-add');
     $('#modalErr').textContent=''; btn.disabled=true; btn.textContent='Adding…';
     try{
+      /* New or not, the server answers with the title's id (b245), so the line
+         never waits on a refresh of the whole catalogue: one that is slow, or
+         held back by a save still on its way, left "Govardhana (Hindi)"
+         added but impossible to choose. */
       let id = '';
-      try{ id = (await postWrite({action:'addBook', name, cat}) || {}).result || ''; }
-      catch(err){ if(!/already exists/i.test(err.message||'')) throw err; }   // added before, on another screen
-      await pull();
+      try{ id = (await postWrite({action:'addBook', name, cat, orExisting:true}) || {}).result || ''; }
+      catch(err){ if(!/already exists/i.test(err.message||'')) throw err; }   // an older server
       let nb = named();
       if(!nb && id){
-        // The refresh can be held back by a save still on its way: the reply's id is enough.
         nb = {id, name, cat, usd:0, pln:0, eur:0, partnerId:''};
         [BASE, STATE].forEach(s=>{ if(s && !(s.books||[]).some(b=>b.id===id)) (s.books=s.books||[]).push(nb); });
+        cacheSave();
       }
-      if(!nb) throw new Error('Could not open ' + name + ' — refresh the page and choose it from the lists.');
+      pull().catch(()=>{});                  // the rest catches up behind it
+      if(!nb){ await pull().catch(()=>{}); nb = named(); }
+      if(!nb) throw new Error(name + ' is in the catalogue, but this screen has not caught up yet — wait for "Up to date" at the top, then choose it.');
       useIt(nb, 'Added ' + name);
     }catch(err){
       $('#modalErr').textContent = err.message || 'Could not add that title.';

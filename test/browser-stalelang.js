@@ -77,7 +77,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     await page.locator('#spBody .ln-lang').last().selectOption(id); await page.waitForTimeout(150);
   };
 
-  let page;
+  let page, hang = false;
   page = await open('');
   // Freeze Year-Round Sales' answer as it was before the new language existed.
   const oldSB = JSON.parse(JSON.stringify(m.call({ action: 'getState', season: SB })));
@@ -85,6 +85,7 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     const url = route.request().url();
     if (url.includes('script.google.com')) {
       let p = {}; try { p = JSON.parse(route.request().postData() || '{}'); } catch (e) {}
+      if (hang && p.action === 'getState') return;           // never answered
       const r = (p.action === 'getState' && p.season === SB) ? oldSB : m.call(p);
       return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(r) });
     }
@@ -109,6 +110,27 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     await page.fill(`#spBody input.d-delta[data-book="${hi.id}"]`, '9');
     await page.click('#spSave'); await page.waitForTimeout(1500);
     t.push(['…and 9 are stocked in Krakow', qty('wh_kr', hi.id) === 9]);
+
+    /* b244: the screen's own refresh never lands (a slow or stuck "Checking for
+       changes"), and Govardhana (Hindi) was already added from another device.
+       Adding Hindi again must still put it on the line, not "Could not open". */
+    hang = true;
+    m.call({ action: 'addBook', name: 'Govardhana (Hindi)', cat: 'big', opId: 'x2' });
+    await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
+    await pickPlace(page, 'Italy', 'Italy'); await page.waitForTimeout(500);
+    await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+    const gvKey = await page.evaluate(() => stockTitleKey(STATE.books.find(b => /^Govardhana/.test(b.name))));
+    await page.locator('#spBody .ln-title').last().selectOption(gvKey); await page.waitForTimeout(150);
+    t.push(['(the screen has not caught up: Hindi is not offered for Govardhana)', !/Hindi/.test(await langs())]);
+    await page.locator('#spBody .ln-lang').last().selectOption('__newlang'); await page.waitForTimeout(150);
+    await page.fill('#spBody .ln-nllang', 'Hindi'); await page.click('#spBody .ln-add'); await page.waitForTimeout(1500);
+    const gv = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Govardhana (Hindi)');
+    t.push(['adding Hindi again chooses the existing Govardhana (Hindi), no error',
+      !(await page.textContent('#modalErr')).trim() && !!(await page.$(`#spBody input.d-delta[data-book="${gv.id}"]`))]);
+    t.push(['…still one Govardhana (Hindi) in the catalogue', m.call({ action: 'getState', season: SA }).state.books.filter(b => b.name === 'Govardhana (Hindi)').length === 1]);
+    await page.fill(`#spBody input.d-delta[data-book="${gv.id}"]`, '4');
+    await page.click('#spSave'); await page.waitForTimeout(1500);
+    t.push(['…and 4 are stocked in Italy', qty('wh_it', gv.id) === 4]);
   } catch(e){ t.push(['ran to the end: ' + e.message, false]); }
   t.push(['no page errors', !errors.length]);
   await browser.close();
