@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b240**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b241**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,30 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b241 — nothing entered without a signal is ever lost
+
+- **Bug (Gita):** stock entered while the internet was out (unknown to her)
+  was gone after refreshing, and never came back once the internet returned.
+- **Causes:** (1) a change waiting for a signal was kept on the device, but
+  how it changed the screen lived only in memory, so a refresh hid it;
+  (2) `flushPending` threw a waiting change away after 8 failed tries (and an
+  unreadable reply, e.g. Wi-Fi with no internet behind it, after 4) with
+  "please redo it"; (3) a refusal, including a busy server, deleted the change;
+  (4) with no internet the page itself would not open at all.
+- **Fix (page only):** each change's effect on the screen is recorded as data
+  (`stateFx`/`applyFx`, `tbs_fx`: rows added/changed/removed per table, stock
+  as +/- counts) and redrawn on opening (`fxRestore`) until its save lands.
+  Held changes (`rev:-1`) survive a pull until `retireOp`. No-signal and
+  unreadable replies are retried for ever; a poll that reaches the server
+  also sends the queue (Wi-Fi without internet never fires "online"). A busy
+  server keeps the change queued (`isBusy`). A real refusal goes to
+  `tbs_notsaved`, shown by the corner notice ("1 change not saved — tap to
+  see") with Try again / Remove; only a person removes it. The corner notice
+  (`#pendBadge`) is back, for held changes only. `sw.js`: the page, config
+  and pictures are kept on the device (network first, 6 s then the kept copy),
+  so the app opens with no internet; server requests are never touched.
+- Test: `browser-offline.js` (served from localhost so the service worker runs).
 
 ## Done in b240 — a new language shows up in another season's Add Stock
 

@@ -1656,7 +1656,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b240</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b241</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3436,6 +3436,8 @@ async function pull(){
     // Only this season's data can confirm this season's change; another
     // season's refresh says nothing about it.
     if(o.season && pulledSeason && o.season!==pulledSeason) return true;
+    // Held for a signal: stays drawn until its own save lands (retireOp).
+    if(o.rev===-1) return true;
     return o.rev===undefined || o.rev>REV;              // still not in the server's copy
   });
   // Keep the current position valid: fall back sensibly if a region or event
@@ -3526,7 +3528,8 @@ function isOffline(err){
 const NEVER_QUEUE = {setSeason:1, syncSheets:1, getState:1, ping:1};
 function queueOffline(payload){
   if(NEVER_QUEUE[payload && payload.action]) return;
-  PENDING.push({payload, at:Date.now()});
+  if(PENDING.some(x=>x.payload && x.payload.opId===payload.opId)) return;
+  PENDING.push({payload, at:Date.now(), held:true});
   pendingSave();
   showPending();
 }
@@ -3537,9 +3540,80 @@ function queueOffline(payload){
    exactly as before — anything genuinely unsent is kept on the device and sent
    again by itself — it simply no longer announces itself. The status line by
    the build number still says "Saving…" while something is actually in flight. */
+/* ---- A change the server refused is kept too, never deleted (b241) ----
+
+   A refusal used to throw the change away with a message that vanished in a
+   few seconds. Now it is kept on the device, the corner notice says so, and
+   tapping it shows each one, to send again or to let go of by hand. Only a
+   person deletes something they entered. A busy server ("try again in a
+   moment") is not a refusal at all: that change simply stays in the queue. */
+const NOTSAVED_KEY = 'tbs_notsaved' + (SHARE_KEY ? '_' + SHARE_KEY : '');
+function notSavedLoad(){ try{ return JSON.parse(localStorage.getItem(NOTSAVED_KEY)||'[]') || []; }catch(e){ return []; } }
+function notSavedSave(l){ try{ localStorage.setItem(NOTSAVED_KEY, JSON.stringify(l)); }catch(e){} }
+function keepRefused(payload, err){
+  if(!payload) return;
+  const l = notSavedLoad();
+  if(!l.some(x=>x.payload && x.payload.opId===payload.opId))
+    l.push({payload, error: String(err && err.message || err || ''), at: Date.now()});
+  notSavedSave(l); showPending();
+}
+function isBusy(err){
+  return /busy|try again in a moment|took too long/i.test(String(err && err.message || ''));
+}
+function describeChange(p){
+  const names = (p.items||[]).map(it=>{ const b = (STATE && STATE.books||[]).find(x=>x.id===it.bookId);
+    const n = it.delta!==undefined ? (it.delta>0?'+':'')+it.delta : it.qty!==undefined ? it.qty : '';
+    return (b ? b.name : it.bookId) + (n!=='' ? ' ' + n : ''); });
+  const where = p.location ? (typeof locName==='function' ? locName(p.location) : p.location) : '';
+  return [p.action, where, names.join(', ')].filter(Boolean).join(' · ');
+}
+function notSavedModal(){
+  const l = notSavedLoad();
+  if(!l.length){ closeModal(); showPending(); return; }
+  openModal(`${mHead('Changes not saved')}
+    <div class="m-body">
+      <div class="hint">The server did not accept these. They are kept on this device until you decide:
+        <b>Try again</b> sends one once more; <b>Remove</b> lets it go for good.</div>
+      ${l.map((x,i)=>`<div class="field" style="border-top:1px solid var(--line,#ddd);padding-top:8px">
+        <div><b>${esc(describeChange(x.payload))}</b></div>
+        <div class="hint">${esc(new Date(x.at).toLocaleString())} — ${esc(x.error)}</div>
+        <button class="btn btn-plum btn-sm" data-ns-retry="${i}">Try again</button>
+        <button class="btn btn-ghost btn-sm" data-ns-drop="${i}">Remove</button></div>`).join('')}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`);
+  document.querySelectorAll('#modal [data-ns-retry]').forEach(b=>b.onclick=()=>{
+    const all = notSavedLoad(), x = all.splice(Number(b.dataset.nsRetry), 1)[0];
+    notSavedSave(all);
+    if(x){ queueOffline(x.payload); flushPending(); toast('Sending it again…'); }
+    notSavedModal();
+  });
+  document.querySelectorAll('#modal [data-ns-drop]').forEach(b=>b.onclick=()=>{
+    if(!confirm('Remove this change for good? It will not be saved.')) return;
+    const all = notSavedLoad(); all.splice(Number(b.dataset.nsDrop), 1); notSavedSave(all);
+    notSavedModal();
+  });
+}
+
+/* b241: it is back, but only for changes that genuinely met no signal — a
+   failed send marks them "held". Someone selling offline needs to see that
+   their work is safe and still to go, not wonder whether it vanished. */
 function showPending(){
   const el = $('#pendBadge');
-  if(el){ el.style.display='none'; el.onclick=null; el.textContent=''; }
+  if(!el) return;
+  const bad = notSavedLoad().length;
+  if(bad){
+    el.textContent = bad===1 ? '1 change not saved — tap to see' : bad + ' changes not saved — tap to see';
+    el.title = 'The server did not accept these. They are kept on this device until you send them again or remove them.';
+    el.style.display = ''; el.onclick = notSavedModal; return;
+  }
+  const n = PENDING.filter(x=>x.held || x.tries).length;
+  if(!n){ el.style.display='none'; el.onclick=null; el.textContent=''; return; }
+  el.textContent = n===1 ? '1 change kept on this device — sends when online'
+                         : n + ' changes kept on this device — send when online';
+  el.title = 'Saved on this device. Nothing is lost by closing or refreshing the app; it sends by itself when the internet is back.';
+  el.style.display = '';
+  el.onclick = ()=>{ toast('Trying to send now…'); flushPending(); };
 }
 
 /* Anything left over from an older version of the app has no id, so resending
@@ -3553,6 +3627,91 @@ function pendingPrune(){
       'queued change(s) from an older version that could not be resent safely.');
   }
 }
+/* ---- What a waiting change looks like on screen, kept on the device (b241) ----
+
+   A change waiting for a signal was always kept on the device, but how it
+   changes the screen lived only in the page's memory. Refresh, and the stock
+   or sale you had just entered disappeared from view — still queued, but it
+   looked lost. Now its effect is written down too, as plain data: rows added,
+   changed or removed, and stock as plus/minus counts. On opening, every change
+   still waiting is drawn again from that, until the server has it. */
+const FX_KEY = 'tbs_fx' + (SHARE_KEY ? '_' + SHARE_KEY : '');
+function fxAll(){ try{ return JSON.parse(localStorage.getItem(FX_KEY)||'{}') || {}; }catch(e){ return {}; } }
+function fxWrite(all){ try{ localStorage.setItem(FX_KEY, JSON.stringify(all)); }catch(e){} }
+function fxPut(opId, season, fx){ if(!opId || !fx) return; const all = fxAll(); all[opId] = {season, fx}; fxWrite(all); }
+function fxDrop(opId){ const all = fxAll(); if(opId in all){ delete all[opId]; fxWrite(all); } }
+const FX_IDS = ['saleId','shipId','eventId','regionId','holderId','partnerId','seasonId','id','key'];
+function fxIdOf(rows){
+  const objs = rows.length && rows.every(r=>r && typeof r==='object' && !Array.isArray(r));
+  return objs ? FX_IDS.find(k=>rows.every(r=>r[k]!==undefined && r[k]!=='')) : null;
+}
+/** The difference one change made: state before it, state after it. */
+function stateFx(a, b){
+  const fx = {};
+  new Set([...Object.keys(a||{}), ...Object.keys(b||{})]).forEach(k=>{
+    const x = a ? a[k] : undefined, y = b ? b[k] : undefined;
+    if(k.charAt(0)==='_') return;
+    if(JSON.stringify(x)===JSON.stringify(y)) return;
+    if(k==='inventory' && Array.isArray(x) && Array.isArray(y)){
+      const q = {}, key = r=>r.location+'\u0001'+r.bookId;
+      x.forEach(r=>{ q[key(r)] = {location:r.location, bookId:r.bookId, d:-(Number(r.qty)||0)}; });
+      y.forEach(r=>{ const e = q[key(r)] || (q[key(r)] = {location:r.location, bookId:r.bookId, d:0}); e.d += Number(r.qty)||0; });
+      (fx.inv = []).push(...Object.values(q).filter(e=>e.d));
+      return;
+    }
+    const id = Array.isArray(x) && Array.isArray(y) ? fxIdOf(x.concat(y)) : null;
+    if(id){
+      const old = new Map(x.map(r=>[String(r[id]), JSON.stringify(r)]));
+      const now = new Set(y.map(r=>String(r[id])));
+      const up = y.filter(r=>old.get(String(r[id]))!==JSON.stringify(r));
+      const rm = [...old.keys()].filter(i=>!now.has(i));
+      (fx.rows = fx.rows || {})[k] = {id, up, rm};
+      return;
+    }
+    (fx.set = fx.set || {})[k] = y === undefined ? null : y;
+  });
+  return fx;
+}
+/** Put a recorded change back on a state. */
+function applyFx(st, fx){
+  if(!fx) return;
+  (fx.inv||[]).forEach(e=>{ if(!Array.isArray(st.inventory)) st.inventory = []; invAdd(st, e.location, e.bookId, e.d); });
+  Object.keys(fx.rows||{}).forEach(k=>{
+    const {id, up, rm} = fx.rows[k];
+    let list = Array.isArray(st[k]) ? st[k] : [];
+    const gone = new Set((rm||[]).map(String));
+    list = list.filter(r=>!gone.has(String(r && r[id])));
+    (up||[]).forEach(r=>{
+      const i = list.findIndex(z=>String(z && z[id])===String(r[id]));
+      const copy = JSON.parse(JSON.stringify(r));
+      if(i>=0) list[i] = copy; else list.push(copy);
+    });
+    st[k] = list;
+  });
+  Object.keys(fx.set||{}).forEach(k=>{ st[k] = JSON.parse(JSON.stringify(fx.set[k])); });
+}
+/** On opening: everything still waiting is drawn again. */
+function fxRestore(){
+  const all = fxAll(), keep = {};
+  const waiting = new Set(PENDING.map(x=>x.payload && x.payload.opId).filter(Boolean));
+  outboxLoad().forEach(p=>{ if(p.opId) waiting.add(p.opId); });
+  Object.keys(all).forEach(opId=>{
+    if(!waiting.has(opId)) return;                 // landed or refused: nothing to draw
+    keep[opId] = all[opId];
+    if(OPS.some(o=>o.opId===opId)) return;
+    const {season, fx} = all[opId];
+    OPS.push({opId, season: season||'', rev:-1, apply: st=>applyFx(st, fx)});
+  });
+  fxWrite(keep);
+}
+/* A change the server refused will never land: stop drawing it. */
+function opDrop(opId){
+  fxDrop(opId);
+  const before = OPS.length;
+  OPS = OPS.filter(o=>o.opId!==opId);
+  if(OPS.length!==before && BASE){ STATE = derive(); renderAll(); }
+}
+
 /** Send anything held on the device, oldest first. */
 /* A queued save has landed: stop drawing the app's own copy of it.
 
@@ -3575,34 +3734,26 @@ async function flushPending(){
          "waiting" badge never lingers over a save the server already has. */
       if(next.payload && next.payload.opId && await opApplied(next.payload.opId)){
         retireOp(next.payload.opId);          // the server has it: stop showing our own copy
+        fxDrop(next.payload.opId);
         PENDING.shift(); pendingSave(); showPending(); scheduleSync();
         continue;
       }
-      try{ await postWrite(next.payload); retireOp(next.payload && next.payload.opId); }
+      try{ await postWrite(next.payload); retireOp(next.payload && next.payload.opId); fxDrop(next.payload && next.payload.opId); }
       catch(err){
-        if(isOffline(err)){
-          /* Still no signal. Give up after enough attempts and say so, rather
-             than sitting on it silently — a queue that never empties looks
-             exactly like a save that never happened. */
+        /* Still no signal, or a reply that could not be read. Kept, however
+           long it takes (b241): it used to be thrown away after eight tries
+           with "please redo it" — a whole day's selling at a festival with no
+           reception could go that way. The id makes every resend safe; the
+           notice in the corner says it is still waiting. */
+        if(isOffline(err) || err.unreadable || isBusy(err)){
           next.tries = (next.tries||0) + 1;
-          pendingSave();
-          if(next.tries >= 8){
-            PENDING.shift(); pendingSave();
-            toast('Could not send one change after several tries — please redo it', true);
-            console.error('Gave up on', next.payload);
-            continue;
-          }
+          pendingSave(); showPending();
           break;
         }
-        if(err.unreadable){
-          // Cannot tell whether it landed. The id makes a resend safe, so keep
-          // it for one more pass rather than guessing either way.
-          next.tries = (next.tries||0) + 1;
-          pendingSave();
-          if(next.tries < 4) break;
-        }
         PENDING.shift(); pendingSave();     // the server refused it outright
-        toast('One change was refused — ' + err.message, true);
+        opDrop(next.payload && next.payload.opId);
+        keepRefused(next.payload, err);     // kept to look at, never simply gone
+        toast('One change was not saved — ' + err.message, true);
         continue;
       }
       PENDING.shift(); pendingSave();
@@ -3704,8 +3855,11 @@ function commit(payload, apply, okMsg, opts){
      it be retired once that save finally lands, however late. */
   // A change to the seasons themselves shows wherever you look (anySeason).
   const op = { apply, opId: payload.opId, season: (opts && opts.anySeason) ? '' : ((BASE && BASE.activeSeason) || '') };
+  const shownBefore = STATE;
   OPS.push(op);
   STATE = derive(); renderAll();
+  // What it did to the screen, kept beside it until the server has it (b241).
+  try{ fxPut(payload.opId, op.season, stateFx(shownBefore, STATE)); }catch(e){}
   if(!(opts && opts.keepOpen)) closeModal();
   if(okMsg) toast(okMsg);
 
@@ -3713,6 +3867,7 @@ function commit(payload, apply, okMsg, opts){
   sendInOrder(payload).then(d=>{
     op.rev = d.rev;
     outboxDone(payload.opId);      // the server has it
+    fxDrop(payload.opId);
     scheduleSync();
     if(opts && typeof opts.onDone==='function') opts.onDone(d);
   }).catch(async err=>{
@@ -3725,18 +3880,25 @@ function commit(payload, apply, okMsg, opts){
       if(await opApplied(payload.opId)){
         op.rev = REV;                    // the server has it: nothing is wrong
         outboxDone(payload.opId);
+        fxDrop(payload.opId);
         scheduleSync();
         return;
       }
-      if(err.unreadable){ pull().catch(()=>{}); return; }
-      // Genuinely not there, and no signal: keep it on the device to send itself.
+      // Not there (or no telling): keep it on the device to send itself. A
+      // resend of the same id can never record it twice.
       outboxDone(payload.opId);          // the offline queue carries it from here
       queueOffline(payload);
-      toast('No signal — saved on this device, it will send itself');
+      if(!err.unreadable) toast('No signal — saved on this device, it will send itself');
       return;
     }
+    if(isBusy(err)){                       // the server was busy, not saying no
+      op.rev = -1; outboxDone(payload.opId); queueOffline(payload); scheduleSync();
+      return;
+    }
+    keepRefused(payload, err);             // kept on the device; only a person removes it
     OPS = OPS.filter(o=>o!==op);
     outboxDone(payload.opId);            // refused by the server: resending cannot help
+    fxDrop(payload.opId);
     STATE = derive(); renderAll();
     if(opts && typeof opts.onFail==='function') opts.onFail(err);
     // Name the action, so a failure is traceable rather than a bare apology.
@@ -3809,6 +3971,9 @@ async function poll(){
     const d = await post({action:'ping'});
     // Sign-in requests waiting for an admin (the Cloudflare server tells signed-in admins).
     if(d.requests !== undefined && d.requests !== ADMIN_REQUESTS){ ADMIN_REQUESTS = d.requests; renderAdmin(); }
+    // The server answered, so there is a signal: send anything still waiting.
+    // (A phone on Wi-Fi with no internet behind it never hears "online".)
+    if(PENDING.length) flushPending();
     if(d.rev !== REV) await pull();
     else if(!OPS.length) setStatus('ok','Up to date · '+clock());
   }catch(err){ setStatus('bad','Offline — retrying'); }
@@ -15538,7 +15703,12 @@ document.addEventListener('click',e=>{
   // Pick up where you left off — before the first paint, so the page never
   // flashes the wrong region on the way to the right one.
   loadPos();
-  pendingLoad(); pendingPrune(); outboxRecover(); showPending();
+  pendingLoad(); pendingPrune(); outboxRecover(); fxRestore(); showPending();
+  // The page itself is kept on the device, so it opens with no internet (b241, sw.js).
+  try{
+    if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))
+      navigator.serviceWorker.register('sw.js').catch(()=>{});
+  }catch(e){}
   setTimeout(()=>{ try{ prefetchSeasons(); }catch(e){} }, 3000);
   // flushPending checks each one against the server first, so anything already
   // saved is cleared rather than shown as waiting.
