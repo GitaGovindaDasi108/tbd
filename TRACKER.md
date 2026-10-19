@@ -909,6 +909,27 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b241 — drag to reorder works, by mouse and by finger
+
+- **Bug (Gita):** in Edit Book Display, dragging a title left several blank
+  spots, dragging to/from the bottom of the list did not work, and on a phone
+  it did not work at all.
+- **Causes:** `makeSortable` was bound again on every redraw of the list (after
+  each arrow press or drag), so the next drag ran two or three times over,
+  each adding a gap; the lifted row also stayed in the flow, leaving a blank
+  where it had been next to the gap; nothing scrolled while dragging, so a
+  long list could not be crossed; and `.ro-row{touch-action:none}` meant a
+  finger on a row could not even scroll the list, while the handle was a
+  15px target.
+- **Fix (page only, `index.html`):** `makeSortable` binds once per list (the
+  latest `onDrop` is kept on the container); the lifted row floats
+  (absolute) over one dashed gap; the list (or page) scrolls when the row is
+  held near its top or bottom edge; a finger drags by a 40px handle and can
+  swipe rows to scroll; a mouse can grab the row anywhere except its buttons
+  and tickboxes. Applies to Edit Book Display and Change Region/Event Order.
+  No server change.
+- Test: `browser-drag.js` (fails on b240, 23 checks pass on b241).
+
 ## Done in b240 — a new language shows up in another season's Add Stock
 
 - **Bug (Gita):** added Sri Radha (Hindi) from Add Stock, could not stock it,
