@@ -909,6 +909,32 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b243 — ↕ Arrange on the shelf; each person's own book order (practice)
+
+- **Asked (Gita):** rearrange the book squares on the shelf itself with a
+  button right there, not in a pop-up; and let every person keep the books in
+  their own order. Chosen: kept with their login, so it follows them to any
+  device; the shared order (Edit Book Display) stays the default.
+- **Shelf (`index.html`, practice only):** `↕ Arrange` on the Inventory
+  heading. While arranging, a bar explains it, each card's Sell/Pre-order
+  buttons give way to a "⠿ Drag" bar (a finger drags by it, so the rest of the
+  shelf still scrolls; a mouse can grab the card anywhere), nothing on a card
+  can be pressed, the lifted card follows the pointer over a dashed gap, and
+  the page scrolls near the screen's top and bottom. `makeShelfSortable`;
+  `renderInventory` waits while a card is held (`SHELF_DRAG`).
+- **The order:** `MY_ORDER` (practice only) sits on top of the shared order in
+  `inRegionOrder` (`inMyOrder`, `byRank`). Saved when a card is dropped
+  (`saveShelfOrder`): this shelf's titles take the places they held among the
+  whole catalogue, so other shelves keep their order. Kept in `localStorage`
+  at once and, signed in, with the login. "Use the shared order" forgets it.
+  Edit Book Display always shows and saves the shared order (`sharedOrder`).
+- **Server (`server/src`, Cloudflare only):** table `pref (email, key, value)`;
+  `setMyPref` (only `bookOrder` so far; `null` deletes) and `me` returns
+  `prefs`. A link (no login) keeps the order on the device only. Code.gs is
+  unchanged, so no `SERVER_BUILD` bump; Cloudflare redeploys itself on merge.
+- Tests: `browser-arrange.js` (23 checks: mouse, finger, other device, other
+  people, Edit Book Display, live has no Arrange), `people.js` (+6).
+
 ## Done in b241 — drag to reorder works, by mouse and by finger
 
 - **Bug (Gita):** in Edit Book Display, dragging a title left several blank
