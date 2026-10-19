@@ -118,12 +118,15 @@ const API = 'http://api.test/';
     const from = await centre(sita, `#invGrid > .book[data-id="${shared[n - 1]}"] .bname`);
     const to = await centre(sita, `#invGrid > .book[data-id="${shared[0]}"]`);
     await sita.mouse.move(from.x, from.y); await sita.mouse.down();
-    await sita.mouse.move(to.x - 30, to.y, { steps: 20 });
-    t.push(['mid-drag: one gap shows where it will land', await sita.$$eval('#invGrid .arr-gap', g => g.length) === 1]);
+    await sita.mouse.move(to.x, to.y, { steps: 20 });
+    // b248: nothing shuffles while dragging; the book it will swap with is outlined.
+    t.push(['mid-drag: the book under it is outlined, the rest stay put', await sita.$$eval('#invGrid .arr-target', g => g.map(x => x.dataset.id).join()) === shared[0]
+      && JSON.stringify(await sita.$$eval('#invGrid > [data-id]:not(.arr-lift)', c => c.map(x => x.dataset.id))) === JSON.stringify(shared.slice(0, n - 1))]);
     await sita.screenshot({ path: shot('middrag') });
     await sita.mouse.up(); await sita.waitForTimeout(700);
     let mine = await shelf(sita);
-    t.push(['the last title dragged to the front of the shelf', JSON.stringify(mine) === JSON.stringify([shared[n - 1], ...shared.slice(0, n - 1)])]);
+    const swapped = (l, i, j) => { const c = l.slice(); [c[i], c[j]] = [c[j], c[i]]; return c; };
+    t.push(['the last title dropped on the first: the two swap, nothing else moves', JSON.stringify(mine) === JSON.stringify(swapped(shared, 0, n - 1))]);
     t.push(['…without selling it (no window opened)', !(await anyModal(sita))]);
     t.push(['…nothing left behind', await sita.evaluate(() => !document.querySelector('.arr-gap, .arr-lift'))]);
     t.push(['…still arranging after the drop (Drag bars back)', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length]);
@@ -153,9 +156,9 @@ const API = 'http://api.test/';
     await own.evaluate(() => document.querySelector('#seasonTitleList').closest('.panel').querySelector('.arr-tg').click()); await own.waitForTimeout(300);
     await own.$eval(ST, g => g.scrollIntoView({ block: 'center' })); await own.waitForTimeout(200);
     const a = await centre(own, `${ST} > [data-id="${sOrder[2]}"] .sc-name`), b0 = await centre(own, `${ST} > [data-id="${sOrder[0]}"]`);
-    await own.mouse.move(a.x, a.y); await own.mouse.down(); await own.mouse.move(b0.x - 30, b0.y, { steps: 20 }); await own.mouse.up();
+    await own.mouse.move(a.x, a.y); await own.mouse.down(); await own.mouse.move(b0.x, b0.y, { steps: 20 }); await own.mouse.up();
     await own.waitForTimeout(800);
-    t.push(['season: a title dragged to the front of Distribution by Title', (await titles())[0] === sOrder[2]]);
+    t.push(['season: the third title swapped with the first in Distribution by Title', (await titles())[0] === sOrder[2] && (await titles())[2] === sOrder[0]]);
     t.push(['…and the Warehouse Overview follows the same order', await own.$eval('#whOverview .stat-grid > [data-id]', c => c.dataset.id) === sOrder[2]]);
     await own.screenshot({ path: shot('season') });
     await own.evaluate(() => { document.querySelector('#arrDock [data-act="arrange"]').click(); }); await own.waitForTimeout(200);
@@ -163,6 +166,22 @@ const API = 'http://api.test/';
     await own.evaluate(() => bookDisplayModal()); await own.waitForTimeout(300);
     t.push(['Edit Book Display still shows (and saves) the shared order', (await own.$$eval('#bdList .ro-row', r => r.map(x => x.dataset.id)))[0] === sOrder[0]]);
     await own.evaluate(() => closeModal());
+
+    /* ---- b248: hide and show from Arrange; no Edit Book Display in practice ---- */
+    await atEvent(own);
+    t.push(['practice: Edit Book Display is gone from the menu', !!(await own.$('[data-act="addstock"]')) && !(await own.$('[data-act="bookdisplay"]'))]);
+    const ev = await shelf(own);
+    await own.click(tg); await own.waitForTimeout(300);
+    t.push(['arranging (Universal): "Hide here" on every title', await own.$$eval('#invGrid .arr-hide', b => b.length) === ev.length]);
+    await own.click(`#invGrid > [data-id="${ev[1]}"] .arr-hide`); await own.waitForTimeout(800);
+    t.push(['"Hide here" takes the title off this shelf', !(await shelf(own)).includes(ev[1]) && (await shelf(own)).length === ev.length - 1]);
+    t.push(['…still arranging, and "Hidden here (1)" in the note', /Hidden here \(1\)/.test(await own.textContent('#arrDock'))]);
+    await own.click('#arrDock [data-act="arrhidden"]'); await own.waitForTimeout(300);
+    await own.click(`#modal [data-show-title="${ev[1]}"]`); await own.waitForTimeout(800);
+    await own.evaluate(() => closeModal()); await own.waitForTimeout(300);
+    t.push(['"Hidden here" › Show puts it back', (await shelf(own)).includes(ev[1])]);
+    await own.click('#arrDock [data-act="arrange"]'); await own.waitForTimeout(200);
+    t.push(['Sita (not Universal) gets no "Hide here"', await sita.evaluate(() => { ARRANGE = true; renderAll(); const n = document.querySelectorAll('#invGrid .arr-hide').length; ARRANGE = false; renderAll(); return n; }) === 0]);
 
     /* ---- Sita on her phone: an order of its own; arranges by finger ---- */
     const ph = await open('sita@example.com', 'Sita', 390, { phone: true, height: 760 });
@@ -176,10 +195,10 @@ const API = 'http://api.test/';
     await ph.$eval('#invGrid', g => g.scrollIntoView({ block: 'start' })); await ph.waitForTimeout(200);
     const g2 = await centre(ph, `#invGrid > .book[data-id="${mine[2]}"] .arr-grip`);
     const c0 = await centre(ph, `#invGrid > .book[data-id="${mine[0]}"]`);
-    await finger(ph, g2, { x: c0.x - 20, y: c0.y });
+    await finger(ph, g2, { x: c0.x, y: c0.y });
     await ph.waitForTimeout(800);
     const now = await shelf(ph);
-    t.push(['phone: the third title dragged by its Drag bar to the front', now[0] === mine[2] && now.length === mine.length]);
+    t.push(['phone: the third title dragged by its Drag bar swaps with the first', JSON.stringify(now) === JSON.stringify(swapped(mine, 0, 2))]);
     await ph.screenshot({ path: shot('phone') });
     me = await ask({ action: 'me', s: await sessionOf('sita@example.com', 'Sita') });
     t.push(['…saved as her phone order, her computer order untouched', (me.result.prefs.bookOrderPhone || [])[0] === mine[2] && (me.result.prefs.bookOrder || [])[0] === shared[n - 1]]);
@@ -195,6 +214,9 @@ const API = 'http://api.test/';
     const live = await open('sita@example.com', 'Sita', 1150, { live: true });
     await atEvent(live);
     t.push(['live app: no ⇅ yet (practice first)', !(await live.$('.arr-tg'))]);
+    const liveOwn = await open('owner@example.com', 'The Owner', 1150, { live: true });
+    await atEvent(liveOwn);
+    t.push(['live app: Edit Book Display still in the menu', !!(await liveOwn.$('[data-act="bookdisplay"]'))]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));
     t.push(['test ran to the end', false]);

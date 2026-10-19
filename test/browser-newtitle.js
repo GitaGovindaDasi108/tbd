@@ -1,7 +1,8 @@
 /* Optional, needs Playwright + Chromium: node test/browser-newtitle.js
    b247: a new title or language typed in Add Stock is not added to the
    catalogue until Save, and a title added by mistake can be deleted from Edit
-   Book Display. Every Apps Script request is answered by the fake server
+   Book Display (b247) or by deleting its "Added a new title" entry in the
+   Activity log (b248). Every Apps Script request is answered by the fake server
    (mini.js) running the real Code.gs; nothing leaves the machine. */
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){
   return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
@@ -105,6 +106,36 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     await page.click(`#modal [data-bd-del="${hi[0].id}"]`); await page.waitForTimeout(1500);
     t.push(['🗑 deletes it from the catalogue', named('Sri Radha (Hindi)').length === 0]);
     t.push(['…and from the screen', await page.evaluate(id => !(STATE.books || []).some(b => b.id === id), hi[0].id)]);
+
+    // b248: "Added a new title" in the Activity log is undone like any entry.
+    await page.evaluate(() => closeModal()); await page.waitForTimeout(300);
+    await openStock();
+    await newLang('Bengali');
+    id = await lastInput();
+    await page.fill(`#spBody input.d-delta[data-book="${id}"]`, '2');
+    await page.click('#spSave'); await page.waitForTimeout(2000);
+    const bn = named('Sri Radha (Bengali)');
+    t.push(['(Sri Radha (Bengali) saved, with 2 copies)', bn.length === 1 && qty(WH, bn[0].id) === 2]);
+    const log = () => m.call({ action: 'activity' }).result;
+    const entry = log().find(x => /Added a new title: “Sri Radha \(Bengali\)”/.test(x.text));
+    t.push(['the Activity log has "Added a new title", with Delete', !!entry && entry.canUndo]);
+    await page.evaluate(() => activityModal()); await page.waitForTimeout(1500);
+    await page.click(`#modal [data-alundo="${entry.id}"]`); await page.waitForTimeout(2000);
+    t.push(['Delete takes the title out of the catalogue', named('Sri Radha (Bengali)').length === 0]);
+    t.push(['…and off the screen', await page.evaluate(id => !(STATE.books || []).some(b => b.id === id), bn[0].id)]);
+    t.push(['…the entry shows as undone', log().some(x => x.id === entry.id && x.undoneAt)]);
+    // Choosing a title that already exists is not "added", so it is not logged.
+    const before = log().length;
+    m.call({ action: 'addBook', name: 'Sri Radha (English)', cat: 'big', orExisting: true });
+    t.push(['an existing title chosen again adds nothing to the log', log().length === before]);
+    // Entries written before b248 carry no undo: found by the title's name.
+    m.call({ action: 'addBook', name: 'Old Way (Bengali)', cat: 'big' });
+    const sh = m.sheet('_activity'), v = sh.getDataRange().getValues(), c = v[0].indexOf('undo');
+    const r = v.findIndex(x => /Old Way/.test(x.join('|'))); sh.getRange(r + 1, c + 1).setValue(''); m.clear();
+    const old = log().find(x => /Old Way/.test(x.text));
+    t.push(['an older "Added a new title" entry can be deleted too', !!old && old.canUndo]);
+    m.call({ action: 'undoActivity', id: old.id });
+    t.push(['…and deleting it takes the title out', named('Old Way (Bengali)').length === 0]);
   } catch (e) { t.push(['ran to the end: ' + e.message, false]); }
   t.push(['no page errors', !errors.length]);
   if (errors.length) console.log(errors);

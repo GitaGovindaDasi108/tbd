@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b247**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b248**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,14 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b248 — swap to arrange; undo a new title from the Activity log; no Edit Book Display (practice)
+
+- **Arrange swaps (practice):** dropping a book on another swaps the two; nothing else moves while dragging (the book it will swap with is outlined). Before, the rest shuffled along like a phone's home screen. `makeShelfSortable` in index.html.
+- **Undo a new title:** "Added a new title" in the Activity log now has Delete, which takes the title out of the catalogue (deleteBook: refused with sales, clears its stock). Older entries, written without an undo, find the title by name (`addedBookId_` in Code.gs). Choosing a title that already exists (Add Stock's orExisting) is no longer logged as "added".
+- **Edit Book Display (practice):** gone from the menu. While arranging, Universal gets "Hide here" on each title of a region's or an event's shelf, and "Hidden here (n)" in the note at the foot, which lists hidden titles with Show plus "Hide all out of stock books". Live keeps Edit Book Display (with its 🗑) until Arrange is promoted. The shared order can no longer be changed in practice; personal orders (⇅) are unchanged.
+- **Server:** Code.gs changed (SERVER_BUILD b248); Cloudflare redeploys itself on merge.
+- **Tests:** browser-arrange.js updated for swapping, plus hide/show and the menu (37 checks). browser-newtitle.js adds the Activity log undo, old entries, and orExisting not logged (22 checks).
 
 ## Done in b247 — new titles wait for Save; a mistaken title can be deleted
 
