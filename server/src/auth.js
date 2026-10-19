@@ -34,6 +34,8 @@
 
 const DAY = 24 * 3600 * 1000;
 export const SESSION_DAYS = 90;
+// The settings a person may keep with their login (b243).
+const PREF_KEYS = ['bookOrder'];
 const GOOGLE_KEYS = 'https://www.googleapis.com/oauth2/v3/certs';
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 
@@ -44,6 +46,8 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
   exec('CREATE TABLE IF NOT EXISTS access_request (email TEXT PRIMARY KEY, name TEXT NOT NULL, at INTEGER NOT NULL, status TEXT NOT NULL)');
   exec('CREATE TABLE IF NOT EXISTS person (email TEXT PRIMARY KEY, name TEXT NOT NULL, googleName TEXT NOT NULL, addedBy TEXT NOT NULL, addedAt INTEGER NOT NULL)');
   exec('CREATE TABLE IF NOT EXISTS grant_ (id TEXT PRIMARY KEY, email TEXT NOT NULL, role TEXT NOT NULL, placeId TEXT NOT NULL, addedBy TEXT NOT NULL, addedAt INTEGER NOT NULL)');
+  // Each person's own settings, kept with their login so they follow them to any device (b243).
+  exec('CREATE TABLE IF NOT EXISTS pref (email TEXT NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY (email, key))');
   // The admin list from before roles: each admin becomes Universal (once; the id makes it so).
   exec('SELECT email, name, addedBy, addedAt FROM admin').forEach(a => {
     if (!exec('SELECT email FROM person WHERE email = ?', a.email).length)
@@ -193,6 +197,24 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       ensurePerson(email, '', 'self');
       exec('UPDATE person SET name = ? WHERE email = ?', name, email);
       return name;
+    },
+    /* Their own settings (b243): { key: value }. Only the person themself reads or sets them. */
+    prefsOf(email) {
+      const out = {};
+      exec('SELECT key, value FROM pref WHERE email = ?', String(email || '').toLowerCase()).forEach(r => {
+        try { out[r.key] = JSON.parse(r.value); } catch (e) {}
+      });
+      return out;
+    },
+    setPref(email, key, value) {
+      email = String(email || '').toLowerCase(); key = String(key || '');
+      if (!email) throw new Error('Sign in to keep your own settings.');
+      if (PREF_KEYS.indexOf(key) < 0) throw new Error('That setting cannot be kept.');
+      if (value === null || value === undefined) { exec('DELETE FROM pref WHERE email = ? AND key = ?', email, key); return; }
+      const text = JSON.stringify(value);
+      if (text.length > 20000) throw new Error('That setting is too long to keep.');
+      exec('DELETE FROM pref WHERE email = ? AND key = ?', email, key);
+      exec('INSERT INTO pref (email, key, value, at) VALUES (?, ?, ?, ?)', email, key, text, now());
     },
     /* Give a role. The rules (who may give what, where) are checked by the caller. */
     addGrant(me, email, name, role, placeId) {

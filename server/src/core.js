@@ -158,7 +158,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
     // Who I am, my roles, and the People panel (b222).
-    if (!linkKey && /^(me|setMyName|people(List|Add|Remove|Decline)|emergencyLink)$/.test(action)) {
+    if (!linkKey && /^(me|setMyName|setMyPref|people(List|Add|Remove|Decline)|emergencyLink)$/.test(action)) {
       try { return reply({ ok: true, result: peopleAction(me, action, p) }); }
       catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
@@ -255,6 +255,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       active: true, why: '', usable: true, owner: true });
     return Object.assign(auth.person(me), {
       universal: auth.isAdmin(me), grants,
+      prefs: me ? auth.prefsOf(me) : {},
       seesPeople: people.seesPeople(mine, owner),
       givesLogins: people.givesAny(P, mine, owner),
       // Events they may hand an emergency link for.
@@ -272,6 +273,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const P = places(), mine = auth.grantsOf(me), owner = auth.isOwner(me) || mine.some(g => g.role === 'U');
     if (action === 'me') return meInfo(me);
     if (action === 'setMyName') { auth.setName(me, p.name); return meInfo(me); }
+    // Their own settings, e.g. the order they like the books in (b243).
+    if (action === 'setMyPref') { if (!me) throw new Error('Sign in to keep your own settings.'); auth.setPref(me, p.key, p.value); return meInfo(me); }
     if (action === 'emergencyLink') {
       const id = String(p.eventId || '');
       if (!mayLink(P, me, id)) throw new Error('You cannot make a link for that event.');

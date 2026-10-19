@@ -183,6 +183,20 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   r = await ask({ action: 'adminsList', s: helper });
   t.push(['the old Admins panel lists Universal people', r.ok && r.result.admins.some(a => a.email === 'helper@example.com')]);
 
+  // ---- Each person's own book order, kept with their login (b243) ----
+  r = await G({ action: 'setMyPref', key: 'bookOrder', value: ['b3', 'b1', 'b2'] });
+  t.push(['b243: a person keeps their own book order', r.ok && JSON.stringify(r.result.prefs.bookOrder) === '["b3","b1","b2"]']);
+  r = await G({ action: 'me' });
+  t.push(['…it comes back with "me" (any device they sign in on)', r.ok && JSON.stringify(r.result.prefs.bookOrder) === '["b3","b1","b2"]']);
+  r = await ask({ action: 'me', s: helper });
+  t.push(['…nobody else gets it', r.ok && !r.result.prefs.bookOrder]);
+  r = await G({ action: 'setMyPref', key: 'role', value: 'U' });
+  t.push(['…only known settings can be kept', !r.ok && /cannot be kept/.test(r.error)]);
+  r = await ask({ action: 'setMyPref', key: 'bookOrder', value: ['x'] });
+  t.push(['…not without signing in', !r.ok]);
+  r = await G({ action: 'setMyPref', key: 'bookOrder', value: null });
+  t.push(['…and back to the shared order', r.ok && !('bookOrder' in r.result.prefs)]);
+
   console.log = quiet;
   t.forEach(([n, ok]) => console.log((ok ? 'PASS' : 'FAIL') + ' ' + n));
   const bad = t.filter(x => !x[1]).length;

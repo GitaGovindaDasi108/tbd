@@ -355,15 +355,20 @@ button.sc-transit:hover{color:#1F4F86}
   border-radius:999px;padding:1px 7px;margin-left:6px}
 .ro-tag.done{background:#E8F3EC;color:#1F6B43;border:1px solid #A9CDB6}
 .ro-tag.pend{background:#FDF0DC;color:#8A5A12;border:1px solid #E3C089}
-/* Drag handle and the gap left behind while a row is being moved. */
+/* Drag handle and the gap left behind while a row is being moved (b241: the
+   handle is a finger-sized target; only it, not the whole row, stops the page
+   scrolling under a finger, so the list can still be swiped). */
 .ro-grip{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
-  padding:0 8px 0 2px;color:var(--muted);font-size:15px;line-height:1}
-/* Stops the page scrolling under a finger that is dragging a row. */
-.ro-row{touch-action:none}
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
+  min-width:40px;min-height:40px;margin:-8px -4px -8px -10px;
+  color:var(--muted);font-size:18px;line-height:1}
 .ro-grip:active{cursor:grabbing}
-.ro-row.ro-lift{position:relative;z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.18);
-  background:var(--paper);border-color:var(--saffron);opacity:.97}
-.ro-gap{border:1.5px dashed var(--line-d);border-radius:9px;margin-bottom:5px;background:#FBF6EC}
+.ro-row{cursor:grab}
+.ro-row button,.ro-row input{cursor:pointer}
+.ro-row.ro-lift{z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.18);cursor:grabbing;
+  background:var(--paper);border-color:var(--saffron);opacity:.97;pointer-events:none}
+.ro-gap{box-sizing:border-box;border:1.5px dashed var(--saffron);border-radius:9px;margin-bottom:6px;background:#FBF6EC}
+body.ro-dragging{user-select:none;-webkit-user-select:none;cursor:grabbing}
 .ro-btns{display:flex;gap:4px;flex:none}
 /* Busy indicator: a small ring by the status text, plus a thin bar across the
    very top so it is visible even when scrolled away from the header. */
@@ -776,6 +781,29 @@ body.has-na .overlay{z-index:10000}
 .resv{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.3px;margin-top:2px}
 .region{font-size:9.5px;color:var(--blue);font-weight:600;letter-spacing:.2px;margin-top:2px;opacity:.9}
 .region + .region{margin-top:0}
+/* Arranging the shelf (b243, practice first): pick up a book card and drop it
+   where you want it. A finger lifts a card by its ⠿ handle, so swiping the rest
+   of the shelf still scrolls; a mouse can lift it anywhere. Nothing on a card
+   can be pressed while arranging, so a drag never sells a book by mistake. */
+.arr-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;
+  border:1.5px dashed var(--saffron);border-radius:10px;background:#FBF6EC;font-size:13px;color:var(--ink)}
+.arr-bar[hidden]{display:none}
+.arr-bar .arr-msg{flex:1 1 220px;line-height:1.35}
+.inv-grid.arranging .book:not(.don-card){cursor:grab;user-select:none;-webkit-user-select:none}
+.inv-grid.arranging .book *{pointer-events:none}
+.inv-grid.arranging .book .arr-grip{pointer-events:auto}
+.inv-grid.arranging .don-card{opacity:.55}
+.inv-grid.arranging .bk-btns{display:none}
+.arr-grip{display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;margin-top:8px;
+  border-radius:9px;background:var(--paper);border:1.5px dashed var(--line-d);color:var(--muted);
+  font-size:13px;font-weight:700;line-height:1;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.arr-grip b{font-size:18px;font-weight:400}
+.list-view .arr-grip{order:2;margin-top:0;min-width:84px;flex:none}
+/* The lifted card, handle and all, lets the pointer see what is beneath it. */
+.inv-grid.arranging .book.arr-lift, .inv-grid.arranging .book.arr-lift *{pointer-events:none}
+.book.arr-lift{position:fixed;z-index:60;margin:0;cursor:grabbing;
+  box-shadow:0 12px 28px rgba(0,0,0,.25);border-color:var(--saffron)}
+.book.arr-gap{border:2px dashed var(--saffron);background:#FBF6EC;box-shadow:none;min-height:0}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
@@ -1656,7 +1684,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b242</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b243</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1730,8 +1758,10 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <h2 id="invHeading" class="inv-h2">Inventory
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
-          title="Copy the shelf for WhatsApp">📋</button></h2>
-      <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
+          title="Copy the shelf for WhatsApp">📋</button>
+        <button class="btn btn-gold btn-sm arr-btn" data-act="arrange" hidden
+          title="Put the books in the order you like">↕ Arrange</button></h2>
+      <div class="body"><div class="arr-bar" id="invArrBar" hidden></div><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
       <section class="panel" data-fold="log">
@@ -2497,8 +2527,12 @@ function inRegionOrder(list){
   let raw = (r && r.bookOrder) || [];
   if(!(Array.isArray(raw) ? raw.length : String(raw).trim())) raw = STATE.seasonBookOrder || [];
   const order = Array.isArray(raw) ? raw : String(raw).split(',').map(x=>x.trim()).filter(Boolean);
-  if(!order.length) return list;
+  if(!order.length) return inMyOrder(list);
   const rank = {}; order.forEach((id,i)=>{ rank[id]=i; });
+  return inMyOrder(byRank(list, rank));
+}
+/* Sort by rank; anything unranked keeps its place behind the ranked ones. */
+function byRank(list, rank){
   return list.map((b,i)=>({b,i})).sort((x,y)=>{
     const a=rank[x.b.id], c=rank[y.b.id];
     const aH=a!==undefined, cH=c!==undefined;
@@ -2507,6 +2541,41 @@ function inRegionOrder(list){
     if(!aH&&cH) return 1;
     return x.i-y.i;
   }).map(x=>x.b);
+}
+
+/* ---- My own book order (b243, practice first) ----
+   Anyone can put the books in the order they like, on the shelf itself
+   (↕ Arrange). Signed in, it is kept with their login, so it follows them to
+   any phone or computer; on a link (no login), on this device. It sits on top
+   of the shared order set in Edit Book Display: a title they have never placed
+   keeps the shared order. Edit Book Display itself always shows and saves the
+   shared order (sharedOrder). */
+var SHARED_ORDER_ONLY = false;
+function sharedOrder(fn){ SHARED_ORDER_ONLY = true; try{ return fn(); } finally{ SHARED_ORDER_ONLY = false; } }
+const MY_ORDER = {
+  KEY: 'tbs_my_order',
+  local(){ try{ const v = JSON.parse(localStorage.getItem(this.KEY)||'[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } },
+  get(){
+    if(!PRACTICE || SHARED_ORDER_ONLY) return [];
+    if(typeof ME!=='undefined' && ME && ME.prefs) return Array.isArray(ME.prefs.bookOrder) ? ME.prefs.bookOrder : [];
+    return this.local();
+  },
+  /* Kept on this device at once (so it shows straight away), and with the
+     login when there is one. An empty list goes back to the shared order. */
+  async set(ids){
+    const v = ids && ids.length ? ids : null;
+    try{ v ? localStorage.setItem(this.KEY, JSON.stringify(v)) : localStorage.removeItem(this.KEY); }catch(e){}
+    if(typeof ME!=='undefined' && ME){ ME.prefs = Object.assign({}, ME.prefs); if(v) ME.prefs.bookOrder = v; else delete ME.prefs.bookOrder; }
+    if(!signedInHere()) return true;
+    try{ const r = await post({action:'setMyPref', key:'bookOrder', value:v}); if(r && r.result) ME = r.result; return true; }
+    catch(e){ toast('Your order is on this device only for now: ' + e.message, true); return false; }
+  }
+};
+function inMyOrder(list){
+  const mine = MY_ORDER.get();
+  if(!mine.length) return list;
+  const rank = {}; mine.forEach((id,i)=>{ rank[id]=i; });
+  return byRank(list, rank);
 }
 
 function curBooks(){
@@ -5119,6 +5188,8 @@ function renderTotals(){
 }
 
 function renderInventory(){
+  // Not while a card is being dragged: it is redrawn when it is dropped.
+  if(SHELF_DRAG.on){ SHELF_DRAG.redraw = true; return; }
   $('#invHeading').firstChild.textContent = isHQ() ? 'Earthly HQ Warehouse '
     : (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
   const s=scopedSales();
@@ -5143,7 +5214,7 @@ function renderInventory(){
     else if(avail<=0) flag=`<span class="flag held sold-tag">ALL PRE-ORDERED</span>`;
     else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
     const lc = langCard(b);
-    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}${lc.cls}"${lc.style}>
+    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}${lc.cls}"${lc.style} data-id="${esc(b.id)}">
       ${(q<=0||avail<=0)?flag:''}
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div>
@@ -5174,6 +5245,7 @@ function renderInventory(){
         </div>
         ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
       </div>
+      ${ARRANGE?'<div class="arr-grip" title="Drag to move"><b>⠿</b> Drag</div>':''}
       <div class="bk-btns">
         <button class="sell-btn" data-act="sell" data-book="${b.id}" ${sellable?'':'disabled'}>Sell</button>
         <button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order</button>
@@ -5197,6 +5269,7 @@ function renderInventory(){
     </div>
   </div>`;
   $('#invGrid').innerHTML=h;
+  arrangeBar();
   // One-line entry point for a multi-book transaction, under the grid.
   /* Titles kept off this event's shelf are still one tap away to pre-order —
      people ask for books that were never on the table. So is every other title
@@ -13062,72 +13135,273 @@ function seasonEditModal(id){
 
    Built on pointer events rather than HTML5 drag-and-drop, which simply does not
    fire on a phone — and this list is used on a phone more than anywhere else.
-   Dragging is on a handle, not the whole row, so the list can still be scrolled
-   with a finger. The arrows stay: dragging is fiddly on a small screen and
-   nobody should be forced into it. */
+   A finger drags by the handle only, so swiping a row still scrolls the list; a
+   mouse can grab the row anywhere but its buttons and tickboxes. The arrows
+   stay: dragging is fiddly on a small screen and nobody should be forced into it.
+
+   b241: the lifted row now floats above the list while one gap marks where it
+   will land (it used to leave a blank where it had been as well as the gap); the
+   list scrolls by itself when the row is held near its top or bottom edge, so a
+   title at the bottom of a long list can reach the top; and the handler is bound
+   once per list. It used to be bound again on every redraw, so after one arrow
+   press or one drag the next drag ran two or three times over, leaving extra
+   gaps and rows in the wrong place. */
 function makeSortable(container, onDrop){
   if(!container) return;
-  let row=null, rows=[], startY=0, offset=0, placeholder=null;
+  container._roDrop = onDrop;           // the list redraws itself after every move
+  if(container._roBound) return;
+  container._roBound = true;
 
-  function rowsNow(){ return [...container.children].filter(c=>c.classList.contains('ro-row')); }
+  const EDGE = 48;                      // px from the edge of the scroll area where it starts to scroll
+  let row=null, gap=null, scroller=null, pid=null, pending=null;
+  let startY=0, startTop=0, startScroll=0, lastY=0, raf=0, moved=false, noClick=false;
+
+  const rowsNow = () => [...container.children].filter(c=>c.classList.contains('ro-row'));
+  const scrollTopOf = () => scroller===document.scrollingElement ? window.scrollY : scroller.scrollTop;
+  function findScroller(el){
+    for(let p=el.parentElement; p && p!==document.body; p=p.parentElement){
+      const s = getComputedStyle(p).overflowY;
+      if((s==='auto'||s==='scroll') && p.scrollHeight>p.clientHeight) return p;
+    }
+    return document.scrollingElement;
+  }
+  function edges(){
+    if(scroller===document.scrollingElement) return {top:0, bottom:window.innerHeight};
+    const b = scroller.getBoundingClientRect(); return {top:b.top, bottom:b.bottom};
+  }
 
   function onDown(e){
-    const handle = e.target.closest('.ro-grip');
-    if(!handle) return;
-    row = handle.closest('.ro-row');
-    if(!row) return;
-    e.preventDefault();
-    rows = rowsNow();
-    const r = row.getBoundingClientRect();
-    startY = e.clientY; offset = 0;
-    // A gap of the same height keeps everything below from jumping about.
-    placeholder = document.createElement('div');
-    placeholder.className = 'ro-gap';
-    placeholder.style.height = r.height + 'px';
-    row.parentNode.insertBefore(placeholder, row);
-    row.classList.add('ro-lift');
-    row.style.width = r.width + 'px';
-    row.style.height = r.height + 'px';
-    handle.setPointerCapture && handle.setPointerCapture(e.pointerId);
+    if(row || (e.pointerType==='mouse' && e.button!==0)) return;
+    const r = e.target.closest('.ro-row');
+    if(!r || r.parentNode!==container) return;
+    const onGrip = !!e.target.closest('.ro-grip');
+    if(!onGrip){
+      // Fingers drag by the handle only; a mouse may grab the row itself, but
+      // not its buttons, tickboxes or links.
+      if(e.pointerType!=='mouse' || e.target.closest('button,input,select,textarea,a,label')) return;
+    }
+    e.preventDefault();                 // no text selection, no page scroll
+    pid = e.pointerId; startY = lastY = e.clientY;
+    try{ container.setPointerCapture(pid); }catch(_){}
     document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp, {once:true});
-    document.addEventListener('pointercancel', onUp, {once:true});
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    // From the handle the row lifts at once; from the row itself only once the
+    // mouse has really moved, so a plain click still is a click.
+    if(onGrip) lift(r); else pending = r;
+  }
+
+  function lift(r){
+    pending = null; row = r; moved = false;
+    scroller = findScroller(container);
+    container.style.position = 'relative';
+    const top = row.offsetTop, left = row.offsetLeft, w = row.offsetWidth, h = row.offsetHeight;
+    gap = document.createElement('div');
+    gap.className = 'ro-gap';
+    gap.style.height = h + 'px';
+    container.insertBefore(gap, row);
+    row.classList.add('ro-lift');
+    Object.assign(row.style, {position:'absolute', left:left+'px', top:top+'px', width:w+'px', margin:'0'});
+    startTop = top; startScroll = scrollTopOf();
+    document.body.classList.add('ro-dragging');
+    raf = requestAnimationFrame(tick);
+  }
+
+  // Where the row sits now, and which slot the gap should be in.
+  function place(){
+    // It may poke half out past either end, so the very top and bottom slots
+    // are always in reach.
+    const h = row.offsetHeight, max = container.scrollHeight - h;
+    const top = Math.max(-h/2, Math.min(max + h/2, startTop + (lastY - startY) + (scrollTopOf() - startScroll)));
+    row.style.top = top + 'px';
+    const mid = top + h/2;
+    let target = null;
+    for(const x of rowsNow()){
+      if(x===row) continue;
+      if(mid < x.offsetTop + x.offsetHeight/2){ target = x; break; }
+    }
+    if(target){ if(gap.nextSibling!==target) container.insertBefore(gap, target); }
+    else if(container.lastElementChild!==gap) container.appendChild(gap);
+  }
+
+  // Held near the top or bottom edge: scroll, faster the closer to the edge.
+  function tick(){
+    if(!row) return;
+    const ed = edges();
+    let dy = 0;
+    if(lastY < ed.top + EDGE) dy = -Math.ceil((ed.top + EDGE - lastY) / 3);
+    else if(lastY > ed.bottom - EDGE) dy = Math.ceil((lastY - (ed.bottom - EDGE)) / 3);
+    if(dy){
+      dy = Math.max(-20, Math.min(20, dy));
+      if(scroller===document.scrollingElement) window.scrollBy(0, dy); else scroller.scrollTop += dy;
+      place();
+    }
+    raf = requestAnimationFrame(tick);
   }
 
   function onMove(e){
+    if(e.pointerId!==pid) return;
+    lastY = e.clientY;
+    if(pending){ if(Math.abs(lastY - startY) < 5) return; lift(pending); }
     if(!row) return;
-    offset = e.clientY - startY;
-    row.style.transform = 'translateY(' + offset + 'px)';
-    const mid = row.getBoundingClientRect().top + row.offsetHeight/2;
-    const others = rowsNow().filter(x=>x!==row);
-    let target = null;
-    for(const x of others){
-      const b = x.getBoundingClientRect();
-      if(mid < b.top + b.height/2){ target = x; break; }
-    }
-    // Move the gap, never the dragged row, so the drag stays smooth.
-    if(target) container.insertBefore(placeholder, target);
-    else container.appendChild(placeholder);
+    e.preventDefault();
+    moved = true;
+    place();
   }
 
-  function onUp(){
+  function onUp(e){
+    if(e.pointerId!==pid) return;
     document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    try{ container.releasePointerCapture(pid); }catch(_){}
+    pid = null; pending = null;
     if(!row) return;
+    cancelAnimationFrame(raf);
     row.classList.remove('ro-lift');
-    row.style.transform=''; row.style.width=''; row.style.height='';
-    if(placeholder && placeholder.parentNode){
-      placeholder.parentNode.insertBefore(row, placeholder);
-      placeholder.remove();
-    }
-    placeholder=null;
+    ['position','left','top','width','margin'].forEach(p=>row.style[p]='');
+    if(gap.parentNode){ container.insertBefore(row, gap); gap.remove(); }
+    gap = null; container.style.position = '';
+    document.body.classList.remove('ro-dragging');
+    // A drag that started on the row itself must not also count as a click.
+    // (The click, if any, comes straight after this pointerup.)
+    if(moved){ noClick = true; setTimeout(()=>{ noClick = false; }, 0); }
     const order = rowsNow().map(x=>x.dataset.id).filter(Boolean);
-    row=null;
-    if(onDrop) onDrop(order);
+    row = null;
+    if(container._roDrop) container._roDrop(order);
   }
 
   container.addEventListener('pointerdown', onDown);
+  container.addEventListener('click', ev=>{
+    if(noClick){ ev.stopPropagation(); ev.preventDefault(); }
+  }, true);
 }
 
+
+/* ---- Arranging the shelf itself (b243, practice first) ----
+   ↕ Arrange on the Inventory heading turns the shelf into something you can
+   rearrange: pick up a book card, drop it where you want it, press Done. The
+   order is the person's own (MY_ORDER), saved the moment a card is dropped.
+   Same feel as the lists in makeSortable: a dashed gap shows where the card
+   will land, and holding a card near the top or bottom of the screen scrolls. */
+var ARRANGE = false;
+var SHELF_DRAG = { on:false, redraw:false };
+function arrangeBar(){
+  const btn = document.querySelector('#invHeading .arr-btn'), bar = $('#invArrBar'), grid = $('#invGrid');
+  if(!btn || !bar || !grid) return;
+  btn.hidden = !PRACTICE;
+  if(!PRACTICE) ARRANGE = false;
+  btn.textContent = ARRANGE ? '✓ Done' : '↕ Arrange';
+  grid.classList.toggle('arranging', ARRANGE);
+  bar.hidden = !ARRANGE;
+  if(ARRANGE){
+    const where = signedInHere() ? 'It is kept with your login, so it is the same on any phone or computer you sign in on.'
+                                 : 'It is kept on this device.';
+    bar.innerHTML = `<span class="arr-msg"><b>Arrange your books.</b> Drag a book to where you want it (on a phone, by its ⠿ Drag bar). ${where}</span>
+      ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
+      <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
+    makeShelfSortable(grid);
+  }
+}
+/* The new order of the titles on this shelf, folded into the whole catalogue:
+   they take the places they already held among every title, so the order of
+   titles elsewhere (another region's shelf) is left as it was. */
+function saveShelfOrder(ids){
+  const full = inRegionOrder((STATE.books||[]).slice()).map(b=>b.id);
+  const at = new Set(full), here = new Set(ids);
+  const placed = ids.filter(id=>at.has(id));
+  const out = full.slice(); let k = 0;
+  full.forEach((id,i)=>{ if(here.has(id)) out[i] = placed[k++]; });
+  MY_ORDER.set(out.concat(ids.filter(id=>!at.has(id))));
+  renderAll();
+}
+function makeShelfSortable(grid){
+  if(!grid || grid._arrBound) return;
+  grid._arrBound = true;
+  const EDGE = 60;
+  let card=null, gap=null, pending=null, pid=null, sx=0, sy=0, x=0, y=0, dx=0, dy=0, raf=0, moved=false, noClick=false;
+
+  function onDown(e){
+    if(!ARRANGE || card || (e.pointerType==='mouse' && e.button!==0)) return;
+    const c = e.target.closest('.book[data-id]');
+    if(!c || c.parentNode!==grid) return;
+    const onGrip = !!e.target.closest('.arr-grip');
+    if(!onGrip && e.pointerType!=='mouse') return;   // a finger elsewhere scrolls the page
+    e.preventDefault();
+    pid = e.pointerId; sx = x = e.clientX; sy = y = e.clientY;
+    try{ grid.setPointerCapture(pid); }catch(_){}
+    document.addEventListener('pointermove', onMove);
+    document.addEventListener('pointerup', onUp);
+    document.addEventListener('pointercancel', onUp);
+    if(onGrip) lift(c); else pending = c;
+  }
+  function lift(c){
+    pending = null; card = c; moved = false;
+    SHELF_DRAG.on = true; SHELF_DRAG.redraw = false;
+    const r = c.getBoundingClientRect();
+    dx = sx - r.left; dy = sy - r.top;
+    gap = document.createElement('div');
+    gap.className = 'book arr-gap';
+    gap.style.height = r.height + 'px';
+    grid.insertBefore(gap, c);
+    c.classList.add('arr-lift');
+    Object.assign(c.style, {left:r.left+'px', top:r.top+'px', width:r.width+'px', height:r.height+'px'});
+    document.body.classList.add('ro-dragging');
+    raf = requestAnimationFrame(tick);
+  }
+  /* The card follows the pointer; the gap moves past whichever card is under
+     it. (Moving past, not onto, keeps it from flickering between two places.)
+     The donation card stays last. */
+  function follow(){
+    card.style.left = (x - dx) + 'px'; card.style.top = (y - dy) + 'px';
+    const el = document.elementFromPoint(x, y);
+    const over = el && el.closest && el.closest('.book');
+    if(!over || over===gap || over===card || over.parentNode!==grid) return;
+    if(over.classList.contains('don-card')){ if(gap.nextElementSibling!==over) grid.insertBefore(gap, over); return; }
+    const kids = [...grid.children];
+    if(kids.indexOf(gap) < kids.indexOf(over)) grid.insertBefore(gap, over.nextSibling);
+    else grid.insertBefore(gap, over);
+  }
+  function tick(){
+    if(!card) return;
+    let v = 0;
+    if(y < EDGE) v = -Math.ceil((EDGE - y) / 3);
+    else if(y > window.innerHeight - EDGE) v = Math.ceil((y - (window.innerHeight - EDGE)) / 3);
+    if(v){ window.scrollBy(0, Math.max(-20, Math.min(20, v))); follow(); }
+    raf = requestAnimationFrame(tick);
+  }
+  function onMove(e){
+    if(e.pointerId!==pid) return;
+    x = e.clientX; y = e.clientY;
+    if(pending){ if(Math.hypot(x - sx, y - sy) < 5) return; lift(pending); }
+    if(!card) return;
+    e.preventDefault();
+    moved = true;
+    follow();
+  }
+  function onUp(e){
+    if(e.pointerId!==pid) return;
+    document.removeEventListener('pointermove', onMove);
+    document.removeEventListener('pointerup', onUp);
+    document.removeEventListener('pointercancel', onUp);
+    try{ grid.releasePointerCapture(pid); }catch(_){}
+    pid = null; pending = null;
+    if(!card) return;
+    cancelAnimationFrame(raf);
+    card.classList.remove('arr-lift');
+    ['left','top','width','height'].forEach(p=>card.style[p]='');
+    if(gap.parentNode){ grid.insertBefore(card, gap); gap.remove(); }
+    gap = null; card = null;
+    document.body.classList.remove('ro-dragging');
+    SHELF_DRAG.on = false;
+    if(moved){ noClick = true; setTimeout(()=>{ noClick = false; }, 0); }
+    const ids = [...grid.querySelectorAll(':scope > .book[data-id]')].map(c=>c.dataset.id);
+    if(moved) saveShelfOrder(ids);
+    else if(SHELF_DRAG.redraw) renderInventory();
+  }
+  grid.addEventListener('pointerdown', onDown);
+  grid.addEventListener('click', ev=>{ if(noClick || ARRANGE){ ev.stopPropagation(); ev.preventDefault(); } }, true);
+}
 
 function reorderModal(kind){
   const isEvent = kind==='event';
@@ -14841,7 +15115,7 @@ function bookDisplayModal(){
   const season = CUR_LEVEL==='season';
   const off = season ? new Set() : hiddenHere();
   const autoOff = season ? new Set() : autoHiddenHereIgnoringForced();
-  let list = (season ? shelfBooks() : allShelfBooks()).map(b=>({
+  let list = sharedOrder(()=>season ? shelfBooks() : allShelfBooks()).map(b=>({
     id:b.id, name:b.name, cat:catOfBook(b), on:!off.has(b.id), auto:autoOff.has(b.id),
     partner:(b.partnerId?((partnerById(b.partnerId)||{}).name||'consignment'):'')
   }));
@@ -14887,6 +15161,7 @@ function bookDisplayModal(){
       <ol class="how-to">
         ${season ? '' : `<li>Select which books should be displayed ${CUR_LEVEL==='region'?'in the warehouse in this region':'at this event'}.</li>`}
         <li>Drag and drop to change the order in which books are displayed${season?' across the whole season':''}.</li>
+        ${PRACTICE ? '<li>This is everyone\'s order. Anyone can also put the books in their own order, on the shelf, with ↕ Arrange.</li>' : ''}
       </ol>
       ${season ? '' : '<div class="bd-oos"><button type="button" class="btn btn-ghost btn-sm" id="bdOos" hidden></button></div>'}
       <div id="bdList"></div>
@@ -15377,6 +15652,11 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
+  if(a==='arrange'){ ARRANGE = !ARRANGE; renderInventory(); return; }
+  if(a==='arrreset'){
+    if(!confirm('Go back to the shared order for the books? Your own order is forgotten, on every device.')) return;
+    MY_ORDER.set([]).then(()=>renderAll()); renderAll(); toast('Back to the shared order'); return;
+  }
   if(a==='eventprices'){ eventPricesModal(); return; }
   if(a==='seasonclose'){ closeSeasonModal(); return; }
   if(a==='seasonreopen'){

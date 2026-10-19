@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b242**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b243**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -909,6 +909,32 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b243 — ↕ Arrange on the shelf; each person's own book order (practice)
+
+- **Asked (Gita):** rearrange the book squares on the shelf itself with a
+  button right there, not in a pop-up; and let every person keep the books in
+  their own order. Chosen: kept with their login, so it follows them to any
+  device; the shared order (Edit Book Display) stays the default.
+- **Shelf (`index.html`, practice only):** `↕ Arrange` on the Inventory
+  heading. While arranging, a bar explains it, each card's Sell/Pre-order
+  buttons give way to a "⠿ Drag" bar (a finger drags by it, so the rest of the
+  shelf still scrolls; a mouse can grab the card anywhere), nothing on a card
+  can be pressed, the lifted card follows the pointer over a dashed gap, and
+  the page scrolls near the screen's top and bottom. `makeShelfSortable`;
+  `renderInventory` waits while a card is held (`SHELF_DRAG`).
+- **The order:** `MY_ORDER` (practice only) sits on top of the shared order in
+  `inRegionOrder` (`inMyOrder`, `byRank`). Saved when a card is dropped
+  (`saveShelfOrder`): this shelf's titles take the places they held among the
+  whole catalogue, so other shelves keep their order. Kept in `localStorage`
+  at once and, signed in, with the login. "Use the shared order" forgets it.
+  Edit Book Display always shows and saves the shared order (`sharedOrder`).
+- **Server (`server/src`, Cloudflare only):** table `pref (email, key, value)`;
+  `setMyPref` (only `bookOrder` so far; `null` deletes) and `me` returns
+  `prefs`. A link (no login) keeps the order on the device only. Code.gs is
+  unchanged, so no `SERVER_BUILD` bump; Cloudflare redeploys itself on merge.
+- Tests: `browser-arrange.js` (23 checks: mouse, finger, other device, other
+  people, Edit Book Display, live has no Arrange), `people.js` (+6).
+
 ## Done in b242 — nothing entered without a signal is ever lost
 
 - **Bug (Gita):** stock entered while the internet was out (unknown to her)
@@ -932,6 +958,27 @@ desktop and phone width.
   and pictures are kept on the device (network first, 6 s then the kept copy),
   so the app opens with no internet; server requests are never touched.
 - Test: `browser-offline.js` (served from localhost so the service worker runs).
+
+## Done in b241 — drag to reorder works, by mouse and by finger
+
+- **Bug (Gita):** in Edit Book Display, dragging a title left several blank
+  spots, dragging to/from the bottom of the list did not work, and on a phone
+  it did not work at all.
+- **Causes:** `makeSortable` was bound again on every redraw of the list (after
+  each arrow press or drag), so the next drag ran two or three times over,
+  each adding a gap; the lifted row also stayed in the flow, leaving a blank
+  where it had been next to the gap; nothing scrolled while dragging, so a
+  long list could not be crossed; and `.ro-row{touch-action:none}` meant a
+  finger on a row could not even scroll the list, while the handle was a
+  15px target.
+- **Fix (page only, `index.html`):** `makeSortable` binds once per list (the
+  latest `onDrop` is kept on the container); the lifted row floats
+  (absolute) over one dashed gap; the list (or page) scrolls when the row is
+  held near its top or bottom edge; a finger drags by a 40px handle and can
+  swipe rows to scroll; a mouse can grab the row anywhere except its buttons
+  and tickboxes. Applies to Edit Book Display and Change Region/Event Order.
+  No server change.
+- Test: `browser-drag.js` (fails on b240, 23 checks pass on b241).
 
 ## Done in b240 — a new language shows up in another season's Add Stock
 
