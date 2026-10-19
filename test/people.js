@@ -190,6 +190,8 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['…it comes back with "me" (any device they sign in on)', r.ok && JSON.stringify(r.result.prefs.bookOrder) === '["b3","b1","b2"]']);
   r = await ask({ action: 'me', s: helper });
   t.push(['…nobody else gets it', r.ok && !r.result.prefs.bookOrder]);
+  r = await G({ action: 'setMyPref', key: 'bookOrderPhone', value: ['b2', 'b3'] });
+  t.push(['b244: …and a different one for phones, alongside', r.ok && r.result.prefs.bookOrderPhone[0] === 'b2' && r.result.prefs.bookOrder[0] === 'b3']);
   r = await G({ action: 'setMyPref', key: 'role', value: 'U' });
   t.push(['…only known settings can be kept', !r.ok && /cannot be kept/.test(r.error)]);
   r = await ask({ action: 'setMyPref', key: 'bookOrder', value: ['x'] });

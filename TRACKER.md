@@ -909,6 +909,27 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b244 — arranging: a small ⇅ on every panel of book cards; phone and computer orders (practice)
+
+- **Asked (Gita):** the Arrange button showed on the HQ shelf but not at other
+  levels; make it a small icon like the list/cards and report buttons; and
+  keep a different order on a phone than on a computer, since they lay the
+  books out differently.
+- **Icon:** `arrangeUI()` (run after every redraw, like `sectionViews`) puts a
+  small ⇅ (`.view-tg.arr-tg`) beside ☰ on every panel holding book cards: the
+  shelf (`#invGrid`) and every `.stat-grid[data-books]` (Distribution by Title
+  and the Warehouse Overview, at the season, region, event and HQ). The season
+  page has no shelf, which is where it was missing. The old heading button and
+  inline bar are gone; while arranging, a note sits at the foot of the screen
+  (`#arrDock`, clear of the phone menu button) with Use the shared order and
+  Done. Drag bars are added to the cards by `arrangeUI`, not the renderers.
+- **Phone or computer:** `isPhoneView()` (max-width 640px). `MY_ORDER` keeps
+  `bookOrderPhone` / `tbs_my_order_phone` on a phone and `bookOrder` /
+  `tbs_my_order` on a computer; a phone starts from the shared order. Server
+  `PREF_KEYS` gains `bookOrderPhone` (Cloudflare redeploys itself).
+- `renderAll` waits while a card is held (`dragging()`).
+- Tests: `browser-arrange.js` (30 checks), `people.js` (+1).
+
 ## Done in b243 — ↕ Arrange on the shelf; each person's own book order (practice)
 
 - **Asked (Gita):** rearrange the book squares on the shelf itself with a

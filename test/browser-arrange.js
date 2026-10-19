@@ -1,9 +1,12 @@
 /* Optional, needs Playwright + Chromium: node test/browser-arrange.js
-   b243 (practice): ↕ Arrange on the shelf. A Seller picks up book cards and
+   b243 (practice): arranging the books. A Seller picks up book cards and
    drops them where she wants them, by mouse and by finger. The order is her
    own, kept with her login (the real server code, server/src/core.js, in this
-   process), so it follows her to her phone; nobody else's shelf changes, and
-   Edit Book Display keeps showing everyone's (shared) order. */
+   process), so it follows her to another computer; nobody else's shelf
+   changes, and Edit Book Display keeps showing everyone's (shared) order.
+   b244: a small ⇅ beside the list/cards switch on every panel of book cards
+   (the season's Distribution by Title too), and a phone keeps an order of its
+   own, apart from the computer's. */
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){
   return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -104,11 +107,13 @@ const API = 'http://api.test/';
     const sita = await open('sita@example.com', 'Sita');
     await atEvent(sita);
     const shared = await shelf(sita);
+    const tg = '#invHeading .arr-tg';
     t.push(['the shelf has titles to arrange', shared.length >= 4]);
-    t.push(['practice: the Inventory heading has ↕ Arrange', await sita.isVisible('#invHeading .arr-btn')]);
-    await sita.click('#invHeading .arr-btn'); await sita.waitForTimeout(200);
-    t.push(['Arrange shows how it works, and that it is kept with her login', /kept with your login/.test(await sita.textContent('#invArrBar'))]);
-    t.push(['…and a handle on every title', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length]);
+    t.push(['practice: a small ⇅ on the Inventory heading, beside the list/cards switch',
+      await sita.isVisible(tg) && await sita.$eval(tg, b => b.textContent === '⇅' && b.previousElementSibling && b.previousElementSibling.classList.contains('view-tg'))]);
+    await sita.click(tg); await sita.waitForTimeout(300);
+    t.push(['arranging: a note at the foot of the screen, for computers', /for computers/.test(await sita.textContent('#arrDock'))]);
+    t.push(['…and a Drag bar on every title', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length]);
     const n = shared.length;
     const from = await centre(sita, `#invGrid > .book[data-id="${shared[n - 1]}"] .bname`);
     const to = await centre(sita, `#invGrid > .book[data-id="${shared[0]}"]`);
@@ -116,61 +121,80 @@ const API = 'http://api.test/';
     await sita.mouse.move(to.x - 30, to.y, { steps: 20 });
     t.push(['mid-drag: one gap shows where it will land', await sita.$$eval('#invGrid .arr-gap', g => g.length) === 1]);
     await sita.screenshot({ path: shot('middrag') });
-    await sita.mouse.up(); await sita.waitForTimeout(600);
+    await sita.mouse.up(); await sita.waitForTimeout(700);
     let mine = await shelf(sita);
     t.push(['the last title dragged to the front of the shelf', JSON.stringify(mine) === JSON.stringify([shared[n - 1], ...shared.slice(0, n - 1)])]);
     t.push(['…without selling it (no window opened)', !(await anyModal(sita))]);
     t.push(['…nothing left behind', await sita.evaluate(() => !document.querySelector('.arr-gap, .arr-lift'))]);
+    t.push(['…still arranging after the drop (Drag bars back)', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length]);
     let me = await ask({ action: 'me', s: await sessionOf('sita@example.com', 'Sita') });
-    t.push(['her order is kept with her login on the server', (me.result.prefs.bookOrder || [])[0] === shared[n - 1]]);
-    await sita.click('#invArrBar [data-act="arrange"]'); await sita.waitForTimeout(200);
-    t.push(['Done: the handles go and the shelf sells again', !(await sita.$('#invGrid .arr-grip')) && !(await sita.isVisible('#invArrBar'))]);
+    t.push(['her computer order is kept with her login', (me.result.prefs.bookOrder || [])[0] === shared[n - 1] && !me.result.prefs.bookOrderPhone]);
+    await sita.click('#arrDock [data-act="arrange"]'); await sita.waitForTimeout(300);
+    t.push(['Done: the Drag bars go and the shelf sells again', !(await sita.$('#invGrid .arr-grip')) && !(await sita.isVisible('#arrDock'))]);
     await sita.click(`#invGrid > .book[data-id="${mine[0]}"] .sell-btn`); await sita.waitForTimeout(400);
     t.push(['…(Sell opens the sale as usual)', await anyModal(sita)]);
-    await sita.screenshot({ path: shot('desktop') });
+    await sita.evaluate(() => closeModal());
 
-    /* ---- Nobody else is affected ---- */
+    /* ---- Another computer: same order ---- */
+    const sita2 = await open('sita@example.com', 'Sita');
+    await atEvent(sita2);
+    t.push(['another computer: her order follows her login', (await shelf(sita2))[0] === shared[n - 1]]);
+
+    /* ---- Nobody else is affected; the season's panels have the ⇅ too ---- */
     const own = await open('owner@example.com', 'The Owner');
     await atEvent(own);
     t.push(['the owner still sees the shared order', JSON.stringify(await shelf(own)) === JSON.stringify(shared)]);
+    await own.evaluate(() => goTo('season')); await own.waitForTimeout(800);
+    const ST = '#seasonTitleList > .stat-grid';
+    const titles = () => own.$$eval(ST + ' > [data-id]', c => c.map(x => x.dataset.id));
+    const sOrder = await titles();
+    t.push(['season: Distribution by Title has the ⇅ too', await own.evaluate(() => { const g = document.querySelector('#seasonTitleList'); const h = g && g.closest('.panel').querySelector(':scope > h2'); return !!(h && h.querySelector('.arr-tg') && h.querySelector('.arr-tg').offsetParent); })]);
+    t.push(['…and the Warehouse Overview', await own.evaluate(() => { const g = document.querySelector('#whOverview'); const h = g && g.closest('.panel').querySelector(':scope > h2'); return !!(h && h.querySelector('.arr-tg')); })]);
+    await own.evaluate(() => document.querySelector('#seasonTitleList').closest('.panel').querySelector('.arr-tg').click()); await own.waitForTimeout(300);
+    await own.$eval(ST, g => g.scrollIntoView({ block: 'center' })); await own.waitForTimeout(200);
+    const a = await centre(own, `${ST} > [data-id="${sOrder[2]}"] .sc-name`), b0 = await centre(own, `${ST} > [data-id="${sOrder[0]}"]`);
+    await own.mouse.move(a.x, a.y); await own.mouse.down(); await own.mouse.move(b0.x - 30, b0.y, { steps: 20 }); await own.mouse.up();
+    await own.waitForTimeout(800);
+    t.push(['season: a title dragged to the front of Distribution by Title', (await titles())[0] === sOrder[2]]);
+    t.push(['…and the Warehouse Overview follows the same order', await own.$eval('#whOverview .stat-grid > [data-id]', c => c.dataset.id) === sOrder[2]]);
+    await own.screenshot({ path: shot('season') });
+    await own.evaluate(() => { document.querySelector('#arrDock [data-act="arrange"]').click(); }); await own.waitForTimeout(200);
     // The owner's own order never leaks into Edit Book Display (everyone's order).
-    await own.click('#invHeading .arr-btn'); await own.waitForTimeout(200);
-    const a = await centre(own, `#invGrid > .book[data-id="${shared[1]}"] .bname`), b0 = await centre(own, `#invGrid > .book[data-id="${shared[0]}"]`);
-    await own.mouse.move(a.x, a.y); await own.mouse.down(); await own.mouse.move(b0.x - 30, b0.y, { steps: 15 }); await own.mouse.up();
-    await own.waitForTimeout(600);
-    t.push(['the owner arranges their own too', (await shelf(own))[0] === shared[1]]);
     await own.evaluate(() => bookDisplayModal()); await own.waitForTimeout(300);
-    t.push(['Edit Book Display still shows (and saves) the shared order', (await own.$$eval('#bdList .ro-row', r => r.map(x => x.dataset.id)))[0] === shared[0]]);
+    t.push(['Edit Book Display still shows (and saves) the shared order', (await own.$$eval('#bdList .ro-row', r => r.map(x => x.dataset.id)))[0] === sOrder[0]]);
     await own.evaluate(() => closeModal());
 
-    /* ---- Sita on her phone: same order; arranges by finger ---- */
+    /* ---- Sita on her phone: an order of its own; arranges by finger ---- */
     const ph = await open('sita@example.com', 'Sita', 390, { phone: true, height: 760 });
     await atEvent(ph);
     mine = await shelf(ph);
-    t.push(['phone: her order follows her login to another device', mine[0] === shared[n - 1]]);
-    await ph.tap('#invHeading .arr-btn'); await ph.waitForTimeout(200);
-    t.push(['phone: the handle is finger-sized', await ph.$eval('#invGrid .arr-grip', g => g.getBoundingClientRect().width >= 36)]);
-    t.push(['phone: a finger on a card (not its handle) can still scroll the page', await ph.$eval('#invGrid > .book[data-id]', c => getComputedStyle(c).touchAction !== 'none')]);
+    t.push(['phone: starts from the shared order, not her computer\'s', JSON.stringify(mine) === JSON.stringify(shared)]);
+    await ph.tap(tg); await ph.waitForTimeout(300);
+    t.push(['phone: the note says this order is for phones', /for phones/.test(await ph.textContent('#arrDock'))]);
+    t.push(['phone: the Drag bar is finger-sized', await ph.$eval('#invGrid .arr-grip', g => g.getBoundingClientRect().height >= 36)]);
+    t.push(['phone: a finger on a card (not its Drag bar) can still scroll the page', await ph.$eval('#invGrid > .book[data-id]', c => getComputedStyle(c).touchAction !== 'none')]);
     await ph.$eval('#invGrid', g => g.scrollIntoView({ block: 'start' })); await ph.waitForTimeout(200);
     const g2 = await centre(ph, `#invGrid > .book[data-id="${mine[2]}"] .arr-grip`);
     const c0 = await centre(ph, `#invGrid > .book[data-id="${mine[0]}"]`);
     await finger(ph, g2, { x: c0.x - 20, y: c0.y });
-    await ph.waitForTimeout(700);
+    await ph.waitForTimeout(800);
     const now = await shelf(ph);
-    t.push(['phone: the third title dragged by its handle to the front', now[0] === mine[2] && now.length === mine.length]);
+    t.push(['phone: the third title dragged by its Drag bar to the front', now[0] === mine[2] && now.length === mine.length]);
     await ph.screenshot({ path: shot('phone') });
     me = await ask({ action: 'me', s: await sessionOf('sita@example.com', 'Sita') });
-    t.push(['…saved with her login', (me.result.prefs.bookOrder || [])[0] === mine[2]]);
-    // Back to the shared order.
-    await ph.tap('#invArrBar [data-act="arrreset"]'); await ph.waitForTimeout(800);
-    t.push(['"Use the shared order" puts the shared order back', JSON.stringify(await shelf(ph)) === JSON.stringify(shared)]);
+    t.push(['…saved as her phone order, her computer order untouched', (me.result.prefs.bookOrderPhone || [])[0] === mine[2] && (me.result.prefs.bookOrder || [])[0] === shared[n - 1]]);
+    await sita2.reload(); await sita2.waitForTimeout(2500); await atEvent(sita2);
+    t.push(['…the computer still shows her computer order', (await shelf(sita2))[0] === shared[n - 1]]);
+    // Back to the shared order, on phones.
+    await ph.tap('#arrDock [data-act="arrreset"]'); await ph.waitForTimeout(900);
+    t.push(['"Use the shared order" puts the shared order back on the phone', JSON.stringify(await shelf(ph)) === JSON.stringify(shared)]);
     me = await ask({ action: 'me', s: await sessionOf('sita@example.com', 'Sita') });
-    t.push(['…and forgets hers on the server', !me.result.prefs.bookOrder]);
+    t.push(['…forgets only her phone order', !me.result.prefs.bookOrderPhone && (me.result.prefs.bookOrder || [])[0] === shared[n - 1]]);
 
-    /* ---- The live app: no Arrange yet ---- */
+    /* ---- The live app: no arranging yet ---- */
     const live = await open('sita@example.com', 'Sita', 1150, { live: true });
     await atEvent(live);
-    t.push(['live app: no ↕ Arrange yet (practice first)', !(await live.isVisible('#invHeading .arr-btn'))]);
+    t.push(['live app: no ⇅ yet (practice first)', !(await live.$('.arr-tg'))]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));
     t.push(['test ran to the end', false]);

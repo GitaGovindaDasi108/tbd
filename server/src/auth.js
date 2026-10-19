@@ -34,8 +34,8 @@
 
 const DAY = 24 * 3600 * 1000;
 export const SESSION_DAYS = 90;
-// The settings a person may keep with their login (b243).
-const PREF_KEYS = ['bookOrder'];
+// The settings a person may keep with their login (b243): their book order on a computer, and on a phone (b244).
+const PREF_KEYS = ['bookOrder', 'bookOrderPhone'];
 const GOOGLE_KEYS = 'https://www.googleapis.com/oauth2/v3/certs';
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 
