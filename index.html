@@ -1690,7 +1690,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b245</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b246</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2932,8 +2932,12 @@ async function post(payload, opts){
     VIEW_AS.get()?{va:VIEW_AS.get()}:{}, payload);
   /* Say which season this device is looking at, so the server answers for
      it — not for whichever season another device last opened. (A share link
-     is pinned to its own season by the server, so it sends nothing.) */
-  else if(!payload.season && payload.action!=='setSeason'){
+     is pinned to its own season by the server, so it sends nothing.)
+     Signed in, too (b246): this used to be skipped once a sign-in went with
+     the request, so the server answered with its stored season. Earthly HQ is
+     never stored, so at HQ every refresh came back "for another season" and
+     was thrown away — "Checking for changes…" for ever, over an old copy. */
+  if(!SHARE_KEY && !payload.season && payload.action!=='setSeason'){
     // This tab's season — before the first reply arrives, the one it was left on.
     const mine = (BASE && BASE.activeSeason) || TAB_SEASON;
     if(mine) payload = Object.assign({season:mine}, payload);
