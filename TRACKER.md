@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b239**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b240**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,27 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b240 — a new language shows up in another season's Add Stock
+
+- **Bug (Gita):** added Sri Radha (Hindi) from Add Stock, could not stock it,
+  and then Hindi was missing from the language list while "＋ A new language…"
+  said it was already in the catalogue. No way on.
+- **Cause:** stocking a place in a season other than the one on screen draws
+  the lists from that season's own copy of the state (kept on the device, or
+  fetched before the title was added), but the "already in the catalogue"
+  check reads the screen's catalogue. The catalogue is the whole tour's, so
+  the two disagreed. A refresh of that season landing just after the add also
+  swapped the new title out from under its line, which is why it could not be
+  stocked the first time.
+- **Fix (page only, `index.html`):** `makeStockCtx` gets a `books` getter: the
+  season's copy, with the screen's catalogue filling any gaps (and giving the
+  newest names). `stockBooks`, `otherBooks`, `stockTitles` and the lines use
+  it. Typing a title or language that already exists now simply chooses it on
+  that line; a server "already exists" reply does the same; and if the
+  refresh after adding is held back by a save in flight, the id in the reply
+  is used. No server change, so no redeploy.
+- Test: `browser-stalelang.js` (fails on b239, passes on b240).
 
 ## Done in b239 — Finance is a place of its own; View as loads (practice)
 

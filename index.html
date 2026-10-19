@@ -1656,7 +1656,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b239</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b240</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -11805,6 +11805,18 @@ function makeStockCtx(place, other){
     // The live state while it is this season, so a refresh underneath is seen.
     get st(){ return this.here ? STATE : (other || {}); },
     get region(){ return (this.st.regions||[]).find(r=>r.regionId===place.regionId) || {regionId:place.regionId}; },
+    /* The catalogue is the whole tour's, not one season's. Another season's copy
+       can be older than the screen's (kept on this device, or fetched before a
+       title was added), so a new title — Sri Radha (Hindi) — went missing from
+       its lists while still counting as "already in the catalogue". The screen's
+       catalogue fills the gaps, and its names are the newest. */
+    get books(){
+      const own = this.st.books || [];
+      if(this.here) return own;
+      const fresh = new Map((STATE.books||[]).map(b=>[b.id, b]));
+      const ids = new Set(own.map(b=>b.id));
+      return own.map(b=>fresh.get(b.id)||b).concat((STATE.books||[]).filter(b=>!ids.has(b.id)));
+    },
     qty(loc, bookId){
       const row = (this.st.inventory||[]).find(i=>i.location===loc && i.bookId===bookId);
       return row ? Number(row.qty)||0 : 0;
@@ -11821,7 +11833,7 @@ function stockBooks(ctx){
   const st = ctx.st, reg = ctx.region;
   const chosen = asIdList(reg.books);
   const groups = new Set((st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
-  const list = (st.books||[]).filter(b=> b.partnerId
+  const list = ctx.books.filter(b=> b.partnerId
     ? groups.has(b.partnerId)
     : (!chosen.length || chosen.includes(b.id) || ctx.extra.has(b.id) || ctx.qty(ctx.loc,b.id)>0));
   let order = asIdList(reg.bookOrder);
@@ -11838,7 +11850,7 @@ function stockBooks(ctx){
 }
 function otherBooks(ctx){
   const on = new Set(stockBooks(ctx).map(b=>b.id));
-  return (ctx.st.books||[]).filter(b=>!b.partnerId && !on.has(b.id));
+  return ctx.books.filter(b=>!b.partnerId && !on.has(b.id));
 }
 /* Add Stock picks a title, then its language (b227). A "title" is every book
    sharing a name before the brackets — Sri Radha (English), (Russian) and
@@ -11848,7 +11860,7 @@ function stockTitles(ctx){
   const groups = new Set((ctx.st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
   const carried = stockBooks(ctx), seen = new Set(carried.map(b=>b.id));
   // What this place carries first, in its order; then the rest of the catalogue, A to Z.
-  const rest = (ctx.st.books||[]).filter(b=>!seen.has(b.id) && (!b.partnerId || groups.has(b.partnerId)))
+  const rest = ctx.books.filter(b=>!seen.has(b.id) && (!b.partnerId || groups.has(b.partnerId)))
     .sort((a,c)=>a.name.localeCompare(c.name));
   const map = new Map();
   carried.concat(rest).forEach(b=>{
@@ -12041,7 +12053,7 @@ function addStockModal(opts){
      not offer yet is switched on for it when saved ("new here"). Universal can
      also add a new book, or a new language of a title, from the same lists. */
   function chosen(){
-    const all = ctx ? (ctx.st.books||[]) : [];
+    const all = ctx ? ctx.books : [];
     return lines.map(l=>all.find(b=>b.id===l.b)).filter(Boolean);
   }
   function carriedHere(b){
@@ -12070,7 +12082,7 @@ function addStockModal(opts){
       })() + (admin ? `<option value="__new" ${cur==='__new'?'selected':''}>＋ A new book…</option>` : '');
     return '<div class="bulk">' + lines.map((l,i)=>{
       const g = byKey.get(l.t);
-      const b = l.b ? (ctx.st.books||[]).find(x=>x.id===l.b) : null;
+      const b = l.b ? ctx.books.find(x=>x.id===l.b) : null;
       let pick = `<select class="ln-title" data-i="${i}" aria-label="Title">${titleOpts(l.mode==='newbook'?'__new':l.t)}</select>`;
       if(g) pick += `<select class="ln-lang" data-i="${i}" aria-label="Language">
           <option value="">Choose the language…</option>
@@ -12226,22 +12238,35 @@ function addStockModal(opts){
       if(!g || !lang){ $('#modalErr').textContent='Type the language first.'; return; }
       name = `${g.base} (${lang})`; cat = g.cat;
     }
-    if((STATE.books||[]).some(b=>b.name.toLowerCase()===name.toLowerCase())){
-      $('#modalErr').textContent = name + ' is already in the catalogue — choose it from the lists.'; return;
-    }
+    const named = () => ctx.books.find(b=>b.name.toLowerCase()===name.toLowerCase());
+    /* Already in the catalogue: that title is simply chosen on this line. It
+       used to stop here with "already in the catalogue — choose it from the
+       lists", even when the lists did not show it, which left no way on. */
+    const useIt = (nb, said) => {
+      const elsewhere = lines.some((z,j)=>j!==i && z.b===nb.id);
+      if(elsewhere){ $('#modalErr').textContent = nb.name + ' is already on a line above.'; return; }
+      $('#modalErr').textContent = '';
+      l.t = stockTitleKey(nb); l.b = nb.id; l.mode = '';
+      toast(said);
+      draw(); focusLine(l);
+    };
+    const have = named();
+    if(have){ useIt(have, have.name + ' is already in the catalogue — chosen for you.'); return; }
     const btn = box.querySelector('.ln-add');
     $('#modalErr').textContent=''; btn.disabled=true; btn.textContent='Adding…';
     try{
-      await postWrite({action:'addBook', name, cat});
+      let id = '';
+      try{ id = (await postWrite({action:'addBook', name, cat}) || {}).result || ''; }
+      catch(err){ if(!/already exists/i.test(err.message||'')) throw err; }   // added before, on another screen
       await pull();
-      const nb = (STATE.books||[]).find(b=>b.name.toLowerCase()===name.toLowerCase());
-      if(nb){
-        // Another season's copy of the catalogue learns of it too.
-        if(!ctx.here && !(ctx.st.books||[]).some(b=>b.id===nb.id)) (ctx.st.books=ctx.st.books||[]).push(nb);
-        l.t = stockTitleKey(nb); l.b = nb.id; l.mode = '';
+      let nb = named();
+      if(!nb && id){
+        // The refresh can be held back by a save still on its way: the reply's id is enough.
+        nb = {id, name, cat, usd:0, pln:0, eur:0, partnerId:''};
+        [BASE, STATE].forEach(s=>{ if(s && !(s.books||[]).some(b=>b.id===id)) (s.books=s.books||[]).push(nb); });
       }
-      toast('Added ' + name);
-      draw(); focusLine(l);
+      if(!nb) throw new Error('Could not open ' + name + ' — refresh the page and choose it from the lists.');
+      useIt(nb, 'Added ' + name);
     }catch(err){
       $('#modalErr').textContent = err.message || 'Could not add that title.';
       btn.disabled=false; btn.textContent = kind==='book' ? 'Add this book' : 'Add';
