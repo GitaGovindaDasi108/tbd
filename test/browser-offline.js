@@ -1,5 +1,5 @@
 /* Optional, needs Playwright + Chromium: node test/browser-offline.js
-   b241: nothing entered without a signal is ever lost.
+   b242: nothing entered without a signal is ever lost.
 
    Stock is added while the server cannot be reached (Wi-Fi with no internet
    behind it), the page is refreshed with no connection at all, and then the

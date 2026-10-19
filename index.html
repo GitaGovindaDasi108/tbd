@@ -1656,7 +1656,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b241</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b242</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3540,7 +3540,7 @@ function queueOffline(payload){
    exactly as before — anything genuinely unsent is kept on the device and sent
    again by itself — it simply no longer announces itself. The status line by
    the build number still says "Saving…" while something is actually in flight. */
-/* ---- A change the server refused is kept too, never deleted (b241) ----
+/* ---- A change the server refused is kept too, never deleted (b242) ----
 
    A refusal used to throw the change away with a message that vanished in a
    few seconds. Now it is kept on the device, the corner notice says so, and
@@ -3595,7 +3595,7 @@ function notSavedModal(){
   });
 }
 
-/* b241: it is back, but only for changes that genuinely met no signal — a
+/* b242: it is back, but only for changes that genuinely met no signal — a
    failed send marks them "held". Someone selling offline needs to see that
    their work is safe and still to go, not wonder whether it vanished. */
 function showPending(){
@@ -3627,7 +3627,7 @@ function pendingPrune(){
       'queued change(s) from an older version that could not be resent safely.');
   }
 }
-/* ---- What a waiting change looks like on screen, kept on the device (b241) ----
+/* ---- What a waiting change looks like on screen, kept on the device (b242) ----
 
    A change waiting for a signal was always kept on the device, but how it
    changes the screen lived only in the page's memory. Refresh, and the stock
@@ -3741,7 +3741,7 @@ async function flushPending(){
       try{ await postWrite(next.payload); retireOp(next.payload && next.payload.opId); fxDrop(next.payload && next.payload.opId); }
       catch(err){
         /* Still no signal, or a reply that could not be read. Kept, however
-           long it takes (b241): it used to be thrown away after eight tries
+           long it takes (b242): it used to be thrown away after eight tries
            with "please redo it" — a whole day's selling at a festival with no
            reception could go that way. The id makes every resend safe; the
            notice in the corner says it is still waiting. */
@@ -3858,7 +3858,7 @@ function commit(payload, apply, okMsg, opts){
   const shownBefore = STATE;
   OPS.push(op);
   STATE = derive(); renderAll();
-  // What it did to the screen, kept beside it until the server has it (b241).
+  // What it did to the screen, kept beside it until the server has it (b242).
   try{ fxPut(payload.opId, op.season, stateFx(shownBefore, STATE)); }catch(e){}
   if(!(opts && opts.keepOpen)) closeModal();
   if(okMsg) toast(okMsg);
@@ -15704,7 +15704,7 @@ document.addEventListener('click',e=>{
   // flashes the wrong region on the way to the right one.
   loadPos();
   pendingLoad(); pendingPrune(); outboxRecover(); fxRestore(); showPending();
-  // The page itself is kept on the device, so it opens with no internet (b241, sw.js).
+  // The page itself is kept on the device, so it opens with no internet (b242, sw.js).
   try{
     if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost'))
       navigator.serviceWorker.register('sw.js').catch(()=>{});

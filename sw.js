@@ -1,4 +1,4 @@
-/* The app opens with no internet (b241).
+/* The app opens with no internet (b242).
 
    Without this, refreshing the page with no signal showed the browser's own
    "no internet" page instead of the app, so nobody could sell, and nobody

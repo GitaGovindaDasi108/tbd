@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b241**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b242**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -909,7 +909,7 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
-## Done in b241 — nothing entered without a signal is ever lost
+## Done in b242 — nothing entered without a signal is ever lost
 
 - **Bug (Gita):** stock entered while the internet was out (unknown to her)
   was gone after refreshing, and never came back once the internet returned.
