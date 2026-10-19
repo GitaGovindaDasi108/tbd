@@ -781,29 +781,35 @@ body.has-na .overlay{z-index:10000}
 .resv{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.3px;margin-top:2px}
 .region{font-size:9.5px;color:var(--blue);font-weight:600;letter-spacing:.2px;margin-top:2px;opacity:.9}
 .region + .region{margin-top:0}
-/* Arranging the shelf (b243, practice first): pick up a book card and drop it
-   where you want it. A finger lifts a card by its ⠿ handle, so swiping the rest
-   of the shelf still scrolls; a mouse can lift it anywhere. Nothing on a card
-   can be pressed while arranging, so a drag never sells a book by mistake. */
-.arr-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 10px;padding:9px 12px;
-  border:1.5px dashed var(--saffron);border-radius:10px;background:#FBF6EC;font-size:13px;color:var(--ink)}
-.arr-bar[hidden]{display:none}
-.arr-bar .arr-msg{flex:1 1 220px;line-height:1.35}
-.inv-grid.arranging .book:not(.don-card){cursor:grab;user-select:none;-webkit-user-select:none}
-.inv-grid.arranging .book *{pointer-events:none}
-.inv-grid.arranging .book .arr-grip{pointer-events:auto}
-.inv-grid.arranging .don-card{opacity:.55}
-.inv-grid.arranging .bk-btns{display:none}
+/* Arranging the books (b243; b244: on every panel of book cards, from a small
+   ⇅ beside the list/cards switch). Pick up a card and drop it where you want
+   it. A finger lifts a card by its ⠿ Drag bar, so swiping the rest still
+   scrolls; a mouse can lift it anywhere. Nothing on a card can be pressed while
+   arranging, so a drag never sells a book by mistake. */
+.arr-tg.on{background:var(--saffron);border-color:var(--saffron);color:#fff}
+.arr-dock{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:70;display:flex;flex-wrap:wrap;
+  align-items:center;gap:8px;width:min(640px,calc(100% - 24px));box-sizing:border-box;padding:10px 12px;
+  border:1.5px solid var(--saffron);border-radius:12px;background:#FBF6EC;box-shadow:0 10px 28px rgba(0,0,0,.2);
+  font-size:13px;color:var(--ink)}
+.arr-dock[hidden]{display:none}
+.arr-dock .arr-msg{flex:1 1 220px;line-height:1.35}
+/* Clear of the round menu button in a phone's bottom-left corner. */
+@media (max-width:640px){ .arr-dock{left:auto;right:10px;transform:none;width:calc(100% - 96px)} }
+.arranging > [data-id]{cursor:grab;user-select:none;-webkit-user-select:none}
+.arranging > [data-id] *{pointer-events:none}
+.arranging > [data-id] .arr-grip{pointer-events:auto}
+.arranging > :not([data-id]):not(.arr-gap){opacity:.55}
+.arranging .bk-btns{display:none}
 .arr-grip{display:flex;align-items:center;justify-content:center;gap:6px;min-height:42px;margin-top:8px;
   border-radius:9px;background:var(--paper);border:1.5px dashed var(--line-d);color:var(--muted);
   font-size:13px;font-weight:700;line-height:1;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
 .arr-grip b{font-size:18px;font-weight:400}
 .list-view .arr-grip{order:2;margin-top:0;min-width:84px;flex:none}
 /* The lifted card, handle and all, lets the pointer see what is beneath it. */
-.inv-grid.arranging .book.arr-lift, .inv-grid.arranging .book.arr-lift *{pointer-events:none}
-.book.arr-lift{position:fixed;z-index:60;margin:0;cursor:grabbing;
+.arranging > .arr-lift, .arranging > .arr-lift *{pointer-events:none !important}
+.arranging > .arr-lift{position:fixed;z-index:60;margin:0;cursor:grabbing;
   box-shadow:0 12px 28px rgba(0,0,0,.25);border-color:var(--saffron)}
-.book.arr-gap{border:2px dashed var(--saffron);background:#FBF6EC;box-shadow:none;min-height:0}
+.arranging > .arr-gap{border:2px dashed var(--saffron);background:#FBF6EC;box-shadow:none;min-height:0}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
@@ -1758,10 +1764,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
       <h2 id="invHeading" class="inv-h2">Inventory
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
-          title="Copy the shelf for WhatsApp">📋</button>
-        <button class="btn btn-gold btn-sm arr-btn" data-act="arrange" hidden
-          title="Put the books in the order you like">↕ Arrange</button></h2>
-      <div class="body"><div class="arr-bar" id="invArrBar" hidden></div><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
+          title="Copy the shelf for WhatsApp">📋</button></h2>
+      <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
       <section class="panel" data-fold="log">
@@ -2552,22 +2556,28 @@ function byRank(list, rank){
    shared order (sharedOrder). */
 var SHARED_ORDER_ONLY = false;
 function sharedOrder(fn){ SHARED_ORDER_ONLY = true; try{ return fn(); } finally{ SHARED_ORDER_ONLY = false; } }
+/* A phone and a computer show the books differently (two narrow columns, or
+   a wide grid), so each keeps its own order (b244): the order set on a phone
+   is used on phones, the one set on a computer on computers. */
+const isPhoneView = () => !!(window.matchMedia && matchMedia('(max-width: 640px)').matches);
+try{ matchMedia('(max-width: 640px)').addEventListener('change', ()=>{ if(MY_ORDER.get().length || ARRANGE) renderAll(); }); }catch(e){}
 const MY_ORDER = {
-  KEY: 'tbs_my_order',
-  local(){ try{ const v = JSON.parse(localStorage.getItem(this.KEY)||'[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } },
+  pref(){ return isPhoneView() ? 'bookOrderPhone' : 'bookOrder'; },
+  key(){ return isPhoneView() ? 'tbs_my_order_phone' : 'tbs_my_order'; },
+  local(){ try{ const v = JSON.parse(localStorage.getItem(this.key())||'[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } },
   get(){
     if(!PRACTICE || SHARED_ORDER_ONLY) return [];
-    if(typeof ME!=='undefined' && ME && ME.prefs) return Array.isArray(ME.prefs.bookOrder) ? ME.prefs.bookOrder : [];
+    if(typeof ME!=='undefined' && ME && ME.prefs){ const v = ME.prefs[this.pref()]; return Array.isArray(v) ? v : []; }
     return this.local();
   },
   /* Kept on this device at once (so it shows straight away), and with the
      login when there is one. An empty list goes back to the shared order. */
   async set(ids){
-    const v = ids && ids.length ? ids : null;
-    try{ v ? localStorage.setItem(this.KEY, JSON.stringify(v)) : localStorage.removeItem(this.KEY); }catch(e){}
-    if(typeof ME!=='undefined' && ME){ ME.prefs = Object.assign({}, ME.prefs); if(v) ME.prefs.bookOrder = v; else delete ME.prefs.bookOrder; }
+    const v = ids && ids.length ? ids : null, pref = this.pref(), key = this.key();
+    try{ v ? localStorage.setItem(key, JSON.stringify(v)) : localStorage.removeItem(key); }catch(e){}
+    if(typeof ME!=='undefined' && ME){ ME.prefs = Object.assign({}, ME.prefs); if(v) ME.prefs[pref] = v; else delete ME.prefs[pref]; }
     if(!signedInHere()) return true;
-    try{ const r = await post({action:'setMyPref', key:'bookOrder', value:v}); if(r && r.result) ME = r.result; return true; }
+    try{ const r = await post({action:'setMyPref', key:pref, value:v}); if(r && r.result) ME = r.result; return true; }
     catch(e){ toast('Your order is on this device only for now: ' + e.message, true); return false; }
   }
 };
@@ -4250,10 +4260,13 @@ function setViewMode(mode){
 try{ if(localStorage.getItem('tbs_view')==='list') setTimeout(()=>setViewMode('list'), 0); }catch(e){}
 
 function renderAll(){
+  // Not while a book card is held: everything is redrawn when it is dropped.
+  if(dragging()){ SHELF_DRAG.redraw = true; return; }
   practiceBanner();
   // The build number and the status light are for Universal; others see the light only when something is wrong (b234).
   document.body.classList.toggle('is-u', !!(STATE && isAdmin()));
   setTimeout(sectionViews, 0);
+  setTimeout(arrangeUI, 0);
   if(!STATE) return;
   // Whatever wording you have rewritten is put in place after every redraw.
   setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 0);
@@ -5055,7 +5068,7 @@ function renderWarehouseOverview(){
       ? chipsToggleHTML('wo:' + b.id, `In ${per.length} ${per.length===1?UNIT.word:UNIT.words}`, chips)
       : '<div class="wo-chips"><span class="sc-none">nowhere yet</span></div>';
     const lc = langCard(b);
-    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style}>
+    return `<div class="stat-card${(total+transit)?'':' dim'}${b.partnerId?' consign':''}${lc.cls}"${lc.style} data-id="${esc(b.id)}">
       <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
@@ -5067,7 +5080,7 @@ function renderWarehouseOverview(){
       ${where}
     </div>`;
   }).join('');
-  return `<div class="stat-grid">${cards}</div>`;
+  return `<div class="stat-grid" data-books="1">${cards}</div>`;
 }
 
 /* ---- FE12: Sales by Region, expandable to per-title ---- */
@@ -5193,7 +5206,7 @@ function renderTotals(){
 
 function renderInventory(){
   // Not while a card is being dragged: it is redrawn when it is dropped.
-  if(SHELF_DRAG.on){ SHELF_DRAG.redraw = true; return; }
+  if(dragging()){ SHELF_DRAG.redraw = true; return; }
   $('#invHeading').firstChild.textContent = isHQ() ? 'Earthly HQ Warehouse '
     : (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
   const s=scopedSales();
@@ -5249,7 +5262,6 @@ function renderInventory(){
         </div>
         ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
       </div>
-      ${ARRANGE?'<div class="arr-grip" title="Drag to move"><b>⠿</b> Drag</div>':''}
       <div class="bk-btns">
         <button class="sell-btn" data-act="sell" data-book="${b.id}" ${sellable?'':'disabled'}>Sell</button>
         <button class="pre-btn" data-act="preorder" data-book="${b.id}">Pre-order</button>
@@ -5273,7 +5285,6 @@ function renderInventory(){
     </div>
   </div>`;
   $('#invGrid').innerHTML=h;
-  arrangeBar();
   // One-line entry point for a multi-book transaction, under the grid.
   /* Titles kept off this event's shelf are still one tap away to pre-order —
      people ask for books that were never on the table. So is every other title
@@ -5385,7 +5396,7 @@ function renderTitleList(target){
     // Where it sold, behind a dropdown (b230), as in the Warehouse Overview.
     const chips = chipList.length ? chipsToggleHTML('dt:' + b.id, `At ${chipList.length} place${chipList.length===1?'':'s'}`, chipList.join('')) : '';
     const lc = langCard(b);
-    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}"${lc.style}>
+    return `<div class="stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}"${lc.style} data-id="${esc(b.id)}">
       <div class="sc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
         b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
       <div class="sc-figs">
@@ -5399,7 +5410,7 @@ function renderTitleList(target){
       ${chips}
     </div>`;
   }).join('');
-  $(target||'#titleList').innerHTML=`<div class="stat-grid">${h}</div>`;
+  $(target||'#titleList').innerHTML=`<div class="stat-grid" data-books="1">${h}</div>`;
 }
 
 /* ============================ TOTALS BY PAYMENT TYPE ============================
@@ -13287,30 +13298,58 @@ function makeSortable(container, onDrop){
 }
 
 
-/* ---- Arranging the shelf itself (b243, practice first) ----
-   ↕ Arrange on the Inventory heading turns the shelf into something you can
-   rearrange: pick up a book card, drop it where you want it, press Done. The
-   order is the person's own (MY_ORDER), saved the moment a card is dropped.
-   Same feel as the lists in makeSortable: a dashed gap shows where the card
-   will land, and holding a card near the top or bottom of the screen scrolls. */
+/* ---- Arranging the books (b243, practice first) ----
+   A small ⇅ beside the list/cards switch, on every panel of book cards (the
+   shelf, Distribution by Title, the Warehouse Overview, at every level; b244),
+   turns them into something you can rearrange: pick up a card, drop it where
+   you want it, press Done. The order is the person's own (MY_ORDER), saved the
+   moment a card is dropped, and every panel follows it. Same feel as the lists
+   in makeSortable: a dashed gap shows where the card will land, and holding a
+   card near the top or bottom of the screen scrolls. */
 var ARRANGE = false;
 var SHELF_DRAG = { on:false, redraw:false };
-function arrangeBar(){
-  const btn = document.querySelector('#invHeading .arr-btn'), bar = $('#invArrBar'), grid = $('#invGrid');
-  if(!btn || !bar || !grid) return;
-  btn.hidden = !PRACTICE;
+function dragging(){ return typeof SHELF_DRAG!=='undefined' && !!SHELF_DRAG && SHELF_DRAG.on; }
+const bookGrids = () => [...document.querySelectorAll('#invGrid, .stat-grid[data-books]')];
+function arrangeUI(){
   if(!PRACTICE) ARRANGE = false;
-  btn.textContent = ARRANGE ? '✓ Done' : '↕ Arrange';
-  grid.classList.toggle('arranging', ARRANGE);
-  bar.hidden = !ARRANGE;
-  if(ARRANGE){
-    const where = signedInHere() ? 'It is kept with your login, so it is the same on any phone or computer you sign in on.'
-                                 : 'It is kept on this device.';
-    bar.innerHTML = `<span class="arr-msg"><b>Arrange your books.</b> Drag a book to where you want it (on a phone, by its ⠿ Drag bar). ${where}</span>
-      ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
-      <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
-    makeShelfSortable(grid);
-  }
+  const grids = PRACTICE ? bookGrids() : [];
+  grids.forEach(g=>{
+    g.classList.toggle('arranging', ARRANGE);
+    g.querySelectorAll(':scope > [data-id]').forEach(c=>{
+      let grip = c.querySelector(':scope > .arr-grip');
+      if(ARRANGE && !grip){
+        grip = document.createElement('div'); grip.className = 'arr-grip'; grip.title = 'Drag to move';
+        grip.innerHTML = '<b>⠿</b> Drag';
+        c.insertBefore(grip, c.querySelector(':scope > .bk-btns'));
+      }
+      if(!ARRANGE && grip) grip.remove();
+    });
+    makeShelfSortable(g);
+  });
+  // The ⇅ in each heading whose panel holds book cards (shown or folded).
+  document.querySelectorAll('.panel').forEach(p=>{
+    const h = p.querySelector(':scope > h2'); if(!h) return;
+    let b = h.querySelector('.arr-tg');
+    if(!grids.some(g=>p.contains(g))){ if(b) b.remove(); return; }
+    if(!b){
+      b = document.createElement('button'); b.type = 'button'; b.className = 'view-tg arr-tg no-edit'; b.dataset.act = 'arrange';
+      const tg = h.querySelector('.view-tg:not(.arr-tg)');
+      h.insertBefore(b, tg ? tg.nextSibling : h.querySelector('.sec-rep'));
+    }
+    b.textContent = ARRANGE ? '✓' : '⇅';
+    b.title = ARRANGE ? 'Done arranging' : 'Arrange the books in your own order';
+    b.classList.toggle('on', ARRANGE);
+  });
+  // What to do, at the foot of the screen while arranging.
+  let d = document.getElementById('arrDock');
+  if(!d){ if(!ARRANGE) return; d = document.createElement('div'); d.id = 'arrDock'; d.className = 'arr-dock no-edit'; document.body.appendChild(d); }
+  d.hidden = !ARRANGE;
+  if(!ARRANGE) return;
+  const phone = isPhoneView();
+  d.innerHTML = `<span class="arr-msg"><b>Arranging your books ${phone?'for phones':'for computers'}.</b>
+      ${phone ? 'Drag by the ⠿ bar.' : 'Drag a book where you want it.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
+    ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
+    <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
 }
 /* The new order of the titles on this shelf, folded into the whole catalogue:
    they take the places they already held among every title, so the order of
@@ -13332,7 +13371,7 @@ function makeShelfSortable(grid){
 
   function onDown(e){
     if(!ARRANGE || card || (e.pointerType==='mouse' && e.button!==0)) return;
-    const c = e.target.closest('.book[data-id]');
+    const c = e.target.closest('[data-id]');
     if(!c || c.parentNode!==grid) return;
     const onGrip = !!e.target.closest('.arr-grip');
     if(!onGrip && e.pointerType!=='mouse') return;   // a finger elsewhere scrolls the page
@@ -13350,7 +13389,7 @@ function makeShelfSortable(grid){
     const r = c.getBoundingClientRect();
     dx = sx - r.left; dy = sy - r.top;
     gap = document.createElement('div');
-    gap.className = 'book arr-gap';
+    gap.className = c.classList[0] + ' arr-gap';
     gap.style.height = r.height + 'px';
     grid.insertBefore(gap, c);
     c.classList.add('arr-lift');
@@ -13360,13 +13399,13 @@ function makeShelfSortable(grid){
   }
   /* The card follows the pointer; the gap moves past whichever card is under
      it. (Moving past, not onto, keeps it from flickering between two places.)
-     The donation card stays last. */
+     Anything that is not a book (the donation card) stays last. */
   function follow(){
     card.style.left = (x - dx) + 'px'; card.style.top = (y - dy) + 'px';
-    const el = document.elementFromPoint(x, y);
-    const over = el && el.closest && el.closest('.book');
-    if(!over || over===gap || over===card || over.parentNode!==grid) return;
-    if(over.classList.contains('don-card')){ if(gap.nextElementSibling!==over) grid.insertBefore(gap, over); return; }
+    let over = document.elementFromPoint(x, y);
+    while(over && over.parentNode!==grid) over = over.parentNode;
+    if(!over || over===gap || over===card) return;
+    if(!over.dataset.id){ if(gap.nextElementSibling!==over) grid.insertBefore(gap, over); return; }
     const kids = [...grid.children];
     if(kids.indexOf(gap) < kids.indexOf(over)) grid.insertBefore(gap, over.nextSibling);
     else grid.insertBefore(gap, over);
@@ -13404,9 +13443,9 @@ function makeShelfSortable(grid){
     document.body.classList.remove('ro-dragging');
     SHELF_DRAG.on = false;
     if(moved){ noClick = true; setTimeout(()=>{ noClick = false; }, 0); }
-    const ids = [...grid.querySelectorAll(':scope > .book[data-id]')].map(c=>c.dataset.id);
+    const ids = [...grid.querySelectorAll(':scope > [data-id]')].map(c=>c.dataset.id);
     if(moved) saveShelfOrder(ids);
-    else if(SHELF_DRAG.redraw) renderInventory();
+    else if(SHELF_DRAG.redraw) renderAll();
   }
   grid.addEventListener('pointerdown', onDown);
   grid.addEventListener('click', ev=>{ if(noClick || ARRANGE){ ev.stopPropagation(); ev.preventDefault(); } }, true);
@@ -15661,9 +15700,9 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
-  if(a==='arrange'){ ARRANGE = !ARRANGE; renderInventory(); return; }
+  if(a==='arrange'){ ARRANGE = !ARRANGE; renderAll(); return; }
   if(a==='arrreset'){
-    if(!confirm('Go back to the shared order for the books? Your own order is forgotten, on every device.')) return;
+    if(!confirm('Go back to the shared order for the books on ' + (isPhoneView() ? 'phones' : 'computers') + '? Your own order for them is forgotten.')) return;
     MY_ORDER.set([]).then(()=>renderAll()); renderAll(); toast('Back to the shared order'); return;
   }
   if(a==='eventprices'){ eventPricesModal(); return; }
