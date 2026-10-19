@@ -725,6 +725,11 @@ body.has-na .overlay{z-index:10000}
 .panel.folded > h2::before{transform:rotate(-90deg)}
 .panel.folded > :not(h2){display:none !important}
 .panel.folded > h2{border-bottom:0}
+/* Every heading reads from the left, right after its fold arrow (b249); its
+   buttons keep to the right. Spreading them across the width put each title
+   somewhere different, depending on what else its heading held. */
+.panel > h2, .panel > h2.sec-h2{justify-content:flex-start}
+.panel > h2 > button:first-of-type{margin-left:auto}
 /* Earthly HQ's two big sections. Anywhere else the Sales Portal wrapper is not
    there at all as far as layout goes. */
 .portal:not(.on){display:contents}
@@ -1694,7 +1699,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b248</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b249</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2610,6 +2615,7 @@ function byRank(list, rank){
    keeps the shared order. Edit Book Display itself always shows and saves the
    shared order (sharedOrder). */
 var SHARED_ORDER_ONLY = false;
+const DONATION_ID = '__donation';   // the donation card's place in a person's own order (b249)
 function sharedOrder(fn){ SHARED_ORDER_ONLY = true; try{ return fn(); } finally{ SHARED_ORDER_ONLY = false; } }
 /* A phone and a computer show the books differently (two narrow columns, or
    a wide grid), so each keeps its own order (b244): the order set on a phone
@@ -5275,7 +5281,13 @@ function renderInventory(){
   let h='';
   // The shelf carries every book on the table — a consignment title is sold the
   // same way, it is only the reporting that keeps them apart.
+  /* The donation card can be arranged like a title (b249): its place in a
+     person's own order is held as DONATION_ID. Without one it sits last. */
+  const myOrd = MY_ORDER.get(), donAt = myOrd.indexOf(DONATION_ID);
+  const myRank = {}; myOrd.forEach((id,i)=>{ myRank[id]=i; });
+  let donHtml = '', donSlot = -1;
   shelfBooks().forEach(b=>{
+    if(donAt >= 0 && donSlot < 0 && !(myRank[b.id] < donAt)) donSlot = h.length;
     /* A warehouse's stock includes what its sub-warehouses (devotees' homes)
        hold for it: counted in, and shown as SW bubbles beneath the number. */
     const subs = isWarehouseLoc(CUR_LOC) ? swHoldingsHere(b.id) : [];
@@ -5332,7 +5344,7 @@ function renderInventory(){
   // Donations sit on the shelf too — they behave like a title you can always
   // "sell", and carry their own running count.
   const dons = scopedSales().filter(x=>x.type==='DONATION').length;
-  h+=`<div class="book sellable don-card">
+  donHtml=`<div class="book sellable don-card" data-id="${DONATION_ID}">
     <div class="top" data-act="donation">
       <div>
         <div class="bname">♥ Donation</div>
@@ -5345,6 +5357,7 @@ function renderInventory(){
       </div>
     </div>
   </div>`;
+  h = donSlot >= 0 ? h.slice(0, donSlot) + donHtml + h.slice(donSlot) : h + donHtml;
   $('#invGrid').innerHTML=h;
   // One-line entry point for a multi-book transaction, under the grid.
   /* Titles kept off this event's shelf are still one tap away to pre-order —
@@ -13417,7 +13430,7 @@ function arrangeUI(){
       }
       if(!ARRANGE && grip) grip.remove();
       let hb = c.querySelector(':scope > .arr-hide');
-      const wantHide = ARRANGE && g.id==='invGrid' && canHideHere();
+      const wantHide = ARRANGE && g.id==='invGrid' && canHideHere() && c.dataset.id!==DONATION_ID;
       if(wantHide && !hb){
         hb = document.createElement('button'); hb.type = 'button'; hb.className = 'btn btn-ghost btn-sm arr-hide';
         hb.dataset.act = 'arrhide'; hb.dataset.id = c.dataset.id; hb.textContent = 'Hide here';
@@ -13457,12 +13470,18 @@ function arrangeUI(){
    they take the places they already held among every title, so the order of
    titles elsewhere (another region's shelf) is left as it was. */
 function saveShelfOrder(ids){
+  /* The donation card is not a title: it goes in just before the title that
+     follows it on this shelf (or last, when nothing does). */
+  const d = ids.indexOf(DONATION_ID), after = d >= 0 ? ids[d + 1] : undefined;
+  if(d >= 0) ids = ids.filter(id=>id!==DONATION_ID);
   const full = inRegionOrder((STATE.books||[]).slice()).map(b=>b.id);
   const at = new Set(full), here = new Set(ids);
   const placed = ids.filter(id=>at.has(id));
   const out = full.slice(); let k = 0;
   full.forEach((id,i)=>{ if(here.has(id)) out[i] = placed[k++]; });
-  MY_ORDER.set(out.concat(ids.filter(id=>!at.has(id))));
+  const order = out.concat(ids.filter(id=>!at.has(id)));
+  if(d >= 0){ const k = after ? order.indexOf(after) : -1; order.splice(k >= 0 ? k : order.length, 0, DONATION_ID); }
+  MY_ORDER.set(order);
   renderAll();
 }
 function makeShelfSortable(grid){
