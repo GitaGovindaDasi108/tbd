@@ -52,7 +52,7 @@ m.call({ action: 'setStockBulk', season: st.activeSeason, location: pl.whLoc, it
   });
   // Move the last title in Edit Book Display to the top, and save.
   const lastToTop = async () => {
-    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     const n = await page.$$eval('#bdList .ro-row', r => r.length);
     for (let i = n - 1; i > 0; i--) await page.click(`#bdList [data-bd-up="${i}"]`);
     await page.click('#bdSave'); await page.waitForTimeout(250);

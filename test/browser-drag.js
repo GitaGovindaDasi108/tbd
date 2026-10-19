@@ -61,7 +61,7 @@ async function fingerDrag(cdp, from, to, steps = 12, holdMs = 0){
     page.on('pageerror', e => errors.push(e.message)); page.on('dialog', d => d.accept());
     await serve(page);
     await page.goto('http://app.test/index.html'); await page.waitForTimeout(2000);
-    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     const L = '#bdList';
     let o = await order(page, L);
     t.push(['Edit Book Display has a few titles to drag', o.length >= 4]);
@@ -117,7 +117,7 @@ async function fingerDrag(cdp, from, to, steps = 12, holdMs = 0){
     await page.click('#bdSave'); await page.waitForTimeout(500);
     // Where titles can be hidden (Earthly HQ), a click on a tickbox still ticks.
     await page.click('[data-act="gohq"]'); await page.waitForTimeout(2500);
-    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     {
       const before = await order(page, L);
       const cb = `${L} .ro-row:nth-child(2) .bd-cb`;
@@ -136,7 +136,7 @@ async function fingerDrag(cdp, from, to, steps = 12, holdMs = 0){
     await serve(ph);
     const cdp = await ctx.newCDPSession(ph);
     await ph.goto('http://app.test/index.html'); await ph.waitForTimeout(2000);
-    await ph.evaluate(() => { const b = document.querySelector('#adminActions [data-act="bookdisplay"]'); b.click(); });
+    await ph.evaluate(() => { bookDisplayModal(); });
     await ph.waitForTimeout(300);
     o = await order(ph, L);
     t.push(['phone: a finger on a row can scroll the list (only the handle drags)',

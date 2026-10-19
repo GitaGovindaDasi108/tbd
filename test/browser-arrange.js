@@ -224,13 +224,22 @@ const API = 'http://api.test/';
     me = await ask({ action: 'me', s: await sessionOf('sita@example.com', 'Sita') });
     t.push(['…forgets only her phone order', !me.result.prefs.bookOrderPhone && (me.result.prefs.bookOrder || [])[0] === shared[n - 1]]);
 
-    /* ---- The live app: no arranging yet ---- */
+    /* ---- b250: the live app has it all too ---- */
     const live = await open('sita@example.com', 'Sita', 1150, { live: true });
     await atEvent(live);
-    t.push(['live app: no ⇅ yet (practice first)', !(await live.$('.arr-tg'))]);
+    t.push(['live app: the ⇅ is there', await live.isVisible(tg)]);
+    t.push(['…and Sita sees her own (computer) order there too', (await shelf(live))[0] === shared[n - 1]]);
+    await live.click(tg); await live.waitForTimeout(300);
+    const lv = await shelf(live);
+    const l1 = await centre(live, `#invGrid > .book[data-id="${lv[1]}"] .bname`), l2 = await centre(live, `#invGrid > .book[data-id="${lv[2]}"]`);
+    await live.mouse.move(l1.x, l1.y); await live.mouse.down(); await live.mouse.move(l2.x, l2.y, { steps: 20 }); await live.mouse.up();
+    await live.waitForTimeout(700);
+    t.push(['live app: dropping one book on another swaps them', JSON.stringify(await shelf(live)) === JSON.stringify(swapped(lv, 1, 2))]);
     const liveOwn = await open('owner@example.com', 'The Owner', 1150, { live: true });
     await atEvent(liveOwn);
-    t.push(['live app: Edit Book Display still in the menu', !!(await liveOwn.$('[data-act="bookdisplay"]'))]);
+    t.push(['live app: Edit Book Display is gone from the menu', !!(await liveOwn.$('[data-act="addstock"]')) && !(await liveOwn.$('[data-act="bookdisplay"]'))]);
+    await liveOwn.click(tg); await liveOwn.waitForTimeout(300);
+    t.push(['live app (Universal): "Hide here" and "Hidden here" while arranging', !!(await liveOwn.$('#invGrid .arr-hide')) && !!(await liveOwn.$('#arrDock [data-act="arrhidden"]'))]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));
     t.push(['test ran to the end', false]);

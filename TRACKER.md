@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b249**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b250**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,13 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b250 — Arrange comes to the live app
+
+- Everything built for arranging in practice is now in the live app too: the ⇅ on every book panel, dropping one book on another to swap them (the donation card included), each person's own order kept with their login (separate for phones and computers), and, for Universal, "Hide here" / "Hidden here" while arranging.
+- Edit Book Display is gone from the live menu as well. The shared order can no longer be changed from the menu; a title added by mistake is removed from the Activity log (b248).
+- The practice-only gates came out of `canHideHere`, `MY_ORDER.get`, the menu and `arrangeUI` in index.html. The server needed no change (setMyPref was never practice-only).
+- Tests: browser-arrange.js now checks the live app has the ⇅, Sita's own order, swapping, no Edit Book Display, and Hide here (43 checks).
 
 ## Done in b249 — the donation card swaps too; headings read from the left
 
