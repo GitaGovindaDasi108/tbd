@@ -810,6 +810,10 @@ body.has-na .overlay{z-index:10000}
 .arranging > .arr-lift{position:fixed;z-index:60;margin:0;cursor:grabbing;
   box-shadow:0 12px 28px rgba(0,0,0,.25);border-color:var(--saffron)}
 .arranging > .arr-gap{border:2px dashed var(--saffron);background:#FBF6EC;box-shadow:none;min-height:0}
+/* The book it will swap with (b248). */
+.arranging > .arr-target{outline:3px solid var(--saffron);outline-offset:2px;opacity:.75}
+.arr-hide{display:block;width:100%;margin-top:6px;pointer-events:auto !important}
+.arranging > [data-id] .arr-hide{pointer-events:auto}
 .flag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;letter-spacing:.4px}
 .flag.display{background:#FCEFD0;color:var(--gold)} .flag.sold{background:var(--clay-l);color:var(--clay)}
 .flag.held{background:#FCEFD0;color:var(--gold)}
@@ -1690,7 +1694,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b247</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b248</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2488,6 +2492,57 @@ function unhideTitle(bookId){
       if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
       else { const e=(st.events||[]).find(x=>x.eventId===CUR_LOC); if(e) e.hidden=hidden.join(','); }
     }, null, {keepOpen:true});
+}
+
+/** Take a title off the shelf where you are (b248, from Arrange). */
+function hideTitle(bookId){
+  if(hiddenHere().has(bookId)) return;
+  // Shown by hand though never brought here: just drop that. Otherwise hidden by hand.
+  const raw = hiddenRawHere().filter(x=>x!=='+'+bookId);
+  if(!autoHiddenHereIgnoringForced().has(bookId)) raw.push(bookId);
+  const hidden = raw, forRegion = (CUR_LEVEL==='region');
+  commit(forRegion
+      ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
+      : {action:'setEventHidden', eventId:CUR_LOC, hidden:hidden.join(',')},
+    st=>{
+      if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
+      else { const e=(st.events||[]).find(x=>x.eventId===CUR_LOC); if(e) e.hidden=hidden.join(','); }
+    }, null, {keepOpen:true});
+}
+/* Hide and show from Arrange (b248): Universal, on a region's or an event's own shelf. */
+const canHideHere = () => PRACTICE && isAdmin() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
+function hiddenTitlesModal(){
+  const draw = () => {
+    const off = hiddenHere();
+    const hidden = allShelfBooks().filter(b=>off.has(b.id));
+    const oos = shelfBooks().filter(b=>invQty(CUR_LOC, b.id) <= 0);
+    openModal(`
+      ${mHead('Hidden here')}
+      <div class="m-body">
+        ${hidden.length ? `<div class="hint">These titles are not shown ${CUR_LEVEL==='region'?'in this region':'at this event'}.</div>
+          ${hidden.map(b=>`<div class="ro-row"><span class="ro-name">${bookTitleHTML(b)}</span>
+            <span class="ro-btns"><button type="button" class="btn btn-ghost btn-sm" data-show-title="${esc(b.id)}">Show</button></span></div>`).join('')}`
+          : '<div class="hint">Nothing is hidden here.</div>'}
+        ${oos.length ? `<div style="margin-top:12px"><button type="button" class="btn btn-ghost btn-sm" id="hideOos">Hide all out of stock books (${oos.length})</button></div>` : ''}
+        <div class="err" id="modalErr"></div>
+      </div>
+      <div class="m-foot"><button class="btn btn-primary" onclick="closeModal()">Done</button></div>`);
+    document.querySelectorAll('#modal [data-show-title]').forEach(b=>b.onclick=()=>{ unhideTitle(b.dataset.showTitle); setTimeout(draw, 50); });
+    const h = $('#hideOos');
+    if(h) h.onclick = ()=>{
+      if(oos.length >= shelfBooks().length){ $('#modalErr').textContent='Every title here is out of stock, so they stay shown.'; return; }
+      const raw = hiddenRawHere().filter(x=>!oos.some(b=>'+'+b.id===x));
+      const auto = autoHiddenHereIgnoringForced();
+      oos.forEach(b=>{ if(!auto.has(b.id) && !raw.includes(b.id)) raw.push(b.id); });
+      const forRegion = CUR_LEVEL==='region';
+      commit(forRegion ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:raw.join(',')}
+                       : {action:'setEventHidden', eventId:CUR_LOC, hidden:raw.join(',')},
+        st=>{ const o = forRegion ? (st.regions||[]).find(x=>x.regionId===CUR_REGION) : (st.events||[]).find(x=>x.eventId===CUR_LOC);
+              if(o) o.hidden = raw.join(','); }, null, {keepOpen:true});
+      setTimeout(draw, 50);
+    };
+  };
+  draw();
 }
 
 /* Every title that can be pre-ordered here though it is not on this shelf
@@ -4790,7 +4845,9 @@ function renderAdmin(){
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
   cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
   cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books</button>`);
-  cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
+  /* Practice (b248): the books are arranged, hidden and shown on the shelf
+     itself (⇅ Arrange), so Edit Book Display leaves the menu. */
+  if(!PRACTICE) cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
     (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
   if(CUR_LEVEL==='event') cols[2].push(eventPricesBtn());
 
@@ -13335,11 +13392,13 @@ function makeSortable(container, onDrop){
 /* ---- Arranging the books (b243, practice first) ----
    A small ⇅ beside the list/cards switch, on every panel of book cards (the
    shelf, Distribution by Title, the Warehouse Overview, at every level; b244),
-   turns them into something you can rearrange: pick up a card, drop it where
-   you want it, press Done. The order is the person's own (MY_ORDER), saved the
-   moment a card is dropped, and every panel follows it. Same feel as the lists
-   in makeSortable: a dashed gap shows where the card will land, and holding a
-   card near the top or bottom of the screen scrolls. */
+   turns them into something you can rearrange: pick up a card, drop it on
+   another, press Done. The two swap places and nothing else moves (b248; it
+   used to shuffle the rest along, like a phone's home screen). The order is
+   the person's own (MY_ORDER), saved the moment a card is dropped, and every
+   panel follows it. Holding a card near the top or bottom of the screen
+   scrolls. Universal can also hide a title here, and show it again (b248),
+   which is why practice has no Edit Book Display. */
 var ARRANGE = false;
 var SHELF_DRAG = { on:false, redraw:false };
 function dragging(){ return typeof SHELF_DRAG!=='undefined' && !!SHELF_DRAG && SHELF_DRAG.on; }
@@ -13357,6 +13416,14 @@ function arrangeUI(){
         c.insertBefore(grip, c.querySelector(':scope > .bk-btns'));
       }
       if(!ARRANGE && grip) grip.remove();
+      let hb = c.querySelector(':scope > .arr-hide');
+      const wantHide = ARRANGE && g.id==='invGrid' && canHideHere();
+      if(wantHide && !hb){
+        hb = document.createElement('button'); hb.type = 'button'; hb.className = 'btn btn-ghost btn-sm arr-hide';
+        hb.dataset.act = 'arrhide'; hb.dataset.id = c.dataset.id; hb.textContent = 'Hide here';
+        c.insertBefore(hb, c.querySelector(':scope > .bk-btns'));
+      }
+      if(!wantHide && hb) hb.remove();
     });
     makeShelfSortable(g);
   });
@@ -13381,7 +13448,8 @@ function arrangeUI(){
   if(!ARRANGE) return;
   const phone = isPhoneView();
   d.innerHTML = `<span class="arr-msg"><b>Arranging your books ${phone?'for phones':'for computers'}.</b>
-      ${phone ? 'Drag by the ⠿ bar.' : 'Drag a book where you want it.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
+      ${phone ? 'Drag a book by its ⠿ bar onto another to swap them.' : 'Drag a book onto another to swap them.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
+    ${canHideHere() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="arrhidden">Hidden here${hiddenHere().size?' ('+hiddenHere().size+')':''}</button>` : ''}
     ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
     <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
 }
@@ -13405,6 +13473,7 @@ function makeShelfSortable(grid){
 
   function onDown(e){
     if(!ARRANGE || card || (e.pointerType==='mouse' && e.button!==0)) return;
+    if(e.target.closest('.arr-hide')) return;
     const c = e.target.closest('[data-id]');
     if(!c || c.parentNode!==grid) return;
     const onGrip = !!e.target.closest('.arr-grip');
@@ -13431,18 +13500,20 @@ function makeShelfSortable(grid){
     document.body.classList.add('ro-dragging');
     raf = requestAnimationFrame(tick);
   }
-  /* The card follows the pointer; the gap moves past whichever card is under
-     it. (Moving past, not onto, keeps it from flickering between two places.)
-     Anything that is not a book (the donation card) stays last. */
+  /* The card follows the pointer, and nothing else moves (b248): the book
+     under it is outlined, and dropping there swaps the two. Every other book
+     stays exactly where it was. */
+  let target = null;
   function follow(){
     card.style.left = (x - dx) + 'px'; card.style.top = (y - dy) + 'px';
     let over = document.elementFromPoint(x, y);
     while(over && over.parentNode!==grid) over = over.parentNode;
-    if(!over || over===gap || over===card) return;
-    if(!over.dataset.id){ if(gap.nextElementSibling!==over) grid.insertBefore(gap, over); return; }
-    const kids = [...grid.children];
-    if(kids.indexOf(gap) < kids.indexOf(over)) grid.insertBefore(gap, over.nextSibling);
-    else grid.insertBefore(gap, over);
+    if(over===gap) over = null;
+    const next = over && over!==card && over.dataset.id ? over : (over ? target : null);
+    if(next===target) return;
+    if(target) target.classList.remove('arr-target');
+    target = next;
+    if(target) target.classList.add('arr-target');
   }
   function tick(){
     if(!card) return;
@@ -13473,16 +13544,21 @@ function makeShelfSortable(grid){
     card.classList.remove('arr-lift');
     ['left','top','width','height'].forEach(p=>card.style[p]='');
     if(gap.parentNode){ grid.insertBefore(card, gap); gap.remove(); }
-    gap = null; card = null;
+    const from = card.dataset.id, to = target ? target.dataset.id : '';
+    if(target) target.classList.remove('arr-target');
+    gap = null; card = null; target = null;
     document.body.classList.remove('ro-dragging');
     SHELF_DRAG.on = false;
     if(moved){ noClick = true; setTimeout(()=>{ noClick = false; }, 0); }
     const ids = [...grid.querySelectorAll(':scope > [data-id]')].map(c=>c.dataset.id);
-    if(moved) saveShelfOrder(ids);
+    const i = ids.indexOf(from), j = ids.indexOf(to);
+    if(moved && i>=0 && j>=0){ ids[i] = to; ids[j] = from; saveShelfOrder(ids); }
     else if(SHELF_DRAG.redraw) renderAll();
   }
   grid.addEventListener('pointerdown', onDown);
-  grid.addEventListener('click', ev=>{ if(noClick || ARRANGE){ ev.stopPropagation(); ev.preventDefault(); } }, true);
+  grid.addEventListener('click', ev=>{
+    if(ARRANGE && !noClick && ev.target.closest('.arr-hide')) return;   // "Hide here" works while arranging
+    if(noClick || ARRANGE){ ev.stopPropagation(); ev.preventDefault(); } }, true);
 }
 
 function reorderModal(kind){
@@ -14924,7 +15000,13 @@ function activityModal(){
     }
     const b = e.target.closest('[data-alundo]'); if(!b) return;
     const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
-    if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
+    const book = entry.undoType==='book' ? entry.undoBook : '';
+    if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text
+      + (book ? '\n\nThe title is taken out of the catalogue in every season, with any copies entered for it. It cannot be undone if anything has been sold.' : ''))) return;
+    if(book){
+      const sold = (STATE.sales||[]).filter(v=>v.bookId===book).length;
+      if(sold){ toast(bookById(book).name + ' has ' + sold + ' sale' + (sold===1?'':'s') + ' recorded, so it cannot be taken out.', true); return; }
+    }
     // The stock it undoes, when it is a plain movement of books.
     const gone = new Set(); (entry.parts||[]).filter(x=>x.undone).forEach(x=>(x.ids||[]).forEach(i=>gone.add(String(i))));
     const ids = entry.loose ? [entry.moveId]
@@ -14940,7 +15022,8 @@ function activityModal(){
     const note = noteUndo('Undid: ' + entry.text, entry);
     const pend = {all:true, at:entry.undoneAt, by:entry.undoneBy, note, noteId:note.id, landed:false};
     ACT_PENDING.set(entry.id, pend);
-    commit({action:'undoActivity', id:entry.id}, st=>undoMovesLocal(st, ids), 'Undone',
+    commit({action:'undoActivity', id:entry.id}, st=>{ undoMovesLocal(st, ids);
+        if(book){ st.books = (st.books||[]).filter(b=>b.id!==book); st.inventory = (st.inventory||[]).filter(r=>r.bookId!==book); } }, 'Undone',
       {keepOpen:true, onDone:()=>{ pend.landed = true; refetch(); },
        onFail:()=>{ ACT_PENDING.delete(entry.id); Object.assign(entry, JSON.parse(was)); list = list.filter(x=>x.id!==note.id); activityCacheSave(sid, list); draw(); }});
   });
@@ -15750,6 +15833,8 @@ document.addEventListener('click',e=>{
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
   if(a==='arrange'){ ARRANGE = !ARRANGE; renderAll(); return; }
+  if(a==='arrhide'){ const b = bookById(t.dataset.id); hideTitle(t.dataset.id); toast((b?b.name:'Title') + ' hidden here — "Hidden here" shows it again'); return; }
+  if(a==='arrhidden'){ hiddenTitlesModal(); return; }
   if(a==='arrreset'){
     if(!confirm('Go back to the shared order for the books on ' + (isPhoneView() ? 'phones' : 'computers') + '? Your own order for them is forgotten.')) return;
     MY_ORDER.set([]).then(()=>renderAll()); renderAll(); toast('Back to the shared order'); return;

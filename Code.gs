@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b245';
+var SERVER_BUILD = 'b248';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -8663,6 +8663,10 @@ function activityBefore_(action, p) {
       _activityBefore = { existed: !!cid && dbHas_('_costs') &&
         objectsOf_('_costs').some(function (c) { return String(c.id) === cid; }) };
     }
+    if (action === 'addBook') {
+      var nm = String(p.name || '').trim().toLowerCase();
+      _activityBefore = { existed: allBooks_().some(function (b) { return b.name.toLowerCase() === nm; }) };
+    }
     if (action === 'regionAddBooks') {
       var r = regionById_(String(p.regionId || ''));
       _activityBefore = { books: r ? (r.books || []).slice() : [] };
@@ -8750,7 +8754,11 @@ function describe_(action, p, result, moves, who) {
     case 'reorderBooks': d = { text: 'Changed the order of the titles' }; break;
     case 'setPrices':    d = { text: 'Changed prices' + (p.regionId ? ' in ' + reg(p.regionId) : '') }; break;
     case 'setEventPrices': d = { text: 'Changed the prices at ' + locLabel_(p.eventId) }; locs[String(p.eventId)] = 1; break;
-    case 'addBook':      d = { text: 'Added a new title: “' + p.name + '”' }; break;
+    case 'addBook':
+      // Add Stock asks for a title "new or not" (b245); an existing one is no change.
+      if (_activityBefore && _activityBefore.existed) return null;
+      d = { text: 'Added a new title: “' + p.name + '”',
+            undo: result ? { type: 'book', bookId: String(result) } : null }; break;
     case 'renameBook':   d = { text: 'Renamed a title to “' + p.name + '”' }; break;
     case 'deleteBook':   d = { text: 'Deleted a title' }; break;
     case 'saveConsignBook': d = { text: 'Saved a consignment title' + (p.name ? ': “' + p.name + '”' : '') }; break;
@@ -8836,6 +8844,19 @@ function activityRecord_(action, p, result, who) {
   } catch (e) { /* the log must never cost anyone their change */ }
 }
 
+/* The title an "Added a new title" entry made, while it is still there to undo.
+   Entries written before b248 carry no undo, so the title is found by name. */
+function addedBookId_(r) {
+  if (String(r.action || '') !== 'addBook') return '';
+  var u = null; try { u = JSON.parse(String(r.undo || '')); } catch (x) { u = null; }
+  var custom = customBooks_();
+  if (u && u.type === 'book') return custom.some(function (b) { return b.id === String(u.bookId); }) ? String(u.bookId) : '';
+  var m = String(r.text || '').match(/“([\s\S]*)”/);
+  if (!m) return '';
+  var hit = custom.filter(function (b) { return b.name.toLowerCase() === m[1].toLowerCase(); })[0];
+  return hit ? hit.id : '';
+}
+
 /* The log, for one season (and, on a regional link, one region). Newest first. */
 function activityList_(who, seasonId) {
   if (!dbHas_('_activity')) return [];
@@ -8851,7 +8872,7 @@ function activityList_(who, seasonId) {
     out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''),
       text: stockEntryText_(r), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
       moves: String(r.moves || '').split(',').filter(Boolean),
-      canUndo: !!String(r.undo || '') && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || ''),
+      canUndo: (String(r.action) === 'addBook' ? !!addedBookId_(r) : !!String(r.undo || '')) && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || ''),
       parts: (function () {
         var gone = String(r.undoneParts || '').split(',').filter(Boolean);
         var list = []; try { list = JSON.parse(String(r.parts || '[]')) || []; } catch (e) { list = []; }
@@ -8873,7 +8894,9 @@ function activityList_(who, seasonId) {
                                                 undone: gone.indexOf(String(x.id)) >= 0 }; });
       })(),
       // What kind of undo it is, so the app can show a stock undo straight away.
-      undoType: (function () { try { return (JSON.parse(String(r.undo || '')) || {}).type || ''; } catch (e) { return ''; } })() });
+      undoType: (function () { try { return (JSON.parse(String(r.undo || '')) || {}).type || ''; } catch (e) { return ''; } })() ||
+        (addedBookId_(r) ? 'book' : ''),
+      undoBook: addedBookId_(r) });
   });
   return out.reverse().slice(0, 1500);
 }
@@ -9000,6 +9023,7 @@ function doUndoActivity(p, who) {
   if (!e) throw new Error('That entry is no longer in the log.');
   if (e.undoneAt) return 'already';                          // a resend: done already
   var u = null; try { u = JSON.parse(String(e.undo || '')); } catch (x) { u = null; }
+  if (!u && addedBookId_(e)) u = { type: 'book', bookId: addedBookId_(e) };
   if (!u) throw new Error('This one cannot be undone here.');
   if (who.role !== 'admin') {
     var regs = String(e.regions || '').split(',').filter(Boolean);
@@ -9039,6 +9063,10 @@ function doUndoActivity(p, who) {
   }
   else if (u.type === 'cash') (u.ids || []).forEach(function (cid) { doCashDelete({ id: cid }); });
   else if (u.type === 'cost') doDeleteCost({ id: u.id });
+  else if (u.type === 'book') {
+    // A title added by mistake (b247): gone from the catalogue, with any copies entered for it.
+    if (allBooks_().some(function (b) { return b.id === String(u.bookId); })) doDeleteBook({ bookId: u.bookId });
+  }
   else if (u.type === 'change') doChangeDelete({ id: u.id });
   else if (u.type === 'label') doSaveLabel({ key: u.key, text: u.text || '' });
   else if (u.type === 'regionBooks') {
