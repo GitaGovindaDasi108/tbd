@@ -179,19 +179,24 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
   await page.locator('#spBody .ln-title').last().selectOption(srKey); await page.waitForTimeout(150);
   await page.locator('#spBody .ln-lang').last().selectOption('__newlang'); await page.waitForTimeout(150);
   await page.fill('#spBody .ln-nllang', 'spanish');
-  await page.click('#spBody .ln-add'); await page.waitForTimeout(1800);
-  const es = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Sri Radha (Spanish)');
-  t.push(['"＋ A new language…": Sri Radha (Spanish) is added to the catalogue', !!es]);
-  t.push(['…and is chosen on that line, ready for a number', !!es && !!(await page.$(`#spBody input.d-delta[data-book="${es.id}"]`))]);
+  await page.click('#spBody .ln-add'); await page.waitForTimeout(600);
+  // b247: a new title waits on its line; Save adds it.
+  const lineBook = () => page.evaluate(() => { const i = [...document.querySelectorAll('#spBody input.d-delta')].pop(); return i && i.dataset.book; });
+  const esLine = await lineBook();
+  t.push(['"＋ A new language…": Sri Radha (Spanish) is chosen on that line, ready for a number', !!esLine]);
+  t.push(['…and is not in the catalogue until Save', !m.call({ action: 'getState', season: SA }).state.books.some(b => b.name === 'Sri Radha (Spanish)')]);
   await page.locator('#spBody .ln-title').last().selectOption('__new'); await page.waitForTimeout(150);
   await page.fill('#spBody .ln-nbname', 'Bhagavad Gita'); await page.fill('#spBody .ln-nblang', 'Hindi');
   await page.screenshot({ path: shot('6-newbook') });
-  await page.click('#spBody .ln-add'); await page.waitForTimeout(1800);
-  const bg = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Bhagavad Gita (Hindi)');
-  t.push(['"＋ A new book…": Bhagavad Gita (Hindi) is added and chosen', !!bg && !!(await page.$(`#spBody input.d-delta[data-book="${bg.id}"]`))]);
-  await page.fill(`#spBody input.d-delta[data-book="${es.id}"]`, '6');
-  await page.fill(`#spBody input.d-delta[data-book="${bg.id}"]`, '2');
+  await page.click('#spBody .ln-add'); await page.waitForTimeout(600);
+  const bgLine = await lineBook();
+  t.push(['"＋ A new book…": Bhagavad Gita (Hindi) is chosen', !!bgLine && bgLine !== esLine]);
+  await page.fill(`#spBody input.d-delta[data-book="${esLine}"]`, '6');
+  await page.fill(`#spBody input.d-delta[data-book="${bgLine}"]`, '2');
   await page.click('#spSave'); await page.waitForTimeout(1500);
+  const es = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Sri Radha (Spanish)');
+  const bg = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Bhagavad Gita (Hindi)');
+  t.push(['Save adds both to the catalogue', !!es && !!bg]);
   t.push(['…and both are stocked in Italy', qty('wh_it', es.id) === 6 && qty('wh_it', bg.id) === 2]);
 
   // "Add a new one": an event, then straight back with it chosen.

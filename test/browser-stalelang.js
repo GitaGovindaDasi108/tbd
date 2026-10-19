@@ -125,12 +125,15 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     await page.locator('#spBody .ln-lang').last().selectOption('__newlang'); await page.waitForTimeout(150);
     await page.fill('#spBody .ln-nllang', 'Hindi'); await page.click('#spBody .ln-add'); await page.waitForTimeout(1500);
     const gv = m.call({ action: 'getState', season: SA }).state.books.find(b => b.name === 'Govardhana (Hindi)');
-    t.push(['adding Hindi again chooses the existing Govardhana (Hindi), no error',
-      !(await page.textContent('#modalErr')).trim() && !!(await page.$(`#spBody input.d-delta[data-book="${gv.id}"]`))]);
-    t.push(['…still one Govardhana (Hindi) in the catalogue', m.call({ action: 'getState', season: SA }).state.books.filter(b => b.name === 'Govardhana (Hindi)').length === 1]);
-    await page.fill(`#spBody input.d-delta[data-book="${gv.id}"]`, '4');
+    /* b247: it waits on the line until Save, which is answered with the
+       existing title's id, so the stock lands on the one Govardhana (Hindi). */
+    const gvLine = await page.evaluate(() => { const i = [...document.querySelectorAll('#spBody input.d-delta')].pop(); return i && i.dataset.book; });
+    t.push(['adding Hindi again puts Govardhana (Hindi) on the line, no error',
+      !(await page.textContent('#modalErr')).trim() && !!gvLine]);
+    await page.fill(`#spBody input.d-delta[data-book="${gvLine}"]`, '4');
     await page.click('#spSave'); await page.waitForTimeout(1500);
     t.push(['…and 4 are stocked in Italy', qty('wh_it', gv.id) === 4]);
+    t.push(['…still one Govardhana (Hindi) in the catalogue', m.call({ action: 'getState', season: SA }).state.books.filter(b => b.name === 'Govardhana (Hindi)').length === 1]);
   } catch(e){ t.push(['ran to the end: ' + e.message, false]); }
   t.push(['no page errors', !errors.length]);
   await browser.close();
