@@ -91,7 +91,8 @@ const API = 'http://api.test/';
     page.cdp = await ctx.newCDPSession(page);
     return page;
   }
-  const shelf = page => page.$$eval('#invGrid > .book[data-id]', c => c.map(x => x.dataset.id));
+  const shelf = page => page.$$eval('#invGrid > .book[data-id]:not(.don-card)', c => c.map(x => x.dataset.id));
+  const cards = page => page.$$eval('#invGrid > [data-id]', c => c.map(x => x.dataset.id));
   const centre = async (page, sel) => { const b = await (await page.$(sel)).boundingBox(); return { x: b.x + b.width / 2, y: b.y + b.height / 2 }; };
   const atEvent = async page => { await page.evaluate(() => { goTo('event', 'ev_cp'); }); await page.waitForTimeout(600); };
   const anyModal = page => page.evaluate(() => { const m = document.querySelector('#modal'); return !!(m && m.offsetParent && m.innerText.trim()); });
@@ -113,7 +114,7 @@ const API = 'http://api.test/';
       await sita.isVisible(tg) && await sita.$eval(tg, b => b.textContent === '⇅' && b.previousElementSibling && b.previousElementSibling.classList.contains('view-tg'))]);
     await sita.click(tg); await sita.waitForTimeout(300);
     t.push(['arranging: a note at the foot of the screen, for computers', /for computers/.test(await sita.textContent('#arrDock'))]);
-    t.push(['…and a Drag bar on every title', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length]);
+    t.push(['…and a Drag bar on every title, and on the donation card (b249)', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length + 1]);
     const n = shared.length;
     const from = await centre(sita, `#invGrid > .book[data-id="${shared[n - 1]}"] .bname`);
     const to = await centre(sita, `#invGrid > .book[data-id="${shared[0]}"]`);
@@ -121,7 +122,7 @@ const API = 'http://api.test/';
     await sita.mouse.move(to.x, to.y, { steps: 20 });
     // b248: nothing shuffles while dragging; the book it will swap with is outlined.
     t.push(['mid-drag: the book under it is outlined, the rest stay put', await sita.$$eval('#invGrid .arr-target', g => g.map(x => x.dataset.id).join()) === shared[0]
-      && JSON.stringify(await sita.$$eval('#invGrid > [data-id]:not(.arr-lift)', c => c.map(x => x.dataset.id))) === JSON.stringify(shared.slice(0, n - 1))]);
+      && JSON.stringify(await sita.$$eval('#invGrid > [data-id]:not(.arr-lift):not(.don-card)', c => c.map(x => x.dataset.id))) === JSON.stringify(shared.slice(0, n - 1))]);
     await sita.screenshot({ path: shot('middrag') });
     await sita.mouse.up(); await sita.waitForTimeout(700);
     let mine = await shelf(sita);
@@ -129,7 +130,20 @@ const API = 'http://api.test/';
     t.push(['the last title dropped on the first: the two swap, nothing else moves', JSON.stringify(mine) === JSON.stringify(swapped(shared, 0, n - 1))]);
     t.push(['…without selling it (no window opened)', !(await anyModal(sita))]);
     t.push(['…nothing left behind', await sita.evaluate(() => !document.querySelector('.arr-gap, .arr-lift'))]);
-    t.push(['…still arranging after the drop (Drag bars back)', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length]);
+    t.push(['…still arranging after the drop (Drag bars back)', await sita.$$eval('#invGrid .arr-grip', g => g.length) === shared.length + 1]);
+    // b249: the donation card swaps like a title.
+    const before = await cards(sita);
+    t.push(['(the donation card starts last)', before[before.length - 1] === '__donation']);
+    const dFrom = await centre(sita, '#invGrid > .don-card .bname'), dTo = await centre(sita, `#invGrid > .book[data-id="${mine[1]}"]`);
+    await sita.mouse.move(dFrom.x, dFrom.y); await sita.mouse.down();
+    await sita.mouse.move(dTo.x, dTo.y, { steps: 20 }); await sita.mouse.up(); await sita.waitForTimeout(700);
+    const afterDon = await cards(sita);
+    t.push(['the donation card dropped on the second title: the two swap', afterDon[1] === '__donation' && afterDon[afterDon.length - 1] === mine[1] && afterDon.length === before.length]);
+    // …and back, so the checks below see the titles as they were.
+    const dBack = await centre(sita, '#invGrid > .don-card .bname'), dLast = await centre(sita, `#invGrid > .book[data-id="${mine[1]}"]`);
+    await sita.mouse.move(dBack.x, dBack.y); await sita.mouse.down();
+    await sita.mouse.move(dLast.x, dLast.y, { steps: 20 }); await sita.mouse.up(); await sita.waitForTimeout(700);
+    t.push(['…and swapped back, it is last again', JSON.stringify(await cards(sita)) === JSON.stringify(before)]);
     let me = await ask({ action: 'me', s: await sessionOf('sita@example.com', 'Sita') });
     t.push(['her computer order is kept with her login', (me.result.prefs.bookOrder || [])[0] === shared[n - 1] && !me.result.prefs.bookOrderPhone]);
     await sita.click('#arrDock [data-act="arrange"]'); await sita.waitForTimeout(300);
@@ -172,7 +186,7 @@ const API = 'http://api.test/';
     t.push(['practice: Edit Book Display is gone from the menu', !!(await own.$('[data-act="addstock"]')) && !(await own.$('[data-act="bookdisplay"]'))]);
     const ev = await shelf(own);
     await own.click(tg); await own.waitForTimeout(300);
-    t.push(['arranging (Universal): "Hide here" on every title', await own.$$eval('#invGrid .arr-hide', b => b.length) === ev.length]);
+    t.push(['arranging (Universal): "Hide here" on every title (not the donation card)', await own.$$eval('#invGrid .arr-hide', b => b.length) === ev.length && !(await own.$('#invGrid .don-card .arr-hide'))]);
     await own.click(`#invGrid > [data-id="${ev[1]}"] .arr-hide`); await own.waitForTimeout(800);
     t.push(['"Hide here" takes the title off this shelf', !(await shelf(own)).includes(ev[1]) && (await shelf(own)).length === ev.length - 1]);
     t.push(['…still arranging, and "Hidden here (1)" in the note', /Hidden here \(1\)/.test(await own.textContent('#arrDock'))]);

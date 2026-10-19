@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b248**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b249**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,12 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b249 — the donation card swaps too; headings read from the left
+
+- **Donation card (practice):** it has a Drag bar in ⇅ Arrange and swaps like a title. Its place is kept in the person's own order as `__donation` (DONATION_ID); without one it stays last. It has no "Hide here". `renderInventory` and `saveShelfOrder` in index.html.
+- **Headings:** every section title now starts right after its fold arrow (▾); the heading's buttons keep to the right. `justify-content:space-between` had put each title somewhere different, depending on what else its heading held.
+- **Tests:** browser-arrange.js adds the donation swap (40 checks).
 
 ## Done in b248 — swap to arrange; undo a new title from the Activity log; no Edit Book Display (practice)
 
