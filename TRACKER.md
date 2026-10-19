@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b245**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b246**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,22 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b246 — Earthly HQ refreshes again (signed in)
+
+- **Bug (Gita):** at Earthly HQ, "Checking for changes…" ran for 90 seconds
+  and more without finishing, and the screen kept an old copy (which is also
+  why a newly added language was missing).
+- **Cause:** `post()` added the device's season to a request only when there
+  was no sign-in (an `else if` after the session branch). Signed in on the
+  Cloudflare server, the server answered with its stored season. Seasons are
+  stored when chosen, so they looked fine; Earthly HQ is never stored, so every
+  HQ refresh came back for another season and `pull` discarded it as stale.
+- **Fix (page only):** the season goes with every request except a share
+  link's and `setSeason`. No server change.
+- Test: `browser-cloudflare.js` (+2, real Cloudflare runtime, signed in: HQ
+  reaches "Up to date" after a refresh; fails on b245). Needs
+  `npm install` in server/ to run.
 
 ## Done in b245 — a new language is chosen even when the screen is behind
 

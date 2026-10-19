@@ -120,6 +120,21 @@ const API = 'http://127.0.0.1:' + PORT + '/';
     t.push(['coming back later: still signed in, no sign-in screen', !(await page.$('#signIn')) &&
       await page.evaluate(() => (STATE.sales || []).some(x => x.saleId === 'CF1'))]);
 
+    /* Earthly HQ, signed in (b246). Signed-in requests never said which season
+       the device was on, so the server answered with its stored season — and
+       HQ is never stored — and the page threw every refresh away as "for
+       another season": "Checking for changes…" for ever, an old copy shown. */
+    await page.evaluate(() => switchSeason('HQ')); await page.waitForTimeout(2500);
+    await page.reload(); await page.waitForTimeout(500);
+    const upToDate = await (async () => { const t0 = Date.now(); while (Date.now() - t0 < 10000) {
+      if (/Up to date|Saving/.test(await page.evaluate(() => document.getElementById('statusText').textContent))) return Date.now() - t0;
+      await new Promise(r => setTimeout(r, 200)); } return -1; })();
+    console.log('   Earthly HQ: up to date after ' + upToDate + ' ms');
+    t.push(['at Earthly HQ, a refresh finishes ("Up to date")', upToDate >= 0]);
+    t.push(['…and the screen is HQ\'s own data', await page.evaluate(() => STATE.activeSeason === 'HQ')]);
+    await page.evaluate(() => switchSeason(STATE.seasons[0].seasonId)); await page.waitForTimeout(2500);
+    await page.evaluate(() => { goTo('region', 'rg_it'); });
+
     // A coordinator's link: no sign-in, ever.
     await api({ action: 'setKey', s, season: sid, kind: 'region', id: 'rg_it', key: 'kitaly12345' });
     const other = await (await browser.newContext()).newPage();
