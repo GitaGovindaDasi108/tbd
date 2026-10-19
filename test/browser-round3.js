@@ -83,8 +83,9 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
       ['Activity Log', 'App and Sales Support', 'Spreadsheet Links', 'Edit Wording'].every(n => has(cols, 'Admin', new RegExp(n)))]);
     t.push(['Money: Track Cash, Record Costs, Edit Payment Types',
       ['Track Cash', 'Record Costs', 'Edit Payment Types'].every(n => has(cols, 'Money', new RegExp(n)))]);
-    t.push(['Books: Add New Stock, Transfer Existing Stock, Consignment Books, Edit Book Display',
-      ['Add New Stock', 'Transfer Existing Stock', 'Consignment Books', 'Edit Book Display'].every(n => has(cols, 'Books', new RegExp(n)))]);
+    // b250: Edit Book Display left the menu (⇅ Arrange on the shelf does its work).
+    t.push(['Books: Add New Stock, Transfer Existing Stock, Consignment Books (no Edit Book Display)',
+      ['Add New Stock', 'Transfer Existing Stock', 'Consignment Books'].every(n => has(cols, 'Books', new RegExp(n))) && !has(cols, 'Books', /Edit Book Display/)]);
     t.push(['region: Change Event Order, Change Regional Order, Edit/Close/Delete Region',
       ['Change Event Order', 'Change Regional Order', 'Edit Region', 'Close Region', 'Delete Region'].every(n => has(cols, 'Location', new RegExp(n)))]);
     const all = cols.flatMap(c => c.buttons).join(' | ');
@@ -102,7 +103,7 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
 
     // 2. Edit Book Display.
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);
-    await page.click('#adminActions button:has-text("Edit Book Display")'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     const howto = await page.textContent('#modal .how-to');
     t.push(['instructions: select which are displayed, and drag and drop to reorder',
       /Select which books should be displayed in the warehouse in this region/.test(howto) && /Drag and drop to change the order/.test(howto)]);

@@ -86,7 +86,7 @@ c({ action: 'sendShipment', shipId: 'sh_pr', mode: 'devotee', fromRegion: 'OUTSI
       document.querySelectorAll('#titleList .stat-card.has-lang .lang-tag').length > 0)]);
     t.push(['sales log: the sale reads "Sri Radha" + Russian label', await page.evaluate(() => {
       const r = document.querySelector('#log .li-book'); return !!r && /^Sri Radha/.test(r.textContent.trim()) && r.querySelector('.lang-tag').textContent === 'Russian'; })]);
-    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     t.push(['Edit Book Display: labels', await page.evaluate(() => document.querySelectorAll('#bdList .lang-tag').length >= 3)]);
     await page.screenshot({ path: shot('2-bookdisplay') });
     await page.evaluate(() => closeModal());
@@ -128,14 +128,14 @@ c({ action: 'sendShipment', shipId: 'sh_pr', mode: 'devotee', fromRegion: 'OUTSI
     // b230: Edit Book Display hides (and shows) every out-of-stock title at once.
     c({ action: 'setStockBulk', location: pl.whLoc, override: true, items: [{ bookId: bgId, qty: 0 }] });
     await page.click('[data-act="refresh"]'); await page.waitForTimeout(1500);
-    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     t.push(['Edit Book Display: "Hide all out of stock books (1)" at the top', /Hide all out of stock books \(1\)/.test(await page.textContent('#bdOos'))]);
     await page.click('#bdOos'); await page.waitForTimeout(150);
     t.push(['…unticks Bhagavad Gita, and turns into "Show all out of stock books (1)"',
       !(await page.isChecked(`#bdList [data-bd="${bgId}"]`)) && /Show all out of stock books \(1\)/.test(await page.textContent('#bdOos'))]);
     await page.click('#bdSave'); await page.waitForTimeout(1200);
     t.push(['…saved: it is off the shelf', await page.evaluate(id => !shelfBooks().some(b => b.id === id), bgId)]);
-    await page.click('#adminActions [data-act="bookdisplay"]'); await page.waitForTimeout(300);
+    await page.evaluate(() => bookDisplayModal()); await page.waitForTimeout(300);   // no longer in the menu (b250)
     await page.click('#bdOos'); await page.waitForTimeout(150);
     t.push(['"Show all out of stock books" ticks it again', await page.isChecked(`#bdList [data-bd="${bgId}"]`)]);
     await page.click('#bdSave'); await page.waitForTimeout(1200);

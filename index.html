@@ -1699,7 +1699,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b249</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b250</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2515,7 +2515,7 @@ function hideTitle(bookId){
     }, null, {keepOpen:true});
 }
 /* Hide and show from Arrange (b248): Universal, on a region's or an event's own shelf. */
-const canHideHere = () => PRACTICE && isAdmin() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
+const canHideHere = () => isAdmin() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
 function hiddenTitlesModal(){
   const draw = () => {
     const off = hiddenHere();
@@ -2607,7 +2607,7 @@ function byRank(list, rank){
   }).map(x=>x.b);
 }
 
-/* ---- My own book order (b243, practice first) ----
+/* ---- My own book order (b243 in practice; live from b250) ----
    Anyone can put the books in the order they like, on the shelf itself
    (↕ Arrange). Signed in, it is kept with their login, so it follows them to
    any phone or computer; on a link (no login), on this device. It sits on top
@@ -2627,7 +2627,7 @@ const MY_ORDER = {
   key(){ return isPhoneView() ? 'tbs_my_order_phone' : 'tbs_my_order'; },
   local(){ try{ const v = JSON.parse(localStorage.getItem(this.key())||'[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } },
   get(){
-    if(!PRACTICE || SHARED_ORDER_ONLY) return [];
+    if(SHARED_ORDER_ONLY) return [];
     if(typeof ME!=='undefined' && ME && ME.prefs){ const v = ME.prefs[this.pref()]; return Array.isArray(v) ? v : []; }
     return this.local();
   },
@@ -4851,10 +4851,8 @@ function renderAdmin(){
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
   cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
   cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books</button>`);
-  /* Practice (b248): the books are arranged, hidden and shown on the shelf
-     itself (⇅ Arrange), so Edit Book Display leaves the menu. */
-  if(!PRACTICE) cols[2].push(`<button class="btn" data-act="bookdisplay">👁 Edit Book Display${
-    (!season && hiddenHere().size)?` (${hiddenHere().size} hidden)`:''}</button>`);
+  /* The books are arranged, hidden and shown on the shelf itself (⇅ Arrange),
+     so Edit Book Display is no longer in the menu (practice b248, live b250). */
   if(CUR_LEVEL==='event') cols[2].push(eventPricesBtn());
 
   // Location
@@ -13402,7 +13400,7 @@ function makeSortable(container, onDrop){
 }
 
 
-/* ---- Arranging the books (b243, practice first) ----
+/* ---- Arranging the books (b243 in practice; live from b250) ----
    A small ⇅ beside the list/cards switch, on every panel of book cards (the
    shelf, Distribution by Title, the Warehouse Overview, at every level; b244),
    turns them into something you can rearrange: pick up a card, drop it on
@@ -13411,14 +13409,13 @@ function makeSortable(container, onDrop){
    the person's own (MY_ORDER), saved the moment a card is dropped, and every
    panel follows it. Holding a card near the top or bottom of the screen
    scrolls. Universal can also hide a title here, and show it again (b248),
-   which is why practice has no Edit Book Display. */
+   which is why there is no Edit Book Display in the menu. */
 var ARRANGE = false;
 var SHELF_DRAG = { on:false, redraw:false };
 function dragging(){ return typeof SHELF_DRAG!=='undefined' && !!SHELF_DRAG && SHELF_DRAG.on; }
 const bookGrids = () => [...document.querySelectorAll('#invGrid, .stat-grid[data-books]')];
 function arrangeUI(){
-  if(!PRACTICE) ARRANGE = false;
-  const grids = PRACTICE ? bookGrids() : [];
+  const grids = bookGrids();
   grids.forEach(g=>{
     g.classList.toggle('arranging', ARRANGE);
     g.querySelectorAll(':scope > [data-id]').forEach(c=>{
