@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b243**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b245**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,46 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b245 — a new language is chosen even when the screen is behind
+
+- **Bug (Gita):** Hindi was not offered for Govardhana; adding it said "Could
+  not open Govardhana (Hindi) — refresh the page…", and refreshing did not
+  help. "Checking for changes…" also stayed up for a long time.
+- **Cause:** the title had been added on the server, but this screen's copy of
+  the catalogue was behind because its refresh had not landed. b240's add
+  relied on that refresh (or on the new id, which an "already exists" refusal
+  did not give).
+- **Fix:** `addBook` takes `orExisting:true` and then answers with the existing
+  title's id instead of refusing (Code.gs, `SERVER_BUILD` b245; an older server
+  still works the old way). Add Stock puts that id on the line at once and
+  refreshes behind it. The page's full refresh (`pull`) now has a 40 s limit,
+  so a request that never answers no longer leaves "Checking for changes…"
+  up for good; the regular check asks again.
+- Test: `browser-stalelang.js` (+4: refresh stuck, Govardhana (Hindi) added
+  elsewhere; fails on b243).
+- Open question: why the refresh was slow on Gita's device (asked her).
+
+## Done in b244 — arranging: a small ⇅ on every panel of book cards; phone and computer orders (practice)
+
+- **Asked (Gita):** the Arrange button showed on the HQ shelf but not at other
+  levels; make it a small icon like the list/cards and report buttons; and
+  keep a different order on a phone than on a computer, since they lay the
+  books out differently.
+- **Icon:** `arrangeUI()` (run after every redraw, like `sectionViews`) puts a
+  small ⇅ (`.view-tg.arr-tg`) beside ☰ on every panel holding book cards: the
+  shelf (`#invGrid`) and every `.stat-grid[data-books]` (Distribution by Title
+  and the Warehouse Overview, at the season, region, event and HQ). The season
+  page has no shelf, which is where it was missing. The old heading button and
+  inline bar are gone; while arranging, a note sits at the foot of the screen
+  (`#arrDock`, clear of the phone menu button) with Use the shared order and
+  Done. Drag bars are added to the cards by `arrangeUI`, not the renderers.
+- **Phone or computer:** `isPhoneView()` (max-width 640px). `MY_ORDER` keeps
+  `bookOrderPhone` / `tbs_my_order_phone` on a phone and `bookOrder` /
+  `tbs_my_order` on a computer; a phone starts from the shared order. Server
+  `PREF_KEYS` gains `bookOrderPhone` (Cloudflare redeploys itself).
+- `renderAll` waits while a card is held (`dragging()`).
+- Tests: `browser-arrange.js` (30 checks), `people.js` (+1).
 
 ## Done in b243 — ↕ Arrange on the shelf; each person's own book order (practice)
 

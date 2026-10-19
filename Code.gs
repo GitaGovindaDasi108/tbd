@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b239';
+var SERVER_BUILD = 'b245';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -7260,8 +7260,13 @@ function doAddBook(p) {
   var cat = normCat_(p.cat);
   var existing = allBooks_();
   for (var i = 0; i < existing.length; i++) {
-    if (existing[i].name.toLowerCase() === name.toLowerCase())
-      throw new Error('A book called "' + name + '" already exists.');
+    if (existing[i].name.toLowerCase() !== name.toLowerCase()) continue;
+    /* Add Stock asks "this title, whether new or not" (b245): a device whose
+       copy of the catalogue is behind cannot see a title added elsewhere, and
+       being told only that it "already exists" left it with no way to choose
+       it. The existing one's id is the answer it needs. */
+    if (p.orExisting) return existing[i].id;
+    throw new Error('A book called "' + name + '" already exists.');
   }
   var id = 'bk_' + Utilities.getUuid().slice(0, 6);
   dbAddCols_('_custombooks', ['id','name','cat','createdAt','partnerId','sort']);
