@@ -43,6 +43,10 @@ const sellKey = ok(m.call({ action: 'setKey', kind: 'event', id: 'ev_yoga' }), '
       }
       if (url.startsWith('http://app.test/')) {
         const f = (rel => rel === 'config.js' ? path.join(__dirname, 'config.test.js') : path.join(ROOT, rel))(new URL(url).pathname.replace(/^\/+/, '') || 'index.html');
+        // "?menu": the left-hand menu, as the real app has it (b260).
+        if (f.endsWith('config.test.js') && /[?&]menu/.test(query || ''))
+          return route.fulfill({ status: 200, contentType: 'text/javascript',
+            body: fs.readFileSync(f, 'utf8').replace('CLASSIC_ADMIN: true', 'CLASSIC_ADMIN: false') });
         if (fs.existsSync(f) && fs.statSync(f).isFile())
           return route.fulfill({ status: 200, body: fs.readFileSync(f),
             contentType: f.endsWith('.html') ? 'text/html' : f.endsWith('.js') ? 'text/javascript' : undefined });
@@ -171,6 +175,26 @@ const sellKey = ok(m.call({ action: 'setKey', kind: 'event', id: 'ev_yoga' }), '
     t.push(['phone (390px): the box and its results fit the screen', fits]);
     await page.tap('#gsList .gs-row >> nth=0'); await page.waitForTimeout(400);
     t.push(['phone: tapping a result goes there', (await where(page)).loc === 'ev_yoga']);
+    await page.close();
+
+    /* ---- 6. With the left-hand menu, as the real app has it (b260) ---- */
+    page = await open('?menu');
+    t.push(['menu: the left-hand menu is there', !!(await page.$('#sideNav .sn-item'))]);
+    r = await search(page, 'cash Tracker');
+    t.push(['"cash Tracker" finds Track Cash, from the folded menu', r[0] === 'Track Cash' && (await heads(page))[0] === 'Actions']);
+    t.push(['…tagged with its menu section', await page.evaluate(() => /Money/.test(document.querySelector('#gsList .gs-row .gs-tag').textContent))]);
+    await page.keyboard.press('Enter'); await page.waitForTimeout(500);
+    t.push(['…Enter opens Cash Tracking', await page.evaluate(() => /Cash Tracking/i.test(document.querySelector('#modal').textContent || ''))]);
+    await page.evaluate(() => closeModal()); await page.waitForTimeout(200);
+    r = await search(page, 'transfer stock');
+    t.push(['menu: "transfer stock" finds Transfer Existing Stock', r[0] === 'Transfer Existing Stock']);
+    r = await search(page, 'menu');
+    t.push(['menu: the menu\'s own controls are not results', !r.some(x => /Keep the menu open|Collapse/.test(x))]);
+    r = await search(page, 'add stock');
+    t.push(['menu: "add stock" finds Add New Stock', r[0] === 'Add New Stock']);
+    r = await search(page, 'edit wording');
+    t.push(['menu: App Development rows are found too (Edit Wording)', r[0] === 'Edit Wording']);
+    await page.keyboard.press('Escape');
     await page.close();
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));

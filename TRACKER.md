@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b259**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b260**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2140,3 +2140,17 @@ Live unless marked practice.
   month, reimbursements by status, still to pay back by person. To do =
   pending payments by place, pending reimbursements by person.
 - Tests: browser-finance (98), browser-expenses (66); browser-reports paused.
+
+## Done in b260 — Search finds the menu's actions again (live)
+- The search box read actions only off the old four-column admin panel
+  (`#adminActions`) and the top bar. Since the left-hand menu went live (b235)
+  that panel is empty, so no action was ever found, only places.
+- `gsItems` now also reads `#sideNav .sn-item[data-act]` (`GS_BTNS`), even while
+  the menu or its section is folded, skipping the menu's own controls
+  (`GS_NOT`). Each result is tagged with its menu section (Money, Books…).
+- A longer form of a word counts ("tracker" finds Track; `gsScore`), and Track
+  Cash also answers to tracker/tracking.
+- Choosing a menu row marks the menu open first, so a touch-screen computer
+  doesn't take the click as "open the menu".
+- Tests: `test/browser-search.js` section 6 runs with the left-hand menu
+  (`?menu` serves the test config with `CLASSIC_ADMIN: false`).
