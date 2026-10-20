@@ -18,6 +18,15 @@ const HOUR = 3600 * 1000;
 // ceiling against something opening thousands (the oldest are closed first).
 const MAX_SOCKETS = 400;
 
+/* The key from the Authorization header, put into a readOnly request as "key". */
+function withKey(e, key) {
+  if (e.parameter) return e.parameter.action === 'readOnly' ? { parameter: Object.assign({}, e.parameter, { key }) } : e;
+  let p;
+  try { p = JSON.parse(e.postData.contents || '{}'); } catch (err) { return e; }
+  if (!p || p.action !== 'readOnly') return e;
+  return { postData: { contents: JSON.stringify(Object.assign(p, { key })) } };
+}
+
 export class TbsServer extends DurableObject {
   constructor(ctx, env) {
     super(ctx, env);
@@ -37,7 +46,9 @@ export class TbsServer extends DurableObject {
       // The practice server (b231): a copy of the live records to try things on.
       practice: !!env.PRACTICE, liveUrl: env.LIVE_URL || '', liveSecret: env.LIVE_SECRET || '',
       // On the live server: the phrase that lets the practice server read a copy.
-      practiceSecret: env.PRACTICE ? '' : (env.PRACTICE_SECRET || '')
+      practiceSecret: env.PRACTICE ? '' : (env.PRACTICE_SECRET || ''),
+      // The read-only key (b253): lets Claude read the records, nothing more.
+      readKey: env.READ_KEY || ''
     });
   }
 
@@ -46,6 +57,9 @@ export class TbsServer extends DurableObject {
     let e;
     if (request.method === 'POST') e = { postData: { contents: await request.text() } };
     else e = { parameter: Object.fromEntries(new URL(request.url).searchParams) };
+    // The read-only key may come as "Authorization: Bearer <key>" instead (b253).
+    const bearer = /^Bearer\s+(.+)$/i.exec(request.headers.get('Authorization') || '');
+    if (bearer) e = withKey(e, bearer[1].trim());
 
     await this.srv.warm();                       // rates in hand before the rules ask
     const text = await this.srv.request(e);      // sign-in check, then the whole request
