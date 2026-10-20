@@ -59,7 +59,9 @@ const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'dat
   'method', 'reimbCur', 'payTo', 'notes', 'receipts', 'byName', 'byEmail', 'byLink', 'forName', 'forEmail',
   'status', 'doneAt', 'doneBy', 'doneNote',
   // b254: what "Other" is, and how to reach someone who sent it in by a reimbursement link.
-  'catOther', 'contactPhone', 'contactEmail'];
+  'catOther', 'contactPhone', 'contactEmail',
+  // b259: paid back in another currency: the amount at the rate on the day of the purchase.
+  'payAmt'];
 const T = '_expenses';
 const PART = 900 * 1024;                    // characters of base64 per stored part
 const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk a photo
@@ -433,7 +435,17 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (w.email) return String(r.byEmail) === w.email || String(r.forEmail) === w.email;
     return String(r.byLink) === w.link && (!w.name || String(r.forName || r.byName) === w.name);
   }
-  const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []) });
+  const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null) });
+  /* What to pay back when it is in another currency than was spent (b259):
+     worked out on the page from the rate on the day of the purchase, kept
+     with the expense so Finance sees the same figure. */
+  function cleanPayAmt(p, cur, reimbCur, amt) {
+    const x = p && typeof p === 'object' ? p : null;
+    if (!x || !reimbCur || reimbCur === cur) return '';
+    const rate = Number(x.rate), on = String(x.on || '');
+    if (!(rate > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(on)) return '';
+    return JSON.stringify({ amt: Math.round(amt * rate * 100) / 100, cur: reimbCur, rate, on });
+  }
   function save(w, p) {
     fresh();
     const F = app.financeFacts_(), rules = getRules();
@@ -500,7 +512,9 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       status: kind === 'record' ? 'recorded' : (old && old.kind === 'reimburse' && old.status !== 'recorded' ? old.status : 'pending'),
       doneAt: old && kind === 'reimburse' ? (old.doneAt || '') : '', doneBy: old && kind === 'reimburse' ? (old.doneBy || '') : '',
       doneNote: old && kind === 'reimburse' ? (old.doneNote || '') : '',
-      catOther, contactPhone: contactPhone || (old ? String(old.contactPhone || '') : ''), contactEmail: contactEmail || (old ? String(old.contactEmail || '') : '')
+      catOther, contactPhone: contactPhone || (old ? String(old.contactPhone || '') : ''), contactEmail: contactEmail || (old ? String(old.contactEmail || '') : ''),
+      // An edit that sends none keeps the rate it had, while the day and currencies are the same.
+      payAmt: kind === 'reimburse' ? cleanPayAmt(p.payAmt || (old && old.cur === cur && old.reimbCur === reimbCur && old.date === date ? parse(old.payAmt, null) : null), cur, reimbCur, amt) : ''
     };
     if (!row.byName && !forName) throw new Error('Say who you are first.');
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);

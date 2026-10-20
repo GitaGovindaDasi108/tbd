@@ -614,6 +614,12 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .exp-k.on{border-color:#2E8065;background:#EEF7F3}
 .exp-form .row2 .cost-amt-row select{width:auto;flex:none}
 .exp-reimb{border-left:3px solid #2E8065;padding-left:10px;margin:6px 0 10px}
+.exp-rb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-weight:700;color:var(--plum);border:1.5px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;margin-bottom:10px;cursor:pointer}
+.exp-rb input{width:18px;height:18px}
+.exp-rb .muted-note{flex-basis:100%;font-weight:400}
+.exp-same{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:400;margin:2px 0 4px}
+.exp-same input{width:auto !important}
+.exp-fx{display:block;font-size:12.5px;color:#2F6FB0;font-weight:600;margin-top:2px}
 .exp-form>.hint{margin:6px 0 8px}
 .exp-form .row2>:only-child{grid-column:1/-1}
 /* On a phone the form is one column, so labels and boxes line up (b257). */
@@ -661,6 +667,10 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .rs-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
 .rs-row>span{flex:1}
 /* Expenses & Reimbursements: two sections (b257) */
+.fin-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.fin-sh .fin-h3{margin:2px 0}
+.fin-tiles1{grid-template-columns:1fr !important;margin:6px 0 8px}
+.fin-flt{margin:4px 0 8px}
 .fin-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:10px}
 .fin-col{min-width:0;border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--paper)}
 .fin-col>.fin-h3:first-child{margin-top:2px}
@@ -676,6 +686,11 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .exp-group .exp-gl{border-top:1px solid var(--line);margin:6px 0}
 .exp-gi{padding:6px 0;border-bottom:1px solid var(--line)}
 .exp-gi .exp-btns{margin-top:4px}
+.exp-gi.exp-off>.exp-top,.exp-gi.exp-off>.exp-meta{opacity:.5;text-decoration:line-through}
+.exp-line{align-items:center}
+.exp-line .exp-gap{flex:1}
+.btn-ok{background:#2E7D4F;color:#fff;border-color:#2E7D4F}
+.exp-amt .exp-fx{text-align:right}
 .rs-curs{display:flex;flex-wrap:wrap;gap:4px 14px;margin:4px 0 0 26px}
 .na-exp{display:flex;flex-direction:column;gap:8px;margin:4px 0 16px}
 body.has-na .overlay{z-index:10000}
@@ -821,6 +836,7 @@ body.has-na .overlay{z-index:10000}
 .lf-foot{display:flex;justify-content:flex-end;gap:6px;padding:8px 8px 4px;border-top:1px solid var(--line);margin-top:4px;
   position:sticky;bottom:-6px;background:var(--paper)}
 .log-filter.lf-up{top:auto;bottom:calc(100% + 6px)}
+.log-filter[data-xpanel]{right:auto;left:0}
 .lf-open{position:relative;z-index:45;overflow:visible !important}
 .log-tools{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;
   padding:7px 14px 0;border-bottom:1px solid var(--line)}
@@ -1384,6 +1400,7 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fin-tile.fin-net{border-width:2px}
 .fin-tl{font-size:12px;opacity:.75}.fin-tv{font-size:18px;font-weight:600;margin-top:2px}
 .fin-ts{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+.fin-ex-l{color:#2F6FB0 !important;font-weight:600}
 .fin-cs{font-size:11px;color:var(--muted);font-weight:400}
 .fin-tbl td{vertical-align:top}
 .fin-tiles2{grid-template-columns:repeat(auto-fit,minmax(200px,260px))}
@@ -1866,7 +1883,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b258</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b259</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -8734,7 +8751,7 @@ async function expensesModal(editId, presetPartner){
       category:edit.category||'Other', payType:edit.payType||'', partnerId:edit.partnerId||'',
       method:edit.method, reimbCur:edit.reimbCur, payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
       forEmail:edit.forEmail||'', forName:edit.forName||'', catOther:edit.catOther||''}
-    : {id:expId('X'), kind:presetPartner ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
+    : {id:expId('X'), kind:presetPartner || PRACTICE ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
       cur:EXP.opt.defaultCur, amt:'', category:'Other', payType:'', partnerId:presetPartner||'',
       method:'', reimbCur:'', payTo:{}, notes:'', receipts:[], forEmail:'', forName:'', catOther:''};
   // A "paid with" the place does not list is an Other, with its words kept.
@@ -8782,9 +8799,13 @@ function expDraw(){
       <div class="muted-note">One of the two is enough, so Finance can reach you.</div>`
     : o.me.link && !o.me.name ? `<div class="field"><label>Your name</label>
       <input id="xWho" type="text" maxlength="40" placeholder="So Finance knows who it was"></div>` : '';
-  const fields = method ? method.fields.map(fl=>`<div class="field"><label>${esc(fl.label)}${fl.req?'':' (optional)'}</label>
-      <input data-payto="${esc(fl.k)}" type="${fl.type==='tel'?'tel':'text'}" value="${esc(f.payTo[fl.k]||'')}" placeholder="${esc(fl.ph||'')}">
-      ${fl.hint?`<div class="muted-note">${esc(fl.hint)}</div>`:''}</div>`).join('') : '';
+  f.same = f.same || {};
+  const fields = method ? method.fields.map(fl=>{
+    const src = expSameSrc(fl.k), same = src && f.same[fl.k];
+    return `<div class="field"><label>${esc(fl.label)}${fl.req?'':' (optional)'}</label>
+      ${src ? `<label class="exp-same"><input type="checkbox" data-same="${esc(fl.k)}" ${same?'checked':''}> Same as above</label>` : ''}
+      <input data-payto="${esc(fl.k)}" type="${fl.type==='tel'?'tel':'text'}" value="${esc(same ? P[src] : f.payTo[fl.k]||'')}" placeholder="${esc(fl.ph||'')}"${same?' readonly':''}>
+      ${fl.hint?`<div class="muted-note">${esc(fl.hint)}</div>`:''}</div>`; }).join('') : '';
   openModal(`
     ${P ? pubHead('Send in an expense to be paid back') : mHead(edit ? 'Edit expense' : 'Expenses')}
     <div class="m-body">
@@ -8792,7 +8813,8 @@ function expDraw(){
       <div class="exp-form">
         ${forPick}${whoBox}
         ${expBatchHTML()}
-        ${P ? '' : `<div class="exp-kind">
+        ${P ? '' : PRACTICE ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement
+          <span class="muted-note">Leave it unticked for record-keeping (spent and settled).</span></label>` : `<div class="exp-kind">
           <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
             <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
           <label class="exp-k${f.kind==='reimburse'?' on':''}"><input type="radio" name="xKind" value="reimburse" ${f.kind==='reimburse'?'checked':''}>
@@ -8827,7 +8849,7 @@ function expDraw(){
               <span>${esc(r.name)}${r.sending?' · sending…':r.failed?' · not sent':''}</span>
               <button type="button" class="x" data-act="xrcptdel" data-i="${i}" aria-label="Remove">×</button></span>`).join('')}</div>
             <div class="exp-rbtns">
-              <label class="btn btn-ghost btn-sm">📷 Take a photo<input id="xCam" type="file" accept="image/*" capture="environment" hidden></label>
+              ${EXP_TOUCH ? `<label class="btn btn-ghost btn-sm">📷 Take a photo<input id="xCam" type="file" accept="image/*" capture="environment" hidden></label>` : ''}
               <label class="btn btn-ghost btn-sm">📎 Add photos or PDFs<input id="xFiles" type="file" accept="image/*,application/pdf" multiple hidden></label>
             </div>
             <div class="muted-note">Or drop files here, or paste a screenshot.</div>
@@ -8860,6 +8882,20 @@ function expDraw(){
       <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`}`, true);
   expBind();
 }
+/* Photos straight from the camera only where there is one to hand (Gita,
+   2026-10-20: no "Take a photo" on a computer). */
+const EXP_TOUCH = (()=>{ try{ return matchMedia('(pointer: coarse)').matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent); }catch(e){ return false; } })();
+/* On a reimbursement link, a payment detail that is a phone number or an
+   email can be "Same as above" (Gita, 2026-10-20): the number or email they
+   gave at the top. Which one each field takes, if they gave it. */
+function expSameSrc(k){
+  const P = EXP.pub; if(!P) return '';
+  const email = String(P.email||'').trim();
+  if(k==='phone' || k==='revolut') return 'phone';
+  if(k==='wise') return 'email';
+  if(k==='zelle' || k==='paypal') return email ? 'email' : 'phone';
+  return '';
+}
 /* Whatever has been typed, kept as the form is redrawn. */
 function expRead(){
   const f = EXP.form, v = id => { const el = document.getElementById(id); return el ? el.value : null; };
@@ -8875,11 +8911,14 @@ function expRead(){
   if(v('xMethod')!==null) f.method = v('xMethod');
   if(v('xRCur')!==null) f.reimbCur = v('xRCur');
   document.querySelectorAll('#modal [data-payto]').forEach(i=>{ f.payTo[i.dataset.payto] = i.value.trim(); });
+  // "Same as above" follows what is at the top, even if that changed since.
+  Object.keys(f.same||{}).forEach(k=>{ const src = f.same[k] && expSameSrc(k); if(src) f.payTo[k] = String(EXP.pub[src]).trim(); });
   if(v('xWho')!==null && v('xWho').trim()) setWhoAmI(v('xWho'));
 }
 function expBind(){
   const f = EXP.form, o = EXP.opt;
   document.querySelectorAll('#modal input[name="xKind"]').forEach(r=>r.addEventListener('change', ()=>{ expRead(); f.kind = r.value; expDraw(); }));
+  const rbx = $('#xReimb'); if(rbx) rbx.addEventListener('change', ()=>{ expRead(); f.kind = rbx.checked ? 'reimburse' : 'record'; expDraw(); });
   const placeChanged = async ()=>{ f.reimbCur = ''; await expReloadOptions();
     if(!EXP.opt.spendCurs.includes(f.cur) || !f.amt) f.cur = EXP.opt.defaultCur; expDraw(); };
   const loc = $('#xLoc');
@@ -8898,7 +8937,7 @@ function expBind(){
     expDraw();
   });
   const add = files => { expRead(); [...files].forEach(expAddReceipt); };
-  $('#xCam').addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
+  const cam = $('#xCam'); if(cam) cam.addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
   $('#xFiles').addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
   const drop = $('#xDrop');
   drop.addEventListener('dragover', e=>{ e.preventDefault(); drop.classList.add('over'); });
@@ -8907,6 +8946,12 @@ function expBind(){
   if(o.fin) expBindFor();
   $('#xSave').addEventListener('click', expSave);
   const more = $('#xMore'); if(more) more.addEventListener('click', expAddAnother);
+  document.querySelectorAll('#modal [data-same]').forEach(c=>c.addEventListener('change', ()=>{ expRead(); f.same[c.dataset.same] = c.checked; expDraw(); }));
+  // A field ticked "Same as above" follows the top as it is typed.
+  ['xPubPhone','xPubEmail'].forEach(id=>{ const el = $('#'+id); if(el) el.addEventListener('input', ()=>{
+    EXP.pub[id==='xPubPhone' ? 'phone' : 'email'] = el.value;
+    document.querySelectorAll('#modal [data-same]:checked').forEach(c=>{ const src = expSameSrc(c.dataset.same), i = document.querySelector('#modal [data-payto="' + c.dataset.same + '"]');
+      if(src && i) i.value = String(EXP.pub[src]||''); }); }); });
   document.querySelectorAll('#modal [data-xb]').forEach(b=>b.addEventListener('click', ()=>expBatchAct(b.dataset.xb, Number(b.dataset.i))));
 }
 /* Finance's searchable list of people. */
@@ -8980,6 +9025,10 @@ function expCheck(f){
   if(!(Number(f.amt) > 0)) return 'Give the expense an amount.';
   if(!String(f.desc||'').trim()) return 'Say what the expense was for.';
   if(f.kind==='reimburse' && !f.method) return 'Choose how you would like to be paid back.';
+  if(f.kind==='reimburse'){
+    const mm = ((EXP.opt||{}).methods||[]).find(m=>m.name===f.method), fl = mm && (mm.fields||[]).find(x=>x.req && !String((f.payTo||{})[x.k]||'').trim());
+    if(fl) return fl.label + ' is needed for ' + f.method + '.';
+  }
   if(PRACTICE && f.payType==='Other' && !String(f.payOther||'').trim()) return 'Say what it was paid with.';
   return '';
 }
@@ -9006,7 +9055,7 @@ function expBatchHTML(){
 // The next form keeps where, whose, the currency, the date and how to be paid back.
 function expNextForm(f){
   return {id:expId('X'), kind:f.kind, location:f.location, date:f.date, desc:'', cur:f.cur, amt:'', category:'Other', payType:f.payType,
-    payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:Object.assign({}, f.payTo), notes:'', receipts:[],
+    payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:Object.assign({}, f.payTo), same:Object.assign({}, f.same), notes:'', receipts:[],
     forEmail:f.forEmail, forName:f.forName, catOther:''};
 }
 function expAddAnother(){
@@ -9041,6 +9090,8 @@ async function expSave(){
   }
   const e = expCheck(f) || expPubCheck();
   if(e){ err.textContent = e; return; }
+  // Even one is shown to check first (Gita, 2026-10-20), in case of a mistake.
+  if(PRACTICE && !f.editing){ expReview([f]); return; }
   const btn = $('#xSave'); btn.disabled = true; btn.textContent = 'Saving…';
   try{
     const r = await expPost(f, false);
@@ -9060,26 +9111,62 @@ async function expPost(f, more){
     amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
     payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
     receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
-    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', more: !!more});
+    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, more: !!more});
   if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
   return r;
 }
+/* Paid back in another currency than was spent (Gita, 2026-10-20): the
+   amount at the exchange rate on the day of the purchase, from the European
+   Central Bank's daily rates (Frankfurter; a weekend or holiday takes the
+   day before). Worked out when it is checked, kept with the expense. */
+const FX = {};
+async function fxOn(date, from, to){
+  const k = date + '|' + from + '|' + to;
+  if(k in FX) return FX[k];
+  const get = async url => { const c = new AbortController(), t = setTimeout(()=>c.abort(), 6000);
+    try{ const r = await fetch(url, {signal:c.signal}); if(!r.ok) return null; const j = await r.json(); return j && j.rates && j.rates[to] ? {rate:Number(j.rates[to]), on:String(j.date||date)} : null; }
+    catch(e){ return null; } finally{ clearTimeout(t); } };
+  const r = await get('https://api.frankfurter.dev/v1/' + date + '?base=' + from + '&symbols=' + to)
+    || await get('https://api.frankfurter.app/' + date + '?from=' + from + '&to=' + to);
+  if(r) FX[k] = r;
+  return r;
+}
+const expOtherCur = x => x.kind==='reimburse' && x.reimbCur && String(x.reimbCur).toUpperCase()!==String(x.cur).toUpperCase();
+async function expPayAmt(x){
+  if(!expOtherCur(x)) return null;
+  const r = await fxOn(x.date, String(x.cur).toUpperCase(), String(x.reimbCur).toUpperCase());
+  return r ? {amt:Math.round(Number(x.amt) * r.rate * 100) / 100, cur:x.reimbCur, rate:r.rate, on:r.on} : null;
+}
+// "≈ ₹3,040 (1 € = ₹89.43 on 2026-10-17)", or that the rate could not be found.
+function expPayAmtLine(x){
+  if(!expOtherCur(x)) return '';
+  const p = x.payAmt;
+  return p && p.amt!=null ? 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (1 ' + x.cur + ' = ' + (Math.round(p.rate*10000)/10000) + ' ' + p.cur + ' on ' + p.on + ')'
+    : 'To pay back in ' + x.reimbCur + ': the rate for ' + x.date + ' could not be found, so check it before paying.';
+}
 /* Every expense, to check before anything is saved. */
-function expReview(all){
+async function expReview(all){
   const P = EXP.pub, tot = finTotals(all, x=>[[Number(x.amt), x.cur]]);
-  openModal(`${P ? pubHead('Check your expenses') : mHead('Check your expenses')}
+  if(all.some(expOtherCur)){
+    openModal(`${P ? pubHead('Checking the exchange rate…') : mHead('Checking the exchange rate…')}<div class="m-body"><div class="cash-empty">One moment…</div></div>`, true);
+    await Promise.all(all.map(async x=>{ x.payAmt = await expPayAmt(x); }));
+  }
+  const back = all.filter(expOtherCur), pay = back.length && back.every(x=>x.payAmt) ? finTotals(all.filter(x=>x.kind==='reimburse'), x=>[expOtherCur(x) ? [x.payAmt.amt, x.payAmt.cur] : [Number(x.amt), x.cur]]) : '';
+  openModal(`${P ? pubHead(all.length===1 ? 'Check your expense' : 'Check your expenses') : mHead(all.length===1 ? 'Check your expense' : 'Check your expenses')}
     <div class="m-body">
-      <div class="hint">${all.length} expenses${P ? '' : ''}. Check them, then ${P ? 'send them in' : 'save them'} together.</div>
+      <div class="hint">${all.length===1 ? 'Check it, then ' + (P ? 'send it in.' : 'save it.') : all.length + ' expenses. Check them, then ' + (P ? 'send them in' : 'save them') + ' together.'}</div>
       <div class="exp-batch exp-rev">${all.map(x=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
           <span class="muted-note">${esc([x.date, x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category, expPlaceName(x.location)].filter(Boolean).join(' · '))}${
-            x.kind==='reimburse' && !P ? ' · to pay back' : ''} · ${x.receipts.length ? '🧾 ' + x.receipts.length : 'no receipt'}</span></span>
+            x.kind==='reimburse' && !P ? ' · to pay back' : ''} · ${x.receipts.length ? '🧾 ' + x.receipts.length : 'no receipt'}</span>${
+            expOtherCur(x) ? `<span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}</span>
           <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b></div>`).join('')}
-        <div class="exp-bi exp-tot"><span class="exp-bi-t"><b>Total</b></span><b class="exp-bi-a">${esc(tot)}</b></div></div>
+        <div class="exp-bi exp-tot"><span class="exp-bi-t"><b>Total</b></span><b class="exp-bi-a">${esc(tot)}</b></div>
+        ${pay ? `<div class="exp-bi exp-tot"><span class="exp-bi-t"><b>To be paid back</b></span><b class="exp-bi-a">${esc(pay)}</b></div>` : ''}</div>
       ${all.some(x=>x.kind==='reimburse') ? `<div class="hint">To be paid back by <b>${esc([...new Set(all.filter(x=>x.kind==='reimburse').map(x=>x.method))].join(', '))}</b>.</div>` : ''}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" id="xrBack">← Change something</button>
-      <button class="btn btn-primary" id="xrGo">${P ? 'Send them in' : 'Save all ' + all.length}</button></div>`, true);
+      <button class="btn btn-primary" id="xrGo">${all.length===1 ? (P ? 'Send it in' : 'Save it') : P ? 'Send them in' : 'Save all ' + all.length}</button></div>`, true);
   $('#xrBack').addEventListener('click', ()=>expDraw());
   $('#xrGo').addEventListener('click', async ()=>{
     const go = $('#xrGo'); go.disabled = true;
@@ -9097,7 +9184,7 @@ function expReview(all){
     }
     EXP.batch = [];
     if(P){ reimbPublicDone(done); return; }
-    toast(done.length + ' expenses saved');
+    toast(done.length===1 ? (done[0].kind==='reimburse' && !done[0].forEmail ? 'Saved. Finance will pay you back.' : 'Expense recorded') : done.length + ' expenses saved');
     if(FINP.on){ closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
     expensesModal();
   });
@@ -9160,7 +9247,7 @@ function reimbPublicDone(list){
     <div class="m-body">
       <div class="reimb-ok">✓</div>
       <div class="cash-lede">${list.length > 1 ? 'Your ' + list.length + ' expenses have' : 'Your expense has'} been received and will be processed at the earliest convenience.</div>
-      <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
+      <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>${expOtherCur(x) ? `<br><span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
         Finance will be in touch${P.phone ? ' on ' + esc(P.phone) : P.email ? ' at ' + esc(P.email) : ''} if anything is needed.</div>
     </div>
     <div class="m-foot">${P.once ? '' : `<button class="btn btn-ghost" id="rpAnother">Send in another</button>`}<a class="btn btn-primary" href="${REIMB_EXIT}">Done</a></div>`);
@@ -9217,21 +9304,29 @@ function finDraw(){
   const qi = $('#finQ');
   qi.addEventListener('input', ()=>{ EXP.q = qi.value; const pos = qi.selectionStart; finDraw(); const n = $('#finQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
 }
-async function finMark(idList, status){
+async function finMark(idList, status, keep){
   const ids = String(idList).split(',').filter(Boolean);
+  // A person's card (b259): the lines turned down are declined, the rest paid back.
+  const no = status==='paid' ? ids.filter(id=>FIN.rbNo.has(id)) : [];
+  if(no.length && no.length===ids.length){ toast('Every line is declined: use Decline all, or accept a line first.', true); return; }
   // The note written in the card's Pay back box (b257), else asked for.
   const box = [...document.querySelectorAll('[data-pbnote]')].find(i=>i.dataset.pbnote===String(idList));
   let note = box ? box.value.trim() : '';
   if(status==='paid' && !box){ note = prompt('Paid back. A note for the record? (optional — e.g. the transfer reference)', ''); if(note===null) return; }
   if(status==='declined' && !note){ note = prompt('Why is it declined? (they will see this)', ''); if(note===null) return; }
+  let why = '';
+  if(no.length){ why = prompt('Why ' + (no.length===1 ? 'is the one turned down' : 'are the ' + no.length + ' turned down') + ' declined? (they will see this)', ''); if(why===null) return; }
   try{
     for(const id of ids){
-      const r = (await post({action:'expMark', id, status, note})).result;
+      const off = no.includes(id);
+      const r = (await post({action:'expMark', id, status: off ? 'declined' : status, note: off ? why : note})).result;
+      FIN.rbNo.delete(id);
       EXP.todo.reimb = EXP.todo.reimb.filter(x=>x.id!==id);
       if(r.status==='pending') EXP.todo.reimb.unshift(r);
       const i = EXP.all.findIndex(x=>x.id===id); if(i>=0) EXP.all[i] = r;
     }
-    toast(status==='paid' ? (ids.length > 1 ? 'All ' + ids.length + ' marked as paid back' : 'Marked as paid back') : status==='declined' ? 'Declined' : 'Back on the list');
+    const yes = ids.length - no.length;
+    toast(status==='paid' ? (yes > 1 ? yes + ' marked as paid back' : 'Marked as paid back') + (no.length ? ', ' + no.length + ' declined' : '') : status==='declined' ? 'Declined' : 'Back on the list');
     if(FINP.on && FINP.sec!=='todo') finRender(); else finDraw();
   }catch(e){ toast(e.message, true); }
 }
@@ -9361,15 +9456,17 @@ document.addEventListener('paste', e=>{
      Pending Payments  still owed to us
      Gross         our own money in hand (b254: formerly "Collections"; the
                    consignment groups' money is theirs and kept apart)
-     Expected Gross    Gross + Pending Payments, shown in its place while
-                   anything is still owed, with Current Collected beneath
+     Expected Gross    Gross + Pending Payments (a blue line under Gross while
+                   anything is still owed)
      Consignment   money in hand that belongs to the consignment groups
-     Expenses      our own expenses (a group's come off what it is owed; declined ones not at all)
-     Net           Gross − Expenses
+     Expenses      our own expenses actually paid out (a group's come off what it is
+                   owed; declined ones not at all); Expected Expenses adds those
+                   still to be paid back
+     Net           Gross − Expenses; Expected Net = Expected Gross − Expected Expenses
      Margin        Net as a share of Gross
    Book printing costs are not in the app, so the margin is after expenses only. */
 const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open:{}, rep:null, cmp:{kind:'seasons', series:''},
-  ex:{sort:'date', dir:-1, type:'', q:''}, rb:{tab:'pending'}, viz:{form:'pie'} };
+  ex:{sort:'date', dir:-1, types:new Set(), sts:new Set(), open:'', q:''}, rb:{tab:'pending'}, rbNo:new Set(), viz:{form:'pie'} };
 const FIN_M = [
   {k:'bbu', l:'Big Books Sold'}, {k:'avu', l:'Adventures Sold'}, {k:'bb', l:'Big Books (count)', n:true}, {k:'av', l:'Adventures (count)', n:true},
   {k:'books', l:'Books sold (count)', n:true}, {k:'gifts', l:'Gifts (count)', n:true}, {k:'sales', l:'Sales (count)', n:true},
@@ -9399,7 +9496,11 @@ function finAgg(sales, exps){
     if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); }
     if(x.kind==='reimburse' && x.st==='pending') a.reimb += x.usd;
   });
-  a.net = a.coll - a.exp;
+  // What has actually been spent and kept (Gita, 2026-10-20); what is
+  // expected once everything owed comes in and everyone is paid back.
+  a.spent = a.exp - a.reimb;
+  a.net = a.coll - a.spent;
+  a.netExp = a.gross - a.exp;
   a.margin = a.coll > 0 ? a.net / a.coll * 100 : null;
   return a;
 }
@@ -9493,21 +9594,22 @@ function finDist(sold, gift){
   if(!sold && !gift) return '';
   return sold + ' Sold' + (gift ? ' + ' + gift + ' Gift' + (gift===1?'':'s') + ' = ' + (sold+gift) + ' Distributed' : '');
 }
-/* Gross, or Expected Gross while anything is still owed (b254, Gita's rule
-   for Finance): then it is everything in hand plus everything owed, and what
-   is actually in hand is beneath it as Current Collected. */
+/* Gross, Expenses and Net always keep their names and show what has
+   actually come in or gone out. While anything is pending (payments owed,
+   people to pay back) a blue "Expected …" line beneath gives the figure once
+   it is all settled (Gita, 2026-10-20; replaces b254's swapped titles). */
 const finPending = a => a.pend > 0.004;
+const finToRepay = a => a.reimb > 0.004;
 function finGrossParts(a){
-  return finPending(a) ? {l:'Expected Gross', v:finUsd(a.gross), sub:'Current Collected ' + finUsd(a.coll)}
-    : {l:'Gross', v:finUsd(a.coll), sub:''};
+  return {l:'Gross', v:finUsd(a.coll), ex:finPending(a) ? 'Expected Gross ' + finUsd(a.gross) : ''};
 }
-/* Expenses the same way (Gita, 2026-10-20): while anyone is still to be paid
-   back it is Expected Total Expenses, with Current Expenses beneath; once
-   everything is squared it is Total Expenses, and the line goes. */
 function finExpParts(a){
-  return a.reimb > 0.004 ? {l:'Expected Total Expenses', v:finUsd(a.exp), sub:'Current Expenses ' + finUsd(a.exp - a.reimb)}
-    : {l:'Total Expenses', v:finUsd(a.exp), sub:''};
+  return {l:'Expenses', v:finUsd(a.spent), ex:finToRepay(a) ? 'Expected Expenses ' + finUsd(a.exp) : ''};
 }
+function finNetParts(a){
+  return {l:'Net', v:finUsd(a.net), ex:finPending(a) || finToRepay(a) ? 'Expected Net ' + finUsd(a.netExp) : ''};
+}
+const finExHTML = (m, cls) => m.ex ? `<div class="${cls} fin-ex-l">${esc(m.ex)}</div>` : '';
 /* The actual money, currency by currency, as the sales page's totals bar
    shows it ("37 € · $55"); nothing when it was all dollars. */
 function finCurs(o){
@@ -9519,15 +9621,15 @@ function finCurs(o){
    figure and the smaller line beneath. Used by the tiles, the table and the
    WhatsApp report, so the three always say the same. */
 function finOverviewFigs(a){
-  const g = finGrossParts(a), e = finExpParts(a);
+  const g = finGrossParts(a), e = finExpParts(a), n = finNetParts(a);
   return [
     {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu), sub:finDist(a.bb, a.bbg)},
     {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu), sub:finDist(a.av, a.avg)},
     {k:'don',  l:'Donations',         v:finUsd(a.don), sub:'', cur:finCurs(a.cur.don)},
     {k:'pend', l:'Pending Payments',  v:finUsd(a.pend), sub:''},
-    {k:'gross', l:g.l,                v:g.v, sub:g.sub, cur:finCurs(a.cur.coll)},
-    {k:'exp',  l:e.l,                 v:e.v, sub:e.sub, cur:finCurs(a.cur.exp)},
-    {k:'net',  l:'Net',               v:finUsd(a.net), sub:a.margin===null ? '' : 'Margin ' + finVal({pct:true}, a.margin)}];
+    {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
+    {k:'exp',  l:e.l,                 v:e.v, sub:'', ex:e.ex, cur:finCurs(a.cur.exp)},
+    {k:'net',  l:n.l,                 v:n.v, sub:a.margin===null ? '' : 'Margin ' + finVal({pct:true}, a.margin), ex:n.ex}];
 }
 /* One level down from where you are: every season, a season's regions, a
    region's events, an event's titles. A name takes you there. */
@@ -9562,8 +9664,8 @@ const finRepBtn = (part, title) => `<button type="button" class="btn btn-gold bt
 function finOverviewHTML(){
   const O = finOverviewRows(), a = O.total, figs = finOverviewFigs(a);
   const tiles = figs.map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
-    <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${esc(m.sub)}</div>` : ''}${m.cur ? `<div class="fin-ts fin-cur">${esc(m.cur)}</div>` : ''}</div>`).join('');
-  const cell = m => `<td><div>${m.v}</div>${m.sub ? `<div class="fin-cs">${esc(m.sub)}</div>` : ''}</td>`;
+    <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${esc(m.sub)}</div>` : ''}${m.cur ? `<div class="fin-ts fin-cur">${esc(m.cur)}</div>` : ''}${finExHTML(m, 'fin-ts')}</div>`).join('');
+  const cell = m => `<td><div>${m.v}</div>${m.sub ? `<div class="fin-cs">${esc(m.sub)}</div>` : ''}${finExHTML(m, 'fin-cs')}</td>`;
   const row = (r, cls) => `<tr${cls?` class="${cls}"`:''}><th class="no-edit">${r.go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(r.go)}">${esc(r.label)}</button>` : esc(r.label)}</th>
       ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
   return `${finFiltersHTML(FIN.f, true)}
@@ -9779,11 +9881,11 @@ function qbMeasure(k, g){
       return {n:bb+av, v:String(bb+av), sub:'Big Books ' + bb + ' · Adventures ' + av + ' · ' + finUsd(usdv)}; }
     case 'gifts': return {n:a.bbg + a.avg, v:String(a.bbg + a.avg), sub:'Big Books ' + a.bbg + ' · Adventures ' + a.avg};
     case 'coll': return Object.assign(usd(a.coll), {sub:qbLocal(g.sales, g.exps, 'coll')});
-    case 'gross': return Object.assign(usd(a.gross), {sub:'Current Collected ' + finUsd(a.coll)});
+    case 'gross': return Object.assign(usd(a.gross), {sub:'Gross so far ' + finUsd(a.coll)});
     case 'pend': return usd(a.pend);
     case 'don': return Object.assign(usd(a.don), {sub:qbLocal(g.sales, g.exps, 'don')});
-    case 'exp': return Object.assign(usd(a.exp), {sub:qbLocal(g.sales, g.exps, 'exp')});
-    case 'net': return usd(a.net);
+    case 'exp': return Object.assign(usd(a.spent), {sub:[qbLocal(g.sales, g.exps, 'exp'), finToRepay(a) ? 'Expected Expenses ' + finUsd(a.exp) : ''].filter(Boolean).join('\n')});
+    case 'net': return Object.assign(usd(a.net), {sub:finPending(a) || finToRepay(a) ? 'Expected Net ' + finUsd(a.netExp) : ''});
     case 'margin': return {n:a.margin, v:a.margin===null ? '—' : Math.round(a.margin*10)/10 + '%'};
     case 'npay': return {n:g.sales.length, v:String(g.sales.length)};
     case 'days': {
@@ -10496,9 +10598,8 @@ function finNav(){
   const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
   $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
       k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='expenses' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}</button>`).join('') +
-    `<span class="fp-gap"></span><button type="button" class="btn btn-ghost btn-sm" data-act="expenses">🧾 Add an expense</button>
-     ${STATE && isAdmin() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>` : ''}
-     <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Back to the app' : 'Leave Finance'}</button>`;
+    `<span class="fp-gap"></span>
+     <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Go to Sales Portal' : 'Leave Finance'}</button>`;
   void fin;
   // The top 📋 Report is Finance's own here, for everyone who can see Finance.
   const rb = $('#reportBtn'); if(rb) rb.style.display = '';
@@ -10560,23 +10661,37 @@ function finExpTotals(list){
   return T;
 }
 function finExpFigs(T){
-  const ex = T.due > 0.004 ? {l:'Expected Total Expenses', v:finUsd(T.all), sub:'Current Expenses ' + finUsd(T.current)}
-    : {l:'Total Expenses', v:finUsd(T.all), sub:''};
+  const ex = {l:'Expenses', v:finUsd(T.current), sub:'', ex:T.due > 0.004 ? 'Expected Expenses ' + finUsd(T.all) : ''};
   return [ex, {l:'Reimbursements Due', v:finUsd(T.due), sub: T.dueN ? T.dueN + ' to pay back' : ''}];
 }
-function finExpBarHTML(T){
-  return `<div class="fin-tiles fin-tiles2">${finExpFigs(T).map((m,i)=>`<div class="fin-tile${i===0?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
-    <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${esc(m.sub)}</div>` : ''}</div>`).join('')}</div>`;
+function finExpBarHTML(T, only){
+  const figs = finExpFigs(T).filter((m,i)=>only===undefined || i===only);
+  return `<div class="fin-tiles ${only===undefined ? 'fin-tiles2' : 'fin-tiles1'}">${figs.map((m,i)=>`<div class="fin-tile${i===0?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
+    <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${esc(m.sub)}</div>` : ''}${finExHTML(m, 'fin-ts')}</div>`).join('')}</div>`;
+}
+/* Send Reimbursements Link: a small button by the heading opens it (Gita, 2026-10-20). */
+function finSendLinkModal(){
+  openModal(`${mHead('Send Reimbursements Link')}<div class="m-body">
+      <div class="fin-send-row">
+        <div class="field"><label for="fsName">Name</label><input id="fsName" type="text" maxlength="60" autocomplete="off" placeholder="Who it is for"></div>
+        <div class="field"><label for="fsTo">Email or WhatsApp number</label><input id="fsTo" type="text" maxlength="120" autocomplete="off" placeholder="name@mail.com or +48 600 000 000"></div>
+      </div>
+      <div class="muted-note">For <span class="no-edit">${esc(finScopeName() || 'anywhere')}</span>. They fill in the form without signing in, and the link turns itself off once they have sent it.</div>
+      <div id="fsDone"></div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button type="button" class="btn btn-primary" id="fsGo">Send</button></div>`, true);
+  finBindSend();
+  const n = $('#fsName'); if(n) n.focus();
 }
 function finWaExpBar(T, L){
-  finExpFigs(T).forEach(m=>{ L.push(m.l + ' - ' + m.v); if(m.sub) L.push('   ' + m.sub.replace(/^Current Expenses /, 'Current Expenses - ')); });
+  finExpFigs(T).forEach(m=>{ L.push(m.l + ' - ' + m.v); if(m.sub) L.push('   ' + m.sub); if(m.ex) L.push('   ' + m.ex.replace(/^(Expected \w+) /, '$1 - ')); });
 }
 const finExpAmt = x => cashFmt(x.amt, x.cur) + (x.usd!==null && String(x.cur).toUpperCase()!=='USD' ? ' (' + finUsd(x.usd) + ')' : '');
 
-/* Expenses: sort by date, name, amount or type; filter by type with the round buttons. */
+/* Expenses: sort by date, name, amount or type; filter with checklists that
+   drop down, as the sales log's do (Gita, 2026-10-20). */
 function finExpShown(){
   const E = FIN.ex, q = E.q.trim().toLowerCase();
-  const list = finExpList().filter(x=>(!E.type || x.type===E.type) &&
+  const list = finExpList().filter(x=>(!E.types.size || E.types.has(x.type)) && (!E.sts.size || E.sts.has(x.status)) &&
     (!q || [x.desc, x.who, x.type, x.placeLabel, x.notes, x.payType, EXP_STATUS[x.status]].some(v=>String(v||'').toLowerCase().includes(q))));
   const key = {date: x=>x.date + (x.ts||''), name: x=>x.who.toLowerCase(), amount: x=>x.usd===null ? -1 : x.usd, type: x=>x.type.toLowerCase()}[E.sort];
   return list.sort((a,b)=>{ const va = key(a), vb = key(b);
@@ -10591,8 +10706,13 @@ const FIN_EXP_END = '</section></div>';
 function finExpSecHTML(){
   const E = FIN.ex, all = finExpList(), list = finExpShown();
   const types = [...new Set(all.map(x=>x.type))].sort((a,b)=>a.localeCompare(b));
-  if(E.type && !types.includes(E.type)) E.type = '';
+  const sts = Object.keys(EXP_STATUS).filter(k=>all.some(x=>x.status===k));
+  [...E.types].forEach(t=>{ if(!types.includes(t)) E.types.delete(t); });
   const may = EXP.opt && EXP.opt.mayPay;
+  const facet = (k, label, set, opts) => `<span class="log-filter-wrap"><button type="button" class="flt-btn${set.size?' on':''}" data-act="finexflt" data-f="${k}">${esc(label)}${set.size ? ' (' + set.size + ')' : ''} ▾</button>
+      <div class="log-filter" data-xpanel="${k}" ${E.open===k?'':'hidden'}>${opts.length ? opts.map(([v, l, n])=>`<label class="lf-row"><input type="checkbox" data-xf="${k}" value="${esc(v)}" ${set.has(v)?'checked':''}> <span class="no-edit">${esc(l)}</span> <span class="fin-n">${n}</span></label>`).join('') : '<div class="lf-empty">Nothing yet.</div>'}
+        <div class="lf-foot"><button type="button" class="btn btn-ghost btn-sm" data-act="finexclr" data-f="${k}" ${set.size?'':'disabled'}>Clear</button>
+          <button type="button" class="btn btn-primary btn-sm" data-act="finexflt" data-f="">Done</button></div></div></span>`;
   const head = (k, l) => `<th class="fin-sort" data-act="finexsort" data-k="${k}">${esc(l)}${E.sort===k ? (E.dir>0?' ▲':' ▼') : ''}</th>`;
   const row = x => `<tr class="${x.status==='declined'?'fin-dim':''}">
       <td>${esc(x.date)}</td><td class="no-edit fin-wrap">${esc(x.desc)}${
@@ -10601,7 +10721,9 @@ function finExpSecHTML(){
       <td>${esc(finExpAmt(x))}<div class="fin-cs">${expStatusHTML(x)}</div></td>
       <td class="fin-acts">${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}" title="Edit">✏️</button>
         <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑</button>` : ''}</td></tr>`;
-  return `<h3 class="fin-h3">Expenses ${finRepBtn('expenses')}</h3>
+  return `<div class="fin-sh"><h3 class="fin-h3">Expenses ${finRepBtn('expenses')}</h3>
+      <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></div>
+    ${finExpBarHTML(finExpTotals(all), 0)}
     <div class="fin-filters">
       <label class="fin-search">Search<input type="search" id="finExQ" value="${esc(E.q)}" placeholder="Names, what for, places…"></label>
       <label>Sort by<select id="finExSort">${[['date','Date'],['name','Name'],['amount','Amount'],['type','Type']].map(([k,l])=>
@@ -10611,13 +10733,11 @@ function finExpSecHTML(){
       <label>From<input type="date" data-ff="from" value="${esc(FIN.f.from)}"></label>
       <label>To<input type="date" data-ff="to" value="${esc(FIN.f.to)}"></label>
     </div>
-    <div class="fin-radios" role="radiogroup" aria-label="Type">
-      <label><input type="radio" name="finExType" value="" ${E.type?'':'checked'}> All types <span class="fin-n">${all.length}</span></label>
-      ${types.map(t=>`<label><input type="radio" name="finExType" value="${esc(t)}" ${E.type===t?'checked':''}> <span class="no-edit">${esc(t)}</span> <span class="fin-n">${all.filter(x=>x.type===t).length}</span></label>`).join('')}
-    </div>
+    <div class="fin-flt"><span class="sortbar">Filter
+      ${facet('type', 'Type', E.types, types.map(t=>[t, t, all.filter(x=>x.type===t).length]))}
+      ${facet('status', 'Status', E.sts, sts.map(k=>[k, EXP_STATUS[k], all.filter(x=>x.status===k).length]))}</span></div>
     <div class="fin-scroll"><table class="cash-tbl fin-tbl fin-ex"><thead><tr>${head('date','Date')}<th>What for</th>${head('amount','Amount')}<th></th></tr></thead>
-      <tbody>${list.map(row).join('') || `<tr><td colspan="4">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</td></tr>`}</tbody></table></div>
-    <div class="btn-row"><button type="button" class="btn btn-ghost btn-sm" data-act="expenses">🧾 Add an expense</button></div>`;
+      <tbody>${list.map(row).join('') || `<tr><td colspan="4">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</td></tr>`}</tbody></table></div>`;
 }
 function finBindExpSec(){
   const E = FIN.ex, root = $('#finExS'); if(!root) return;
@@ -10625,7 +10745,8 @@ function finBindExpSec(){
   q.addEventListener('input', ()=>{ E.q = q.value; const pos = q.selectionStart; finExpensesRender(); const n = $('#finExQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
   $('#finExSort').addEventListener('change', e=>{ E.sort = e.target.value; E.dir = E.sort==='date' || E.sort==='amount' ? -1 : 1; finExpensesRender(); });
   $('#finExDir').addEventListener('change', e=>{ E.dir = Number(e.target.value); finExpensesRender(); });
-  root.querySelectorAll('input[name="finExType"]').forEach(r=>r.addEventListener('change', ()=>{ E.type = r.value; finExpensesRender(); }));
+  root.querySelectorAll('[data-xf]').forEach(c=>c.addEventListener('change', ()=>{
+    const set = c.dataset.xf==='type' ? E.types : E.sts; if(c.checked) set.add(c.value); else set.delete(c.value); finExpensesRender(); }));
   root.querySelectorAll('[data-ff]').forEach(el=>el.addEventListener('change', ()=>{ FIN.f[el.dataset.ff] = el.value; finExpensesRender(); }));
 }
 /* Redraw just the Expenses half, so the Reimbursements half stays as it is. */
@@ -10647,28 +10768,18 @@ function finExpTop(){
   const R = FIN.rb, all = finExpList(), rb = all.filter(x=>x.kind==='reimburse');
   const n = k => rb.filter(x=>x.status===k).length;
   const tab = (k, l, c) => `<button type="button" class="fin-tab${R.tab===k?' on':''}" data-act="finrbtab" data-tab="${k}">${esc(l)}${c===undefined?'':` <span class="fin-n">${c}</span>`}</button>`;
-  const where = finScopeName();
   return `<h2 class="fp-h">Expenses &amp; Reimbursements ${finRepBtn('', 'Copy this page for WhatsApp')}</h2>${finScopeNote()}
-    ${finExpBarHTML(finExpTotals(all))}
     <div class="fin-two"><section class="fin-col" id="finExS">${finExpSecHTML()}</section>
-    <section class="fin-col" id="finRbS"><h3 class="fin-h3">Reimbursements ${finRepBtn('reimb')}</h3>
-    <div class="fin-send" id="finSend">
-      <div class="fin-send-h">📨 Send Reimbursements Link</div>
-      <div class="fin-send-row">
-        <div class="field"><label for="fsName">Name</label><input id="fsName" type="text" maxlength="60" autocomplete="off" placeholder="Who it is for"></div>
-        <div class="field"><label for="fsTo">Email or WhatsApp number</label><input id="fsTo" type="text" maxlength="120" autocomplete="off" placeholder="name@mail.com or +48 600 000 000"></div>
-        <button type="button" class="btn btn-primary" id="fsGo">Send</button>
-      </div>
-      <div class="muted-note">For <span class="no-edit">${esc(where || 'anywhere')}</span>. They fill in the form without signing in, and the link turns itself off once they have sent it.</div>
-      <div id="fsDone"></div>
-    </div>
+    <section class="fin-col" id="finRbS"><div class="fin-sh"><h3 class="fin-h3">Reimbursements ${finRepBtn('reimb')}</h3>
+      <button type="button" class="btn btn-ghost btn-xs" data-act="finsendlink">📨 Send Reimbursements Link</button></div>
+    ${finExpBarHTML(finExpTotals(all), 1)}
     <div class="fin-tabs fin-tabs-wide">${tab('pending','Pending', n('pending'))}${tab('paid','Paid back', n('paid'))}${tab('declined','Declined', n('declined'))}${tab('links','Links')}${tab('settings','⚙️ Settings')}</div>`;
 }
 /* Sending: a phone number opens WhatsApp to them with the message written; an
    email address opens the email. (Opened before the link exists, so the
    browser does not take it for a pop-up.) */
-function finBindExpTop(){
-  finBindExpSec();
+function finBindExpTop(){ finBindExpSec(); }
+function finBindSend(){
   const go = $('#fsGo'); if(!go) return;
   const send = async ()=>{
     const name = $('#fsName').value.trim(), to = $('#fsTo').value.trim(), done = $('#fsDone');
@@ -10699,35 +10810,56 @@ function finBindExpTop(){
   go.addEventListener('click', send);
   $('#fsTo').addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
 }
-/* One person's reimbursements that are paid back the same way (same method,
-   currency and details) are one square: each expense listed, one total, one
-   "Mark all paid back" (Gita, 2026-10-20). */
-const expPayKey = x => [String(x.forName || x.byName || '').toLowerCase(), x.method, x.reimbCur, JSON.stringify(x.payTo||{})].join('|');
+/* Reimbursements, one card per person (Gita, 2026-10-20): everything they
+   sent in, in one form or several, with one total, so Finance pays each person
+   once. Each line can be accepted or turned down; "Pay back" pays the accepted
+   ones and declines the rest, "Decline all" declines the lot. */
+const expPerson = x => String(x.forName || x.byName || '').trim().toLowerCase();
 function expGroups(list){
   const by = new Map();
-  list.forEach(x=>{ const k = expPayKey(x); if(!by.has(k)) by.set(k, []); by.get(k).push(x); });
+  list.forEach(x=>{ const k = expPerson(x); if(!by.has(k)) by.set(k, []); by.get(k).push(x); });
   return [...by.values()];
 }
+// What one line costs to pay back: in the currency asked for, at the day's rate.
+const expPayOut = x => !expOtherCur(x) ? [Number(x.amt), x.cur] : x.payAmt && x.payAmt.amt!=null ? [x.payAmt.amt, x.payAmt.cur] : null;
 function expGroupHTML(xs){
-  if(xs.length===1) return expCardHTML(xs[0], true);
   const x = xs[0], may = EXP.opt && EXP.opt.mayPay, ids = xs.map(y=>y.id).join(',');
-  const who = esc(x.forName || x.byName || '');
-  const items = xs.map(y=>`<div class="exp-gi">
-      <div class="exp-top"><span><b>${esc(y.desc)}</b> <span class="exp-meta">${esc(y.date)} · ${esc(y.placeLabel)}${y.category ? ' · ' + esc(y.category==='Other' && y.catOther ? 'Other: ' + y.catOther : y.category) : ''}</span></span>
-        <span class="exp-amt">${esc(cashFmt(y.amt, y.cur))}</span></div>
+  const yes = xs.filter(y=>!FIN.rbNo.has(y.id)), unknown = yes.filter(y=>!expPayOut(y));
+  const total = finTotals(yes.filter(expPayOut), y=>[expPayOut(y)]) || '—';
+  const ways = [...new Map(xs.map(y=>[[y.method, y.reimbCur, JSON.stringify(y.payTo||{})].join('|'), y])).values()];
+  const items = xs.map(y=>{ const off = FIN.rbNo.has(y.id), out = expPayOut(y);
+    return `<div class="exp-gi${off?' exp-off':''}">
+      <div class="exp-top"><span><b>${esc(y.desc)}</b> <span class="exp-meta">${esc(y.date)} · ${esc(y.placeLabel)}${y.category ? ' · ' + esc(y.category==='Other' && y.catOther ? 'Other: ' + y.catOther : y.category) : ''}${
+        ways.length > 1 ? ' · by ' + esc(y.method) + ' in ' + esc(y.reimbCur) : ''}</span></span>
+        <span class="exp-amt">${esc(cashFmt(y.amt, y.cur))}${expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : ''}</span></div>
+      ${expOtherCur(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}
       ${y.notes ? `<div class="exp-note">💬 ${esc(y.notes)}</div>` : ''}${expReceiptsHTML(y)}
-      ${may ? `<div class="exp-btns"><button class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(y.id)}">Edit</button>
-        <button class="btn btn-danger btn-xs" data-act="expdel" data-id="${esc(y.id)}">Delete</button></div>` : ''}</div>`).join('');
-  return `<div class="exp-card exp-k-reimburse exp-group">
-      <div class="exp-top"><b class="no-edit">${who}</b><span class="exp-amt">${esc(finTotals(xs, y=>[[y.amt, y.cur]]))}</span></div>
-      <div class="exp-meta">${xs.length} expenses · one total</div>
-      <div>${expStatusHTML(x)}</div>
-      ${expContactHTML(x)}
+      ${may ? `<div class="exp-btns exp-line">
+        <button type="button" class="btn btn-xs ${off ? 'btn-ghost' : 'btn-ok'}" data-act="rbline" data-id="${esc(y.id)}" data-on="1" aria-pressed="${!off}">✓ Accept</button>
+        <button type="button" class="btn btn-xs ${off ? 'btn-danger' : 'btn-ghost'}" data-act="rbline" data-id="${esc(y.id)}" data-on="" aria-pressed="${off}">✕ Decline</button>
+        <span class="exp-gap"></span>
+        <button class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(y.id)}">Edit</button>
+        <button class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(y.id)}" title="Delete">🗑</button></div>` : ''}</div>`; }).join('');
+  return `<div class="exp-card exp-k-reimburse exp-group" data-group="${esc(ids)}">
+      <div class="exp-top"><b class="no-edit">${esc(x.forName || x.byName || '')}</b><span class="exp-amt">${esc(total)}</span></div>
+      <div class="exp-meta">${xs.length === 1 ? '1 expense' : xs.length + ' expenses'}${yes.length < xs.length ? ' · ' + (xs.length - yes.length) + ' turned down' : ''}${unknown.length ? ' · the total leaves out ' + unknown.length + ' without a rate' : ''}</div>
+      ${expContactHTML(xs.find(y=>y.contactPhone || y.contactEmail) || x)}
       <div class="exp-gl">${items}</div>
-      ${expPayBackHTML(x, ids)}
-      ${may ? `<div class="exp-btns"><button class="btn btn-primary btn-xs" data-act="exppaid" data-id="${esc(ids)}">✓ Mark all ${xs.length} paid back</button>
+      ${ways.map((y, i)=>expPayBackHTML(y, i===ways.length-1 ? ids : '')).join('')}
+      ${may ? `<div class="exp-btns"><button class="btn btn-primary btn-xs" data-act="exppaid" data-id="${esc(ids)}">✓ Pay back ${yes.length === xs.length ? (xs.length > 1 ? 'all ' + xs.length : '') : yes.length + ' of ' + xs.length} · ${esc(total)}</button>
         <button class="btn btn-ghost btn-xs" data-act="expdecline" data-id="${esc(ids)}">Decline all</button></div>` : ''}
     </div>`;
+}
+/* Turning a line down or back on redraws just that person's card, keeping
+   the note typed in it. */
+function finRbRedraw(id){
+  const card = [...document.querySelectorAll('[data-group]')].find(c=>c.dataset.group.split(',').includes(id));
+  if(!card){ finRender(); return; }
+  const ids = card.dataset.group.split(','), xs = ids.map(i=>finExpList().find(x=>x.id===i)).filter(Boolean);
+  const note = card.querySelector('[data-pbnote]'), kept = note ? note.value : '';
+  card.outerHTML = expGroupHTML(xs);
+  const n2 = [...document.querySelectorAll('[data-pbnote]')].find(i=>i.dataset.pbnote===ids.join(','));
+  if(n2) n2.value = kept;
 }
 function finReimbRender(){
   const R = FIN.rb;
@@ -10737,9 +10869,13 @@ function finReimbRender(){
   const tot = finTotals(list, x=>[[x.amt, x.cur]]);
   const empty = {pending:'Nothing waiting to be paid back here.', paid:'Nothing paid back yet.', declined:'Nothing declined.'}[R.tab] || 'None yet.';
   $('#fpBody').innerHTML = finExpTop() + (list.length
-    ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(x=>expCardHTML(x, true)).join('')}`
+    ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finTotals(list.filter(expPayOut), x=>[expPayOut(x)]) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(x=>expCardHTML(x, true)).join('')}`
     : `<div class="cash-empty">${empty}</div>`) + FIN_EXP_END;
   finBindExpTop();
+  // Sent in before b259, or the rate was not found then: look it up now.
+  const need = R.tab==='pending' ? list.filter(x=>expOtherCur(x) && !x.payAmt && !x.fxTried) : [];
+  if(need.length) Promise.all(need.map(async x=>{ x.fxTried = true; x.payAmt = await expPayAmt(x); }))
+    .then(()=>{ if(FINP.on && FINP.sec==='expenses' && FIN.rb.tab==='pending' && need.some(x=>x.payAmt)) finReimbRender(); });
 }
 function finWaReimb(L, noBar){
   const all = finExpList(), T = finExpTotals(all);
@@ -10748,11 +10884,10 @@ function finWaReimb(L, noBar){
   if(pend.length){
     if(!noBar) L.push('');
     expGroups(pend).forEach(xs=>{
-      if(xs.length===1){ const x = xs[0]; L.push(x.who + ': ' + x.desc + ' - ' + cashFmt(x.amt, x.cur) + ' by ' + x.method + ' in ' + x.reimbCur); return; }
-      L.push(xs[0].who + ' - ' + finTotals(xs, x=>[[x.amt, x.cur]]) + ' by ' + xs[0].method + ' in ' + xs[0].reimbCur);
-      xs.forEach(x=>L.push('   ' + x.desc + ' - ' + cashFmt(x.amt, x.cur)));
+      L.push('*' + xs[0].who + '* - ' + (finTotals(xs.filter(expPayOut), x=>[expPayOut(x)]) || '—') + ' by ' + [...new Set(xs.map(x=>x.method + ' in ' + x.reimbCur))].join(', '));
+      xs.forEach(x=>L.push('   ' + x.desc + ' - ' + cashFmt(x.amt, x.cur) + (expOtherCur(x) && expPayOut(x) ? ' (' + cashFmt(...expPayOut(x)) + ')' : '')));
     });
-    L.push('To pay back - ' + finTotals(pend, x=>[[x.amt, x.cur]]));
+    L.push('To pay back - ' + (finTotals(pend.filter(expPayOut), x=>[expPayOut(x)]) || finTotals(pend, x=>[[x.amt, x.cur]])));
   }
 }
 /* The links: make one (anywhere, or for one place), send it by WhatsApp or
@@ -10946,8 +11081,9 @@ function finWaFigs(a, L){
     const zero = {bb:!(a.bb||a.bbg), av:!(a.av||a.avg), don:!a.don, pend:!finPending(a), exp:!a.exp}[m.k];
     if(zero) return;
     L.push(m.l + ' - ' + m.v);
-    if(m.sub) L.push('   ' + m.sub.replace(/^(Current Collected|Current Expenses) /, '$1 - '));
+    if(m.sub) L.push('   ' + m.sub);
     if(m.cur) L.push('   ' + m.cur);
+    if(m.ex) L.push('   ' + m.ex.replace(/^(Expected \w+) /, '$1 - '));
   });
 }
 function finWaRows(L){
@@ -18240,6 +18376,10 @@ document.addEventListener('click',e=>{
   if(a==='fintodo'){ if(PRACTICE) finGo('todo'); else financeTodoModal(); return; }
   if(a==='fintab'){ EXP.tab = t.dataset.tab; finDraw(); return; }
   if(a==='exppaid'){ finMark(t.dataset.id, 'paid'); return; }
+  if(a==='finsendlink'){ finSendLinkModal(); return; }
+  if(a==='finexflt'){ FIN.ex.open = FIN.ex.open===t.dataset.f ? '' : t.dataset.f; finExpensesRender(); return; }
+  if(a==='finexclr'){ (t.dataset.f==='type' ? FIN.ex.types : FIN.ex.sts).clear(); finExpensesRender(); return; }
+  if(a==='rbline'){ const id = t.dataset.id; if(t.dataset.on) FIN.rbNo.delete(id); else FIN.rbNo.add(id); finRbRedraw(id); return; }
   if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
   if(a==='reimbset'){ if(PRACTICE) finGo('settings'); else reimbSettingsModal(); return; }

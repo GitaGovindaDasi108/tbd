@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b258**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b259**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2097,3 +2097,31 @@ Live unless marked practice.
   subtracting warning, a reason, and `adjustStockBulk` underneath.
 - Tests: new `test/browser-small258.js` (30 checks); browser-sellers expects
   Subtract Stock in practice's Advanced.
+
+## Done in b259 — Finance: what's in hand, one card per person, purchase-day rates (practice)
+
+- **Titles stay Gross, Expenses, Net** and show what has actually come in or
+  gone out (Expenses = spent less still owed; Net = collected less spent). A
+  blue "Expected …" line sits beneath while anything is pending
+  (`finGrossParts` / `finExpParts` / `finNetParts`, `finExHTML`, `.fin-ex-l`),
+  in the tiles, tables, Reports measures and 📋 ("   Expected Gross - $X").
+- **Expense form**: starts as record-keeping with "Check to receive
+  reimbursement" (`#xReimb`); "Same as above" beside pay-back fields that match
+  the phone/email given above (`expSameSrc`, `data-same`); no "Take a photo"
+  on a computer (`EXP_TOUCH`); required pay-back fields checked before Save.
+- **Review even for one expense** (`expReview`, "Check your expense").
+- **Paid back in another currency**: the European Central Bank rate on the
+  purchase date (Frankfurter, `fxOn`) gives "To pay back: $8.80 (1 EUR = 1.1
+  USD on …)" on the review, the confirmation and the card. Stored as `payAmt`
+  (server `cleanPayAmt`; kept on edits unless date/currencies change). If the
+  rate can't be fetched it says to check before paying.
+- **One card per person** (by name) across submissions: each line ✓ Accept /
+  ✕ Decline (`FIN.rbNo`, `data-act="rbline"`), "Pay back all N · total" or
+  "Pay back 1 of 2 · total", and "Decline all"; one "Why…" for declined lines
+  (`finMark`). WhatsApp 📋 gives one total per person.
+- **Layout**: small right-aligned "🧾 Add an expense" and "📨 Send
+  Reimbursements Link" on each section's title row (the link is now a small
+  window, `finSendLinkModal`); Reimbursements Due over the Reimbursements
+  half; Type/Status as checkbox filters like the sales log (`finexflt`);
+  no Add an expense / Edit Wording on the Finance bar; "← Go to Sales Portal".
+- Tests: browser-finance (93), browser-expenses (67), browser-reports (26).
