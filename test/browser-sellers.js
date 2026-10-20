@@ -293,7 +293,7 @@ const API = 'http://api.test/';
     // Prices: the shelf shows the local one; the sell window shows them all.
     await own.evaluate(() => goTo('event', 'ev_yoga')); await own.waitForTimeout(400);
     const price = await own.evaluate(() => document.querySelector('#invGrid .book .price').innerText.trim());
-    t.push(['b232: a shelf card shows the local price only ("35 €")', /^35\s*€$/.test(price)]);
+    t.push(['b260: a shelf card shows the region\'s first two prices ("35 € · $40")', /^35\s*€ · \$40$/.test(price)]);
     await own.click('#invGrid .book .sell-btn'); await own.waitForTimeout(300);
     t.push(['…the sell window shows every currency\'s ("35 € · $40")', /Price: 35 € · \$40/.test(await own.evaluate(() => document.querySelector('.sale-prices').innerText))]);
     await own.evaluate(() => closeModal());
