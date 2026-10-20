@@ -1912,7 +1912,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b259</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b260</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -18016,13 +18016,17 @@ const GS_ALSO = {
   specreport:'report whatsapp', report:'report whatsapp summary',
   drivefolder:'spreadsheets sheets google drive files', editwording:'wording labels text words',
   admins:'admin access users people permissions', signout:'log out logout',
-  cash:'cash money', costs:'costs expenses spending bills', paytypes:'payment types upi zelle paypal',
+  cash:'cash money tracker tracking track', costs:'costs expenses spending bills', paytypes:'payment types upi zelle paypal',
   addstock:'add stock books printer new', xfer:'transfer move stock books send',
   partners:'consignment partner group', bookdisplay:'books titles display show hide order',
   reorder:'order sort arrange', seasonedit:'rename season', editregion:'rename region prices currencies',
   closehere:'close finish', reopenhere:'reopen open', seasonclose:'close season', seasonreopen:'reopen season',
   renameevent:'rename event', viewmode:'list view cards', refresh:'refresh reload', syncsheet:'sync sheet spreadsheet'
 };
+/* Where the buttons are: the classic panel, the top bar, the left-hand menu. */
+const GS_BTNS = '#adminActions [data-act], .util-bar [data-act], #sideNav .sn-item[data-act]';
+// The menu's own controls (open, fold, pin) are not things to search for.
+const GS_NOT = new Set(['sngroup','snpin','snclose','snopen']);
 function gsNorm(t){
   return String(t||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
     .replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
@@ -18035,7 +18039,9 @@ function gsScore(q, it){
   const name = gsWords(it.name), ctx = gsWords(it.ctx);
   let score = 0;
   for(const w of q){
-    const inName = name.some(x=>x.startsWith(w)), inCtx = ctx.some(x=>x.startsWith(w));
+    /* "tracker" finds "Track": a longer form of a word counts too. */
+    const hit = x => x.startsWith(w) || (x.length>=4 && w.startsWith(x));
+    const inName = name.some(hit), inCtx = ctx.some(hit);
     if(inName) score += 3; else if(inCtx) score += 1; else return 0;
   }
   if(gsNorm(it.name) === q.join(' ')) score += 4;       // typed its name exactly
@@ -18077,17 +18083,22 @@ function gsItems(){
   /* Actions: the buttons on offer right now, in the admin panel and the top
      bar. Hidden ones (a sales link's missing Report button) are left out. */
   const seen = new Set();
-  document.querySelectorAll('#adminActions [data-act], .util-bar [data-act]').forEach(b=>{
-    if(b.closest('[hidden]') || getComputedStyle(b).display==='none') return;
+  /* The left-hand menu (b235) holds them now; its rows are found even while it,
+     or the section they sit in, is folded away. */
+  document.querySelectorAll(GS_BTNS).forEach(b=>{
+    const inMenu = !!b.closest('#sideNav');
+    if(!inMenu && (b.closest('[hidden]') || getComputedStyle(b).display==='none')) return;
     const a = b.dataset.act;
-    if(a==='whoami') return;
-    const c = b.cloneNode(true);
-    c.querySelectorAll('.pencil, .req-badge').forEach(x=>x.remove());
+    if(a==='whoami' || GS_NOT.has(a)) return;
+    const c = (inMenu && b.querySelector('.sn-t')) || b.cloneNode(true);
+    if(c!==b && !inMenu) c.querySelectorAll('.pencil, .req-badge').forEach(x=>x.remove());
     const label = (c.textContent||'').replace(/\s+/g,' ').trim();
     if(!label || seen.has(label)) return;
     seen.add(label);
-    out.push({kind:'action', name:label, ctx:GS_ALSO[b.dataset.then||a] || GS_ALSO[a] || '', btn:b,
-              act:a, then:b.dataset.then||''});
+    const grp = inMenu && b.closest('.sn-group');
+    const sec = grp ? ((grp.querySelector('.sn-gh .sn-t')||{}).textContent || '') : '';
+    out.push({kind:'action', name:label, ctx:((GS_ALSO[b.dataset.then||a] || GS_ALSO[a] || '') + ' ' + sec).trim(), btn:b,
+              act:a, then:b.dataset.then||'', tag:sec});
   });
   return out;
 }
@@ -18153,7 +18164,9 @@ function gsChoose(i){
        the same button, drawn again, is the one to press. */
     const same = x => x.dataset.act===it.act && (x.dataset.then||'')===it.then;
     const btn = (it.btn && document.body.contains(it.btn)) ? it.btn
-      : [...document.querySelectorAll('#adminActions [data-act], .util-bar [data-act]')].find(same);
+      : [...document.querySelectorAll(GS_BTNS)].find(same);
+    // A folded menu takes a first tap on a touch screen as "open"; this one is meant.
+    if(btn && btn.closest('#sideNav')) SN.open = true;
     if(btn) btn.click(); else toast('That is no longer available here.', true);
   }
 }
