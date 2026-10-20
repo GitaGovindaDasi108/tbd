@@ -42,7 +42,7 @@ m.call({ action: 'setStockBulk', season: st.activeSeason, location: pl.whLoc, it
   });
   // The first title shown in each place.
   const firsts = () => page.evaluate(() => {
-    const txt = e => e ? e.textContent.replace(/SOLD OUT|ALL PRE-ORDERED/g, '').trim().split('\n')[0].trim() : '(none)';
+    const txt = e => e ? e.textContent.replace(/SOLD OUT|ALL PRE-ORDERED|\s*\(Out\)/g, '').trim().split('\n')[0].trim() : '(none)';
     const firstCard = sel => { const box = document.querySelector(sel); if (!box || !box.offsetParent) return '(hidden)';
       const kids = [...box.querySelectorAll(':scope > *, :scope > * > *')].filter(e => e.textContent.trim());
       return txt(kids.find(e => !e.classList.contains('don-card')) || null); };

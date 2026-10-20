@@ -1016,6 +1016,27 @@ body.has-na .overlay{z-index:10000}
   padding-right:calc(7px - .3px)}
 .don-card .bname{color:var(--donate)}
 .don-card .qty-chip{color:var(--donate)}
+/* The selling card in four parts (b260): name, language, prices | in stock, sold
+   beneath | Sell | Pre-order. As small as it can be and still read at a glance. */
+.book{padding:9px 10px;min-height:0;justify-content:flex-start}
+.book .top{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:start}
+.book .qtyrow{display:block;margin-top:0;text-align:right}
+.bk-q2{white-space:nowrap;line-height:1.15}
+.bk-q2 .qty-chip{font-size:20px}
+.bk-q2 .qty-label{letter-spacing:.3px}
+.bk-q2 .qty-label{display:block;font-size:10px;margin-top:1px}
+.bk-q2 .bk-sold{color:#9A9189}
+.bk-q2 .tap-hint{margin-top:2px}
+.bk-pr{white-space:nowrap}
+.bk-more{grid-column:1/-1;margin-top:4px}
+.bk-note{font-size:10.5px;font-weight:700;color:var(--gold);margin-top:2px}
+.book .bk-btns{margin-top:8px}
+.book .bk-btns>button{min-height:32px;padding:6px 4px;white-space:nowrap}
+@media (max-width:560px){ .book .bk-btns>button{font-size:12.5px} }
+/* Sold out: the name greys and says (Out), in place of a bubble. */
+.book.out .bname, .book.out .bname.other, .book.out .bname.aotm{color:#9A9189}
+.book.out .lang-tag{filter:grayscale(1);opacity:.7}
+.bk-out{font-weight:600;font-size:12px;color:#9A9189;white-space:nowrap}
 /* Inventory heading and its QR button share a line when there's room. */
 .sec-h2{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .sec-rep{flex:none;font-size:12px;padding:4px 9px;line-height:1}
@@ -1846,7 +1867,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
 .list-view .mc-name{min-height:0}
 @media (max-width:560px){
   .list-view .book{flex-wrap:wrap}
-  .list-view .book .top{grid-template-columns:1fr;gap:4px;flex-basis:100%}
+  .list-view .book .top{grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;flex-basis:100%}
   .list-view .book .bk-btns{flex:1 1 100%}
 }
 
@@ -1932,7 +1953,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b261</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b262</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5556,23 +5577,15 @@ function renderInventory(){
     // a warning, not a lock.
     const sellable=q>0;
     const cls=q<=0?'zero':avail<=1?'low':'';
-    let flag='';
-    if(q<=0) flag=`<span class="flag sold sold-tag">SOLD OUT</span>`;
-    else if(avail<=0) flag=`<span class="flag held sold-tag">ALL PRE-ORDERED</span>`;
-    else if(avail===1) flag=`<span class="flag display">DISPLAY BOOK</span>`;
+    /* The card in four parts (b260, Gita): name, language and the region's first
+       two prices top left; in stock with sold beneath it top right; Sell and
+       Pre-order underneath. Sold out greys the name and says (Out) after it, in
+       place of a bubble; the other warnings are a line of small print. */
+    const out = q<=0;
+    const note = out ? '' : avail<=0 ? `<div class="bk-note held">All pre-ordered</div>`
+      : avail===1 ? `<div class="bk-note">Display book</div>` : '';
     const lc = langCard(b);
-    h+=`<div class="book ${sellable?'sellable':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}${lc.cls}"${lc.style} data-id="${esc(b.id)}">
-      ${(q<=0||avail<=0)?flag:''}
-      <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
-        <div>
-          <div class="bname ${catOfBook(b)}">${bookTitleHTML(b)}${
-            b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
-          <div class="price">${(c=>cashFmt(priceFor(b,c),c))(curCurrencies()[0])}</div>
-        </div>
-        <div class="qtyrow">
-          <div><span class="qty-chip ${cls}">${q}</span> <span class="qty-label">in stock</span>
-            ${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}
-            ${isWarehouseLoc(CUR_LOC) ? (function(){
+    const extra = isWarehouseLoc(CUR_LOC) ? (function(){
               const atEvents = eventsOfRegion(CUR_REGION).reduce((t,e)=>t+invQty(e.eventId,b.id),0);
               const transit = inTransitQty(b.id);
               const lines=[];
@@ -5587,10 +5600,20 @@ function renderInventory(){
               if(transit) lines.push(`<div class="region transit">In transit: ${transit}</div>
                 <div class="region transit">Expected total: ${q+atEvents+transit}</div>`);
               return lines.join('');
-            })() : (region>q?`<div class="region">Event Stock: ${region-q}</div><div class="region total">Total Stock: ${region}</div>`:'')}</div>
-          <div style="text-align:right"><div class="qty-label">sold ${sold}</div></div>
+            })() : (region>q?`<div class="region">Event Stock: ${region-q}</div><div class="region total">Total Stock: ${region}</div>`:'');
+    h+=`<div class="book ${sellable?'sellable':''}${out?' out':''} ${b.partnerId?'consign':catOfBook(b)==='aotm'?'aotm-card':''}${lc.cls}"${lc.style} data-id="${esc(b.id)}">
+      <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
+        <div class="bk-q1">
+          <div class="bname ${catOfBook(b)}">${out ? bookTitleHTML(b).replace(/^([^<]*?)( <span class="lang-tag|$)/, '$1 <span class="bk-out">(Out)</span>$2') : bookTitleHTML(b)}${
+            b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
+          <div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${cashFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>
+          ${note}
         </div>
-        ${(q>0&&avail===1)?`<div>${flag}</div>`:''}
+        <div class="qtyrow">
+          <div class="bk-q2"><span class="qty-chip ${cls}">${q}</span><div class="qty-label">in stock</div>
+            <div class="qty-label bk-sold">sold ${sold}</div></div>
+        </div>
+        ${(held || extra) ? `<div class="bk-more">${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}${extra}</div>` : ''}
       </div>
       <div class="bk-btns">
         <button class="sell-btn" data-act="sell" data-book="${b.id}" ${sellable?'':'disabled'}>Sell</button>
@@ -5608,9 +5631,9 @@ function renderInventory(){
         <div class="price">any amount</div>
       </div>
       <div class="qtyrow">
-        <div><span class="qty-chip ${dons?'':'zero'}">${dons}</span>
-          <span class="qty-label">received</span></div>
-        <div style="text-align:right"><span class="tap-hint">tap to record</span></div>
+        <div class="bk-q2"><span class="qty-chip ${dons?'':'zero'}">${dons}</span>
+          <div class="qty-label">received</div>
+          <div class="tap-hint">tap to record</div></div>
       </div>
     </div>
   </div>`;
@@ -18757,7 +18780,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='swbub'){
     // A sub-warehouse bubble: who holds these, and how to reach them.
-    const box = t.closest('.qtyrow') && t.closest('.qtyrow').querySelector('.sw-who');
+    const box = t.closest('.book') && t.closest('.book').querySelector('.sw-who');
     const h = holderById(t.dataset.holder);
     if(box && h){
       const same = box.dataset.holder===h.holderId && !box.hidden;

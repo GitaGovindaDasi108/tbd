@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b261**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b262**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2188,3 +2188,18 @@ Live unless marked practice.
 - Blue lines read just "Expected $X" (and "   Expected - $X" in 📋).
   Cents always two places ($50.80).
 - Tests: browser-finance (108), browser-expenses (68).
+
+## Done in b262 — Smaller selling cards in four parts (live)
+- Every shelf card (`renderInventory`'s book cards, and the donation card) is laid
+  out in four parts: top left the name, language and the region's first two
+  prices (`curCurrencies().slice(0,2)`); top right the number in stock with
+  "sold N" in grey beneath; bottom Sell and Pre-order. About a third shorter.
+- Sold out: no SOLD OUT bubble; the card gets `.out`, the name greys and reads
+  "(Out)" after it. All pre-ordered / Display book are a line of small print
+  under the prices (`.bk-note`).
+- Warehouse extras (Stored At bubbles, At events, In transit, pre-ordered/free)
+  sit full width under the top half (`.bk-more`); the SW bubble's name lookup
+  now finds `.sw-who` from the card, not `.qtyrow`.
+- List view keeps two columns on phones too.
+- Tests: round7 checks (Out) with no bubble; sellers expects "35 € · $40" on
+  the card (replacing b232's local price only); bookorder ignores "(Out)".

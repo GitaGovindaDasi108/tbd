@@ -67,9 +67,9 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
 
     // 2/3. SOLD OUT clear of the title; Sell is Deliver's green.
     const card = await page.evaluate(() => {
-      const tag = document.querySelector('.book .sold-tag'); if (!tag) return null;
-      const bk = tag.closest('.book'), a = tag.getBoundingClientRect(), b = bk.querySelector('.bname').getBoundingClientRect();
-      const overlap = !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+      /* b260: no SOLD OUT bubble any more; the name greys and says (Out) after it. */
+      const tag = document.querySelector('.book.out .bname .bk-out'); if (!tag) return null;
+      const overlap = !!document.querySelector('.book .sold-tag');
       const green = getComputedStyle(document.documentElement).getPropertyValue('--green').trim();
       const probe = document.createElement('div'); probe.style.background = green; document.body.appendChild(probe);
       const g = getComputedStyle(probe).backgroundColor; probe.remove();
@@ -79,9 +79,9 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
       const want = own.classList.contains('has-lang') ? getComputedStyle(own).borderLeftColor : g;
       return { overlap, sell: getComputedStyle(btn).backgroundColor, green: want };
     });
-    t.push(['SOLD OUT no longer covers the title', !!card && !card.overlap]);
+    t.push(['sold out: the name says (Out), with no bubble (b260)', !!card && !card.overlap]);
     t.push(['Sell is in its language\'s colour (Deliver\'s green with none)', !!card && card.sell === card.green]);
-    await (await page.$('.book:has(.sold-tag)')).screenshot({ path: shot('1-soldout') });
+    await (await page.$('.book.out')).screenshot({ path: shot('1-soldout') });
 
     // 4. Closing checklist: save progress, and it comes back.
     await page.evaluate(() => goTo('event', 'ev_new')); await page.waitForTimeout(300);
