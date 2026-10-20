@@ -330,7 +330,8 @@ button.sc-transit:hover{color:#1F4F86}
 .fin-sent{margin-top:8px;color:var(--green)}
 .fin-tabs-wide{margin:6px 0 12px}
 /* Dates & Repeats */
-.fin-dates input{width:100%;min-width:120px}
+.fin-dates input{width:100%;min-width:0;box-sizing:border-box}
+.fin-dates td{min-width:118px}
 .fin-dates th{white-space:nowrap}
 .fin-dt-1 th{padding-left:22px}.fin-dt-2 th{padding-left:40px;font-weight:400}
 .fin-dt-k{display:inline-block;min-width:52px;color:var(--muted);font-size:11px;font-weight:400}
@@ -5020,7 +5021,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Expenses'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'],
+  finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'],
   drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5042,7 +5043,7 @@ const SN_SECTIONS = [
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finreport','fincompare','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['drivefolder','specreport','sharelinks','people']},
-  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas']},
+  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
 /* One menu row from a panel button: its own attributes (so it does exactly
@@ -5092,6 +5093,8 @@ function renderSideNav(fams){
   if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
   // View as (b238): Universal, in the practice space.
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
+  // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
+  if(PRACTICE && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   const sections = SN_SECTIONS.map(sec=>{
     const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
@@ -9494,10 +9497,9 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
    address, #finance/settings, still lands there). */
 /* b255: Expenses and Reimbursements are one page (Gita's wish), its tabs the
    expenses, what is still to pay back, what is done, the links and the
-   settings; #finance/reimb still lands on it. Dates & Repeats is for filling
-   in the places made before dates were asked for. */
+   settings; #finance/reimb still lands on it. */
 const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements'], ['visual','📊','Visualize'],
-  ['report','📋','Reports'], ['compare','⚖️','Compare'], ['todo','💼','To do'], ['dates','📅','Dates & Repeats']];
+  ['report','📋','Reports'], ['compare','⚖️','Compare'], ['todo','💼','To do']];
 const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings'], ['reimb','💸','Reimbursements']];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
 const finSecName = sec => (FIN_SECS.concat(FIN_SEC_ALSO).find(x=>x[0]===sec) || [,,'Overview'])[2];
@@ -9625,7 +9627,6 @@ function finRender(){
   finNav();
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
-  if(sec==='dates'){ finDatesRender(); return; }
   if(sec==='expenses' && FIN.rb.tab==='expenses'){ finExpensesRender(); return; }
   if(sec==='visual'){ finVisualRender(); return; }
   if(sec==='expenses' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
@@ -9877,39 +9878,48 @@ function finLinkPlaces(){
   return out;
 }
 
-/* Dates & Repeats (b255, for now): the places made before the forms asked
-   when they run, to fill in once, and which recurring one each belongs to.
-   Each change saves as it is made. */
-FIN.dt = { missing:false };
-function finDatesRows(){
-  const D = FIN.D, f = finScopeF(), out = [];
-  D.seasons.filter(se=>!f.s || se.id===f.s).forEach(se=>{
+/* Dates & Repeats (b255, for now; App Development, Gita's wish): the places
+   made before the forms asked when they run, to fill in once, and which
+   recurring one each belongs to. Each change saves as it is made. */
+const DT = { missing:false };
+function datesRows(){
+  const M = PMETA || {seasons:[], regions:[], events:[]}, out = [];
+  M.seasons.filter(se=>se.id!==HQ_ID).forEach(se=>{
     out.push({kind:'seasons', x:se, depth:0, label:se.name});
-    D.regions.filter(r=>r.seasonId===se.id && (!f.r || r.id===f.r)).forEach(r=>{
+    M.regions.filter(r=>r.seasonId===se.id && r.id!==HQ_REGION).forEach(r=>{
       out.push({kind:'regions', x:r, depth:1, label:r.name});
-      D.events.filter(e=>e.regionId===r.id && (!f.e || e.id===f.e)).forEach(e=>out.push({kind:'events', x:e, depth:2, label:e.name}));
+      M.events.filter(e=>e.regionId===r.id).forEach(e=>out.push({kind:'events', x:e, depth:2, label:e.name}));
     });
   });
-  return FIN.dt.missing ? out.filter(r=>!r.x.from || !r.x.to) : out;
+  return DT.missing ? out.filter(r=>!r.x.from || !r.x.to) : out;
 }
-function finDatesRender(){
-  const rows = finDatesRows(), all = FIN.D;
-  const series = k => [...new Set(all[k].map(x=>x.series).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+async function datesModal(){
+  if(!PRACTICE) return;
+  openModal(`${mHead('Dates & Repeats')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  if(!await placeMetaLoad(true)){ $('#modal .m-body').innerHTML = '<div class="err">Could not open the list. Try again in a moment.</div>'; return; }
+  datesDraw();
+}
+function datesDraw(){
+  const rows = datesRows(), M = PMETA;
+  const series = k => [...new Set(M[k].map(x=>x.series).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const word = {seasons:'Season', regions:'Region', events:'Event'};
   const row = (r, i) => `<tr class="fin-dt-${r.depth}${r.x.closed?' fin-dim':''}">
       <th class="no-edit"><span class="fin-dt-k">${word[r.kind]}</span> ${esc(r.label)}</th>
       <td><input type="date" data-dt="from" data-i="${i}" value="${esc(r.x.from||'')}" aria-label="From"></td>
       <td><input type="date" data-dt="to" data-i="${i}" value="${esc(r.x.to||'')}" aria-label="To"></td>
-      <td><input type="text" data-dt="series" data-i="${i}" list="finDtList-${r.kind}" value="${esc(r.x.series||'')}" maxlength="80" aria-label="Recurring as"></td></tr>`;
-  $('#fpBody').innerHTML = `<h2 class="fp-h">Dates &amp; Repeats ${finRepBtn('dates')}</h2>${finScopeNote()}
-    <div class="hint">New seasons, regions and events ask for these when they are made. This page is for the ones made before:
-      fill in when each ran, and which recurring one it is part of (the same name means the same recurring one, so Reports can compare them). Each change saves at once.</div>
-    <div class="fin-dt-only"><input type="checkbox" id="finDtMissing" ${FIN.dt.missing?'checked':''}><label for="finDtMissing">Only those without dates</label></div>
-    ${['seasons','regions','events'].map(k=>`<datalist id="finDtList-${k}">${series(k).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
-    <div class="fin-scroll"><table class="cash-tbl fin-tbl fin-dates"><thead><tr><th>Name</th><th>From</th><th>To</th><th>Recurring as</th></tr></thead>
-      <tbody>${rows.map(row).join('') || '<tr><td colspan="4">Every one here has its dates.</td></tr>'}</tbody></table></div>`;
-  $('#finDtMissing').addEventListener('change', e=>{ FIN.dt.missing = e.target.checked; finDatesRender(); });
-  $('#fpBody').querySelectorAll('[data-dt]').forEach(el=>el.addEventListener('change', async ()=>{
+      <td><input type="text" data-dt="series" data-i="${i}" list="dtList-${r.kind}" value="${esc(r.x.series||'')}" maxlength="80" aria-label="Recurring as"></td></tr>`;
+  openModal(`${mHead('Dates & Repeats')}
+    <div class="m-body">
+      <div class="hint">New seasons, regions and events ask for these when they are made. This is for the ones made before:
+        fill in when each ran, and which recurring one it is part of (the same name means the same recurring one, so Reports can compare them). Each change saves at once.</div>
+      <div class="fin-dt-only"><input type="checkbox" id="dtMissing" ${DT.missing?'checked':''}><label for="dtMissing">Only those without dates</label></div>
+      ${['seasons','regions','events'].map(k=>`<datalist id="dtList-${k}">${series(k).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
+      <div class="fin-scroll"><table class="cash-tbl fin-tbl fin-dates"><thead><tr><th>Name</th><th>From</th><th>To</th><th>Recurring as</th></tr></thead>
+        <tbody>${rows.map(row).join('') || '<tr><td colspan="4">Every one has its dates.</td></tr>'}</tbody></table></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  $('#dtMissing').addEventListener('change', e=>{ DT.missing = e.target.checked; datesDraw(); });
+  document.querySelectorAll('#modal [data-dt]').forEach(el=>el.addEventListener('change', async ()=>{
     const r = rows[Number(el.dataset.i)], k = el.dataset.dt;
     const p = {action:'placeMetaSet', kind:r.kind, id:r.x.id};
     if(k==='series'){ const v = el.value.trim(); p.series = !v || v===seriesName(r.x.name) ? '' : v; }
@@ -9917,16 +9927,10 @@ function finDatesRender(){
     el.classList.remove('fin-saved');
     try{
       const d = await post(p); PMETA = d.result; PMETA_AT = Date.now();
-      if(k==='series') r.x.series = p.series || seriesName(r.x.name); else { r.x.from = p.from; r.x.to = p.to; }
-      if(k==='series') el.value = r.x.series;
+      if(k==='series'){ r.x.series = p.series || seriesName(r.x.name); el.value = r.x.series; } else { r.x.from = p.from; r.x.to = p.to; }
       el.classList.add('fin-saved'); toast('Saved');
     }catch(e){ toast(e.message, true); if(k!=='series') el.value = r.x[k] || ''; }
   }));
-}
-function finWaDates(L){
-  const word = {seasons:'Season', regions:'Region', events:'Event'};
-  finDatesRows().forEach(r=>L.push('  '.repeat(r.depth) + word[r.kind] + ' ' + r.label + ': ' +
-    (r.x.from || r.x.to ? (r.x.from || '?') + ' to ' + (r.x.to || '?') : 'no dates yet') + (r.x.series && r.x.series!==r.label ? ' (' + r.x.series + ')' : '')));
 }
 
 /* Visualize: expenses by type, as a pie or as bars, with the figures listed
@@ -10073,7 +10077,6 @@ function finReportText(part){
   if(part==='expenses') run('', finWaExpenses);
   if(part==='reimb') run('', finWaReimb);
   if(!part && sec==='expenses') run('', FIN.rb.tab==='expenses' ? finWaExpenses : finWaReimb);
-  if(part==='dates' || (!part && sec==='dates')) run('', finWaDates);
   if(part==='visual' || (!part && sec==='visual')) run('Expenses by Type', finWaVisual);
   if(!part && L.length) L.unshift('*' + where + ' — Finance ' + finSecName(sec) + '*', '');
   return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -17102,6 +17105,7 @@ document.addEventListener('click',e=>{
   if(a==='fincsv'){ finCsv(); return; }
   if(a==='finrepreset'){ FIN.rep = finRepDefault(); try{ localStorage.removeItem('tbs_finrep'); }catch(e){} finDrawAll(); return; }
   if(a==='viewas'){ viewAsModal(); return; }
+  if(a==='placedates'){ datesModal(); return; }
   if(a==='viewstop'){ viewAsStart(null); return; }
   if(a==='concost'){ costsModal(null, t.dataset.id); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }

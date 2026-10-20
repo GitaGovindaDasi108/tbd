@@ -383,12 +383,20 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const one = (k, x, extra) => Object.assign({ id: x.id, name: x.name, closed: !!x.closed,
       series: own[k][x.id] || seriesOf(x.name), seriesOwn: own[k][x.id] || '',
       from: (dt[k][x.id] || {}).from || '', to: (dt[k][x.id] || {}).to || '' }, extra);
+    fresh();
+    // In the app's own order (regionsOrdered_ / eventsOrdered_), as everywhere else.
+    const rank = {};
+    try {
+      P.raw.seasons.forEach(s => app.regionsOrdered_(s.id).forEach((r, i) => { if (r && r.regionId) rank[String(r.regionId)] = i; }));
+      app.eventsOrdered_().forEach((e, i) => { if (e && e.eventId) rank[String(e.eventId)] = i; });
+    } catch (e) { /* the order is a nicety */ }
+    const byRank = list => list.slice().sort((a, b) => (rank[a.id] ?? 1e9) - (rank[b.id] ?? 1e9));
     const sName = id => (P.raw.seasons.find(s => s.id === id) || {}).name || '';
     const rOf = id => P.raw.regions.find(r => r.id === id) || {};
     return {
       seasons: P.raw.seasons.map(s => one('seasons', s, {})),
-      regions: P.raw.regions.map(r => one('regions', r, { seasonId: r.seasonId, seasonName: sName(r.seasonId) })),
-      events: P.raw.events.map(e => one('events', e, { regionId: e.regionId, regionName: rOf(e.regionId).name || '',
+      regions: byRank(P.raw.regions).map(r => one('regions', r, { seasonId: r.seasonId, seasonName: sName(r.seasonId) })),
+      events: byRank(P.raw.events).map(e => one('events', e, { regionId: e.regionId, regionName: rOf(e.regionId).name || '',
         seasonId: rOf(e.regionId).seasonId || '', seasonName: sName(rOf(e.regionId).seasonId) })),
       mayEdit: true
     };

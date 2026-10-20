@@ -921,8 +921,9 @@ desktop and phone width.
   this a recurring event?" with each candidate (Gita's idea). The answer is
   saved as the place's series in `finSeries`, so Compare and Reports use it.
   "No" with the same name files it under "Name · parent".
-- **Dates & Repeats** (Finance, temporary): every season, region and event with
-  its dates and "Recurring as", saved as typed; "Only those without dates".
+- **Dates & Repeats** (App Development › 📅, Universal, temporary): every
+  season, region and event in the app's order with its dates and "Recurring
+  as", saved as typed; "Only those without dates" (`datesModal`).
 - **Expenses & Reimbursements are one page.** Tabs: Expenses, Pending
   Reimbursements, Paid back and declined, Reimbursement Links, Settings.
   `#finance/reimb` and `#finance/settings` still land there.
