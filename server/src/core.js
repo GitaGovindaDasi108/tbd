@@ -136,6 +136,12 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       if (auth.isAdmin(me) || people.givesAny(places(), auth.grantsOf(me), false)) o.requests = auth.requestCount();
       return reply(o);
     }
+    // The exchange rate on a day (b260): for an expense paid back in another currency.
+    if (action === 'fxOn') {
+      if (!linkKey && !me) return reply({ ok: false, signIn: true, error: 'Please sign in with Google to use the app.' });
+      try { return reply({ ok: true, result: await fxOn(p.date, p.from, p.to) }); }
+      catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
+    }
     if (!linkKey && !me) {
       return reply({ ok: false, signIn: true, error: 'Please sign in with Google to use the app.' });
     }
@@ -533,6 +539,36 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
         web.put(url, r.status, await r.text());
       } catch (e) { /* unreachable: the rules carry on without it, as on Google */ }
     }
+  }
+  /* One currency in another on a given day (b260), as the sales side fetches
+     its rates: from the server, never the phone. The European Central Bank's
+     day (Frankfurter; a weekend or holiday gives the last working day), and
+     for currencies it does not carry (MKD, …) the open currency-api, which has
+     every day too. Kept in the web cache, so each day is asked for once. */
+  async function fxOn(date, from, to) {
+    date = String(date || ''); from = String(from || '').toUpperCase(); to = String(to || '').toUpperCase();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) throw new Error('That exchange rate could not be asked for.');
+    const today = new Date().toISOString().slice(0, 10);
+    if (date > today) date = today;
+    if (from === to) return { rate: 1, on: date, src: '' };
+    const getJson = async url => {
+      let hit = web.get(url);
+      if (!hit) {
+        try { const r = await fetchImpl(url); hit = { code: r.status, text: await r.text() }; if (r.status === 200) web.put(url, r.status, hit.text); }
+        catch (e) { return null; }
+      }
+      if (!hit || hit.code !== 200) return null;
+      try { return JSON.parse(hit.text); } catch (e) { return null; }
+    };
+    const ecb = await getJson('https://api.frankfurter.app/' + date + '?from=' + from + '&to=' + to);
+    if (ecb && ecb.rates && Number(ecb.rates[to]) > 0) return { rate: Number(ecb.rates[to]), on: String(ecb.date || date), src: 'European Central Bank' };
+    const f = from.toLowerCase(), t = to.toLowerCase();
+    for (const url of ['https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@' + date + '/v1/currencies/' + f + '.json',
+                       'https://' + date + '.currency-api.pages.dev/v1/currencies/' + f + '.json']) {
+      const j = await getJson(url);
+      if (j && j[f] && Number(j[f][t]) > 0) return { rate: Number(j[f][t]), on: String(j.date || date), src: 'currency-api' };
+    }
+    return null;
   }
   /* The rates, fetched ahead of the request that will want them. */
   async function warm() {

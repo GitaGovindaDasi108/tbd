@@ -1418,6 +1418,24 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .fin-pie path:hover{opacity:.85}
 .fin-legend{flex:1 1 260px;min-width:0;white-space:normal}
 .fin-key{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+.exp-locked{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;font-size:13.5px}
+.fin-ex{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.fx-row{display:grid;grid-template-columns:86px minmax(0,1fr) auto 14px;gap:10px;align-items:center;cursor:pointer;font-size:13.5px}
+.fx-head{cursor:default;padding:0 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+.fx-head .fx-h{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;box-shadow:none}
+.fx-d{color:var(--muted);font-size:12.5px;text-align:left}
+.fx-w{font-weight:600;color:var(--plum);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fx-a{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+.fx-item{padding:7px 10px}
+.fx-det>div{margin:2px 0}
+.fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.rb-item{margin:6px 0}
+.rb-item .li-btns .btn{min-width:56px}
+.rb-det .exp-gi{padding:6px 0;border-top:1px dashed var(--line)}
+.rb-det .exp-gi:first-child{border-top:0}
+.rb-det{font-size:13px;color:var(--ink)}
+.rb-det .exp-card{border:0;padding:0;margin:0;background:transparent}
+.badge.rb-dec{background:#F4E3E1;color:#A23B2C}
 .fin-charts{margin-top:22px;border-top:1.5px solid var(--line);padding-top:4px}
 .fc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:8px 0}
 .fc-box{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper);min-width:0}
@@ -1732,6 +1750,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 /* ---------- Activity log ---------- */
 .al-search{padding:10px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink);width:100%}
 .al-list{display:flex;flex-direction:column}
+.al-more{align-self:center;margin:12px 0 4px}
+.modal .m-body{overscroll-behavior:contain}
 .al-day{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);
   padding:12px 2px 5px;border-bottom:1px solid var(--line)}
 .al-list .al-day:first-child{padding-top:2px}
@@ -1912,7 +1932,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b260</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b261</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -8657,7 +8677,7 @@ function expContactHTML(x){
   const msg = (x.status==='paid' ? 'Hare Krishna ' + name + ', your expense "' + x.desc + '" (' + cashFmt(x.amt, x.cur) + ') has been paid back by ' + x.method + '. Thank you!'
     : 'Hare Krishna ' + name + ', your expense "' + x.desc + '" (' + cashFmt(x.amt, x.cur) + ') has been received and will be processed at the earliest convenience.') + ' — Finance';
   const wa = x.contactPhone ? `<a class="btn btn-ghost btn-xs" href="https://wa.me/${esc(String(x.contactPhone).replace(/\D/g,''))}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 ${x.status==='paid'?'Tell them it is paid':'Confirm received'} on WhatsApp</a>` : '';
-  const em = x.contactEmail ? `<a class="btn btn-ghost btn-xs" href="${esc(gmailUrl(x.contactEmail, 'Your expense: ' + x.desc, msg))}" target="_blank" rel="noopener">✉️ ${x.status==='paid'?'Tell them it is paid':'Confirm received'} by email</a>` : '';
+  const em = x.contactEmail ? `<a class="btn btn-ghost btn-xs" href="${esc(gmailUrl(x.contactEmail, 'Your expense: ' + x.desc, msg))}" target="${GMAIL_TAB}">✉️ ${x.status==='paid'?'Tell them it is paid':'Confirm received'} by email</a>` : '';
   return `<div class="exp-meta">Sent in by link${x.contactPhone ? ' · 📞 <b class="exp-copy">' + esc(x.contactPhone) + '</b>' : ''}${x.contactEmail ? ' · ✉️ <b class="exp-copy">' + esc(x.contactEmail) + '</b>' : ''}</div>
     <div class="exp-btns">${wa}${em}</div>`;
 }
@@ -8686,7 +8706,7 @@ function expCardHTML(x, fin){
   const who = x.forName ? esc(x.forName) + (fin ? ` <span class="muted-note">(entered by ${esc(x.byName)})</span>` : ' (entered by Finance)') : esc(x.byName||'');
   const paidBack = x.kind==='reimburse' ? expPayBackHTML(x, fin ? x.id : '') : '';
   const done = (x.status==='paid'||x.status==='declined') && x.doneAt
-    ? `<div class="muted-note">${esc(EXP_STATUS[x.status])} by ${esc(x.doneBy)}, ${esc(String(x.doneAt).slice(0,10))}${x.doneNote?' · '+esc(x.doneNote):''}</div>` : '';
+    ? `<div class="muted-note">${esc(EXP_STATUS[x.status])} by ${esc(x.doneBy)}, ${esc(x.status==='paid' && x.paidOn ? x.paidOn : String(x.doneAt).slice(0,10))}${x.doneNote?' · '+esc(x.doneNote):''}</div>` : '';
   const mayChange = x.status!=='paid' || (EXP.opt && EXP.opt.mayPay);
   const btns = [];
   if(fin && EXP.opt && EXP.opt.mayPay && x.kind==='reimburse'){
@@ -8883,7 +8903,11 @@ function expDraw(){
             </div>
             <div class="muted-note">Or drop files here, or paste a screenshot.</div>
           </div></div>
-        ${f.kind==='reimburse' ? `
+        ${f.kind==='reimburse' && f.lockPay && expPayLead() ? (()=>{ const L = expPayLead(), li = EXP.batch.indexOf(L);
+          f.method = L.method; f.reimbCur = L.reimbCur; f.payTo = Object.assign({}, L.payTo);
+          return `<div class="exp-reimb exp-locked"><div>Paid back by <b>${esc(L.method)}</b> in <b>${esc(L.reimbCur)}</b>, like the first expense in this form: one way of paying back per form.</div>
+            <button type="button" class="btn btn-ghost btn-xs" data-xb="edit" data-i="${li}">Change it on the first one</button></div>`; })()
+        : f.kind==='reimburse' ? `
         <div class="exp-reimb">
           <div class="row2">
             <div class="field"><label>Pay me back by</label>
@@ -9085,13 +9109,22 @@ function expBatchHTML(){
 function expNextForm(f){
   return {id:expId('X'), kind:f.kind, location:f.location, date:f.date, desc:'', cur:f.cur, amt:'', category:'Other', payType:f.payType,
     payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:Object.assign({}, f.payTo), same:Object.assign({}, f.same), notes:'', receipts:[],
-    forEmail:f.forEmail, forName:f.forName, catOther:''};
+    forEmail:f.forEmail, forName:f.forName, catOther:'', lockPay: !!(f.lockPay || f.kind==='reimburse')};
+}
+/* One way of being paid back per form (Gita, 2026-10-20): several expenses,
+   but the first one to be paid back sets how, and the rest follow it. */
+const expPayLead = () => (EXP.batch||[]).find(x=>x.kind==='reimburse' && !x.lockPay) || null;
+function expPaySync(all){
+  const L = all.find(x=>x.kind==='reimburse' && !x.lockPay);
+  if(L) all.forEach(x=>{ if(x!==L && x.kind==='reimburse'){ x.lockPay = true; x.method = L.method; x.reimbCur = L.reimbCur; x.payTo = Object.assign({}, L.payTo); x.same = Object.assign({}, L.same); } });
+  return all;
 }
 function expAddAnother(){
   expRead();
   const f = EXP.form, e = expCheck(f);
   if(e){ $('#modalErr').textContent = e; return; }
   (EXP.batch = EXP.batch || []).push(f);
+  expPaySync(EXP.batch);
   EXP.form = expNextForm(f);
   expDraw();
   const d = $('#xAmt'); if(d) d.focus();
@@ -9114,7 +9147,7 @@ async function expSave(){
   if(B.length){
     if(!expBlank(f)){ const e = expCheck(f); if(e){ err.textContent = e; return; } }
     const e2 = expPubCheck(); if(e2){ err.textContent = e2; return; }
-    expReview(expBlank(f) ? B.slice() : B.concat([f]));
+    expReview(expPaySync(expBlank(f) ? B.slice() : B.concat([f])));
     return;
   }
   const e = expCheck(f) || expPubCheck();
@@ -9152,12 +9185,10 @@ const FX = {};
 async function fxOn(date, from, to){
   const k = date + '|' + from + '|' + to;
   if(k in FX) return FX[k];
-  const get = async url => { const c = new AbortController(), t = setTimeout(()=>c.abort(), 6000);
-    try{ const r = await fetch(url, {signal:c.signal}); if(!r.ok) return null; const j = await r.json(); return j && j.rates && j.rates[to] ? {rate:Number(j.rates[to]), on:String(j.date||date)} : null; }
-    catch(e){ return null; } finally{ clearTimeout(t); } };
-  const r = await get('https://api.frankfurter.dev/v1/' + date + '?base=' + from + '&symbols=' + to)
-    || await get('https://api.frankfurter.app/' + date + '?from=' + from + '&to=' + to);
-  if(r) FX[k] = r;
+  // Asked of the server (b260), as the sales side's rates are: the browser's own request did not get through.
+  let r = null;
+  try{ r = (await post({action:'fxOn', date, from, to})).result || null; }catch(e){ r = null; }
+  if(r && r.rate > 0) FX[k] = r; else r = null;
   return r;
 }
 const expOtherCur = x => x.kind==='reimburse' && x.reimbCur && String(x.reimbCur).toUpperCase()!==String(x.cur).toUpperCase();
@@ -9312,7 +9343,7 @@ function finDraw(){
     ${esc(label)} <span class="fin-n">${n}</span></button>`;
   let body = '';
   if(EXP.tab==='reimb') body = reimb.length
-    ? `<div class="hint">To pay back: <b>${esc(finTotals(reimb, x=>[[x.amt, x.cur]]))}</b></div>${reimb.map(x=>expCardHTML(x, true)).join('')}`
+    ? `<div class="hint">To pay back: <b>${esc(finTotals(reimb.filter(expPayOut), x=>[expPayOut(x)]) || finTotals(reimb, x=>[[x.amt, x.cur]]))}</b></div>${expGroups(reimb).map(expGroupHTML).join('')}`
     : '<div class="cash-empty">Nothing waiting to be paid back.</div>';
   if(EXP.tab==='pay') body = pend.length
     ? `<div class="hint">Still owed to the tour: <b>${esc(finTotals(pend, p=>(p.owed||[]).map(o=>[o.amt, o.cur])))}</b></div>
@@ -9333,29 +9364,51 @@ function finDraw(){
   const qi = $('#finQ');
   qi.addEventListener('input', ()=>{ EXP.q = qi.value; const pos = qi.selectionStart; finDraw(); const n = $('#finQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
 }
+/* "Pay": the date it was paid (today unless changed) and a note, then Paid. */
+function finPayAsk(xs){
+  return new Promise(done=>{
+    const today = new Date().toISOString().slice(0,10), x = xs[0] || {};
+    const total = finTotals(xs.filter(expPayOut), y=>[expPayOut(y)]) || finTotals(xs, y=>[[y.amt, y.cur]]);
+    openModal(`${mHead('Pay')}<div class="m-body">
+        <div class="hint">Paying <b class="no-edit">${esc(x.forName || x.byName || '')}</b> <b>${esc(total)}</b>${x.method ? ' by ' + esc(x.method) : ''}${xs.length > 1 ? ' for ' + xs.length + ' expenses' : ''}.</div>
+        <div class="field"><label>Date of payment</label><input type="date" id="fpDate" value="${today}" max="${today}"></div>
+        <div class="field"><label>Note for the record (optional)</label><input type="text" id="fpNote" maxlength="300" placeholder="e.g. the transfer reference"></div>
+        <div id="fpErr"></div></div>
+      <div class="m-foot"><button class="btn btn-ghost" id="fpNo">Cancel</button><button class="btn btn-primary" id="fpYes">✓ Paid</button></div>`);
+    $('#fpNo').addEventListener('click', ()=>{ closeModal(); done(null); });
+    $('#fpYes').addEventListener('click', ()=>{
+      const d = $('#fpDate').value;
+      if(!/^\d{4}-\d\d-\d\d$/.test(d) || d > today){ $('#fpErr').innerHTML = '<div class="err">Give the date it was paid: today or before.</div>'; return; }
+      const note = $('#fpNote').value.trim(); closeModal(); done({paidOn:d, note});
+    });
+  });
+}
 async function finMark(idList, status, keep){
   const ids = String(idList).split(',').filter(Boolean);
   // A person's card (b259): the lines turned down are declined, the rest paid back.
   const no = status==='paid' ? ids.filter(id=>FIN.rbNo.has(id)) : [];
   if(no.length && no.length===ids.length){ toast('Every line is declined: use Decline all, or accept a line first.', true); return; }
-  // The note written in the card's Pay back box (b257), else asked for.
-  const box = [...document.querySelectorAll('[data-pbnote]')].find(i=>i.dataset.pbnote===String(idList));
-  let note = box ? box.value.trim() : '';
-  if(status==='paid' && !box){ note = prompt('Paid back. A note for the record? (optional — e.g. the transfer reference)', ''); if(note===null) return; }
-  if(status==='declined' && !note){ note = prompt('Why is it declined? (they will see this)', ''); if(note===null) return; }
+  // Pay asks the day it was paid, for the records (Gita, 2026-10-20), and a note.
+  let note = '', paidOn = '';
+  if(status==='paid'){
+    const xs = ids.filter(id=>!no.includes(id)).map(id=>(EXP.all||[]).find(x=>x.id===id) || (EXP.todo.reimb||[]).find(x=>x.id===id)).filter(Boolean);
+    const got = await finPayAsk(xs); if(!got) return;
+    paidOn = got.paidOn; note = got.note;
+  }
+  if(status==='declined'){ note = prompt('Why is it declined? (they will see this)', ''); if(note===null) return; }
   let why = '';
   if(no.length){ why = prompt('Why ' + (no.length===1 ? 'is the one turned down' : 'are the ' + no.length + ' turned down') + ' declined? (they will see this)', ''); if(why===null) return; }
   try{
     for(const id of ids){
       const off = no.includes(id);
-      const r = (await post({action:'expMark', id, status: off ? 'declined' : status, note: off ? why : note})).result;
+      const r = (await post({action:'expMark', id, status: off ? 'declined' : status, note: off ? why : note, paidOn: off ? '' : paidOn})).result;
       FIN.rbNo.delete(id);
       EXP.todo.reimb = EXP.todo.reimb.filter(x=>x.id!==id);
       if(r.status==='pending') EXP.todo.reimb.unshift(r);
       const i = EXP.all.findIndex(x=>x.id===id); if(i>=0) EXP.all[i] = r;
     }
     const yes = ids.length - no.length;
-    toast(status==='paid' ? (yes > 1 ? yes + ' marked as paid back' : 'Marked as paid back') + (no.length ? ', ' + no.length + ' declined' : '') : status==='declined' ? 'Declined' : 'Back on the list');
+    toast(status==='paid' ? (yes > 1 ? yes + ' paid' : 'Paid') + (no.length ? ', ' + no.length + ' declined' : '') : status==='declined' ? 'Declined' : 'Back on the list');
     if(FINP.on && FINP.sec!=='todo') finRender(); else finDraw();
   }catch(e){ toast(e.message, true); }
 }
@@ -9495,7 +9548,7 @@ document.addEventListener('paste', e=>{
      Margin        Net as a share of Gross
    Book printing costs are not in the app, so the margin is after expenses only. */
 const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open:{}, rep:null, cmp:{kind:'seasons', series:''},
-  ex:{sort:'date', dir:-1, types:new Set(), sts:new Set(), open:'', q:''}, rb:{tab:'pending'}, rbNo:new Set(), viz:{form:'pie'} };
+  ex:{sort:'date', dir:-1, types:new Set(), sts:new Set(), open:'', q:''}, rb:{tab:'pending'}, rbNo:new Set(), rbOpen:new Set(), exOpen:new Set(), viz:{form:'pie'} };
 const FIN_M = [
   {k:'bbu', l:'Big Books Sold'}, {k:'avu', l:'Adventures Sold'}, {k:'bb', l:'Big Books (count)', n:true}, {k:'av', l:'Adventures (count)', n:true},
   {k:'books', l:'Books sold (count)', n:true}, {k:'gifts', l:'Gifts (count)', n:true}, {k:'sales', l:'Sales (count)', n:true},
@@ -9533,7 +9586,9 @@ function finAgg(sales, exps){
   a.margin = a.coll > 0 ? a.net / a.coll * 100 : null;
   return a;
 }
-const finUsd = n => (n<0?'−':'') + '$' + fmt(Math.abs(Math.round(n*100)/100));
+const finUsd = n => { const a = Math.abs(Math.round(n*100)/100);
+  // Cents always in two places ($50.80, not $50.8); whole dollars as they are.
+  return (n<0?'−':'') + '$' + (a % 1 ? a.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : fmt(a)); };
 function finVal(m, v){
   if(v===null || v===undefined) return '—';
   if(m.pct) return Math.round(v*10)/10 + '%';
@@ -9630,13 +9685,13 @@ function finDist(sold, gift){
 const finPending = a => a.pend > 0.004;
 const finToRepay = a => a.reimb > 0.004;
 function finGrossParts(a){
-  return {l:'Gross', v:finUsd(a.coll), ex:finPending(a) ? 'Expected Gross ' + finUsd(a.gross) : ''};
+  return {l:'Gross', v:finUsd(a.coll), ex:finPending(a) ? 'Expected ' + finUsd(a.gross) : ''};
 }
 function finExpParts(a){
-  return {l:'Expenses', v:finUsd(a.spent), ex:finToRepay(a) ? 'Expected Expenses ' + finUsd(a.exp) : ''};
+  return {l:'Expenses', v:finUsd(a.spent), ex:finToRepay(a) ? 'Expected ' + finUsd(a.exp) : ''};
 }
 function finNetParts(a){
-  return {l:'Net', v:finUsd(a.net), ex:finPending(a) || finToRepay(a) ? 'Expected Net ' + finUsd(a.netExp) : ''};
+  return {l:'Net', v:finUsd(a.net), ex:finPending(a) || finToRepay(a) ? 'Expected ' + finUsd(a.netExp) : ''};
 }
 const finExHTML = (m, cls) => m.ex ? `<div class="${cls} fin-ex-l">${esc(m.ex)}</div>` : '';
 /* The actual money, currency by currency, as the sales page's totals bar
@@ -9913,8 +9968,8 @@ function qbMeasure(k, g){
     case 'gross': return Object.assign(usd(a.gross), {sub:'Gross so far ' + finUsd(a.coll)});
     case 'pend': return usd(a.pend);
     case 'don': return Object.assign(usd(a.don), {sub:qbLocal(g.sales, g.exps, 'don')});
-    case 'exp': return Object.assign(usd(a.spent), {sub:[qbLocal(g.sales, g.exps, 'exp'), finToRepay(a) ? 'Expected Expenses ' + finUsd(a.exp) : ''].filter(Boolean).join('\n')});
-    case 'net': return Object.assign(usd(a.net), {sub:finPending(a) || finToRepay(a) ? 'Expected Net ' + finUsd(a.netExp) : ''});
+    case 'exp': return Object.assign(usd(a.spent), {sub:[qbLocal(g.sales, g.exps, 'exp'), finToRepay(a) ? 'Expected ' + finUsd(a.exp) : ''].filter(Boolean).join('\n')});
+    case 'net': return Object.assign(usd(a.net), {sub:finPending(a) || finToRepay(a) ? 'Expected ' + finUsd(a.netExp) : ''});
     case 'margin': return {n:a.margin, v:a.margin===null ? '—' : Math.round(a.margin*10)/10 + '%'};
     case 'npay': return {n:g.sales.length, v:String(g.sales.length)};
     case 'days': {
@@ -10689,7 +10744,7 @@ function finExpTotals(list){
   return T;
 }
 function finExpFigs(T){
-  const ex = {l:'Expenses', v:finUsd(T.current), sub:'', ex:T.due > 0.004 ? 'Expected Expenses ' + finUsd(T.all) : ''};
+  const ex = {l:'Expenses', v:finUsd(T.current), sub:'', ex:T.due > 0.004 ? 'Expected ' + finUsd(T.all) : ''};
   return [ex, {l:'Reimbursements Due', v:finUsd(T.due), sub: T.dueN ? T.dueN + ' to pay back' : ''}];
 }
 function finExpBarHTML(T, only){
@@ -10741,14 +10796,27 @@ function finExpSecHTML(){
       <div class="log-filter" data-xpanel="${k}" ${E.open===k?'':'hidden'}>${opts.length ? opts.map(([v, l, n])=>`<label class="lf-row"><input type="checkbox" data-xf="${k}" value="${esc(v)}" ${set.has(v)?'checked':''}> <span class="no-edit">${esc(l)}</span> <span class="fin-n">${n}</span></label>`).join('') : '<div class="lf-empty">Nothing yet.</div>'}
         <div class="lf-foot"><button type="button" class="btn btn-ghost btn-sm" data-act="finexclr" data-f="${k}" ${set.size?'':'disabled'}>Clear</button>
           <button type="button" class="btn btn-primary btn-sm" data-act="finexflt" data-f="">Done</button></div></div></span>`;
-  const head = (k, l) => `<th class="fin-sort" data-act="finexsort" data-k="${k}">${esc(l)}${E.sort===k ? (E.dir>0?' ▲':' ▼') : ''}</th>`;
-  const row = x => `<tr class="${x.status==='declined'?'fin-dim':''}">
-      <td>${esc(x.date)}</td><td class="no-edit fin-wrap">${esc(x.desc)}${
-        (x.receipts||[]).length ? ` <button type="button" class="fin-rc" data-act="rcptopen" data-id="${esc(x.receipts[0].id)}" title="Open the receipt">🧾${x.receipts.length>1?x.receipts.length:''}</button>` : ''}
-        <div class="fin-cs">${esc(x.who)} · ${esc(x.type)} · ${esc(x.placeLabel)}</div></td>
-      <td>${esc(finExpAmt(x))}<div class="fin-cs">${expStatusHTML(x)}</div></td>
-      <td class="fin-acts">${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}" title="Edit">✏️</button>
-        <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑</button>` : ''}</td></tr>`;
+  const head = (k, l, cls) => `<button type="button" class="fx-h ${cls}" data-act="finexsort" data-k="${k}">${esc(l)}${E.sort===k ? (E.dir>0?' ▲':' ▼') : ''}</button>`;
+  /* A row each, like the sales log (Gita, 2026-10-20): the date, what it was
+     for and what it cost; tapping it opens the rest. */
+  const row = x => { const open = FIN.exOpen.has(x.id), rc = x.receipts || [];
+    return `<div class="log-item fx-item${x.status==='declined'?' fin-dim':''}${x.kind==='reimburse' && x.status==='pending' ? ' pending' : ''}${open?' open':''}" data-xid="${esc(x.id)}">
+      <div class="fx-row" data-act="exopen" data-id="${esc(x.id)}"><span class="fx-d">${esc(x.date)}</span>
+        <span class="fx-w no-edit">${esc(x.desc)}</span>
+        <span class="fx-a">${esc(finExpAmt(x))}</span><span class="li-chev">▶</span></div>
+      <div class="li-det fx-det">
+        <div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>
+        <div><span class="k">Type</span> <span class="v">${esc(x.type)}</span></div>
+        <div><span class="k">Where</span> <span class="v no-edit">${esc(x.placeLabel)}</span></div>
+        <div><span class="k">Status</span> ${expStatusHTML(x)}</div>
+        ${x.kind==='reimburse' ? `<div><span class="k">Pay back</span> <span class="v">${esc(x.method || '')}${x.reimbCur ? ' in ' + esc(x.reimbCur) : ''}${expOtherCur(x) ? ' · ' + esc(expPayAmtLine(x)) : ''}</span></div>` : ''}
+        ${x.payType ? `<div><span class="k">Paid with</span> <span class="v">${esc(x.payType)}</span></div>` : ''}
+        ${x.notes ? `<div><span class="k">Notes</span> <span class="v no-edit">${esc(x.notes)}</span></div>` : ''}
+        ${x.doneAt && x.status!=='pending' ? `<div><span class="k">${esc(EXP_STATUS[x.status]||x.status)}</span> <span class="v">${esc(x.status==='paid' && x.paidOn ? x.paidOn : String(x.doneAt).slice(0,10))}${x.doneBy ? ' by ' + esc(x.doneBy) : ''}${x.doneNote ? ' · ' + esc(x.doneNote) : ''}</span></div>` : ''}
+        <div class="fx-btns">${rc.map((r,i)=>`<button type="button" class="btn btn-ghost btn-xs" data-act="rcptopen" data-id="${esc(r.id)}">🧾 Receipt${rc.length>1?' '+(i+1):''}</button>`).join('')}
+          <span class="exp-gap"></span>${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">✏️ Edit</button>
+          <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑 Delete</button>` : ''}</div>
+      </div></div>`; };
   return `<div class="fin-sh"><h3 class="fin-h3">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h3>
       <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></div>
     ${finExpBarHTML(finExpTotals(all), 0)}
@@ -10764,8 +10832,9 @@ function finExpSecHTML(){
     <div class="fin-flt"><span class="sortbar">Filter
       ${facet('type', 'Type', E.types, types.map(t=>[t, t, all.filter(x=>x.type===t).length]))}
       ${facet('status', 'Status', E.sts, sts.map(k=>[k, EXP_STATUS[k], all.filter(x=>x.status===k).length]))}</span></div>
-    <div class="fin-scroll"><table class="cash-tbl fin-tbl fin-ex"><thead><tr>${head('date','Date')}<th>What for</th>${head('amount','Amount')}<th></th></tr></thead>
-      <tbody>${list.map(row).join('') || `<tr><td colspan="4">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</td></tr>`}</tbody></table></div>`;
+    <div class="fin-ex">
+      <div class="fx-row fx-head">${head('date','Date','fx-d')}<span class="fx-w">What for</span>${head('amount','Amount','fx-a')}<span class="li-chev"></span></div>
+      ${list.map(row).join('') || `<div class="cash-empty">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</div>`}</div>`;
 }
 function finBindExpSec(){
   const E = FIN.ex, root = $('#finExS'); if(!root) return;
@@ -10817,7 +10886,7 @@ function finBindSend(){
     if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ done.innerHTML = '<div class="err">That email address does not look right.</div>'; return; }
     const digits = phone.replace(/\D/g,'');
     if(phone && digits.length < 7){ done.innerHTML = '<div class="err">That number looks too short. Include the country code, e.g. +48.</div>'; return; }
-    const win = window.open('', '_blank');
+    const win = window.open('', email ? GMAIL_TAB : '_blank');
     go.disabled = true; go.textContent = 'Sending…';
     try{
       const f = finScopeF(), place = f.e || f.r || f.s || '';
@@ -10826,11 +10895,11 @@ function finBindSend(){
       const msg = 'Hare Krishna ' + name + '! ' + reimbMsg(reimbUrl(r.key));
       const url = phone ? 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg)
         : gmailUrl(email, 'Send in an expense to be paid back', msg);
-      if(win) win.location.href = url; else window.open(url, '_blank');
+      if(win) win.location.href = url; else window.open(url, email ? GMAIL_TAB : '_blank');
       if(FIN.rb.tab==='links') await finLinksRender();
       const d2 = $('#fsDone');
       if(d2) d2.innerHTML = `<div class="fin-sent">✓ Link made for <b class="no-edit">${esc(name)}</b>. ${phone ? 'WhatsApp' : 'Gmail'} opens with the message written: press send there.
-        <a href="${esc(url)}" target="_blank" rel="noopener">Open it again</a></div>`;
+        <a href="${esc(url)}" target="${phone ? '_blank' : GMAIL_TAB}">Open it again</a></div>`;
       if($('#fsName')){ $('#fsName').value = ''; $('#fsTo').value = ''; }
     }catch(e){ if(win) win.close(); done.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
     const g2 = $('#fsGo'); if(g2){ g2.disabled = false; g2.textContent = 'Send'; }
@@ -10850,10 +10919,15 @@ function expGroups(list){
 }
 // What one line costs to pay back: in the currency asked for, at the day's rate.
 const expPayOut = x => !expOtherCur(x) ? [Number(x.amt), x.cur] : x.payAmt && x.payAmt.amt!=null ? [x.payAmt.amt, x.payAmt.cur] : null;
+/* Reimbursements read like the sales log (Gita, 2026-10-20): one row a
+   person, with the amount in the currency they asked for and Pay / Decline.
+   Tapping the row opens everything else: each expense (each can be turned
+   down on its own), how to reach them and how to pay them. */
 function expGroupHTML(xs){
   const x = xs[0], may = EXP.opt && EXP.opt.mayPay, ids = xs.map(y=>y.id).join(',');
   const yes = xs.filter(y=>!FIN.rbNo.has(y.id)), unknown = yes.filter(y=>!expPayOut(y));
   const total = finTotals(yes.filter(expPayOut), y=>[expPayOut(y)]) || '—';
+  const open = FIN.rbOpen.has(ids);
   const ways = [...new Map(xs.map(y=>[[y.method, y.reimbCur, JSON.stringify(y.payTo||{})].join('|'), y])).values()];
   const items = xs.map(y=>{ const off = FIN.rbNo.has(y.id), out = expPayOut(y);
     return `<div class="exp-gi${off?' exp-off':''}">
@@ -10862,20 +10936,39 @@ function expGroupHTML(xs){
         <span class="exp-amt">${esc(cashFmt(y.amt, y.cur))}${expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : ''}</span></div>
       ${expOtherCur(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}
       ${y.notes ? `<div class="exp-note">💬 ${esc(y.notes)}</div>` : ''}${expReceiptsHTML(y)}
-      ${may ? `<div class="exp-btns exp-line">
+      ${may ? `<div class="exp-btns exp-line">${xs.length > 1 ? `
         <button type="button" class="btn btn-xs ${off ? 'btn-ghost' : 'btn-ok'}" data-act="rbline" data-id="${esc(y.id)}" data-on="1" aria-pressed="${!off}">✓ Accept</button>
-        <button type="button" class="btn btn-xs ${off ? 'btn-danger' : 'btn-ghost'}" data-act="rbline" data-id="${esc(y.id)}" data-on="" aria-pressed="${off}">✕ Decline</button>
+        <button type="button" class="btn btn-xs ${off ? 'btn-danger' : 'btn-ghost'}" data-act="rbline" data-id="${esc(y.id)}" data-on="" aria-pressed="${off}">✕ Decline</button>` : ''}
         <span class="exp-gap"></span>
         <button class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(y.id)}">Edit</button>
         <button class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(y.id)}" title="Delete">🗑</button></div>` : ''}</div>`; }).join('');
-  return `<div class="exp-card exp-k-reimburse exp-group" data-group="${esc(ids)}">
-      <div class="exp-top"><b class="no-edit">${esc(x.forName || x.byName || '')}</b><span class="exp-amt">${esc(total)}</span></div>
-      <div class="exp-meta">${xs.length === 1 ? '1 expense' : xs.length + ' expenses'}${yes.length < xs.length ? ' · ' + (xs.length - yes.length) + ' turned down' : ''}${unknown.length ? ' · the total leaves out ' + unknown.length + ' without a rate' : ''}</div>
-      ${expContactHTML(xs.find(y=>y.contactPhone || y.contactEmail) || x)}
-      <div class="exp-gl">${items}</div>
-      ${ways.map((y, i)=>expPayBackHTML(y, i===ways.length-1 ? ids : '')).join('')}
-      ${may ? `<div class="exp-btns"><button class="btn btn-primary btn-xs" data-act="exppaid" data-id="${esc(ids)}">✓ Pay back ${yes.length === xs.length ? (xs.length > 1 ? 'all ' + xs.length : '') : yes.length + ' of ' + xs.length} · ${esc(total)}</button>
-        <button class="btn btn-ghost btn-xs" data-act="expdecline" data-id="${esc(ids)}">Decline all</button></div>` : ''}
+  const sub = [xs.length === 1 ? esc(x.desc) : xs.length + ' expenses', yes.length < xs.length ? (xs.length - yes.length) + ' declined' : '',
+    unknown.length ? unknown.length + ' without a rate' : ''].filter(Boolean).join(' · ');
+  return `<div class="log-item rb-item pending exp-group${open ? ' open' : ''}" data-group="${esc(ids)}">
+      <div class="li-row" data-act="rbopen" data-g="${esc(ids)}"><span class="li-chev">▶</span>
+        <span class="li-book no-edit">${esc(x.forName || x.byName || '')}</span>
+        <span class="li-who">${sub}</span>
+        <span class="li-amt owed">${esc(total)}</span>
+        ${may ? `<span class="li-btns"><button class="btn btn-primary btn-xs" data-act="exppaid" data-id="${esc(ids)}">Pay</button>
+          <button class="btn btn-ghost btn-xs" data-act="expdecline" data-id="${esc(ids)}">Decline</button></span>` : ''}</div>
+      <div class="li-det rb-det">
+        ${expContactHTML(xs.find(y=>y.contactPhone || y.contactEmail) || x)}
+        <div class="exp-gl">${items}</div>
+        ${ways.map(y=>expPayBackHTML(y, '')).join('')}
+      </div>
+    </div>`;
+}
+/* Paid back and Declined: a row each, the same way, the details beneath. */
+function finRbDoneHTML(x){
+  const out = expPayOut(x), open = FIN.rbOpen.has(x.id);
+  const when = x.status==='paid' ? 'Paid ' + (x.paidOn || String(x.doneAt||'').slice(0,10)) : 'Declined ' + String(x.doneAt||'').slice(0,10);
+  return `<div class="log-item rb-item${open ? ' open' : ''}">
+      <div class="li-row" data-act="rbopen" data-g="${esc(x.id)}"><span class="li-chev">▶</span>
+        <span class="li-book no-edit">${esc(x.forName || x.byName || '')}</span>
+        <span class="li-who">${esc(x.desc)}</span>
+        <span class="li-amt">${esc(out ? cashFmt(out[0], out[1]) : cashFmt(x.amt, x.cur))}</span>
+        <span class="badge ${x.status==='paid' ? 'sale' : 'rb-dec'}">${esc(when)}</span></div>
+      <div class="li-det rb-det">${expCardHTML(x, true)}</div>
     </div>`;
 }
 /* Turning a line down or back on redraws just that person's card, keeping
@@ -10897,7 +10990,7 @@ function finReimbRender(){
   const tot = finTotals(list, x=>[[x.amt, x.cur]]);
   const empty = {pending:'Nothing waiting to be paid back here.', paid:'Nothing paid back yet.', declined:'Nothing declined.'}[R.tab] || 'None yet.';
   $('#fpBody').innerHTML = finExpTop() + (list.length
-    ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finTotals(list.filter(expPayOut), x=>[expPayOut(x)]) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(x=>expCardHTML(x, true)).join('')}`
+    ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finTotals(list.filter(expPayOut), x=>[expPayOut(x)]) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(finRbDoneHTML).join('')}`
     : `<div class="cash-empty">${empty}</div>`) + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   // Sent in before b259, or the rate was not found then: look it up now.
@@ -10923,6 +11016,11 @@ function finWaReimb(L, noBar){
 let FIN_LINKS = null;
 /* Email goes through Gmail in a new tab, not the device's mail app (Gita,
    2026-10-20: the mail app did not open). */
+/* Every Gmail button opens in one tab of its own (Gita, 2026-10-20): the
+   first opens it, and later ones write their draft in that same tab instead of
+   a new one each time. (A page cannot see or use a Gmail tab the person opened
+   themselves; browsers keep other sites' tabs out of reach.) */
+const GMAIL_TAB = 'tbsGmail';
 const gmailUrl = (to, su, body) => 'https://mail.google.com/mail/?view=cm&fs=1' + (to ? '&to=' + encodeURIComponent(to) : '') +
   '&su=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(body);
 const reimbUrl = key => location.origin + location.pathname + '?' + (PRACTICE ? 'practice&' : '') + 'reimb=' + encodeURIComponent(key);
@@ -10936,7 +11034,7 @@ async function finLinksRender(focusNew){
   }
   const send = l => { const url = reimbUrl(l.key), msg = reimbMsg(url);
     return `<a class="btn btn-ghost btn-xs" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 WhatsApp</a>
-      <a class="btn btn-ghost btn-xs" href="${esc(gmailUrl('', 'Send in an expense to be paid back', msg))}" target="_blank" rel="noopener">✉️ Gmail</a>
+      <a class="btn btn-ghost btn-xs" href="${esc(gmailUrl('', 'Send in an expense to be paid back', msg))}" target="${GMAIL_TAB}">✉️ Gmail</a>
       <button type="button" class="btn btn-ghost btn-xs" data-act="slcopy" data-link="${esc(url)}">📋 Copy link</button>`; };
   const toLine = l => l.to ? `<div class="exp-meta">Sent to <span class="no-edit">${esc(l.to.name)}${l.to.phone ? ' · ' + esc(l.to.phone) : ''}${l.to.email ? ' · ' + esc(l.to.email) : ''}</span>${
       l.used ? ' · <b>used</b> ' + esc(String(l.usedAt||'').slice(0,10)) : ' · not used yet'}</div>` : '';
@@ -11268,7 +11366,8 @@ function finWaFigs(a, L){
     L.push(m.l + ' - ' + m.v);
     if(m.sub) L.push('   ' + m.sub);
     if(m.cur) L.push('   ' + m.cur);
-    if(m.ex) L.push('   ' + m.ex.replace(/^(Expected \w+) /, '$1 - '));
+    // Just "Expected" under its figure (Gita, 2026-10-20): the title is not said twice.
+    if(m.ex) L.push('   ' + m.ex.replace(/^Expected /, 'Expected - '));
   });
 }
 function finWaRows(L){
@@ -17451,6 +17550,7 @@ function undoMovesFit(ids){
   return true;
 }
 
+const AL_PAGE = 50;
 function activityModal(){
   if(isSeller()) return;
   const sid = STATE.activeSeason;
@@ -17476,8 +17576,11 @@ function activityModal(){
     const all = activityHere(list.concat(looseMoveEntries(list)))
       .filter(e=>!q || (e.text+' '+(e.who||'')).toLowerCase().includes(q))
       .sort((a,b)=>new Date(b.ts)-new Date(a.ts));
+    /* The most recent first, a page at a time (Gita, 2026-10-20: the list
+       scrolled on for ever). A search looks through everything. */
+    const shown = all.slice(0, showN), more = all.length - shown.length;
     let last = '', h = '';
-    all.forEach(e=>{
+    shown.forEach(e=>{
       const d = new Date(e.ts), dk = isNaN(d) ? '' : day(d);
       if(dk!==last){ h += `<div class="al-day">${esc(dk)}</div>`; last = dk; }
       const undone = !!e.undoneAt;
@@ -17503,11 +17606,14 @@ function activityModal(){
           ? `<button type="button" class="btn btn-danger btn-sm" data-alundo="${esc(e.id)}">${parts.length>1?'Delete all':'Delete'}</button>` : ''}</div>
       </div>`;
     });
+    if(more > 0) h += `<button type="button" class="btn btn-ghost btn-sm al-more" data-almore="1">Show ${Math.min(more, AL_PAGE)} older (${more} more)</button>`;
     $('#alList').innerHTML = h || `<div class="cash-empty">${q ? 'Nothing matches that search.' : 'Nothing recorded here yet.'}</div>`;
     $('#alState').hidden = fresh;
   }
-  $('#alSearch').addEventListener('input', draw);
+  let showN = AL_PAGE;
+  $('#alSearch').addEventListener('input', ()=>{ showN = AL_PAGE; draw(); });
   $('#alList').addEventListener('click', async e=>{
+    if(e.target.closest('[data-almore]')){ showN += AL_PAGE; draw(); return; }
     const tog = e.target.closest('[data-altog]');
     if(tog){ const id = tog.dataset.altog; OPEN_ACT.has(id) ? OPEN_ACT.delete(id) : OPEN_ACT.add(id); draw(); return; }
     /* Delete is instant: the entry is marked undone here, the books go back on
@@ -17536,6 +17642,12 @@ function activityModal(){
     }
     const b = e.target.closest('[data-alundo]'); if(!b) return;
     const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
+    // A Finance entry (b260): undone by Finance's own records, then the log is read again.
+    if(entry.undoType==='exp'){
+      if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
+      try{ await post({action:'expUndo', id:entry.id}); toast('Undone'); await refetch(); }catch(err){ toast(err.message, true); }
+      return;
+    }
     const book = entry.undoType==='book' ? entry.undoBook : '';
     if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text
       + (book ? '\n\nThe title is taken out of the catalogue in every season, with any copies entered for it. It cannot be undone if anything has been sold.' : ''))) return;
@@ -18210,8 +18322,11 @@ document.addEventListener('focusin', e=>{
    ============================================================ */
 // Clicking anywhere outside the book filter closes it, like any dropdown.
 document.addEventListener('click',e=>{
-  if(!e.target.closest('.log-filter-wrap'))
+  if(!e.target.closest('.log-filter-wrap')){
     document.querySelectorAll('.log-filter[data-panel]').forEach(p=>{ if(!p.hidden) p.hidden=true; });
+    // Finance's expense filters close the same way.
+    document.querySelectorAll('.log-filter[data-xpanel]').forEach(p=>{ if(!p.hidden){ p.hidden = true; if(typeof FIN!=='undefined') FIN.ex.open = ''; } });
+  }
 });
 
 /* A pencil is answered here, in the capture phase, before the click reaches
@@ -18576,6 +18691,10 @@ document.addEventListener('click',e=>{
   if(a==='finsendlink'){ finSendLinkModal(); return; }
   if(a==='finexflt'){ FIN.ex.open = FIN.ex.open===t.dataset.f ? '' : t.dataset.f; finExpensesRender(); return; }
   if(a==='finexclr'){ (t.dataset.f==='type' ? FIN.ex.types : FIN.ex.sts).clear(); finExpensesRender(); return; }
+  if(a==='exopen'){ const id = t.dataset.id; if(FIN.exOpen.has(id)) FIN.exOpen.delete(id); else FIN.exOpen.add(id);
+    const it = t.closest('.log-item'); if(it) it.classList.toggle('open', FIN.exOpen.has(id)); return; }
+  if(a==='rbopen'){ const g = t.dataset.g; if(FIN.rbOpen.has(g)) FIN.rbOpen.delete(g); else FIN.rbOpen.add(g);
+    const it = t.closest('.log-item'); if(it) it.classList.toggle('open', FIN.rbOpen.has(g)); return; }
   if(a==='rbline'){ const id = t.dataset.id; if(t.dataset.on) FIN.rbNo.delete(id); else FIN.rbNo.add(id); finRbRedraw(id); return; }
   if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
