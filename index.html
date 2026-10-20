@@ -482,6 +482,15 @@ body.busy #busyBar{opacity:1}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
 .pencil{cursor:pointer;font-size:11px;margin-left:6px;opacity:.65;user-select:none}
+/* Rewriting in place (b253): words that can be rewritten show it, and open where they are. */
+body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:text;text-decoration:underline dotted rgba(91,45,110,.45);text-underline-offset:3px}
+.lbl-in{position:fixed;z-index:400;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.lbl-in-box{background:#fff;color:var(--ink,#222);border:2px solid var(--plum,#5B2D6E);border-radius:6px;padding:2px 6px;outline:none;
+  white-space:pre-wrap;box-shadow:0 6px 18px rgba(0,0,0,.18);text-transform:none;text-align:left}
+.lbl-in-acts{display:flex;gap:4px;align-items:center;background:#fff;border-radius:999px;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.lbl-in-acts button{border:0;background:var(--cream,#FFF8EE);border-radius:999px;width:28px;height:26px;cursor:pointer;font-size:13px}
+.lbl-in-acts button[data-li="ok"]{background:var(--plum,#5B2D6E);color:#fff}
+.lbl-in-tip{font-size:11px;color:var(--muted);padding:0 6px}
 .pencil:hover{opacity:1}
 .lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
   margin:4px 0 12px;font-size:13.5px}
@@ -2057,7 +2066,7 @@ const newBundleId = () => 'B' + Date.now().toString(36) + Math.random().toString
 
 /* While wording is being edited (b253) a message stays up longer and can be
    tapped, so its pencil can be reached like any other. */
-function toast(msg,isErr){const t=$('#toast'), ed=(()=>{ try{ return EDIT_WORDING; }catch(e){ return false; } })();
+function toast(msg,isErr){const t=$('#toast'), ed=(()=>{ try{ return PRACTICE && EDIT_WORDING; }catch(e){ return false; } })();
   t.textContent=msg;t.className=(isErr?'err show':'show')+(ed?' editing':'');
   clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',ed?10000:isErr?5000:2600);}
 function setStatus(kind,text){
@@ -9616,6 +9625,8 @@ const EDIT_SEL = [
 ].join(', ');
 let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
+const lblBodyClass = () => { try{ document.body.classList.toggle('editing-words', PRACTICE && EDIT_WORDING); }catch(e){} };
+if(document.body) lblBodyClass(); else document.addEventListener('DOMContentLoaded', lblBodyClass);
 
 /* Your wording, with the little formatting the app understands:
    **bold** for bold, and a new line where you put one. Everything else is
@@ -9771,7 +9782,8 @@ function lblRestore(el){
 /* Everything with words in it: the listed kinds first, then every other piece
    of text on screen, so a pencil is offered everywhere — dialog headings,
    counts like "7 still coming", anything. */
-const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#bld,[contenteditable]';
+// Passing messages take a pencil in the practice space (b253), where it is being tried first.
+const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#bld,[contenteditable]' + (PRACTICE ? '' : ',#toast');
 function lblTargets(scope){
   const out = new Set();
   scope.querySelectorAll(EDIT_SEL).forEach(el=>out.add(el));
@@ -9948,19 +9960,93 @@ function editLabelModal(key){
     </div>`);
   $('#lblSave').addEventListener('click',()=>{
     // Hidden is stored as its own mark, so it can always be brought back.
-    let text = (($('#lblHide')||{}).checked) ? '\u0000hide' : $('#lblText').value.trim();
-    if(text===origTyped) text = '';              // left as the original: nothing to store
-    const saveKey = normLabelKey(key);          // the form it will be looked up by
-    /* Back to the original means back everywhere those words appear, so any
-       copy saved from another screen goes too. */
-    const others = text ? [] : Object.keys(labels).filter(k=>k!==saveKey && labels[k]!=='\u0000hide'
-      && k.split(' › ').slice(1).join(' › ')===words);
-    commit({action:'saveLabel', key:saveKey, text},
-      st=>{ st.labels = st.labels || {}; if(text) st.labels[saveKey]=text; else delete st.labels[saveKey]; },
-      text ? 'Wording saved' : 'Original wording restored', {keepOpen:true});
-    others.forEach(k=>commit({action:'saveLabel', key:k, text:''}, st=>{ if(st.labels) delete st.labels[k]; }, null, {keepOpen:true}));
+    labelSave(key, (($('#lblHide')||{}).checked) ? '\u0000hide' : $('#lblText').value.trim(), origTyped);
     labelEditBack();                      // back to where the pencil was tapped
   });
+}
+/* Store a rewording (or put the original back). */
+function labelSave(key, text, origTyped){
+  const labels = STATE.labels||{}, words = key.split(' › ').slice(1).join(' › ');
+  if(text===origTyped) text = '';              // left as the original: nothing to store
+  const saveKey = normLabelKey(key);          // the form it will be looked up by
+  /* Back to the original means back everywhere those words appear, so any
+     copy saved from another screen goes too. */
+  const others = text ? [] : Object.keys(labels).filter(k=>k!==saveKey && labels[k]!=='\u0000hide'
+    && k.split(' › ').slice(1).join(' › ')===words);
+  commit({action:'saveLabel', key:saveKey, text},
+    st=>{ st.labels = st.labels || {}; if(text) st.labels[saveKey]=text; else delete st.labels[saveKey]; },
+    text ? 'Wording saved' : 'Original wording restored', {keepOpen:true});
+  others.forEach(k=>commit({action:'saveLabel', key:k, text:''}, st=>{ if(st.labels) delete st.labels[k]; }, null, {keepOpen:true}));
+}
+
+/* ---- Rewriting in place (b253, Gita: "everything becomes an editable field,
+   no pop-up") ----
+   With Edit Wording on, tap any words (a button's words by its pencil, so the
+   button still works) and a box opens exactly over them, in their own size
+   and weight, holding the words as they read now. Enter keeps it (Shift+Enter
+   for a new line), Esc or ✕ leaves it as it was, 🙈 takes it off the screen.
+   The box floats over the page rather than living inside the words, so a
+   redraw underneath can never swallow what is being typed. */
+let LBL_IN = null;
+function labelStartText(key, el){
+  const labels = STATE.labels||{}, words = key.split(' › ').slice(1).join(' › ');
+  const byWords = Object.keys(labels).find(k=>k.split(' › ').slice(1).join(' › ')===words && labels[k]!=='\u0000hide');
+  const cur = labels[key] || labels[normLabelKey(key)] || (byWords ? labels[byWords] : '');
+  const origTyped = el ? lblTemplate(labelAsTyped(el.getAttribute('data-orightml') || esc(words))) : words;
+  return { origTyped, start: (cur && cur!=='\u0000hide') ? cur : origTyped };
+}
+function labelInline(key){
+  if(LBL_IN) labelInlineEnd(true);
+  let el = null;
+  try{ el = document.querySelector('[data-key="'+CSS.escape(key)+'"]'); }catch(e){}
+  if(!el || !STATE){ editLabelModal(key); return; }
+  const t = labelStartText(key, el), cs = getComputedStyle(el);
+  const w = document.createElement('div');
+  w.className = 'lbl-in no-edit';
+  w.innerHTML = `<div class="lbl-in-box" contenteditable="true" spellcheck="true"></div>
+    <div class="lbl-in-acts"><button type="button" data-li="ok" title="Keep (Enter)">✓</button><button type="button" data-li="no" title="Leave as it was (Esc)">✕</button><button type="button" data-li="hide" title="Don't show this at all">🙈</button>${
+      /#/.test(t.origTyped) ? '<span class="lbl-in-tip"># is a number the app fills in</span>' : ''}</div>`;
+  const box = w.firstElementChild;
+  box.textContent = t.start;
+  ['fontSize','fontWeight','fontFamily','lineHeight','letterSpacing','fontStyle'].forEach(k=>{ box.style[k] = cs[k]; });
+  document.body.appendChild(w);
+  LBL_IN = { key, el, w, box, origTyped:t.origTyped, raf:0 };
+  const place = () => {
+    if(!LBL_IN) return;
+    let e = LBL_IN.el;
+    if(!e.isConnected){ try{ e = document.querySelector('[data-key="'+CSS.escape(key)+'"]'); }catch(x){} if(e) LBL_IN.el = e; }
+    if(e && e.isConnected){
+      const r = e.getBoundingClientRect();
+      w.style.left = Math.max(4, Math.min(r.left - 4, innerWidth - Math.max(r.width + 8, 160) - 4)) + 'px';
+      w.style.top = Math.max(4, r.top - 4) + 'px';
+      box.style.minWidth = Math.max(r.width, 120) + 'px';
+      box.style.maxWidth = Math.max(160, innerWidth - 16) + 'px';
+    }
+    LBL_IN.raf = requestAnimationFrame(place);
+  };
+  place();
+  box.focus();
+  const sel = getSelection(), rg = document.createRange(); rg.selectNodeContents(box); sel.removeAllRanges(); sel.addRange(rg);
+  box.addEventListener('keydown', ev=>{
+    if(ev.key==='Enter' && !ev.shiftKey){ ev.preventDefault(); labelInlineEnd(true); }
+    if(ev.key==='Escape'){ ev.preventDefault(); labelInlineEnd(false); }
+  });
+  // Pasted words come in as plain words.
+  box.addEventListener('paste', ev=>{ ev.preventDefault(); document.execCommand('insertText', false, (ev.clipboardData||window.clipboardData).getData('text/plain')); });
+  w.addEventListener('mousedown', ev=>{ if(ev.target.closest('[data-li]')) ev.preventDefault(); });
+  w.addEventListener('click', ev=>{
+    const b = ev.target.closest('[data-li]'); if(!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    labelInlineEnd(b.dataset.li==='ok' ? true : b.dataset.li==='hide' ? 'hide' : false);
+  });
+  box.addEventListener('blur', ()=>setTimeout(()=>{ if(LBL_IN && LBL_IN.box===box && document.activeElement!==box) labelInlineEnd(true); }, 120));
+}
+function labelInlineEnd(keep){
+  const L = LBL_IN; if(!L) return;
+  LBL_IN = null; cancelAnimationFrame(L.raf);
+  const text = keep==='hide' ? '\u0000hide' : L.box.innerText.replace(/\u00a0/g,' ').replace(/\n{2,}/g,'\n').trim();
+  L.w.remove();
+  if(keep && (keep==='hide' || text!==labelStartText(L.key, L.el).start)) labelSave(L.key, text, L.origTyped);
 }
 
 /* Every piece of wording the app shows, gathered from the app's own source so
@@ -15910,7 +15996,18 @@ document.addEventListener('click',e=>{
   const p = e.target && e.target.closest && e.target.closest('.pencil');
   if(!p) return;
   e.preventDefault(); e.stopPropagation();
-  editLabelModal(p.dataset.key);
+  // In place in the practice space (b253), where it is being tried first; the window on the live app.
+  if(PRACTICE) labelInline(p.dataset.key); else editLabelModal(p.dataset.key);
+}, true);
+/* With Edit Wording on, tapping words opens them for rewriting where they are.
+   A button, link or form field keeps doing its job: its words go by its pencil. */
+document.addEventListener('click',e=>{
+  if(!PRACTICE || !EDIT_WORDING || !e.target || !e.target.closest) return;
+  if(e.target.closest('.lbl-in, .no-edit, button, a, input, select, textarea, [data-act], .pp-list, summary')) return;
+  const el = e.target.closest('[data-key]');
+  if(!el || !el.querySelector(':scope > .pencil')) return;
+  e.preventDefault(); e.stopPropagation();
+  labelInline(el.getAttribute('data-key'));
 }, true);
 
 document.addEventListener('click',e=>{
@@ -16179,7 +16276,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='editwording'){
-    EDIT_WORDING = !EDIT_WORDING;
+    EDIT_WORDING = !EDIT_WORDING; lblBodyClass(); if(!EDIT_WORDING) labelInlineEnd(true);
     try{ localStorage.setItem('tbs_edit_wording', EDIT_WORDING?'1':'0'); }catch(e){}
     toast(EDIT_WORDING ? 'Tap a pencil to rewrite any wording' : 'Finished editing wording');
     renderAll(); if(FINP.on) finRender(); return;

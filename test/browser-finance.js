@@ -172,11 +172,17 @@ const API = 'http://api.test/';
     await own.evaluate(() => toast('Report copied')); await own.waitForTimeout(400);
     t.push(['…and on a passing message, which waits while editing', await own.evaluate(() => !!document.querySelector('#toast .pencil') && getComputedStyle(document.querySelector('#toast')).pointerEvents === 'auto')]);
     await own.screenshot({ path: shot('fin-pencils') });
-    // Rewrite a tile's heading through its pencil.
-    await own.evaluate(() => { const p = [...document.querySelectorAll('.fin-tile .fin-tl .pencil')].find(x => x.parentElement.textContent.startsWith('Donations')); p.click(); }); await own.waitForTimeout(600);
-    const box = await own.$('#modal textarea, #modal input[type="text"]');
-    if (box) { await box.fill('Donations Received'); await own.evaluate(() => { const b = [...document.querySelectorAll('#modal .m-foot button')].find(b => /Save/i.test(b.textContent)); b && b.click(); }); await own.waitForTimeout(1500); }
-    t.push(['a rewritten tile heading shows on the page', /Donations Received/.test(await fpage(own))]);
+    // Rewrite a tile's heading in place: tap its words, type, Enter. No window.
+    await own.evaluate(() => { const el = [...document.querySelectorAll('.fin-tile .fin-tl')].find(x => x.textContent.startsWith('Donations')); el.click(); }); await own.waitForTimeout(300);
+    t.push(['tapping words opens a box right over them, not a window', await own.evaluate(() => !!document.querySelector('.lbl-in-box') && !document.querySelector('#overlay').classList.contains('show'))]);
+    t.push(['…holding the words as they read now', (await own.$eval('.lbl-in-box', b => b.textContent)) === 'Donations']);
+    await own.keyboard.press('Control+A'); await own.keyboard.type('Donations Received'); await own.keyboard.press('Enter'); await own.waitForTimeout(1500);
+    t.push(['Enter keeps it: the tile now reads Donations Received', /Donations Received/.test(await fpage(own)) && !(await own.$('.lbl-in'))]);
+    // A button's words by its pencil; Esc leaves them alone.
+    await own.click('#fpSecs [data-sec="report"] .pencil'); await own.waitForTimeout(300);
+    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/report/.test(own.url())]);
+    await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
+    t.push(['Esc leaves it as it was', /Reports/.test(await own.$eval('#fpSecs [data-sec="report"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.click('#fpSecs [data-act="editwording"]'); await own.waitForTimeout(500);
     const phone = await open('owner@example.com', 'The Owner', 390);
     await phone.evaluate(() => finGo('overview', 'rg_zg')); await phone.waitForTimeout(1500);
