@@ -439,6 +439,34 @@ const API = 'http://api.test/';
     t.push(['…which shows more', (await rowsN()) > 50]);
     await own.evaluate(() => closeModal());
     t.push(['b260: every Gmail button opens in the one Gmail tab', await own.evaluate(() => typeof GMAIL_TAB === 'string' && GMAIL_TAB === 'tbsGmail')]);
+    // b265: the form starts at Earthly HQ; titles have room above them; a quiet tick; exact dollars; dollars last.
+    await own.evaluate(() => { CUR_REGION = 'rg_zg'; goTo('event', 'ev_z1'); }).catch(() => {});
+    await own.evaluate(() => expensesModal()); await own.waitForTimeout(1500);
+    t.push(['b265: a new expense starts at Earthly HQ, even opened at an event', await own.evaluate(() => EXP.form.location === 'rg_hq' && /Earthly HQ/.test(document.querySelector('#xLocC .pp-in').value))]);
+    t.push(['…and the event can still be chosen', await own.evaluate(() => EXP.opt.places.some(p => p.id === 'ev_z1'))]);
+    t.push(['b265: each title has room between it and the box above', await own.evaluate(() => {
+      const a = document.querySelector('#xDate'), l = [...document.querySelectorAll('#modal .exp-form .field > label')].find(x => /What was it for/.test(x.textContent));
+      const box = document.querySelector('#xAmt').getBoundingClientRect(), lab = l.getBoundingClientRect();
+      return lab.top - box.bottom >= 10 && a; })]);
+    t.push(['b265: "Check to receive reimbursement" is plain text with a box', await own.$eval('.exp-rb', e => getComputedStyle(e).fontWeight === '400' && getComputedStyle(e).borderTopStyle === 'none' && /^ ?Check to receive reimbursement$/.test(e.textContent.trim()) )]);
+    t.push(['b265: no exact-dollars box for dollars', !(await own.$('#xUsd'))]);
+    await own.selectOption('#xCur', 'EUR'); await own.waitForTimeout(300);
+    await own.$eval('#modal', m => m.scrollIntoView()); await own.screenshot({ path: shot('b265-form') });
+    t.push(['…but one for another currency', !!(await own.$('#xUsd'))]);
+    await own.evaluate(() => closeModal());
+    fxAsked.length = 0;
+    await O({ action: 'expSave', id: 'Xeur0001', kind: 'record', date: '2026-10-15', desc: 'Stall fee', amt: 10, cur: 'EUR', location: 'rg_hq', category: 'Other' });
+    await O({ action: 'expSave', id: 'Xeur0002', kind: 'record', date: '2026-10-15', desc: 'Printing', amt: 10, cur: 'EUR', usdAmt: 12.5, location: 'ev_z1', category: 'Other',
+      usdDay: { rate: 99, on: '2026-10-15' } });
+    srv.app.sheetMemoClear_(); srv.app.cacheClear_();
+    const FD = srv.app.financeData_();
+    const ux = id => (FD.expenses || []).find(x => x.id === id);
+    t.push(['b265: an expense in euros counts at the rate on its own day', fxAsked.some(u => /2026-10-15/.test(u)) && ux('Xeur0001') && ux('Xeur0001').usd === 11]);
+    t.push(['…the exact dollars given win over any rate (and the page cannot send its own rate)', ux('Xeur0002') && ux('Xeur0002').usd === 12.5]);
+    t.push(['…and Earthly HQ is a place an expense can belong to', (await O({ action: 'expList', scope: 'all' })).result.some(x => x.id === 'Xeur0001' && x.placeLabel === 'Earthly HQ')]);
+    t.push(['b265: dollars come last, out of brackets: (500 ден) $9.08', await own.evaluate(() => finDual(500, 'MKD', 9.08) === '(' + cashFmt(500, 'MKD') + ') $9.08' && finDual(20, 'USD', 20) === cashFmt(20, 'USD'))]);
+    await own.evaluate(() => finGo('expenses')); await own.waitForTimeout(1500);
+    t.push(['…and the Expenses list reads that way', /\(.*10.*\) \$12\.50/.test(await fpage(own))]);
     const phone = await open('owner@example.com', 'The Owner', 390);
     await phone.evaluate(() => finGo('overview', 'rg_zg')); await phone.waitForTimeout(1500);
     t.push(['phone width: no sideways scroll on the page', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)]);
