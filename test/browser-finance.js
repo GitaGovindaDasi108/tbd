@@ -311,7 +311,16 @@ const API = 'http://api.test/';
     await pub.selectOption('#xMethod', 'Cash'); await pub.waitForTimeout(200);
     t.push(['b259: no "Take a photo" on a computer, only choosing a file', !(await pub.$('#xCam')) && !/Take a photo/i.test(await pub.evaluate(() => document.querySelector('#modal').innerText))]);
     t.push(['b259: the number to pay back to has "Same as above"', !!(await pub.$('[data-same="phone"]'))]);
+    // b263: the form stays still as it redraws: what you touched stays put, no pop.
+    const spot = () => pub.$eval('[data-same="phone"]', c => Math.round(c.getBoundingClientRect().top));
+    await pub.$eval('[data-same="phone"]', c => c.scrollIntoView({ block: 'center' }));
+    const before = await spot();
     await pub.check('[data-same="phone"]'); await pub.waitForTimeout(300);
+    t.push(['b263: ticking "Same as above" leaves the box where it was, no jump to the top', Math.abs((await spot()) - before) <= 2 && before > 150]);
+    t.push(['…and the form does not pop in again', await pub.$eval('#modal', m => m.classList.contains('still') && getComputedStyle(m).animationName === 'none')]);
+    await pub.focus('#xDesc'); await pub.$eval('#xDesc', i => i.setSelectionRange(3, 3));
+    await pub.evaluate(() => { expRead(); expDraw(); });
+    t.push(['…and a field being typed in keeps its cursor through a redraw', await pub.evaluate(() => document.activeElement && document.activeElement.id === 'xDesc' && document.activeElement.selectionStart === 3)]);
     t.push(['…ticking it fills in the number from above, and it cannot be typed over', await pub.$eval('[data-payto="phone"]', i => i.value === '+385 98 7' && i.readOnly) && await pub.$eval('#xAmt', e => e.value) === '12']);
     // b255: a second one in the same form, then check them both before sending.
     await pub.click('#xMore'); await pub.waitForTimeout(400);
