@@ -91,6 +91,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const P = places();
     if (linkKey && isReimbKey(linkKey)) {
       const L = getLinks()[linkKey];
+      if (L && L.used && !L.off) throw new Error('This link has already been used to send in an expense. If you have another one, ask Finance for a new link.');
       if (!L || L.off) throw new Error('This reimbursement link has been turned off. Ask Finance for a new one.');
       const pl = L.place ? placeOf(P, L.place) : null;
       if (L.place && !pl) throw new Error('This reimbursement link is for a place that is no longer listed. Ask Finance for a new one.');
@@ -331,7 +332,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!isFin(w)) throw new Error('The finance section is for Finance.');
     fresh();
     const D = app.financeData_(), own = cleanSeries(parse(kv.getProp('finSeries'), {}));
-    ['seasons', 'regions', 'events'].forEach(k => D[k].forEach(x => { x.series = own[k][x.id] || seriesOf(x.name); }));
+    const dt = getDates();
+    ['seasons', 'regions', 'events'].forEach(k => D[k].forEach(x => {
+      x.series = own[k][x.id] || seriesOf(x.name);
+      x.from = (dt[k][x.id] || {}).from || ''; x.to = (dt[k][x.id] || {}).to || '';
+    }));
     D.mayEdit = mayPay(w);
     return D;
   }
@@ -351,6 +356,72 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (v) cur[k][id] = v; else delete cur[k][id];
     kv.setProp('finSeries', JSON.stringify(cur));
     return finData(w);
+  }
+
+  /* ---- Dates and repeats (b255) ----
+     When each season, region and event actually runs ({ from, to }, days),
+     kept in the setting `placeDates`; and which series it belongs to, kept
+     with Finance's own grouping (finSeries). Anyone signed in who looks after
+     the place may set them: they are asked when they make it. */
+  const DAY = /^\d{4}-\d{2}-\d{2}$/;
+  const KINDS = ['seasons', 'regions', 'events'];
+  function cleanDates(o) {
+    const out = { seasons: {}, regions: {}, events: {} };
+    KINDS.forEach(k => Object.keys((o && o[k]) || {}).slice(0, 5000).forEach(id => {
+      const x = o[k][id] || {}, v = {};
+      if (DAY.test(String(x.from || ''))) v.from = String(x.from);
+      if (DAY.test(String(x.to || ''))) v.to = String(x.to);
+      if (v.from || v.to) out[k][clip(id, 60)] = v;
+    }));
+    return out;
+  }
+  const getDates = () => cleanDates(parse(kv.getProp('placeDates'), {}));
+  // Every season, region and event, with its series and dates, for the forms and Finance's Dates page.
+  function placeMetaGet(w) {
+    if (w.link) throw new Error('Sign in to see this.');
+    const P = w.P, own = cleanSeries(parse(kv.getProp('finSeries'), {})), dt = getDates();
+    const one = (k, x, extra) => Object.assign({ id: x.id, name: x.name, closed: !!x.closed,
+      series: own[k][x.id] || seriesOf(x.name), seriesOwn: own[k][x.id] || '',
+      from: (dt[k][x.id] || {}).from || '', to: (dt[k][x.id] || {}).to || '' }, extra);
+    fresh();
+    // In the app's own order (regionsOrdered_ / eventsOrdered_), as everywhere else.
+    const rank = {};
+    try {
+      P.raw.seasons.forEach(s => app.regionsOrdered_(s.id).forEach((r, i) => { if (r && r.regionId) rank[String(r.regionId)] = i; }));
+      app.eventsOrdered_().forEach((e, i) => { if (e && e.eventId) rank[String(e.eventId)] = i; });
+    } catch (e) { /* the order is a nicety */ }
+    const byRank = list => list.slice().sort((a, b) => (rank[a.id] ?? 1e9) - (rank[b.id] ?? 1e9));
+    const sName = id => (P.raw.seasons.find(s => s.id === id) || {}).name || '';
+    const rOf = id => P.raw.regions.find(r => r.id === id) || {};
+    return {
+      seasons: P.raw.seasons.map(s => one('seasons', s, {})),
+      regions: byRank(P.raw.regions).map(r => one('regions', r, { seasonId: r.seasonId, seasonName: sName(r.seasonId) })),
+      events: byRank(P.raw.events).map(e => one('events', e, { regionId: e.regionId, regionName: rOf(e.regionId).name || '',
+        seasonId: rOf(e.regionId).seasonId || '', seasonName: sName(rOf(e.regionId).seasonId) })),
+      mayEdit: true
+    };
+  }
+  function placeMetaSet(w, p) {
+    if (w.link) throw new Error('Sign in to change this.');
+    const k = KINDS.indexOf(p.kind) >= 0 ? p.kind : '';
+    if (!k) throw new Error('Seasons, regions or events?');
+    const id = clip(p.id, 60), pl = placeOf(w.P, id);
+    if (!pl || pl.kind + 's' !== k) throw new Error('That ' + k.slice(0, -1) + ' is no longer listed.');
+    if (!mayPay(w) && !inReach(w, pl)) throw new Error('Only someone who looks after it can change this.');
+    if (p.from !== undefined || p.to !== undefined) {
+      const d = getDates(), cur = d[k][id] || {};
+      const from = p.from !== undefined ? String(p.from || '') : (cur.from || ''), to = p.to !== undefined ? String(p.to || '') : (cur.to || '');
+      if ((from && !DAY.test(from)) || (to && !DAY.test(to))) throw new Error('Those dates could not be read.');
+      if (from && to && to < from) throw new Error('The end date is before the start date.');
+      if (from || to) d[k][id] = Object.assign({}, from ? { from } : {}, to ? { to } : {}); else delete d[k][id];
+      kv.setProp('placeDates', JSON.stringify(d));
+    }
+    if (p.series !== undefined) {
+      const cur = cleanSeries(parse(kv.getProp('finSeries'), {})), v = clip(p.series, 80);
+      if (v) cur[k][id] = v; else delete cur[k][id];
+      kv.setProp('finSeries', JSON.stringify(cur));
+    }
+    return placeMetaGet(w);
   }
 
   /* ---- The expenses ---- */
@@ -431,6 +502,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
     if (old) app.dbUpdate_(T, { id }, row); else app.dbInsert_(T, row);
     syncCost(row, F, w);
+    // A link sent to one person is used up once their expenses are in (`more`: others follow in the same sending).
+    if (w.open && !old && !p.more) {
+      const L = getLinks();
+      if (L[w.link] && L[w.link].once) { L[w.link].used = id; L[w.link].usedAt = new Date(now()).toISOString(); kv.setProp('reimbLinks', JSON.stringify(L)); }
+    }
     return shown(row);
   }
   function remove(w, p) {
@@ -511,26 +587,36 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     let key = '';
     const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
     while (!key || L[key]) { key = 'rb_'; for (let i = 0; i < 16; i++) key += abc[Math.floor(Math.random() * abc.length)]; }
-    L[key] = { place, label: clip(p.label, 80), by: w.name, at: new Date(now()).toISOString(), off: false };
+    /* Sent to one person (b255): their name and how to reach them, and it
+       works once, turning itself off when they have sent their expense in. */
+    const toName = clip(p.toName, 60), toEmail = clip(p.toEmail, 120).toLowerCase(), toPhone = clip(p.toPhone, 40);
+    if (toEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(toEmail)) throw new Error('That email address does not look right.');
+    if (toPhone && String(toPhone).replace(/\D/g, '').length < 7) throw new Error('That phone number looks too short. Include the country code.');
+    if ((toEmail || toPhone) && !toName) throw new Error('Give the name of the person it is for.');
+    const to = toName ? { name: toName, email: toEmail, phone: toPhone } : null;
+    L[key] = Object.assign({ place, label: clip(p.label, 80) || toName, by: w.name, at: new Date(now()).toISOString(), off: false },
+      to ? { to, once: true } : {});
     kv.setProp('reimbLinks', JSON.stringify(L));
     return { key, list: linkList(w) };
   }
   function linkOff(w, p) {
     if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
     const L = getLinks(), k = clip(p.key, 60);
-    if (L[k]) { L[k].off = p.on ? false : true; kv.setProp('reimbLinks', JSON.stringify(L)); }
+    if (L[k]) { L[k].off = p.on ? false : true; if (p.on) { delete L[k].used; delete L[k].usedAt; } kv.setProp('reimbLinks', JSON.stringify(L)); }
     return linkList(w);
   }
   /* What the form needs to say at the top: which place, if one. */
   function linkInfo(w) {
     if (!w.open) throw new Error('This is for a reimbursement link.');
     const pl = w.linkPlace ? placeOf(w.P, w.linkPlace) : null;
-    return { place: w.linkPlace, placeLabel: pl ? labelOf(w.P, pl) : '' };
+    const L = getLinks()[w.link] || {};
+    return { place: w.linkPlace, placeLabel: pl ? labelOf(w.P, pl) : '', to: L.to || null };
   }
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, receiptPut, receiptGet, finData, finSeriesSet: seriesSet };
+    expRulesGet: rulesGet, expRulesSet: rulesSet, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
+    placeMetaGet, placeMetaSet };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
     if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');

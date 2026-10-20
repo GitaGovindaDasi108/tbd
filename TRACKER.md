@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b254**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b255**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,40 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b255 — Finance round three: dates, repeats, one Expenses page (practice)
+
+- **Dates on every place.** New/edit season, region and event forms ask "Dates
+  the … runs (from – to)" (`placeMetaHTML` / `placeMetaBind` / `placeMetaSave`
+  in index.html). Kept on the server in the setting `placeDates` (expenses.js
+  `placeMetaGet` / `placeMetaSet`), and returned with `finData` (`from`, `to`).
+- **Repeats are spotted.** While the name is typed, a name matching an earlier
+  one without its year ("Zagreb 2027" ↔ "Zagreb") asks "Is this part of the
+  recurring Zagreb?"; if not, dates within two weeks of another year's ask "Is
+  this a recurring event?" with each candidate (Gita's idea). The answer is
+  saved as the place's series in `finSeries`, so Compare and Reports use it.
+  "No" with the same name files it under "Name · parent".
+- **Dates & Repeats** (App Development › 📅, Universal, temporary): every
+  season, region and event in the app's order with its dates and "Recurring
+  as", saved as typed; "Only those without dates" (`datesModal`).
+- **Expenses & Reimbursements are one page.** Tabs: Expenses, Pending
+  Reimbursements, Paid back and declined, Reimbursement Links, Settings.
+  `#finance/reimb` and `#finance/settings` still land there.
+- **Send Reimbursements Link** is a name, an email or WhatsApp number, and Send:
+  the link is made for the place being looked at and WhatsApp or email opens
+  with the message written. A link sent to one person knows their name and
+  number, and turns itself off once they've sent their expense in (`once`,
+  `used` in `reimbLinks`). Group links ("A link anyone can use") stay as before.
+- **Several expenses in one form.** "＋ Add another expense" keeps the one typed
+  (with its receipts) in an "Added so far" list (Edit / 🗑) and starts the next,
+  keeping where, whose, currency, date and how to be paid back. With more than
+  one, Save becomes "Review all N expenses": a list with the total to check,
+  then they save one after another (`expAddAnother`, `expReview`, `expPost`).
+  On a one-time link, all but the last go with `more`, so the link closes
+  only after the last.
+- Practice only, like the rest of Finance. Tests: `browser-finance.js` (70).
+- Proposal for Reports as a pick-your-own-data builder:
+  /mnt/project-files/proposals/finance-reports-builder.md (not built).
 
 ## Done in b254 — Finance, first round of Gita's improvements (practice)
 

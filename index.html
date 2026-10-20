@@ -312,6 +312,40 @@ button.sc-transit:hover{color:#1F4F86}
 .rp-cur-m.rp-local{color:var(--saffron-d,#8A4A12)}
 .rp{width:82px;border:1px solid var(--line-d);border-radius:7px;padding:6px 7px;font-size:12.5px}
 .muted-note{font-weight:400;color:var(--muted);font-size:11px}
+/* Dates and repeats on the place forms (b255, practice) */
+.pm-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pm-row input[type=date]{flex:1 1 140px;min-width:0}
+.pm-to{color:var(--muted);font-size:13px}
+.pm-repeat{border:1.5px solid var(--gold-l);border-radius:10px;padding:10px 12px;margin:4px 0 12px;background:var(--paper2)}
+.pm-q{font-weight:600;margin-bottom:2px}
+.pm-seen{color:var(--muted);font-size:12px;margin:2px 0 6px}
+.pm-btns{display:flex;gap:6px;flex-wrap:wrap}
+/* Expenses & Reimbursements: sending a link (b255) */
+.fin-send{border:1.5px solid var(--gold-l);background:var(--paper2);border-radius:12px;padding:12px 14px;margin:12px 0}
+.fin-send-h{font-weight:700;color:var(--plum);margin-bottom:6px}
+.fin-send-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.fin-send-row .field{flex:1 1 200px;margin:0}
+.fin-send .muted-note{display:block;margin-top:6px}
+.fin-send-row .btn{flex:0 0 auto;min-height:42px}
+.fin-sent{margin-top:8px;color:var(--green)}
+.fin-tabs-wide{margin:6px 0 12px}
+/* Several expenses at once (b255) */
+.exp-batch{border:1.5px solid var(--gold-l);background:var(--paper2);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.exp-bi{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.exp-bi-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.exp-bi-a{white-space:nowrap}
+.exp-bi-b{display:flex;gap:4px}
+.exp-batch>.muted-note{display:block;margin-top:8px}
+.exp-tot{border-bottom:0;border-top:1.5px solid var(--gold-l);margin-top:2px}
+/* Dates & Repeats */
+.fin-dates input{width:100%;min-width:0;box-sizing:border-box}
+.fin-dates td{min-width:118px}
+.fin-dates th{white-space:nowrap}
+.fin-dt-1 th{padding-left:22px}.fin-dt-2 th{padding-left:40px;font-weight:400}
+.fin-dt-k{display:inline-block;min-width:52px;color:var(--muted);font-size:11px;font-weight:400}
+.fin-saved{border-color:var(--green)!important}
+.fin-dt-only{display:flex;align-items:center;gap:8px;margin:10px 0;font-size:14px}
+.fin-dt-only input{width:auto;margin:0}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .btn{border:none;border-radius:10px;padding:9px 14px;font-weight:600;font-size:14px;box-shadow:var(--shadow)}
 .btn:active{transform:translateY(1px)}
@@ -1749,7 +1783,7 @@ body.reimb-mode #overlay .modal .x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b254</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b255</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4995,7 +5029,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Expenses'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'],
+  finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'],
   drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5017,7 +5051,7 @@ const SN_SECTIONS = [
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finreport','fincompare','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['drivefolder','specreport','sharelinks','people']},
-  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas']},
+  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
 /* One menu row from a panel button: its own attributes (so it does exactly
@@ -5067,6 +5101,8 @@ function renderSideNav(fams){
   if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
   // View as (b238): Universal, in the practice space.
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
+  // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
+  if(PRACTICE && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   const sections = SN_SECTIONS.map(sec=>{
     const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
@@ -8584,6 +8620,7 @@ async function expensesModal(editId, presetPartner){
   // A "paid with" the place does not list is an Other, with its words kept.
   if(edit && edit.payType && !(EXP.opt.payTypes||[]).includes(edit.payType)){ EXP.form.payOther = edit.payType; EXP.form.payType = 'Other'; }
   if(edit && edit.location!==EXP.opt.location) await expReloadOptions();
+  EXP.batch = [];
   expDraw();
 }
 async function expReloadOptions(){
@@ -8634,6 +8671,7 @@ function expDraw(){
       ${P ? `<div class="hint">You spent money for the tour? Fill this in, add a photo of the receipt, and Finance will pay you back.</div>` : ''}
       <div class="exp-form">
         ${forPick}${whoBox}
+        ${expBatchHTML()}
         ${P ? '' : `<div class="exp-kind">
           <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
             <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
@@ -8690,7 +8728,9 @@ function expDraw(){
         <div class="err" id="modalErr"></div>
         <div class="cost-acts">
           ${edit?`<button class="btn btn-ghost btn-sm" data-act="expnew">Cancel edit</button>`:''}
-          <button class="btn btn-primary btn-sm" id="xSave">${P ? 'Send it in' : edit?'Save changes':'Save expense'}</button>
+          ${!edit && PRACTICE ? `<button type="button" class="btn btn-ghost btn-sm" id="xMore">＋ Add another expense</button>` : ''}
+          <button class="btn btn-primary btn-sm" id="xSave">${(EXP.batch||[]).length ? 'Review all ' + ((EXP.batch||[]).length + 1) + ' expenses'
+            : P ? 'Send it in' : edit?'Save changes':'Save expense'}</button>
         </div>
       </div>
       ${edit || P ? '' : `<div class="cash-sub">Your expenses</div>
@@ -8746,6 +8786,8 @@ function expBind(){
   drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); add(e.dataTransfer.files); });
   if(o.fin) expBindFor();
   $('#xSave').addEventListener('click', expSave);
+  const more = $('#xMore'); if(more) more.addEventListener('click', expAddAnother);
+  document.querySelectorAll('#modal [data-xb]').forEach(b=>b.addEventListener('click', ()=>expBatchAct(b.dataset.xb, Number(b.dataset.i))));
 }
 /* Finance's searchable list of people. */
 function expBindFor(){
@@ -8806,28 +8848,83 @@ async function expAddReceipt(file){
   }catch(e){ r.sending = false; r.failed = true; toast(e.message || 'The receipt could not be sent.', true); }
   if(EXP.form===f && document.getElementById('xDrop')){ expRead(); expDraw(); }
 }
+/* ---- Several expenses at once (b255, Gita's wish) ----
+   "Add another expense" keeps the one just typed (with its receipts) in a list
+   above the form and starts the next, keeping where, whose and how to be paid
+   back. With more than one, Save first shows them all to check, then saves
+   them one after another. */
+function expCheck(f){
+  if(f.receipts.some(r=>r.sending)) return 'A receipt is still sending. One moment…';
+  if(f.receipts.some(r=>r.failed)) return 'A receipt was not sent. Remove it (×) and add it again.';
+  if(!f.location) return 'Choose where the expense belongs.';
+  if(!(Number(f.amt) > 0)) return 'Give the expense an amount.';
+  if(!String(f.desc||'').trim()) return 'Say what the expense was for.';
+  if(f.kind==='reimburse' && !f.method) return 'Choose how you would like to be paid back.';
+  if(PRACTICE && f.payType==='Other' && !String(f.payOther||'').trim()) return 'Say what it was paid with.';
+  return '';
+}
+function expPubCheck(){
+  const P = EXP.pub;
+  if(P && !String(P.name||'').trim()) return 'Please give your name.';
+  if(P && !String(P.phone||'').trim() && !String(P.email||'').trim()) return 'Give a WhatsApp or phone number, or an email, so Finance can reach you.';
+  return '';
+}
+// Nothing typed in it yet: a blank form after "Add another" is not an expense.
+const expBlank = f => !String(f.amt||'').trim() && !String(f.desc||'').trim() && !f.receipts.length;
+const expPlaceName = id => ((EXP.opt.places||[]).find(pl=>pl.id===id)||{}).label || (EXP.pub && EXP.pub.placeLabel) || '';
+function expBatchHTML(){
+  const B = EXP.batch || [];
+  if(!B.length) return '';
+  return `<div class="exp-batch"><div class="cash-sub">Added so far <span class="fin-n">${B.length}</span></div>
+    ${B.map((x,i)=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
+        <span class="muted-note">${esc(x.date)} · ${esc(x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category)}${x.receipts.length ? ' · 🧾 ' + x.receipts.length : ''}</span></span>
+      <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b>
+      <span class="exp-bi-b"><button type="button" class="btn btn-ghost btn-xs" data-xb="edit" data-i="${i}">✏️ Edit</button>
+        <button type="button" class="btn btn-ghost btn-xs" data-xb="del" data-i="${i}" aria-label="Remove">🗑</button></span></div>`).join('')}
+    <div class="muted-note">Now the next one:</div></div>`;
+}
+// The next form keeps where, whose, the currency, the date and how to be paid back.
+function expNextForm(f){
+  return {id:expId('X'), kind:f.kind, location:f.location, date:f.date, desc:'', cur:f.cur, amt:'', category:'Other', payType:f.payType,
+    payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:Object.assign({}, f.payTo), notes:'', receipts:[],
+    forEmail:f.forEmail, forName:f.forName, catOther:''};
+}
+function expAddAnother(){
+  expRead();
+  const f = EXP.form, e = expCheck(f);
+  if(e){ $('#modalErr').textContent = e; return; }
+  (EXP.batch = EXP.batch || []).push(f);
+  EXP.form = expNextForm(f);
+  expDraw();
+  const d = $('#xAmt'); if(d) d.focus();
+  toast('Added. Now the next one.');
+}
+function expBatchAct(what, i){
+  expRead();
+  const B = EXP.batch || [], x = B[i];
+  if(!x) return;
+  if(what==='del'){ B.splice(i, 1); expDraw(); return; }
+  // Edit: it comes back into the form; what was in the form goes into the list (or is dropped, if blank).
+  const cur = EXP.form;
+  if(!expBlank(cur)){ const e = expCheck(cur); if(e){ $('#modalErr').textContent = 'Finish this one first: ' + e; return; } B.splice(i, 1, cur); }
+  else B.splice(i, 1);
+  EXP.form = x; expDraw();
+}
 async function expSave(){
   expRead();
-  const f = EXP.form, err = $('#modalErr');
-  if(f.receipts.some(r=>r.sending)){ err.textContent = 'A receipt is still sending. One moment…'; return; }
-  if(f.receipts.some(r=>r.failed)){ err.textContent = 'A receipt was not sent. Remove it (×) and add it again.'; return; }
-  if(!f.location){ err.textContent = 'Choose where the expense belongs.'; return; }
-  if(!(Number(f.amt) > 0)){ err.textContent = 'Give the expense an amount.'; return; }
-  if(!String(f.desc||'').trim()){ err.textContent = 'Say what the expense was for.'; return; }
-  if(f.kind==='reimburse' && !f.method){ err.textContent = 'Choose how you would like to be paid back.'; return; }
-  if(PRACTICE && f.payType==='Other' && !String(f.payOther||'').trim()){ err.textContent = 'Say what it was paid with.'; return; }
-  const P = EXP.pub;
-  if(P && !String(P.name||'').trim()){ err.textContent = 'Please give your name.'; return; }
-  if(P && !String(P.phone||'').trim() && !String(P.email||'').trim()){ err.textContent = 'Give a WhatsApp or phone number, or an email, so Finance can reach you.'; return; }
+  const f = EXP.form, err = $('#modalErr'), B = EXP.batch || [];
+  if(B.length){
+    if(!expBlank(f)){ const e = expCheck(f); if(e){ err.textContent = e; return; } }
+    const e2 = expPubCheck(); if(e2){ err.textContent = e2; return; }
+    expReview(expBlank(f) ? B.slice() : B.concat([f]));
+    return;
+  }
+  const e = expCheck(f) || expPubCheck();
+  if(e){ err.textContent = e; return; }
   const btn = $('#xSave'); btn.disabled = true; btn.textContent = 'Saving…';
   try{
-    const r = await post({action:'expSave', id:f.id, kind:f.kind, location:f.location, date:f.date, desc:f.desc, cur:f.cur,
-      amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
-      payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
-      receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
-      contactPhone: P ? P.phone : '', contactEmail: P ? P.email : ''});
-    if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
-    if(P){ reimbPublicDone(); return; }
+    const r = await expPost(f, false);
+    if(EXP.pub){ reimbPublicDone([f]); return; }
     // On the Finance page (b254), its lists and totals take the change at once.
     if(FINP.on){ toast(f.editing ? 'Expense saved' : 'Expense recorded'); closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
     toast(f.kind==='reimburse' ? 'Saved. Finance will pay you back.' : 'Expense recorded');
@@ -8835,6 +8932,55 @@ async function expSave(){
     if(i>=0) EXP.list[i] = r.result; else EXP.list.unshift(r.result);
     expensesModal();
   }catch(e){ err.textContent = e.message; btn.disabled = false; btn.textContent = 'Save expense'; }
+}
+// `more`: others follow in the same sending, so a one-time link stays open for them.
+async function expPost(f, more){
+  const P = EXP.pub;
+  const r = await post({action:'expSave', id:f.id, kind:f.kind, location:f.location, date:f.date, desc:f.desc, cur:f.cur,
+    amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
+    payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
+    receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
+    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', more: !!more});
+  if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
+  return r;
+}
+/* Every expense, to check before anything is saved. */
+function expReview(all){
+  const P = EXP.pub, tot = finTotals(all, x=>[[Number(x.amt), x.cur]]);
+  openModal(`${P ? `<h3>Check your expenses</h3>` : mHead('Check your expenses')}
+    <div class="m-body">
+      <div class="hint">${all.length} expenses${P ? '' : ''}. Check them, then ${P ? 'send them in' : 'save them'} together.</div>
+      <div class="exp-batch exp-rev">${all.map(x=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
+          <span class="muted-note">${esc([x.date, x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category, expPlaceName(x.location)].filter(Boolean).join(' · '))}${
+            x.kind==='reimburse' && !P ? ' · to pay back' : ''} · ${x.receipts.length ? '🧾 ' + x.receipts.length : 'no receipt'}</span></span>
+          <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b></div>`).join('')}
+        <div class="exp-bi exp-tot"><span class="exp-bi-t"><b>Total</b></span><b class="exp-bi-a">${esc(tot)}</b></div></div>
+      ${all.some(x=>x.kind==='reimburse') ? `<div class="hint">To be paid back by <b>${esc([...new Set(all.filter(x=>x.kind==='reimburse').map(x=>x.method))].join(', '))}</b>.</div>` : ''}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" id="xrBack">← Change something</button>
+      <button class="btn btn-primary" id="xrGo">${P ? 'Send them in' : 'Save all ' + all.length}</button></div>`, true);
+  $('#xrBack').addEventListener('click', ()=>expDraw());
+  $('#xrGo').addEventListener('click', async ()=>{
+    const go = $('#xrGo'); go.disabled = true;
+    const done = [];
+    for(let i = 0; i < all.length; i++){
+      go.textContent = 'Saving ' + (i+1) + ' of ' + all.length + '…';
+      try{ await expPost(all[i], i < all.length - 1); done.push(all[i]); }
+      catch(e){
+        // What was saved is out of the list; the rest stay, to try again.
+        EXP.batch = all.slice(i + 1); EXP.form = all[i];
+        if(EXP.batch.length===0 && done.length===0){ expDraw(); $('#modalErr').textContent = e.message; return; }
+        expDraw(); $('#modalErr').textContent = (done.length ? done.length + ' saved. ' : '') + 'This one was not: ' + e.message;
+        return;
+      }
+    }
+    EXP.batch = [];
+    if(P){ reimbPublicDone(done); return; }
+    toast(done.length + ' expenses saved');
+    if(FINP.on){ closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
+    expensesModal();
+  });
 }
 
 /* A receipt, shown over everything (the noAccess page too), with a download. */
@@ -8868,7 +9014,10 @@ async function reimbPublicStart(){
     const [info, opt] = await Promise.all([post({action:'expLinkInfo'}), post({action:'expOptions'})]);
     EXP.opt = opt.result;
     let saved = {}; try{ saved = JSON.parse(localStorage.getItem('tbs_reimb_me')||'{}')||{}; }catch(e){}
-    EXP.pub = { name: saved.name||'', phone: saved.phone||'', email: saved.email||'', placeLabel: info.result.placeLabel };
+    // A link sent to one person (b255) already knows who they are.
+    const to = info.result.to || null;
+    EXP.pub = to ? { name: to.name||'', phone: to.phone||'', email: to.email||'', placeLabel: info.result.placeLabel, once: true }
+      : { name: saved.name||'', phone: saved.phone||'', email: saved.email||'', placeLabel: info.result.placeLabel };
   }catch(e){
     openModal(`<h3>Send in an expense</h3><div class="m-body"><div class="err">${esc(e.message)}</div></div>`);
     return;
@@ -8877,23 +9026,25 @@ async function reimbPublicStart(){
 }
 function reimbPublicNew(){
   const o = EXP.opt;
+  EXP.batch = [];
   EXP.form = {id:expId('X'), kind:'reimburse', location:o.location, date:new Date().toISOString().slice(0,10), desc:'',
     cur:o.defaultCur, amt:'', category:'Other', payType:'', partnerId:'', method:'', reimbCur:'', payTo:{}, notes:'', receipts:[],
     forEmail:'', forName:'', catOther:''};
   expDraw();
 }
-function reimbPublicDone(){
+function reimbPublicDone(list){
   const P = EXP.pub, f = EXP.form;
+  list = list && list.length ? list : [f];
   try{ localStorage.setItem('tbs_reimb_me', JSON.stringify({name:P.name, phone:P.phone, email:P.email})); }catch(e){}
   openModal(`<h3>Received, thank you</h3>
     <div class="m-body">
       <div class="reimb-ok">✓</div>
-      <div class="cash-lede">Your expense has been received and will be processed at the earliest convenience.</div>
-      <div class="hint">${esc(f.desc)}: <b>${esc(cashFmt(Number(f.amt), f.cur))}</b>, to be paid back by ${esc(f.method)}.
+      <div class="cash-lede">${list.length > 1 ? 'Your ' + list.length + ' expenses have' : 'Your expense has'} been received and will be processed at the earliest convenience.</div>
+      <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
         Finance will be in touch${P.phone ? ' on ' + esc(P.phone) : P.email ? ' at ' + esc(P.email) : ''} if anything is needed.</div>
     </div>
-    <div class="m-foot"><button class="btn btn-primary" id="rpAnother">Send in another</button></div>`);
-  $('#rpAnother').addEventListener('click', reimbPublicNew);
+    ${P.once ? '' : `<div class="m-foot"><button class="btn btn-primary" id="rpAnother">Send in another</button></div>`}`);
+  if(!P.once) $('#rpAnother').addEventListener('click', reimbPublicNew);
 }
 /* ---- Finance's own To do: payments still owed, and expenses to pay back, across the system ---- */
 async function financeTodoModal(){
@@ -9085,7 +9236,7 @@ document.addEventListener('paste', e=>{
      Margin        Net as a share of Gross
    Book printing costs are not in the app, so the margin is after expenses only. */
 const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open:{}, rep:null, cmp:{kind:'seasons', series:''},
-  ex:{sort:'date', dir:-1, type:'', q:''}, rb:{tab:'pending'}, viz:{form:'pie'} };
+  ex:{sort:'date', dir:-1, type:'', q:''}, rb:{tab:'expenses'}, viz:{form:'pie'} };
 const FIN_M = [
   {k:'bbu', l:'Big Books Sold'}, {k:'avu', l:'Adventures Sold'}, {k:'bb', l:'Big Books (count)', n:true}, {k:'av', l:'Adventures (count)', n:true},
   {k:'books', l:'Books sold (count)', n:true}, {k:'gifts', l:'Gifts (count)', n:true}, {k:'sales', l:'Sales (count)', n:true},
@@ -9464,9 +9615,12 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
 /* The bar's sections (b254: Expenses, Reimbursements and Visualize added;
    Reimbursement Settings lives inside Reimbursements now, though its old
    address, #finance/settings, still lands there). */
-const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursements'], ['visual','📊','Visualize'],
+/* b255: Expenses and Reimbursements are one page (Gita's wish), its tabs the
+   expenses, what is still to pay back, what is done, the links and the
+   settings; #finance/reimb still lands on it. */
+const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements'], ['visual','📊','Visualize'],
   ['report','📋','Reports'], ['compare','⚖️','Compare'], ['todo','💼','To do']];
-const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings']];
+const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings'], ['reimb','💸','Reimbursements']];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
 const finSecName = sec => (FIN_SECS.concat(FIN_SEC_ALSO).find(x=>x[0]===sec) || [,,'Overview'])[2];
 function finHash(sec, scope){ return '#finance/' + sec + (scope ? '/' + encodeURIComponent(scope) : ''); }
@@ -9486,9 +9640,9 @@ function finScopeF(){
 }
 /* Write a section into the page, or (outside the page) into a window. */
 function finHost(title, body, foot){
-  if(FINP.on && FINP.sec==='reimb'){         // the settings, inside Reimbursements (b254)
-    $('#fpBody').innerHTML = `${finReimbTop()}<h3 class="fin-h3">${esc(title)}</h3>${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
-    finBindReimbTop(); return;
+  if(FINP.on && FINP.sec==='expenses'){     // the settings, inside Expenses & Reimbursements (b254, b255)
+    $('#fpBody').innerHTML = `${finExpTop()}<h3 class="fin-h3">${esc(title)}</h3>${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
+    finBindExpTop(); return;
   }
   if(FINP.on){
     $('#fpBody').innerHTML = `<h2 class="fp-h">${esc(title)}${FINP.sec==='todo' ? ' ' + finRepBtn('todo') : ''}</h2>${finScopeNote()}${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
@@ -9516,7 +9670,8 @@ function finScopedTodo(){
 async function finGo(sec, scope, opt){
   opt = opt || {};
   if(!PRACTICE || !financeMe(ME || FINP.me)) return;
-  if(sec==='settings'){ sec = 'reimb'; FIN.rb.tab = 'settings'; }
+  if(sec==='settings'){ sec = 'expenses'; FIN.rb.tab = 'settings'; }
+  if(sec==='reimb'){ sec = 'expenses'; if(FIN.rb.tab==='expenses') FIN.rb.tab = 'pending'; }
   if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
   if(scope===undefined) scope = FINP.scope;
   const fresh = !FINP.on || opt.reload;
@@ -9576,7 +9731,7 @@ function finNav(){
   }));
   const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
   $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
-      k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='reimb' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}</button>`).join('') +
+      k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='expenses' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}</button>`).join('') +
     `<span class="fp-gap"></span><button type="button" class="btn btn-ghost btn-sm" data-act="expenses">🧾 Add an expense</button>
      ${STATE && isAdmin() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>` : ''}
      <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Back to the app' : 'Leave Finance'}</button>`;
@@ -9592,12 +9747,12 @@ function finRender(){
   finNav();
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
-  if(sec==='expenses'){ finExpensesRender(); return; }
+  if(sec==='expenses' && FIN.rb.tab==='expenses'){ finExpensesRender(); return; }
   if(sec==='visual'){ finVisualRender(); return; }
-  if(sec==='reimb' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
-  if(sec==='reimb'){
+  if(sec==='expenses' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
+  if(sec==='expenses'){
     if(!RS.d){ $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>';
-      post({action:'expRulesGet'}).then(d=>{ RS.d = d.result; if(FINP.on && FINP.sec==='reimb') finRender(); })
+      post({action:'expRulesGet'}).then(d=>{ RS.d = d.result; if(FINP.on && FINP.sec==='expenses') finRender(); })
         .catch(e=>{ $('#fpBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; }); return; }
     // Start at the place being looked at.
     const id = f.e || f.r || f.s || '';
@@ -9674,8 +9829,7 @@ function finExpensesRender(){
       <td>${esc(finExpAmt(x))}</td><td>${expStatusHTML(x)}</td>
       <td class="fin-acts">${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">✏️ Edit</button>
         <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑</button>` : ''}</td></tr>`;
-  $('#fpBody').innerHTML = `<h2 class="fp-h">Expenses ${finRepBtn('expenses')}</h2>${finScopeNote()}
-    ${finExpBarHTML(finExpTotals(all))}
+  $('#fpBody').innerHTML = `${finExpTop()}
     <div class="fin-filters">
       <label class="fin-search">Search<input type="search" id="finExQ" value="${esc(E.q)}" placeholder="Names, what for, places…"></label>
       <label>Sort by<select id="finExSort">${[['date','Date'],['name','Name'],['amount','Amount'],['type','Type']].map(([k,l])=>
@@ -9692,6 +9846,7 @@ function finExpensesRender(){
     <div class="fin-scroll"><table class="cash-tbl fin-tbl fin-ex"><thead><tr>${head('date','Date')}${head('name','Name')}<th>What for</th>${head('type','Type')}<th>Where</th>${head('amount','Amount')}<th>Status</th><th></th></tr></thead>
       <tbody>${list.map(row).join('') || `<tr><td colspan="8">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</td></tr>`}</tbody></table></div>
     <div class="btn-row"><button type="button" class="btn btn-ghost btn-sm" data-act="expenses">🧾 Add an expense</button></div>`;
+  finBindExpTop();
   const q = $('#finExQ');
   q.addEventListener('input', ()=>{ E.q = q.value; const pos = q.selectionStart; finExpensesRender(); const n = $('#finExQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
   $('#finExSort').addEventListener('change', e=>{ E.sort = e.target.value; E.dir = E.sort==='date' || E.sort==='amount' ? -1 : 1; finExpensesRender(); });
@@ -9708,25 +9863,69 @@ function finWaExpenses(L){
 
 /* Reimbursements: everything still to be paid back, those done, the links
    that let anyone send one in, and the settings for how people are paid. */
-function finReimbTop(){
-  const R = FIN.rb, all = finExpList().filter(x=>x.kind==='reimburse');
-  const n = k => all.filter(x=>k==='pending' ? x.status==='pending' : x.status==='paid' || x.status==='declined').length;
+function finExpTop(){
+  const R = FIN.rb, all = finExpList(), rb = all.filter(x=>x.kind==='reimburse');
+  const n = k => rb.filter(x=>k==='pending' ? x.status==='pending' : x.status==='paid' || x.status==='declined').length;
   const tab = (k, l, c) => `<button type="button" class="fin-tab${R.tab===k?' on':''}" data-act="finrbtab" data-tab="${k}">${esc(l)}${c===undefined?'':` <span class="fin-n">${c}</span>`}</button>`;
-  return `<h2 class="fp-h">Reimbursements ${finRepBtn('reimb')}</h2>${finScopeNote()}
-    ${finExpBarHTML(finExpTotals(finExpList()))}
-    <div class="fin-rb-bar"><div class="fin-tabs">${tab('pending','Pending', n('pending'))}${tab('done','Paid back and declined', n('done'))}${tab('links','Reimbursement Links')}${tab('settings','⚙️ Reimbursement Settings')}</div>
-      <button type="button" class="btn btn-primary btn-sm" data-act="finrbsend">📨 Send Reimbursements Link</button></div>`;
+  const where = finScopeName();
+  return `<h2 class="fp-h">Expenses &amp; Reimbursements ${finRepBtn(R.tab==='expenses' ? 'expenses' : 'reimb')}</h2>${finScopeNote()}
+    ${finExpBarHTML(finExpTotals(all))}
+    <div class="fin-send" id="finSend">
+      <div class="fin-send-h">📨 Send Reimbursements Link</div>
+      <div class="fin-send-row">
+        <div class="field"><label for="fsName">Name</label><input id="fsName" type="text" maxlength="60" autocomplete="off" placeholder="Who it is for"></div>
+        <div class="field"><label for="fsTo">Email or WhatsApp number</label><input id="fsTo" type="text" maxlength="120" autocomplete="off" placeholder="name@mail.com or +48 600 000 000"></div>
+        <button type="button" class="btn btn-primary" id="fsGo">Send</button>
+      </div>
+      <div class="muted-note">For <span class="no-edit">${esc(where || 'anywhere')}</span>. They fill in the form without signing in, and the link turns itself off once they have sent it.</div>
+      <div id="fsDone"></div>
+    </div>
+    <div class="fin-tabs fin-tabs-wide">${tab('expenses','Expenses', all.length)}${tab('pending','Pending Reimbursements', n('pending'))}${tab('done','Paid back and declined', n('done'))}${tab('links','Reimbursement Links')}${tab('settings','⚙️ Reimbursement Settings')}</div>`;
 }
-function finBindReimbTop(){}
+/* Sending: a phone number opens WhatsApp to them with the message written; an
+   email address opens the email. (Opened before the link exists, so the
+   browser does not take it for a pop-up.) */
+function finBindExpTop(){
+  const go = $('#fsGo'); if(!go) return;
+  const send = async ()=>{
+    const name = $('#fsName').value.trim(), to = $('#fsTo').value.trim(), done = $('#fsDone');
+    const email = /@/.test(to) ? to : '', phone = email ? '' : to;
+    if(!name){ done.innerHTML = '<div class="err">Give their name.</div>'; return; }
+    if(!to){ done.innerHTML = '<div class="err">Give their email address or WhatsApp number.</div>'; return; }
+    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ done.innerHTML = '<div class="err">That email address does not look right.</div>'; return; }
+    const digits = phone.replace(/\D/g,'');
+    if(phone && digits.length < 7){ done.innerHTML = '<div class="err">That number looks too short. Include the country code, e.g. +48.</div>'; return; }
+    const win = phone ? window.open('', '_blank') : null;
+    go.disabled = true; go.textContent = 'Sending…';
+    try{
+      const f = finScopeF(), place = f.e || f.r || f.s || '';
+      const r = (await post({action:'expLinkMake', place, toName:name, toEmail:email, toPhone:phone})).result;
+      FIN_LINKS = r.list;
+      const msg = 'Hare Krishna ' + name + '! ' + reimbMsg(reimbUrl(r.key));
+      const url = phone ? 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg)
+        : 'mailto:' + encodeURIComponent(email) + '?subject=' + encodeURIComponent('Send in an expense to be paid back') + '&body=' + encodeURIComponent(msg);
+      if(win) win.location.href = url; else location.href = url;
+      if(FIN.rb.tab==='links') await finLinksRender();
+      const d2 = $('#fsDone');
+      if(d2) d2.innerHTML = `<div class="fin-sent">✓ Link made for <b class="no-edit">${esc(name)}</b>. ${phone ? 'WhatsApp' : 'Your email'} opens with the message written: press send there.
+        <a href="${esc(url)}" ${phone ? 'target="_blank" rel="noopener"' : ''}>Open it again</a></div>`;
+      if($('#fsName')){ $('#fsName').value = ''; $('#fsTo').value = ''; }
+    }catch(e){ if(win) win.close(); done.innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    const g2 = $('#fsGo'); if(g2){ g2.disabled = false; g2.textContent = 'Send'; }
+  };
+  go.addEventListener('click', send);
+  $('#fsTo').addEventListener('keydown', e=>{ if(e.key==='Enter') send(); });
+}
 function finReimbRender(){
   const R = FIN.rb;
   if(R.tab==='links'){ finLinksRender(); return; }
   const all = finExpList().filter(x=>x.kind==='reimburse');
   const list = R.tab==='pending' ? all.filter(x=>x.status==='pending') : all.filter(x=>x.status==='paid' || x.status==='declined');
   const tot = finTotals(list, x=>[[x.amt, x.cur]]);
-  $('#fpBody').innerHTML = finReimbTop() + (list.length
+  $('#fpBody').innerHTML = finExpTop() + (list.length
     ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(tot)}</b></div>` : ''}${list.map(x=>expCardHTML(x, true)).join('')}`
     : `<div class="cash-empty">${R.tab==='pending' ? 'Nothing waiting to be paid back here.' : 'None yet.'}</div>`);
+  finBindExpTop();
 }
 function finWaReimb(L){
   const all = finExpList(), T = finExpTotals(all);
@@ -9745,31 +9944,35 @@ const reimbUrl = key => location.origin + location.pathname + '?' + (PRACTICE ? 
 const reimbMsg = url => 'Hare Krishna! If you spent money for the tour and would like to be paid back, please send it in here, with a photo of the receipt: ' + url;
 async function finLinksRender(focusNew){
   if(!FIN_LINKS){
-    $('#fpBody').innerHTML = finReimbTop() + '<div class="cash-empty">Opening…</div>';
+    $('#fpBody').innerHTML = finExpTop() + '<div class="cash-empty">Opening…</div>';
     try{ FIN_LINKS = (await post({action:'expLinkList'})).result; }
-    catch(e){ $('#fpBody').innerHTML = finReimbTop() + `<div class="err">${esc(e.message)}</div>`; return; }
-    if(!(FINP.on && FINP.sec==='reimb' && FIN.rb.tab==='links')) return;
+    catch(e){ $('#fpBody').innerHTML = finExpTop() + `<div class="err">${esc(e.message)}</div>`; return; }
+    if(!(FINP.on && FINP.sec==='expenses' && FIN.rb.tab==='links')) return;
   }
   const send = l => { const url = reimbUrl(l.key), msg = reimbMsg(url);
     return `<a class="btn btn-ghost btn-xs" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 WhatsApp</a>
       <a class="btn btn-ghost btn-xs" href="mailto:?subject=${encodeURIComponent('Send in an expense to be paid back')}&body=${encodeURIComponent(msg)}">✉️ Email</a>
       <button type="button" class="btn btn-ghost btn-xs" data-act="slcopy" data-link="${esc(url)}">📋 Copy link</button>`; };
-  $('#fpBody').innerHTML = finReimbTop() + `
+  const toLine = l => l.to ? `<div class="exp-meta">Sent to <span class="no-edit">${esc(l.to.name)}${l.to.phone ? ' · ' + esc(l.to.phone) : ''}${l.to.email ? ' · ' + esc(l.to.email) : ''}</span>${
+      l.used ? ' · <b>used</b> ' + esc(String(l.usedAt||'').slice(0,10)) : ' · not used yet'}</div>` : '';
+  $('#fpBody').innerHTML = finExpTop() + `
     <div class="exp-form" id="finLinkNew">
-      <div class="cash-sub">A new link</div>
-      <div class="hint">Anyone with the link can send in an expense to be paid back, with receipts, without signing in: someone
-        outside the app included. What they send lands in Pending.</div>
+      <div class="cash-sub">A link anyone can use</div>
+      <div class="hint">To send one person a link, use Send Reimbursements Link above. This one is for sharing with a group: anyone with it can
+        send in expenses to be paid back, with receipts, without signing in, and it keeps working until you turn it off. What they send lands in Pending.</div>
       <div class="row2"><div class="field"><label>For</label>${comboHTML('finLinkPlace', 'Anywhere', 'Search for a season, region or event')}</div>
         <div class="field"><label>Name for it (optional)</label><input id="finLinkLabel" type="text" maxlength="80" placeholder="e.g. Kartika volunteers"></div></div>
       <div class="btn-row"><button type="button" class="btn btn-primary btn-sm" id="finLinkMake">Make the link</button></div>
     </div>
     <div class="cash-sub">Links</div>
-    ${FIN_LINKS.length ? FIN_LINKS.map(l=>`<div class="exp-card${l.off?' fin-dim':''}">
+    ${FIN_LINKS.length ? FIN_LINKS.map(l=>`<div class="exp-card${l.off||l.used?' fin-dim':''}">
         <div class="exp-top"><b class="no-edit">${esc(l.label || l.placeLabel)}</b><span class="muted-note">${l.sent} sent in</span></div>
         <div class="exp-meta"><span class="no-edit">${esc(l.placeLabel)}</span> · made by <span class="no-edit">${esc(l.by)}</span>, ${esc(String(l.at).slice(0,10))}${l.off?' · turned off':''}</div>
-        <div class="exp-btns">${l.off ? '' : send(l)}
-          <button type="button" class="btn btn-ghost btn-xs" data-act="finlinkoff" data-key="${esc(l.key)}" data-on="${l.off?1:''}">${l.off?'Turn back on':'Turn off'}</button></div>
+        ${toLine(l)}
+        <div class="exp-btns">${l.off || l.used ? '' : send(l)}
+          <button type="button" class="btn btn-ghost btn-xs" data-act="finlinkoff" data-key="${esc(l.key)}" data-on="${l.off||l.used?1:''}">${l.off||l.used?'Turn back on':'Turn off'}</button></div>
       </div>`).join('') : '<div class="cash-empty">No links yet.</div>'}`;
+  finBindExpTop();
   let place = '';
   const P = FIN.D, items = [{v:'', l:'Anywhere'}].concat(expPlaceItems(finLinkPlaces()));
   comboBind('finLinkPlace', items, '', v=>{ place = v; });
@@ -9793,6 +9996,61 @@ function finLinkPlaces(){
     });
   });
   return out;
+}
+
+/* Dates & Repeats (b255, for now; App Development, Gita's wish): the places
+   made before the forms asked when they run, to fill in once, and which
+   recurring one each belongs to. Each change saves as it is made. */
+const DT = { missing:false };
+function datesRows(){
+  const M = PMETA || {seasons:[], regions:[], events:[]}, out = [];
+  M.seasons.filter(se=>se.id!==HQ_ID).forEach(se=>{
+    out.push({kind:'seasons', x:se, depth:0, label:se.name});
+    M.regions.filter(r=>r.seasonId===se.id && r.id!==HQ_REGION).forEach(r=>{
+      out.push({kind:'regions', x:r, depth:1, label:r.name});
+      M.events.filter(e=>e.regionId===r.id).forEach(e=>out.push({kind:'events', x:e, depth:2, label:e.name}));
+    });
+  });
+  return DT.missing ? out.filter(r=>!r.x.from || !r.x.to) : out;
+}
+async function datesModal(){
+  if(!PRACTICE) return;
+  openModal(`${mHead('Dates & Repeats')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  if(!await placeMetaLoad(true)){ $('#modal .m-body').innerHTML = '<div class="err">Could not open the list. Try again in a moment.</div>'; return; }
+  datesDraw();
+}
+function datesDraw(){
+  const rows = datesRows(), M = PMETA;
+  const series = k => [...new Set(M[k].map(x=>x.series).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const word = {seasons:'Season', regions:'Region', events:'Event'};
+  const row = (r, i) => `<tr class="fin-dt-${r.depth}${r.x.closed?' fin-dim':''}">
+      <th class="no-edit"><span class="fin-dt-k">${word[r.kind]}</span> ${esc(r.label)}</th>
+      <td><input type="date" data-dt="from" data-i="${i}" value="${esc(r.x.from||'')}" aria-label="From"></td>
+      <td><input type="date" data-dt="to" data-i="${i}" value="${esc(r.x.to||'')}" aria-label="To"></td>
+      <td><input type="text" data-dt="series" data-i="${i}" list="dtList-${r.kind}" value="${esc(r.x.series||'')}" maxlength="80" aria-label="Recurring as"></td></tr>`;
+  openModal(`${mHead('Dates & Repeats')}
+    <div class="m-body">
+      <div class="hint">New seasons, regions and events ask for these when they are made. This is for the ones made before:
+        fill in when each ran, and which recurring one it is part of (the same name means the same recurring one, so Reports can compare them). Each change saves at once.</div>
+      <div class="fin-dt-only"><input type="checkbox" id="dtMissing" ${DT.missing?'checked':''}><label for="dtMissing">Only those without dates</label></div>
+      ${['seasons','regions','events'].map(k=>`<datalist id="dtList-${k}">${series(k).map(v=>`<option value="${esc(v)}">`).join('')}</datalist>`).join('')}
+      <div class="fin-scroll"><table class="cash-tbl fin-tbl fin-dates"><thead><tr><th>Name</th><th>From</th><th>To</th><th>Recurring as</th></tr></thead>
+        <tbody>${rows.map(row).join('') || '<tr><td colspan="4">Every one has its dates.</td></tr>'}</tbody></table></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  $('#dtMissing').addEventListener('change', e=>{ DT.missing = e.target.checked; datesDraw(); });
+  document.querySelectorAll('#modal [data-dt]').forEach(el=>el.addEventListener('change', async ()=>{
+    const r = rows[Number(el.dataset.i)], k = el.dataset.dt;
+    const p = {action:'placeMetaSet', kind:r.kind, id:r.x.id};
+    if(k==='series'){ const v = el.value.trim(); p.series = !v || v===seriesName(r.x.name) ? '' : v; }
+    else { p.from = el.closest('tr').querySelector('[data-dt="from"]').value; p.to = el.closest('tr').querySelector('[data-dt="to"]').value; }
+    el.classList.remove('fin-saved');
+    try{
+      const d = await post(p); PMETA = d.result; PMETA_AT = Date.now();
+      if(k==='series'){ r.x.series = p.series || seriesName(r.x.name); el.value = r.x.series; } else { r.x.from = p.from; r.x.to = p.to; }
+      el.classList.add('fin-saved'); toast('Saved');
+    }catch(e){ toast(e.message, true); if(k!=='series') el.value = r.x[k] || ''; }
+  }));
 }
 
 /* Visualize: expenses by type, as a pie or as bars, with the figures listed
@@ -9936,14 +10194,15 @@ function finReportText(part){
   if(part==='report' || (!part && sec==='report')) run('', finWaReport);
   if(part==='compare' || (!part && sec==='compare')) run('', finWaCompare);
   if(part==='todo' || (!part && sec==='todo')) run('', finWaTodo);
-  if(part==='expenses' || (!part && sec==='expenses')) run('', finWaExpenses);
-  if(part==='reimb' || (!part && sec==='reimb')) run('', finWaReimb);
+  if(part==='expenses') run('', finWaExpenses);
+  if(part==='reimb') run('', finWaReimb);
+  if(!part && sec==='expenses') run('', FIN.rb.tab==='expenses' ? finWaExpenses : finWaReimb);
   if(part==='visual' || (!part && sec==='visual')) run('Expenses by Type', finWaVisual);
   if(!part && L.length) L.unshift('*' + where + ' — Finance ' + finSecName(sec) + '*', '');
   return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 function finShareReport(part){
-  if(FINP.sec==='reimb' && FIN.rb.tab==='settings' && !part) part = 'reimb';
+  if(FINP.sec==='expenses' && FIN.rb.tab==='settings' && !part) part = 'reimb';
   reportDialog({ title: part ? 'Report' : 'Finance Report', make: () => finReportText(part) || 'Nothing recorded here yet.' });
 }
 
@@ -12461,6 +12720,139 @@ function deleteRegionModal(){
 
 
 
+/* ---- Dates and repeats (b255, the practice space) ----
+   Every season, region and event says when it runs (a range of days), and
+   when its name matches one made before, the app asks whether it is part of
+   that recurring one, so Reports can compare it with the last time. Kept on
+   the server beside Finance's grouping (expenses.js placeMetaSet). */
+let PMETA = null, PMETA_AT = 0;
+async function placeMetaLoad(force){
+  if(!PRACTICE || SHARE_KEY || REIMB_KEY) return null;
+  if(PMETA && !force && Date.now()-PMETA_AT < 60000) return PMETA;
+  try{ PMETA = (await post({action:'placeMetaGet'})).result; PMETA_AT = Date.now(); }catch(e){}
+  return PMETA;
+}
+// A name without its year, as the server groups them ("Kartika 2025" → "Kartika").
+const seriesName = n => String(n||'').replace(/\b(19|20)\d{2}\b/g,'').replace(/[\s\-–—,·:()]+$/g,'')
+  .replace(/^[\s\-–—,·:()]+/g,'').replace(/\s{2,}/g,' ').trim() || String(n||'');
+const seriesKey = n => seriesName(n).toLowerCase().replace(/[^\p{L}\p{N}]+/gu,' ').trim();
+const placeMetaLabel = kind => x => kind==='events' ? x.name + (x.regionName ? ' · ' + x.regionName : '')
+  : kind==='regions' ? x.name + (x.seasonName ? ' · ' + x.seasonName : '') : x.name;
+/* The recurring one a name belongs with: the same name without its year, or
+   one starting the other ("Poland" and "Poland Tour"). The series with the
+   exact name first, then the one made most often. */
+function repeatMatch(kind, name, selfId){
+  const k = seriesKey(name);
+  if(k.length < 3) return null;
+  const by = {};
+  (((PMETA||{})[kind])||[]).filter(x=>x.id!==selfId).forEach(x=>{
+    const sk = seriesKey(x.series), nk = seriesKey(x.name);
+    const near = (a,b)=> a.length>=4 && b.length>=4 && (a.startsWith(b+' ') || b.startsWith(a+' '));
+    if(sk===k || nk===k || near(sk,k) || near(nk,k)) (by[x.series] = by[x.series]||[]).push(x);
+  });
+  const keys = Object.keys(by);
+  if(!keys.length) return null;
+  keys.sort((a,b)=> (seriesKey(b)===k) - (seriesKey(a)===k) || by[b].length - by[a].length);
+  return {series:keys[0], items:by[keys[0]]};
+}
+function placeMetaHTML(kind){
+  if(!PRACTICE) return '';
+  const word = {seasons:'season', regions:'region', events:'event'}[kind];
+  return `<div class="field pm-dates"><label>Dates the ${word} runs <span class="muted-note">(from – to)</span></label>
+      <div class="pm-row"><input type="date" id="pmFrom" aria-label="From"><span class="pm-to">to</span>
+        <input type="date" id="pmTo" aria-label="To"></div></div>
+    <div id="pmRepeat" class="pm-repeat" hidden></div>`;
+}
+/* Wires the dates and the repeat question to a form. `parent` names where it
+   sits, to tell two of the same name apart when it is not a repeat. */
+/* Ones that ran around the same days in another year (within two weeks
+   either side), as a second reason to ask: Gita's wish. */
+function repeatByDates(kind, from, selfId, skip){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from||'')) return [];
+  const doy = d => { const t = new Date(d+'T00:00:00Z'); return Math.floor((t - Date.UTC(t.getUTCFullYear(),0,1))/864e5); };
+  const yr = from.slice(0,4), me = doy(from), by = {};
+  (((PMETA||{})[kind])||[]).forEach(x=>{
+    if(x.id===selfId || !x.from || x.from.slice(0,4)===yr || x.series===skip) return;
+    const gap = Math.abs(doy(x.from) - me);
+    if(Math.min(gap, 365-gap) <= 14) (by[x.series] = by[x.series]||[]).push(x);
+  });
+  return Object.keys(by).slice(0,3).map(k=>({series:k, items:by[k]}));
+}
+/* Wires the dates and the repeat question to a form. `parent` names where it
+   sits, to tell two of the same name apart when it is not a repeat. */
+function placeMetaBind(kind, nameSel, selfId, parent){
+  const st = {answer:null, ask:null, cur:null};
+  const nameEl = $(nameSel);
+  const word = {seasons:'season', regions:'region', events:'event'}[kind];
+  const seenOf = m => m.items.slice(0,3).map(placeMetaLabel(kind)).join(' · ') + (m.items.length>3 ? ' and ' + (m.items.length-3) + ' more' : '');
+  const draw = ()=>{
+    const box = $('#pmRepeat');
+    if(!box || !nameEl) return;
+    const filed = st.cur && st.cur.seriesOwn ? st.cur.series : '';
+    let m = repeatMatch(kind, nameEl.value, selfId);
+    if(m && m.series===filed) m = null;                   // already filed with it
+    // By name first; otherwise by dates near another year's.
+    const opts = m ? [m] : (filed ? [] : repeatByDates(kind, ($('#pmFrom')||{}).value, selfId, ''));
+    const sig = opts.map(o=>o.series).join('|');
+    if(!opts.length){ box.hidden = true; st.ask = null; return; }
+    if(!st.ask || st.ask.sig!==sig) st.answer = null;
+    st.ask = {sig, opts, byName: !!m};
+    box.hidden = false;
+    const btn = (v, label) => `<button type="button" class="btn btn-sm ${st.answer===v?'btn-primary':'btn-ghost'}" data-pm="${esc(v===false?'':v)}">${esc(label)}</button>`;
+    box.innerHTML = m
+      ? `<div class="pm-q">Is this part of the recurring <b>${esc(m.series)}</b>?</div>
+         <div class="pm-seen">${esc(seenOf(m))}</div>
+         <div class="pm-btns">${btn(m.series,'Yes')}${btn(false,"No, it's new")}</div>`
+      : `<div class="pm-q">Is this a recurring ${word}?</div>
+         <div class="pm-seen">Around the same dates in another year: ${esc(opts.map(o=>seenOf(o) + ' (' + o.items.map(x=>x.from).join(', ') + ')').join('; '))}</div>
+         <div class="pm-btns">${opts.map(o=>btn(o.series, 'Yes, ' + o.series)).join('')}${btn(false,'No')}</div>`;
+    box.querySelectorAll('[data-pm]').forEach(b=>b.addEventListener('click',()=>{
+      st.answer = b.dataset.pm || false; draw();
+    }));
+    try{ applyLabels(); }catch(e){}
+  };
+  if(PRACTICE){
+    placeMetaLoad().then(M=>{
+      st.cur = selfId && M ? ((M[kind]||[]).find(x=>x.id===selfId) || null) : null;
+      if(st.cur){
+        if($('#pmFrom') && !$('#pmFrom').value) $('#pmFrom').value = st.cur.from || '';
+        if($('#pmTo') && !$('#pmTo').value) $('#pmTo').value = st.cur.to || '';
+      }
+      draw();
+    });
+    if(nameEl) nameEl.addEventListener('input', draw);
+    ['#pmFrom','#pmTo'].forEach(id=>{ const el = $(id); if(el) el.addEventListener('change', draw); });
+  }
+  return {
+    // What to save, or what is still missing.
+    read(){
+      if(!PRACTICE) return {};
+      const from = ($('#pmFrom')||{}).value || '', to = ($('#pmTo')||{}).value || '';
+      if(from && to && to < from) return {err:'The end date is before the start date.'};
+      const ask = st.ask;
+      if(ask && ask.byName && st.answer===null) return {err:'Say whether this is part of the recurring “' + ask.opts[0].series + '”.'};
+      if(ask && !ask.byName && st.answer===null) return {err:'Say whether this is a recurring ' + word + '.'};
+      const out = {from, to};
+      if(st.cur && st.cur.from===from && st.cur.to===to){ delete out.from; delete out.to; }
+      if(ask && st.answer) out.series = st.answer;
+      // Not a repeat, but the same name: told apart by where it is.
+      if(ask && st.answer===false && ask.byName){
+        const n = nameEl.value.trim(), p = typeof parent==='function' ? parent() : '';
+        out.series = seriesKey(n)===seriesKey(ask.opts[0].series) ? seriesName(n) + ' · ' + (p || 'new') : seriesName(n);
+      }
+      return out;
+    }
+  };
+}
+function placeMetaSave(kind, id, meta){
+  if(!PRACTICE || !id || !meta) return;
+  const p = {action:'placeMetaSet', kind, id};
+  ['from','to','series'].forEach(k=>{ if(meta[k]!==undefined) p[k] = meta[k]; });
+  if(Object.keys(p).length <= 3) return;
+  return post(p).then(d=>{ PMETA = d.result; PMETA_AT = Date.now(); })
+    .catch(e=>toast('The dates were not saved: ' + e.message, true));
+}
+
 function regionModal(edit, after){
   const isEdit = !!edit;
   const cur = isEdit ? (edit.currencies||['USD']).join(', ') : 'EUR, USD';
@@ -12523,6 +12915,7 @@ function regionModal(edit, after){
       <div class="hint">A region is the umbrella that contains all events in one locality.</div>
       <div class="field"><label>Region name</label>
         <input id="rgName" type="text" placeholder="e.g. Macedonia" value="${esc(isEdit?edit.name:'')}"></div>
+      ${isEdit && edit.regionId===HQ_REGION ? '' : placeMetaHTML('regions')}
       <div class="field"><label>Enter all accepted currencies by their official abbreviation. <span class="muted-note">(Separate currencies with a comma.)</span></label>
         <input id="rgCur" type="text" placeholder="MKD, EUR, USD" value="${esc(cur)}"></div>
       <div class="cash-sub">Titles &amp; prices</div>
@@ -12650,9 +13043,12 @@ function regionModal(edit, after){
     });
   });
 
+  const pm = placeMetaBind('regions', '#rgName', isEdit ? edit.regionId : '', ()=>STATE.seasonName||'');
   $('#rgSave').addEventListener('click',()=>{
     const name=$('#rgName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the region a name.'; return; }
+    const meta = pm.read();
+    if(meta.err){ $('#modalErr').textContent = meta.err; return; }
     const curList=parseCurs($('#rgCur').value);
     const allBooks=[...document.querySelectorAll('#modal .bk-cb')].map(c=>c.value);
     const picked=[...document.querySelectorAll('#modal .bk-cb')].filter(c=>c.checked).map(c=>c.value);
@@ -12671,7 +13067,7 @@ function regionModal(edit, after){
       commit({action:'editRegion',regionId:edit.regionId,name,currencies:curList.join(','),books,prices},
         st=>{ const r=(st.regions||[]).find(x=>x.regionId===edit.regionId);
               if(r){ r.name=name; r.currencies=curList; r.books=books?books.split(','):[]; } },
-        'Region updated');
+        'Region updated', {onDone:()=>placeMetaSave('regions', edit.regionId, meta)});
     }else{
       /* Named here, so it appears at once and saves in the background. It used
          to wait for the server to name it AND to send the whole tour's data
@@ -12684,7 +13080,7 @@ function regionModal(edit, after){
         st=>{ (st.regions=st.regions||[]).push({regionId,name,whLoc,currencies:curList,
                 books:books?books.split(','):[],counts:{},closedAt:'',bookOrder,
                 seasonId:st.activeSeason, sort:(st.regions||[]).length}); },
-        'Region created');
+        'Region created', {onDone:()=>placeMetaSave('regions', regionId, meta)});
       // A new region is where you want to be next.
       goTo('region', regionId);
       // Came here from "Add something new": carry on where they left off.
@@ -12702,22 +13098,30 @@ function parseCurs(raw){
 
 function eventModal(edit, after){
   openModal(`
-    ${mHead(edit?'Rename event':'New event')}
+    ${mHead(edit?(PRACTICE?'Edit event':'Rename event'):'New event')}
     <div class="m-body">
       <div class="field"><label>Event name</label><input id="evname" type="text" placeholder="e.g. Gurudeva's Welcome" value="${edit?esc(locName(edit)):''}"></div>
+      ${placeMetaHTML('events')}
       <div class="hint">Books reach an event by transferring stock from the warehouse.</div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="saveEv">${edit?'Rename':'Create event'}</button>
+      <button class="btn btn-primary" id="saveEv">${edit?(PRACTICE?'Save':'Rename'):'Create event'}</button>
     </div>`);
   setTimeout(()=>$('#evname').focus(),50);
-  $('#saveEv').addEventListener('click',()=>{
+  const regName = ()=>((STATE.regions||[]).find(r=>r.regionId===CUR_REGION)||{}).name||'';
+  const pm = placeMetaBind('events', '#evname', edit||'', regName);
+  $('#saveEv').addEventListener('click',async ()=>{
     const name=$('#evname').value.trim();
     if(!name){$('#modalErr').textContent='Enter a name.';return;}
-    if(edit){ commitSync({action:'renameEvent',eventId:edit,name},'Event renamed',
-        ()=>locName(edit)===name); return; }
+    const meta = pm.read();
+    if(meta.err){ $('#modalErr').textContent = meta.err; return; }
+    if(edit){
+      if(PRACTICE && locName(edit)===name){ await placeMetaSave('events', edit, meta); closeModal(); toast('Event saved'); return; }
+      const ok = await commitSync({action:'renameEvent',eventId:edit,name},'Event renamed', ()=>locName(edit)===name);
+      if(ok!==false) placeMetaSave('events', edit, meta);
+      return; }
     // Named here: it appears straight away and saves in the background.
     if(eventsOfRegion(CUR_REGION).some(e=>String(e.name).toLowerCase()===name.toLowerCase())){
       $('#modalErr').textContent='An event called "'+name+'" already exists in this region.'; return;
@@ -12726,7 +13130,7 @@ function eventModal(edit, after){
     commit({action:'createEvent',eventId,name,regionId:CUR_REGION},
       st=>{ (st.events=st.events||[]).push({eventId,name,regionId:CUR_REGION,closedAt:'',
               createdAt:new Date().toISOString()}); },
-      'Event created');
+      'Event created', {onDone:()=>placeMetaSave('events', eventId, meta)});
     goTo('event', eventId);                 // straight to the new event
     if(after) setTimeout(()=>after(eventId), 0);
   });
@@ -13532,16 +13936,21 @@ function addNewPlaceModal(then){
     if(kind==='season'){
       step.innerHTML = `<div class="field"><label>Season name</label>
           <input id="anSeason" type="text" placeholder="e.g. Book Tour 2027"></div>
+        ${placeMetaHTML('seasons')}
         <button type="button" class="btn btn-primary" id="anGo">Create season</button>`;
       $('#anSeason').focus();
+      const pm = placeMetaBind('seasons', '#anSeason', '', ()=>'');
       $('#anGo').addEventListener('click', async ()=>{
         const name = $('#anSeason').value.trim();
         if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+        const meta = pm.read();
+        if(meta.err){ $('#modalErr').textContent = meta.err; return; }
         const had = new Set((STATE.seasons||[]).map(s=>s.seasonId));
         // The one step that has to wait for the server, so it says so.
         const go = $('#anGo'); go.innerHTML = '<span class="spin-d"></span> Creating season…';
         if(!await commitSync({action:'saveSeason', name}, 'Season created')){ go.textContent='Create season'; return; }
         const made = (STATE.seasons||[]).find(s=>!had.has(s.seasonId));
+        if(made) placeMetaSave('seasons', made.seasonId, meta);
         alert('In order to add stock or transfer books, please create a region on the next page.');
         // Switches the screen at once; the season's records follow behind.
         if(made) switchSeason(made.seasonId);
@@ -13802,6 +14211,7 @@ function newSeasonModal(){
       <div class="hint">Seasons are a period of time that serve as an umbrella for Gurudeva's travels to several regions in one area of the world.<br>For example, Book Tour is a season where Srila Gurudeva travels to several cities in India.</div>
       <div class="field"><label>Name</label>
         <input id="nsName" type="text" placeholder="e.g. Europe Tour 2027"></div>
+      ${placeMetaHTML('seasons')}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -13809,14 +14219,18 @@ function newSeasonModal(){
       <button class="btn btn-primary" id="nsGo">Create</button>
     </div>`);
   $('#nsName').focus();
+  const pm = placeMetaBind('seasons', '#nsName', '', ()=>'');
   $('#nsGo').addEventListener('click',async ()=>{
     const name=$('#nsName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+    const meta = pm.read();
+    if(meta.err){ $('#modalErr').textContent = meta.err; return; }
     const before = (STATE.seasons||[]).map(x=>x.seasonId);
     const fromHQ = isHQ();
     if(await commitSync({action:'saveSeason', name}, 'Season created')){
       // Made from HQ: go into the new season rather than stay above it.
       const made = (STATE.seasons||[]).find(x=>!before.includes(x.seasonId));
+      if(made) placeMetaSave('seasons', made.seasonId, meta);
       if(fromHQ && made){ switchSeason(made.seasonId); return; }
       CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos(); renderAll();
     }
@@ -13958,14 +14372,21 @@ function seasonsModal(){
         <input id="snName" type="text" placeholder="e.g. Europe Tour 2027">
         <button type="button" class="btn btn-primary btn-sm" id="snAdd">Create</button>
       </div>
+      ${placeMetaHTML('seasons')}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 
+  const pm = placeMetaBind('seasons', '#snName', '', ()=>'');
   $('#snAdd').addEventListener('click',async ()=>{
     const name=$('#snName').value.trim();
     if(!name){ $('#modalErr').textContent='Give the season a name.'; return; }
+    const meta = pm.read();
+    if(meta.err){ $('#modalErr').textContent = meta.err; return; }
+    const before = (STATE.seasons||[]).map(x=>x.seasonId);
     if(await commitSync({action:'saveSeason', name},'Season created')){
+      const made = (STATE.seasons||[]).find(x=>!before.includes(x.seasonId));
+      if(made) placeMetaSave('seasons', made.seasonId, meta);
       // A new season is a different world, so start from a clean position.
       CUR_LEVEL='season'; CUR_REGION=''; CUR_LOC=SEASON; savePos();
       seasonsModal();
@@ -13980,16 +14401,21 @@ function seasonEditModal(id){
     ${mHead('Edit Season')}
     <div class="m-body">
       <div class="field"><label>Name</label><input id="seName" type="text" value="${esc(x.name)}"></div>
+      ${placeMetaHTML('seasons')}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="seSave">Save</button>
     </div>`);
+  const pm = placeMetaBind('seasons', '#seName', id, ()=>'');
   $('#seSave').addEventListener('click',async ()=>{
     const name=$('#seName').value.trim();
     if(!name){ $('#modalErr').textContent='Give it a name.'; return; }
-    await commitSync({action:'saveSeason', seasonId:id, name},'Season renamed');
+    const meta = pm.read();
+    if(meta.err){ $('#modalErr').textContent = meta.err; return; }
+    if(PRACTICE && name===x.name){ await placeMetaSave('seasons', id, meta); closeModal(); toast('Season saved'); return; }
+    if(await commitSync({action:'saveSeason', seasonId:id, name},'Season renamed')) placeMetaSave('seasons', id, meta);
   });
 }
 
@@ -16689,7 +17115,8 @@ document.addEventListener('click',e=>{
   if(a==='finrep'){ finShareReport(t.dataset.part||''); return; }
   if(a==='finexsort'){ const k = t.dataset.k; if(FIN.ex.sort===k) FIN.ex.dir = -FIN.ex.dir; else { FIN.ex.sort = k; FIN.ex.dir = k==='date'||k==='amount' ? -1 : 1; } finExpensesRender(); return; }
   if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; if(t.dataset.tab==='links') FIN_LINKS = null; finRender(); return; }
-  if(a==='finrbsend'){ FIN.rb.tab = 'links'; FIN_LINKS = null; if(FINP.sec!=='reimb') finGo('reimb'); else finLinksRender(true); return; }
+  if(a==='finrbsend'){ const go = ()=>{ const n = $('#fsName'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } };
+    if(FINP.sec!=='expenses') finGo('expenses').then(go); else go(); return; }
   if(a==='finlinkoff'){ post({action:'expLinkOff', key:t.dataset.key, on:!!t.dataset.on}).then(d=>{ FIN_LINKS = d.result; finLinksRender(); toast(t.dataset.on ? 'Link turned back on' : 'Link turned off'); }).catch(e=>toast(e.message, true)); return; }
   if(a==='finviz'){ FIN.viz.form = t.dataset.form; finVisualRender(); return; }
   // In Finance, the top 📋 Report is Finance's own: the section being looked at.
@@ -16791,13 +17218,14 @@ document.addEventListener('click',e=>{
   if(a==='finoverview'){ finGo('overview'); return; }
   if(a==='finreport'){ finGo('report'); return; }
   if(a==='fincompare'){ finGo('compare'); return; }
-  if(a==='finsec'){ finGo(t.dataset.sec, undefined, {reload:true}); return; }
+  if(a==='finsec'){ if(t.dataset.sec==='expenses') FIN.rb.tab = 'expenses'; finGo(t.dataset.sec, undefined, {reload:true}); return; }
   if(a==='fingo'){ finGo(FINP.sec, t.dataset.scope); return; }
   if(a==='finleave'){ finLeave(); return; }
   if(a==='finsort'){ const R = FIN.rep, k = t.dataset.k; R.sort = {k, dir: R.sort.k===k ? -R.sort.dir : (k.startsWith('d')?1:-1)}; finDrawAll(); return; }
   if(a==='fincsv'){ finCsv(); return; }
   if(a==='finrepreset'){ FIN.rep = finRepDefault(); try{ localStorage.removeItem('tbs_finrep'); }catch(e){} finDrawAll(); return; }
   if(a==='viewas'){ viewAsModal(); return; }
+  if(a==='placedates'){ datesModal(); return; }
   if(a==='viewstop'){ viewAsStart(null); return; }
   if(a==='concost'){ costsModal(null, t.dataset.id); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }
