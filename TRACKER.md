@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b255**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b256**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2002,3 +2002,33 @@ mismatches / event prices and consignment (Stage 3), spreadsheets (Stage 4).
 - **The owner is not a coder.** Explain everything in plain language, say what
   they need to do (and what they don't), and define any technical word you
   can't avoid.
+
+## Done in b256 — Reports builder: pick your own data (practice)
+
+Gita's ask: "a data-choosing rubric … combining different data of their
+choosing", with typed questions that pick the choices. Proposal:
+/mnt/project-files/proposals/finance-reports-builder.md. Practice only.
+
+- **One line of choices** on Finance › Reports (the `qb*` block in index.html,
+  before "Reports: any rows, any figures, any filter"): Show (tick several),
+  At (places, or a whole series such as every Kartika; `qbAtItems`), During,
+  Split by, Only, Compared with, As (Numbers, Table, Bars, Pie, Line over time,
+  List of payments). State is `QB.st`, kept per browser in localStorage
+  `tbs_qb`. Answers come from `qbAnswer` → `qbMeasure`; Books always show Big
+  Books and Adventures apart in the app's Sold + Gifts = Distributed form; money
+  shows dollars with the actual currencies beneath ("37 € + $55").
+- **Compare is folded into Reports**: Compared with = same time last year, the
+  period before, the previous one in its series (from b255's repeats), or
+  another place. `finGo('compare')` lands on Reports; the old Compare tab is gone.
+- **Time measures**: "Days it ran" and "Last event to region end" use b255's
+  place dates (first/last sale stand in until dates are filled in).
+- **Ready-made questions** (`QB_READY`, 16) and **⭐ saved questions** kept with
+  the login (`ME.prefs.finSaved`; `finSaved` added to auth.js `PREF_KEYS`).
+- **Ask a question** (`qbParse`, no AI): recognises measures, time words,
+  splits, every season/region/event/series name and payment type; shows what
+  it used and the words it could not.
+- **📋 WhatsApp** on Reports sends exactly the answer on screen (`finWaQb`).
+- The old rows-and-columns table stays below, folded ("Build a detailed table").
+- UPI code split waits on UPI codes being recorded per payment.
+- Tests: new `test/browser-reports.js` (24 checks); browser-finance and
+  browser-expenses updated for Compare moving into Reports.
