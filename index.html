@@ -1517,6 +1517,8 @@ body.has-va{padding-top:44px}
   display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
 .modal.wide{max-width:620px}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
+/* A form redrawn in place (b263) doesn't pop in again: it just changes. */
+.modal.still{animation:none}
 .modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--gold-l);
   padding:14px 18px;background:var(--plum);display:flex;justify-content:space-between;align-items:center;gap:10px}
 .modal h3 .pencil{margin-right:auto}
@@ -1932,7 +1934,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b261</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b263</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -8820,7 +8822,57 @@ function expSavedPayTo(method){
 function expKeepPayTo(method, payTo){
   try{ const all = JSON.parse(localStorage.getItem('tbs_payto')||'{}')||{}; all[method] = payTo; localStorage.setItem('tbs_payto', JSON.stringify(all)); }catch(e){}
 }
+/* The expense form stays still as it redraws (Gita, 2026-10-20: "it doesn't
+   stay where you are when it refreshes"). Ticking a box, choosing how to be
+   paid back or adding a receipt rebuilds the form, which used to pop in again
+   and jump back to the top. Now whatever was last touched stays on the same
+   spot on screen, the field being typed in keeps its cursor, and there is no
+   pop. Coming back from "Check your expenses" returns to where you were. */
+let _expTouched = null;
+$('#modal').addEventListener('pointerdown', e=>{ _expTouched = e.target; }, true);
+$('#modal').addEventListener('focusin', e=>{ _expTouched = e.target; });
+function expFieldKey(el){
+  if(!el || !el.closest) return '';
+  const q = v => String(v).replace(/["\\]/g, '\\$&');
+  if(el.id) return '#' + q(el.id);
+  for(const a of ['payto', 'same', 'xb']){
+    const h = el.closest('[data-' + a + ']');
+    if(h) return '[data-' + a + '="' + q(h.dataset[a]) + '"]' + (a==='xb' ? '[data-i="' + q(h.dataset.i) + '"]' : '');
+  }
+  const box = el.closest('[id]');
+  if(box && box.id!=='modal') return '#' + q(box.id) + (el.classList.contains('pp-in') ? ' .pp-in' : '');
+  return '';
+}
+function expHold(){
+  const ov = $('#overlay'), m = $('#modal');
+  const body = () => m.querySelector('.m-body');
+  const onForm = !!m.querySelector('.exp-form'), onReview = !!m.querySelector('#xrBack');
+  if(!ov.classList.contains('show') || !(onForm || onReview)) return ()=>{};
+  const b = body(), st = onForm ? (b ? b.scrollTop : 0) : (EXP.formTop || 0), ost = onForm ? ov.scrollTop : (EXP.formOvTop || 0);
+  const act = document.activeElement && m.contains(document.activeElement) ? document.activeElement : null;
+  const anc = onForm ? (act || (_expTouched && m.contains(_expTouched) ? _expTouched : null)) : null;
+  const ancKey = anc ? expFieldKey(anc) : '', ancTop = ancKey ? anc.getBoundingClientRect().top : 0;
+  const actKey = act ? expFieldKey(act) : '';
+  let sel = null; try{ if(act && typeof act.selectionStart==='number') sel = [act.selectionStart, act.selectionEnd]; }catch(e){}
+  return ()=>{
+    m.classList.add('still');
+    const b2 = body();
+    if(b2) b2.scrollTop = st; ov.scrollTop = ost;
+    const a2 = ancKey && m.querySelector(ancKey);
+    if(a2){
+      let d = a2.getBoundingClientRect().top - ancTop;
+      if(b2 && Math.abs(d) > 1){ const was = b2.scrollTop; b2.scrollTop = was + d; d -= b2.scrollTop - was; }
+      if(Math.abs(d) > 1) ov.scrollTop += d;
+    }
+    const f2 = actKey && m.querySelector(actKey);
+    if(f2 && f2.focus && !(f2.classList && f2.classList.contains('pp-in'))){
+      try{ f2.focus({preventScroll:true}); }catch(e){}
+      try{ if(sel) f2.setSelectionRange(sel[0], sel[1]); }catch(e){}
+    }
+  };
+}
 function expDraw(){
+  const keep = expHold();
   const o = EXP.opt, f = EXP.form, edit = !!f.editing;
   const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
   const method = o.methods.find(m=>m.name===f.method) || null;
@@ -8934,6 +8986,7 @@ function expDraw(){
     ${P ? '' : `<div class="m-foot">${o.fin ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`}`, true);
   expBind();
+  keep();
 }
 /* Photos straight from the camera only where there is one to hand (Gita,
    2026-10-20: no "Take a photo" on a computer). */
@@ -9206,6 +9259,8 @@ function expPayAmtLine(x){
 }
 /* Every expense, to check before anything is saved. */
 async function expReview(all){
+  { const b = document.querySelector('#modal .exp-form') && document.querySelector('#modal .m-body');
+    if(b){ EXP.formTop = b.scrollTop; EXP.formOvTop = $('#overlay').scrollTop; } }
   const P = EXP.pub, tot = finTotals(all, x=>[[Number(x.amt), x.cur]]);
   if(all.some(expOtherCur)){
     openModal(`${P ? pubHead('Checking the exchange rate…') : mHead('Checking the exchange rate…')}<div class="m-body"><div class="cash-empty">One moment…</div></div>`, true);
