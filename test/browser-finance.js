@@ -1,5 +1,5 @@
 /* Optional, needs Playwright + Chromium: node test/browser-finance.js
-   b253: the Finance page's first round of improvements, in the practice space.
+   b254: the Finance page's first round of improvements, in the practice space.
    Regions and events in the app's own order; the place search before the
    dates; the Overview's seven figures (Big Books Sold, Adventures Sold,
    Donations, Pending Payments, Gross or Expected Gross with Current Collected,
@@ -186,7 +186,7 @@ const API = 'http://api.test/';
     await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
     t.push(['Esc leaves it as it was', /Reports/.test(await own.$eval('#fpSecs [data-sec="report"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.click('#fpSecs [data-act="editwording"]'); await own.waitForTimeout(500);
-    /* ---- b253 round two: Expenses, Reimbursements, Visualize, the link ---- */
+    /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);
     m = await fpage(own);
     t.push(['Expenses: the bar says Expected Total Expenses $50, Current Expenses $20, while Lunch is owed', /Expected Total Expenses\s*\$50/.test(m) && /Current Expenses \$20/.test(m) && /Reimbursements Due\s*\$30/.test(m)]);

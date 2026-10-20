@@ -58,7 +58,7 @@ const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'dat
   'category', 'payType', 'partnerId',
   'method', 'reimbCur', 'payTo', 'notes', 'receipts', 'byName', 'byEmail', 'byLink', 'forName', 'forEmail',
   'status', 'doneAt', 'doneBy', 'doneNote',
-  // b253: what "Other" is, and how to reach someone who sent it in by a reimbursement link.
+  // b254: what "Other" is, and how to reach someone who sent it in by a reimbursement link.
   'catOther', 'contactPhone', 'contactEmail'];
 const T = '_expenses';
 const PART = 900 * 1024;                    // characters of base64 per stored part
@@ -80,7 +80,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      A signed-in person (their roles decide where they may record and whether
      they are Finance), or a link (its region or events, and the name the
      phone was given). Universal counts as Finance. */
-  /* ---- Reimbursement links (b253) ----
+  /* ---- Reimbursement links (b254) ----
      Finance sends one by WhatsApp or email to anyone, in the app or not, who
      spent money for the tour: it opens a form needing no sign-in, for one
      place or anywhere, and all it can do is send in an expense to be paid

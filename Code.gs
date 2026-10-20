@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b253';
+var SERVER_BUILD = 'b254';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -326,7 +326,7 @@ function financeFacts_() {
 function financeData_() {
   var seasons = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name, closed: !!s.closedAt }; });
   var regs = {}, evs = {}, whOf = {}, partners = {};
-  /* In the app's own order (b253): each season's regions as regionsOrdered_
+  /* In the app's own order (b254): each season's regions as regionsOrdered_
      puts them (their sort, then as created, closed ones last A to Z), and the
      events as eventsOrdered_ does, so Finance never lists them differently. */
   seasons.forEach(function (se) {

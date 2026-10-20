@@ -482,7 +482,7 @@ body.busy #busyBar{opacity:1}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
 .pencil{cursor:pointer;font-size:11px;margin-left:6px;opacity:.65;user-select:none}
-/* Rewriting in place (b253): words that can be rewritten show it, and open where they are. */
+/* Rewriting in place (b254): words that can be rewritten show it, and open where they are. */
 body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:text;text-decoration:underline dotted rgba(91,45,110,.45);text-underline-offset:3px}
 .lbl-in{position:fixed;z-index:400;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .lbl-in-box{background:#fff;color:var(--ink,#222);border:2px solid var(--plum,#5B2D6E);border-radius:6px;padding:2px 6px;outline:none;
@@ -1596,7 +1596,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{background:var(--clay)}
 #toast.editing{pointer-events:auto}
-/* A reimbursement link's page (b253): the form alone. */
+/* A reimbursement link's page (b254): the form alone. */
 body.reimb-mode main, body.reimb-mode .util-bar > :not(.status), body.reimb-mode #sideNav, body.reimb-mode #snFab{display:none !important}
 body.reimb-mode #overlay .modal .x{display:none}
 .reimb-ok{font-size:42px;color:#2E7D4F;text-align:center;margin:6px 0}
@@ -1749,7 +1749,7 @@ body.reimb-mode #overlay .modal .x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b253</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b254</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2091,7 +2091,7 @@ const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 const newSaleId   = () => 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const newBundleId = () => 'B' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
-/* While wording is being edited (b253) a message stays up longer and can be
+/* While wording is being edited (b254) a message stays up longer and can be
    tapped, so its pencil can be reached like any other. */
 function toast(msg,isErr){const t=$('#toast'), ed=(()=>{ try{ return PRACTICE && EDIT_WORDING; }catch(e){ return false; } })();
   t.textContent=msg;t.className=(isErr?'err show':'show')+(ed?' editing':'');
@@ -2989,7 +2989,7 @@ function preorderWarning(lines,verbs){
 /* A share link's key rides along with every request. The server decides what it
    permits — the page only hides what the holder can't use anyway. */
 const SHARE_KEY = (new URLSearchParams(location.search).get('k')||'').trim();
-/* A reimbursement link (b253): ?reimb=rb_… opens only the form for sending in an expense. */
+/* A reimbursement link (b254): ?reimb=rb_… opens only the form for sending in an expense. */
 const REIMB_KEY = (()=>{ const k = (new URLSearchParams(location.search).get('reimb')||'').trim(); return /^rb_[A-Za-z0-9]{8,40}$/.test(k) ? k : ''; })();
 
 /* Who is holding this link. Asked once, kept on the device, and attached to
@@ -6857,7 +6857,7 @@ function openModal(html,wide){
   try{ addTooltipsToClipped(); }catch(e){}
 }
 function closeModal(){
-  if((()=>{ try{ return REIMB_KEY; }catch(e){ return ''; } })()) return;   // a reimbursement link's page is its form (b253)
+  if((()=>{ try{ return REIMB_KEY; }catch(e){ return ''; } })()) return;   // a reimbursement link's page is its form (b254)
   $('#overlay').classList.remove('show');
   // A change that arrived live while the form was open (Phase 4): fetch it now.
   if(typeof LIVE !== 'undefined' && LIVE.due) setTimeout(()=>{ if(LIVE.due && !$('#overlay').classList.contains('show')) liveRev(NaN); }, 0);
@@ -8482,7 +8482,7 @@ function expCardHTML(x, fin){
     btns.push(`<button class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">Edit</button>`);
     btns.push(`<button class="btn btn-danger btn-xs" data-act="expdel" data-id="${esc(x.id)}">Delete</button>`);
   }
-  /* Sent in by a reimbursement link (b253): how to reach them, and a message
+  /* Sent in by a reimbursement link (b254): how to reach them, and a message
      ready to send in one tap: received, or paid back. */
   let contact = '';
   if(fin && (x.contactPhone || x.contactEmail)){
@@ -8507,7 +8507,7 @@ function expCardHTML(x, fin){
 }
 
 
-/* ---- A searchable drop-down (b253): the app's place-finder look, for any list ----
+/* ---- A searchable drop-down (b254): the app's place-finder look, for any list ----
    Items are {v, l} with, for a place list, `kind` (season/region/event, which
    indents it) and `up` (the names above it, so typing "Delhi" keeps Delhi's
    events). A heading row stays while anything beneath it matches. Typing
@@ -8824,7 +8824,7 @@ async function expSave(){
       contactPhone: P ? P.phone : '', contactEmail: P ? P.email : ''});
     if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
     if(P){ reimbPublicDone(); return; }
-    // On the Finance page (b253), its lists and totals take the change at once.
+    // On the Finance page (b254), its lists and totals take the change at once.
     if(FINP.on){ toast(f.editing ? 'Expense saved' : 'Expense recorded'); closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
     toast(f.kind==='reimburse' ? 'Saved. Finance will pay you back.' : 'Expense recorded');
     const i = EXP.list.findIndex(x=>x.id===f.id);
@@ -8852,7 +8852,7 @@ async function receiptOpen(id){
 }
 
 
-/* ---- The reimbursement link's own page (b253) ----
+/* ---- The reimbursement link's own page (b254) ----
    Someone who spent money for the tour, in the app or not, opens the link
    Finance sent them: no sign-in, just the expense form for being paid back,
    and when it is sent, a page saying it has been received. */
@@ -9023,7 +9023,7 @@ function rsDraw(){
     `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
       ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
   const ps = $('#rsPlace'); if(ps) ps.addEventListener('change', ()=>{ RS.id = ps.value; rsDraw(); });
-  // Searchable, as every place list is (b253, practice).
+  // Searchable, as every place list is (b254, practice).
   const lv = d.levels.map(l=>{ const bits = l.label.split(' · ');
     const sid = l.kind==='season' ? l.id : (l.chain||[])[1], rid = l.kind==='event' ? (l.chain||[])[2] : '';
     return {v:l.id, l:(l.kind==='all' ? 'Everywhere' : bits[0]) + (l.closed?' (closed)':''), shown:l.label, tag:d.rules.levels[l.id]?'•':'',
@@ -9071,7 +9071,7 @@ document.addEventListener('paste', e=>{
                    (sold includes pre-orders; Other titles count as Big Books)
      Donations     donations in hand
      Pending Payments  still owed to us
-     Gross         our own money in hand (b253: formerly "Collections"; the
+     Gross         our own money in hand (b254: formerly "Collections"; the
                    consignment groups' money is theirs and kept apart)
      Expected Gross    Gross + Pending Payments, shown in its place while
                    anything is still owed, with Current Collected beneath
@@ -9141,7 +9141,7 @@ function finFiltersHTML(f, search){
   </div>`;
 }
 
-/* ---- The place search (b253): the app's own drop-down search box (Add Stock's
+/* ---- The place search (b254): the app's own drop-down search box (Add Stock's
    place finder), over every season, region and event, in the app's order.
    Typing narrows it; a season or region that matches keeps everything beneath
    it. Choosing one takes the page there. ---- */
@@ -9202,7 +9202,7 @@ function finDist(sold, gift){
   if(!sold && !gift) return '';
   return sold + ' Sold' + (gift ? ' + ' + gift + ' Gift' + (gift===1?'':'s') + ' = ' + (sold+gift) + ' Distributed' : '');
 }
-/* Gross, or Expected Gross while anything is still owed (b253, Gita's rule
+/* Gross, or Expected Gross while anything is still owed (b254, Gita's rule
    for Finance): then it is everything in hand plus everything owed, and what
    is actually in hand is beneath it as Current Collected. */
 const finPending = a => a.pend > 0.004;
@@ -9457,7 +9457,7 @@ function finBind(){
    region › event path to walk down — except that what you see there is the
    money. Finance people, who cannot use the rest of the app yet, land here. */
 var FINP = { on:false, sec:'overview', scope:'', me:null };
-/* The bar's sections (b253: Expenses, Reimbursements and Visualize added;
+/* The bar's sections (b254: Expenses, Reimbursements and Visualize added;
    Reimbursement Settings lives inside Reimbursements now, though its old
    address, #finance/settings, still lands there). */
 const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursements'], ['visual','📊','Visualize'],
@@ -9482,7 +9482,7 @@ function finScopeF(){
 }
 /* Write a section into the page, or (outside the page) into a window. */
 function finHost(title, body, foot){
-  if(FINP.on && FINP.sec==='reimb'){         // the settings, inside Reimbursements (b253)
+  if(FINP.on && FINP.sec==='reimb'){         // the settings, inside Reimbursements (b254)
     $('#fpBody').innerHTML = `${finReimbTop()}<h3 class="fin-h3">${esc(title)}</h3>${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
     finBindReimbTop(); return;
   }
@@ -9608,7 +9608,7 @@ function finRender(){
 }
 
 
-/* ---- Expenses, Reimbursements and Visualize (b253, Gita's design) ----
+/* ---- Expenses, Reimbursements and Visualize (b254, Gita's design) ----
    Every expense at the place being looked at, from the expenses list (EXP.all),
    each with its dollar value from the finance figures. Above both lists, the
    totals bar: Total Expenses — or, while anyone is still to be paid back,
@@ -9850,7 +9850,7 @@ function finWaVisual(L){
   if(rows.length) L.push('Total Expenses - ' + finUsd(total));
 }
 
-/* ---- Finance's WhatsApp reports (b253) ----
+/* ---- Finance's WhatsApp reports (b254) ----
    Each 📋 copies exactly what sits beside it, and 📋 Report at the top copies
    the whole section being looked at, with a heading for each part — the same
    rules as the rest of the app's reports (buildReport): a line per figure,
@@ -10216,7 +10216,7 @@ function lblRestore(el){
 /* Everything with words in it: the listed kinds first, then every other piece
    of text on screen, so a pencil is offered everywhere — dialog headings,
    counts like "7 still coming", anything. */
-// Passing messages take a pencil in the practice space (b253), where it is being tried first.
+// Passing messages take a pencil in the practice space (b254), where it is being tried first.
 const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#bld,[contenteditable]' + (PRACTICE ? '' : ',#toast');
 function lblTargets(scope){
   const out = new Set();
@@ -10413,7 +10413,7 @@ function labelSave(key, text, origTyped){
   others.forEach(k=>commit({action:'saveLabel', key:k, text:''}, st=>{ if(st.labels) delete st.labels[k]; }, null, {keepOpen:true}));
 }
 
-/* ---- Rewriting in place (b253, Gita: "everything becomes an editable field,
+/* ---- Rewriting in place (b254, Gita: "everything becomes an editable field,
    no pop-up") ----
    With Edit Wording on, tap any words (a button's words by its pencil, so the
    button still works) and a box opens exactly over them, in their own size
@@ -16430,7 +16430,7 @@ document.addEventListener('click',e=>{
   const p = e.target && e.target.closest && e.target.closest('.pencil');
   if(!p) return;
   e.preventDefault(); e.stopPropagation();
-  // In place in the practice space (b253), where it is being tried first; the window on the live app.
+  // In place in the practice space (b254), where it is being tried first; the window on the live app.
   if(PRACTICE) labelInline(p.dataset.key); else editLabelModal(p.dataset.key);
 }, true);
 /* With Edit Wording on, tapping words opens them for rewriting where they are.
@@ -16939,7 +16939,7 @@ document.addEventListener('click',e=>{
 (function init(){
   if(CONFIG.PRABHUPADA_IMG) $('#imgLeft').innerHTML=`<img src="${CONFIG.PRABHUPADA_IMG}" alt="Śrīla Prabhupāda">`;
   if(CONFIG.GURUDEVA_IMG)   $('#imgRight').innerHTML=`<img src="${CONFIG.GURUDEVA_IMG}" alt="Śrīla Gurudeva">`;
-  // A reimbursement link is only its form: nothing else of the app loads (b253).
+  // A reimbursement link is only its form: nothing else of the app loads (b254).
   if(REIMB_KEY){ reimbPublicStart(); return; }
 
   // Pick up where you left off — before the first paint, so the page never

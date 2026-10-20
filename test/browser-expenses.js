@@ -97,7 +97,7 @@ const API = 'http://api.test/';
     await page.click('#fakeGsi'); await page.waitForTimeout(2500);
     return page;
   }
-  // The searchable drop-downs (b253): type, then choose the row.
+  // The searchable drop-downs (b254): type, then choose the row.
   const pick = async (page, id, typed, v) => { await page.click('#' + id + ' .pp-in'); await page.fill('#' + id + ' .pp-in', typed);
     await page.waitForTimeout(150); await page.click('#' + id + ' .pp-row[data-v="' + v + '"]'); };
   const modal = page => page.evaluate(() => document.querySelector('#modal').innerText);

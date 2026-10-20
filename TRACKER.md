@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b253**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b254**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -909,7 +909,7 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
-## Done in b253 — Finance, first round of Gita's improvements (practice)
+## Done in b254 — Finance, first round of Gita's improvements (practice)
 
 - **Regions and events in the app's order** on every Finance list and dropdown:
   Code.gs `financeData_` now walks `regionsOrdered_` / `eventsOrdered_` (sort,
