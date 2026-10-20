@@ -336,6 +336,49 @@ button.sc-transit:hover{color:#1F4F86}
 .exp-bi-a{white-space:nowrap}
 .exp-bi-b{display:flex;gap:4px}
 .exp-batch>.muted-note{display:block;margin-top:8px}
+/* Reports: pick your own data (b256) */
+.qb-ask{border:1.5px solid var(--gold-l);background:var(--paper2);border-radius:12px;padding:12px 14px;margin:10px 0}
+.qb-ask-l{display:block;font-weight:700;color:var(--plum);margin-bottom:6px}
+.qb-ask-row{display:flex;gap:8px}
+.qb-ask-row input{flex:1 1 auto;min-width:0}
+#qbAsk,.qb-line .pp-in,.qb-dates input{padding:9px 11px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink);font-size:14px;box-sizing:border-box}
+#qbAsk:focus,.qb-line .pp-in:focus,.qb-dates input:focus{outline:none;border-color:var(--saffron)}
+.qb-line .pp-in{width:100%}
+.qb-heard{margin-top:8px;font-size:13px;color:var(--ink)}
+.qb-left{color:var(--clay)}
+.qb-qs{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.qb-q{border:1.5px solid var(--line-d);background:var(--paper);border-radius:999px;padding:5px 11px;font:inherit;font-size:13px;cursor:pointer;color:var(--plum)}
+.qb-q:hover{border-color:var(--saffron)}
+.qb-mine{display:inline-flex;align-items:center;gap:2px;padding:0 4px 0 0;border-color:var(--gold)}
+.qb-mine button{border:0;background:none;font:inherit;font-size:13px;cursor:pointer;padding:5px 4px 5px 11px;color:var(--plum)}
+.qb-mine .x{padding:2px 6px;color:var(--muted)}
+.qb-line{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px 14px;border:1.5px solid var(--line-d);border-radius:12px;padding:12px 14px;background:var(--paper);margin:8px 0}
+.qb-part{display:flex;flex-direction:column;gap:4px;min-width:0}
+.qb-wide{grid-column:1/-1}
+.qb-w{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.qb-shows{display:flex;flex-wrap:wrap;gap:6px}
+.qb-show{border:1.5px solid var(--line-d);background:var(--paper);border-radius:999px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+.qb-show.on{background:var(--plum);border-color:var(--plum);color:#fff}
+.qb-at{display:flex;flex-direction:column;gap:6px}
+.qb-atchip{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;background:var(--paper2);border:1.5px solid var(--gold-l);border-radius:999px;padding:3px 4px 3px 10px;font-size:13px}
+.qb-atchip .x{border:0;background:none;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;padding:0 4px}
+.qb-dates{display:flex;align-items:center;gap:6px;margin-top:4px}
+.qb-dates input{flex:1 1 0;min-width:0}
+.qb-as{flex-wrap:wrap}
+.qb-sent{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 10px;font-size:13px;color:var(--muted)}
+.qb-sent>span{flex:1 1 260px}
+.qb-out{margin:6px 0 10px}
+.qb-out .fin-ts,.qb-out .fin-cs{white-space:pre-line}
+.qb-vs{font-size:12px;color:var(--muted);margin-top:4px}
+.qb-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin:4px 0 8px}
+.qb-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.qb-bar2{margin-top:3px;opacity:.9}
+svg.qb-chart{width:100%;height:auto;max-width:720px;display:block}
+.fin-bar-t:has(.qb-bar2){height:auto}
+.qb-grid{stroke:var(--line);stroke-width:1}
+.qb-tick{font-size:11px;fill:var(--muted)}
+.qb-old{margin-top:18px;border-top:1.5px solid var(--line);padding-top:10px}
+.qb-old>summary{cursor:pointer;font-weight:600;color:var(--plum);margin-bottom:8px}
 .exp-tot{border-bottom:0;border-top:1.5px solid var(--gold-l);margin-top:2px}
 /* Dates & Repeats */
 .fin-dates input{width:100%;min-width:0;box-sizing:border-box}
@@ -1783,7 +1826,7 @@ body.reimb-mode #overlay .modal .x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b255</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b256</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -9426,6 +9469,611 @@ function finOverviewHTML(){
       <tfoot>${row({label:'Total', go:'', a}, 'fin-tot')}</tfoot></table></div>`;
 }
 
+/* ---- Reports (b256, Gita's design): pick your own data ----
+   One line of choices answers any question: Show [what] At [where] During
+   [when] Split by [what] Only [a narrower filter] Compared with [what] As
+   [cards, a table, bars, a pie, a line, a list]. Changing any choice changes
+   the answer at once. Ready-made questions are saved choices; ⭐ keeps your
+   own (with your login). "Ask a question" reads a typed question and sets the
+   choices from the words it knows (no AI: measures, time words, splits, and
+   every place, series, title and payment type in the data).
+   Money shows in dollars, with the actual local currency beside it. Book
+   counts keep Big Books and Adventures apart, in the app's one form. */
+const QB_SHOW = [
+  {k:'books', l:'Books'}, {k:'bb', l:'Big Books'}, {k:'av', l:'Adventures'}, {k:'pre', l:'Pre-orders'}, {k:'gifts', l:'Gifts'},
+  {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'}, {k:'pend', l:'Pending Payments'}, {k:'don', l:'Donations'},
+  {k:'exp', l:'Expenses'}, {k:'net', l:'Net'}, {k:'margin', l:'Margin'},
+  {k:'npay', l:'Number of payments'}, {k:'days', l:'Days it ran'}, {k:'tail', l:'Last event to region end'}];
+const QB_DURING = [
+  {v:'ever', l:'Ever'}, {v:'thisYear', l:'This year'}, {v:'lastYear', l:'Last year'}, {v:'twoYears', l:'Two years ago'},
+  {v:'thisMonth', l:'This month'}, {v:'lastMonth', l:'Last month'}, {v:'twoMonths', l:'Two months ago'},
+  {v:'last3', l:'The last three months'}, {v:'last30', l:'The last 30 days'}, {v:'custom', l:'Dates I choose'}];
+const QB_SPLIT = [
+  {v:'', l:'Nothing (one answer)'}, {v:'season', l:'Season'}, {v:'region', l:'Region'}, {v:'event', l:'Event'},
+  {v:'seasonSeries', l:'Recurring season (years together)'}, {v:'regionSeries', l:'Recurring region (years together)'},
+  {v:'eventSeries', l:'Recurring event (years together)'},
+  {v:'year', l:'Year'}, {v:'month', l:'Month'}, {v:'title', l:'Title'}, {v:'kind', l:'Type of book'}, {v:'language', l:'Language'},
+  {v:'pay', l:'Payment type'}, {v:'upi', l:'UPI code'}, {v:'seller', l:'Seller'}, {v:'type', l:'Sale, pre-order or donation'},
+  {v:'category', l:'Kind of expense'}];
+const QB_AS = [{v:'cards', l:'Numbers'}, {v:'table', l:'Table'}, {v:'bars', l:'Bars'}, {v:'pie', l:'Pie'}, {v:'line', l:'Line over time'}, {v:'list', l:'List of payments'}];
+const qbDefault = () => ({show:['books','coll','exp','net'], at:[], during:'ever', from:'', to:'', split:'', only:'', cmp:'', as:'cards'});
+const QB_READY = [
+  {l:'Books ever sold', st:{show:['books'], during:'ever'}},
+  {l:'Money from all books ever', st:{show:['coll','bb','av'], during:'ever'}},
+  {l:'This year, last year, two years ago', st:{show:['books','coll','net'], during:'ever', split:'year', as:'table'}},
+  {l:'This month and the two before', st:{show:['books','coll'], during:'last3', split:'month', as:'table'}},
+  {l:'The last event', st:{show:['books','coll','exp','net'], at:['last:e']}},
+  {l:'The last region', st:{show:['books','coll','exp','net'], at:['last:r']}},
+  {l:'Books by type, per region', st:{show:['bb','av'], split:'region', as:'table'}},
+  {l:'Books by type, per year', st:{show:['bb','av'], split:'year', as:'table'}},
+  {l:'Margin this year vs last year', st:{show:['coll','exp','net','margin'], during:'thisYear', cmp:'lastyear'}},
+  {l:'This season vs last year\'s', st:{show:['books','coll','net'], cmp:'series'}},
+  {l:'Pre-orders vs last time', st:{show:['pre'], cmp:'series'}},
+  {l:'How long each event ran', st:{show:['days'], split:'event', as:'table'}},
+  {l:'Last event to region end', st:{show:['tail'], split:'region', as:'table'}},
+  {l:'UPI payments, listed', st:{show:['coll'], only:'pay:UPI', as:'list'}},
+  {l:'Payments by type', st:{show:['coll'], split:'pay', as:'pie'}},
+  {l:'Gross by month', st:{show:['coll'], split:'month', as:'line'}}];
+
+const QB = { st:null, ask:'', heard:null };
+function qbState(){
+  if(!QB.st){ try{ QB.st = JSON.parse(localStorage.getItem('tbs_qb')||'null'); }catch(e){} QB.st = Object.assign(qbDefault(), QB.st || {}); }
+  return QB.st;
+}
+function qbSet(patch, keepHeard){
+  QB.st = Object.assign(qbState(), patch);
+  if(!keepHeard) QB.heard = null;
+  try{ localStorage.setItem('tbs_qb', JSON.stringify(QB.st)); }catch(e){}
+  finRender();
+}
+
+/* ---- Where: places, series, "the last event", picked by search ---- */
+const qbDay = d => d instanceof Date ? d.toISOString().slice(0,10) : String(d||'');
+function qbPlaceEnd(kind, x){
+  // When it ended: its own dates, else its last sale.
+  if(x.to) return x.to;
+  const D = FIN.D, k = kind==='e' ? 'e' : kind==='r' ? 'r' : 's';
+  let last = '';
+  D.sales.forEach(y=>{ if(y[k]===x.id && y.d > last) last = y.d; });
+  return last || x.from || '';
+}
+function qbLast(kind){
+  const D = FIN.D, list = kind==='e' ? D.events : D.regions;
+  let best = null, bestEnd = '';
+  list.forEach(x=>{ const end = qbPlaceEnd(kind, x); if(end && end > bestEnd){ best = x; bestEnd = end; } });
+  return best;
+}
+function qbAtItems(){
+  const D = FIN.D, out = [{v:'', l:'Everywhere, every season', kind:'season'},
+    {v:'last:e', l:'The last event', tag:'most recent'}, {v:'last:r', l:'The last region', tag:'most recent'}];
+  const ser = {};
+  ['seasons','regions','events'].forEach(k=>D[k].forEach(x=>{ (ser[k+'|'+x.series] = ser[k+'|'+x.series] || []).push(x); }));
+  D.seasons.forEach(se=>{
+    out.push({v:'s:'+se.id, l:se.name, kind:'season'});
+    D.regions.filter(r=>r.seasonId===se.id).forEach(r=>{
+      out.push({v:'r:'+r.id, l:r.name, kind:'region', up:[se.name], upIds:['s:'+se.id], shown:r.name + ' · ' + se.name});
+      D.events.filter(e=>e.regionId===r.id).forEach(e=>out.push({v:'e:'+e.id, l:e.name, kind:'event', up:[r.name, se.name],
+        upIds:['r:'+r.id, 's:'+se.id], shown:e.name + ' · ' + r.name}));
+    });
+  });
+  // A recurring one, every year together, when it has more than one.
+  const word = {seasons:'season', regions:'region', events:'event'};
+  Object.keys(ser).filter(k=>ser[k].length > 1).sort().forEach(k=>{
+    const [kind, name] = k.split('|');
+    out.push({v:'S:'+kind+':'+name, l:'Every ' + name, tag:'recurring ' + word[kind] + ', ' + ser[k].length + ' times'});
+  });
+  return out;
+}
+function qbAtLabel(v){
+  const D = FIN.D, I = finIdx();
+  if(!v) return 'Everywhere';
+  if(v==='last:e'){ const x = qbLast('e'); return 'The last event' + (x ? ' (' + x.name + ')' : ''); }
+  if(v==='last:r'){ const x = qbLast('r'); return 'The last region' + (x ? ' (' + x.name + ')' : ''); }
+  if(v.startsWith('S:')) return 'Every ' + v.split(':').slice(2).join(':');
+  const [t, id] = [v[0], v.slice(2)];
+  const x = t==='s' ? I.s[id] : t==='r' ? I.r[id] : I.e[id];
+  if(!x) return '(no longer listed)';
+  return t==='e' ? x.name + ' · ' + ((I.r[x.regionId]||{}).name||'') : t==='r' ? x.name + ' · ' + ((I.s[x.seasonId]||{}).name||'') : x.name;
+  void D;
+}
+// Each At choice as places: {t:'s'|'r'|'e', x}.
+function qbAtPlaces(at){
+  const D = FIN.D, I = finIdx(), out = [];
+  const list = at && at.length ? at : (()=>{ const f = finScopeF(); return f.e ? ['e:'+f.e] : f.r ? ['r:'+f.r] : f.s ? ['s:'+f.s] : []; })();
+  list.forEach(v=>{
+    if(v==='last:e'){ const x = qbLast('e'); if(x) out.push({t:'e', x}); return; }
+    if(v==='last:r'){ const x = qbLast('r'); if(x) out.push({t:'r', x}); return; }
+    if(v.startsWith('S:')){ const [, kind, ...n] = v.split(':'); const name = n.join(':');
+      D[kind].filter(x=>x.series===name).forEach(x=>out.push({t:kind[0], x})); return; }
+    const t = v[0], id = v.slice(2), x = t==='s' ? I.s[id] : t==='r' ? I.r[id] : I.e[id];
+    if(x) out.push({t, x});
+  });
+  return out;
+}
+const qbIn = (pl, y) => !pl.length || pl.some(p=>p.t==='s' ? y.s===p.x.id : p.t==='r' ? y.r===p.x.id : y.e===p.x.id);
+
+/* ---- When ---- */
+function qbRange(st){
+  const now = new Date(), y = now.getUTCFullYear(), m = now.getUTCMonth();
+  const ym = (yy, mm) => new Date(Date.UTC(yy, mm, 1));
+  const end = (yy, mm) => new Date(Date.UTC(yy, mm + 1, 0));
+  switch(st.during){
+    case 'thisYear': return {from:y+'-01-01', to:y+'-12-31'};
+    case 'lastYear': return {from:(y-1)+'-01-01', to:(y-1)+'-12-31'};
+    case 'twoYears': return {from:(y-2)+'-01-01', to:(y-2)+'-12-31'};
+    case 'thisMonth': return {from:qbDay(ym(y,m)), to:qbDay(end(y,m))};
+    case 'lastMonth': return {from:qbDay(ym(y,m-1)), to:qbDay(end(y,m-1))};
+    case 'twoMonths': return {from:qbDay(ym(y,m-2)), to:qbDay(end(y,m-2))};
+    case 'last3': return {from:qbDay(ym(y,m-2)), to:qbDay(end(y,m))};
+    case 'last30': { const a = new Date(now); a.setUTCDate(a.getUTCDate()-29); return {from:qbDay(a), to:qbDay(now)}; }
+    case 'custom': return {from:st.from||'', to:st.to||''};
+  }
+  return {from:'', to:''};
+}
+const qbShift = (d, years, days) => { if(!d) return ''; const t = new Date(d + 'T00:00:00Z');
+  if(years) t.setUTCFullYear(t.getUTCFullYear() + years); if(days) t.setUTCDate(t.getUTCDate() + days); return qbDay(t); };
+const qbDays = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5);
+
+/* ---- Only ---- */
+function qbOnlyItems(){
+  const D = FIN.D, pays = new Set(), cats = new Set();
+  D.sales.forEach(x=>x.pay.forEach(p=>pays.add(p))); D.expenses.forEach(x=>cats.add(x.cat));
+  return [{v:'', l:'Everything'}, {v:'book:big', l:'Only Big Books'}, {v:'book:aotm', l:'Only Adventures'},
+    {v:'type:PREORDER', l:'Only pre-orders'}, {v:'type:SALE', l:'Only sales (no pre-orders)'}, {v:'type:DONATION', l:'Only donations'}]
+    .concat([...pays].sort().map(p=>({v:'pay:'+p, l:'Only ' + p + ' payments'})))
+    .concat([...cats].sort().map(c=>({v:'cat:'+c, l:'Only expenses for ' + c})));
+}
+const qbOnlyLabel = v => (qbOnlyItems().find(x=>x.v===v) || {l: v ? v.split(':').slice(1).join(':') : 'Everything'}).l;
+
+/* The rows a set of choices covers. */
+function qbRows(st, over){
+  const D = FIN.D, pl = (over && over.places) || qbAtPlaces(st.at), R = (over && over.range) || qbRange(st);
+  const inT = y => (!R.from || y.d >= R.from) && (!R.to || y.d <= R.to);
+  let sales = D.sales.filter(y=>qbIn(pl, y) && inT(y)), exps = D.expenses.filter(y=>qbIn(pl, y) && inT(y));
+  const [ok, val] = [String(st.only||'').split(':')[0], String(st.only||'').split(':').slice(1).join(':')];
+  if(ok==='pay'){ sales = sales.filter(y=>y.pay.includes(val)); exps = []; }
+  if(ok==='book'){ sales = sales.filter(y=>y.b && (val==='aotm' ? y.c==='aotm' : y.c!=='aotm')); exps = []; }
+  if(ok==='type'){ sales = sales.filter(y=>y.k===val); exps = []; }
+  if(ok==='cat'){ sales = []; exps = exps.filter(y=>y.cat===val); }
+  return {sales, exps, places:pl, range:R};
+}
+
+/* ---- One measure for one group ---- */
+function qbLocal(sales, exps, which){
+  const by = {};
+  if(which==='exp') exps.forEach(x=>{ if(x.st==='declined' || x.con) return; by[x.cur] = (by[x.cur]||0) + x.amt; });
+  else sales.forEach(x=>{ if(x.con) return; if(which==='don' && x.k!=='DONATION') return; Object.keys(x.cur||{}).forEach(c=>{ by[c] = (by[c]||0) + x.cur[c]; }); });
+  const ks = Object.keys(by).filter(c=>Math.abs(by[c])>0.004);
+  // Dollars only, already shown: nothing to add.
+  if(!ks.length || (ks.length===1 && ks[0]==='USD')) return '';
+  return ks.sort().map(c=>cashFmt(by[c], c)).join(' + ');
+}
+function qbPlacesOf(g){
+  // The places a group stands for: the group's own (split by place), else the choices'.
+  return g.places || [];
+}
+function qbMeasure(k, g){
+  const a = g.a || (g.a = finAgg(g.sales, g.exps));
+  const usd = n => ({n, v:finUsd(n)});
+  switch(k){
+    case 'books': { const n = a.bb + a.bbg + a.av + a.avg;
+      return {n, v:String(n) + ' distributed', sub:'Big Books ' + (finDist(a.bb, a.bbg) || '0') + '\nAdventures ' + (finDist(a.av, a.avg) || '0')}; }
+    case 'bb': return {n:a.bb + a.bbg, v:finDist(a.bb, a.bbg) || '0 Sold', sub:finUsd(a.bbu)};
+    case 'av': return {n:a.av + a.avg, v:finDist(a.av, a.avg) || '0 Sold', sub:finUsd(a.avu)};
+    case 'pre': { let bb = 0, av = 0, usdv = 0;
+      g.sales.forEach(x=>{ if(x.k!=='PREORDER' || x.g || !x.b) return; const n = x.q || 1; if(x.c==='aotm') av += n; else bb += n; usdv += x.gu + x.pu; });
+      return {n:bb+av, v:String(bb+av), sub:'Big Books ' + bb + ' · Adventures ' + av + ' · ' + finUsd(usdv)}; }
+    case 'gifts': return {n:a.bbg + a.avg, v:String(a.bbg + a.avg), sub:'Big Books ' + a.bbg + ' · Adventures ' + a.avg};
+    case 'coll': return Object.assign(usd(a.coll), {sub:qbLocal(g.sales, g.exps, 'coll')});
+    case 'gross': return Object.assign(usd(a.gross), {sub:'Current Collected ' + finUsd(a.coll)});
+    case 'pend': return usd(a.pend);
+    case 'don': return Object.assign(usd(a.don), {sub:qbLocal(g.sales, g.exps, 'don')});
+    case 'exp': return Object.assign(usd(a.exp), {sub:qbLocal(g.sales, g.exps, 'exp')});
+    case 'net': return usd(a.net);
+    case 'margin': return {n:a.margin, v:a.margin===null ? '—' : Math.round(a.margin*10)/10 + '%'};
+    case 'npay': return {n:g.sales.length, v:String(g.sales.length)};
+    case 'days': {
+      const pl = qbPlacesOf(g);
+      let from = '', to = '';
+      pl.forEach(p=>{ const f = p.x.from || '', t = qbPlaceEnd(p.t, p.x);
+        if(f && (!from || f < from)) from = f; if(t && (!to || t > to)) to = t; });
+      if(!from){ g.sales.forEach(x=>{ if(x.d && (!from || x.d < from)) from = x.d; }); }
+      if(!to){ g.sales.forEach(x=>{ if(x.d && x.d > to) to = x.d; }); }
+      if(!from || !to) return {n:null, v:'—', sub:'no dates yet'};
+      const n = qbDays(from, to) + 1;
+      return {n, v:n + ' day' + (n===1?'':'s'), sub:from + ' to ' + to + (pl.some(p=>p.x.from) ? '' : ' (first to last sale)')};
+    }
+    case 'tail': {
+      const regs = qbPlacesOf(g).filter(p=>p.t==='r');
+      if(regs.length!==1) return {n:null, v:'—', sub:'for one region at a time'};
+      const r = regs[0].x, evs = FIN.D.events.filter(e=>e.regionId===r.id);
+      const lastEv = evs.reduce((m,e)=>{ const t = qbPlaceEnd('e', e); return t > m ? t : m; }, '');
+      const end = r.to || '';
+      if(!lastEv || !end) return {n:null, v:'—', sub:!end ? 'the region has no end date yet' : 'no events yet'};
+      const n = qbDays(lastEv, end);
+      return {n, v:n + ' day' + (n===1?'':'s'), sub:'last event ' + lastEv + ', region ended ' + end};
+    }
+  }
+  return {n:null, v:'—'};
+}
+const qbShowLabel = k => (QB_SHOW.find(m=>m.k===k)||{}).l || k;
+
+/* ---- Split into groups ---- */
+function qbGroups(st, rows){
+  const D = FIN.D, I = finIdx(); FIN.I = I;
+  if(!st.split) return [{label:'All', sales:rows.sales, exps:rows.exps, places:rows.places}];
+  const groups = new Map();
+  const key = (x, isExp) => {
+    switch(st.split){
+      case 'year': return (x.d||'').slice(0,4) || '(no date)';
+      case 'upi': return isExp ? null : x.pay.includes('UPI') ? 'UPI code not recorded yet' : null;
+    }
+    return finDimVal(st.split, x, isExp);
+  };
+  const placeOf = x => st.split==='season' ? (I.s[x.s] ? [{t:'s', x:I.s[x.s]}] : [])
+    : st.split==='region' ? (I.r[x.r] ? [{t:'r', x:I.r[x.r]}] : [])
+    : st.split==='event' ? (I.e[x.e] ? [{t:'e', x:I.e[x.e]}] : []) : null;
+  const put = (x, isExp) => {
+    const k = key(x, isExp); if(k===null || k===undefined) return;
+    if(!groups.has(k)) groups.set(k, {label:k, sales:[], exps:[], places:placeOf(x) || rows.places, order:x});
+    groups.get(k)[isExp?'exps':'sales'].push(x);
+  };
+  rows.sales.forEach(x=>put(x, false)); rows.exps.forEach(x=>put(x, true));
+  // Places with nothing recorded still show, so "how long each event ran" lists every event.
+  if(st.split==='event' || st.split==='region'){
+    const t = st.split==='event' ? 'e' : 'r', list = st.split==='event' ? D.events : D.regions;
+    list.filter(x=>!rows.places.length || rows.places.some(p=>p.t==='s' ? (t==='r' ? x.seasonId===p.x.id : (I.r[x.regionId]||{}).seasonId===p.x.id)
+        : p.t==='r' ? (t==='e' ? x.regionId===p.x.id : x.id===p.x.id) : (t==='e' && x.id===p.x.id)))
+      .forEach(x=>{ const k = finDimVal(st.split, t==='e' ? {e:x.id, r:x.regionId, s:(I.r[x.regionId]||{}).seasonId} : {r:x.id, s:x.seasonId}, false);
+        if(!groups.has(k)) groups.set(k, {label:k, sales:[], exps:[], places:[{t, x}]}); });
+  }
+  let out = [...groups.values()];
+  const timeSplit = st.split==='year' || st.split==='month';
+  const placeRank = g => { const p = (g.places||[])[0]; if(!p) return 1e9;
+    const list = p.t==='s' ? D.seasons : p.t==='r' ? D.regions : D.events; return list.indexOf(p.x); };
+  if(timeSplit) out.sort((a,b)=>a.label.localeCompare(b.label));
+  else if(['season','region','event'].includes(st.split)) out.sort((a,b)=>placeRank(a) - placeRank(b));
+  else { const m = st.show[0]; out.sort((a,b)=>(qbMeasure(m, b).n||0) - (qbMeasure(m, a).n||0) || a.label.localeCompare(b.label)); }
+  return out;
+}
+
+/* ---- Compared with ---- */
+function qbCmpItems(st){
+  const out = [{v:'', l:'Nothing'}];
+  const R = qbRange(st);
+  if(R.from && R.to){ out.push({v:'prev', l:'The period before'}); out.push({v:'lastyear', l:'The same time last year'}); }
+  out.push({v:'series', l:'The previous one in its series'});
+  qbAtItems().filter(x=>x.v && !x.v.startsWith('last:')).forEach(x=>out.push({v:'at:'+x.v, l:'Another place: ' + (x.shown || x.l), kind:x.kind}));
+  return out;
+}
+// The other side of the comparison: the same choices over another time or place, and what to call it.
+function qbOther(st, rows){
+  const c = st.cmp || '';
+  if(!c) return null;
+  const R = rows.range;
+  if(c==='lastyear'){
+    if(!R.from || !R.to) return null;
+    return {name:'Same time last year', rows:qbRows(st, {places:rows.places, range:{from:qbShift(R.from, -1), to:qbShift(R.to, -1)}})};
+  }
+  if(c==='prev'){
+    if(!R.from || !R.to) return null;
+    const n = qbDays(R.from, R.to) + 1;
+    return {name:'The period before', rows:qbRows(st, {places:rows.places, range:{from:qbShift(R.from, 0, -n), to:qbShift(R.from, 0, -1)}})};
+  }
+  if(c==='series'){
+    if(rows.places.length!==1) return {name:'The previous one in its series', none:'Choose one season, region or event under At (or above) to compare it with the time before.'};
+    const p = rows.places[0], D = FIN.D, list = p.t==='s' ? D.seasons : p.t==='r' ? D.regions : D.events;
+    const same = list.filter(x=>x.series===p.x.series && x.id!==p.x.id);
+    const when = x => x.from || qbPlaceEnd(p.t, x) || '';
+    const mine = when(p.x);
+    const before = same.filter(x=>!mine || !when(x) || when(x) < mine).sort((a,b)=>when(b).localeCompare(when(a)))[0];
+    if(!before) return {name:'The previous one in its series', none:'Nothing earlier in the series “' + p.x.series + '” yet.'};
+    return {name:before.name + (p.t==='s' ? '' : ' · ' + (p.t==='r' ? (finIdx().s[before.seasonId]||{}).name : (finIdx().r[before.regionId]||{}).name)),
+      rows:qbRows(st, {places:[{t:p.t, x:before}], range:rows.range})};
+  }
+  if(c.startsWith('at:')){
+    const v = c.slice(3), pl = qbAtPlaces([v]);
+    if(!pl.length && v) return null;
+    return {name:qbAtLabel(v), rows:qbRows(st, {places:pl, range:rows.range})};
+  }
+  return null;
+}
+function qbChange(a, b){
+  if(a===null || b===null || a===undefined || b===undefined || !b) return '';
+  const p = Math.round((a - b) / Math.abs(b) * 100);
+  return `<span class="fin-chg ${p>=0?'up':'down'}">${p>=0?'▲':'▼'}${Math.abs(p)}%</span>`;
+}
+
+/* ---- The whole answer ---- */
+function qbAnswer(){
+  const st = qbState(), rows = qbRows(st), groups = qbGroups(st, rows), other = qbOther(st, rows);
+  const oGroups = other && other.rows ? qbGroups(st, other.rows) : null;
+  return {st, rows, groups, other, oGroups, total:{label:'Total', sales:rows.sales, exps:rows.exps, places:rows.places},
+    oTotal: other && other.rows ? {label:'Total', sales:other.rows.sales, exps:other.rows.exps, places:other.rows.places} : null};
+}
+function qbSentence(st){
+  st = st || qbState();
+  const R = qbRange(st), during = st.during==='custom' ? (R.from || '…') + ' to ' + (R.to || '…') : (QB_DURING.find(x=>x.v===st.during)||{}).l || 'Ever';
+  const at = st.at.length ? st.at.map(qbAtLabel).join(' + ') : (finScopeName() || 'Everywhere');
+  return 'Show ' + st.show.map(qbShowLabel).join(', ') + ' · At ' + at + ' · During ' + during.toLowerCase().replace(/^ever$/, 'all time')
+    + (st.split ? ' · Split by ' + ((QB_SPLIT.find(x=>x.v===st.split)||{}).l||'').toLowerCase() : '')
+    + (st.only ? ' · ' + qbOnlyLabel(st.only) : '')
+    + (st.cmp ? ' · Compared with ' + ((qbCmpItems(st).find(x=>x.v===st.cmp)||{}).l||'').replace(/^Another place: /,'').toLowerCase() : '');
+}
+
+/* Charts: the first figure chosen, one bar or slice per group. */
+function qbBarsHTML(ans){
+  const k = ans.st.show[0], rows = ans.groups.map(g=>({l:g.label, m:qbMeasure(k, g)})).filter(r=>r.m.n!==null);
+  const oBy = {}; (ans.oGroups||[]).forEach(g=>{ oBy[g.label] = qbMeasure(k, g); });
+  const max = Math.max(1, ...rows.map(r=>Math.abs(r.m.n||0)), ...Object.values(oBy).map(m=>Math.abs(m.n||0)));
+  if(!rows.length) return '<div class="cash-empty">Nothing to draw for these choices.</div>';
+  const cmp = ans.other && ans.other.rows && ans.st.split;
+  return `<div class="qb-legend"><span><i style="background:${VIZ_COLORS[0]}"></i>${esc(qbShowLabel(k))}</span>${cmp ? `<span><i style="background:${VIZ_COLORS[1]}"></i>${esc(ans.other.name)}</span>` : ''}</div>
+    <div class="fin-bars">${rows.map(r=>`<div class="fin-bar-row" title="${esc(r.l)}: ${esc(r.m.v)}">
+      <span class="fin-bar-l no-edit">${esc(r.l)}</span>
+      <span class="fin-bar-t"><span class="fin-bar" style="width:${Math.max(1, Math.abs(r.m.n)/max*100)}%;background:${VIZ_COLORS[0]}"></span>
+        ${cmp && oBy[r.l] && oBy[r.l].n!==null ? `<span class="fin-bar qb-bar2" style="width:${Math.max(1, Math.abs(oBy[r.l].n)/max*100)}%;background:${VIZ_COLORS[1]}"></span>` : ''}</span>
+      <span class="fin-bar-v">${esc(r.m.v)}${cmp && oBy[r.l] ? ` <span class="muted-note">${esc(oBy[r.l].v)}</span>` : ''}</span></div>`).join('')}</div>`;
+}
+function qbPieHTML(ans){
+  const k = ans.st.show[0];
+  let rows = ans.groups.map(g=>({k:g.label, v:qbMeasure(k, g).n})).filter(r=>r.v>0).sort((a,b)=>b.v-a.v);
+  if(!rows.length) return '<div class="cash-empty">Nothing to draw for these choices.</div>';
+  if(rows.length > 8){ const rest = rows.slice(7); rows = rows.slice(0,7).concat([{k:'Everything else', v:rest.reduce((t,r)=>t+r.v,0)}]); }
+  const total = rows.reduce((t,r)=>t+r.v, 0);
+  rows.forEach((r,i)=>{ r.c = VIZ_COLORS[i]; r.p = r.v/total*100; });
+  const money = !['books','bb','av','pre','gifts','npay','days','tail'].includes(k);
+  const show = v => money ? finUsd(v) : String(Math.round(v));
+  let svg = finPieSVG(rows, total).replace(/aria-label="Expenses by type"/g, 'aria-label="' + esc(qbShowLabel(k)) + '"');
+  if(!money) svg = svg.replace(/<title>([^<]*): \$([\d,.]+) \(/g, '<title>$1: $2 (');
+  return `<div class="fin-viz"><div class="fin-pie-wrap">${svg}</div>
+    <table class="cash-tbl fin-tbl fin-legend"><thead><tr><th>${esc((QB_SPLIT.find(x=>x.v===ans.st.split)||{}).l||'')}</th><th>${esc(qbShowLabel(k))}</th><th>Share</th></tr></thead>
+      <tbody>${rows.map(r=>`<tr><th class="no-edit"><span class="fin-key" style="background:${r.c}"></span>${esc(r.k)}</th><td>${show(r.v)}</td><td>${finPct(r.p)}</td></tr>`).join('')}</tbody>
+      <tfoot><tr class="fin-tot"><th>Total</th><td>${show(total)}</td><td>100%</td></tr></tfoot></table></div>`;
+}
+function qbLineHTML(ans){
+  const k = ans.st.show[0], pts = ans.groups.map(g=>({l:g.label, m:qbMeasure(k, g)})).filter(p=>p.m.n!==null);
+  if(pts.length < 2) return '<div class="cash-empty">A line needs at least two months (or years) with something in them.</div>';
+  const oBy = {}; (ans.oGroups||[]).forEach(g=>{ oBy[g.label] = qbMeasure(k, g); });
+  const W = 640, H = 240, L = 56, B = 34, T = 12, Rr = 12;
+  const vals = pts.map(p=>p.m.n).concat(Object.values(oBy).map(m=>m.n).filter(v=>v!==null));
+  const lo = Math.min(0, ...vals), hi = Math.max(1, ...vals);
+  const x = i => L + (pts.length===1 ? 0 : i * (W - L - Rr) / (pts.length - 1)), y = v => T + (H - T - B) * (1 - (v - lo) / (hi - lo));
+  const money = !['books','bb','av','pre','gifts','npay','days','tail'].includes(k);
+  const tick = v => money ? '$' + fmt(Math.round(v)) : String(Math.round(v));
+  const grid = [0, .5, 1].map(f=>{ const v = lo + (hi-lo)*f; return `<line x1="${L}" x2="${W-Rr}" y1="${y(v)}" y2="${y(v)}" class="qb-grid"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end" class="qb-tick">${esc(tick(v))}</text>`; }).join('');
+  const path = list => list.map((p,i)=>(i?'L':'M') + x(p.i) + ',' + y(p.v)).join(' ');
+  const main = pts.map((p,i)=>({i, v:p.m.n})), two = pts.map((p,i)=>({i, v:oBy[p.l] ? oBy[p.l].n : null})).filter(p=>p.v!==null);
+  const every = Math.ceil(pts.length / 8);
+  return `<div class="qb-legend"><span><i style="background:${VIZ_COLORS[0]}"></i>${esc(qbShowLabel(k))}</span>${two.length ? `<span><i style="background:${VIZ_COLORS[1]}"></i>${esc(ans.other.name)}</span>` : ''}</div>
+    <svg viewBox="0 0 ${W} ${H}" class="qb-chart" role="img" aria-label="${esc(qbShowLabel(k))} over time">${grid}
+      ${two.length ? `<path d="${path(two)}" fill="none" stroke="${VIZ_COLORS[1]}" stroke-width="2" stroke-dasharray="5 4"/>` : ''}
+      <path d="${path(main)}" fill="none" stroke="${VIZ_COLORS[0]}" stroke-width="2.5"/>
+      ${pts.map((p,i)=>`<circle cx="${x(i)}" cy="${y(p.m.n)}" r="4" fill="${VIZ_COLORS[0]}"><title>${esc(p.l)}: ${esc(p.m.v)}</title></circle>`).join('')}
+      ${pts.map((p,i)=>i % every ? '' : `<text x="${x(i)}" y="${H-10}" text-anchor="middle" class="qb-tick">${esc(p.l)}</text>`).join('')}
+    </svg>`;
+}
+function qbListHTML(ans){
+  const I = finIdx(), list = ans.rows.sales.slice().sort((a,b)=>String(b.d).localeCompare(String(a.d)));
+  const where = x => x.e ? (I.e[x.e]||{}).name : x.r ? ((I.r[x.r]||{}).name||'') + ' (warehouse)' : '';
+  const type = x => ({SALE:'Sale', PREORDER:'Pre-order', DONATION:'Donation'})[x.k] || x.k;
+  const local = x => Object.keys(x.cur||{}).map(c=>cashFmt(x.cur[c], c)).join(' · ');
+  const shown = list.slice(0, 500);
+  return `<div class="fin-scroll"><table class="cash-tbl fin-tbl qb-list"><thead><tr><th>Date</th><th>Where</th><th>What</th><th>Paid with</th><th>Seller</th><th>Dollars</th><th>Local</th></tr></thead>
+    <tbody>${shown.map(x=>`<tr><td>${esc(x.d)}</td><td class="no-edit">${esc(where(x))}</td><td class="no-edit">${esc(x.t ? x.t + (x.q>1 ? ' ×' + x.q : '') : type(x))}${x.t && x.k!=='SALE' ? ' · ' + esc(type(x)) : ''}${x.g ? ' · gift' : ''}</td>
+      <td class="no-edit">${esc(x.pay.join(' + ') || '—')}</td><td class="no-edit">${esc(x.by || '')}</td><td>${finUsd(x.gu + x.pu)}${x.pu > 0.004 ? ' <span class="muted-note">owed</span>' : ''}</td><td>${esc(local(x))}</td></tr>`).join('')
+      || '<tr><td colspan="7">No payments for these choices.</td></tr>'}</tbody>
+    <tfoot><tr class="fin-tot"><th colspan="5">${list.length} payment${list.length===1?'':'s'}${list.length>500 ? ' (the latest 500 shown)' : ''}</th>
+      <td>${finUsd(list.reduce((t,x)=>t + x.gu + x.pu, 0))}</td><td>${esc(qbLocal(list, [], 'coll'))}</td></tr></tfoot></table></div>`;
+}
+function qbCardsHTML(ans){
+  const g = ans.total, o = ans.oTotal;
+  return `<div class="fin-tiles qb-tiles">${ans.st.show.map(k=>{ const m = qbMeasure(k, g), om = o ? qbMeasure(k, o) : null;
+    return `<div class="fin-tile"><div class="fin-tl">${esc(qbShowLabel(k))}</div><div class="fin-tv">${esc(m.v)}</div>
+      ${m.sub ? `<div class="fin-ts">${esc(m.sub)}</div>` : ''}
+      ${om ? `<div class="qb-vs">${esc(ans.other.name)}: <b>${esc(om.v)}</b> ${qbChange(m.n, om.n)}</div>` : ''}</div>`; }).join('')}</div>`;
+}
+function qbTableHTML(ans){
+  const show = ans.st.show, oBy = {}; (ans.oGroups||[]).forEach(g=>{ oBy[g.label] = g; });
+  const cmp = ans.other && ans.other.rows;
+  const cell = (k, g, og) => { const m = qbMeasure(k, g), om = og ? qbMeasure(k, og) : null;
+    return `<td><div>${esc(m.v)}</div>${m.sub ? `<div class="fin-cs">${esc(m.sub)}</div>` : ''}${om ? `<div class="fin-cs qb-vs">vs ${esc(om.v)} ${qbChange(m.n, om.n)}</div>` : ''}</td>`; };
+  const head = (QB_SPLIT.find(x=>x.v===ans.st.split)||{}).l || '';
+  return `<div class="fin-scroll"><table class="cash-tbl fin-tbl qb-tbl"><thead><tr><th>${esc(ans.st.split ? head : '')}</th>${show.map(k=>`<th>${esc(qbShowLabel(k))}</th>`).join('')}</tr></thead>
+    <tbody>${ans.st.split ? ans.groups.map(g=>`<tr><th class="no-edit">${esc(g.label)}</th>${show.map(k=>cell(k, g, cmp ? oBy[g.label] : null)).join('')}</tr>`).join('')
+      || `<tr><td colspan="${show.length+1}">Nothing recorded for these choices.</td></tr>` : ''}</tbody>
+    <tfoot><tr class="fin-tot"><th>Total</th>${show.map(k=>cell(k, ans.total, ans.oTotal)).join('')}</tr></tfoot></table></div>
+    ${cmp ? `<div class="muted-note">"vs" is ${esc(ans.other.name)}.</div>` : ''}`;
+}
+function qbResultHTML(ans){
+  const as = ans.st.as;
+  const note = ans.other && ans.other.none ? `<div class="hint">${esc(ans.other.none)}</div>` : '';
+  if(as==='list') return note + qbListHTML(ans);
+  if(!ans.st.split || as==='cards') return note + qbCardsHTML(ans) + (ans.st.split ? qbTableHTML(ans) : '');
+  if(as==='bars') return note + qbBarsHTML(ans) + qbTableHTML(ans);
+  if(as==='pie') return note + qbPieHTML(ans);
+  if(as==='line') return note + qbLineHTML(ans) + qbTableHTML(ans);
+  return note + qbTableHTML(ans);
+}
+
+/* ---- The page ---- */
+function qbSaved(){ const v = ME && ME.prefs && ME.prefs.finSaved; if(Array.isArray(v)) return v;
+  try{ return JSON.parse(localStorage.getItem('tbs_qb_saved')||'[]') || []; }catch(e){ return []; } }
+async function qbSaveList(list){
+  try{ localStorage.setItem('tbs_qb_saved', JSON.stringify(list)); }catch(e){}
+  if(ME){ ME.prefs = Object.assign({}, ME.prefs, {finSaved:list}); }
+  if(!ME) return;
+  try{ const r = await post({action:'setMyPref', key:'finSaved', value:list.length ? list : null}); if(r && r.result) ME = r.result; }
+  catch(e){ toast('Kept on this device only for now: ' + e.message, true); }
+}
+function qbHTML(){
+  const st = qbState(), ans = qbAnswer(), saved = qbSaved();
+  const chip = (k, l) => `<button type="button" class="qb-show${st.show.includes(k)?' on':''}" data-qbshow="${k}">${esc(l)}</button>`;
+  const seg = QB_AS.map(x=>`<button type="button" class="fin-tab${st.as===x.v?' on':''}" data-qbas="${x.v}">${esc(x.l)}</button>`).join('');
+  const heard = QB.heard;
+  return `
+    <div class="qb-ask"><label for="qbAsk" class="qb-ask-l">Ask a question</label>
+      <div class="qb-ask-row"><input id="qbAsk" type="search" autocomplete="off" value="${esc(QB.ask)}" placeholder="e.g. adventures sold in Poland last year by event">
+        <button type="button" class="btn btn-primary btn-sm" id="qbAskGo">Ask</button></div>
+      ${heard ? `<div class="qb-heard">${heard.used.length ? 'Set from your words: ' + heard.used.map(w=>`<b>${esc(w)}</b>`).join(', ') + '.' : 'No words I know yet.'}${
+        heard.left.length ? ` Not used: <span class="qb-left">${esc(heard.left.join(' '))}</span>. Pick anything missing below.` : ''}</div>` : ''}
+    </div>
+    <div class="qb-ready"><div class="cash-sub">Ready-made questions</div>
+      <div class="qb-qs">${QB_READY.map((q,i)=>`<button type="button" class="qb-q" data-qbready="${i}">${esc(q.l)}</button>`).join('')}
+        ${saved.map((q,i)=>`<span class="qb-q qb-mine"><button type="button" data-qbmine="${i}">⭐ <span class="no-edit">${esc(q.name)}</span></button><button type="button" class="x" data-qbminedel="${i}" aria-label="Remove">×</button></span>`).join('')}</div></div>
+    <div class="qb-line">
+      <div class="qb-part qb-wide"><span class="qb-w">Show</span><div class="qb-shows">${QB_SHOW.map(m=>chip(m.k, m.l)).join('')}</div></div>
+      <div class="qb-part"><span class="qb-w">At</span><div class="qb-at">${st.at.map((v,i)=>`<span class="qb-atchip no-edit">${esc(qbAtLabel(v))}<button type="button" class="x" data-qbatdel="${i}" aria-label="Remove">×</button></span>`).join('')}
+        ${comboHTML('qbAtC', '', st.at.length ? 'Add another place…' : (finScopeName() || 'Everywhere') + ' (search to change)')}</div></div>
+      <div class="qb-part"><span class="qb-w">During</span>${comboHTML('qbDurC', (QB_DURING.find(x=>x.v===st.during)||{}).l || 'Ever', 'Search')}
+        ${st.during==='custom' ? `<div class="qb-dates"><input type="date" id="qbFrom" value="${esc(st.from)}" aria-label="From"><span>to</span><input type="date" id="qbTo" value="${esc(st.to)}" aria-label="To"></div>` : ''}</div>
+      <div class="qb-part"><span class="qb-w">Split by</span>${comboHTML('qbSplitC', (QB_SPLIT.find(x=>x.v===st.split)||{}).l || 'Nothing (one answer)', 'Search')}</div>
+      <div class="qb-part"><span class="qb-w">Only</span>${comboHTML('qbOnlyC', qbOnlyLabel(st.only), 'Search')}</div>
+      <div class="qb-part"><span class="qb-w">Compared with</span>${comboHTML('qbCmpC', ((qbCmpItems(st).find(x=>x.v===st.cmp)||{}).l || 'Nothing').replace(/^Another place: /,''), 'Search')}</div>
+      <div class="qb-part qb-wide"><span class="qb-w">As</span><div class="fin-tabs qb-as">${seg}</div></div>
+    </div>
+    <div class="qb-sent"><span class="no-edit">${esc(qbSentence(st))}</span>
+      <button type="button" class="btn btn-ghost btn-xs" id="qbStar">⭐ Save this question</button>
+      <button type="button" class="btn btn-ghost btn-xs" id="qbReset">Start over</button></div>
+    <div class="qb-out">${st.show.length ? qbResultHTML(ans) : '<div class="cash-empty">Choose at least one thing to show.</div>'}</div>
+    <div class="muted-note">Money in dollars at each place's own rates, with the actual local currency beside it. Consignment money is the groups', so it is left out.</div>`;
+}
+function qbBind(){
+  const st = qbState(), root = $('#fpBody'); if(!root) return;
+  root.querySelectorAll('[data-qbshow]').forEach(b=>b.addEventListener('click', ()=>{
+    const k = b.dataset.qbshow, on = st.show.includes(k);
+    qbSet({show: on ? st.show.filter(x=>x!==k) : QB_SHOW.map(m=>m.k).filter(x=>x===k || st.show.includes(x))}, true); }));
+  root.querySelectorAll('[data-qbas]').forEach(b=>b.addEventListener('click', ()=>qbSet({as:b.dataset.qbas}, true)));
+  root.querySelectorAll('[data-qbatdel]').forEach(b=>b.addEventListener('click', ()=>{ const at = st.at.slice(); at.splice(Number(b.dataset.qbatdel), 1); qbSet({at}, true); }));
+  comboBind('qbAtC', qbAtItems(), null, v=>qbSet({at: v ? st.at.filter(x=>x!==v).concat([v]) : []}, true));
+  comboBind('qbDurC', QB_DURING, st.during, v=>qbSet({during:v}, true));
+  comboBind('qbSplitC', QB_SPLIT, st.split, v=>qbSet({split:v, as: v ? (st.as==='cards' ? 'table' : st.as) : (st.as==='list' ? 'list' : 'cards')}, true));
+  comboBind('qbOnlyC', qbOnlyItems(), st.only, v=>qbSet({only:v}, true));
+  comboBind('qbCmpC', qbCmpItems(st).map(x=>Object.assign({}, x, {shown:x.l.replace(/^Another place: /,'')})), st.cmp, v=>qbSet({cmp:v}, true));
+  ['qbFrom','qbTo'].forEach(id=>{ const el = $('#'+id); if(el) el.addEventListener('change', ()=>qbSet(id==='qbFrom' ? {from:el.value} : {to:el.value}, true)); });
+  root.querySelectorAll('[data-qbready]').forEach(b=>b.addEventListener('click', ()=>{
+    QB.ask = ''; qbSet(Object.assign(qbDefault(), QB_READY[Number(b.dataset.qbready)].st)); }));
+  root.querySelectorAll('[data-qbmine]').forEach(b=>b.addEventListener('click', ()=>{
+    const q = qbSaved()[Number(b.dataset.qbmine)]; if(q){ QB.ask = ''; qbSet(Object.assign(qbDefault(), q.st)); } }));
+  root.querySelectorAll('[data-qbminedel]').forEach(b=>b.addEventListener('click', async ()=>{
+    const list = qbSaved().slice(); list.splice(Number(b.dataset.qbminedel), 1); await qbSaveList(list); finRender(); }));
+  $('#qbStar').addEventListener('click', async ()=>{
+    const name = prompt('A name for this question:', qbSentence(st).replace(/^Show /, '').slice(0, 60));
+    if(!name || !name.trim()) return;
+    const list = qbSaved().filter(q=>q.name!==name.trim()).concat([{name:name.trim().slice(0,60), st:JSON.parse(JSON.stringify(st))}]).slice(-30);
+    await qbSaveList(list); toast('Saved: ' + name.trim()); finRender();
+  });
+  $('#qbReset').addEventListener('click', ()=>{ QB.ask = ''; qbSet(qbDefault()); });
+  const ask = ()=>{ QB.ask = $('#qbAsk').value; const r = qbParse(QB.ask); QB.heard = r.heard; qbSet(Object.assign(qbDefault(), r.st), true); };
+  $('#qbAskGo').addEventListener('click', ask);
+  $('#qbAsk').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); ask(); } });
+}
+
+/* ---- Reading a typed question ----
+   Each phrase the app knows sets one choice; the longest match wins, so
+   "big books" is not also "books". What it could not use is shown, so the
+   person can pick the rest by hand. */
+function qbParse(text){
+  const D = FIN.D, st = qbDefault(); st.show = [];
+  let s = ' ' + String(text||'').toLowerCase().replace(/[?!.,;]+/g, ' ').replace(/\s+/g, ' ').trim() + ' ';
+  const used = [];
+  const take = (re, fn) => { const m = s.match(re); if(!m) return false; used.push(m[0].trim()); s = s.replace(m[0], ' '); fn(m); return true; };
+  const show = k => { if(!st.show.includes(k)) st.show.push(k); };
+  // How to show it, and comparisons (before the time words they contain).
+  take(/ (vs\.?|versus|compared (to|with)|compare(d)? with|against) (the )?same time last year /, ()=>{ st.cmp = 'lastyear'; });
+  take(/ (vs\.?|versus|compared (to|with)|against) last year('s)?( season| region| event)? /, m=>{ st.cmp = m[3] || m[4] ? 'series' : 'lastyear'; });
+  take(/ (vs\.?|versus|compared (to|with)|against) (the )?(previous|last) (one|time|season|region|event)? ?/, ()=>{ st.cmp = 'series'; });
+  take(/ (vs\.?|versus|compared (to|with)|against) (the )?(period|month|year) before /, ()=>{ st.cmp = 'prev'; });
+  take(/ (as a |in a )?pie( chart)? /, ()=>{ st.as = 'pie'; });
+  take(/ (as a |in a )?line( chart| graph)?|over time /, ()=>{ st.as = 'line'; });
+  take(/ (as )?(a )?(bar|bars|bar chart|graph|chart) /, ()=>{ st.as = 'bars'; });
+  take(/ (as a )?table /, ()=>{ st.as = 'table'; });
+  take(/ (list|list of|show me the|all the) (payments|sales|transactions) | list /, ()=>{ st.as = 'list'; });
+  // Every name the data has (longest first), before the words a name might contain.
+  const names = [];
+  D.seasons.forEach(x=>names.push([x.name, 's:'+x.id])); D.regions.forEach(x=>names.push([x.name, 'r:'+x.id])); D.events.forEach(x=>names.push([x.name, 'e:'+x.id]));
+  ['seasons','regions','events'].forEach(k=>{ const seen = {}; D[k].forEach(x=>{ seen[x.series] = (seen[x.series]||0) + 1; });
+    Object.keys(seen).filter(n=>seen[n] > 1).forEach(n=>names.push([n, 'S:'+k+':'+n])); });
+  names.sort((a,b)=>b[0].length - a[0].length);
+  const escRe = t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  names.forEach(([n, v])=>{ const k = n.toLowerCase().trim(); if(k.length < 3) return;
+    take(new RegExp(' (in |at |for )?' + escRe(k) + ' '), ()=>{ if(!st.at.includes(v)) st.at.push(v); }); });
+  // Measures.
+  take(/ (how long|how many days|days) /, ()=>show('days'));
+  take(/ (from )?(the )?(last|final) event to (the )?region (closing|close|end|ending|closed) /, ()=>{ show('tail'); });
+  take(/ big ?books? /, ()=>show('bb'));
+  take(/ (adventures?|aotm) /, ()=>show('av'));
+  take(/ pre-?orders? /, ()=>show('pre'));
+  take(/ gifts? /, ()=>show('gifts'));
+  take(/ (books?|distributed|distribution) /, ()=>show('books'));
+  take(/ expected gross /, ()=>show('gross'));
+  take(/ (pending|owed|outstanding|still to pay) /, ()=>show('pend'));
+  take(/ donations? /, ()=>show('don'));
+  take(/ (expenses?|spent|costs?|spending) /, ()=>show('exp'));
+  take(/ margins? /, ()=>show('margin'));
+  take(/ (net|profit) /, ()=>show('net'));
+  take(/ (money|gross|collected|collections|income|earned|made|revenue|dollars|sales) /, ()=>show('coll'));
+  take(/ (how many|number of) (payments|transactions) | payments? /, ()=>show('npay'));
+  // When.
+  const yr = new Date().getUTCFullYear();
+  take(/ (ever|all time|in total|of all time|so far) /, ()=>{ st.during = 'ever'; });
+  take(/ (two|2) years ago /, ()=>{ st.during = 'twoYears'; });
+  take(/ (two|2) months ago /, ()=>{ st.during = 'twoMonths'; });
+  take(/ (the )?(last|past) (three|3) months /, ()=>{ st.during = 'last3'; });
+  take(/ (the )?(last|past) (30 days|month and a half|four weeks|4 weeks) /, ()=>{ st.during = 'last30'; });
+  take(/ this year /, ()=>{ st.during = 'thisYear'; });
+  take(/ last year /, ()=>{ st.during = 'lastYear'; });
+  take(/ this month /, ()=>{ st.during = 'thisMonth'; });
+  take(/ last month /, ()=>{ st.during = 'lastMonth'; });
+  take(/ (in )?(20\d\d) /, m=>{ const y = m[2]; st.during = Number(y)===yr ? 'thisYear' : Number(y)===yr-1 ? 'lastYear' : 'custom'; st.from = y + '-01-01'; st.to = y + '-12-31'; });
+  // Splits.
+  const splits = [[/ (by|per|each|for each|every) (recurring )?season(s)? /, 'season'], [/ (by|per|each|for each|every) region(s)? /, 'region'],
+    [/ (by|per|each|for each|every) event(s)? /, 'event'], [/ (by|per|each|every) year(s)? /, 'year'], [/ (by|per|each|every) month(s)? /, 'month'],
+    [/ (by|per|each|every) (title|book)s? /, 'title'], [/ (by|per) (type|kind) of books?| by (book )?type /, 'kind'], [/ (by|per) language(s)? /, 'language'],
+    [/ (by|per|each) (upi code|upi id|qr code|qr)s? /, 'upi'], [/ (by|per) (payment type|payment method|payment)s? /, 'pay'],
+    [/ (by|per) seller(s)? /, 'seller'], [/ (by|per) (kind|type|category) of expenses?/, 'category']];
+  const hit = [];
+  splits.forEach(([re, v])=>take(re, ()=>{ hit.push(v); }));
+  // "books by type per region": the type is already apart (Big Books and Adventures), so the place is the split.
+  if(hit.length > 1 && hit.includes('kind')){ hit.splice(hit.indexOf('kind'), 1);
+    const i = st.show.indexOf('books'); if(i >= 0) st.show.splice(i, 1, 'bb', 'av'); else if(!st.show.length) st.show.push('bb', 'av'); }
+  if(hit.length) st.split = hit[0];
+  // Where: "the last event", then every name the data has (longest first).
+  take(/ (the )?(last|latest|most recent) event /, ()=>{ st.at.push('last:e'); });
+  take(/ (the )?(last|latest|most recent) region /, ()=>{ st.at.push('last:r'); });
+  // Only: a payment type or a kind of expense named.
+  const pays = new Set(); D.sales.forEach(x=>x.pay.forEach(p=>pays.add(p)));
+  [...pays].sort((a,b)=>b.length - a.length).forEach(p=>take(new RegExp(' (only )?' + escRe(p.toLowerCase()) + ' '), ()=>{
+    st.only = 'pay:' + p; if(!st.show.length) show('coll'); }));
+  if(st.show.length===1 && (st.show[0]==='bb' || st.show[0]==='av') && /only/.test(text.toLowerCase())){ st.only = 'book:' + (st.show[0]==='av' ? 'aotm' : 'big'); }
+  if(st.split && st.as==='cards') st.as = st.split==='month' || st.split==='year' ? 'table' : 'table';
+  if(st.as==='line' && !st.split) st.split = 'month';
+  if(!st.show.length) st.show = ['books','coll'];
+  const filler = /^(show|me|the|a|an|of|in|at|for|and|how|many|much|what|was|were|did|do|we|our|sold|sell|is|are|to|from|on|with|all|each|per|by|only|give|tell|i|want|see|see|please|total|it|them|there|been|have|has|get|got)$/;
+  const left = s.trim().split(' ').filter(w=>w && !filler.test(w));
+  return {st, heard:{used, left}};
+}
+function finWaQb(L){
+  const ans = qbAnswer(), st = ans.st;
+  L.push(qbSentence(st));
+  L.push('');
+  const line = (k, g, og) => { const m = qbMeasure(k, g), om = og ? qbMeasure(k, og) : null;
+    return qbShowLabel(k) + ' - ' + m.v + (m.sub ? ' (' + m.sub.replace(/\n/g, ' · ') + ')' : '') + (om ? ' · vs ' + om.v : ''); };
+  if(st.as==='list'){
+    const I = finIdx();
+    ans.rows.sales.slice().sort((a,b)=>String(b.d).localeCompare(String(a.d))).slice(0, 200).forEach(x=>L.push(x.d + ' ' +
+      (x.e ? (I.e[x.e]||{}).name : (I.r[x.r]||{}).name || '') + ': ' + (x.t || 'Donation') + ' - ' + finUsd(x.gu + x.pu) + ' (' + (x.pay.join(' + ') || '—') + ')'));
+    return;
+  }
+  if(st.split){
+    const oBy = {}; (ans.oGroups||[]).forEach(g=>{ oBy[g.label] = g; });
+    ans.groups.forEach(g=>{ L.push('*' + g.label + '*'); st.show.forEach(k=>L.push('   ' + line(k, g, ans.other && ans.other.rows ? oBy[g.label] : null))); });
+    L.push('*Total*');
+  }
+  st.show.forEach(k=>L.push((st.split ? '   ' : '') + line(k, ans.total, ans.oTotal)));
+  if(ans.other && ans.other.rows) L.push('', 'vs = ' + ans.other.name);
+}
+
 /* ---- Reports: any rows, any figures, any filter ---- */
 const FIN_DIMS = [
   {k:'season', l:'Season', both:true}, {k:'seasonSeries', l:'Season series', both:true},
@@ -9619,7 +10267,7 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
    expenses, what is still to pay back, what is done, the links and the
    settings; #finance/reimb still lands on it. */
 const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements'], ['visual','📊','Visualize'],
-  ['report','📋','Reports'], ['compare','⚖️','Compare'], ['todo','💼','To do']];
+  ['report','📋','Reports'], ['todo','💼','To do']];
 const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings'], ['reimb','💸','Reimbursements']];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
 const finSecName = sec => (FIN_SECS.concat(FIN_SEC_ALSO).find(x=>x[0]===sec) || [,,'Overview'])[2];
@@ -9672,6 +10320,8 @@ async function finGo(sec, scope, opt){
   if(!PRACTICE || !financeMe(ME || FINP.me)) return;
   if(sec==='settings'){ sec = 'expenses'; FIN.rb.tab = 'settings'; }
   if(sec==='reimb'){ sec = 'expenses'; if(FIN.rb.tab==='expenses') FIN.rb.tab = 'pending'; }
+  // b256: Compare is part of Reports ("Compared with").
+  if(sec==='compare') sec = 'report';
   if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
   if(scope===undefined) scope = FINP.scope;
   const fresh = !FINP.on || opt.reload;
@@ -9761,9 +10411,11 @@ function finRender(){
   }
   FIN.f = Object.assign({}, FIN.f, f);
   const title = finSecName(sec);
-  const body = sec==='report' ? finReportHTML() : sec==='compare' ? finCompareHTML() : finOverviewHTML();
-  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn(sec==='overview' ? 'figures' : sec)}</h2>${sec==='compare' ? '' : finScopeNote()}${body}`;
+  const body = sec==='report' ? qbHTML() + `<details class="qb-old"${FIN.oldOpen?' open':''}><summary>Build a detailed table (rows and columns)</summary>${finReportHTML()}</details>`
+    : finOverviewHTML();
+  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn(sec==='overview' ? 'figures' : sec==='report' ? 'qb' : sec)}</h2>${finScopeNote()}${body}`;
   finBind();
+  if(sec==='report'){ qbBind(); const d = $('#fpBody details.qb-old'); if(d) d.addEventListener('toggle', ()=>{ FIN.oldOpen = d.open; }); }
 }
 
 
@@ -10191,7 +10843,8 @@ function finReportText(part){
   const O = sec==='overview' ? finOverviewRows() : null;
   if(part==='figures' || (!part && sec==='overview')) run('Overview', L=>finWaFigs(O.total, L));
   if(part==='rows' || (!part && sec==='overview')) run(O.what, finWaRows);
-  if(part==='report' || (!part && sec==='report')) run('', finWaReport);
+  if(part==='report') run('', finWaReport);
+  if(part==='qb' || (!part && sec==='report')) run('', finWaQb);
   if(part==='compare' || (!part && sec==='compare')) run('', finWaCompare);
   if(part==='todo' || (!part && sec==='todo')) run('', finWaTodo);
   if(part==='expenses') run('', finWaExpenses);

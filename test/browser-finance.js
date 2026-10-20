@@ -160,7 +160,7 @@ const API = 'http://api.test/';
     await own.click('[data-act="finsec"][data-sec="report"]'); await own.waitForTimeout(1200);
     await own.click('#reportBtn'); await own.waitForTimeout(400);
     r = await repText(own);
-    t.push(['the top 📋 on Reports: the report\'s rows', /^\*Zagreb · Kartika — Finance Reports\*/.test(r) && /\*Kartika\*\nBig Books Sold - /.test(r) && /\*Total\*/.test(r)]);
+    t.push(['the top 📋 on Reports: the choices and the answer', /^\*Zagreb · Kartika — Finance Reports\*/.test(r) && /^Show .* · At Zagreb · Kartika/m.test(r) && /Big Books \d+ Sold \+ \d+ Gifts? = \d+ Distributed/.test(r) && /^Net - /m.test(r)]);
     await own.evaluate(() => closeModal());
     // Pencils on the Finance page and in its windows.
     await own.click('[data-act="finsec"][data-sec="overview"]'); await own.waitForTimeout(1200);
