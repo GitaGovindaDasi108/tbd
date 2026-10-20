@@ -980,9 +980,17 @@ body.has-na .overlay{z-index:10000}
 .con-title{font-size:12.5px;padding:2px 0 2px 8px;color:var(--ink)}
 /* A book's language (b221): a small label in its colour, and a stripe down
    the card. Kept quiet — the colour does the sorting for the eye. */
-.lang-tag{display:inline-block;margin-left:6px;padding:0 6px;border-radius:999px;font-size:10px;font-weight:700;
+/* Always on a line of its own under the title (b258), so a long title and a
+   short one put the language in the same place. Inside a sentence it stays inline. */
+.lang-tag{display:table;margin:2px 0 0;padding:0 6px;border-radius:999px;font-size:10px;font-weight:700;
   letter-spacing:.2px;line-height:16px;vertical-align:1px;white-space:nowrap;
   color:var(--lc);background:var(--lc-l);border:1px solid var(--lc-b)}
+.hint .lang-tag{display:inline-block;margin:0 0 0 6px}
+.sp-bulkadd{margin:4px 0 10px}
+.sp-bulkbox{margin-top:8px;padding:10px;border:1px dashed var(--line-d);border-radius:10px;background:var(--paper2)}
+.sp-bulkbox textarea{width:100%;box-sizing:border-box;margin:6px 0;font-size:14px}
+.sp-bulkacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sp-csv{cursor:pointer}
 .book.has-lang, .stat-card.has-lang{border-left:4px solid var(--lc)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
@@ -1334,14 +1342,16 @@ body.sn-open .sn-group:not(.shut) .sn-items{display:block}
 .sn-fab{display:none}
 body.has-sn{padding-left:56px}
 @media (min-width:900px){ body.has-sn.sn-pinned{padding-left:268px} }
-/* Phones: no column; a round ☰ at the bottom left slides the whole menu in. */
+/* Phones and narrow windows: no column; a round ☰ at the top left slides the whole menu in. */
 @media (max-width:899px){
   body.has-sn{padding-left:0}
   .side-nav{width:min(86vw,300px);transform:translateX(-102%);transition:transform .18s ease}
   body.sn-open .side-nav{width:min(86vw,300px);transform:none}
   body.sn-open:not(.sn-pinned) .sn-scrim, body.sn-open .sn-scrim{display:block}
   .sn-pinbtn{display:none}
-  .sn-fab{display:flex;position:fixed;left:14px;bottom:16px;z-index:58;width:52px;height:52px;border-radius:50%;border:1px solid var(--line-d);
+  /* Top left (b258), beside the top bar's buttons (never over the photographs),
+     and held at the top of the screen once the page scrolls (snFabPlace). */
+  .sn-fab{display:flex;position:fixed;left:10px;top:10px;z-index:58;width:44px;height:44px;border-radius:50%;border:1px solid var(--line-d);
     background:var(--cream);color:var(--plum);font-size:22px;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(60,40,20,.22);cursor:pointer}
 }
 /* Finance as a place of its own (b239): its own colour, its own page. */
@@ -1718,6 +1728,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   .deity{height:62px} .deity img{height:62px}
   .masthead-inner{gap:10px;padding:4px 12px 11px}
   .util-bar{justify-content:center;padding:8px 12px 0}
+  body.has-sn .util-bar{padding-left:62px}   /* room for the ☰ at the top left */
 }
 @media (max-width:560px){
   .totals{gap:7px}
@@ -1855,7 +1866,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b257</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b258</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5079,7 +5090,7 @@ function drawAdmin(fams){
    Like Cloudflare's: a slim column of icons down the left that opens out when
    the pointer is over it (a tap on a touch screen), icons and words together,
    each section a dropdown that opens or folds. 📌 keeps it open beside the
-   page. Phones: a round ☰ at the bottom left slides it in. The same buttons
+   page. Phones: a round ☰ at the top left slides it in (b258). The same buttons
    and actions as the App Admin panel, in the owner's order (b234):
    Books · Money · <Level> Admin · Advanced · App Development · Settings ·
    Support, and Sign Out at the foot. The Activity Log moves to the top bar. */
@@ -5102,7 +5113,7 @@ const SN_ITEMS = {
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Expenses'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'],
-  drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
+  substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
 };
@@ -5122,19 +5133,19 @@ const SN_SECTIONS = [
   {key:'money',    icon:'💵', label:()=>'Money',           acts:['cash','costs','paytypes','expenses']},
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finreport','fincompare','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
-  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['drivefolder','specreport','sharelinks','people']},
+  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
 /* One menu row from a panel button: its own attributes (so it does exactly
-   what the button does), the menu's icon and words, and any count it carried. */
+   what the button does) and the menu's icon and words. Any count it carried is dropped. */
 function snRow(html, key){
   const m = html.match(/^<(button|a)\b([^>]*)>([\s\S]*)<\/\1>$/);
   if(!m) return '';
   const attrs = m[2].replace(/\sclass="[^"]*"/, '');
   const inner = m[3];
-  const badge = (inner.match(/<span class="req-badge">[\s\S]*?<\/span>/) || [''])[0]
-    || ((inner.replace(/<[^>]+>/g,'').match(/\((\d+)[^)]*\)\s*$/) || [])[1] ? `<span class="sn-count">${inner.replace(/<[^>]+>/g,'').match(/\((\d+)[^)]*\)\s*$/)[1]}</span>` : '');
+  // No numbers on menu items, ever (b258, Gita's rule), until there is a to-do section for them.
+  const badge = '';
   const named = SN_ITEMS[key];
   const text = named ? named[1] : inner.replace(/<[^>]+>/g,'').replace(/\s*\(\d+[^)]*\)\s*$/,'').replace(/^[^\w(]+/, '').trim();
   // A place's own actions get an icon from what they do.
@@ -5173,6 +5184,8 @@ function renderSideNav(fams){
   if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
   // View as (b238): Universal, in the practice space.
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
+  // Subtract Stock (b258, practice): wherever Add Stock is offered.
+  if(PRACTICE && byKey.addstock && !byKey.substock) byKey.substock = `<button class="btn" data-act="substock">− Subtract Stock</button>`;
   // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
   if(PRACTICE && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   const sections = SN_SECTIONS.map(sec=>{
@@ -5200,7 +5213,10 @@ function renderSideNav(fams){
   if(!document.getElementById('snFab')){
     const fab = document.createElement('button'); fab.type = 'button'; fab.id = 'snFab'; fab.className = 'sn-fab no-edit';
     fab.dataset.act = 'snopen'; fab.title = 'Menu'; fab.textContent = '☰'; document.body.appendChild(fab);
+    addEventListener('scroll', snFabPlace, {passive:true});
+    addEventListener('resize', snFabPlace);
   }
+  snFabPlace();
   // The Activity Log sits in the top bar instead, where it is always at hand (b234).
   snTopActivity(!!byKey.activity);
   document.body.classList.add('has-sn');
@@ -5211,6 +5227,13 @@ function snApply(){
   document.body.classList.toggle('sn-pinned', SN.pinned);
 }
 function snShow(open){ SN.open = open; snApply(); }
+/* The ☰ rides on the top bar's row while it is on screen, then stays at the
+   top of the screen (b258). */
+function snFabPlace(){
+  const fab = document.getElementById('snFab'), bar = document.querySelector('.util-bar');
+  if(!fab || !bar || !bar.getBoundingClientRect) return;
+  fab.style.top = Math.max(8, Math.round(bar.getBoundingClientRect().top) + 2) + 'px';
+}
 
 // A small footnote showing which USD conversion rates are in effect.
 function rateNote(){
@@ -6042,7 +6065,9 @@ function payTypeCur(type){
    make what lands differ from the price. Not cash, not card, and not an
    account in another currency (UPI arrives as rupees, which stay rupees). */
 function digitalSale(x){
-  return legs(x).some(l=>l.type && l.amt && payTypeCur(l.type)==='USD');
+  /* Paid in dollars already (b258): what arrived is what was paid, so there is
+     nothing to enter and no "$ Received". */
+  return legs(x).some(l=>l.type && l.amt && payTypeCur(l.type)==='USD' && String(l.cur||'').toUpperCase()!=='USD');
 }
 
 /** Enter, change or clear the dollars actually received for a sale. */
@@ -6184,8 +6209,13 @@ function logItemHTML(x, opts){
   // long for the row is always readable in full somewhere.
   const det=[];
   if(x._bundle){
-    det.push(['Books', x._members.map(m=>esc(bookById(m.bookId).name)
-      + (m.type==='PREORDER' && !m.delivered ? ' (pre-order)' : '')).join(', ')]);
+    // Each title once, with how many (b258): "Sri Radha (English) — 5".
+    const c = {}, order = [];
+    x._members.forEach(m=>{
+      const k = esc(bookById(m.bookId).name) + (m.type==='PREORDER' && !m.delivered ? ' (pre-order)' : '');
+      if(!c[k]){ c[k] = 0; order.push(k); } c[k]++;
+    });
+    det.push(['Books', order.map(k=>k + ' — ' + c[k]).join('<br>')]);
     if(x._preCount>0 && x._buyCount>0){
       det.push(['Made up of', x._buyCount+' bought · '+x._preCount+' pre-ordered']);
     }
@@ -6202,14 +6232,14 @@ function logItemHTML(x, opts){
      as dollars, minus fees. Entering what actually arrived keeps the tour's
      dollar figure honest while the sale itself still counts in the currency it
      was made in. */
-  if(!x._bundle && digitalSale(x)){
+  if(!x._bundle && (digitalSale(x) || hasUsdActual(x))){
     det.push(['Dollars received',
       hasUsdActual(x)
         ? `$${fmt(Number(x.usdActual))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Change</button>`
         : `<button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Enter what arrived</button>`]);
   }
   // A multi-book transaction: one figure for the whole of it, as for one book.
-  if(x._bundle && (x._members||[]).some(digitalSale)){
+  if(x._bundle && (x._members||[]).some(m=>digitalSale(m) || hasUsdActual(m))){
     const had = x._members.filter(hasUsdActual);
     det.push(['Dollars received',
       had.length
@@ -6234,6 +6264,9 @@ function logItemHTML(x, opts){
   det.push(['Sold at', esc(locNameFull(x.location))]);
   if(conOwner) det.push(['Belongs to', esc(conOwner.name) + ' (consignment)']);
   if(x.soldBy) det.push(['Recorded by', esc(x.soldBy)]);
+  // Someone else changed it (b258): a note only, the sale stays the seller's.
+  const edBy = x._bundle ? ((x._members||[]).find(m=>m.editedBy)||{}).editedBy : x.editedBy;
+  if(edBy) det.push(['Edited by', esc(edBy)]);
   if(x.type==='PREORDER' && x.fulfilBy){
     det.push(['Delivery', 'Requested from '+esc(anyRegionName(x.fulfilBy))
       + ` <button class="btn btn-ghost btn-sm" data-act="rqwithdraw" data-id="${esc(x.saleId)}">Withdraw request</button>`]);
@@ -7914,6 +7947,9 @@ function bundleModal(edit){
       st=>{
         // Editing: drop the old members and return their bought copies first, so
         // the rewrite starts from a clean slate.
+        // An edit keeps whoever made the sale (b258), as the server does.
+        const was = edit ? (st.sales.filter(x=>x.bundle===edit.bundle).find(m=>m.soldBy||m.soldById) || {}) : null;
+        const seller = was ? {soldBy:was.soldBy||'', soldById:was.soldById||''} : {};
         if(edit){
           st.sales.filter(x=>x.bundle===edit.bundle).forEach(m=>{
             if(m.type==='SALE' && m.bookId) invAdd(st,m.location,m.bookId,1);
@@ -7924,7 +7960,7 @@ function bundleModal(edit){
           st.sales.push(Object.assign({saleId:bundleId+'_'+i,ts:(tsVal||new Date().toISOString()),location:loc,
             type:it.pre?'PREORDER':'SALE',bookId:it.bookId,qty:1,
             pending,paid:!pending&&(i>0||dueamt<=0),dueamt:i===0?dueamt:0,duecur:i===0?duecur:'',
-            delivered:!it.pre,name,phone,comments:note,bundle:bundleId,usdActual:usdParts[i]}, legFields(perItem[i])));
+            delivered:!it.pre,name,phone,comments:note,bundle:bundleId,usdActual:usdParts[i]}, seller, legFields(perItem[i])));
           if(!it.pre) invAdd(st,loc,it.bookId,-1);
         });
       },
@@ -14131,6 +14167,48 @@ function stockTitles(ctx){
   });
   return [...map.values()];
 }
+/* A list pasted from a spreadsheet, or a CSV file, for Add Stock (b258,
+   practice): one title per line with its number, in any column order —
+   "Sri Radha (English), 20", "20<tab>Sri Radha (English)", or the title and
+   the language in columns of their own. Matched against the titles this place
+   may take; anything unrecognised is handed back, never guessed at. */
+function parseStockList(text, books){
+  const norm = v => String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+  const byName = new Map(), byBase = new Map();
+  books.forEach(b=>{
+    byName.set(norm(b.name), b);
+    const {base, lang} = bookLang(b), k = norm(base);
+    if(!byBase.has(k)) byBase.set(k, []);
+    byBase.get(k).push({b, lang:norm(lang)});
+  });
+  const find = (title, lang) => {
+    if(lang){
+      const hit = byName.get(norm(title+' ('+lang+')'));
+      if(hit) return hit;
+      const g = (byBase.get(norm(title))||[]).find(x=>x.lang===norm(lang));
+      if(g) return g.b;
+    }
+    const whole = byName.get(norm(lang ? title+' '+lang : title));
+    if(whole) return whole;
+    const g = byBase.get(norm(title));
+    return (g && g.length===1 && !lang) ? g[0].b : null;
+  };
+  const found = new Map(), missing = [];
+  String(text||'').split(/\r?\n/).forEach(raw=>{
+    const line = raw.trim(); if(!line) return;
+    const cells = (line.includes('\t') ? line.split('\t') : line.split(/[,;]/))
+      .map(c=>c.trim().replace(/^"(.*)"$/,'$1').trim()).filter(Boolean);
+    const ni = cells.findIndex(c=>/^[-+]?\d+$/.test(c));
+    if(ni<0) return;                                   // a heading or a note: no number, nothing to add
+    const qty = Number(cells[ni]);
+    const words = cells.filter((c,i)=>i!==ni);
+    if(!words.length || !qty) return;
+    const b = find(words[0], words[1]||'');
+    if(!b){ missing.push(line); return; }
+    found.set(b.id, {book:b, qty:(found.has(b.id) ? found.get(b.id).qty : 0) + qty});
+  });
+  return {found:[...found.values()], missing};
+}
 const SUBTRACT_WARNING = 'Subtracting is only for correcting a data entry mistake. '
   + 'If you are moving books, please use “Transfer Existing Stock” instead of subtracting '
   + 'here or lowering the stock numbers by hand.';
@@ -14149,6 +14227,7 @@ function addStockModal(opts){
   const newCtx = (p, other) => Object.assign(makeStockCtx(p, other), {staged});
   let lines = [{t:'', b:''}];  // the titles chosen, each { t: title key, b: book id }
   const typed = {};           // what has been typed, kept across redraws
+  const bulk = {open:false, text:'', msg:''};   // several titles at once (b258, practice)
 
   openModal(`
     ${mHead('Add Stock')}
@@ -14224,6 +14303,7 @@ function addStockModal(opts){
   function keepTyped(){
     document.querySelectorAll('#spBody input[data-k], #spBody select[data-k]').forEach(i=>{ typed[i.dataset.k] = i.value; });
     document.querySelectorAll('#spBody .sign-btn').forEach(b=>{ typed['sign:'+b.dataset.sign] = b.dataset.dir; });
+    const ta = $('#spPaste'); if(ta) bulk.text = ta.value;
   }
   function restoreTyped(){
     document.querySelectorAll('#spBody input[data-k], #spBody select[data-k]').forEach(i=>{
@@ -14231,6 +14311,44 @@ function addStockModal(opts){
     document.querySelectorAll('#spBody .sign-btn').forEach(b=>{
       if(typed['sign:'+b.dataset.sign]==='-1'){ b.dataset.dir='-1'; b.classList.add('on');
         b.textContent='−'; b.title='Subtracting — tap to add instead'; } });
+    const ta = $('#spPaste'); if(ta) ta.value = bulk.text;
+  }
+
+  /* Several titles at once (b258, practice): paste from a spreadsheet or
+     upload a CSV, and each title found gets its line with its number filled in. */
+  function bulkHTML(){
+    if(!PRACTICE) return '';
+    return `<div class="sp-bulkadd">
+        <button type="button" class="btn btn-ghost btn-sm" data-bulkopen>${bulk.open?'▾':'▸'} Add several titles at once</button>
+        <div class="sp-bulkbox"${bulk.open?'':' hidden'}>
+          <div class="hint">Paste from a spreadsheet: one title per line with its number beside it,
+            for example <b>Sri Radha (English)&nbsp;&nbsp;20</b>. Or upload a CSV file with the same two columns.</div>
+          <textarea id="spPaste" rows="6" placeholder="Sri Radha (English)&#9;20&#10;Bhagavad Gita (Russian)&#9;12"></textarea>
+          <div class="sp-bulkacts">
+            <button type="button" class="btn btn-plum btn-sm" data-bulkuse>Put these in the table</button>
+            <label class="btn btn-ghost btn-sm sp-csv">Upload CSV<input type="file" id="spCsv" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden></label>
+          </div>
+          <div id="spBulkMsg">${bulk.msg}</div>
+        </div>
+      </div>`;
+  }
+  function bulkUse(text){
+    const valid = stockTitles(ctx).flatMap(g=>g.books);
+    const {found, missing} = parseStockList(text, valid);
+    found.forEach(({book, qty})=>{
+      if(!lines.some(l=>l.b===book.id)){
+        const blank = lines.length && !lines[lines.length-1].t && !lines[lines.length-1].mode ? lines.pop() : null;
+        lines.push({t:stockTitleKey(book), b:book.id});
+        if(blank) lines.push(blank);
+      }
+      if(where==='there'){ typed['d:'+book.id] = String(Math.abs(qty)); typed['sign:'+book.id] = qty<0 ? '-1' : '1'; typed['s:'+book.id] = ''; }
+      else typed['q:'+book.id] = String(Math.max(0, qty));
+    });
+    bulk.msg = (found.length ? `<div class="hint">✓ ${found.length} title${found.length===1?'':'s'} put in the table below. Check the numbers, then save.</div>` : '')
+      + (missing.length ? `<div class="warn">Not recognised, so left out (check the spelling, or add the title on a line below):<br>${missing.map(esc).join('<br>')}</div>` : '')
+      + (!found.length && !missing.length ? `<div class="hint">Nothing to add: each line needs a title and a number.</div>` : '');
+    if(found.length && !missing.length) bulk.text = '';
+    draw();
   }
 
   function draw(){
@@ -14259,6 +14377,7 @@ function addStockModal(opts){
         <li><b>To subtract stock</b><span class="how-rest">, click the “+” sign, and then enter the number to be subtracted.</span></li>
         <li><b>To manually change stock</b><span class="how-rest">, enter number in the “Set” column.</span></li>
       </ol>
+      ${bulkHTML()}
       <div class="sp-table"><div class="bulk-head five"><span>Title and language</span><span>Current</span><span>Add/Subtract</span><span>Set</span><span>Updated</span></div>
       ${linesHTML(b=>({
         left: ctx.qty(ctx.loc,b.id),
@@ -14295,6 +14414,7 @@ function addStockModal(opts){
       </div>
       <div class="hint">Nothing is added to the shelf yet. The books show as <b>in transit</b> to
         ${esc(placeLabel(ctx.place))} until someone marks them arrived in “Books in transit”.</div>
+      ${bulkHTML()}
       <div class="sp-table"><div class="bulk-head"><span>Title and language</span><span>Now</span><span>Coming</span><span>Expected</span></div>
       ${linesHTML(b=>({
         left: ctx.qty(ctx.loc,b.id),
@@ -14456,11 +14576,20 @@ function addStockModal(opts){
     }
     const x = e.target.closest('[data-unline]');
     if(x){ lines.splice(Number(x.dataset.unline), 1); draw(); return; }
+    if(e.target.closest('[data-bulkopen]')){ keepTyped(); bulk.open = !bulk.open; bulk.msg = ''; draw(); return; }
+    if(e.target.closest('[data-bulkuse]')){ keepTyped(); bulkUse(bulk.text); return; }
     const add = e.target.closest('.ln-add');
     if(add) addTitle(Number(add.dataset.i), add.dataset.kind, add.closest('.ln-pick'));
   });
   body.addEventListener('change', e=>{
     if(e.target.id==='spCourier'){ syncCourier(); return; }
+    if(e.target.id==='spCsv'){
+      const f = e.target.files && e.target.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload = ()=>{ keepTyped(); bulk.text = String(rd.result||''); bulkUse(bulk.text); };
+      rd.readAsText(f);
+      return;
+    }
     const tl = e.target.closest('.ln-title');
     if(tl){
       const l = lines[Number(tl.dataset.i)]; if(!l) return;
@@ -14653,6 +14782,119 @@ function addStockModal(opts){
 
   if(picker.value) choose(picker.value);
   else draw();
+}
+
+/* Subtract Stock (b258, practice): its own item under Advanced. It opens on
+   the place the menu was opened from (Earthly HQ's warehouse at Earthly HQ, an
+   event at that event) and lists every title with copies there, so a data
+   entry mistake can be put right without hunting for the title. Add Stock
+   keeps its own "−" for the same thing. */
+function subtractStockModal(){
+  if(isSeller()) return;
+  const places = stockPlaces();
+  const reg = currentRegion();
+  const startLoc = CUR_LEVEL==='event' ? CUR_LOC
+    : (CUR_LEVEL==='region' && reg) ? reg.whLoc : (isHQ() ? HQ_WH : '');
+  let ctx = null, loadToken = 0;
+  const typed = {};
+  openModal(`
+    ${mHead('Subtract Stock')}
+    <div class="m-body sp">
+      <div class="warn warn-pre">${esc(SUBTRACT_WARNING)}</div>
+      <div class="field"><label>Where</label>
+        <div class="hint">The <b>region</b> or <b>event</b> whose stock needs correcting.</div>
+        ${placePickerHTML('ssPlace')}</div>
+      <div id="ssBody" class="sp-group"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-plum" id="ssSave" disabled>Subtract</button>
+    </div>`, true);
+  const picker = bindPlacePicker('ssPlace', places, startLoc, p=>choose(p));
+  async function choose(p){
+    $('#modalErr').textContent = '';
+    const mine = ++loadToken;
+    ctx = null;
+    if(p.seasonId===STATE.activeSeason){ ctx = makeStockCtx(p, null); draw(); return; }
+    const cached = seasonCacheLoad(p.seasonId);
+    if(cached && cached.state){ ctx = makeStockCtx(p, cached.state); ctx.fresh = false; }
+    draw();
+    try{
+      const d = await post({action:'getState', season:p.seasonId});
+      if(mine!==loadToken) return;
+      if(!d || !d.state) throw new Error('Could not open that season.');
+      seasonCacheSave(p.seasonId, d.state, d.rev);
+      if(ctx) ctx.setOther(d.state); else ctx = makeStockCtx(p, d.state);
+      ctx.fresh = true; draw();
+    }catch(err){
+      if(mine!==loadToken) return;
+      if(ctx){ ctx.fresh = true; draw(); }
+      else $('#modalErr').textContent = err.message || 'Could not open that place.';
+    }
+  }
+  // Every title with copies here, in the place's own order.
+  const onShelf = () => stockBooks(ctx).filter(b=>ctx.qty(ctx.loc,b.id)>0);
+  function draw(){
+    document.querySelectorAll('#ssBody input[data-k]').forEach(i=>{ typed[i.dataset.k] = i.value; });
+    const save = $('#ssSave');
+    if(!picker.value){ $('#ssBody').innerHTML=''; save.disabled = true; return; }
+    if(!ctx){ $('#ssBody').innerHTML = `<div class="hint sp-loading"><span class="spin-d"></span> Opening ${esc(placeLabel(picker.value))}…</div>`;
+              save.disabled = true; return; }
+    const books = onShelf();
+    $('#ssBody').innerHTML = !books.length
+      ? `<div class="hint">There are no books in stock at ${esc(placeLabel(ctx.place))}.</div>`
+      : `<div class="sp-table"><div class="bulk-head"><span>Title and language</span><span>Current</span><span>Subtract</span><span>Updated</span></div>
+        <div class="bulk">${books.map(b=>`<div class="bulk-row ${catOfBook(b)}">
+          <div class="bn">${bookTitleHTML(b)}</div>
+          <div class="num" data-now="${esc(b.id)}">${ctx.qty(ctx.loc,b.id)}</div>
+          <div><input class="ss-q" type="number" min="0" step="1" inputmode="numeric" placeholder="0"
+                 data-book="${esc(b.id)}" data-k="${esc(b.id)}"></div>
+          <div class="num next" data-next="${esc(b.id)}">${ctx.qty(ctx.loc,b.id)}</div>
+        </div>`).join('')}</div></div>
+        <div class="field"><label>Reason</label>
+          <input type="text" id="ssNote" placeholder="e.g. counted twice by mistake"></div>`;
+    document.querySelectorAll('#ssBody input[data-k]').forEach(i=>{ if(typed[i.dataset.k]!==undefined) i.value = typed[i.dataset.k]; });
+    if(typed.note!==undefined && $('#ssNote')) $('#ssNote').value = typed.note;
+    recalc();
+  }
+  const amount = id => { const i = document.querySelector(`#ssBody input[data-book="${id}"]`);
+    return i ? Math.max(0, Math.round(Number(i.value)||0)) : 0; };
+  function recalc(){
+    if(!ctx) return;
+    let any = false, over = false;
+    onShelf().forEach(b=>{
+      const now = ctx.qty(ctx.loc,b.id), n = amount(b.id);
+      if(n) any = true; if(n>now) over = true;
+      const c = document.querySelector(`#ssBody [data-next="${b.id}"]`);
+      if(c){ c.textContent = Math.max(0, now-n); c.classList.toggle('zero', now-n<=0); }
+    });
+    const save = $('#ssSave');
+    save.disabled = !any || !ctx.fresh;
+    $('#modalErr').textContent = over ? 'That is more than is in stock for one of the titles.' : '';
+  }
+  $('#ssBody').addEventListener('input', e=>{ if(e.target.id==='ssNote') typed.note = e.target.value; recalc(); });
+  $('#ssSave').addEventListener('click', ()=>{
+    if(!ctx) return;
+    const books = onShelf();
+    const items = books.map(b=>({bookId:b.id, delta:-amount(b.id)})).filter(it=>it.delta<0);
+    if(!items.length) return;
+    const over = items.find(it=>ctx.qty(ctx.loc,it.bookId)+it.delta<0);
+    if(over){ $('#modalErr').textContent = 'Cannot subtract more '+((books.find(b=>b.id===over.bookId)||{}).name||'copies')+' than are in stock.'; return; }
+    const loc = ctx.loc, here = ctx.here, place = ctx.place;
+    const note = (($('#ssNote')||{}).value||'').trim() || 'Subtracted to correct a mistake';
+    const before = {}; items.forEach(it=>{ before[it.bookId] = ctx.qty(loc,it.bookId); });
+    const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    commit({action:'adjustStockBulk', location:loc, items, note, override:true, movePrefix, season:ctx.seasonId},
+      here ? st=>items.forEach(it=>{
+        invAdd(st,loc,it.bookId,it.delta);
+        (st.stockMoves=st.stockMoves||[]).push({id:movePrefix+'_'+it.bookId, ts:new Date().toISOString(),
+          kind:'ADJUST', fromLoc:'', toLoc:loc, bookId:it.bookId, qty:it.delta, note,
+          toBefore:before[it.bookId], toAfter:before[it.bookId]+it.delta});
+      }) : ()=>{},
+      'Stock subtracted — '+placeLabel(place));
+  });
+  if(picker.value) choose(picker.value); else draw();
 }
 
 /* Make sure every other open season has a copy on this device, so choosing a
@@ -18040,6 +18282,7 @@ document.addEventListener('click',e=>{
   if(a==='editregion'){ regionModal(currentRegion()); return; }
   if(a==='deleteregion'){ deleteRegionModal(); return; }
   if(a==='stock' || a==='addstock'){ addStockModal(); return; }
+  if(a==='substock'){ subtractStockModal(); return; }
   if(a==='addnewplace'){ addNewPlaceModal(t.dataset.then); return; }
   if(a==='transfer' || a==='externaltransfer'){ transferStockModal(); return; }
   // A closed place is read-only: refuse before anything is attempted, so the

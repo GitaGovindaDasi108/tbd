@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b257**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b258**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2062,3 +2062,38 @@ choosing", with typed questions that pick the choices. Proposal:
 - **Reimbursement link on a phone**: one column, buttons full width, and an ×
   (and "Done" when sent) that leaves for https://travelingmonk.com/.
 - Tests: browser-finance (80), browser-reports (26), browser-expenses (66).
+
+## Done in b258 — Small things: two-line titles, seller kept, ☰ at the top, Subtract Stock (practice)
+
+Gita's list of small things that are not Finance (thread "Small things").
+Live unless marked practice.
+
+- **Language on its own line** under the title, everywhere a title is shown
+  (`.lang-tag` is `display:table`), so long and short titles put it in the same
+  place. Inside a sentence (`.hint`) it stays inline.
+- **An edit keeps the seller**: `doEditBundle` takes the seller from the first
+  member that has one and never puts the editor's name in an empty one;
+  `doEditSale` already kept it. New `_sales` column `editedBy` (end of
+  SALES_HEADERS), set by `editedByNote_` when someone other than the seller
+  edits; the sale's drawer shows "Edited by". The screen's optimistic bundle
+  edit keeps soldBy/soldById too.
+- **☰ at the top left** on phones and narrow windows (under 900px): it rides
+  on the top bar's row, beside the buttons and clear of the photographs, then
+  stays at the top of the screen when the page scrolls (`snFabPlace`).
+- **No "$ Received" for money already in dollars**: `digitalSale` needs a
+  payment type that lands in dollars AND a currency other than USD. A figure
+  already entered still shows in the drawer.
+- **Multiple-book sales list each title once with its count** in the drawer:
+  "Sri Radha (English) — 5".
+- **No numbers on menu items** (`snRow` drops counts) until a to-do section exists.
+- **Add several titles at once** (practice): "Add several titles at once" in
+  Add Stock takes a list pasted from a spreadsheet or a CSV file, one title per
+  line with its number in any column (`parseStockList`); each title found gets
+  its line with the number filled in, anything not recognised is listed and
+  left out. Works for "already there" and "not there yet".
+- **Subtract Stock** (practice): its own item at the top of Advanced
+  (`subtractStockModal`), opening on the place it was opened from (Earthly HQ's
+  warehouse at Earthly HQ), listing every title in stock there, with the
+  subtracting warning, a reason, and `adjustStockBulk` underneath.
+- Tests: new `test/browser-small258.js` (30 checks); browser-sellers expects
+  Subtract Stock in practice's Advanced.

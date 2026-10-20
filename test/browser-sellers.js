@@ -378,9 +378,9 @@ const API = 'http://api.test/';
     snv = await sn();
     t.push(['the pointer over it opens it out, icons and words together', snv.width > 250]);
     const adv = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="advanced"] .sn-item .sn-t')].map(x => x.textContent));
-    t.push(['Advanced: Spreadsheets, Specialty Reports, Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access'])]);
+    t.push(['Advanced: Subtract Stock (practice, b258), Spreadsheets, Specialty Reports, Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Subtract Stock', 'Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access'])]);
     const dev = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="dev"] .sn-item .sn-t')].map(x => x.textContent));
-    t.push(['App Development: Edit Wording, (Leave) Practice, Permissions, View as', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Leave Practice', 'Permissions', 'View as'])]);
+    t.push(['App Development: Edit Wording, (Leave) Practice, Permissions, View as, Dates & Repeats (b255)', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Leave Practice', 'Permissions', 'View as', 'Dates & Repeats'])]);
     t.push(['b236: every section starts folded', await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group')].every(g =>
       g.classList.contains('shut') && g.querySelector('.sn-items').offsetHeight === 0))]);
     await pr.click('#sideNav .sn-gh[data-sec="books"]'); await pr.waitForTimeout(150);
