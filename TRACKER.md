@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b262**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b263**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2203,3 +2203,11 @@ Live unless marked practice.
 - List view keeps two columns on phones too.
 - Tests: round7 checks (Out) with no bubble; sellers expects "35 € · $40" on
   the card (replacing b232's local price only); bookorder ignores "(Out)".
+## Done in b263 — the expense form stays still as it redraws (practice)
+- Ticking a box, choosing how to be paid back, picking a kind or adding a
+  receipt rebuilds the expense form. It used to pop in again and jump to the
+  top; now `expHold()` (around `expDraw`) keeps whatever was last touched on
+  the same spot on screen, keeps focus and cursor in the field being typed in,
+  and the `.modal.still` class drops the pop. "← Change something" on the
+  check page returns to where you were (`EXP.formTop`).
+- Tests: browser-finance (111).
