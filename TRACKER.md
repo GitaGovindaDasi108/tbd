@@ -2033,6 +2033,36 @@ choosing", with typed questions that pick the choices. Proposal:
 - Tests: new `test/browser-reports.js` (24 checks); browser-finance and
   browser-expenses updated for Compare moving into Reports.
 
+## Done in b257 — Finance fixes from Gita's list (practice)
+
+- **Fiscal year from 8 October** (`FY_START` in index.html; one line to move
+  it to 1 October). Reports' "This/Last/Two fiscal years ago" and "Split by
+  Fiscal year" ("Fiscal year 2026–27") use it. A typed "in 2026" stays the
+  calendar year.
+- **Other currencies in Finance's totals**: the Overview's Gross, Donations
+  and Expenses tiles show the actual money per currency ("37 € · $55"), as
+  the sales page's totals bar does (`finAgg` → `a.cur`, `finCurs`).
+- **Expected Total Expenses** on the Overview (and its table and 📋) while
+  any reimbursement is still due, with "Current Expenses" beneath; plain
+  "Total Expenses" once squared (`finExpParts`), as Gross works.
+- **Gmail, not the mail app**: every email button opens Gmail's compose in
+  a new tab (`gmailUrl`).
+- **Expenses & Reimbursements: two sections** on one page (`finExpTop` opens
+  both, `FIN_EXP_END` closes). Expenses is the left half on a computer
+  (compact table: date, what for with who · type · where, amount with
+  status); Reimbursements the right, with the Send box and tabs Pending, Paid
+  back, Declined (separate now), Links, ⚙️ Settings. Stacked on a phone.
+- **One square per person** for pending reimbursements paid back the same
+  way (same name, method, currency, details): every expense listed, one
+  total, "Mark all N paid back" (`expGroups` / `expGroupHTML`).
+- **The note for the record** is typed in the card's Pay back part
+  (`[data-pbnote]`), not a pop-up; Decline still asks why if it is empty.
+- **Remove a way of paying back for good** (Settings › 🗑, "Bring back"):
+  server setting `reimbGone`, action `expMethodGone`; `allMethods` skips them.
+- **Reimbursement link on a phone**: one column, buttons full width, and an ×
+  (and "Done" when sent) that leaves for https://travelingmonk.com/.
+- Tests: browser-finance (80), browser-reports (26), browser-expenses (66).
+
 ## Done in b258 — Small things: two-line titles, seller kept, ☰ at the top, Subtract Stock (practice)
 
 Gita's list of small things that are not Finance (thread "Small things").
