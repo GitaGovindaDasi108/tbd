@@ -158,7 +158,7 @@ const API = 'http://api.test/';
     const fin = await open('fin@example.com', 'Madhava');
     t.push(['Finance (no rest-of-app view yet) lands on the Finance page, at its own address', await onFin(fin) && /#finance\/overview/.test(fin.url())]);
     let secs = await fin.evaluate(() => document.querySelector('#fpSecs').innerText);
-    t.push(['…with its sections: Overview, Expenses, Reimbursements, Visualize, Reports (Compare is inside it), To do (settings inside Reimbursements); b259: no Add an expense or Edit Wording up there, and a way out', /Overview/.test(secs) && /Reports/.test(secs) && !/Compare/.test(secs) && /To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && /Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && !/Add an expense/.test(secs) && !/Edit Wording/.test(secs) && /Go to Sales Portal|Leave Finance/.test(secs)]);
+    t.push(['…with its sections: Overview, Expenses & Reimbursements, To do (settings inside Reimbursements); b259: no Reports, Compare, Visualize, Add an expense or Edit Wording up there, and a way out', /Overview/.test(secs) && !/Reports/.test(secs) && !/Compare/.test(secs) && /To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && !/Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && !/Add an expense/.test(secs) && !/Edit Wording/.test(secs) && /Go to Sales Portal|Leave Finance/.test(secs)]);
     t.push(['…the masthead says Finance, in Finance\'s own colour', /Finance/.test(await fin.$eval('#whTitle', e => e.textContent)) &&
       await fin.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(238, 243, 250)')]);
     await fin.click('[data-act="finsec"][data-sec="todo"]'); await fin.waitForTimeout(1200);
@@ -223,7 +223,7 @@ const API = 'http://api.test/';
     const snText = () => own.evaluate(() => [...document.querySelectorAll('#sideNav [data-act]')].map(b => b.dataset.act).join('|'));
     const omenu = await snText();
     t.push(['Universal has Expenses, Finance To do and Reimbursement Settings', /\bexpenses\b/.test(omenu) && /fintodo/.test(omenu) && /reimbset/.test(omenu)]);
-    t.push(['…a Finance section: Overview, Reports, Compare', /finoverview/.test(omenu) && /finreport/.test(omenu) && /fincompare/.test(omenu)]);
+    t.push(['…a Finance section: Overview (b259: no Reports or Compare for now)', /finoverview/.test(omenu) && !/finreport/.test(omenu) && !/fincompare/.test(omenu)]);
     t.push(['…View as in App Development', /viewas/.test(omenu)]);
     t.push(['…and no separate Record Costs (it is the Expenses form now)', !/\bcosts\b/.test(omenu)]);
 
@@ -264,23 +264,13 @@ const API = 'http://api.test/';
     t.push(['a refresh stays on Finance, at Delhi', await onFin(own) && /By Event/i.test(await fpage(own))]);
     await own.click('[data-act="fingo"][data-scope=""]'); await own.waitForTimeout(500);
     await own.screenshot({ path: shot('fin-overview') });
-    await own.click('[data-act="finsec"][data-sec="report"]'); await own.waitForTimeout(1200);
-    await own.evaluate(() => { document.querySelector('details.qb-old').open = true; });
-    await own.selectOption('[data-rd="0"]', 'category'); await own.waitForTimeout(400);
-    m = await fpage(own);
-    t.push(['Reports: rows by kind of expense', /Venue/.test(m) && /Total \(\d+ rows?\)/.test(m)]);
-    await own.selectOption('[data-rd="0"]', 'title'); await own.waitForTimeout(400);
-    m = await fpage(own);
-    t.push(['…by title, with books sold', /Books sold/i.test(m) && /\(English\)|\(no title\)|\w/.test(m)]);
-    const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"]')]);
+    // b259: Reports is gone for now; each screen downloads its own CSV and draws its charts underneath.
+    const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"][data-part="overview"]')]);
     const csv = fs.readFileSync(await dl.path(), 'utf8');
-    t.push(['…downloads as a CSV for Excel or Sheets', /^﻿?Title,/.test(csv) && /Total/.test(csv)]);
-    await own.screenshot({ path: shot('fin-report') });
-    // Compare is now part of Reports: every Kartika season, side by side.
-    await own.evaluate(() => { QB.ask = ''; QB.heard = null; QB.st = Object.assign(qbDefault(), {show:['books','coll'], at:['S:seasons:Kartika'], during:'ever', split:'season'}); finRender(); });
-    await own.waitForTimeout(600);
-    m = await fpage(own);
-    t.push(['Reports: seasons of the same name side by side, added up', !(await own.$('#fpSecs [data-sec="compare"]')) && (m.match(/Kartika/g) || []).length >= 2 && /Total/i.test(m)]);
+    t.push(['b259: the Overview downloads as a CSV for Excel or Sheets: a row per season and the total', /^\ufeff?,Big Books Sold \(USD\)/.test(csv) && /\nKartika,/.test(csv) && /\nTotal,/.test(csv) && /^Finance Overview Everywhere \d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename())]);
+    t.push(['b259: …and its charts sit at the bottom: the expenses include the venue', /At a glance/.test(await fpage(own)) && /Venue/.test(await own.$eval('#finCharts', e => e.innerText))]);
+    await own.screenshot({ path: shot('fin-report'), fullPage: true });
+    t.push(['b259: no Reports, Compare or Visualize on the Finance bar', !(await own.$('#fpSecs [data-sec="report"]')) && !(await own.$('#fpSecs [data-sec="compare"]')) && !(await own.$('#fpSecs [data-sec="visual"]'))]);
     await own.click('[data-act="finleave"]'); await own.waitForTimeout(500);
     t.push(['← Go to Sales Portal leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
       await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display !== 'none')]);

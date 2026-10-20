@@ -106,6 +106,10 @@ const API = 'http://api.test/';
   const repText = page => page.$eval('#repText', e => e.value);
   try {
     const own = await open('owner@example.com', 'The Owner');
+    const csvOf = async (part) => { const dl = own.waitForEvent('download', { timeout: 5000 }).catch(() => null);
+      await own.click(`[data-act="fincsv"][data-part="${part}"]`); const d = await dl; await own.waitForTimeout(200);
+      const L = await own.evaluate(() => FIN.lastCsv || {name:'', rows:[]}); return { got: !!d, name: d ? d.suggestedFilename() : '', rows: L.rows }; };
+    let csv;
     await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(1500);
     // Into Kartika: its regions, in the app's order.
     await own.click('#fpBody [data-act="fingo"]'); await own.waitForTimeout(600);
@@ -145,6 +149,14 @@ const API = 'http://api.test/';
     let r = await repText(own);
     t.push(['the Overview\'s 📋: its figures, in the same words', /^Big Books Sold - \$80\n   3 Sold \+ 1 Gift = 4 Distributed\nAdventures Sold - \$15\n   1 Sold\nDonations - \$10\nPending Payments - \$40\nGross - \$105\n   Expected Gross - \$145\nExpenses - \$20\n   Expected Expenses - \$50\nNet - \$85\n   Margin 81%\n   Expected Net - \$95$/.test(r)]);
     await own.evaluate(() => closeModal());
+    // b259: ⬇️ CSV beside the 📋, and the charts under everything.
+    csv = await csvOf('overview');
+    t.push(['b259: Overview ⬇️ CSV: a row per event and the total, every figure with its Expected', csv.got && /^Finance Overview Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[0].includes('Expected Gross (USD)') &&
+      JSON.stringify(csv.rows.map(r => r[0])) === JSON.stringify(['', 'Zagreb Kirtan', 'Zagreb Fair', 'Total']) && csv.rows[3][9] === 105 && csv.rows[3][10] === 145]);
+    m = await own.$eval('#finCharts', e => e.innerText);
+    t.push(['b259: under the Overview: where the money comes from, money in and out (with Expected), by event, and expenses by type', /Where the money comes from/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross and Expenses by Event/.test(m) && /Expenses by type/.test(m)
+      && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild)]);
+    await own.screenshot({ path: shot('overview-charts'), fullPage: true });
     await own.click('.fin-h3 [data-act="finrep"]'); await own.waitForTimeout(400);
     r = await repText(own);
     t.push(['the By Event 📋: each event, as the table', /^\*Zagreb Kirtan\*\nBig Books Sold - \$80/.test(r) && /\*Zagreb Fair\*/.test(r) && !/\*Total\*/.test(r)]);
@@ -159,11 +171,13 @@ const API = 'http://api.test/';
     t.push(['the To do\'s 📋: what is owed and the expenses', /\*Pending Payments\*\nSri Radha \(English\) - \$40/.test(r) && /\*Every Expense\*/.test(r) && /Van hire/.test(r)]);
     await own.evaluate(() => closeModal());
     t.push(['To do tabs read Pending Reimbursements / Pending Payments', /Pending Reimbursements/.test(await fpage(own)) && /Pending Payments/.test(await fpage(own))]);
-    await own.click('[data-act="finsec"][data-sec="report"]'); await own.waitForTimeout(1200);
-    await own.click('#reportBtn'); await own.waitForTimeout(400);
-    r = await repText(own);
-    t.push(['the top 📋 on Reports: the choices and the answer', /^\*Zagreb · Kartika — Finance Reports\*/.test(r) && /^Show .* · At Zagreb · Kartika/m.test(r) && /Big Books \d+ Sold \+ \d+ Gifts? = \d+ Distributed/.test(r) && /^Net - /m.test(r)]);
-    await own.evaluate(() => closeModal());
+    // b259: no Reports or Visualize; each screen has ⬇️ CSV and 📋, and its charts at the bottom.
+    t.push(['b259: the Finance bar is Overview, Expenses & Reimbursements and To do: no Reports, no Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'todo'])]);
+    csv = await csvOf('todo');
+    t.push(['b259: To do has ⬇️ CSV beside its 📋, downloading what the tab shows', csv.got && /^Pending Reimbursements Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[1][11] === '30 USD' && csv.rows.length === 2 && csv.rows[1][1] === 'Lunch for helpers']);
+    t.push(['b259: …and its charts sit under everything else', await own.evaluate(() => { const c = document.querySelector('#finCharts'); return !!c && c === document.querySelector('#fpBody').lastElementChild && /Pending Payments, by place/.test(c.innerText) && /Pending Reimbursements, by person/.test(c.innerText); })]);
+    await own.evaluate(() => finGo('report', 'rg_zg')); await own.waitForTimeout(800);
+    t.push(['b259: an old Reports address opens the Overview', /#finance\/overview/.test(own.url())]);
     // Pencils on the Finance page and in its windows.
     await own.click('[data-act="finsec"][data-sec="overview"]'); await own.waitForTimeout(1200);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(800);
@@ -183,10 +197,10 @@ const API = 'http://api.test/';
     await own.keyboard.press('Control+A'); await own.keyboard.type('Donations Received'); await own.keyboard.press('Enter'); await own.waitForTimeout(1500);
     t.push(['Enter keeps it: the tile now reads Donations Received', /Donations Received/.test(await fpage(own)) && !(await own.$('.lbl-in'))]);
     // A button's words by its pencil; Esc leaves them alone.
-    await own.click('#fpSecs [data-sec="report"] .pencil'); await own.waitForTimeout(300);
-    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/report/.test(own.url())]);
+    await own.click('#fpSecs [data-sec="todo"] .pencil'); await own.waitForTimeout(300);
+    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/todo/.test(own.url())]);
     await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
-    t.push(['Esc leaves it as it was', /Reports/.test(await own.$eval('#fpSecs [data-sec="report"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
+    t.push(['Esc leaves it as it was', /To do/.test(await own.$eval('#fpSecs [data-sec="todo"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(500);
     /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);
@@ -329,15 +343,15 @@ const API = 'http://api.test/';
       return /2 expenses · 1 turned down/.test(g.innerText) && /Pay back 1 of 2 · \$8\.80/.test(g.innerText) && /^\$8\.80$/m.test(g.querySelector('.exp-top').innerText); })]);
     await own.evaluate(() => { FIN.rbNo.clear(); finReimbRender(); }); await own.waitForTimeout(300);
     t.push(['…with a one-tap WhatsApp confirmation, ready written', /received%20and%20will%20be%20processed/.test(await own.$eval('#fpBody a[href^="https://wa.me/385987"]', a => a.href))]);
-    await own.click('[data-act="finsec"][data-sec="visual"]'); await own.waitForTimeout(1500);
-    t.push(['Visualize: a pie of expenses by type, with the figures beside it', (await own.$$('.fin-pie path')).length === 3 && /Food/.test(await fpage(own)) && /Total Expenses/.test(await fpage(own))]);
-    await own.click('[data-act="finviz"][data-form="bar"]'); await own.waitForTimeout(300);
-    t.push(['…or as bars', (await own.$$('.fin-bar')).length === 3]);
-    await own.screenshot({ path: shot('visual') });
-    await own.click('#reportBtn'); await own.waitForTimeout(400);
-    r = await repText(own);
-    t.push(['the top 📋 on Visualize reports the types', /Food - \$30/.test(r) && /Total Expenses - \$62/.test(r)]);
-    await own.evaluate(() => closeModal());
+    // b259: the charts under Expenses & Reimbursements, and its two CSVs.
+    m = await own.$eval('#finCharts', e => e.innerText);
+    t.push(['b259: under Expenses & Reimbursements: expenses by type, month by month, reimbursements, and who is still to be paid back', /Expenses by type/.test(m) && /Food/.test(m) && /Reimbursements/.test(m) && /Still to pay back, by person/.test(m) && /Bhima/.test(m)
+      && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild && document.querySelectorAll('#finCharts .fin-pie').length >= 2)]);
+    await own.screenshot({ path: shot('exp-charts'), fullPage: true });
+    csv = await csvOf('expenses');
+    t.push(['b259: Expenses ⬇️ CSV: a row per expense listed, with date, what for, who, type, amount and status', csv.rows[0].join('|').startsWith('Date|What for|Who|Type|Where|Amount|Currency|In dollars') && csv.rows.length === 1 + (await own.$$('.fin-ex tbody tr td:nth-child(2)')).length]);
+    csv = await csvOf('reimb');
+    t.push(['b259: Reimbursements ⬇️ CSV: the tab being looked at (Pending), with what to pay back', /^Reimbursements Pending /.test(csv.name) && csv.rows.some(r => r[1] === 'Tea for the volunteers' && r[11] === '8.8 USD') && csv.rows.some(r => r[1] === 'Parking at the fair' && r[11] === '12 USD')]);
     /* ---- b255: dates, repeats, and the Dates & Repeats page ---- */
     await O({ action: 'placeMetaSet', kind: 'events', id: 'ev_z1', from: '2025-10-22', to: '2025-10-24' });
     await own.evaluate(() => { finLeave({quiet:true}); goTo('region', 'rg_at'); eventModal(); }); await own.waitForTimeout(1200);

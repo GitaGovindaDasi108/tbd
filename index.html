@@ -1418,6 +1418,35 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .fin-pie path:hover{opacity:.85}
 .fin-legend{flex:1 1 260px;min-width:0;white-space:normal}
 .fin-key{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}
+.fin-charts{margin-top:22px;border-top:1.5px solid var(--line);padding-top:4px}
+.fc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:8px 0}
+.fc-box{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper);min-width:0}
+.fc-wide{grid-column:1/-1}
+.fc-h{margin:0 0 10px;font-size:14px;color:var(--ink)}
+.fc-donut{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
+.fc-ring{position:relative;flex:0 0 170px;width:170px}.fc-ring .fin-pie{width:170px}
+.fc-ring .fin-pie{-webkit-mask:radial-gradient(circle,transparent 46%,#000 47%);mask:radial-gradient(circle,transparent 46%,#000 47%)}
+.fc-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.fc-mid b{font-size:17px}.fc-mid span{font-size:11px;color:var(--muted);max-width:80px;line-height:1.2}
+.fc-legend{flex:1 1 150px;min-width:0;display:flex;flex-direction:column;gap:5px;font-size:13px}
+.fc-key{display:flex;gap:6px;align-items:baseline}.fc-key b{margin-left:auto;font-variant-numeric:tabular-nums}
+.fc-keys{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:8px}
+.fc-hbars{display:flex;flex-direction:column;gap:10px}
+.fc-hrow{display:grid;grid-template-columns:minmax(70px,140px) 1fr auto;gap:10px;align-items:center;font-size:13px}
+.fc-hl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fc-ht{position:relative;display:block;height:16px}
+.fc-hb{position:absolute;left:0;top:0;height:16px;border-radius:0 5px 5px 0}
+.fc-exp{background:repeating-linear-gradient(45deg,transparent 0 4px,rgba(47,111,176,.14) 4px 8px);border:1.5px dashed;box-sizing:border-box}
+.fc-pair .fc-ht{height:22px}.fc-pair .fc-hb{height:10px}.fc-pair .fc-hb+.fc-hb{top:12px}
+.fc-hv{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums;display:flex;flex-direction:column;line-height:1.25}
+.fc-hv .fin-ex-l{font-size:11px}
+.fc-cols{display:flex;align-items:stretch;gap:6px;height:170px;overflow-x:auto}
+.fc-col{flex:1 0 34px;display:flex;flex-direction:column;min-width:34px}
+.fc-cbars{flex:1;display:flex;align-items:flex-end;justify-content:center;gap:2px;border-bottom:1.5px solid var(--line)}
+.fc-cb{flex:0 1 14px;border-radius:4px 4px 0 0}
+.fc-cl{font-size:11px;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap}
+.sec-csv{font-size:12px;padding:3px 9px;vertical-align:middle}
+@media (max-width:640px){ .fc-grid{grid-template-columns:1fr} .fc-ring{margin:0 auto} }
 .fin-bars{flex:1 1 360px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .fin-bar-row{display:grid;grid-template-columns:minmax(80px,150px) 1fr auto;gap:10px;align-items:center;font-size:13px}
 .fin-bar-l{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -5129,7 +5158,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Expenses'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finoverview:['📈','Overview'], finreport:['📋','Reports'], fincompare:['⚖️','Compare'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'],
+  finoverview:['📈','Overview'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5148,7 +5177,7 @@ function snTopActivity(show){
 const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
   {key:'money',    icon:'💵', label:()=>'Money',           acts:['cash','costs','paytypes','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finreport','fincompare','fintodo','reimbset']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates']},
@@ -10482,8 +10511,10 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
 /* b255: Expenses and Reimbursements are one page (Gita's wish), its tabs the
    expenses, what is still to pay back, what is done, the links and the
    settings; #finance/reimb still lands on it. */
-const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements'], ['visual','📊','Visualize'],
-  ['report','📋','Reports'], ['todo','💼','To do']];
+/* Reports and Visualize are gone for now (Gita, 2026-10-20): every screen
+   has its own ⬇️ CSV and 📋, and its charts sit at the bottom of the page. The
+   Reports builder's code (qb*) stays, unused, for when it comes back. */
+const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements'], ['todo','💼','To do']];
 const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings'], ['reimb','💸','Reimbursements']];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
 const finSecName = sec => (FIN_SECS.concat(FIN_SEC_ALSO).find(x=>x[0]===sec) || [,,'Overview'])[2];
@@ -10506,11 +10537,11 @@ function finScopeF(){
 function finHost(title, body, foot){
   if(FINP.on && FINP.sec==='expenses'){     // the settings, inside Expenses & Reimbursements (b254, b255)
     $('#fpBody').innerHTML = `${finExpTop()}<div class="cash-sub">${esc(title)}</div>${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}${FIN_EXP_END}`;
-    finBindExpTop(); return;
+    finBindExpTop(); finChartsMount(); return;
   }
   if(FINP.on){
-    $('#fpBody').innerHTML = `<h2 class="fp-h">${esc(title)}${FINP.sec==='todo' ? ' ' + finRepBtn('todo') : ''}</h2>${finScopeNote()}${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
-    return;
+    $('#fpBody').innerHTML = `<h2 class="fp-h">${esc(title)}${FINP.sec==='todo' ? ' ' + finRepBtn('todo') + ' ' + finCsvBtn('todo') : ''}</h2>${finScopeNote()}${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
+    finChartsMount(); return;
   }
   openModal(`${mHead(title)}<div class="m-body">${body}</div>
     <div class="m-foot">${foot || ''}<button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
@@ -10537,7 +10568,7 @@ async function finGo(sec, scope, opt){
   if(sec==='settings'){ sec = 'expenses'; FIN.rb.tab = 'settings'; }
   if(sec==='reimb'){ sec = 'expenses'; if(['settings','links'].includes(FIN.rb.tab)) FIN.rb.tab = 'pending'; }
   // b256: Compare is part of Reports ("Compared with").
-  if(sec==='compare') sec = 'report';
+  if(sec==='compare' || sec==='report' || sec==='visual') sec = 'overview';
   if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
   if(scope===undefined) scope = FINP.scope;
   const fresh = !FINP.on || opt.reload;
@@ -10613,7 +10644,6 @@ function finRender(){
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
   if(sec==='expenses'){ if(FIN.rb.tab==='expenses') FIN.rb.tab = 'pending'; if(FIN.rb.tab==='done') FIN.rb.tab = 'paid'; }
-  if(sec==='visual'){ finVisualRender(); return; }
   if(sec==='expenses' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
   if(sec==='expenses'){
     if(!RS.d){ $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>';
@@ -10626,11 +10656,9 @@ function finRender(){
   }
   FIN.f = Object.assign({}, FIN.f, f);
   const title = finSecName(sec);
-  const body = sec==='report' ? qbHTML() + `<details class="qb-old"${FIN.oldOpen?' open':''}><summary>Build a detailed table (rows and columns)</summary>${finReportHTML()}</details>`
-    : finOverviewHTML();
-  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn(sec==='overview' ? 'figures' : sec==='report' ? 'qb' : sec)}</h2>${finScopeNote()}${body}`;
+  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn('figures')} ${finCsvBtn('overview')}</h2>${finScopeNote()}${finOverviewHTML()}`;
   finBind();
-  if(sec==='report'){ qbBind(); const d = $('#fpBody details.qb-old'); if(d) d.addEventListener('toggle', ()=>{ FIN.oldOpen = d.open; }); }
+  finChartsMount();
 }
 
 
@@ -10721,7 +10749,7 @@ function finExpSecHTML(){
       <td>${esc(finExpAmt(x))}<div class="fin-cs">${expStatusHTML(x)}</div></td>
       <td class="fin-acts">${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}" title="Edit">✏️</button>
         <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑</button>` : ''}</td></tr>`;
-  return `<div class="fin-sh"><h3 class="fin-h3">Expenses ${finRepBtn('expenses')}</h3>
+  return `<div class="fin-sh"><h3 class="fin-h3">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h3>
       <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></div>
     ${finExpBarHTML(finExpTotals(all), 0)}
     <div class="fin-filters">
@@ -10753,7 +10781,7 @@ function finBindExpSec(){
 function finExpensesRender(){
   const box = $('#finExS');
   if(!box){ finRender(); return; }
-  box.innerHTML = finExpSecHTML(); finBindExpSec();
+  box.innerHTML = finExpSecHTML(); finBindExpSec(); finChartsMount();
 }
 function finWaExpenses(L, noBar){
   if(!noBar) finWaExpBar(finExpTotals(finExpList()), L);
@@ -10770,7 +10798,7 @@ function finExpTop(){
   const tab = (k, l, c) => `<button type="button" class="fin-tab${R.tab===k?' on':''}" data-act="finrbtab" data-tab="${k}">${esc(l)}${c===undefined?'':` <span class="fin-n">${c}</span>`}</button>`;
   return `<h2 class="fp-h">Expenses &amp; Reimbursements ${finRepBtn('', 'Copy this page for WhatsApp')}</h2>${finScopeNote()}
     <div class="fin-two"><section class="fin-col" id="finExS">${finExpSecHTML()}</section>
-    <section class="fin-col" id="finRbS"><div class="fin-sh"><h3 class="fin-h3">Reimbursements ${finRepBtn('reimb')}</h3>
+    <section class="fin-col" id="finRbS"><div class="fin-sh"><h3 class="fin-h3">Reimbursements ${finRepBtn('reimb')} ${finCsvBtn('reimb')}</h3>
       <button type="button" class="btn btn-ghost btn-xs" data-act="finsendlink">📨 Send Reimbursements Link</button></div>
     ${finExpBarHTML(finExpTotals(all), 1)}
     <div class="fin-tabs fin-tabs-wide">${tab('pending','Pending', n('pending'))}${tab('paid','Paid back', n('paid'))}${tab('declined','Declined', n('declined'))}${tab('links','Links')}${tab('settings','⚙️ Settings')}</div>`;
@@ -10871,7 +10899,7 @@ function finReimbRender(){
   $('#fpBody').innerHTML = finExpTop() + (list.length
     ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finTotals(list.filter(expPayOut), x=>[expPayOut(x)]) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(x=>expCardHTML(x, true)).join('')}`
     : `<div class="cash-empty">${empty}</div>`) + FIN_EXP_END;
-  finBindExpTop();
+  finBindExpTop(); finChartsMount();
   // Sent in before b259, or the rate was not found then: look it up now.
   const need = R.tab==='pending' ? list.filter(x=>expOtherCur(x) && !x.payAmt && !x.fxTried) : [];
   if(need.length) Promise.all(need.map(async x=>{ x.fxTried = true; x.payAmt = await expPayAmt(x); }))
@@ -10929,7 +10957,7 @@ async function finLinksRender(focusNew){
         <div class="exp-btns">${l.off || l.used ? '' : send(l)}
           <button type="button" class="btn btn-ghost btn-xs" data-act="finlinkoff" data-key="${esc(l.key)}" data-on="${l.off||l.used?1:''}">${l.off||l.used?'Turn back on':'Turn off'}</button></div>
       </div>`).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
-  finBindExpTop();
+  finBindExpTop(); finChartsMount();
   let place = '';
   const P = FIN.D, items = [{v:'', l:'Anywhere'}].concat(expPlaceItems(finLinkPlaces()));
   comboBind('finLinkPlace', items, '', v=>{ place = v; });
@@ -11069,6 +11097,163 @@ function finWaVisual(L){
   if(rows.length) L.push('Total Expenses - ' + finUsd(total));
 }
 
+/* ---- Charts at the bottom of every Finance screen (Gita, 2026-10-20) ----
+   Visualize is no longer a section of its own: under all the figures and
+   lists, each screen draws what it shows as pictures. Everything comes from
+   the same figures the screen uses, in dollars at each place's own rates. */
+const FIN_C = { in:'#1baf7a', out:'#eb6834', net:'#2a78d6', pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', don:'#eda100' };
+function finShare(rows){
+  const total = rows.reduce((t,r)=>t+r.v, 0);
+  rows.forEach((r,i)=>{ r.c = r.c || VIZ_COLORS[i % VIZ_COLORS.length]; r.p = total ? r.v/total*100 : 0; });
+  return total;
+}
+// Biggest first; past eight, the rest share one bar.
+function finTop(by, max){
+  let rows = Object.keys(by).map(k=>({k, v:by[k]})).filter(r=>r.v > 0.004).sort((a,b)=>b.v-a.v || a.k.localeCompare(b.k));
+  max = max || 8;
+  if(rows.length > max){ const rest = rows.slice(max-1); rows = rows.slice(0, max-1).concat([{k:'Everything else', v:rest.reduce((t,r)=>t+r.v, 0)}]); }
+  return rows;
+}
+function finDonutHTML(rows, label, totalLabel){
+  const total = finShare(rows);
+  if(!rows.length) return '';
+  const legend = rows.map(r=>`<div class="fc-key"><span class="fin-key" style="background:${r.c}"></span><span class="no-edit">${esc(r.k)}</span>
+      <b>${finUsd(r.v)}</b> <span class="muted-note">${finPct(r.p)}</span></div>`).join('');
+  return `<div class="fc-donut"><div class="fc-ring">${finPieSVG(rows, total).replace('aria-label="Expenses by type"', `aria-label="${esc(label)}"`)}
+      <div class="fc-mid"><b>${finUsd(total)}</b><span>${esc(totalLabel || 'Total')}</span></div></div>
+    <div class="fc-legend">${legend}</div></div>`;
+}
+/* Bars across: what is in hand, and (lighter, behind) what is expected. */
+function finHBarsHTML(rows){
+  const max = Math.max(1, ...rows.map(r=>Math.max(Math.abs(r.v), Math.abs(r.ex==null ? 0 : r.ex))));
+  return `<div class="fc-hbars">${rows.map(r=>{
+    const w = v => Math.max(v ? 1 : 0, Math.abs(v)/max*100);
+    return `<div class="fc-hrow" title="${esc(r.k)}: ${finUsd(r.v)}${r.ex!=null ? ' (expected ' + finUsd(r.ex) + ')' : ''}">
+      <span class="fc-hl no-edit">${esc(r.k)}</span>
+      <span class="fc-ht">${r.ex!=null ? `<span class="fc-hb fc-exp" style="width:${w(r.ex)}%;border-color:${r.c}"></span>` : ''}
+        <span class="fc-hb" style="width:${w(r.v)}%;background:${r.v < 0 ? '#e34948' : r.c}"></span></span>
+      <span class="fc-hv">${finUsd(r.v)}${r.ex!=null ? `<span class="fin-ex-l">Expected ${finUsd(r.ex)}</span>` : ''}</span></div>`; }).join('')}</div>`;
+}
+/* Two bars a row (money in, money out), one row a place. */
+function finPairsHTML(rows, a, b){
+  const max = Math.max(1, ...rows.map(r=>Math.max(r.a, r.b)));
+  return `<div class="fc-keys"><span><span class="fin-key" style="background:${a.c}"></span>${esc(a.l)}</span><span><span class="fin-key" style="background:${b.c}"></span>${esc(b.l)}</span></div>
+    <div class="fc-hbars">${rows.map(r=>`<div class="fc-hrow fc-pair" title="${esc(r.k)}: ${esc(a.l)} ${finUsd(r.a)}, ${esc(b.l)} ${finUsd(r.b)}">
+      <span class="fc-hl no-edit">${esc(r.k)}</span>
+      <span class="fc-ht"><span class="fc-hb" style="width:${r.a ? Math.max(1, r.a/max*100) : 0}%;background:${a.c}"></span>
+        <span class="fc-hb" style="width:${r.b ? Math.max(1, r.b/max*100) : 0}%;background:${b.c}"></span></span>
+      <span class="fc-hv">${finUsd(r.a)}<span class="muted-note">${finUsd(r.b)}</span></span></div>`).join('')}</div>`;
+}
+/* Month by month, as columns. */
+const FIN_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function finMonthsHTML(series){
+  const ks = [...new Set(series.flatMap(x=>Object.keys(x.by)))].sort().slice(-12);
+  if(ks.length < 2) return '';
+  const max = Math.max(1, ...series.flatMap(x=>ks.map(k=>x.by[k]||0)));
+  const lab = k => FIN_MON[Number(k.slice(5,7))-1] + ' ' + k.slice(2,4);
+  return `${series.length > 1 ? `<div class="fc-keys">${series.map(x=>`<span><span class="fin-key" style="background:${x.c}"></span>${esc(x.l)}</span>`).join('')}</div>` : ''}
+    <div class="fc-cols">${ks.map(k=>`<div class="fc-col"><div class="fc-cbars">${series.map(x=>`<span class="fc-cb" style="height:${(x.by[k]||0) ? Math.max(1.5, (x.by[k]||0)/max*100) : 0}%;background:${x.c}" title="${esc(x.l)}, ${lab(k)}: ${finUsd(x.by[k]||0)}"></span>`).join('')}</div>
+      <div class="fc-cl">${lab(k)}</div></div>`).join('')}</div>`;
+}
+const finByMonth = (list, d, v) => { const by = {}; list.forEach(x=>{ const k = String(d(x)||'').slice(0,7), n = v(x); if(/^\d{4}-\d\d$/.test(k) && n) by[k] = (by[k]||0) + n; }); return by; };
+// Dollars for an expense; one with no rate at its place but paid back in dollars uses that.
+const finUsdOf = x => x.usd || (x.payAmt && x.payAmt.amt!=null && String(x.payAmt.cur).toUpperCase()==='USD' ? x.payAmt.amt : 0);
+const finChart = (title, inner, wide) => inner ? `<div class="fc-box${wide ? ' fc-wide' : ''}"><h4 class="fc-h">${esc(title)}</h4>${inner}</div>` : '';
+function finChartsHTML(){
+  const sec = FINP.sec, out = [];
+  if(sec==='overview'){
+    const O = finOverviewRows(), a = O.total, {sales, exps} = finFiltered(FIN.f);
+    out.push(finChart('Where the money comes from', finDonutHTML([
+      {k:'Big Books', v:a.bbu, c:FIN_C.bb}, {k:'Adventures', v:a.avu, c:FIN_C.av}, {k:'Donations', v:a.don, c:FIN_C.don},
+      {k:'Pending Payments', v:a.pend, c:FIN_C.pend}].filter(r=>r.v > 0.004), 'Where the money comes from', 'Expected Gross')));
+    const pend = finPending(a), owe = finToRepay(a);
+    out.push(finChart('Money in and out', finHBarsHTML([
+      {k:'Gross', v:a.coll, ex:pend ? a.gross : null, c:FIN_C.in},
+      {k:'Expenses', v:a.spent, ex:owe ? a.exp : null, c:FIN_C.out},
+      {k:'Net', v:a.net, ex:pend || owe ? a.netExp : null, c:FIN_C.net}])));
+    if(O.rows.length > 1) out.push(finChart(O.what.replace(/^By /, 'Gross and Expenses by '), finPairsHTML(
+      O.rows.map(r=>({k:r.label, a:r.a.coll, b:r.a.exp})).filter(r=>r.a > 0.004 || r.b > 0.004), {l:'Gross', c:FIN_C.in}, {l:'Expenses', c:FIN_C.out}), true));
+    out.push(finChart('Month by month', finMonthsHTML([
+      {l:'Gross', c:FIN_C.in, by:finByMonth(sales.filter(x=>!x.con), x=>x.d, x=>x.gu)},
+      {l:'Expenses', c:FIN_C.out, by:finByMonth(exps.filter(x=>x.st!=='declined' && !x.con), x=>x.d, x=>x.usd)}]), true));
+    out.push(finChart('Expenses by type', finDonutHTML(finVizData().rows.map(r=>({k:r.k, v:r.v})), 'Expenses by type', 'Expenses')));
+  }
+  if(sec==='expenses'){
+    const all = finExpList().filter(x=>x.status!=='declined' && !x.partnerId), byT = {};
+    all.forEach(x=>{ byT[x.type] = (byT[x.type]||0) + (x.usd||0); });
+    out.push(finChart('Expenses by type', finDonutHTML(finTop(byT), 'Expenses by type', 'Expenses')));
+    out.push(finChart('Expenses month by month', finMonthsHTML([{l:'Expenses', c:FIN_C.out, by:finByMonth(all, x=>x.date, x=>x.usd||0)}])));
+    const rb = finExpList().filter(x=>x.kind==='reimburse'), sum = k => rb.filter(x=>x.status===k).reduce((t,x)=>t+finUsdOf(x), 0);
+    if(rb.length) out.push(finChart('Reimbursements', finHBarsHTML([{k:'Paid back', v:sum('paid'), c:FIN_C.in}, {k:'Pending', v:sum('pending'), c:'#eda100'},
+      {k:'Declined', v:sum('declined'), c:'#9aa5b1'}])));
+    const byP = {}; rb.filter(x=>x.status==='pending').forEach(x=>{ const k = x.forName || x.byName || '(no name)'; byP[k] = (byP[k]||0) + finUsdOf(x); });
+    out.push(finChart('Still to pay back, by person', finDonutHTML(finTop(byP), 'Still to pay back, by person', 'Due')));
+  }
+  if(sec==='todo'){
+    const f = finScopeF(), I = finIdx(), byE = {};
+    FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e))
+      .forEach(x=>{ const k = x.e ? (I.e[x.e]||{}).name || 'An event' : ((I.r[x.r]||{}).name || 'Region') + ' Warehouse'; byE[k] = (byE[k]||0) + x.pu; });
+    out.push(finChart('Pending Payments, by place', finDonutHTML(finTop(byE), 'Pending Payments, by place', 'Owed to the tour')));
+    const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', u = (FIN.D.expenses.find(y=>y.id===x.id)||{}).usd || 0; byP[k] = (byP[k]||0) + u; });
+    out.push(finChart('Pending Reimbursements, by person', finDonutHTML(finTop(byP), 'Pending Reimbursements, by person', 'To pay back')));
+  }
+  const boxes = out.filter(Boolean);
+  return boxes.length ? `<h3 class="fin-h3">📊 At a glance</h3><div class="fc-grid">${boxes.join('')}</div>
+    <div class="muted-note">In dollars, at each place's own rates. Declined expenses and consignment groups' money are left out.</div>` : '';
+}
+/* Always the last thing on the page, under every section. */
+function finChartsMount(){
+  if(!FINP.on || !FIN.D) return;
+  const body = $('#fpBody'); if(!body) return;
+  let box = $('#finCharts');
+  if(!box){ box = document.createElement('section'); box.id = 'finCharts'; box.className = 'fin-charts'; }
+  body.appendChild(box);
+  try{ box.innerHTML = finChartsHTML(); }catch(e){ box.innerHTML = ''; }
+  box.hidden = !box.innerHTML;
+}
+
+/* ---- ⬇️ CSV on every screen (Gita, 2026-10-20): what the section shows, as a spreadsheet ---- */
+const finCsvBtn = part => `<button type="button" class="btn btn-ghost btn-sm sec-csv" data-act="fincsv" data-part="${part}" title="Download this as a spreadsheet (CSV)">⬇️ CSV</button>`;
+function finCsvSave(name, rows){
+  const cell = v => { const s = String(v==null ? '' : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿' + rows.map(r=>r.map(cell).join(',')).join('\r\n')], {type:'text/csv'}));
+  // Plain letters only: Chrome names the file "download" if it has · or accents.
+  a.download = (name + ' ' + (finScopeName() || 'Everywhere').replace(/ · /g, ' - ') + ' ' + new Date().toISOString().slice(0,10))
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\x20-\x7e]+/g, '-').replace(/[\\/:*?"<>|]+/g, '-') + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  FIN.lastCsv = {name:a.download, rows};
+}
+const finMoney = v => v==null ? '' : Math.round(v*100)/100;
+function finCsvDownload(part){
+  if(part==='overview'){
+    const O = finOverviewRows();
+    const head = ['', 'Big Books Sold (USD)', 'Big Books Sold', 'Big Book Gifts', 'Adventures Sold (USD)', 'Adventures Sold', 'Adventure Gifts', 'Donations (USD)',
+      'Pending Payments (USD)', 'Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)'];
+    const line = (l, a) => [l, finMoney(a.bbu), a.bb, a.bbg, finMoney(a.avu), a.av, a.avg, finMoney(a.don), finMoney(a.pend), finMoney(a.coll), finMoney(a.gross),
+      finMoney(a.spent), finMoney(a.exp), finMoney(a.net), finMoney(a.netExp), a.margin==null ? '' : Math.round(a.margin*10)/10];
+    return finCsvSave('Finance Overview', [head].concat(O.rows.map(r=>line(r.label, r.a)), [line('Total', O.total)]));
+  }
+  const expRow = x => [x.date, x.desc, x.who, x.type, x.placeLabel, finMoney(Number(x.amt)), x.cur, finMoney(x.usd), x.kind==='reimburse' ? 'To be paid back' : 'Record',
+    EXP_STATUS[x.status] || x.status, x.method || '', x.kind!=='reimburse' ? '' : !expOtherCur(x) ? finMoney(Number(x.amt)) + ' ' + x.cur : x.payAmt && x.payAmt.amt!=null ? finMoney(x.payAmt.amt) + ' ' + x.payAmt.cur : 'in ' + x.reimbCur + ', rate to check', x.notes || ''];
+  const expHead = ['Date', 'What for', 'Who', 'Type', 'Where', 'Amount', 'Currency', 'In dollars', 'Kind', 'Status', 'Pay back by', 'To pay back', 'Notes'];
+  if(part==='expenses') return finCsvSave('Expenses', [expHead].concat(finExpShown().map(expRow)));
+  if(part==='reimb'){
+    const tab = ['pending','paid','declined'].includes(FIN.rb.tab) ? FIN.rb.tab : 'pending';
+    return finCsvSave('Reimbursements ' + {pending:'Pending', paid:'Paid back', declined:'Declined'}[tab],
+      [expHead].concat(finExpList().filter(x=>x.kind==='reimburse' && x.status===tab).map(expRow)));
+  }
+  if(part==='todo'){
+    const T = finScopedTodo();
+    if(EXP.tab==='pay') return finCsvSave('Pending Payments', [['Date', 'Name', 'Phone', 'Book', 'How many', 'Where', 'Region', 'Season', 'Sold by', 'Owed']]
+      .concat(T.pending.map(p=>[String(p.ts).slice(0,10), p.name, p.phone, p.book, p.qty, p.place, p.region, p.season, p.soldBy, finOwed(p)])));
+    const usd = {}; (FIN.D.expenses||[]).forEach(x=>{ usd[x.id] = x.usd; });
+    const list = (EXP.tab==='all' ? T.all : T.reimb).map(x=>Object.assign({}, x, {usd:usd[x.id], who:x.forName || x.byName || '',
+      type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other')}));
+    return finCsvSave(EXP.tab==='all' ? 'Every expense' : 'Pending Reimbursements', [expHead].concat(list.map(expRow)));
+  }
+}
+
 /* ---- Finance's WhatsApp reports (b254) ----
    Each 📋 copies exactly what sits beside it, and 📋 Report at the top copies
    the whole section being looked at, with a heading for each part — the same
@@ -11169,8 +11354,7 @@ function finShareReport(part){
    the To do; only Finance (and Universal) set how people are paid back. */
 function FIN_BTNS(fin){
   if(!fin) return [];
-  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`, `<button class="btn" data-act="finreport">📋 Finance Reports</button>`,
-    `<button class="btn" data-act="fincompare">⚖️ Compare Seasons</button>`, `<button class="btn" data-act="fintodo">💼 Finance To do</button>`];
+  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`, `<button class="btn" data-act="fintodo">💼 Finance To do</button>`];
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   return b;
 }
@@ -18386,8 +18570,8 @@ document.addEventListener('click',e=>{
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
   if(a==='rsgone' || a==='rsback'){ rsGone(t.dataset.m, a==='rsgone'); return; }
   if(a==='finoverview'){ finGo('overview'); return; }
-  if(a==='finreport'){ finGo('report'); return; }
-  if(a==='fincompare'){ finGo('compare'); return; }
+  if(a==='finreport' || a==='fincompare'){ finGo('overview'); return; }
+  if(a==='fincsv'){ finCsvDownload(t.dataset.part||''); return; }
   if(a==='finsec'){ if(t.dataset.sec==='expenses') FIN.rb.tab = 'pending'; finGo(t.dataset.sec, undefined, {reload:true}); return; }
   if(a==='fingo'){ finGo(FINP.sec, t.dataset.scope); return; }
   if(a==='finleave'){ finLeave(); return; }

@@ -2124,4 +2124,19 @@ Live unless marked practice.
   window, `finSendLinkModal`); Reimbursements Due over the Reimbursements
   half; Type/Status as checkbox filters like the sales log (`finexflt`);
   no Add an expense / Edit Wording on the Finance bar; "← Go to Sales Portal".
-- Tests: browser-finance (93), browser-expenses (67), browser-reports (26).
+- **Reports and Visualize removed for now** (Gita, 2026-10-20): Finance's bar
+  is Overview, Expenses & Reimbursements, To do. Old #finance/report|compare|visual
+  addresses open the Overview. The qb* builder code stays, unused;
+  test/browser-reports.js is paused (TBS_REPORTS=1 runs it) until it returns.
+- **⬇️ CSV beside every 📋** (`finCsvBtn`, `finCsvDownload`): Overview (a row per
+  place + Total, every figure and its Expected), Expenses (rows listed),
+  Reimbursements (the tab open), To do (the tab open). File names are plain
+  ASCII, since Chrome names a file "download" when it has · or accents.
+- **Charts at the bottom of every Finance screen** ("📊 At a glance",
+  `finChartsHTML` / `finChartsMount`, always the last element of #fpBody):
+  Overview = where the money comes from (donut), money in and out (actual
+  bars with dashed Expected), Gross and Expenses by place, month by month,
+  expenses by type. Expenses & Reimbursements = expenses by type, month by
+  month, reimbursements by status, still to pay back by person. To do =
+  pending payments by place, pending reimbursements by person.
+- Tests: browser-finance (98), browser-expenses (66); browser-reports paused.
