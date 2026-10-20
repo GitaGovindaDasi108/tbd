@@ -4,6 +4,10 @@
    ones, a typed question setting the choices, the charts, the list of
    payments, comparing with last year's one in the series, and the WhatsApp
    report of what is on screen. */
+// b259: Reports is off the Finance page for now (Gita, 2026-10-20). Its code
+// stays, so this test is paused until it comes back: put Reports back in
+// FIN_SECS and delete these two lines.
+if (!process.env.TBS_REPORTS) { console.log('browser-reports: paused (Reports is off for now, b259)'); process.exit(0); }
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){
   return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
 const fs = require('fs'), path = require('path'), os = require('os');

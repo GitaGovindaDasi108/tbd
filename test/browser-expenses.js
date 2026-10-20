@@ -105,6 +105,8 @@ const API = 'http://api.test/';
   const fpage = page => page.evaluate(() => document.querySelector('#fpBody').innerText);
   const onFin = page => page.evaluate(() => document.body.classList.contains('fin-mode') && !document.querySelector('#finPage').hidden);
 
+  // b259: Save shows the expense to check first; then it is saved.
+  const saveIt = async (pg, w) => { await pg.click('#xSave'); await pg.waitForTimeout(600); if (await pg.$('#xrGo')) await pg.click('#xrGo'); await pg.waitForTimeout(w || 1200); };
   try {
     /* ---- A Seller records an expense to be paid back ---- */
     const sita = await open('sita@example.com', 'Sita');
@@ -114,7 +116,8 @@ const API = 'http://api.test/';
     await sita.evaluate(() => document.querySelector('#sideNav [data-act="expenses"]').click());
     await sita.waitForTimeout(800);
     let m = await modal(sita);
-    t.push(['the form asks record-keeping or reimbursement', /For record-keeping/.test(m) && /For reimbursement/.test(m)]);
+    t.push(['b259: the form starts as record-keeping, with "Check to receive reimbursement"', /Check to receive reimbursement/.test(m) && !(await sita.$eval('#xReimb', c => c.checked)) && !(await sita.$('#xMethod'))]);
+    await sita.check('#xReimb'); await sita.waitForTimeout(300);
     t.push(['…for her event', /Chowpatty Program · Delhi · Kartika/.test(m)]);
     t.push(['…the currency starts at rupees, the region\'s own', await sita.$eval('#xCur', s => s.value) === 'INR']);
     t.push(['…the date starts at today', await sita.$eval('#xDate', i => i.value) === new Date().toISOString().slice(0, 10)]);
@@ -133,18 +136,21 @@ const API = 'http://api.test/';
     await sita.click('#xSave'); await sita.waitForTimeout(500);
     t.push(['saving without the UPI ID is refused, with the reason', /UPI ID is needed/.test(await sita.$eval('#modalErr', e => e.innerText))]);
     await sita.fill('[data-payto="upi"]', 'sita@okbank'); await sita.fill('#xNotes', 'Two trips');
-    await sita.click('#xSave'); await sita.waitForTimeout(1200);
+    await sita.click('#xSave'); await sita.waitForTimeout(600);
+    t.push(['b259: even one expense is shown to check before it is saved', /Check your expense/.test(await modal(sita)) && /Taxi with the book boxes/.test(await modal(sita))]);
+    await sita.click('#xrGo'); await sita.waitForTimeout(1200);
     m = await modal(sita);
     t.push(['saved: it is in her list, waiting to be paid back', /Your expenses/i.test(m) && /Taxi with the book boxes/.test(m) && /Waiting to be paid back/.test(m)]);
     t.push(['…with how to pay her and the receipt', /sita@okbank/.test(m) && /tbs-receipt\.jpg/.test(m)]);
     await sita.screenshot({ path: shot('seller') });
     // Record-keeping only: no way of paying back is asked.
-    await sita.click('.exp-k:has(input[value="record"])'); await sita.waitForTimeout(200);
+    if (await sita.$eval('#xReimb', c => c.checked)) { await sita.uncheck('#xReimb'); await sita.waitForTimeout(200); }
     t.push(['record-keeping asks no way of paying back', !(await sita.$('#xMethod'))]);
     await sita.fill('#xAmt', '40'); await sita.fill('#xDesc', 'Packing tape');
-    await sita.click('#xSave'); await sita.waitForTimeout(1200);
+    await saveIt(sita);
     t.push(['…and is recorded', /Packing tape/.test(await modal(sita)) && /Recorded/.test(await modal(sita))]);
     // The next one remembers her UPI ID.
+    await sita.check('#xReimb'); await sita.waitForTimeout(300);
     await sita.selectOption('#xMethod', 'UPI'); await sita.waitForTimeout(200);
     t.push(['her UPI ID is remembered on this phone for next time', await sita.$eval('[data-payto="upi"]', i => i.value) === 'sita@okbank']);
 
@@ -152,7 +158,7 @@ const API = 'http://api.test/';
     const fin = await open('fin@example.com', 'Madhava');
     t.push(['Finance (no rest-of-app view yet) lands on the Finance page, at its own address', await onFin(fin) && /#finance\/overview/.test(fin.url())]);
     let secs = await fin.evaluate(() => document.querySelector('#fpSecs').innerText);
-    t.push(['…with its sections: Overview, Expenses, Reimbursements, Visualize, Reports (Compare is inside it), To do (settings inside Reimbursements), and Add an expense', /Overview/.test(secs) && /Reports/.test(secs) && !/Compare/.test(secs) && /To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && /Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && /Add an expense/.test(secs)]);
+    t.push(['…with its sections: Overview, Expenses & Reimbursements, To do (settings inside Reimbursements); b259: no Reports, Compare, Visualize, Add an expense or Edit Wording up there, and a way out', /Overview/.test(secs) && !/Reports/.test(secs) && !/Compare/.test(secs) && /To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && !/Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && !/Add an expense/.test(secs) && !/Edit Wording/.test(secs) && /Go to Sales Portal|Leave Finance/.test(secs)]);
     t.push(['…the masthead says Finance, in Finance\'s own colour', /Finance/.test(await fin.$eval('#whTitle', e => e.textContent)) &&
       await fin.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(238, 243, 250)')]);
     await fin.click('[data-act="finsec"][data-sec="todo"]'); await fin.waitForTimeout(1200);
@@ -186,9 +192,10 @@ const API = 'http://api.test/';
     await fin.click('#xFor .pp-row'); await fin.waitForTimeout(800);
     await pick(fin, 'xLocC', 'Chowpatty', 'ev_cp'); await fin.waitForTimeout(600);
     await fin.fill('#xAmt', '120'); await fin.fill('#xDesc', 'Chai for the helpers');
+    await fin.check('#xReimb'); await fin.waitForTimeout(300);
     await fin.selectOption('#xMethod', 'Cash'); await fin.waitForTimeout(200);
     await fin.fill('[data-payto="phone"]', '+91 98 0000');
-    await fin.click('#xSave'); await fin.waitForTimeout(1200);
+    await saveIt(fin);
     const sitaList = (await ask({ s: await sessionOf('sita@example.com', 'Sita'), action: 'expList' })).result;
     t.push(['…the expense recorded for Sita is in her own list', sitaList.some(x => x.desc === 'Chai for the helpers' && x.forName === 'Sita' && x.byName === 'Madhava')]);
 
@@ -201,6 +208,7 @@ const API = 'http://api.test/';
     t.push(['…a region below shows UPI off, from above', /As above \(off\)/.test(await fin.$eval('[data-rsm="UPI"] option', o => o.textContent))]);
     await fin.screenshot({ path: shot('settings') });
     await sita.evaluate(() => expensesModal()); await sita.waitForTimeout(1000);
+    await sita.check('#xReimb'); await sita.waitForTimeout(300);
     const methods2 = await sita.$$eval('#xMethod option', os => os.map(o => o.value).filter(Boolean));
     t.push(['the Seller is no longer offered UPI', !methods2.includes('UPI') && methods2.includes('Cash')]);
 
@@ -215,7 +223,7 @@ const API = 'http://api.test/';
     const snText = () => own.evaluate(() => [...document.querySelectorAll('#sideNav [data-act]')].map(b => b.dataset.act).join('|'));
     const omenu = await snText();
     t.push(['Universal has Expenses, Finance To do and Reimbursement Settings', /\bexpenses\b/.test(omenu) && /fintodo/.test(omenu) && /reimbset/.test(omenu)]);
-    t.push(['…a Finance section: Overview, Reports, Compare', /finoverview/.test(omenu) && /finreport/.test(omenu) && /fincompare/.test(omenu)]);
+    t.push(['…a Finance section: Overview (b259: no Reports or Compare for now)', /finoverview/.test(omenu) && !/finreport/.test(omenu) && !/fincompare/.test(omenu)]);
     t.push(['…View as in App Development', /viewas/.test(omenu)]);
     t.push(['…and no separate Record Costs (it is the Expenses form now)', !/\bcosts\b/.test(omenu)]);
 
@@ -225,10 +233,9 @@ const API = 'http://api.test/';
     const cats = await own.$$eval('#xCatC .pp-row', os => os.map(o => o.dataset.v));
     t.push(['the form has the kinds of expense from Record Costs (card machine fee, venue…)', cats.includes('Card machine fee') && cats.includes('Venue')]);
     await pick(own, 'xLocC', 'Chowpatty', 'ev_cp'); await own.waitForTimeout(600);
-    await own.click('.exp-k:has(input[value="record"])'); await own.waitForTimeout(200);
     t.push(['…and "Paid with" (the place\'s payment types), as Record Costs had', !!(await own.$('#xPayC'))]);
     await pick(own, 'xCatC', 'Venue', 'Venue'); await own.fill('#xAmt', '800'); await own.fill('#xDesc', 'Hall hire');
-    await own.click('#xSave'); await own.waitForTimeout(1500);
+    await saveIt(own, 1500);
     const st = (await O({ action: 'getState', season: SA })).state;
     t.push(['…saved: the venue expense is also a cost at the event, so net totals take it off', (st.costs || []).some(c => c.location === 'ev_cp' && Number(c.amt) === 800 && c.category === 'Venue')]);
 
@@ -237,7 +244,7 @@ const API = 'http://api.test/';
     m = await fpage(own);
     t.push(['Universal: Menu › Finance goes to the Finance page', await onFin(own) && /#finance\/overview/.test(own.url())]);
     t.push(['…the app\'s own panels are out of the way', await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display === 'none')]);
-    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Expected Gross/.test(m) && /Current Collected/.test(m) && /Net/.test(m)]);
+    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected Gross/.test(m) && /Net/.test(m)]);
     t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending payments\s*\$3\.75/i.test(m)]);
     t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*\$17\.63/i.test(m)]);
     t.push(['…the Overview keeps to its seven figures (no pending reimbursements)', !/Pending Reimbursements/i.test(m)]);
@@ -257,25 +264,15 @@ const API = 'http://api.test/';
     t.push(['a refresh stays on Finance, at Delhi', await onFin(own) && /By Event/i.test(await fpage(own))]);
     await own.click('[data-act="fingo"][data-scope=""]'); await own.waitForTimeout(500);
     await own.screenshot({ path: shot('fin-overview') });
-    await own.click('[data-act="finsec"][data-sec="report"]'); await own.waitForTimeout(1200);
-    await own.evaluate(() => { document.querySelector('details.qb-old').open = true; });
-    await own.selectOption('[data-rd="0"]', 'category'); await own.waitForTimeout(400);
-    m = await fpage(own);
-    t.push(['Reports: rows by kind of expense', /Venue/.test(m) && /Total \(\d+ rows?\)/.test(m)]);
-    await own.selectOption('[data-rd="0"]', 'title'); await own.waitForTimeout(400);
-    m = await fpage(own);
-    t.push(['…by title, with books sold', /Books sold/i.test(m) && /\(English\)|\(no title\)|\w/.test(m)]);
-    const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"]')]);
+    // b259: Reports is gone for now; each screen downloads its own CSV and draws its charts underneath.
+    const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"][data-part="overview"]')]);
     const csv = fs.readFileSync(await dl.path(), 'utf8');
-    t.push(['…downloads as a CSV for Excel or Sheets', /^﻿?Title,/.test(csv) && /Total/.test(csv)]);
-    await own.screenshot({ path: shot('fin-report') });
-    // Compare is now part of Reports: every Kartika season, side by side.
-    await own.evaluate(() => { QB.ask = ''; QB.heard = null; QB.st = Object.assign(qbDefault(), {show:['books','coll'], at:['S:seasons:Kartika'], during:'ever', split:'season'}); finRender(); });
-    await own.waitForTimeout(600);
-    m = await fpage(own);
-    t.push(['Reports: seasons of the same name side by side, added up', !(await own.$('#fpSecs [data-sec="compare"]')) && (m.match(/Kartika/g) || []).length >= 2 && /Total/i.test(m)]);
+    t.push(['b259: the Overview downloads as a CSV for Excel or Sheets: a row per season and the total', /^\ufeff?,Big Books Sold \(USD\)/.test(csv) && /\nKartika,/.test(csv) && /\nTotal,/.test(csv) && /^Finance Overview Everywhere \d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename())]);
+    t.push(['b259: …and its charts sit at the bottom: the expenses include the venue', /At a glance/.test(await fpage(own)) && /Venue/.test(await own.$eval('#finCharts', e => e.innerText))]);
+    await own.screenshot({ path: shot('fin-report'), fullPage: true });
+    t.push(['b259: no Reports, Compare or Visualize on the Finance bar', !(await own.$('#fpSecs [data-sec="report"]')) && !(await own.$('#fpSecs [data-sec="compare"]')) && !(await own.$('#fpSecs [data-sec="visual"]'))]);
     await own.click('[data-act="finleave"]'); await own.waitForTimeout(500);
-    t.push(['← Back to the app leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
+    t.push(['← Go to Sales Portal leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
       await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display !== 'none')]);
 
     /* View as: a Seller at the Chowpatty Program — while the owner's own tab is
