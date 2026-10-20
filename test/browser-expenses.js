@@ -168,6 +168,8 @@ const API = 'http://api.test/';
     m = await fpage(fin);
     t.push(['…payments pending across the system: Arjuna owes 300 rupees, with his phone', /Pending Payments\s*1/.test(m) && /Arjuna/.test(m) && /300/.test(m) && /\+91 22 1234/.test(m) && /Chowpatty Program · Delhi · Kartika/.test(m)]);
     await fin.click('[data-act="fintab"][data-tab="reimb"]'); await fin.waitForTimeout(300);
+    // b257: the note goes in the card's Pay back box, not a pop-up.
+    await fin.fill('[data-pbnote]', 'UPI ref 4471');
     await fin.click('[data-act="exppaid"]'); await fin.waitForTimeout(1000);
     m = await fpage(fin);
     t.push(['Finance marks it paid back: it leaves the list', /Nothing waiting to be paid back/.test(m)]);

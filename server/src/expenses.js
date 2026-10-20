@@ -179,8 +179,12 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function facts() { fresh(); return app.financeFacts_(); }
   /* Every way of paying back the tour could offer: cash, every payment type it
      takes (but card and gift), and a bank transfer. */
-  function allMethods(F) {
+  /* Ways of paying back Finance removed for good (Gita, 2026-10-20: "delete
+     reimbursement types completely if they will never be used"). */
+  const getGone = () => { const a = parse(kv.getProp('reimbGone'), []); return Array.isArray(a) ? a.map(x => String(x)) : []; };
+  function allMethods(F, withGone) {
     const seen = {}, out = [];
+    if (!withGone) getGone().forEach(g => { seen[g.toLowerCase()] = 1; });
     ['Cash'].concat(F.payTypes, ['Bank transfer']).forEach(t => {
       const k = String(t).toLowerCase();
       if (!t || NOT_METHODS[k] || seen[k]) return;
@@ -561,7 +565,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     ['USD', 'EUR', 'GBP', 'INR', 'PLN'].forEach(c => curs.add(c));
     // Each level's own chain, everywhere first, so the page can show what it inherits.
     levels.forEach(l => { l.chain = l.id ? chainOf(placeOf(P, l.id)) : ['']; });
-    return { rules: getRules(), methods: allMethods(F), curs: [...curs], levels, people: peopleList(), mayEdit: mayPay(w),
+    return { rules: getRules(), methods: allMethods(F), gone: getGone(), curs: [...curs], levels, people: peopleList(), mayEdit: mayPay(w),
       // What each level gives now, before any person's own setting.
       regionCurs: Object.fromEntries(levels.map(l => [l.id, regionCurs(F, placeOf(P, l.id))])) };
   }
@@ -571,6 +575,15 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return rulesGet(w);
   }
 
+  function methodGone(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can change these settings.');
+    const name = clip(p.name, 60);
+    if (!name || !allMethods(facts(), true).some(m => m.toLowerCase() === name.toLowerCase())) throw new Error('There is no way of paying back called that.');
+    let gone = getGone().filter(g => g.toLowerCase() !== name.toLowerCase());
+    if (p.gone) gone.push(name);
+    kv.setProp('reimbGone', JSON.stringify(gone.slice(0, 100)));
+    return rulesGet(w);
+  }
   function linkList(w) {
     if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
     const P = w.P, L = getLinks();
@@ -615,7 +628,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
+    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
