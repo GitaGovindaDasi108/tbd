@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b248';
+var SERVER_BUILD = 'b253';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -326,13 +326,19 @@ function financeFacts_() {
 function financeData_() {
   var seasons = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name, closed: !!s.closedAt }; });
   var regs = {}, evs = {}, whOf = {}, partners = {};
-  objectsOf_('_regions').forEach(function (r) {
-    if (!r || !r.regionId || String(r.regionId) === HQ_REGION || String(r.seasonId || '') === HQ_ID) return;
-    regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: String(r.seasonId || ''),
-      whLoc: String(r.whLoc || ''), closed: !!r.closedAt };
-    if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+  /* In the app's own order (b253): each season's regions as regionsOrdered_
+     puts them (their sort, then as created, closed ones last A to Z), and the
+     events as eventsOrdered_ does, so Finance never lists them differently. */
+  seasons.forEach(function (se) {
+    if (se.id === HQ_ID) return;
+    regionsOrdered_(se.id).forEach(function (r) {
+      if (!r || !r.regionId || String(r.regionId) === HQ_REGION) return;
+      regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: se.id,
+        whLoc: String(r.whLoc || ''), closed: !!r.closedAt };
+      if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+    });
   });
-  objectsOf_('_events').forEach(function (e) {
+  eventsOrdered_().forEach(function (e) {
     if (!e || !e.eventId || !regs[String(e.regionId || '')]) return;
     evs[String(e.eventId)] = { id: String(e.eventId), name: String(e.name || ''), regionId: String(e.regionId || ''), closed: !!e.closedAt };
   });
@@ -354,8 +360,9 @@ function financeData_() {
     if (!w) return;                                   // a place since deleted
     var b = s.bookId ? bookById_(String(s.bookId)) : null;
     var type = String(s.type || 'SALE'), got = received_(s);
-    var f = saleFactor_(s), gross = 0, cur = {}, pays = {};
+    var f = saleFactor_(s), gross = 0, cur = {}, pays = {}, legN = 0, giftN = 0;
     eachLeg_(s, function (l) {
+      legN++; if (l.type === 'Gift') giftN++;
       if (!l.amt || l.type === 'Gift') return;
       gross += legTruthUsd_(s, l, f);
       pays[l.type] = 1;
@@ -365,6 +372,7 @@ function financeData_() {
     sales.push({ id: String(s.saleId), d: day(s.ts), s: w.s, r: w.r, e: w.e, k: type,
       b: b ? String(b.id) : '', t: b ? String(b.name || '') : '', c: b ? String(b.cat || '') : '',
       q: (type === 'SALE' || type === 'PREORDER') && s.bookId ? (Number(s.qty) || 1) : 0,
+      g: legN > 0 && giftN === legN ? 1 : 0,          // a gift: every leg of it is Gift (as the app's isGift)
       by: String(s.soldBy || ''), pay: Object.keys(pays), con: isPartnerSale_(s) ? (partners[partnerOfBook_(String(s.bookId))] || 'Consignment') : '',
       gu: r2(got ? gross : 0), pu: r2(pend), cur: cur });
   });

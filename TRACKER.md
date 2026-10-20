@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b251**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b253**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,32 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b253 — Finance, first round of Gita's improvements (practice)
+
+- **Regions and events in the app's order** on every Finance list and dropdown:
+  Code.gs `financeData_` now walks `regionsOrdered_` / `eventsOrdered_` (sort,
+  then as created, closed last A to Z).
+- **Overview shows seven figures only** (`finOverviewFigs`, used by tiles, the
+  table and WhatsApp alike): Big Books Sold, Adventures Sold (money in hand,
+  with "27 Sold + 3 Gifts = 30 Distributed" beneath; Other titles count as Big
+  Books), Donations, Pending Payments, Gross (formerly Collections; becomes
+  **Expected Gross** with **Current Collected** beneath while anything is
+  owed), Expenses, Net (margin beneath). Consignment money is the groups', so
+  it is left out of these (still in Reports). `financeData_` sends `g` (a gift)
+  so gifts are no longer counted as sold. Reports' figure names follow.
+- **Place search** (`finSearchHTML`, `finBindSearch`): the app's drop-down
+  search, every season › region › event, first on the dates line.
+- **WhatsApp reports**: 📋 beside Overview, the By Region/Event/Season table,
+  Reports, Compare and To do (`finrep`, `finReportText`); the top 📋 Report in
+  Finance reports the section being looked at, with headings.
+- **Pencils**: the Finance page was marked no-edit; now every word on it can be
+  rewritten (place names apart), Edit Wording is on Finance's bar for
+  Universal, and a passing message (toast) stays up and takes a pencil while
+  wording is being edited.
+- Wording: To do tabs read Pending Reimbursements / Pending Payments; the
+  section is "To do" on the Finance page.
+- Tests: `test/browser-finance.js` (24), `browser-expenses.js` updated (66).
 
 ## Done in b251 — Hide here at Earthly HQ; the season says where hiding is
 

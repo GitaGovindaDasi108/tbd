@@ -1255,10 +1255,23 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fin-filters{display:flex;flex-wrap:wrap;gap:8px 12px;margin:8px 0}
 .fin-filters label{display:flex;flex-direction:column;font-size:12px;color:var(--ink-s,#6b5a4a);gap:3px}
 .fin-filters select,.fin-filters input{min-width:130px}
-.fin-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin:10px 0}
+.fin-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;margin:10px 0}
 .fin-tile{border:1px solid var(--line-d,#ddd);border-radius:10px;padding:8px 10px;background:var(--cream,#fff)}
 .fin-tile.fin-net{border-width:2px}
 .fin-tl{font-size:12px;opacity:.75}.fin-tv{font-size:18px;font-weight:600;margin-top:2px}
+.fin-ts{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.3}
+.fin-cs{font-size:11px;color:var(--muted);font-weight:400}
+.fin-tbl td{vertical-align:top}
+.fin-h3{font-size:15px;margin:14px 0 4px;color:var(--lvl);display:flex;align-items:center;gap:8px}
+.fp-h{display:flex;align-items:center;gap:8px}
+.fin-filters{align-items:flex-end}
+.fin-search{flex:1 1 280px;max-width:420px;position:relative}
+.fin-pp{position:relative;display:block}
+.fin-pp .pp-in{width:100%;box-sizing:border-box}
+.fin-pp .pp-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.16);display:block}
+.fin-pp .pp-list[hidden]{display:none}
+.fin-pp .pp-row,.fin-pp .pp-empty{display:block}
+.fin-pp .pp-row.pp-season{font-weight:700;color:var(--lvl);padding-left:12px;text-transform:none;letter-spacing:0;font-size:13.5px}
 .fin-scroll{overflow-x:auto;max-width:100%;margin:6px 0}
 .fin-tbl{min-width:100%;white-space:nowrap}.fin-tbl td{text-align:right}.fin-tbl th{text-align:left}
 .fin-tbl tr.fin-l1 th{padding-left:22px}.fin-tbl tr.fin-l2 th{padding-left:44px;font-weight:400}
@@ -1550,6 +1563,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:.25s;z-index:80;pointer-events:none;max-width:90vw;text-align:center}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 #toast.err{background:var(--clay)}
+#toast.editing{pointer-events:auto}
 
 /* ---------- Responsive ---------- */
 @media (max-width:1080px){ .totals{grid-template-columns:repeat(2,1fr)} }
@@ -1699,7 +1713,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b251</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b253</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -1709,7 +1723,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 
 <main>
   <!-- Finance, a place of its own (b239): shown instead of everything else in main. -->
-  <section id="finPage" class="fin-page no-edit" hidden>
+  <section id="finPage" class="fin-page" hidden>
     <div class="toolbar"><div class="loc-tabs" id="fpNav"></div></div>
     <div class="fp-secs" id="fpSecs"></div>
     <div class="fp-body" id="fpBody"></div>
@@ -2041,8 +2055,11 @@ const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 const newSaleId   = () => 'S' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 const newBundleId = () => 'B' + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
 
-function toast(msg,isErr){const t=$('#toast');t.textContent=msg;t.className=isErr?'err show':'show';
-  clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',isErr?5000:2600);}
+/* While wording is being edited (b253) a message stays up longer and can be
+   tapped, so its pencil can be reached like any other. */
+function toast(msg,isErr){const t=$('#toast'), ed=(()=>{ try{ return EDIT_WORDING; }catch(e){ return false; } })();
+  t.textContent=msg;t.className=(isErr?'err show':'show')+(ed?' editing':'');
+  clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',ed?10000:isErr?5000:2600);}
 function setStatus(kind,text){
   $('#dot').className='dot '+kind;
   // Shown to everyone when something is wrong (offline, a save refused); otherwise for Universal only.
@@ -8740,8 +8757,8 @@ function finDraw(){
         ${p.phone?`<div>📞 <b class="exp-copy">${esc(p.phone)}</b></div>`:''}</div>`).join('')}`
     : '<div class="cash-empty">No payments pending anywhere.</div>';
   if(EXP.tab==='all') body = all.length ? all.map(x=>expCardHTML(x, true)).join('') : '<div class="cash-empty">No expenses yet.</div>';
-  finHost('Finance To do', `
-      <div class="fin-tabs">${tab('reimb','Reimbursements pending', T.reimb.length, '#2E8065')}${tab('pay','Payments pending', T.pending.length, '#C0392B')}
+  finHost(FINP.on ? 'To do' : 'Finance To do', `
+      <div class="fin-tabs">${tab('reimb','Pending Reimbursements', T.reimb.length, '#2E8065')}${tab('pay','Pending Payments', T.pending.length, '#C0392B')}
         ${tab('all','Every expense', T.all.length, '#3E6FA8')}</div>
       <input id="finQ" class="fin-q" type="search" placeholder="Search names, places, descriptions…" value="${esc(EXP.q)}">
       ${body}`,
@@ -8864,35 +8881,50 @@ document.addEventListener('paste', e=>{
    plain rows (Code.gs financeData_), already in dollars at each place's own
    rates; the page adds them up whichever way it is asked. Dollars, so seasons
    and regions in different currencies can be set side by side.
-     Gross sales   the books' value, paid or still owed (donations apart)
-     Collections   money in hand, donations included
+     Big Books Sold / Adventures Sold
+                   our own money in hand for each kind, with its count in the
+                   app's own form: 27 Sold + 3 Gifts = 30 Distributed
+                   (sold includes pre-orders; Other titles count as Big Books)
+     Donations     donations in hand
+     Pending Payments  still owed to us
+     Gross         our own money in hand (b253: formerly "Collections"; the
+                   consignment groups' money is theirs and kept apart)
+     Expected Gross    Gross + Pending Payments, shown in its place while
+                   anything is still owed, with Current Collected beneath
      Consignment   money in hand that belongs to the consignment groups
      Expenses      our own expenses (a group's come off what it is owed; declined ones not at all)
-     Net           Collections − Consignment − Expenses
-     Margin        Net as a share of our own takings (Collections − Consignment)
+     Net           Gross − Expenses
+     Margin        Net as a share of Gross
    Book printing costs are not in the app, so the margin is after expenses only. */
 const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open:{}, rep:null, cmp:{kind:'seasons', series:''} };
 const FIN_M = [
-  {k:'books', l:'Books sold', n:true}, {k:'sales', l:'Sales (count)', n:true}, {k:'gross', l:'Gross sales'}, {k:'coll', l:'Collections'},
-  {k:'don', l:'Donations'}, {k:'pend', l:'Pending payments'}, {k:'con', l:'Consignment'}, {k:'exp', l:'Expenses'},
-  {k:'net', l:'Net'}, {k:'margin', l:'Margin', pct:true}, {k:'reimb', l:'Pending reimbursements'}];
+  {k:'bbu', l:'Big Books Sold'}, {k:'avu', l:'Adventures Sold'}, {k:'bb', l:'Big Books (count)', n:true}, {k:'av', l:'Adventures (count)', n:true},
+  {k:'books', l:'Books sold (count)', n:true}, {k:'gifts', l:'Gifts (count)', n:true}, {k:'sales', l:'Sales (count)', n:true},
+  {k:'don', l:'Donations'}, {k:'pend', l:'Pending Payments'}, {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'},
+  {k:'con', l:'Consignment'}, {k:'exp', l:'Expenses'},
+  {k:'net', l:'Net'}, {k:'margin', l:'Margin', pct:true}, {k:'reimb', l:'Pending Reimbursements'}];
 const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
 function finAgg(sales, exps){
-  const a = {books:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0};
+  const a = {bb:0, bbg:0, bbu:0, av:0, avg:0, avu:0, books:0, gifts:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0};
   sales.forEach(x=>{
-    a.books += x.q; if(x.k!=='DONATION') a.sales++;
+    if(x.k!=='DONATION') a.sales++;
+    const n = x.q || (x.b ? 1 : 0);
+    if(x.g) a.gifts += n; else a.books += n;
+    if(x.con){ a.con += x.gu; return; }          // the groups' money, never ours
     a.coll += x.gu; a.pend += x.pu;
-    if(x.k==='DONATION') a.don += x.gu; else a.gross += x.gu + x.pu;
-    if(x.con) a.con += x.gu;
+    if(x.k==='DONATION'){ a.don += x.gu; return; }
+    if(!x.b) return;
+    if(x.c==='aotm'){ if(x.g) a.avg += n; else { a.av += n; a.avu += x.gu; } }
+    else { if(x.g) a.bbg += n; else { a.bb += n; a.bbu += x.gu; } }
   });
+  a.gross = a.coll + a.pend;
   exps.forEach(x=>{
     if(x.st==='declined') return;
     if(!x.con) a.exp += x.usd;
     if(x.kind==='reimburse' && x.st==='pending') a.reimb += x.usd;
   });
-  a.net = a.coll - a.con - a.exp;
-  const own = a.coll - a.con;
-  a.margin = own > 0 ? a.net / own * 100 : null;
+  a.net = a.coll - a.exp;
+  a.margin = a.coll > 0 ? a.net / a.coll * 100 : null;
   return a;
 }
 const finUsd = n => (n<0?'−':'') + '$' + fmt(Math.abs(Math.round(n*100)/100));
@@ -8915,51 +8947,143 @@ function finFiltered(f){
 }
 function financeModal(tab){ return finGo(tab || 'overview'); }
 function finDrawAll(){ finRender(); }
-/* Season › region › event pickers and dates, shared by Overview and Reports. */
-function finFiltersHTML(f){
+/* Dates, shared by Overview and Reports; the Overview also gets the place search ahead of them. */
+function finFiltersHTML(f, search){
   return `<div class="fin-filters">
+    ${search ? finSearchHTML() : ''}
     <label>From<input type="date" data-ff="from" value="${esc(f.from)}"></label>
     <label>To<input type="date" data-ff="to" value="${esc(f.to)}"></label>
   </div>`;
 }
-function finOverviewHTML(){
-  const f = FIN.f, {sales, exps} = finFiltered(f), a = finAgg(sales, exps), I = finIdx(), D = FIN.D;
-  const tiles = FIN_M.filter(m=>m.k!=='sales').map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
-    <div class="fin-tv">${finVal(m, a[m.k])}</div></div>`).join('');
-  const cols = FIN_M.filter(m=>m.k!=='sales');
-  const row = (label, go, s, e, cls) => { const x = finAgg(s, e);
-    return `<tr${cls?` class="${cls}"`:''}><th>${go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(go)}">${esc(label)}</button>` : esc(label)}</th>
-      ${cols.map(m=>`<td>${finVal(m, x[m.k])}</td>`).join('')}</tr>`; };
-  /* One level down from where you are: every season, a season's regions, a
-     region's events, an event's titles. A name takes you there. */
-  let rows = '', what = '';
+
+/* ---- The place search (b253): the app's own drop-down search box (Add Stock's
+   place finder), over every season, region and event, in the app's order.
+   Typing narrows it; a season or region that matches keeps everything beneath
+   it. Choosing one takes the page there. ---- */
+function finPlaces(){
+  const D = FIN.D, out = [{kind:'all', id:'', name:'Everywhere, every season'}];
+  D.seasons.forEach(se=>{
+    out.push({kind:'season', id:se.id, name:se.name, s:se.id});
+    D.regions.filter(r=>r.seasonId===se.id).forEach(r=>{
+      out.push({kind:'region', id:r.id, name:r.name, s:se.id, r:r.id, sName:se.name});
+      D.events.filter(e=>e.regionId===r.id).forEach(e=>out.push({kind:'event', id:e.id, name:e.name, s:se.id, r:r.id, sName:se.name, rName:r.name}));
+    });
+  });
+  return out;
+}
+function finSearchHTML(){
+  return `<label class="fin-search">Search<span class="pp fin-pp" id="finPP"><input class="pp-in" type="search" autocomplete="off" spellcheck="false"
+      placeholder="Search for season, region or event name" value="${esc(finScopeName() || 'Everywhere, every season')}">
+    <span class="pp-list" hidden></span></span></label>`;
+}
+function finBindSearch(){
+  const box = $('#finPP'); if(!box) return;
+  const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list'), places = finPlaces();
+  const shown = q => {
+    q = q.trim().toLowerCase();
+    if(!q) return places;
+    const hit = v => String(v||'').toLowerCase().includes(q);
+    const me = p => hit(p.name) || hit(p.rName) || hit(p.sName);
+    return places.filter(p=>p.kind==='all' ? hit(p.name)
+      : p.kind==='season' ? places.some(c=>c.s===p.id && me(c))
+      : p.kind==='region' ? me(p) || places.some(c=>c.r===p.id && me(c))
+      : me(p));
+  };
+  const draw = q => {
+    const rows = shown(q);
+    list.innerHTML = rows.length ? rows.map(p=>`<span class="pp-row pp-${p.kind==='all'?'season':p.kind}${p.id===FINP.scope?' on':''}" data-id="${esc(p.id)}">${esc(p.name)}</span>`).join('')
+      : '<span class="pp-empty">Nothing matches.</span>';
+    list.hidden = false;
+  };
+  const pick = id => { list.hidden = true; inp.blur(); finGo(FINP.sec, id); };
+  inp.addEventListener('focus', ()=>{ inp.select(); draw(''); });
+  inp.addEventListener('input', ()=>draw(inp.value));
+  inp.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ e.preventDefault(); const first = list.querySelector('.pp-row'); if(first) pick(first.dataset.id); }
+    if(e.key==='Escape') inp.blur();
+  });
+  list.addEventListener('mousedown', e=>e.preventDefault());
+  list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(r) pick(r.dataset.id); });
+  inp.addEventListener('blur', ()=>setTimeout(()=>{
+    if(document.activeElement===inp) return;
+    list.hidden = true; inp.value = finScopeName() || 'Everywhere, every season';
+  }, 150));
+}
+
+/* How many of a kind went out, in the app's one form for it (as the WhatsApp
+   reports write it): "27 Sold + 3 Gifts = 30 Distributed", the gifts left out
+   when there are none. Sold includes pre-orders. */
+function finDist(sold, gift){
+  if(!sold && !gift) return '';
+  return sold + ' Sold' + (gift ? ' + ' + gift + ' Gift' + (gift===1?'':'s') + ' = ' + (sold+gift) + ' Distributed' : '');
+}
+/* Gross, or Expected Gross while anything is still owed (b253, Gita's rule
+   for Finance): then it is everything in hand plus everything owed, and what
+   is actually in hand is beneath it as Current Collected. */
+const finPending = a => a.pend > 0.004;
+function finGrossParts(a){
+  return finPending(a) ? {l:'Expected Gross', v:finUsd(a.gross), sub:'Current Collected ' + finUsd(a.coll)}
+    : {l:'Gross', v:finUsd(a.coll), sub:''};
+}
+/* The Overview's seven figures, in Gita's order. Each gives its heading, its
+   figure and the smaller line beneath. Used by the tiles, the table and the
+   WhatsApp report, so the three always say the same. */
+function finOverviewFigs(a){
+  const g = finGrossParts(a);
+  return [
+    {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu), sub:finDist(a.bb, a.bbg)},
+    {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu), sub:finDist(a.av, a.avg)},
+    {k:'don',  l:'Donations',         v:finUsd(a.don), sub:''},
+    {k:'pend', l:'Pending Payments',  v:finUsd(a.pend), sub:''},
+    {k:'gross', l:g.l,                v:g.v, sub:g.sub},
+    {k:'exp',  l:'Expenses',          v:finUsd(a.exp), sub:''},
+    {k:'net',  l:'Net',               v:finUsd(a.net), sub:a.margin===null ? '' : 'Margin ' + finVal({pct:true}, a.margin)}];
+}
+/* One level down from where you are: every season, a season's regions, a
+   region's events, an event's titles. A name takes you there. */
+function finOverviewRows(){
+  const f = FIN.f, {sales, exps} = finFiltered(f), I = finIdx(), D = FIN.D, rows = [];
+  const add = (label, go, s, e) => rows.push({label, go, a:finAgg(s, e)});
+  let what = '';
   if(f.e){
-    what = 'By title';
-    const by = {}; sales.forEach(x=>{ const k = x.t || (x.k==='DONATION' ? '(donation)' : '(no title)'); (by[k] = by[k] || []).push(x); });
-    rows = Object.keys(by).sort().map(k=>row(k, '', by[k], [])).join('');
-    if(exps.length) rows += row('Expenses', '', [], exps);
+    what = 'By Title';
+    const by = {}; sales.forEach(x=>{ const k = x.t || (x.k==='DONATION' ? 'Donations' : '(no title)'); (by[k] = by[k] || []).push(x); });
+    // In the catalogue's order, as everywhere else: Big Books, then Adventures.
+    const rank = k => { const x = by[k][0]; return x.k==='DONATION' ? 3 : !x.t ? 4 : x.c==='aotm' ? 1 : 0; };
+    Object.keys(by).sort((a,b)=>rank(a)-rank(b) || a.localeCompare(b)).forEach(k=>add(k, '', by[k], []));
+    if(exps.length) add('Expenses', '', [], exps);
   } else if(f.r){
-    what = 'Its events';
+    what = 'By Event';
     const wS = sales.filter(x=>!x.e), wE = exps.filter(x=>!x.e);
-    if(wS.length || wE.length) rows += row((I.r[f.r]||{}).name + ' (warehouse, and the region as a whole)', '', wS, wE);
-    D.events.filter(ev=>ev.regionId===f.r).forEach(ev=>{ rows += row(ev.name, ev.id, sales.filter(x=>x.e===ev.id), exps.filter(x=>x.e===ev.id)); });
+    if(wS.length || wE.length) add((I.r[f.r]||{}).name + ' Warehouse', '', wS, wE);
+    D.events.filter(ev=>ev.regionId===f.r).forEach(ev=>add(ev.name, ev.id, sales.filter(x=>x.e===ev.id), exps.filter(x=>x.e===ev.id)));
   } else if(f.s){
-    what = 'Its regions';
-    D.regions.filter(r=>r.seasonId===f.s).forEach(r=>{ rows += row(r.name, r.id, sales.filter(x=>x.r===r.id), exps.filter(x=>x.r===r.id)); });
-    const wide = exps.filter(x=>!x.r); if(wide.length) rows += row('Season-wide expenses', '', [], wide);
+    what = 'By Region';
+    D.regions.filter(r=>r.seasonId===f.s).forEach(r=>add(r.name, r.id, sales.filter(x=>x.r===r.id), exps.filter(x=>x.r===r.id)));
+    const wide = exps.filter(x=>!x.r); if(wide.length) add('Season-wide Expenses', '', [], wide);
   } else {
-    what = 'Every season';
+    what = 'By Season';
     D.seasons.forEach(se=>{ const sS = sales.filter(x=>x.s===se.id), sE = exps.filter(x=>x.s===se.id);
-      if(sS.length || sE.length) rows += row(se.name, se.id, sS, sE); });
+      if(sS.length || sE.length) add(se.name, se.id, sS, sE); });
   }
-  return `${finFiltersHTML(f)}
+  return { what, rows, total: finAgg(sales, exps) };
+}
+const finRepBtn = (part, title) => `<button type="button" class="btn btn-gold btn-sm sec-rep" data-act="finrep" data-part="${part}" title="${esc(title || 'Copy just this section for WhatsApp')}">📋</button>`;
+function finOverviewHTML(){
+  const O = finOverviewRows(), a = O.total, figs = finOverviewFigs(a);
+  const tiles = figs.map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
+    <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${esc(m.sub)}</div>` : ''}</div>`).join('');
+  const cell = m => `<td><div>${m.v}</div>${m.sub ? `<div class="fin-cs">${esc(m.sub)}</div>` : ''}</td>`;
+  const row = (r, cls) => `<tr${cls?` class="${cls}"`:''}><th class="no-edit">${r.go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(r.go)}">${esc(r.label)}</button>` : esc(r.label)}</th>
+      ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
+  return `${finFiltersHTML(FIN.f, true)}
     <div class="fin-tiles">${tiles}</div>
-    <div class="muted-note">In dollars, at each place's own rates. Net = collections − consignment − expenses; margin = net ÷ our own takings
-      (collections − consignment). Book printing costs are not in the app, so they are not taken off.</div>
-    <div class="cash-sub">${esc(what)} ${f.e ? '' : '<span class="muted-note">(a name opens it)</span>'}</div>
-    <div class="fin-scroll"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${cols.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
-      <tbody>${rows || `<tr><td colspan="${cols.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
-      <tfoot>${row('All of it', '', sales, exps, 'fin-tot')}</tfoot></table></div>`;
+    <div class="muted-note">In dollars, at each place's own rates. Net is Gross less Expenses; the margin is Net as a share of Gross.
+      Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
+    <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}</h3>
+    <div class="fin-scroll"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${figs.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
+      <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${figs.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
+      <tfoot>${row({label:'Total', go:'', a}, 'fin-tot')}</tfoot></table></div>`;
 }
 
 /* ---- Reports: any rows, any figures, any filter ---- */
@@ -8987,7 +9111,7 @@ function finDimVal(k, x, isExp){
     case 'group': return x.con || 'Ours';
     case 'title': return isExp ? null : (x.t || (x.k==='DONATION' ? '(donation)' : '(no title)'));
     case 'language': return isExp ? null : ((x.t||'').match(/\(([^)]+)\)\s*$/)||[])[1] || (x.t ? '(no language)' : '(no title)');
-    case 'kind': return isExp ? null : (x.c==='aotm' ? 'AoTM' : x.c ? 'Big books' : '(no title)');
+    case 'kind': return isExp ? null : (x.c==='aotm' ? 'Adventures' : x.b ? 'Big Books' : '(no title)');
     case 'seller': return isExp ? null : (x.by || '(not recorded)');
     case 'pay': return isExp ? null : (x.pay.slice().sort().join(' + ') || '(none)');
     case 'type': return isExp ? null : ({SALE:'Sale', PREORDER:'Pre-order', DONATION:'Donation'})[x.k] || x.k;
@@ -8998,7 +9122,7 @@ function finDimVal(k, x, isExp){
   return '';
 }
 function finRepDefault(){
-  return { rows:['season'], cols:['books','gross','coll','con','exp','net','margin'], f:{s:'', r:'', e:'', from:'', to:''},
+  return { rows:['season'], cols:['bbu','avu','don','pend','coll','exp','net','margin'], f:{s:'', r:'', e:'', from:'', to:''},
     q:'', sort:{k:'', dir:1} };
 }
 function finReportRows(){
@@ -9118,6 +9242,7 @@ function finBind(){
   m.querySelectorAll('[data-ff]').forEach(el=>el.addEventListener('change', ()=>{
     FIN.f[el.dataset.ff] = el.value; finDrawAll();
   }));
+  finBindSearch();
   const R = FIN.rep, save = () => { try{ localStorage.setItem('tbs_finrep', JSON.stringify(R)); }catch(e){} finDrawAll(); };
   m.querySelectorAll('[data-rf]').forEach(el=>el.addEventListener('change', ()=>{
     R.f[el.dataset.rf] = el.value; save();
@@ -9150,6 +9275,7 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
 const FIN_SECS = [['overview','📈','Overview'], ['report','📋','Reports'], ['compare','⚖️','Compare'],
   ['todo','💼','To do'], ['settings','⚙️','Reimbursement Settings']];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
+const finSecName = sec => (FIN_SECS.find(x=>x[0]===sec) || [,,'Overview'])[2];
 function finHash(sec, scope){ return '#finance/' + sec + (scope ? '/' + encodeURIComponent(scope) : ''); }
 function finParseHash(){
   const m = /^#finance(?:\/([a-z]+))?(?:\/([^/?#]+))?/.exec(location.hash || '');
@@ -9168,7 +9294,7 @@ function finScopeF(){
 /* Write a section into the page, or (outside the page) into a window. */
 function finHost(title, body, foot){
   if(FINP.on){
-    $('#fpBody').innerHTML = `<h2 class="fp-h">${esc(title)}</h2>${finScopeNote()}${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
+    $('#fpBody').innerHTML = `<h2 class="fp-h">${esc(title)}${FINP.sec==='todo' ? ' ' + finRepBtn('todo') : ''}</h2>${finScopeNote()}${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}`;
     return;
   }
   openModal(`${mHead(title)}<div class="m-body">${body}</div>
@@ -9254,8 +9380,11 @@ function finNav(){
   $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
       k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : ''}</button>`).join('') +
     `<span class="fp-gap"></span><button type="button" class="btn btn-ghost btn-sm" data-act="expenses">🧾 Add an expense</button>
+     ${STATE && isAdmin() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="editwording">✏️ ${EDIT_WORDING?'Done Editing Wording':'Edit Wording'}</button>` : ''}
      <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Back to the app' : 'Leave Finance'}</button>`;
   void fin;
+  // The top 📋 Report is Finance's own here, for everyone who can see Finance.
+  const rb = $('#reportBtn'); if(rb) rb.style.display = '';
   // The masthead says where you are.
   const wt = $('#whTitle'); if(wt) wt.textContent = ': Finance';
   const sl = $('#seasonLine'); if(sl){ sl.textContent = finScopeName(); sl.style.display = sl.textContent ? '' : 'none'; }
@@ -9275,10 +9404,100 @@ function finRender(){
     rsDraw(); return;
   }
   FIN.f = Object.assign({}, FIN.f, f);
-  const title = sec==='report' ? 'Reports' : sec==='compare' ? 'Compare' : 'Overview';
+  const title = finSecName(sec);
   const body = sec==='report' ? finReportHTML() : sec==='compare' ? finCompareHTML() : finOverviewHTML();
-  $('#fpBody').innerHTML = `<h2 class="fp-h">${title}</h2>${sec==='compare' ? '' : finScopeNote()}${body}`;
+  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn(sec==='overview' ? 'figures' : sec)}</h2>${sec==='compare' ? '' : finScopeNote()}${body}`;
   finBind();
+}
+
+/* ---- Finance's WhatsApp reports (b253) ----
+   Each 📋 copies exactly what sits beside it, and 📋 Report at the top copies
+   the whole section being looked at, with a heading for each part — the same
+   rules as the rest of the app's reports (buildReport): a line per figure,
+   "label - value", nothing said twice, and the books in the app's one form,
+   27 Sold + 3 Gifts = 30 Distributed. Everything comes from the same figures
+   the page draws, so a report never disagrees with the screen. */
+function finWaFigs(a, L){
+  finOverviewFigs(a).forEach(m=>{
+    const zero = {bb:!(a.bb||a.bbg), av:!(a.av||a.avg), don:!a.don, pend:!finPending(a), exp:!a.exp}[m.k];
+    if(zero) return;
+    L.push(m.l + ' - ' + m.v);
+    if(m.sub) L.push('   ' + (m.k==='gross' ? m.sub.replace(/^Current Collected /, 'Current Collected - ') : m.sub));
+  });
+}
+function finWaRows(L){
+  const O = finOverviewRows();
+  O.rows.forEach(r=>{ L.push('*' + r.label + '*'); finWaFigs(r.a, L); L.push(''); });
+}
+function finWaReport(L){
+  const R = FIN.rep, out = finReportRows(), cols = FIN_M.filter(m=>R.cols.includes(m.k));
+  const blank = m => (out.salesOnly && FIN_EXP_KEYS[m.k]) || (out.expOnly && !FIN_EXP_KEYS[m.k]);
+  const block = (name, r, all) => {
+    L.push('*' + name + '*');
+    cols.forEach(m=>{ if(!all && blank(m)) return; L.push(m.l + ' - ' + finVal(m, r[m.k])); });
+    L.push('');
+  };
+  out.rows.forEach(r=>block(r.vals.join(' › '), r));
+  if(out.rows.length) block('Total', out.total, true);
+}
+function finWaCompare(L){
+  const D = FIN.D, C = FIN.cmp, I = finIdx(), list = D[C.kind].filter(x=>x.series===C.series);
+  const pick = x => C.kind==='seasons' ? (y=>y.s===x.id) : C.kind==='regions' ? (y=>y.r===x.id) : (y=>y.e===x.id);
+  const label = x => C.kind==='seasons' ? x.name : C.kind==='regions' ? x.name + ' · ' + ((I.s[x.seasonId]||{}).name||'')
+    : x.name + ' · ' + ((I.r[x.regionId]||{}).name||'');
+  const block = (name, a) => {
+    L.push('*' + name + '*');
+    FIN_M.forEach(m=>{ const v = a[m.k]; if(v===null || v===undefined || (!m.pct && !v)) return; L.push(m.l + ' - ' + finVal(m, v)); });
+    L.push('');
+  };
+  // In the order the page shows them: earliest season first.
+  const order = x => D.seasons.findIndex(s=>s.id===(C.kind==='seasons' ? x.id : C.kind==='regions' ? x.seasonId : (I.r[x.regionId]||{}).seasonId));
+  list.slice().sort((a,b)=>order(a)-order(b)).forEach(x=>block(label(x), finAgg(D.sales.filter(pick(x)), D.expenses.filter(pick(x)))));
+  if(list.length > 1){
+    const has = y => list.some(x=>pick(x)(y));
+    block('All together', finAgg(D.sales.filter(has), D.expenses.filter(has)));
+  }
+}
+function finWaTodo(L){
+  const T = finScopedTodo();
+  const amt = x => cashFmt(x.amt, x.cur);
+  if(T.reimb.length){
+    L.push('*Pending Reimbursements*');
+    T.reimb.forEach(x=>L.push((x.forName || x.byName || '') + ': ' + (x.desc || '') + ' - ' + amt(x)));
+    L.push('To pay back - ' + finTotals(T.reimb, x=>[[x.amt, x.cur]]), '');
+  }
+  if(T.pending.length){
+    L.push('*Pending Payments*');
+    T.pending.forEach(p=>L.push((p.qty>1 ? p.qty + ' × ' : '') + (p.book || 'Donation') + ' - ' + finOwed(p)));
+    L.push('Total - ' + T.pending.length, '');
+  }
+  if(T.all.length){
+    L.push('*Every Expense*');
+    T.all.forEach(x=>L.push(String(x.date||'').slice(0,10) + ' ' + (x.desc || '') + ' - ' + amt(x) + ' (' + (EXP_STATUS[x.status] || x.status) + ')'));
+    L.push('');
+  }
+}
+/* part: one section's own report, or '' for the whole page. */
+function finReportText(part){
+  const sec = FINP.sec, L = [];
+  const where = finScopeName() || 'Every Season';
+  const run = (heading, fn) => {
+    const at = L.length; fn(L);
+    while(L.length>at && L[L.length-1]==='') L.pop();
+    if(L.length>at){ if(!part && heading) L.splice(at, 0, '*' + heading.toUpperCase() + '*'); L.push(''); }
+  };
+  const O = sec==='overview' ? finOverviewRows() : null;
+  if(part==='figures' || (!part && sec==='overview')) run('Overview', L=>finWaFigs(O.total, L));
+  if(part==='rows' || (!part && sec==='overview')) run(O.what, finWaRows);
+  if(part==='report' || (!part && sec==='report')) run('', finWaReport);
+  if(part==='compare' || (!part && sec==='compare')) run('', finWaCompare);
+  if(part==='todo' || (!part && sec==='todo')) run('', finWaTodo);
+  if(!part && L.length) L.unshift('*' + where + ' — Finance ' + finSecName(sec) + '*', '');
+  return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function finShareReport(part){
+  if(FINP.sec==='settings' && !part){ toast('Reimbursement Settings has no figures to report.'); return; }
+  reportDialog({ title: part ? 'Report' : 'Finance Report', make: () => finReportText(part) || 'Nothing recorded here yet.' });
 }
 
 /* The Finance buttons a person gets: Finance and its assistant see the figures and
@@ -9552,7 +9771,7 @@ function lblRestore(el){
 /* Everything with words in it: the listed kinds first, then every other piece
    of text on screen, so a pencil is offered everywhere — dialog headings,
    counts like "7 still coming", anything. */
-const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#toast,#bld,[contenteditable]';
+const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#bld,[contenteditable]';
 function lblTargets(scope){
   const out = new Set();
   scope.querySelectorAll(EDIT_SEL).forEach(el=>out.add(el));
@@ -15933,6 +16152,9 @@ document.addEventListener('click',e=>{
     return;
   }
   // The Summaries Portal's buttons report over every season, as that portal shows.
+  if(a==='finrep'){ finShareReport(t.dataset.part||''); return; }
+  // In Finance, the top 📋 Report is Finance's own: the section being looked at.
+  if(a==='report' && FINP.on){ finShareReport(''); return; }
   if(a==='report'){ const part=t.dataset.part||'';
     if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
@@ -15960,7 +16182,7 @@ document.addEventListener('click',e=>{
     EDIT_WORDING = !EDIT_WORDING;
     try{ localStorage.setItem('tbs_edit_wording', EDIT_WORDING?'1':'0'); }catch(e){}
     toast(EDIT_WORDING ? 'Tap a pencil to rewrite any wording' : 'Finished editing wording');
-    renderAll(); return;
+    renderAll(); if(FINP.on) finRender(); return;
   }
   if(a==='editlabel'){ editLabelModal(t.dataset.key); return; }
   if(a==='hidebooks'){ hideBooksModal(); return; }
