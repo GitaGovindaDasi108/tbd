@@ -629,9 +629,13 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .exp-k.on{border-color:#2E8065;background:#EEF7F3}
 .exp-form .row2 .cost-amt-row select{width:auto;flex:none}
 .exp-reimb{border-left:3px solid #2E8065;padding-left:10px;margin:6px 0 10px}
-.exp-rb{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-weight:700;color:var(--plum);border:1.5px solid var(--line);border-radius:10px;padding:9px 10px;background:#fff;margin-bottom:10px;cursor:pointer}
-.exp-rb input{width:18px;height:18px}
-.exp-rb .muted-note{flex-basis:100%;font-weight:400}
+.exp-rb{display:flex;align-items:center;gap:8px;font-weight:400;color:var(--ink);margin:0 0 12px;cursor:pointer}
+.exp-rb input{width:auto !important;margin:0}
+/* Each title sits with its own box, with room above it (Gita, 2026-10-20: the
+   titles had no space between them and the boxes above). */
+.exp-form .field,.exp-form .row2{margin:0 0 14px}
+.exp-form .row2 .field,.exp-reimb .field:last-child{margin-bottom:0}
+.exp-form .exp-usd{margin-top:-6px}
 .exp-same{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:400;margin:2px 0 4px}
 .exp-same input{width:auto !important}
 .exp-fx{display:block;font-size:12.5px;color:#2F6FB0;font-weight:600;margin-top:2px}
@@ -1976,7 +1980,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b264</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b265</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -8802,8 +8806,11 @@ function expCardHTML(x, fin){
   }
   const contact = fin ? expContactHTML(x) : '';
   return `<div class="exp-card exp-k-${esc(x.kind)}">
-      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt">${esc(cashFmt(x.amt, x.cur))}</span></div>
+      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt">${esc(fin && x.usd!==undefined ? finDual(x.amt, x.cur, x.usd) : cashFmt(x.amt, x.cur))}</span></div>
       <div class="exp-meta">${esc(x.date)} · ${who} · ${esc(x.placeLabel)}</div>
+      ${String(x.cur).toUpperCase()!=='USD' && (Number(x.usdAmt) > 0 || (x.usdDay && x.usdDay.rate)) ? `<div class="exp-meta">${Number(x.usdAmt) > 0
+        ? 'In dollars: ' + esc(finUsd(Number(x.usdAmt))) + ', the exact amount given'
+        : 'In dollars: ' + esc(finUsd(x.usdDay.usd)) + ' at 1 ' + esc(x.cur) + ' = $' + esc(Math.round(x.usdDay.rate*10000)/10000) + ' on ' + esc(x.usdDay.on)}</div>` : ''}
       ${x.category||x.payType||x.partnerId ? `<div class="exp-meta">${esc(x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category||'')}${x.payType?' · paid with '+esc(x.payType):''}${
         x.partnerId?` <span class="con-tag">${esc(((STATE&&STATE.partners)||[]).find(g=>g.partnerId===x.partnerId)?.name||'consignment')}</span>`:''}</div>` : ''}
       <div>${expStatusHTML(x)}</div>
@@ -8865,7 +8872,7 @@ async function expensesModal(editId, presetPartner){
   openModal(`${mHead('Expenses')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
     const [opt, list] = await Promise.all([
-      post({action:'expOptions', location: expHere()}),
+      post({action:'expOptions', location: expHere(), start: editId ? '' : 1}),
       post({action:'expList'})]);
     EXP.opt = opt.result; EXP.list = list.result || [];
   }catch(e){
@@ -8880,7 +8887,7 @@ async function expensesModal(editId, presetPartner){
   EXP.form = edit ? {id:edit.id, editing:true, kind:edit.kind, location:edit.location, date:edit.date, desc:edit.desc, cur:edit.cur, amt:edit.amt,
       category:edit.category||'Other', payType:edit.payType||'', partnerId:edit.partnerId||'',
       method:edit.method, reimbCur:edit.reimbCur, payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
-      forEmail:edit.forEmail||'', forName:edit.forName||'', catOther:edit.catOther||''}
+      forEmail:edit.forEmail||'', forName:edit.forName||'', catOther:edit.catOther||'', usdAmt:edit.usdAmt||''}
     : {id:expId('X'), kind:presetPartner || PRACTICE ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
       cur:EXP.opt.defaultCur, amt:'', category:'Other', payType:'', partnerId:presetPartner||'',
       method:'', reimbCur:'', payTo:{}, notes:'', receipts:[], forEmail:'', forName:'', catOther:''};
@@ -8993,8 +9000,7 @@ function expDraw(){
       <div class="exp-form">
         ${forPick}${whoBox}
         ${expBatchHTML()}
-        ${P ? '' : PRACTICE ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement
-          <span class="muted-note">Leave it unticked for record-keeping (spent and settled).</span></label>` : `<div class="exp-kind">
+        ${P ? '' : PRACTICE ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement</label>` : `<div class="exp-kind">
           <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
             <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
           <label class="exp-k${f.kind==='reimburse'?' on':''}"><input type="radio" name="xKind" value="reimburse" ${f.kind==='reimburse'?'checked':''}>
@@ -9007,6 +9013,9 @@ function expDraw(){
             <input id="xAmt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(f.amt)}" placeholder="0.00">
             <select id="xCur">${o.spendCurs.map(c=>opt(c,c,c===f.cur)).join('')}</select></div></div>
         </div>
+        ${PRACTICE && String(f.cur).toUpperCase()!=='USD' ? `<div class="field exp-usd"><label>Exact amount in dollars (optional)</label>
+          <input id="xUsd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(f.usdAmt||'')}" placeholder="$ 0.00">
+          <div class="muted-note">Otherwise it is worked out at the exchange rate on the day of the expense. What you put here is used instead.</div></div>` : ''}
         <div class="field"><label>What was it for?</label>
           <input id="xDesc" type="text" maxlength="300" value="${esc(f.desc)}" placeholder="e.g. Taxi to the festival with the book boxes"></div>
         <div class="row2">
@@ -9087,6 +9096,8 @@ function expRead(){
   if(v('xLoc')!==null) f.location = v('xLoc');
   f.date = v('xDate') || f.date; f.amt = v('xAmt'); f.cur = v('xCur') || f.cur; f.desc = v('xDesc');
   f.notes = v('xNotes') || '';
+  if(v('xUsd')!==null) f.usdAmt = v('xUsd');
+  if(String(f.cur).toUpperCase()==='USD') f.usdAmt = '';
   if(v('xCat')!==null) f.category = v('xCat');
   if(v('xPay')!==null) f.payType = v('xPay');
   if(v('xCatOther')!==null) f.catOther = v('xCatOther');
@@ -9121,6 +9132,7 @@ function expBind(){
     if(mm && o.curs.includes(mm.cur)) f.reimbCur = mm.cur;
     expDraw();
   });
+  const xc = $('#xCur'); if(xc && PRACTICE) xc.addEventListener('change', ()=>{ expRead(); expDraw(); });
   const add = files => { expRead(); [...files].forEach(expAddReceipt); };
   const cam = $('#xCam'); if(cam) cam.addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
   $('#xFiles').addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
@@ -9305,7 +9317,7 @@ async function expPost(f, more){
     amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
     payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
     receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
-    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, more: !!more});
+    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, usdAmt: Number(f.usdAmt) > 0 ? Number(f.usdAmt) : '', more: !!more});
   if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
   return r;
 }
@@ -9326,6 +9338,8 @@ async function fxOn(date, from, to){
 const expOtherCur = x => x.kind==='reimburse' && x.reimbCur && String(x.reimbCur).toUpperCase()!==String(x.cur).toUpperCase();
 async function expPayAmt(x){
   if(!expOtherCur(x)) return null;
+  // Exact dollars given (b265) win over any rate when it is paid back in dollars.
+  if(String(x.reimbCur).toUpperCase()==='USD' && Number(x.usdAmt) > 0) return {amt:Number(x.usdAmt), cur:'USD', exact:true, on:x.date};
   const r = await fxOn(x.date, String(x.cur).toUpperCase(), String(x.reimbCur).toUpperCase());
   return r ? {amt:Math.round(Number(x.amt) * r.rate * 100) / 100, cur:x.reimbCur, rate:r.rate, on:r.on} : null;
 }
@@ -9333,6 +9347,7 @@ async function expPayAmt(x){
 function expPayAmtLine(x){
   if(!expOtherCur(x)) return '';
   const p = x.payAmt;
+  if(p && p.exact) return 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (the exact dollar amount given)';
   return p && p.amt!=null ? 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (1 ' + x.cur + ' = ' + (Math.round(p.rate*10000)/10000) + ' ' + p.cur + ' on ' + p.on + ')'
     : 'To pay back in ' + x.reimbCur + ': the rate for ' + x.date + ' could not be found, so check it before paying.';
 }
@@ -10902,7 +10917,10 @@ function finSendLinkModal(){
 function finWaExpBar(T, L){
   finExpFigs(T).forEach(m=>{ L.push(m.l + ' - ' + m.v); if(m.sub) L.push('   ' + m.sub); if(m.ex) L.push('   ' + m.ex.replace(/^(Expected \w+) /, '$1 - ')); });
 }
-const finExpAmt = x => cashFmt(x.amt, x.cur) + (x.usd!==null && String(x.cur).toUpperCase()!=='USD' ? ' (' + finUsd(x.usd) + ')' : '');
+/* Dollars always last and never in brackets (Gita, 2026-10-20): "(500 ден) $9.08",
+   so a glance down the list reads dollars, and the bracket shows which are worked out. */
+const finDual = (amt, cur, usd) => String(cur).toUpperCase()==='USD' || usd===null || usd===undefined ? cashFmt(amt, cur) : '(' + cashFmt(amt, cur) + ') ' + finUsd(usd);
+const finExpAmt = x => finDual(x.amt, x.cur, x.usd);
 
 /* Expenses: sort by date, name, amount or type; filter with checklists that
    drop down, as the sales log's do (Gita, 2026-10-20). */
@@ -11067,7 +11085,8 @@ function expGroupHTML(xs){
     return `<div class="exp-gi${off?' exp-off':''}">
       <div class="exp-top"><span><b>${esc(y.desc)}</b> <span class="exp-meta">${esc(y.date)} · ${esc(y.placeLabel)}${y.category ? ' · ' + esc(y.category==='Other' && y.catOther ? 'Other: ' + y.catOther : y.category) : ''}${
         ways.length > 1 ? ' · by ' + esc(y.method) + ' in ' + esc(y.reimbCur) : ''}</span></span>
-        <span class="exp-amt">${esc(cashFmt(y.amt, y.cur))}${expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : ''}</span></div>
+        <span class="exp-amt">${expOtherCur(y) && out && String(out[1]).toUpperCase()==='USD' ? esc(finDual(y.amt, y.cur, out[0]))
+          : esc(cashFmt(y.amt, y.cur)) + (expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : '')}</span></div>
       ${expOtherCur(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}
       ${y.notes ? `<div class="exp-note">💬 ${esc(y.notes)}</div>` : ''}${expReceiptsHTML(y)}
       ${may ? `<div class="exp-btns exp-line">${xs.length > 1 ? `
@@ -11140,7 +11159,8 @@ function finWaReimb(L, noBar){
     if(!noBar) L.push('');
     expGroups(pend).forEach(xs=>{
       L.push('*' + xs[0].who + '* - ' + (finTotals(xs.filter(expPayOut), x=>[expPayOut(x)]) || '—') + ' by ' + [...new Set(xs.map(x=>x.method + ' in ' + x.reimbCur))].join(', '));
-      xs.forEach(x=>L.push('   ' + x.desc + ' - ' + cashFmt(x.amt, x.cur) + (expOtherCur(x) && expPayOut(x) ? ' (' + cashFmt(...expPayOut(x)) + ')' : '')));
+      xs.forEach(x=>{ const o = expOtherCur(x) && expPayOut(x);
+        L.push('   ' + x.desc + ' - ' + (o && String(o[1]).toUpperCase()==='USD' ? finDual(x.amt, x.cur, o[0]) : cashFmt(x.amt, x.cur) + (o ? ' (' + cashFmt(...o) + ')' : ''))); });
     });
     L.push('To pay back - ' + (finTotals(pend.filter(expPayOut), x=>[expPayOut(x)]) || finTotals(pend, x=>[[x.amt, x.cur]])));
   }

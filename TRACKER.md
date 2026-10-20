@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b264**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b265**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2229,3 +2229,17 @@ Live unless marked practice.
   with its 📋 stock report.
 - Tests: browser-lang expects "Locations"; browser-bookorder reads a card's
   name from `.sc-name`/`.bname`.
+## Done in b265 — Expense form: Earthly HQ first, room above titles, exact dollars, dollars last (practice)
+- A new expense starts at **Earthly HQ** for anyone who reaches every place
+  (Finance, Universal); it can be moved to an event. expenses.js treats
+  `rg_hq` as a place of kind `hq` (season `HQ`); `expOptions` takes `start:1`.
+- Form: titles have 14px above them (`.exp-form .field,.row2` margin);
+  "Check to receive reimbursement" is plain text with a checkbox.
+- Dollars: each non-dollar expense gets the rate on its own day, looked up by
+  the server on `expSave` (core.js sets `p.usdDay`; the page's own is
+  dropped) and kept in `usdDay`. An optional **Exact amount in dollars**
+  (`usdAmt`) wins over any rate, and is what is paid back when paid in
+  dollars. Code.gs `expUsd_` picks exact, then day rate, then the place's rates.
+- Finance shows dollars last and out of brackets: `finDual` → "(500 ден) $9.08".
+  The details say how the dollars were worked out.
+- Tests: browser-finance (122).

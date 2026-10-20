@@ -63,7 +63,10 @@ const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'dat
   // b259: paid back in another currency: the amount at the rate on the day of the purchase.
   'payAmt',
   // b260: the day it was actually paid back, as Finance gives it.
-  'paidOn'];
+  'paidOn',
+  // b265: the exact dollars, when given (they win over any rate), and the
+  // dollars at the rate on the day of the expense, worked out by the server.
+  'usdAmt', 'usdDay'];
 const T = '_expenses';
 const PART = 900 * 1024;                    // characters of base64 per stored part
 const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk a photo
@@ -126,7 +129,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const mayPay = w => w.fin === 'F' || w.fin === 'U'; // pays back, sets the rules (the assistant sees)
 
   /* ---- Places: every open season, region and event someone may record at ---- */
+  /* Earthly HQ (b265): where an expense starts for anyone who reaches every
+     place (Gita, 2026-10-20). To the data it is a region of a season of its own. */
+  const HQ = { id: 'rg_hq', kind: 'hq', seasonId: 'HQ', regionId: 'rg_hq', eventId: '' };
   function placeOf(P, id) {
+    if (id === HQ.id) return Object.assign({}, HQ);
     if (P.events[id]) { const e = P.events[id], r = P.regions[e.regionId] || {}; return { id, kind: 'event', seasonId: r.seasonId || '', regionId: e.regionId, eventId: id }; }
     if (P.regions[id]) return { id, kind: 'region', seasonId: P.regions[id].seasonId, regionId: id, eventId: '' };
     if (P.seasons[id]) return { id, kind: 'season', seasonId: id, regionId: '', eventId: '' };
@@ -135,17 +142,20 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function inReach(w, pl) {
     const r = w.reach;
     if (r.all) return true;
+    if (pl.kind === 'hq') return false;
     if ((r.events || []).indexOf(pl.eventId) >= 0 && pl.eventId) return true;
     if (pl.regionId && (r.regions || []).indexOf(pl.regionId) >= 0) return true;
     if (pl.seasonId && (r.seasons || []).indexOf(pl.seasonId) >= 0) return true;
     return false;
   }
   function labelOf(P, pl) {
+    if (pl.kind === 'hq') return 'Earthly HQ';
     const role = pl.kind === 'event' ? 'S' : pl.kind === 'region' ? 'RL' : 'SL';
     return people.placeLabel(P, role, pl.id);
   }
   function placeList(w) {
     const P = w.P, out = [];
+    if (inReach(w, HQ)) out.push(Object.assign({}, HQ, { closed: false, label: labelOf(P, HQ) }));
     const open = pl => people.activeState(P, { role: pl.kind === 'event' ? 'S' : pl.kind === 'region' ? 'RL' : 'SL', placeId: pl.id }).active;
     P.raw.seasons.forEach(s => {
       [placeOf(P, s.id)].concat(P.raw.regions.filter(r => r.seasonId === s.id).flatMap(r =>
@@ -242,8 +252,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const F = facts(), rules = getRules();
     const list = placeList(w);
     const want = String(p.location || '');
-    // Finance, standing nowhere in particular, chooses; anyone else starts where they are (or their only place).
-    const pl = list.find(x => x.id === want) || (isFin(w) && list.length > 1 ? null : list[0]) || null;
+    /* A new expense starts at Earthly HQ for whoever reaches it (Gita,
+       2026-10-20), and can be moved to its event. Anyone else starts where they
+       are (or their only place). */
+    const hq = p.start && list.find(x => x.kind === 'hq');
+    const pl = hq || list.find(x => x.id === want) || (isFin(w) && list.length > 1 ? null : list[0]) || null;
     const forEmail = isFin(w) && p.forEmail ? String(p.forEmail).toLowerCase() : w.email;
     const eff = effective(F, rules, pl, forEmail);
     const spend = new Set(regionCurs(F, pl));
@@ -451,7 +464,14 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (w.email) return String(r.byEmail) === w.email || String(r.forEmail) === w.email;
     return String(r.byLink) === w.link && (!w.name || String(r.forName || r.byName) === w.name);
   }
-  const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null) });
+  const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null),
+    usdAmt: Number(r.usdAmt) > 0 ? Number(r.usdAmt) : null, usdDay: parse(r.usdDay, null) });
+  /* The dollars at the rate on the day of the expense (b265): the rate comes
+     from the server's own lookup (core.js puts it in p.usdDay), never the page. */
+  function cleanUsdDay(x, amt) {
+    if (!x || typeof x !== 'object' || !(Number(x.rate) > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(String(x.on || ''))) return '';
+    return JSON.stringify({ usd: Math.round(amt * Number(x.rate) * 100) / 100, rate: Number(x.rate), on: String(x.on) });
+  }
   /* What to pay back when it is in another currency than was spent (b259):
      worked out on the page from the rate on the day of the purchase, kept
      with the expense so Finance sees the same figure. */
@@ -482,6 +502,9 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!(amt > 0)) throw new Error('Give the expense an amount.');
     const cur = String(p.cur || '').toUpperCase();
     if (!CUR.test(cur)) throw new Error('Choose the currency it was spent in.');
+    // Exact dollars (b265), optional: what actually came to, overriding any rate.
+    const usdAmt = cur === 'USD' ? '' : (Math.round((Number(p.usdAmt) || 0) * 100) / 100 || '');
+    if (usdAmt !== '' && !(usdAmt > 0)) throw new Error('The exact dollar amount should be more than 0.');
     const desc = clip(p.desc, 300);
     if (!desc) throw new Error('Say what the expense was for.');
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? String(p.date) : new Date(now()).toISOString().slice(0, 10);
@@ -530,7 +553,10 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       doneNote: old && kind === 'reimburse' ? (old.doneNote || '') : '',
       catOther, contactPhone: contactPhone || (old ? String(old.contactPhone || '') : ''), contactEmail: contactEmail || (old ? String(old.contactEmail || '') : ''),
       // An edit that sends none keeps the rate it had, while the day and currencies are the same.
-      payAmt: kind === 'reimburse' ? cleanPayAmt(p.payAmt || (old && old.cur === cur && old.reimbCur === reimbCur && old.date === date ? parse(old.payAmt, null) : null), cur, reimbCur, amt) : ''
+      usdAmt, usdDay: cur === 'USD' || usdAmt ? '' : cleanUsdDay(p.usdDay, amt) || (old && old.cur === cur && old.date === date ? (() => {
+        const o = parse(old.usdDay, null); return o && o.rate > 0 ? JSON.stringify({ usd: Math.round(amt * o.rate * 100) / 100, rate: o.rate, on: o.on }) : ''; })() : ''),
+      payAmt: kind === 'reimburse' && reimbCur === 'USD' && usdAmt ? JSON.stringify({ amt: usdAmt, cur: 'USD', rate: usdAmt / amt, on: date, exact: true })
+        : kind === 'reimburse' ? cleanPayAmt(p.payAmt || (old && old.cur === cur && old.reimbCur === reimbCur && old.date === date ? parse(old.payAmt, null) : null), cur, reimbCur, amt) : ''
     };
     if (!row.byName && !forName) throw new Error('Say who you are first.');
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);

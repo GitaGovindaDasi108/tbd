@@ -162,6 +162,16 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     /* Expenses (b238): anyone signed in, in any role (even one the rest of the
        app cannot use yet), and any link. expenses.js decides who may do what. */
     if (expenses.isAction(action)) {
+      /* An expense's dollars at the rate on its day (b265), looked up here
+         (the page's own figure is never taken). */
+      if (action === 'expSave') {
+        delete p.usdDay;
+        const cur = String(p.cur || '').toUpperCase();
+        if (cur && cur !== 'USD' && !(Number(p.usdAmt) > 0)) {
+          try { p.usdDay = await fxOn(/^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? p.date : new Date().toISOString().slice(0, 10), cur, 'USD'); }
+          catch (e) { p.usdDay = null; }
+        }
+      }
       try { return reply({ ok: true, result: expenses.handle(action, p, me, linkKey) }); }
       catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }
