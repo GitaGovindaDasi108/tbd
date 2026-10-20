@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b248';
+var SERVER_BUILD = 'b252';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -631,6 +631,7 @@ function handle(e) {
         case 'createEvent':      result = doCreateEvent(params);  break;
         case 'setEventHidden':   result = doSetEventHidden(params); break;
         case 'setRegionHidden':  result = doSetRegionHidden(params); break;
+        case 'setSeasonHidden':  result = doSetSeasonHidden(params); break;
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
@@ -4014,6 +4015,8 @@ function readState() {
     serverBuild: SERVER_BUILD,
     // The season's own book order, used where a region has not set one.
     seasonBookOrder: String(getMeta_('bookOrder:' + activeSeasonId_(), '') || ''),
+    // Titles hidden on the season's own page (b252).
+    seasonHidden: String(getMeta_('hidden:' + activeSeasonId_(), '') || ''),
     /* Wording you have rewritten in the app, keyed by the words it replaces.
        Anything not rewritten simply is not here. */
     labels: (function () {
@@ -6322,6 +6325,16 @@ function doSetRegionHidden(p) {
     .filter(function (x) { return x; });
   dbAddCols_('_regions', REGION_HEADERS);
   dbUpdate_('_regions', { regionId: regionId }, { hidden: ids.join(',') });
+  markDirtyAll_();
+  return ids.join(',');
+}
+
+/* Titles hidden on the season's own page (b252): Distribution by Title and the
+   Warehouse Overview. Regions and events keep their own lists. */
+function doSetSeasonHidden(p) {
+  var ids = String(p.hidden || '').split(',').map(function (x) { return String(x).trim(); })
+    .filter(function (x) { return x; });
+  setMeta_('hidden:' + activeSeasonId_(), ids.join(','));
   markDirtyAll_();
   return ids.join(',');
 }
@@ -8736,6 +8749,7 @@ function describe_(action, p, result, moves, who) {
     case 'renameEvent':  d = { text: 'Renamed an event to “' + p.name + '”' }; break;
     case 'deleteEvent':  d = { text: 'Deleted an event' + (mv ? ': ' + mv : '') }; break;
     case 'setEventHidden': case 'setRegionHidden': d = { text: 'Changed what is shown for ' + (p.eventId ? locLabel_(p.eventId) : reg(p.regionId)) }; break;
+    case 'setSeasonHidden': d = { text: 'Changed which titles the season page shows' }; break;
     case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
     case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
     case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;

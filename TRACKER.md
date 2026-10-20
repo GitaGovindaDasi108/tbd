@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b251**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b252**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,14 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b252 — Hide here at every level, the season's page included
+
+- **Season page:** while arranging (⇅), Universal gets "Hide here" on Distribution by Title and the Warehouse Overview. A hidden title leaves both panels; stock entry, reports and totals still count it, and regions and events keep their own lists. Stored per season on the server (`setSeasonHidden`, meta `hidden:<season>`, sent as `seasonHidden`). b251's "open a region or an event" note is gone.
+- **Every book panel:** "Hide here" now shows on each book panel while arranging, not only the Inventory shelf. At Earthly HQ the Warehouse Overview follows HQ's hidden list too.
+- **Hidden here:** works the same at every level; at the season "Hide all out of stock books" means none left anywhere on the tour or on the road. One `saveHiddenHere` in index.html now stores the list for wherever you are.
+- **Server:** Code.gs changed (SERVER_BUILD b252); Cloudflare redeploys itself on merge.
+- **Tests:** browser-arrange.js adds hiding and showing on the season page (54 checks).
 
 ## Done in b251 — Hide here at Earthly HQ; the season says where hiding is
 

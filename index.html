@@ -1699,7 +1699,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b251</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b252</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2392,8 +2392,24 @@ function shelfBooks(){
   const list = baseShelfBooks();
   /* Titles this event is not offering are kept off its shelf. Only at an
      event, and only for selling — they are still reachable to pre-order. */
-  const off = hiddenHere();
+  /* At the season, hiding is for its own page (Distribution by Title and the
+     Warehouse Overview, b252): stock entry, reports and totals keep every title. */
+  const off = CUR_LEVEL==='season' ? new Set() : hiddenHere();
   return off.size ? list.filter(b=>!off.has(b.id)) : list;
+}
+/* Leave out what is hidden on the season's page (b252); elsewhere shelfBooks already has. */
+const notHiddenOnSeason = list => { if(CUR_LEVEL!=='season') return list; const off = hiddenHere(); return off.size ? list.filter(b=>!off.has(b.id)) : list; };
+/* Store the hidden list for where you are: the region (Earthly HQ's too), the event, or the season. */
+function saveHiddenHere(raw){
+  const v = raw.join(','), lvl = CUR_LEVEL, reg = CUR_REGION, loc = CUR_LOC;
+  commit(lvl==='region' ? {action:'setRegionHidden', regionId:reg, hidden:v}
+       : lvl==='event'  ? {action:'setEventHidden', eventId:loc, hidden:v}
+       : {action:'setSeasonHidden', hidden:v},
+    st=>{
+      if(lvl==='region'){ const r=(st.regions||[]).find(x=>x.regionId===reg); if(r) r.hidden=v; }
+      else if(lvl==='event'){ const e=(st.events||[]).find(x=>x.eventId===loc); if(e) e.hidden=v; }
+      else st.seasonHidden = v;
+    }, null, {keepOpen:true});
 }
 /* Every title this place would carry, before any is hidden. */
 function baseShelfBooks(){
@@ -2442,7 +2458,8 @@ function baseShelfBooks(){
 function hiddenRawHere(){
   const raw = (CUR_LEVEL==='event')
     ? ((STATE.events||[]).find(e=>e.eventId===CUR_LOC)||{}).hidden
-    : (CUR_LEVEL==='region' ? ((STATE.regions||[]).find(r=>r.regionId===CUR_REGION)||{}).hidden : '');
+    : (CUR_LEVEL==='region' ? ((STATE.regions||[]).find(r=>r.regionId===CUR_REGION)||{}).hidden
+    : STATE.seasonHidden);   // the season's own page (b252)
   return String(raw||'').split(',').map(x=>x.trim()).filter(Boolean);
 }
 const manualHiddenHere = () => new Set(hiddenRawHere().filter(x=>x[0]!=='+'));
@@ -2488,15 +2505,7 @@ function unhideTitle(bookId){
   // Hidden by hand comes off the list; hidden because it never came here is shown by hand.
   const raw = hiddenRawHere().filter(x=>x!==bookId);
   if(autoHiddenHere().has(bookId)) raw.push('+'+bookId);
-  const hidden = raw;
-  const forRegion = (CUR_LEVEL==='region');
-  commit(forRegion
-      ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
-      : {action:'setEventHidden', eventId:CUR_LOC, hidden:hidden.join(',')},
-    st=>{
-      if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
-      else { const e=(st.events||[]).find(x=>x.eventId===CUR_LOC); if(e) e.hidden=hidden.join(','); }
-    }, null, {keepOpen:true});
+  saveHiddenHere(raw);
 }
 
 /** Take a title off the shelf where you are (b248, from Arrange). */
@@ -2505,28 +2514,25 @@ function hideTitle(bookId){
   // Shown by hand though never brought here: just drop that. Otherwise hidden by hand.
   const raw = hiddenRawHere().filter(x=>x!=='+'+bookId);
   if(!autoHiddenHereIgnoringForced().has(bookId)) raw.push(bookId);
-  const hidden = raw, forRegion = (CUR_LEVEL==='region');
-  commit(forRegion
-      ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:hidden.join(',')}
-      : {action:'setEventHidden', eventId:CUR_LOC, hidden:hidden.join(',')},
-    st=>{
-      if(forRegion){ const r=(st.regions||[]).find(x=>x.regionId===CUR_REGION); if(r) r.hidden=hidden.join(','); }
-      else { const e=(st.events||[]).find(x=>x.eventId===CUR_LOC); if(e) e.hidden=hidden.join(','); }
-    }, null, {keepOpen:true});
+  saveHiddenHere(raw);
 }
-/* Hide and show from Arrange (b248): Universal, on a region's or an event's own
-   shelf, Earthly HQ's included (b251). The season's page has no shelf of its
-   own, so the note there says where to go instead. */
-const canHideHere = () => isAdmin() && (CUR_LEVEL==='region' || CUR_LEVEL==='event');
+/* Hide and show from Arrange (b248): Universal, at every level: a region's or an
+   event's shelf, Earthly HQ (b251), and the season's own page (b252). */
+const canHideHere = () => isAdmin();
 function hiddenTitlesModal(){
   const draw = () => {
     const off = hiddenHere();
     const hidden = allShelfBooks().filter(b=>off.has(b.id));
-    const oos = shelfBooks().filter(b=>invQty(CUR_LOC, b.id) <= 0);
+    // Out of stock: here, or at the season, nowhere on the tour (nor on the road).
+    const have = b => CUR_LEVEL==='season'
+      ? regionsList().reduce((t,r)=>t+regionStockOf(r.regionId,b.id),0) + (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').reduce((t,x)=>t+invQty(x.shipId,b.id),0)
+      : invQty(CUR_LOC, b.id);
+    const shown = notHiddenOnSeason(shelfBooks());
+    const oos = shown.filter(b=>have(b) <= 0);
     openModal(`
       ${mHead('Hidden here')}
       <div class="m-body">
-        ${hidden.length ? `<div class="hint">These titles are not shown ${CUR_LEVEL==='region'?'in this region':'at this event'}.</div>
+        ${hidden.length ? `<div class="hint">These titles are not shown ${CUR_LEVEL==='region'?(isHQ()?'at Earthly HQ':'in this region'):CUR_LEVEL==='event'?'at this event':'on the season page'}.</div>
           ${hidden.map(b=>`<div class="ro-row"><span class="ro-name">${bookTitleHTML(b)}</span>
             <span class="ro-btns"><button type="button" class="btn btn-ghost btn-sm" data-show-title="${esc(b.id)}">Show</button></span></div>`).join('')}`
           : '<div class="hint">Nothing is hidden here.</div>'}
@@ -2537,15 +2543,11 @@ function hiddenTitlesModal(){
     document.querySelectorAll('#modal [data-show-title]').forEach(b=>b.onclick=()=>{ unhideTitle(b.dataset.showTitle); setTimeout(draw, 50); });
     const h = $('#hideOos');
     if(h) h.onclick = ()=>{
-      if(oos.length >= shelfBooks().length){ $('#modalErr').textContent='Every title here is out of stock, so they stay shown.'; return; }
+      if(oos.length >= shown.length){ $('#modalErr').textContent='Every title here is out of stock, so they stay shown.'; return; }
       const raw = hiddenRawHere().filter(x=>!oos.some(b=>'+'+b.id===x));
       const auto = autoHiddenHereIgnoringForced();
       oos.forEach(b=>{ if(!auto.has(b.id) && !raw.includes(b.id)) raw.push(b.id); });
-      const forRegion = CUR_LEVEL==='region';
-      commit(forRegion ? {action:'setRegionHidden', regionId:CUR_REGION, hidden:raw.join(',')}
-                       : {action:'setEventHidden', eventId:CUR_LOC, hidden:raw.join(',')},
-        st=>{ const o = forRegion ? (st.regions||[]).find(x=>x.regionId===CUR_REGION) : (st.events||[]).find(x=>x.eventId===CUR_LOC);
-              if(o) o.hidden = raw.join(','); }, null, {keepOpen:true});
+      saveHiddenHere(raw);
       setTimeout(draw, 50);
     };
   };
@@ -5116,7 +5118,9 @@ function renderWarehouseOverview(){
   // The tour's own titles; consignment stays in its own region's view.
   /* In the order set in Edit Book Display — the season's, or at Earthly HQ its
      own (b219). This panel used to list the catalogue's order whatever was set. */
-  const cards = inRegionOrder((STATE.books||[]).filter(b=>!b.partnerId)).map(b=>{
+  // Leaving out what is hidden where you are: the season's page, or Earthly HQ (b252).
+  const off = hiddenHere();
+  const cards = inRegionOrder((STATE.books||[]).filter(b=>!b.partnerId && !off.has(b.id))).map(b=>{
     const per = regions.map(r=>({r, n:regionStockOf(r.regionId,b.id)})).filter(x=>x.n>0);
     const total = per.reduce((t,x)=>t+x.n,0);
     /* Copies on the road belong to no region yet, so summing the regions alone
@@ -5455,7 +5459,7 @@ function renderTitleList(target){
         .concat(holdersOf(CUR_REGION).map(hh=>({id:hh.holderId, name:hh.name})))
     : [];
 
-  const h=shelfBooks().map(b=>{
+  const h=notHiddenOnSeason(shelfBooks()).map(b=>{
     const mine = s.filter(x=>x.bookId===b.id);
     const {sold, pre, gift} = bookCounts(mine);
     const dim = (!sold && !pre && !gift) ? ' dim' : '';
@@ -13429,7 +13433,7 @@ function arrangeUI(){
       }
       if(!ARRANGE && grip) grip.remove();
       let hb = c.querySelector(':scope > .arr-hide');
-      const wantHide = ARRANGE && g.id==='invGrid' && canHideHere() && c.dataset.id!==DONATION_ID;
+      const wantHide = ARRANGE && canHideHere() && c.dataset.id!==DONATION_ID;
       if(wantHide && !hb){
         hb = document.createElement('button'); hb.type = 'button'; hb.className = 'btn btn-ghost btn-sm arr-hide';
         hb.dataset.act = 'arrhide'; hb.dataset.id = c.dataset.id; hb.textContent = 'Hide here';
@@ -13461,8 +13465,7 @@ function arrangeUI(){
   const phone = isPhoneView();
   d.innerHTML = `<span class="arr-msg"><b>Arranging your books ${phone?'for phones':'for computers'}.</b>
       ${phone ? 'Drag a book by its ⠿ bar onto another to swap them.' : 'Drag a book onto another to swap them.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
-    ${canHideHere() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="arrhidden">Hidden here${hiddenHere().size?' ('+hiddenHere().size+')':''}</button>`
-      : isAdmin() && CUR_LEVEL==='season' ? '<span class="arr-msg arr-hidehint">To hide a title, open a region or an event and press ⇅ there.</span>' : ''}
+    ${canHideHere() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="arrhidden">Hidden here${hiddenHere().size?' ('+hiddenHere().size+')':''}</button>` : ''}
     ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
     <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
 }
