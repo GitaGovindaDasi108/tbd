@@ -183,7 +183,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   /* Who made the sale, by sign-in (b223): their Google address. soldBy is the
      name shown; this one stays the same when they rename themselves, so "My
      sales" and Sales by seller still add up. Empty on a link (self-declared). */
-  'soldById'];
+  'soldById',
+  /* Who last changed it, when that was not the seller (b258): the sale stays
+     the seller's; this is only the note that someone else edited it. */
+  'editedBy'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -222,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b256';
+var SERVER_BUILD = 'b258';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -3955,6 +3958,7 @@ function readState() {
       delivered: s.delivered === true || s.delivered === 'true' || s.delivered === 'TRUE',
       dsource: String(s.dsource || ''),
       soldBy: String(s.soldBy || ''),
+      editedBy: String(s.editedBy || ''),
       changeamt: Number(s.changeamt) || 0,
       changecur: String(s.changecur || ''),
       usdActual: (s.usdActual === '' || s.usdActual === null || s.usdActual === undefined)
@@ -5959,6 +5963,7 @@ function doSellBundle(p) {
       // An edit keeps whoever made the sale (b223); a new one is the person asking.
       soldBy: p._keepSeller ? p._keepSeller.by : p.by,
       soldById: p._keepSeller ? p._keepSeller.id : _meEmail,
+      editedBy: p._keepSeller ? editedByNote_(p.by, p._keepSeller, p._editedBy) : '',
       // Change owed belongs to the transaction, not to each book in it, so it
       // rides on the first line and the bundle reports it once.
       changeamt: i === 0 ? p.changeamt : 0,
@@ -6040,7 +6045,11 @@ function doEditBundle(p) {
   p.keepBundleId = String(p.bundle);
   p.isEdit = true;
   // Whoever made the sale still made it after an edit (b223).
-  p._keepSeller = { by: String(members[0].soldBy || p.by || ''), id: String(members[0].soldById || '') };
+  /* Never the editor's name in place of a seller nobody recorded (b258): an
+     admin tidying an old sale must not take the credit for it. */
+  var seller = members.filter(function (m) { return m.soldBy || m.soldById; })[0] || members[0];
+  p._keepSeller = { by: String(seller.soldBy || ''), id: String(seller.soldById || '') };
+  p._editedBy = String(seller.editedBy || '');
   // The dollars received survive an edit that does not speak to them.
   if (p.usdActual === undefined) {
     var had = members.filter(function (m) { return usdActualIn_(m.usdActual) !== ''; });
@@ -6065,6 +6074,15 @@ function doEditBundle(p) {
   } finally {
     _rebuilding = false;
   }
+}
+
+/* The note on an edited sale (b258): who edited it, when that was someone
+   other than the seller. The seller editing their own sale leaves any earlier
+   note as it was. */
+function editedByNote_(by, seller, before) {
+  by = String(by || '').trim();
+  var mine = (_meEmail && seller.id) ? _meEmail === seller.id : (!!by && by === seller.by);
+  return (by && !mine) ? by.slice(0, 40) : String(before || '');
 }
 
 /** The same guards doSellBundle applies, run before anything is deleted. */
@@ -6188,6 +6206,7 @@ function appendSale_(o) {
     // up, not proof — but it answers "who should I ask about this?".
     soldBy: String(o.soldBy || '').trim().slice(0, 40),
     soldById: String(o.soldById || '').slice(0, 120),
+    editedBy: String(o.editedBy || '').trim().slice(0, 40),
     /* The reverse of a pending payment: they handed over more than the price
        and we could not break it, so we owe them the difference. */
     changeamt: Number(o.changeamt) || 0,
@@ -6660,6 +6679,7 @@ function doEditSale(p) {
     // Who originally recorded it stays put — an edit shouldn't rewrite history.
     soldBy: old.soldBy || '',
     soldById: old.soldById || '',
+    editedBy: editedByNote_(p.by, { by: String(old.soldBy || ''), id: String(old.soldById || '') }, String(old.editedBy || '')),
     changeamt: p.changeamt !== undefined ? (Number(p.changeamt) || 0) : (Number(old.changeamt) || 0),
     changecur: p.changecur !== undefined ? String(p.changecur) : String(old.changecur || ''),
     usdActual: p.usdActual !== undefined ? usdActualIn_(p.usdActual) : old.usdActual
