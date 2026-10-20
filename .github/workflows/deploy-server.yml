@@ -41,6 +41,7 @@ jobs:
           NODE_NO_WARNINGS=1 node test/workergolden.js
           NODE_NO_WARNINGS=1 node test/auth.js | tee /tmp/auth.txt; ! grep -q '^FAIL' /tmp/auth.txt
           NODE_NO_WARNINGS=1 node test/bridge.js | tee /tmp/bridge.txt; ! grep -q '^FAIL' /tmp/bridge.txt
+          NODE_NO_WARNINGS=1 node test/readkey.js | tee /tmp/readkey.txt; ! grep -q '^FAIL' /tmp/readkey.txt
       - name: Deploy
         if: steps.ready.outputs.go == 'yes'
         env:

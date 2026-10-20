@@ -147,7 +147,38 @@ The practice server never builds spreadsheets and never shares files, and the
 live server only hands a copy to the right phrase: nothing in practice can
 reach the live records.
 
-## Trying it on your own computer
+## The read-only key, for Claude (b253)
+
+Lets Claude, working on the app in its own cloud space, **read** the live
+records to check its work against real numbers. It can never save, change or
+delete anything: the server answers the key with exactly two things, and
+nothing else.
+
+- `{"action":"readOnly","what":"state","season":"<id>"}`: a season (or Earthly
+  HQ) as Universal sees it in the app. Leave `season` out for the active one.
+- `{"action":"readOnly","what":"export"}`: every table, the settings, and the
+  people with their roles. Never sign-ins or receipt images.
+
+The key goes in the request as `"key"`, or as the header
+`Authorization: Bearer <key>`. A wrong or missing key gets "Not allowed."; a
+key shorter than 24 characters is never accepted. Test: `test/readkey.js`.
+
+**Setting it up (once):**
+
+1. Make up a long random phrase (at least 24 characters). It is the key.
+2. In Cloudflare: Workers & Pages › **tbs-server** › Settings › Variables and
+   Secrets › Add › type **Secret**, name `READ_KEY`, value: the phrase.
+3. In the Claude project's cloud environment, add the same phrase as the
+   environment variable `TBS_READ_KEY`, and allow `tbs-server.gitagovinda.workers.dev`
+   under network access.
+
+To take the access away: delete `READ_KEY` in Cloudflare (or change it).
+It never goes in the repository, a project file or a chat message.
+
+From a Claude session: `server/read-live.sh state` (or `export`, or
+`state <season id>`).
+
+
 
 ```
 cd server
