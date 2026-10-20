@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b252**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b253**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,12 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b253 — a read-only key for Claude to read the live records
+
+- **Server:** a new request, `readOnly`, answered only with the right `READ_KEY` (a Cloudflare secret on tbs-server, 24+ characters). `what: "state"` gives a season as Universal sees it; `what: "export"` gives every table, the settings and the people with their roles (no sign-ins, no receipts). Nothing else is answered with it, so it cannot save, change or delete. The key may also come as `Authorization: Bearer`. `readOnly` in server/src/core.js, `withKey` in worker.js.
+- **For Claude sessions:** `server/read-live.sh` reads it with `TBS_READ_KEY` from the cloud environment. Setup and removal: server/README.md, "The read-only key".
+- **Tests:** test/readkey.js (10 checks), also run before every server deploy.
 
 ## Done in b252 — Hide here at every level, the season's page included
 

@@ -18,7 +18,7 @@ const SHEET_ACTIONS = /^(driveMap|syncSheets|setDriveFolder|setSeasonFolder|desc
 const IN_FLIGHT_MS = 15 * 60 * 1000;          // a spreadsheet run that never reported back
 
 export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, adminEmails, googleCertsUrl,
-                             reportUrl, reportSecret, practice, liveUrl, liveSecret, practiceSecret }) {
+                             reportUrl, reportSecret, practice, liveUrl, liveSecret, practiceSecret, readKey }) {
   const { store, kv, forget, dump, exportAll, importAll } = makeSqlStore(exec);
   /* On the practice server the owners are the live server's (copied with the
      records), unless ADMIN_EMAILS is set on it as well. */
@@ -91,6 +91,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const action = String(p.action || 'getState');
     // The live server, asked for a copy by the practice server (b231).
     if (action === 'practiceExport') return reply(practiceExport(p));
+    // Reading the records with the read-only key (b253): never a change.
+    if (action === 'readOnly') return reply(readOnly(p));
     // The practice server fills itself from live the first time it is used.
     if (practice && !kv.getProp('practiceSeeded') && liveUrl && liveSecret) {
       try { await practiceReset(); } catch (err) { console.log('practice copy: ' + err); }
@@ -478,6 +480,30 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const props = kv.allProps();
     Object.keys(props).forEach(k => { if (/^(dirtyLocs|cfInFlight|shareDirty|CF_|lastRenderError)/.test(k)) delete props[k]; });
     return { ok: true, result: { tables: exportAll(), props, people: auth.peopleRows(), owners: auth.ownerList() } };
+  }
+  /* ---- The read-only key (b253) ----
+     Lets Claude, working on the app, read the live records to check its work
+     against them: READ_KEY on the server, sent as "key" (or as the
+     Authorization header). It can only read: "export" gives every table, the
+     settings and the people with their roles (never sign-ins or receipts);
+     "state" gives a season as Universal sees it in the app. Nothing else is
+     answered, so nothing can be saved, changed or deleted with it. */
+  function readOnly(p) {
+    const key = String(p.key || '');
+    if (!readKey || readKey.length < 24 || key !== readKey) return { ok: false, error: 'Not allowed.' };
+    app.sheetMemoClear_(); app.setSeasonContext_('');
+    if (p.what === 'export') {
+      const props = kv.allProps();
+      Object.keys(props).forEach(k => { if (/^(dirtyLocs|cfInFlight|shareDirty|CF_|lastRenderError)/.test(k)) delete props[k]; });
+      return { ok: true, result: { tables: exportAll(), props, people: auth.peopleRows(), owners: auth.ownerList() } };
+    }
+    if (p.what === 'state') {
+      app.setTrustedWho_({ role: 'admin', name: 'Read only', email: '', grant: 'U' });
+      const q = { action: 'getState' };
+      if (p.season) q.season = String(p.season);
+      return JSON.parse(answer({ postData: { contents: JSON.stringify(q) } }));
+    }
+    return { ok: false, error: 'Ask for "export" or "state".' };
   }
   async function practiceReset() {
     if (!practice || !liveUrl || !liveSecret) throw new Error('The practice space is not connected to the live app yet (LIVE_URL and LIVE_SECRET).');

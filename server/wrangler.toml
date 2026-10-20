@@ -10,6 +10,7 @@ compatibility_date = "2025-09-01"
 #   ADMIN_EMAILS      the Google accounts allowed in, comma separated
 #   REPORT_URL        the Apps Script web app's /exec address (the spreadsheets)
 #   REPORT_SECRET     (a Secret) the text shared with Apps Script as CF_SECRET
+#   READ_KEY          (a Secret, optional) lets Claude READ the records, nothing more (b253)
 keep_vars = true
 
 [vars]
