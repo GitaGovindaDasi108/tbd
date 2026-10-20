@@ -163,6 +163,12 @@ const API = 'http://api.test/';
       await fin.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(238, 243, 250)')]);
     await fin.click('[data-act="finsec"][data-sec="todo"]'); await fin.waitForTimeout(1200);
     m = await fpage(fin);
+    // b260: a row per person, like the sales log: name, amount, Pay and Decline; the rest in its dropdown.
+    t.push(['b260: Sita is one row: her name, ₹450, Pay and Decline, the details folded away', await fin.evaluate(() => {
+      const r = document.querySelector('.rb-item .li-row'); return !!r && /Sita/.test(r.innerText) && /450/.test(r.innerText) && /^Pay$/m.test(r.innerText) && /^Decline$/m.test(r.innerText)
+        && getComputedStyle(document.querySelector('.rb-item .li-det')).display === 'none'; })]);
+    await fin.click('.rb-item [data-act="rbopen"]'); await fin.waitForTimeout(300);
+    m = await fpage(fin);
     t.push(['the To do is a section of the page (#finance/todo), not a window', /#finance\/todo/.test(fin.url()) && !(await fin.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
     t.push(['…reimbursements pending: Sita\'s taxi, with her UPI ID', /Pending Reimbursements\s*1/.test(m) && /Taxi with the book boxes/.test(m) && /sita@okbank/.test(m)]);
     t.push(['…the record-keeping one is not on it', !/Packing tape/.test(m)]);
@@ -174,14 +180,16 @@ const API = 'http://api.test/';
     m = await fpage(fin);
     t.push(['…payments pending across the system: Arjuna owes 300 rupees, with his phone', /Pending Payments\s*1/.test(m) && /Arjuna/.test(m) && /300/.test(m) && /\+91 22 1234/.test(m) && /Chowpatty Program · Delhi · Kartika/.test(m)]);
     await fin.click('[data-act="fintab"][data-tab="reimb"]'); await fin.waitForTimeout(300);
-    // b257: the note goes in the card's Pay back box, not a pop-up.
-    await fin.fill('[data-pbnote]', 'UPI ref 4471');
-    await fin.click('[data-act="exppaid"]'); await fin.waitForTimeout(1000);
+    // b260: Pay asks the date it was paid (today unless changed), and a note.
+    await fin.click('[data-act="exppaid"]'); await fin.waitForTimeout(400);
+    t.push(['b260: Pay asks the date of payment, today to start', await fin.$eval('#fpDate', i => i.value) === new Date().toISOString().slice(0, 10)]);
+    await fin.fill('#fpDate', '2026-01-01'); await fin.fill('#fpNote', 'UPI ref 4471');
+    await fin.click('#fpYes'); await fin.waitForTimeout(1200);
     m = await fpage(fin);
     t.push(['Finance marks it paid back: it leaves the list', /Nothing waiting to be paid back/.test(m)]);
     await fin.click('[data-act="fintab"][data-tab="all"]'); await fin.waitForTimeout(300);
     m = await fpage(fin);
-    t.push(['…and every expense shows it paid back, with the reference', /Paid back by Madhava/.test(m) && /UPI ref 4471/.test(m) && /Packing tape/.test(m)]);
+    t.push(['…and every expense shows it paid back on the day given, with the reference', /Paid back by Madhava, 2026-01-01/.test(m) && /UPI ref 4471/.test(m) && /Packing tape/.test(m)]);
     await fin.screenshot({ path: shot('finance') });
 
     // On Sita's behalf, found by typing part of her name.
@@ -244,9 +252,9 @@ const API = 'http://api.test/';
     m = await fpage(own);
     t.push(['Universal: Menu › Finance goes to the Finance page', await onFin(own) && /#finance\/overview/.test(own.url())]);
     t.push(['…the app\'s own panels are out of the way', await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display === 'none')]);
-    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected Gross/.test(m) && /Net/.test(m)]);
+    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected \$/.test(m) && /Net/.test(m)]);
     t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending payments\s*\$3\.75/i.test(m)]);
-    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*\$17\.63/i.test(m)]);
+    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*\$[\d.]+\s*(₹[\d,]+\s*)?Expected \$17\.63/i.test(m)]);
     t.push(['…the Overview keeps to its seven figures (no pending reimbursements)', !/Pending Reimbursements/i.test(m)]);
     t.push(['…at every level: the season row', /Kartika/.test(m)]);
     await own.click('#fpBody [data-act="fingo"]'); await own.waitForTimeout(500);       // Kartika

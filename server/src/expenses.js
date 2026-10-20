@@ -61,7 +61,9 @@ const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'dat
   // b254: what "Other" is, and how to reach someone who sent it in by a reimbursement link.
   'catOther', 'contactPhone', 'contactEmail',
   // b259: paid back in another currency: the amount at the rate on the day of the purchase.
-  'payAmt'];
+  'payAmt',
+  // b260: the day it was actually paid back, as Finance gives it.
+  'paidOn'];
 const T = '_expenses';
 const PART = 900 * 1024;                    // characters of base64 per stored part
 const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk a photo
@@ -148,7 +150,16 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     P.raw.seasons.forEach(s => {
       [placeOf(P, s.id)].concat(P.raw.regions.filter(r => r.seasonId === s.id).flatMap(r =>
         [placeOf(P, r.id)].concat(P.raw.events.filter(e => e.regionId === r.id).map(e => placeOf(P, e.id)))))
-        .forEach(pl => { if (pl && open(pl) && inReach(w, pl)) out.push(Object.assign(pl, { label: labelOf(P, pl) })); });
+        .forEach(pl => {
+          if (!pl || !inReach(w, pl)) return;
+          /* Only the person's permissions limit where (Gita, 2026-10-20): Finance and
+             Universal reach every place, closed ones too (expenses come in after an
+             event ends). A link stays with the places still running. */
+          const shut = !open(pl);
+          if (shut && w.open) return;
+          const label = labelOf(P, pl);
+          out.push(Object.assign(pl, { closed: shut, label: shut ? label.replace(/^(.*?)( · |$)/, '$1 (closed)$2') : label }));
+        });
     });
     return out;
   }
@@ -281,6 +292,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function sweep() {
     const used = new Set();
     rows().forEach(r => parse(r.receipts, []).forEach(x => used.add(x.id)));
+    // A deleted expense the Activity Log can still bring back keeps its receipts for 30 days.
+    if (app.dbHas_('_activity')) app.objectsOf_('_activity').forEach(a => {
+      if (a.action !== 'expDelete' || a.undoneAt || now() - new Date(a.ts).getTime() > 30 * 86400000) return;
+      const u = parse(a.undo, null); if (u && u.row) parse(u.row.receipts, []).forEach(x => used.add(x.id));
+    });
     exec('SELECT DISTINCT id FROM receipt WHERE at < ?', now() - 24 * 3600 * 1000).forEach(r => {
       if (!used.has(r.id)) exec('DELETE FROM receipt WHERE id = ?', r.id);
     });
@@ -520,6 +536,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
     if (old) app.dbUpdate_(T, { id }, row); else app.dbInsert_(T, row);
     syncCost(row, F, w);
+    if (old) actLog(w, row, 'expSave', 'Expense changed: ' + expWords(row), null);
+    else actLog(w, row, 'expSave', 'Expense added: ' + expWords(row), { type: 'exp', op: 'add', id });
     // A link sent to one person is used up once their expenses are in (`more`: others follow in the same sending).
     if (w.open && !old && !p.more) {
       const L = getLinks();
@@ -535,7 +553,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (old.status === 'paid' && !mayPay(w)) throw new Error('That expense has been paid back, so it cannot be deleted. Ask Finance.');
     app.dbDelete_(T, { id });
     dropCost(old, w);
-    parse(old.receipts, []).forEach(x => exec('DELETE FROM receipt WHERE id = ?', x.id));
+    // Its receipts stay while the Activity Log can still bring it back (the sweep clears them after).
+    actLog(w, old, 'expDelete', 'Expense deleted: ' + expWords(old), { type: 'exp', op: 'delete', id, row: old });
     return { id };
   }
   function mark(w, p) {
@@ -545,11 +564,20 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!old) throw new Error('That expense is no longer listed.');
     if (old.kind !== 'reimburse') throw new Error('That expense was recorded for the records, not to be paid back.');
     const status = ['paid', 'declined', 'pending'].indexOf(p.status) >= 0 ? p.status : 'paid';
-    const set = status === 'pending' ? { status, doneAt: '', doneBy: '', doneNote: '' }
-      : { status, doneAt: new Date(now()).toISOString(), doneBy: w.name, doneNote: clip(p.note, 300) };
+    const today = new Date(now()).toISOString().slice(0, 10);
+    const paidOn = String(p.paidOn || '');
+    if (status === 'paid' && paidOn && (!/^\d{4}-\d{2}-\d{2}$/.test(paidOn) || paidOn > today)) throw new Error('Give the date it was paid: today or before.');
+    const set = status === 'pending' ? { status, doneAt: '', doneBy: '', doneNote: '', paidOn: '' }
+      : { status, doneAt: new Date(now()).toISOString(), doneBy: w.name, doneNote: clip(p.note, 300), paidOn: status === 'paid' ? (paidOn || today) : '' };
+    app.dbAddCols_(T, COLS);
     app.dbUpdate_(T, { id }, set);
     const now2 = Object.assign({}, old, set);
     syncCost(now2, facts(), w);
+    const who = old.forName || old.byName || 'someone';
+    if (status !== 'pending') actLog(w, now2, 'expMark', status === 'paid'
+      ? 'Paid back ' + who + ' ' + payWords(now2) + ' for ' + old.desc + ' (paid ' + now2.paidOn + ')' + (set.doneNote ? ' — “' + set.doneNote + '”' : '')
+      : 'Declined ' + who + '’s expense: ' + old.desc + ' ' + payWords(now2) + (set.doneNote ? ' — “' + set.doneNote + '”' : ''),
+      { type: 'exp', op: 'mark', id, was: old.status || 'pending' });
     return shown(now2);
   }
   function list(w, p) {
@@ -586,6 +614,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function rulesSet(w, p) {
     if (!mayPay(w)) throw new Error('Only Finance can change these settings.');
     kv.setProp('reimbRules', JSON.stringify(cleanRules(p.rules)));
+    actLog(w, {}, 'expRulesSet', 'Changed the reimbursement settings', null);
     return rulesGet(w);
   }
 
@@ -596,6 +625,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     let gone = getGone().filter(g => g.toLowerCase() !== name.toLowerCase());
     if (p.gone) gone.push(name);
     kv.setProp('reimbGone', JSON.stringify(gone.slice(0, 100)));
+    actLog(w, {}, 'expMethodGone', (p.gone ? 'Removed “' : 'Brought back “') + name + '” as a way of paying back', null);
     return rulesGet(w);
   }
   function linkList(w) {
@@ -624,6 +654,9 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     L[key] = Object.assign({ place, label: clip(p.label, 80) || toName, by: w.name, at: new Date(now()).toISOString(), off: false },
       to ? { to, once: true } : {});
     kv.setProp('reimbLinks', JSON.stringify(L));
+    const pl = place ? placeOf(w.P, place) : null;
+    actLog(w, pl ? { seasonId: pl.seasonId, regionId: pl.regionId, location: pl.id } : {}, 'expLinkMake',
+      'Made a reimbursement link' + (toName ? ' for ' + toName : '') + (pl ? ' (' + labelOf(w.P, pl).split(' · ')[0] + ')' : ''), null);
     return { key, list: linkList(w) };
   }
   function linkOff(w, p) {
@@ -639,11 +672,54 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const L = getLinks()[w.link] || {};
     return { place: w.linkPlace, placeLabel: pl ? labelOf(w.P, pl) : '', to: L.to || null };
   }
+  /* ---- The Activity Log (b260): Finance's changes, there to spot and undo mistakes ----
+     Written into the app's own log (_activity), for the expense's season,
+     region and place, so it shows where that place's other changes do. */
+  const money = (a, c) => (Math.round((Number(a) || 0) * 100) / 100) + ' ' + String(c || '');
+  const payWords = r => { const pa = parse(r.payAmt, null); return pa && pa.amt != null ? money(pa.amt, pa.cur) : money(r.amt, r.cur); };
+  const expWords = r => String(r.desc || '') + ', ' + money(r.amt, r.cur) + (r.placeLabel ? ' at ' + String(r.placeLabel).split(' · ')[0] : '') +
+    (r.kind === 'reimburse' ? ' (to pay back to ' + (r.forName || r.byName || 'them') + ')' : '');
+  function actLog(w, r, action, text, undo) {
+    try {
+      app.activitySheet_(); app.dbAddCols_('_activity', ['parts', 'undoneParts']);
+      app.dbInsert_('_activity', { id: 'A' + Math.random().toString(36).slice(2, 12), ts: new Date(now()),
+        season: String(r.seasonId || app.activeSeasonId_()), who: w.name || (w.open ? 'reimbursement link' : ''), action,
+        text: String(text).slice(0, 900), locs: String(r.location || ''), regions: String(r.regionId || ''), moves: '',
+        undo: undo ? JSON.stringify(undo) : '', undoneAt: '', undoneBy: '', parts: '', undoneParts: '' });
+    } catch (e) { /* the log must never cost anyone their change */ }
+  }
+  /* Delete in the Activity Log: an added expense goes, a deleted one comes
+     back, a paid or declined one is waiting again. */
+  function undo(w, p) {
+    const id = clip(p.id, 40);
+    const e = app.dbHas_('_activity') ? app.objectsOf_('_activity').find(r => String(r.id) === id) : null;
+    if (!e) throw new Error('That entry is no longer in the log.');
+    if (e.undoneAt) return { done: 'already' };
+    const u = parse(e.undo, null);
+    if (!u || u.type !== 'exp') throw new Error('This one cannot be undone here.');
+    fresh();
+    if (u.op === 'add') remove(w, { id: u.id });
+    else if (u.op === 'mark') mark(w, { id: u.id, status: 'pending' });
+    else if (u.op === 'delete') {
+      if (!mayPay(w) && !mine(w, u.row)) throw new Error('That expense is not yours to bring back.');
+      if (rows().some(r => String(r.id) === String(u.id))) throw new Error('That expense is already back.');
+      app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
+      const row = {}; COLS.forEach(k => { row[k] = u.row[k] === undefined ? '' : u.row[k]; });
+      app.dbInsert_(T, row); syncCost(row, facts(), w);
+    } else throw new Error('This one cannot be undone here.');
+    app.dbUpdate_('_activity', { id }, { undoneAt: new Date(now()), undoneBy: w.name || '' });
+    // The undo leaves a line of its own, as the rest of the log's do.
+    app.dbInsert_('_activity', { id: 'A' + Math.random().toString(36).slice(2, 12), ts: new Date(now()), season: String(e.season || ''),
+      who: w.name || '', action: 'undoActivity', text: 'Undid: ' + String(e.text || ''), locs: String(e.locs || ''), regions: String(e.regions || ''),
+      moves: '', undo: '', undoneAt: '', undoneBy: '' });
+    return { done: 'undone' };
+  }
+
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
-    placeMetaGet, placeMetaSet };
+    placeMetaGet, placeMetaSet, expUndo: undo };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
     if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');

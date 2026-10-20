@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b260**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b262**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2154,6 +2154,40 @@ Live unless marked practice.
   doesn't take the click as "open the menu".
 - Tests: `test/browser-search.js` section 6 runs with the left-hand menu
   (`?menu` serves the test config with `CLASSIC_ADMIN: false`).
+
+## Done in b261 — Finance: compact rows, Pay with a date, rates from the server, Finance in the Activity Log (practice)
+
+- **Exchange rates from the server** (`fxOn` in server/src/core.js, action
+  `fxOn`): the European Central Bank's rate on the purchase date (Frankfurter),
+  else the open currency-api for that day; kept in the web cache. The page
+  asks the server (as the sales side's rates are fetched), never the web itself.
+- **Where** on the expense form is limited only by the person's permissions:
+  Finance and Universal see every place, closed ones too, marked "(closed)"
+  (`placeList`); a reimbursement link still lists only running places.
+- **Gmail**: every Gmail button opens in one named tab (`GMAIL_TAB`), so later
+  drafts reuse it. A page cannot reach a Gmail tab the person opened themselves.
+- **Reimbursements like the sales log**: a row a person with the amount in
+  the currency asked for, **Pay** and **Decline**; tapping opens the
+  expenses (each can be declined), how to reach them, how to pay them
+  (`expGroupHTML`, `FIN.rbOpen`). Paid back / Declined tabs are rows too
+  (`finRbDoneHTML`). The To do's Pending Reimbursements uses the same rows.
+- **Pay asks the date of payment** (`finPayAsk`, server column `paidOn`,
+  today or earlier) and a note.
+- **One way of being paid back per form**: the first expense to be paid back
+  sets it; the others follow (`lockPay`, `expPaySync`).
+- **Expenses like the sales log**: date, what for, amount; tap for who, type,
+  where, status, pay back, receipts, Edit, Delete (`FIN.exOpen`). The
+  Date/Amount headings sit over their columns and still sort.
+- **Finance in the Activity Log**: added, changed, deleted, paid back,
+  declined, links made, settings (`actLog` in expenses.js, into `_activity`
+  for the expense's season/region/place). Delete undoes added (removes it),
+  deleted (brings it back, receipts kept 30 days) and paid/declined (waiting
+  again) via action `expUndo`.
+- **Activity Log** shows the latest 50, then "Show older" (live fix: it used to
+  list up to 1,500 at once).
+- Blue lines read just "Expected $X" (and "   Expected - $X" in 📋).
+  Cents always two places ($50.80).
+- Tests: browser-finance (108), browser-expenses (68).
 
 ## Done in b262 — Smaller selling cards in four parts (live)
 - Every shelf card (`renderInventory`'s book cards, and the donation card) is laid
