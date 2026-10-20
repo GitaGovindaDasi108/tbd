@@ -933,7 +933,33 @@ desktop and phone width.
   wording is being edited.
 - Wording: To do tabs read Pending Reimbursements / Pending Payments; the
   section is "To do" on the Finance page.
-- Tests: `test/browser-finance.js` (24), `browser-expenses.js` updated (66).
+- **Edit Wording in place** (practice only, app-wide): tap any words (a
+  button's by its pencil) and a box opens over them; Enter keeps, Esc leaves,
+  🙈 hides (`labelInline`, `labelSave`). Live keeps the old window.
+- **Expenses section** (`finExpensesRender`): totals bar — Total Expenses, or
+  Expected Total Expenses with Current Expenses beneath while reimbursements
+  are owed — and Reimbursements Due; every expense with Edit/Delete, sorted by
+  date, name, amount or type, round buttons to filter by type, search, dates.
+- **Reimbursements section** (`finReimbRender`): the same bar; Pending, Paid
+  back and declined, Reimbursement Links, and ⚙️ Reimbursement Settings (moved
+  off the section bar; `#finance/settings` still lands there; Where and Person
+  are searchable drop-downs).
+- **Send Reimbursements Link** (server: `expLinkMake/List/Off/Info`, setting
+  `reimbLinks`; client `finLinksRender`, `reimbPublicStart`): a link
+  `?practice&reimb=rb_…`, anywhere or for one place, sent by WhatsApp or email;
+  it opens only the expense form (name, WhatsApp/phone or email, receipts), no
+  sign-in, and ends on "received and will be processed at the earliest
+  convenience". In Pending, Finance gets one-tap WhatsApp/email messages
+  (received, or paid back). Fully automatic messages would need an email
+  service or WhatsApp Business: not built.
+- **Add Expense**: Where, Kind and Paid with are searchable drop-downs
+  (`comboHTML`/`comboBind`); Other asks what it is (`catOther`, a paid-with
+  Other keeps its words as the payment type).
+- **Visualize** (`finVisualRender`): expenses by type as a pie or bars, with a
+  table of amounts and shares; fixed palette, past 7 types folded into
+  "Everything else".
+- New `_expenses` columns: `catOther`, `contactPhone`, `contactEmail`.
+- Tests: `test/browser-finance.js` (45), `browser-expenses.js` updated (66).
 
 ## Done in b251 — Hide here at Earthly HQ; the season says where hiding is
 

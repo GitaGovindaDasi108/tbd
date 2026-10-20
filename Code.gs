@@ -382,7 +382,8 @@ function financeData_() {
     var w = where(x.location), s = w ? w.s : String(x.seasonId || '');
     var loc = w ? (w.e || regs[w.r].whLoc) : '';
     expenses.push({ id: String(x.id), d: String(x.date || day(x.ts)), s: s, r: w ? w.r : '', e: w ? w.e : '',
-      cat: String(x.category || 'Other'), kind: String(x.kind || 'record'), st: String(x.status || ''),
+      cat: String(x.category || 'Other') + (String(x.category || 'Other') === 'Other' && x.catOther ? ': ' + String(x.catOther) : ''),
+      kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
       cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(loc ? toUsdAt_(x.amt, x.cur, loc) : toUSD_(Number(x.amt) || 0, String(x.cur || ''))) });
   });

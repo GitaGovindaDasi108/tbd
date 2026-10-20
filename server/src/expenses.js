@@ -57,7 +57,9 @@ const fieldsFor = m => METHOD_FIELDS[m] || [{ k: 'details', label: 'Your ' + m +
 const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'date', 'desc', 'cur', 'amt', 'kind',
   'category', 'payType', 'partnerId',
   'method', 'reimbCur', 'payTo', 'notes', 'receipts', 'byName', 'byEmail', 'byLink', 'forName', 'forEmail',
-  'status', 'doneAt', 'doneBy', 'doneNote'];
+  'status', 'doneAt', 'doneBy', 'doneNote',
+  // b253: what "Other" is, and how to reach someone who sent it in by a reimbursement link.
+  'catOther', 'contactPhone', 'contactEmail'];
 const T = '_expenses';
 const PART = 900 * 1024;                    // characters of base64 per stored part
 const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk a photo
@@ -78,8 +80,23 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      A signed-in person (their roles decide where they may record and whether
      they are Finance), or a link (its region or events, and the name the
      phone was given). Universal counts as Finance. */
+  /* ---- Reimbursement links (b253) ----
+     Finance sends one by WhatsApp or email to anyone, in the app or not, who
+     spent money for the tour: it opens a form needing no sign-in, for one
+     place or anywhere, and all it can do is send in an expense to be paid
+     back (with its receipts). Kept in the setting `reimbLinks`. */
+  const getLinks = () => { const o = parse(kv.getProp('reimbLinks'), {}); return o && typeof o === 'object' ? o : {}; };
+  const isReimbKey = k => /^rb_[A-Za-z0-9]{8,40}$/.test(String(k || ''));
   function whoFor(p, me, linkKey) {
     const P = places();
+    if (linkKey && isReimbKey(linkKey)) {
+      const L = getLinks()[linkKey];
+      if (!L || L.off) throw new Error('This reimbursement link has been turned off. Ask Finance for a new one.');
+      const pl = L.place ? placeOf(P, L.place) : null;
+      if (L.place && !pl) throw new Error('This reimbursement link is for a place that is no longer listed. Ask Finance for a new one.');
+      const reach = !pl ? { all: true } : pl.kind === 'event' ? { events: [pl.eventId] } : pl.kind === 'region' ? { regions: [pl.regionId] } : { seasons: [pl.seasonId] };
+      return { P, link: linkKey, name: clip(p.by, 60), email: '', fin: '', universal: false, reach, open: true, linkPlace: L.place || '' };
+    }
     if (linkKey) {
       const w = app.roleFor_(linkKey);
       if (!w || (w.role !== 'seller' && w.role !== 'coordinator')) throw new Error('That link is no longer valid. Ask for a new one.');
@@ -348,11 +365,16 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const id = clip(p.id, 40);
     if (!/^[XC][0-9A-Za-z_-]{3,39}$/.test(id)) throw new Error('That expense could not be named.');
     const old = rows().find(r => String(r.id) === id);
+    if (old && w.open) throw new Error('That expense has already been sent in.');
     if (old && !(isFin(w) && mayPay(w)) && !mine(w, old)) throw new Error('That expense is not yours to change.');
     if (old && old.status === 'paid' && !mayPay(w)) throw new Error('That expense has been paid back, so it cannot be changed. Ask Finance.');
     const pl = placeOf(w.P, clip(p.location, 60));
     if (!pl || !inReach(w, pl)) throw new Error('Choose where the expense belongs.');
-    const kind = p.kind === 'reimburse' ? 'reimburse' : 'record';
+    const kind = p.kind === 'reimburse' || w.open ? 'reimburse' : 'record';
+    if (w.open && !w.name) throw new Error('Please give your name.');
+    const contactPhone = clip(p.contactPhone, 40), contactEmail = clip(p.contactEmail, 120).toLowerCase();
+    if (contactEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contactEmail)) throw new Error('That email address does not look right.');
+    if (w.open && !contactPhone && !contactEmail) throw new Error('Give a phone (WhatsApp) number or an email, so Finance can reach you.');
     const amt = Math.round((Number(p.amt) || 0) * 100) / 100;
     if (!(amt > 0)) throw new Error('Give the expense an amount.');
     const cur = String(p.cur || '').toUpperCase();
@@ -390,6 +412,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       return { id: rid, name: h.name, mime: h.mime, size: h.size };
     });
     const category = F.categories.indexOf(String(p.category)) >= 0 ? String(p.category) : 'Other';
+    const catOther = category === 'Other' ? clip(p.catOther, 60) : '';
     const payType = clip(p.payType, 40);
     const partnerId = clip(p.partnerId, 40);
     if (partnerId && !F.partners.some(g => g.id === partnerId && g.regionId === pl.regionId)) throw new Error('That consignment group is not in this region.');
@@ -401,7 +424,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       forName, forEmail,
       status: kind === 'record' ? 'recorded' : (old && old.kind === 'reimburse' && old.status !== 'recorded' ? old.status : 'pending'),
       doneAt: old && kind === 'reimburse' ? (old.doneAt || '') : '', doneBy: old && kind === 'reimburse' ? (old.doneBy || '') : '',
-      doneNote: old && kind === 'reimburse' ? (old.doneNote || '') : ''
+      doneNote: old && kind === 'reimburse' ? (old.doneNote || '') : '',
+      catOther, contactPhone: contactPhone || (old ? String(old.contactPhone || '') : ''), contactEmail: contactEmail || (old ? String(old.contactEmail || '') : '')
     };
     if (!row.byName && !forName) throw new Error('Say who you are first.');
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
@@ -471,12 +495,47 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return rulesGet(w);
   }
 
-  const ACTIONS = { expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
+  function linkList(w) {
+    if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
+    const P = w.P, L = getLinks();
+    return Object.keys(L).map(k => Object.assign({ key: k }, L[k], {
+      placeLabel: L[k].place && placeOf(P, L[k].place) ? labelOf(P, placeOf(P, L[k].place)) : 'Anywhere',
+      sent: rows().filter(r => String(r.byLink) === k).length })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  }
+  function linkMake(w, p) {
+    if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
+    const place = clip(p.place, 60);
+    if (place && !placeOf(w.P, place)) throw new Error('Choose a place from the list, or Anywhere.');
+    const L = getLinks();
+    if (Object.keys(L).length >= 500) throw new Error('There are too many reimbursement links. Turn some off first.');
+    let key = '';
+    const abc = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    while (!key || L[key]) { key = 'rb_'; for (let i = 0; i < 16; i++) key += abc[Math.floor(Math.random() * abc.length)]; }
+    L[key] = { place, label: clip(p.label, 80), by: w.name, at: new Date(now()).toISOString(), off: false };
+    kv.setProp('reimbLinks', JSON.stringify(L));
+    return { key, list: linkList(w) };
+  }
+  function linkOff(w, p) {
+    if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
+    const L = getLinks(), k = clip(p.key, 60);
+    if (L[k]) { L[k].off = p.on ? false : true; kv.setProp('reimbLinks', JSON.stringify(L)); }
+    return linkList(w);
+  }
+  /* What the form needs to say at the top: which place, if one. */
+  function linkInfo(w) {
+    if (!w.open) throw new Error('This is for a reimbursement link.');
+    const pl = w.linkPlace ? placeOf(w.P, w.linkPlace) : null;
+    return { place: w.linkPlace, placeLabel: pl ? labelOf(w.P, pl) : '' };
+  }
+  const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1 };
+
+  const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, receiptPut, receiptGet, finData, finSeriesSet: seriesSet };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
     if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');
     const w = whoFor(p, me, linkKey);
+    if (w.open && !OPEN_ACTIONS[action]) throw new Error('A reimbursement link can only send in an expense.');
     if (/^(expList|expTodo|finData)$/.test(action)) adopt();
     return ACTIONS[action](w, p);
   }

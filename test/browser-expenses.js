@@ -97,6 +97,9 @@ const API = 'http://api.test/';
     await page.click('#fakeGsi'); await page.waitForTimeout(2500);
     return page;
   }
+  // The searchable drop-downs (b253): type, then choose the row.
+  const pick = async (page, id, typed, v) => { await page.click('#' + id + ' .pp-in'); await page.fill('#' + id + ' .pp-in', typed);
+    await page.waitForTimeout(150); await page.click('#' + id + ' .pp-row[data-v="' + v + '"]'); };
   const modal = page => page.evaluate(() => document.querySelector('#modal').innerText);
   // The Finance page (b239): a place of its own, not a window.
   const fpage = page => page.evaluate(() => document.querySelector('#fpBody').innerText);
@@ -149,7 +152,7 @@ const API = 'http://api.test/';
     const fin = await open('fin@example.com', 'Madhava');
     t.push(['Finance (no rest-of-app view yet) lands on the Finance page, at its own address', await onFin(fin) && /#finance\/overview/.test(fin.url())]);
     let secs = await fin.evaluate(() => document.querySelector('#fpSecs').innerText);
-    t.push(['…with its sections: Overview, Reports, Compare, To do, Reimbursement Settings, and Add an expense', /Overview/.test(secs) && /Reports/.test(secs) && /Compare/.test(secs) && /To do/.test(secs) && /Reimbursement Settings/.test(secs) && /Add an expense/.test(secs)]);
+    t.push(['…with its sections: Overview, Expenses, Reimbursements, Visualize, Reports, Compare, To do (settings inside Reimbursements), and Add an expense', /Overview/.test(secs) && /Reports/.test(secs) && /Compare/.test(secs) && /To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && /Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && /Add an expense/.test(secs)]);
     t.push(['…the masthead says Finance, in Finance\'s own colour', /Finance/.test(await fin.$eval('#whTitle', e => e.textContent)) &&
       await fin.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(238, 243, 250)')]);
     await fin.click('[data-act="finsec"][data-sec="todo"]'); await fin.waitForTimeout(1200);
@@ -179,7 +182,7 @@ const API = 'http://api.test/';
     const rows = await fin.$$eval('#xFor .pp-row', rs => rs.map(r => r.innerText));
     t.push(['Finance\'s "Whose expense?" list narrows as a name is typed', rows.length === 1 && /Sita/.test(rows[0])]);
     await fin.click('#xFor .pp-row'); await fin.waitForTimeout(800);
-    await fin.selectOption('#xLoc', 'ev_cp'); await fin.waitForTimeout(600);
+    await pick(fin, 'xLocC', 'Chowpatty', 'ev_cp'); await fin.waitForTimeout(600);
     await fin.fill('#xAmt', '120'); await fin.fill('#xDesc', 'Chai for the helpers');
     await fin.selectOption('#xMethod', 'Cash'); await fin.waitForTimeout(200);
     await fin.fill('[data-payto="phone"]', '+91 98 0000');
@@ -192,7 +195,7 @@ const API = 'http://api.test/';
     m = await fpage(fin);
     t.push(['Reimbursement Settings: by place and by person', /By place/.test(m) && /By person/.test(m) && /UPI/.test(m)]);
     await fin.selectOption('[data-rsm="UPI"]', 'off'); await fin.click('#rsSave'); await fin.waitForTimeout(800);
-    await fin.selectOption('#rsPlace', 'rg_in'); await fin.waitForTimeout(200);
+    await pick(fin, 'rsPlaceC', 'Delhi', 'rg_in'); await fin.waitForTimeout(300);
     t.push(['…a region below shows UPI off, from above', /As above \(off\)/.test(await fin.$eval('[data-rsm="UPI"] option', o => o.textContent))]);
     await fin.screenshot({ path: shot('settings') });
     await sita.evaluate(() => expensesModal()); await sita.waitForTimeout(1000);
@@ -216,12 +219,13 @@ const API = 'http://api.test/';
 
     // Record Costs, merged: the same form, with the kind of expense and how it was paid.
     await own.evaluate(() => expensesModal()); await own.waitForTimeout(1000);
-    const cats = await own.$$eval('#xCat option', os => os.map(o => o.value));
+    await own.click('#xCatC .pp-in'); await own.waitForTimeout(150);
+    const cats = await own.$$eval('#xCatC .pp-row', os => os.map(o => o.dataset.v));
     t.push(['the form has the kinds of expense from Record Costs (card machine fee, venue…)', cats.includes('Card machine fee') && cats.includes('Venue')]);
-    await own.selectOption('#xLoc', 'ev_cp'); await own.waitForTimeout(600);
+    await pick(own, 'xLocC', 'Chowpatty', 'ev_cp'); await own.waitForTimeout(600);
     await own.click('.exp-k:has(input[value="record"])'); await own.waitForTimeout(200);
-    t.push(['…and "Paid with" (the place\'s payment types), as Record Costs had', !!(await own.$('#xPay'))]);
-    await own.selectOption('#xCat', 'Venue'); await own.fill('#xAmt', '800'); await own.fill('#xDesc', 'Hall hire');
+    t.push(['…and "Paid with" (the place\'s payment types), as Record Costs had', !!(await own.$('#xPayC'))]);
+    await pick(own, 'xCatC', 'Venue', 'Venue'); await own.fill('#xAmt', '800'); await own.fill('#xDesc', 'Hall hire');
     await own.click('#xSave'); await own.waitForTimeout(1500);
     const st = (await O({ action: 'getState', season: SA })).state;
     t.push(['…saved: the venue expense is also a cost at the event, so net totals take it off', (st.costs || []).some(c => c.location === 'ev_cp' && Number(c.amt) === 800 && c.category === 'Venue')]);
