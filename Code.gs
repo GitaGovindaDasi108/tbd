@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b263';
+var SERVER_BUILD = 'b265';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -321,6 +321,19 @@ function financeFacts_() {
            partners: partners, categories: COST_CATEGORIES.slice() };
 }
 
+/* An expense in dollars (b265, Gita 2026-10-20): the exact dollars when they
+   were given, else at the rate on the day of the expense (looked up when it
+   was saved), else, for one saved before b265 or with no rate found, at the
+   place's own rates as before. */
+function expUsd_(x, loc) {
+  var cur = String(x.cur || '').toUpperCase(), amt = Number(x.amt) || 0;
+  if (cur === 'USD') return amt;
+  if (Number(x.usdAmt) > 0) return Number(x.usdAmt);
+  var day = null; try { day = x.usdDay ? JSON.parse(String(x.usdDay)) : null; } catch (e) { day = null; }
+  if (day && Number(day.rate) > 0) return amt * Number(day.rate);
+  return loc ? toUsdAt_(x.amt, x.cur, loc) : toUSD_(amt, cur);
+}
+
 /* The finance section's figures (b238): every sale and every expense, in every
    season, as plain rows the page adds up any way it is asked — by season,
    region, event, title, language, seller, payment type, month... Dollars at
@@ -388,7 +401,7 @@ function financeData_() {
       cat: String(x.category || 'Other') + (String(x.category || 'Other') === 'Other' && x.catOther ? ': ' + String(x.catOther) : ''),
       kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
-      cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(loc ? toUsdAt_(x.amt, x.cur, loc) : toUSD_(Number(x.amt) || 0, String(x.cur || ''))) });
+      cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(expUsd_(x, loc)), usdExact: Number(x.usdAmt) > 0 ? 1 : 0 });
   });
   var list = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
   return { seasons: seasons, regions: list(regs), events: list(evs), sales: sales, expenses: expenses };

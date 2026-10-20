@@ -101,7 +101,7 @@ c({ action: 'sendShipment', shipId: 'sh_pr', mode: 'devotee', fromRegion: 'OUTSI
                transit: (c.querySelector('[data-act="wotransit"]') || {}).textContent || '' };
     });
     let wo = await woCard();
-    t.push(['Warehouse Overview: the regions are behind "▸ In 1 region", closed', /In 1 region/.test(wo.toggle) && !wo.chipsShown]);
+    t.push(['Warehouse Overview: the regions are behind "▸ Locations", closed (b264)', /Locations/.test(wo.toggle) && !wo.chipsShown]);
     await page.click('#whOverview .stat-card:has-text("Russian"):has-text("Sri Radha") .wo-toggle'); await page.waitForTimeout(200);
     wo = await woCard();
     t.push(['…a tap opens them', wo.chipsShown]);
@@ -121,7 +121,7 @@ c({ action: 'sendShipment', shipId: 'sh_pr', mode: 'devotee', fromRegion: 'OUTSI
       const chips = c.querySelector('.wo-chips');
       return { toggle: (c.querySelector('.wo-toggle') || {}).textContent || '', shown: !!chips && chips.offsetHeight > 0 }; });
     let d = await dt();
-    t.push(['Distribution by Title: "▸ At 1 place", closed', /At 1 place/.test(d.toggle) && !d.shown]);
+    t.push(['Distribution by Title: "▸ Locations", closed (b264)', /Locations/.test(d.toggle) && !d.shown]);
     await page.click('#titleList .stat-card:has-text("Russian"):has-text("Sri Radha") .wo-toggle'); await page.waitForTimeout(200);
     t.push(['…a tap shows where it sold', (await dt()).shown]);
 
