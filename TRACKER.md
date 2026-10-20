@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b253**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b254**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -909,11 +909,71 @@ places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
 
+## Done in b254 — Finance, first round of Gita's improvements (practice)
+
+- **Regions and events in the app's order** on every Finance list and dropdown:
+  Code.gs `financeData_` now walks `regionsOrdered_` / `eventsOrdered_` (sort,
+  then as created, closed last A to Z).
+- **Overview shows seven figures only** (`finOverviewFigs`, used by tiles, the
+  table and WhatsApp alike): Big Books Sold, Adventures Sold (money in hand,
+  with "27 Sold + 3 Gifts = 30 Distributed" beneath; Other titles count as Big
+  Books), Donations, Pending Payments, Gross (formerly Collections; becomes
+  **Expected Gross** with **Current Collected** beneath while anything is
+  owed), Expenses, Net (margin beneath). Consignment money is the groups', so
+  it is left out of these (still in Reports). `financeData_` sends `g` (a gift)
+  so gifts are no longer counted as sold. Reports' figure names follow.
+- **Place search** (`finSearchHTML`, `finBindSearch`): the app's drop-down
+  search, every season › region › event, first on the dates line.
+- **WhatsApp reports**: 📋 beside Overview, the By Region/Event/Season table,
+  Reports, Compare and To do (`finrep`, `finReportText`); the top 📋 Report in
+  Finance reports the section being looked at, with headings.
+- **Pencils**: the Finance page was marked no-edit; now every word on it can be
+  rewritten (place names apart), Edit Wording is on Finance's bar for
+  Universal, and a passing message (toast) stays up and takes a pencil while
+  wording is being edited.
+- Wording: To do tabs read Pending Reimbursements / Pending Payments; the
+  section is "To do" on the Finance page.
+- **Edit Wording in place** (practice only, app-wide): tap any words (a
+  button's by its pencil) and a box opens over them; Enter keeps, Esc leaves,
+  🙈 hides (`labelInline`, `labelSave`). Live keeps the old window.
+- **Expenses section** (`finExpensesRender`): totals bar — Total Expenses, or
+  Expected Total Expenses with Current Expenses beneath while reimbursements
+  are owed — and Reimbursements Due; every expense with Edit/Delete, sorted by
+  date, name, amount or type, round buttons to filter by type, search, dates.
+- **Reimbursements section** (`finReimbRender`): the same bar; Pending, Paid
+  back and declined, Reimbursement Links, and ⚙️ Reimbursement Settings (moved
+  off the section bar; `#finance/settings` still lands there; Where and Person
+  are searchable drop-downs).
+- **Send Reimbursements Link** (server: `expLinkMake/List/Off/Info`, setting
+  `reimbLinks`; client `finLinksRender`, `reimbPublicStart`): a link
+  `?practice&reimb=rb_…`, anywhere or for one place, sent by WhatsApp or email;
+  it opens only the expense form (name, WhatsApp/phone or email, receipts), no
+  sign-in, and ends on "received and will be processed at the earliest
+  convenience". In Pending, Finance gets one-tap WhatsApp/email messages
+  (received, or paid back). Fully automatic messages would need an email
+  service or WhatsApp Business: not built.
+- **Add Expense**: Where, Kind and Paid with are searchable drop-downs
+  (`comboHTML`/`comboBind`); Other asks what it is (`catOther`, a paid-with
+  Other keeps its words as the payment type).
+- **Visualize** (`finVisualRender`): expenses by type as a pie or bars, with a
+  table of amounts and shares; fixed palette, past 7 types folded into
+  "Everything else".
+- New `_expenses` columns: `catOther`, `contactPhone`, `contactEmail`.
+- Tests: `test/browser-finance.js` (45), `browser-expenses.js` updated (66).
+
 ## Done in b253 — a read-only key for Claude to read the live records
 
 - **Server:** a new request, `readOnly`, answered only with the right `READ_KEY` (a Cloudflare secret on tbs-server, 24+ characters). `what: "state"` gives a season as Universal sees it; `what: "export"` gives every table, the settings and the people with their roles (no sign-ins, no receipts). Nothing else is answered with it, so it cannot save, change or delete. The key may also come as `Authorization: Bearer`. `readOnly` in server/src/core.js, `withKey` in worker.js.
 - **For Claude sessions:** `server/read-live.sh` reads it with `TBS_READ_KEY` from the cloud environment. Setup and removal: server/README.md, "The read-only key".
 - **Tests:** test/readkey.js (10 checks), also run before every server deploy.
+
+## Done in b252 — Hide here at every level, the season's page included
+
+- **Season page:** while arranging (⇅), Universal gets "Hide here" on Distribution by Title and the Warehouse Overview. A hidden title leaves both panels; stock entry, reports and totals still count it, and regions and events keep their own lists. Stored per season on the server (`setSeasonHidden`, meta `hidden:<season>`, sent as `seasonHidden`). b251's "open a region or an event" note is gone.
+- **Every book panel:** "Hide here" now shows on each book panel while arranging, not only the Inventory shelf. At Earthly HQ the Warehouse Overview follows HQ's hidden list too.
+- **Hidden here:** works the same at every level; at the season "Hide all out of stock books" means none left anywhere on the tour or on the road. One `saveHiddenHere` in index.html now stores the list for wherever you are.
+- **Server:** Code.gs changed (SERVER_BUILD b252); Cloudflare redeploys itself on merge.
+- **Tests:** browser-arrange.js adds hiding and showing on the season page (54 checks).
 
 ## Done in b251 — Hide here at Earthly HQ; the season says where hiding is
 

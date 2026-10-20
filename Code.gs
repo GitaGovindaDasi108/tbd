@@ -222,7 +222,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b253';
+var SERVER_BUILD = 'b254';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -326,13 +326,19 @@ function financeFacts_() {
 function financeData_() {
   var seasons = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name, closed: !!s.closedAt }; });
   var regs = {}, evs = {}, whOf = {}, partners = {};
-  objectsOf_('_regions').forEach(function (r) {
-    if (!r || !r.regionId || String(r.regionId) === HQ_REGION || String(r.seasonId || '') === HQ_ID) return;
-    regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: String(r.seasonId || ''),
-      whLoc: String(r.whLoc || ''), closed: !!r.closedAt };
-    if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+  /* In the app's own order (b254): each season's regions as regionsOrdered_
+     puts them (their sort, then as created, closed ones last A to Z), and the
+     events as eventsOrdered_ does, so Finance never lists them differently. */
+  seasons.forEach(function (se) {
+    if (se.id === HQ_ID) return;
+    regionsOrdered_(se.id).forEach(function (r) {
+      if (!r || !r.regionId || String(r.regionId) === HQ_REGION) return;
+      regs[String(r.regionId)] = { id: String(r.regionId), name: String(r.name || ''), seasonId: se.id,
+        whLoc: String(r.whLoc || ''), closed: !!r.closedAt };
+      if (r.whLoc) whOf[String(r.whLoc)] = String(r.regionId);
+    });
   });
-  objectsOf_('_events').forEach(function (e) {
+  eventsOrdered_().forEach(function (e) {
     if (!e || !e.eventId || !regs[String(e.regionId || '')]) return;
     evs[String(e.eventId)] = { id: String(e.eventId), name: String(e.name || ''), regionId: String(e.regionId || ''), closed: !!e.closedAt };
   });
@@ -354,8 +360,9 @@ function financeData_() {
     if (!w) return;                                   // a place since deleted
     var b = s.bookId ? bookById_(String(s.bookId)) : null;
     var type = String(s.type || 'SALE'), got = received_(s);
-    var f = saleFactor_(s), gross = 0, cur = {}, pays = {};
+    var f = saleFactor_(s), gross = 0, cur = {}, pays = {}, legN = 0, giftN = 0;
     eachLeg_(s, function (l) {
+      legN++; if (l.type === 'Gift') giftN++;
       if (!l.amt || l.type === 'Gift') return;
       gross += legTruthUsd_(s, l, f);
       pays[l.type] = 1;
@@ -365,6 +372,7 @@ function financeData_() {
     sales.push({ id: String(s.saleId), d: day(s.ts), s: w.s, r: w.r, e: w.e, k: type,
       b: b ? String(b.id) : '', t: b ? String(b.name || '') : '', c: b ? String(b.cat || '') : '',
       q: (type === 'SALE' || type === 'PREORDER') && s.bookId ? (Number(s.qty) || 1) : 0,
+      g: legN > 0 && giftN === legN ? 1 : 0,          // a gift: every leg of it is Gift (as the app's isGift)
       by: String(s.soldBy || ''), pay: Object.keys(pays), con: isPartnerSale_(s) ? (partners[partnerOfBook_(String(s.bookId))] || 'Consignment') : '',
       gu: r2(got ? gross : 0), pu: r2(pend), cur: cur });
   });
@@ -374,7 +382,8 @@ function financeData_() {
     var w = where(x.location), s = w ? w.s : String(x.seasonId || '');
     var loc = w ? (w.e || regs[w.r].whLoc) : '';
     expenses.push({ id: String(x.id), d: String(x.date || day(x.ts)), s: s, r: w ? w.r : '', e: w ? w.e : '',
-      cat: String(x.category || 'Other'), kind: String(x.kind || 'record'), st: String(x.status || ''),
+      cat: String(x.category || 'Other') + (String(x.category || 'Other') === 'Other' && x.catOther ? ': ' + String(x.catOther) : ''),
+      kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
       cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(loc ? toUsdAt_(x.amt, x.cur, loc) : toUSD_(Number(x.amt) || 0, String(x.cur || ''))) });
   });
@@ -631,6 +640,7 @@ function handle(e) {
         case 'createEvent':      result = doCreateEvent(params);  break;
         case 'setEventHidden':   result = doSetEventHidden(params); break;
         case 'setRegionHidden':  result = doSetRegionHidden(params); break;
+        case 'setSeasonHidden':  result = doSetSeasonHidden(params); break;
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
@@ -4014,6 +4024,8 @@ function readState() {
     serverBuild: SERVER_BUILD,
     // The season's own book order, used where a region has not set one.
     seasonBookOrder: String(getMeta_('bookOrder:' + activeSeasonId_(), '') || ''),
+    // Titles hidden on the season's own page (b252).
+    seasonHidden: String(getMeta_('hidden:' + activeSeasonId_(), '') || ''),
     /* Wording you have rewritten in the app, keyed by the words it replaces.
        Anything not rewritten simply is not here. */
     labels: (function () {
@@ -6322,6 +6334,16 @@ function doSetRegionHidden(p) {
     .filter(function (x) { return x; });
   dbAddCols_('_regions', REGION_HEADERS);
   dbUpdate_('_regions', { regionId: regionId }, { hidden: ids.join(',') });
+  markDirtyAll_();
+  return ids.join(',');
+}
+
+/* Titles hidden on the season's own page (b252): Distribution by Title and the
+   Warehouse Overview. Regions and events keep their own lists. */
+function doSetSeasonHidden(p) {
+  var ids = String(p.hidden || '').split(',').map(function (x) { return String(x).trim(); })
+    .filter(function (x) { return x; });
+  setMeta_('hidden:' + activeSeasonId_(), ids.join(','));
   markDirtyAll_();
   return ids.join(',');
 }
@@ -8736,6 +8758,7 @@ function describe_(action, p, result, moves, who) {
     case 'renameEvent':  d = { text: 'Renamed an event to “' + p.name + '”' }; break;
     case 'deleteEvent':  d = { text: 'Deleted an event' + (mv ? ': ' + mv : '') }; break;
     case 'setEventHidden': case 'setRegionHidden': d = { text: 'Changed what is shown for ' + (p.eventId ? locLabel_(p.eventId) : reg(p.regionId)) }; break;
+    case 'setSeasonHidden': d = { text: 'Changed which titles the season page shows' }; break;
     case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
     case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
     case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;
