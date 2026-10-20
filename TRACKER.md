@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b250**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b251**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -908,6 +908,12 @@ The places and sections now sit in one foldable "Choices" bar
 places were chosen before, and open the first time. Folded, the report box
 fills the window (`#modal.sp-folded .rep-box`). Test: `browser-round7.js`,
 desktop and phone width.
+
+## Done in b251 — Hide here at Earthly HQ; the season says where hiding is
+
+- **Earthly HQ:** "Hide here" and "Hidden here" now work on HQ's shelf while arranging (it is region `rg_hq`, so setRegionHidden already worked). `canHideHere` no longer leaves HQ out. Gita looked for Hide here and didn't find it.
+- **Season page:** it has no shelf of its own to hide from, so while arranging there Universal sees "To hide a title, open a region or an event and press ⇅ there." in the note at the foot.
+- **Tests:** browser-arrange.js adds a region's warehouse, the season note, and hide/show at Earthly HQ (49 checks).
 
 ## Done in b250 — Arrange comes to the live app
 

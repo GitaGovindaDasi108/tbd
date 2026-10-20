@@ -240,6 +240,29 @@ const API = 'http://api.test/';
     t.push(['live app: Edit Book Display is gone from the menu', !!(await liveOwn.$('[data-act="addstock"]')) && !(await liveOwn.$('[data-act="bookdisplay"]'))]);
     await liveOwn.click(tg); await liveOwn.waitForTimeout(300);
     t.push(['live app (Universal): "Hide here" and "Hidden here" while arranging', !!(await liveOwn.$('#invGrid .arr-hide')) && !!(await liveOwn.$('#arrDock [data-act="arrhidden"]'))]);
+
+    /* ---- b251: a region's warehouse and Earthly HQ have "Hide here" too; the season says where it is ---- */
+    await liveOwn.click('#arrDock [data-act="arrange"]'); await liveOwn.waitForTimeout(200);
+    await liveOwn.evaluate(() => goTo('region', 'rg_in')); await liveOwn.waitForTimeout(600);
+    await liveOwn.click(tg); await liveOwn.waitForTimeout(300);
+    t.push(['live app: a region\'s warehouse has "Hide here" while arranging', !!(await liveOwn.$('#invGrid .arr-hide')) && !!(await liveOwn.$('#arrDock [data-act="arrhidden"]'))]);
+    await liveOwn.click('#arrDock [data-act="arrange"]'); await liveOwn.waitForTimeout(200);
+    await liveOwn.evaluate(() => goTo('season')); await liveOwn.waitForTimeout(600);
+    await liveOwn.evaluate(() => document.querySelector('#seasonTitleList').closest('.panel').querySelector('.arr-tg').click()); await liveOwn.waitForTimeout(300);
+    t.push(['season: the note says to open a region or an event to hide a title', /open a region or an event/.test(await liveOwn.textContent('#arrDock'))]);
+    await liveOwn.click('#arrDock [data-act="arrange"]'); await liveOwn.waitForTimeout(200);
+    await liveOwn.evaluate(() => switchSeason(HQ_ID)); await liveOwn.waitForTimeout(2500);
+    await liveOwn.click(tg); await liveOwn.waitForTimeout(300);
+    const hq = await shelf(liveOwn);
+    t.push(['Earthly HQ: "Hide here" while arranging', hq.length > 1 && (await liveOwn.$$eval('#invGrid .arr-hide', b => b.length)) === hq.length]);
+    await liveOwn.click(`#invGrid > [data-id="${hq[0]}"] .arr-hide`); await liveOwn.waitForTimeout(1200);
+    t.push(['Earthly HQ: "Hide here" takes the title off its shelf', !(await shelf(liveOwn)).includes(hq[0])]);
+    const st = (await O({ action: 'getState', season: 'HQ' })).state;
+    t.push(['…and the server keeps it hidden at HQ', String(((st.regions || []).find(r => r.regionId === 'rg_hq') || {}).hidden || '').split(',').includes(hq[0])]);
+    await liveOwn.click('#arrDock [data-act="arrhidden"]'); await liveOwn.waitForTimeout(300);
+    await liveOwn.click(`#modal [data-show-title="${hq[0]}"]`); await liveOwn.waitForTimeout(1000);
+    await liveOwn.evaluate(() => closeModal()); await liveOwn.waitForTimeout(300);
+    t.push(['Earthly HQ: "Hidden here" › Show puts it back', (await shelf(liveOwn)).includes(hq[0])]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));
     t.push(['test ran to the end', false]);
