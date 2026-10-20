@@ -329,6 +329,14 @@ button.sc-transit:hover{color:#1F4F86}
 .fin-send-row .btn{flex:0 0 auto;min-height:42px}
 .fin-sent{margin-top:8px;color:var(--green)}
 .fin-tabs-wide{margin:6px 0 12px}
+/* Several expenses at once (b255) */
+.exp-batch{border:1.5px solid var(--gold-l);background:var(--paper2);border-radius:12px;padding:10px 12px;margin-bottom:12px}
+.exp-bi{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--line)}
+.exp-bi-t{flex:1 1 auto;min-width:0;display:flex;flex-direction:column}
+.exp-bi-a{white-space:nowrap}
+.exp-bi-b{display:flex;gap:4px}
+.exp-batch>.muted-note{display:block;margin-top:8px}
+.exp-tot{border-bottom:0;border-top:1.5px solid var(--gold-l);margin-top:2px}
 /* Dates & Repeats */
 .fin-dates input{width:100%;min-width:0;box-sizing:border-box}
 .fin-dates td{min-width:118px}
@@ -8612,6 +8620,7 @@ async function expensesModal(editId, presetPartner){
   // A "paid with" the place does not list is an Other, with its words kept.
   if(edit && edit.payType && !(EXP.opt.payTypes||[]).includes(edit.payType)){ EXP.form.payOther = edit.payType; EXP.form.payType = 'Other'; }
   if(edit && edit.location!==EXP.opt.location) await expReloadOptions();
+  EXP.batch = [];
   expDraw();
 }
 async function expReloadOptions(){
@@ -8662,6 +8671,7 @@ function expDraw(){
       ${P ? `<div class="hint">You spent money for the tour? Fill this in, add a photo of the receipt, and Finance will pay you back.</div>` : ''}
       <div class="exp-form">
         ${forPick}${whoBox}
+        ${expBatchHTML()}
         ${P ? '' : `<div class="exp-kind">
           <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
             <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
@@ -8718,7 +8728,9 @@ function expDraw(){
         <div class="err" id="modalErr"></div>
         <div class="cost-acts">
           ${edit?`<button class="btn btn-ghost btn-sm" data-act="expnew">Cancel edit</button>`:''}
-          <button class="btn btn-primary btn-sm" id="xSave">${P ? 'Send it in' : edit?'Save changes':'Save expense'}</button>
+          ${!edit && PRACTICE ? `<button type="button" class="btn btn-ghost btn-sm" id="xMore">＋ Add another expense</button>` : ''}
+          <button class="btn btn-primary btn-sm" id="xSave">${(EXP.batch||[]).length ? 'Review all ' + ((EXP.batch||[]).length + 1) + ' expenses'
+            : P ? 'Send it in' : edit?'Save changes':'Save expense'}</button>
         </div>
       </div>
       ${edit || P ? '' : `<div class="cash-sub">Your expenses</div>
@@ -8774,6 +8786,8 @@ function expBind(){
   drop.addEventListener('drop', e=>{ e.preventDefault(); drop.classList.remove('over'); add(e.dataTransfer.files); });
   if(o.fin) expBindFor();
   $('#xSave').addEventListener('click', expSave);
+  const more = $('#xMore'); if(more) more.addEventListener('click', expAddAnother);
+  document.querySelectorAll('#modal [data-xb]').forEach(b=>b.addEventListener('click', ()=>expBatchAct(b.dataset.xb, Number(b.dataset.i))));
 }
 /* Finance's searchable list of people. */
 function expBindFor(){
@@ -8834,28 +8848,83 @@ async function expAddReceipt(file){
   }catch(e){ r.sending = false; r.failed = true; toast(e.message || 'The receipt could not be sent.', true); }
   if(EXP.form===f && document.getElementById('xDrop')){ expRead(); expDraw(); }
 }
+/* ---- Several expenses at once (b255, Gita's wish) ----
+   "Add another expense" keeps the one just typed (with its receipts) in a list
+   above the form and starts the next, keeping where, whose and how to be paid
+   back. With more than one, Save first shows them all to check, then saves
+   them one after another. */
+function expCheck(f){
+  if(f.receipts.some(r=>r.sending)) return 'A receipt is still sending. One moment…';
+  if(f.receipts.some(r=>r.failed)) return 'A receipt was not sent. Remove it (×) and add it again.';
+  if(!f.location) return 'Choose where the expense belongs.';
+  if(!(Number(f.amt) > 0)) return 'Give the expense an amount.';
+  if(!String(f.desc||'').trim()) return 'Say what the expense was for.';
+  if(f.kind==='reimburse' && !f.method) return 'Choose how you would like to be paid back.';
+  if(PRACTICE && f.payType==='Other' && !String(f.payOther||'').trim()) return 'Say what it was paid with.';
+  return '';
+}
+function expPubCheck(){
+  const P = EXP.pub;
+  if(P && !String(P.name||'').trim()) return 'Please give your name.';
+  if(P && !String(P.phone||'').trim() && !String(P.email||'').trim()) return 'Give a WhatsApp or phone number, or an email, so Finance can reach you.';
+  return '';
+}
+// Nothing typed in it yet: a blank form after "Add another" is not an expense.
+const expBlank = f => !String(f.amt||'').trim() && !String(f.desc||'').trim() && !f.receipts.length;
+const expPlaceName = id => ((EXP.opt.places||[]).find(pl=>pl.id===id)||{}).label || (EXP.pub && EXP.pub.placeLabel) || '';
+function expBatchHTML(){
+  const B = EXP.batch || [];
+  if(!B.length) return '';
+  return `<div class="exp-batch"><div class="cash-sub">Added so far <span class="fin-n">${B.length}</span></div>
+    ${B.map((x,i)=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
+        <span class="muted-note">${esc(x.date)} · ${esc(x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category)}${x.receipts.length ? ' · 🧾 ' + x.receipts.length : ''}</span></span>
+      <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b>
+      <span class="exp-bi-b"><button type="button" class="btn btn-ghost btn-xs" data-xb="edit" data-i="${i}">✏️ Edit</button>
+        <button type="button" class="btn btn-ghost btn-xs" data-xb="del" data-i="${i}" aria-label="Remove">🗑</button></span></div>`).join('')}
+    <div class="muted-note">Now the next one:</div></div>`;
+}
+// The next form keeps where, whose, the currency, the date and how to be paid back.
+function expNextForm(f){
+  return {id:expId('X'), kind:f.kind, location:f.location, date:f.date, desc:'', cur:f.cur, amt:'', category:'Other', payType:f.payType,
+    payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:Object.assign({}, f.payTo), notes:'', receipts:[],
+    forEmail:f.forEmail, forName:f.forName, catOther:''};
+}
+function expAddAnother(){
+  expRead();
+  const f = EXP.form, e = expCheck(f);
+  if(e){ $('#modalErr').textContent = e; return; }
+  (EXP.batch = EXP.batch || []).push(f);
+  EXP.form = expNextForm(f);
+  expDraw();
+  const d = $('#xAmt'); if(d) d.focus();
+  toast('Added. Now the next one.');
+}
+function expBatchAct(what, i){
+  expRead();
+  const B = EXP.batch || [], x = B[i];
+  if(!x) return;
+  if(what==='del'){ B.splice(i, 1); expDraw(); return; }
+  // Edit: it comes back into the form; what was in the form goes into the list (or is dropped, if blank).
+  const cur = EXP.form;
+  if(!expBlank(cur)){ const e = expCheck(cur); if(e){ $('#modalErr').textContent = 'Finish this one first: ' + e; return; } B.splice(i, 1, cur); }
+  else B.splice(i, 1);
+  EXP.form = x; expDraw();
+}
 async function expSave(){
   expRead();
-  const f = EXP.form, err = $('#modalErr');
-  if(f.receipts.some(r=>r.sending)){ err.textContent = 'A receipt is still sending. One moment…'; return; }
-  if(f.receipts.some(r=>r.failed)){ err.textContent = 'A receipt was not sent. Remove it (×) and add it again.'; return; }
-  if(!f.location){ err.textContent = 'Choose where the expense belongs.'; return; }
-  if(!(Number(f.amt) > 0)){ err.textContent = 'Give the expense an amount.'; return; }
-  if(!String(f.desc||'').trim()){ err.textContent = 'Say what the expense was for.'; return; }
-  if(f.kind==='reimburse' && !f.method){ err.textContent = 'Choose how you would like to be paid back.'; return; }
-  if(PRACTICE && f.payType==='Other' && !String(f.payOther||'').trim()){ err.textContent = 'Say what it was paid with.'; return; }
-  const P = EXP.pub;
-  if(P && !String(P.name||'').trim()){ err.textContent = 'Please give your name.'; return; }
-  if(P && !String(P.phone||'').trim() && !String(P.email||'').trim()){ err.textContent = 'Give a WhatsApp or phone number, or an email, so Finance can reach you.'; return; }
+  const f = EXP.form, err = $('#modalErr'), B = EXP.batch || [];
+  if(B.length){
+    if(!expBlank(f)){ const e = expCheck(f); if(e){ err.textContent = e; return; } }
+    const e2 = expPubCheck(); if(e2){ err.textContent = e2; return; }
+    expReview(expBlank(f) ? B.slice() : B.concat([f]));
+    return;
+  }
+  const e = expCheck(f) || expPubCheck();
+  if(e){ err.textContent = e; return; }
   const btn = $('#xSave'); btn.disabled = true; btn.textContent = 'Saving…';
   try{
-    const r = await post({action:'expSave', id:f.id, kind:f.kind, location:f.location, date:f.date, desc:f.desc, cur:f.cur,
-      amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
-      payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
-      receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
-      contactPhone: P ? P.phone : '', contactEmail: P ? P.email : ''});
-    if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
-    if(P){ reimbPublicDone(); return; }
+    const r = await expPost(f, false);
+    if(EXP.pub){ reimbPublicDone([f]); return; }
     // On the Finance page (b254), its lists and totals take the change at once.
     if(FINP.on){ toast(f.editing ? 'Expense saved' : 'Expense recorded'); closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
     toast(f.kind==='reimburse' ? 'Saved. Finance will pay you back.' : 'Expense recorded');
@@ -8863,6 +8932,55 @@ async function expSave(){
     if(i>=0) EXP.list[i] = r.result; else EXP.list.unshift(r.result);
     expensesModal();
   }catch(e){ err.textContent = e.message; btn.disabled = false; btn.textContent = 'Save expense'; }
+}
+// `more`: others follow in the same sending, so a one-time link stays open for them.
+async function expPost(f, more){
+  const P = EXP.pub;
+  const r = await post({action:'expSave', id:f.id, kind:f.kind, location:f.location, date:f.date, desc:f.desc, cur:f.cur,
+    amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
+    payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
+    receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
+    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', more: !!more});
+  if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
+  return r;
+}
+/* Every expense, to check before anything is saved. */
+function expReview(all){
+  const P = EXP.pub, tot = finTotals(all, x=>[[Number(x.amt), x.cur]]);
+  openModal(`${P ? `<h3>Check your expenses</h3>` : mHead('Check your expenses')}
+    <div class="m-body">
+      <div class="hint">${all.length} expenses${P ? '' : ''}. Check them, then ${P ? 'send them in' : 'save them'} together.</div>
+      <div class="exp-batch exp-rev">${all.map(x=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
+          <span class="muted-note">${esc([x.date, x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category, expPlaceName(x.location)].filter(Boolean).join(' · '))}${
+            x.kind==='reimburse' && !P ? ' · to pay back' : ''} · ${x.receipts.length ? '🧾 ' + x.receipts.length : 'no receipt'}</span></span>
+          <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b></div>`).join('')}
+        <div class="exp-bi exp-tot"><span class="exp-bi-t"><b>Total</b></span><b class="exp-bi-a">${esc(tot)}</b></div></div>
+      ${all.some(x=>x.kind==='reimburse') ? `<div class="hint">To be paid back by <b>${esc([...new Set(all.filter(x=>x.kind==='reimburse').map(x=>x.method))].join(', '))}</b>.</div>` : ''}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" id="xrBack">← Change something</button>
+      <button class="btn btn-primary" id="xrGo">${P ? 'Send them in' : 'Save all ' + all.length}</button></div>`, true);
+  $('#xrBack').addEventListener('click', ()=>expDraw());
+  $('#xrGo').addEventListener('click', async ()=>{
+    const go = $('#xrGo'); go.disabled = true;
+    const done = [];
+    for(let i = 0; i < all.length; i++){
+      go.textContent = 'Saving ' + (i+1) + ' of ' + all.length + '…';
+      try{ await expPost(all[i], i < all.length - 1); done.push(all[i]); }
+      catch(e){
+        // What was saved is out of the list; the rest stay, to try again.
+        EXP.batch = all.slice(i + 1); EXP.form = all[i];
+        if(EXP.batch.length===0 && done.length===0){ expDraw(); $('#modalErr').textContent = e.message; return; }
+        expDraw(); $('#modalErr').textContent = (done.length ? done.length + ' saved. ' : '') + 'This one was not: ' + e.message;
+        return;
+      }
+    }
+    EXP.batch = [];
+    if(P){ reimbPublicDone(done); return; }
+    toast(done.length + ' expenses saved');
+    if(FINP.on){ closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
+    expensesModal();
+  });
 }
 
 /* A receipt, shown over everything (the noAccess page too), with a download. */
@@ -8908,19 +9026,21 @@ async function reimbPublicStart(){
 }
 function reimbPublicNew(){
   const o = EXP.opt;
+  EXP.batch = [];
   EXP.form = {id:expId('X'), kind:'reimburse', location:o.location, date:new Date().toISOString().slice(0,10), desc:'',
     cur:o.defaultCur, amt:'', category:'Other', payType:'', partnerId:'', method:'', reimbCur:'', payTo:{}, notes:'', receipts:[],
     forEmail:'', forName:'', catOther:''};
   expDraw();
 }
-function reimbPublicDone(){
+function reimbPublicDone(list){
   const P = EXP.pub, f = EXP.form;
+  list = list && list.length ? list : [f];
   try{ localStorage.setItem('tbs_reimb_me', JSON.stringify({name:P.name, phone:P.phone, email:P.email})); }catch(e){}
   openModal(`<h3>Received, thank you</h3>
     <div class="m-body">
       <div class="reimb-ok">✓</div>
-      <div class="cash-lede">Your expense has been received and will be processed at the earliest convenience.</div>
-      <div class="hint">${esc(f.desc)}: <b>${esc(cashFmt(Number(f.amt), f.cur))}</b>, to be paid back by ${esc(f.method)}.
+      <div class="cash-lede">${list.length > 1 ? 'Your ' + list.length + ' expenses have' : 'Your expense has'} been received and will be processed at the earliest convenience.</div>
+      <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
         Finance will be in touch${P.phone ? ' on ' + esc(P.phone) : P.email ? ' at ' + esc(P.email) : ''} if anything is needed.</div>
     </div>
     ${P.once ? '' : `<div class="m-foot"><button class="btn btn-primary" id="rpAnother">Send in another</button></div>`}`);

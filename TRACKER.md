@@ -932,7 +932,14 @@ desktop and phone width.
   with the message written. A link sent to one person knows their name and
   number, and turns itself off once they've sent their expense in (`once`,
   `used` in `reimbLinks`). Group links ("A link anyone can use") stay as before.
-- Practice only, like the rest of Finance. Tests: `browser-finance.js` (62).
+- **Several expenses in one form.** "＋ Add another expense" keeps the one typed
+  (with its receipts) in an "Added so far" list (Edit / 🗑) and starts the next,
+  keeping where, whose, currency, date and how to be paid back. With more than
+  one, Save becomes "Review all N expenses": a list with the total to check,
+  then they save one after another (`expAddAnother`, `expReview`, `expPost`).
+  On a one-time link, all but the last go with `more`, so the link closes
+  only after the last.
+- Practice only, like the rest of Finance. Tests: `browser-finance.js` (70).
 - Proposal for Reports as a pick-your-own-data builder:
   /mnt/project-files/proposals/finance-reports-builder.md (not built).
 

@@ -502,8 +502,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
     if (old) app.dbUpdate_(T, { id }, row); else app.dbInsert_(T, row);
     syncCost(row, F, w);
-    // A link sent to one person is used up once their expense is in.
-    if (w.open && !old) {
+    // A link sent to one person is used up once their expenses are in (`more`: others follow in the same sending).
+    if (w.open && !old && !p.more) {
       const L = getLinks();
       if (L[w.link] && L[w.link].once) { L[w.link].used = id; L[w.link].usedAt = new Date(now()).toISOString(); kv.setProp('reimbLinks', JSON.stringify(L)); }
     }
