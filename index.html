@@ -1699,7 +1699,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b250</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b251</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2514,8 +2514,10 @@ function hideTitle(bookId){
       else { const e=(st.events||[]).find(x=>x.eventId===CUR_LOC); if(e) e.hidden=hidden.join(','); }
     }, null, {keepOpen:true});
 }
-/* Hide and show from Arrange (b248): Universal, on a region's or an event's own shelf. */
-const canHideHere = () => isAdmin() && (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ();
+/* Hide and show from Arrange (b248): Universal, on a region's or an event's own
+   shelf, Earthly HQ's included (b251). The season's page has no shelf of its
+   own, so the note there says where to go instead. */
+const canHideHere = () => isAdmin() && (CUR_LEVEL==='region' || CUR_LEVEL==='event');
 function hiddenTitlesModal(){
   const draw = () => {
     const off = hiddenHere();
@@ -13459,7 +13461,8 @@ function arrangeUI(){
   const phone = isPhoneView();
   d.innerHTML = `<span class="arr-msg"><b>Arranging your books ${phone?'for phones':'for computers'}.</b>
       ${phone ? 'Drag a book by its ⠿ bar onto another to swap them.' : 'Drag a book onto another to swap them.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
-    ${canHideHere() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="arrhidden">Hidden here${hiddenHere().size?' ('+hiddenHere().size+')':''}</button>` : ''}
+    ${canHideHere() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="arrhidden">Hidden here${hiddenHere().size?' ('+hiddenHere().size+')':''}</button>`
+      : isAdmin() && CUR_LEVEL==='season' ? '<span class="arr-msg arr-hidehint">To hide a title, open a region or an event and press ⇅ there.</span>' : ''}
     ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
     <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
 }
