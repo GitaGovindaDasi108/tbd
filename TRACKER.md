@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b263**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b264**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2211,3 +2211,21 @@ Live unless marked practice.
   and the `.modal.still` class drops the pop. "← Change something" on the
   check page returns to where you were (`EXP.formTop`).
 - Tests: browser-finance (111).
+
+## Done in b264 — Every book card in four parts; Locations at every level (live)
+- One card builder, `qCardHTML` (top left / top right / bottom left / bottom
+  right / full width), used by Distribution by Title, the Warehouse Overview
+  (season, Earthly HQ, and now region) and Sales by Region's mini cards. The
+  selling card (b262) already had this shape.
+- Top left everywhere: name, language, and at a region or event the first two
+  prices (`qNameHTML`; a season or Earthly HQ has no one price list, so none).
+- Distribution by Title: top right N sold; bottom left "incl. N pre-orders" and
+  "+N gifts"; bottom right "N distributed" (`qLowHTML`). Mini cards the same.
+- Warehouse Overview: top right N in stock with "+N in transit ›" beneath;
+  full width the dropdown, now called "Locations" (was "In 4 regions" /
+  "At 2 places"). One level down from where you are: Earthly HQ → seasons,
+  season → regions, region → warehouse, events and devotees' homes.
+- New region-level panel `#whRegionPanel` (shown at a region, not an event),
+  with its 📋 stock report.
+- Tests: browser-lang expects "Locations"; browser-bookorder reads a card's
+  name from `.sc-name`/`.bname`.
