@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b271**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b273**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2340,3 +2340,39 @@ Live unless marked practice.
   currencies don't fit.
 - Tests: browser-arrange reads the order after ⇅; browser-bookorder gives every
   title a gift (season and Earthly HQ) so Distribution by Title lists them.
+
+## Done in b272 — No overflow, Net in Overview charts, live arrivals, back to where you were, closed-link requests (practice; refresh is app-wide)
+- **Standing rule (Gita, 2026-10-21): no visual overflow, ever.** Check every edit at
+  computer and phone widths. browser-finance measures every Finance screen
+  (`spill`: elements outside their box, anything scrolling sideways) at 1440–360px.
+- **Charts:** `.fc-box` is a size container. In a narrow box the bar goes under its label and figure,
+  and the months show as a letter over the year. The month chart no longer scrolls sideways.
+  The Overview's table becomes labelled blocks below 1060px (`.fin-ovw`) instead of scrolling.
+  Negative estimates read "−~$61.55".
+- **Net** is in the Overview's by-place chart (`finPairsHTML(rows, series)`) and its month chart.
+- **Books** read on two lines: "65 Sold + 13 Gifts", then "= 78 Distributed" (`finSubH`).
+- **Exact dollars** are no longer on the reimbursement link's form (`!EXP.pub`). The check page asks
+  for them only when the person is paid back in another currency.
+- **Live arrivals:** expenses.js bumps the revision on every write (`READS` lists the reads).
+  The client's `finHeard(rev)` (from poll and the live line) calls `finQuietRefresh`, which
+  waits while a window is open or you are typing, then redraws and keeps your scroll.
+- **Refresh returns you to where you were** (`BACKTO`, sessionStorage `tbs_backto`, both apps).
+  It brings back the menu/top-bar page that was open (and reopens it), Finance's tabs and dates,
+  and the scroll of the page and the open window. The scroll is retried until the page is tall
+  enough, and given up if you scroll yourself.
+- **Closed reimbursement link:** `expLinkInfo` returns `{closed}`, and the page offers
+  "Request for this to be reactivated" (`expLinkAsk`, stored as `ask` on the link).
+  Finance sees a red dot on Links and Expenses (`expTodo.asks`). Turning the link on or off clears it.
+- **Menu (practice):** "🧾 Add an Expense"; the Money section is called "Laksmi".
+- **To do at Finance launch (Gita said yes):** copy practice wording changes (`_labels`) into live.
+## Done in b273 — Every section half width when another follows (live)
+- On a computer every open panel with another after it shares its line:
+  `data-after` is gone, so the plain pairing in `foldRows` applies to the
+  warehouse overviews too (region: Totals by Payment + Warehouse Overview,
+  then Sales by Seller). At a season the Warehouse Overview moves into
+  `#salesFlow` (renderAll) so it can pair with To Do; it moves back for other levels.
+- Tests: browser-fold gives every title a gift (Distribution by Title only lists
+  distributed titles since b271, which had made it too short for the b236 stack
+  checks); browser-round2 checks list-view cards span the list rather than a
+  one-column grid. Note: 15 browser tests print FAIL lines without setting an
+  exit code, so read their output, not just the exit status.

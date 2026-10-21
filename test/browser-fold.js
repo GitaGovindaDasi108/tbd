@@ -19,6 +19,11 @@ m.call({ action: 'setStockBulk', season: st.activeSeason, location: pl.whLoc, it
 // Enough sales that the log is taller than a folded shelf would ever be.
 for (let i = 0; i < 25; i++) m.call({ action: 'sell', season: st.activeSeason, saleId: 'sf' + i, location: pl.whLoc,
   bookId: st.books[0].id, legs: [{ type: 'Cash', cur: 'PLN', amt: 10 }] });
+// b271: Distribution by Title lists only what was distributed; one gift of every
+// title keeps it the tall panel the b236 layout checks below rely on.
+st.books.filter(b => !b.partnerId).forEach(b => {
+  m.call({ action: 'adjustStockBulk', season: st.activeSeason, location: pl.whLoc, items: [{ bookId: b.id, delta: 1 }], override: true });
+  m.call({ action: 'sell', season: st.activeSeason, location: pl.whLoc, bookId: b.id, legs: [{ type: 'Gift', cur: 'PLN', amt: 0 }], override: true }); });
 
 (async () => {
   const browser = await chromium.launch();

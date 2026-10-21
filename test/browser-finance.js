@@ -157,7 +157,7 @@ const API = 'http://api.test/';
     t.push(['b259: Overview ⬇️ CSV: a row per event and the total, every figure with its Expected', csv.got && /^Finance Overview Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[0].includes('Expected Gross (USD)') &&
       JSON.stringify(csv.rows.map(r => r[0])) === JSON.stringify(['', 'Zagreb Kirtan', 'Zagreb Fair', 'Total']) && csv.rows[3][9] === 105 && csv.rows[3][10] === 145]);
     m = await own.$eval('#finCharts', e => e.innerText);
-    t.push(['b259: under the Overview: where the money comes from, money in and out (with Expected), by event, and expenses by type', /Where the money comes from/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross and Expenses by Event/.test(m) && /Expenses by type/.test(m)
+    t.push(['b259: under the Overview: where the money comes from, money in and out (with Expected), by event, and expenses by type', /Where the money comes from/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild)]);
     await own.screenshot({ path: shot('overview-charts'), fullPage: true });
     await own.click('.fin-h3 [data-act="finrep"]'); await own.waitForTimeout(400);
@@ -332,6 +332,7 @@ const API = 'http://api.test/';
     // b259: spent in euros, to be paid back in dollars.
     await pub.selectOption('#xCur', 'EUR'); await pub.waitForTimeout(200);
     if (await pub.$('#xRCur')) await pub.selectOption('#xRCur', 'USD');
+    t.push(['b272: no exact-dollars box on the link\'s form (it is asked on the check page)', !(await pub.$('#xUsd'))]);
     t.push(['…and Save becomes "Review all 2 expenses"', /Review all 2 expenses/.test(await pub.$eval('#xSave', e => e.textContent))]);
     await pub.waitForTimeout(400);
     t.push(['b267: the rate is asked for while the form is filled in, before Save', await pub.evaluate(() => Object.keys(FX).some(k => /\|EUR\|USD$/.test(k)))]);
@@ -351,7 +352,10 @@ const API = 'http://api.test/';
     await pub.click('#xrBack'); await pub.waitForTimeout(300);
     t.push(['…"Back" returns to the form as it was', await pub.$eval('#xDesc', e => e.value) === 'Tea for the volunteers']);
     await pub.click('#xSave'); await pub.waitForTimeout(400);
+    await own.evaluate(() => poll()); await own.waitForTimeout(800);       // Finance open, watching
     await pub.click('#xrGo'); await pub.waitForTimeout(2500);
+    await own.evaluate(() => poll()); await own.waitForTimeout(2000);
+    t.push(['b272: Finance, open on another screen, gets the new reimbursements with no refresh', await own.evaluate(() => FINP.on && EXP.todo.reimb.some(x => /Tea for the volunteers/.test(x.desc)) && /\d/.test(document.querySelector('[data-sec="expenses"] .fin-n').textContent))]);
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
     t.push(['sent: "received and will be processed at the earliest convenience", both listed', /2 expenses have been received and will be processed at the earliest convenience/.test(m) && /Tea for the volunteers/.test(m)]);
     t.push(['b259: the confirmation shows the dollars too', /To pay back: \$8\.80/.test(m)]);
@@ -361,6 +365,16 @@ const API = 'http://api.test/';
     await pub.screenshot({ path: shot('public') });
     await pub.goto(url); await pub.waitForTimeout(1500);
     t.push(['opened again, the link says it has been used', /already been used/.test(await pub.evaluate(() => document.querySelector('#modal').innerText))]);
+    t.push(['b272: …and offers "Request for this to be reactivated"', /Request for this to be reactivated/.test(await pub.$eval('#rbAsk', b => b.textContent).catch(() => ''))]);
+    await pub.fill('#rbAskNote', 'Two more receipts'); await pub.click('#rbAsk'); await pub.waitForTimeout(1200);
+    t.push(['b272: …pressed, it says the request has been sent', /Your request has been sent/.test(await pub.evaluate(() => document.querySelector('#modal').innerText))]);
+    await own.evaluate(() => poll()); await own.waitForTimeout(2500);
+    t.push(['b272: Finance sees a red dot on Links (and on Expenses), with the request on the link', await own.evaluate(() =>
+      !!document.querySelector('[data-tab="links"] .fin-dot') && !!document.querySelector('[data-sec="expenses"] .fin-dot') && /Asked to be reactivated.*Bhima.*Two more receipts/.test(document.querySelector('#fpBody').innerText))]);
+    await own.click('.fin-ask ~ .exp-btns [data-act="finlinkoff"]'); await own.waitForTimeout(1500);
+    t.push(['b272: turning it back on clears the dot', await own.evaluate(() => !document.querySelector('.fin-dot'))]);
+    await pub.goto(url); await pub.waitForTimeout(1500);
+    t.push(['b272: …and the link opens the form again', !!(await pub.$('#xAmt'))]);
     await ctx.close();
     await own.evaluate(() => { FIN.rb.tab = 'pending'; finGo('reimb', 'rg_zg', {reload:true}); }); await own.waitForTimeout(1500);
     m = await own.$eval('#finRbS', e => e.textContent);
@@ -540,6 +554,58 @@ const API = 'http://api.test/';
     await own.setViewportSize({ width: 1150, height: 1000 });
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(800);
     await own.screenshot({ path: shot('fin-overview'), fullPage: true });
+
+    /* b272 (Gita, 2026-10-21): nothing spills out of its box, ever. Every
+       Finance screen, a year of months and big figures, computer to phone. */
+    const spill = pg => pg.evaluate(() => {
+      const out = [], vis = e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; };
+      const scroller = e => { for (let p = e.parentElement; p; p = p.parentElement) { const o = getComputedStyle(p).overflowX; if (o === 'auto' || o === 'scroll') return p; } return null; };
+      document.querySelectorAll('#fpBody *').forEach(e => {
+        if (!vis(e)) return;
+        const cs = getComputedStyle(e);
+        if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll|hidden/.test(cs.overflowX) && cs.textOverflow !== 'ellipsis' && !e.closest('.fin-tabs')) out.push('scrolls sideways: ' + (e.className || e.tagName));
+        const box = e.parentElement.closest('.fc-box, .fin-tile, .exp-card, section, #fpBody') || document.querySelector('#fpBody');
+        const sc = scroller(e); if (sc && box.contains(sc)) return;
+        const r = e.getBoundingClientRect(), b = box.getBoundingClientRect();
+        if (r.right > b.right + 1.5 || r.left < b.left - 1.5) out.push((e.className || e.tagName) + ' out of ' + (box.className || box.id) + ' "' + (e.textContent || '').trim().slice(0, 30) + '"');
+      });
+      if (document.documentElement.scrollWidth > innerWidth + 1) out.push('the page scrolls sideways');
+      return [...new Set(out)];
+    });
+    await own.evaluate(() => { const D = FIN.D, S = D.sales.slice(), E = D.expenses.slice();
+      for (let m = 1; m <= 12; m++) { const mm = '2026-' + String(m).padStart(2, '0') + '-10';
+        S.forEach(x => D.sales.push(Object.assign({}, x, { d: mm, gu: (x.gu || 0) * (m * 37 % 11 + 1) * 40 })));
+        E.forEach(x => D.expenses.push(Object.assign({}, x, { id: x.id + m, d: mm, date: mm, usd: (x.usd || 0) * (m * 13 % 7 + 1) * 60 }))); } });
+    const spilt = [];
+    for (const w of [1440, 1000, 820, 700, 560, 390, 360]) { await own.setViewportSize({ width: w, height: 1000 });
+      for (const sec of ['overview', 'expenses', 'todo']) { await own.evaluate(s => finGo(s, ''), sec); await own.waitForTimeout(500);
+        (await spill(own)).forEach(x => spilt.push(w + ' ' + sec + ': ' + x));
+        if (w === 390 || w === 1440) await own.locator('#fpBody').screenshot({ path: shot('b271-' + w + '-' + sec) }); } }
+    t.push(['b272: no overflow on any Finance screen, from a wide computer to a small phone' + (spilt.length ? ' — ' + spilt.slice(0, 4).join(' | ') : ''), !spilt.length]);
+    await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(500);
+    t.push(['b272: the Overview charts Net beside Gross and Expenses, by place and month by month', await own.evaluate(() => { const c = document.querySelector('#finCharts');
+      return /Month by month: Gross, Expenses and Net/.test(c.innerText) && [...c.querySelectorAll('.fc-keys')].every(k => /Net/.test(k.textContent)); })]);
+    t.push(['b272: books on two lines: "65 Sold + 13 Gifts", then "= 78 Distributed"', await own.evaluate(() => /Sold \+ \d+ Gifts?<br>= \d+ Distributed/.test(document.querySelector('.fin-tile .fin-ts').innerHTML))]);
+    // A refresh comes back to exactly where you were.
+    const where = pg => pg.evaluate(() => ({ hash: location.hash, sec: FINP.sec, scope: FINP.scope, tab: FIN.rb.tab, y: Math.round(window.scrollY), modal: $('#overlay').classList.contains('show') }));
+    await own.setViewportSize({ width: 1150, height: 700 });
+    await own.evaluate(() => { FIN.rb.tab = 'paid'; finGo('expenses', 'rg_zg', {reload:true}); }); await own.waitForTimeout(1500);
+    await own.evaluate(() => window.scrollTo(0, 400)); await own.waitForTimeout(400);
+    const w0 = await where(own);
+    await own.reload(); await own.waitForTimeout(4500);
+    const w1 = await where(own);
+    { const ok = w0.y === 400 && w1.hash === w0.hash && w1.sec === 'expenses' && w1.scope === 'rg_zg' && w1.tab === 'paid' && Math.abs(w1.y - 400) < 3;
+      t.push(['b272: a refresh in Finance comes back to the same section, place, tab and scroll' + (ok ? '' : ' ' + JSON.stringify([w0, w1])), ok]); }
+    await own.evaluate(() => finLeave()); await own.waitForTimeout(600);
+    await own.evaluate(() => goTo('event', 'ev_z1')); await own.waitForTimeout(800);
+    await own.click('#adminActions [data-act="cash"]').catch(() => own.evaluate(() => document.querySelector('[data-act="cash"]').click())); await own.waitForTimeout(1200);
+    const open0 = await own.evaluate(() => $('#overlay').classList.contains('show') && document.querySelector('#modal').innerText.slice(0, 40));
+    await own.reload(); await own.waitForTimeout(4500);
+    const open1 = await own.evaluate(() => $('#overlay').classList.contains('show') && document.querySelector('#modal').innerText.slice(0, 40));
+    t.push(['b272: a refresh with a page open from the menu (Track Cash) opens it again, at the same event', !!open0 && open1 === open0 && await own.evaluate(() => CUR_LOC === 'ev_z1')]);
+    await own.evaluate(() => closeModal()); await own.waitForTimeout(300);
+    await own.reload(); await own.waitForTimeout(3500);
+    t.push(['b272: …and once closed, a refresh leaves it closed', await own.evaluate(() => !$('#overlay').classList.contains('show'))]);
   } catch (e) { errors.push('test: ' + e.stack); }
   await browser.close();
   let bad = 0;
