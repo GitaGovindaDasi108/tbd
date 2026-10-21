@@ -2142,7 +2142,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b273</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b274</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2365,6 +2365,10 @@ const CONFIG = Object.assign({
    — the saved state, the queue of unsent saves, the sign-in — is kept apart
    under "practice:", so practice and live can never mix. */
 const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
+/* Finance, Expenses & Reimbursements and Dates & Repeats were tried in the
+   practice space first and are now on in the live app too (b274, Gita,
+   2026-10-21). Set to PRACTICE to send them back to practice only. */
+const FIN_ON = true;
 /* View as (b238): Universal sees the practice app as someone else would, kept
    for this tab only. The server answers as them (core.js viewAs). */
 const VIEW_AS = {
@@ -3689,7 +3693,7 @@ function showNoAccess(me){
           <span class="muted-note">— ${esc(grantStatus(g))}</span></div>`).join('')}</div>` : ''}
       <div class="hint">Roles at a closed event or region come back if it reopens. Roles marked
         “starts with the next update” will work once the app’s next update is in.</div>
-      ${PRACTICE && (roles.some(g=>g.active) || (me && me.universal)) ? `<div class="na-exp">
+      ${FIN_ON && (roles.some(g=>g.active) || (me && me.universal)) ? `<div class="na-exp">
         <div class="hint">Meanwhile you can record your expenses${financeMe(me)?', and look after Finance':''}:</div>
         <button class="btn btn-primary" data-act="expenses">🧾 Expenses</button>
         ${FIN_BTNS(financeMe(me)).map(b=>b.replace('class="btn"', 'class="btn btn-ghost"')).join('')}
@@ -3699,7 +3703,7 @@ function showNoAccess(me){
     </div>`;
   document.body.appendChild(box);
   // Finance people have Finance as their app meanwhile (b239): they start there.
-  if(PRACTICE && financeMe(me) && !FINP.on){ const fh = finParseHash(); setTimeout(()=>finGo(fh ? fh.sec : 'overview', fh ? fh.scope : '', {fromHistory:!!fh}), 0); }
+  if(FIN_ON && financeMe(me) && !FINP.on){ const fh = finParseHash(); setTimeout(()=>finGo(fh ? fh.sec : 'overview', fh ? fh.scope : '', {fromHistory:!!fh}), 0); }
   $('#naOut').addEventListener('click', async ()=>{ try{ await post({action:'signOut'}); }catch(e){} SESSION.clear(); ACTING.set(''); location.reload(); });
 }
 
@@ -5268,7 +5272,7 @@ function renderAdmin(){
         ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
         ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
       // Expenses, for every link and role (b238); Finance's To do for a Finance person working in another role.
-      {key:'money', items: PRACTICE ? [`<button class="btn" data-act="expenses">🧾 Add an Expense</button>`].concat(FIN_BTNS(financeMe())) : []},
+      {key:'money', items: FIN_ON ? [`<button class="btn" data-act="expenses">🧾 Add an Expense</button>`].concat(FIN_BTNS(financeMe())) : []},
       {key:'books', items: coord ? [
         `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
         `<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`,
@@ -5310,7 +5314,7 @@ function renderAdmin(){
   }
   /* Expenses for everyone, one with Record Costs; Finance's own section (b238).
      The practice space only, for now: the owner tries it there first. */
-  if(PRACTICE){
+  if(FIN_ON){
     cols[1] = cols[1].filter(b=>!/data-act="costs"/.test(b));
     cols[1].push(`<button class="btn" data-act="expenses">🧾 Add an Expense</button>`);
     cols[1].push(...FIN_BTNS('U'));
@@ -5360,7 +5364,7 @@ function renderAdmin(){
 /* The four families of admin buttons, in the panel's order and colours. */
 const ADMIN_FAMS = {
   admin:    {label:'Admin',    icon:'⚙️', col:1, fc:'#C9822B'},
-  money:    {label:PRACTICE ? 'Laksmi' : 'Money', icon:'💵', col:2, fc:'#2E8065'},
+  money:    {label:FIN_ON ? 'Laksmi' : 'Money', icon:'💵', col:2, fc:'#2E8065'},
   books:    {label:'Books',    icon:'📚', col:3, fc:'#3E6FA8'},
   location: {label:'Location', icon:'📍', col:4, fc:'#7A3F6B'}
 };
@@ -5403,8 +5407,8 @@ const SN_ITEMS = {
   addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], partners:['🤝','Consignment Books'],
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
-  expenses:['🧾','Expenses'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finoverview:['📈','Overview'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'],
+  expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
+  finoverview:['📈','Overview'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5422,12 +5426,12 @@ function snTopActivity(show){
 }
 const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
-  // "Laksmi" in the practice space (Gita, 2026-10-21), where Finance is tried first.
-  {key:'money',    icon:'💵', label:()=>PRACTICE ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
+  // "Laksmi" (Gita, 2026-10-21).
+  {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
-  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates']},
+  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
 /* One menu row from a panel button: its own attributes (so it does exactly
@@ -5480,7 +5484,9 @@ function renderSideNav(fams){
   // Subtract Stock (b258, practice): wherever Add Stock is offered.
   if(PRACTICE && byKey.addstock && !byKey.substock) byKey.substock = `<button class="btn" data-act="substock">− Subtract Stock</button>`;
   // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
-  if(PRACTICE && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
+  if(FIN_ON && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
+  // Finance's launch (b274): Universal, on the live app, brings over what was set up in practice.
+  if(!PRACTICE && isAdmin() && ME && !byKey.fincarry) byKey.fincarry = `<button class="btn" data-act="fincarry">📥 Bring Wording &amp; Settings from Practice</button>`;
   const sections = SN_SECTIONS.map(sec=>{
     const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
@@ -9020,7 +9026,7 @@ function expContactHTML(x){
 /* How to pay them back, and (for Finance, while it waits) the note for the
    record written right there (Gita, 2026-10-20), not in a pop-up. */
 function expPayBackHTML(x, noteFor){
-  const note = noteFor && x.status==='pending' && EXP.opt && EXP.opt.mayPay && PRACTICE
+  const note = noteFor && x.status==='pending' && EXP.opt && EXP.opt.mayPay && FIN_ON
     ? `<div class="field exp-pbn"><label>Note for the record (optional)</label><input type="text" maxlength="300" data-pbnote="${esc(noteFor)}" placeholder="e.g. the transfer reference"></div>` : '';
   return `<div class="exp-pb"><div>Pay back by <b>${esc(x.method)}</b> in <b>${esc(x.reimbCur)}</b></div>${expPayToHTML(x)}${note}</div>`;
 }
@@ -9140,7 +9146,7 @@ async function expensesModal(editId, presetPartner){
       category:edit.category||'Other', payType:edit.payType||'', partnerId:edit.partnerId||'',
       method:edit.method, reimbCur:edit.reimbCur, payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
       forEmail:edit.forEmail||'', forName:edit.forName||'', catOther:edit.catOther||'', usdAmt:edit.usdAmt||''}
-    : {id:expId('X'), kind:presetPartner || PRACTICE ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
+    : {id:expId('X'), kind:presetPartner || FIN_ON ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
       cur:EXP.opt.defaultCur, amt:'', category:'Other', payType:'', partnerId:presetPartner||'',
       method:'', reimbCur:'', payTo:{}, notes:'', receipts:[], forEmail:'', forName:'', catOther:''};
   // A "paid with" the place does not list is an Other, with its words kept.
@@ -9218,7 +9224,7 @@ function expDraw(){
     f.reimbCur = (method && o.curs.includes(method.cur)) ? method.cur : (o.curs.includes(f.cur) ? f.cur : o.curs[0] || '');
   const bySeason = {};
   o.places.forEach(pl=>{ const s = pl.label.split(' · ').pop(); (bySeason[s] = bySeason[s] || []).push(pl); });
-  const placeSel = o.places.length > 1 && PRACTICE ? `<div class="field"><label>Where</label>
+  const placeSel = o.places.length > 1 && FIN_ON ? `<div class="field"><label>Where</label>
       ${comboHTML('xLocC', (o.places.find(pl=>pl.id===f.location)||{}).label || '', 'Search for a season, region or event')}</div>`
     : o.places.length > 1 ? `<div class="field"><label>Where</label>
       <select id="xLoc">${f.location ? '' : opt('', 'Choose…', true)}${Object.keys(bySeason).map(s=>`<optgroup label="${esc(s)}">${bySeason[s].map(pl=>
@@ -9252,7 +9258,7 @@ function expDraw(){
       <div class="exp-form">
         ${forPick}${whoBox}
         ${expBatchHTML()}
-        ${P ? '' : PRACTICE ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement</label>` : `<div class="exp-kind">
+        ${P ? '' : FIN_ON ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement</label>` : `<div class="exp-kind">
           <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
             <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
           <label class="exp-k${f.kind==='reimburse'?' on':''}"><input type="radio" name="xKind" value="reimburse" ${f.kind==='reimburse'?'checked':''}>
@@ -9267,13 +9273,13 @@ function expDraw(){
         </div>
         ${/* Not on the reimbursement link (Gita, 2026-10-21): there the exact amount
              is asked on the check page, and only when paid back in another currency. */
-          PRACTICE && !EXP.pub && String(f.cur).toUpperCase()!=='USD' ? `<div class="field exp-usd"><label>Exact amount in dollars (optional)</label>
+          FIN_ON && !EXP.pub && String(f.cur).toUpperCase()!=='USD' ? `<div class="field exp-usd"><label>Exact amount in dollars (optional)</label>
           <input id="xUsd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(f.usdAmt||'')}" placeholder="$ 0.00">
           <div class="muted-note">Otherwise it is worked out at the exchange rate on the day of the expense. What you put here is used instead.</div></div>` : ''}
         <div class="field"><label>What was it for?</label>
           <input id="xDesc" type="text" maxlength="300" value="${esc(f.desc)}" placeholder="e.g. Taxi to the festival with the book boxes"></div>
         <div class="row2">
-          ${PRACTICE ? `<div class="field"><label>Kind</label>${comboHTML('xCatC', f.category, 'Search kinds of expense')}
+          ${FIN_ON ? `<div class="field"><label>Kind</label>${comboHTML('xCatC', f.category, 'Search kinds of expense')}
             ${f.category==='Other' ? `<input id="xCatOther" type="text" maxlength="60" value="${esc(f.catOther||'')}" placeholder="What is it? (e.g. Parking)">` : ''}</div>
           ${P ? '' : `<div class="field"><label>Paid with (optional)</label>${comboHTML('xPayC', f.payType || '—', 'Search payment types')}
             ${f.payType==='Other' ? `<input id="xPayOther" type="text" maxlength="40" value="${esc(f.payOther||'')}" placeholder="Paid with what?">` : ''}</div>`}`
@@ -9317,7 +9323,7 @@ function expDraw(){
         <div class="err" id="modalErr"></div>
         <div class="cost-acts">
           ${edit?`<button class="btn btn-ghost btn-sm" data-act="expnew">Cancel edit</button>`:''}
-          ${!edit && PRACTICE ? `<button type="button" class="btn btn-ghost btn-sm" id="xMore">＋ Add another expense</button>` : ''}
+          ${!edit && FIN_ON ? `<button type="button" class="btn btn-ghost btn-sm" id="xMore">＋ Add another expense</button>` : ''}
           <button class="btn btn-primary btn-sm" id="xSave">${(EXP.batch||[]).length ? 'Review all ' + ((EXP.batch||[]).length + 1) + ' expenses'
             : P ? 'Send it in' : edit?'Save changes':'Save expense'}</button>
         </div>
@@ -9386,7 +9392,7 @@ function expBind(){
     if(mm && o.curs.includes(mm.cur)) f.reimbCur = mm.cur;
     expDraw();
   });
-  const xc = $('#xCur'); if(xc && PRACTICE) xc.addEventListener('change', ()=>{ expRead(); expDraw(); });
+  const xc = $('#xCur'); if(xc && FIN_ON) xc.addEventListener('change', ()=>{ expRead(); expDraw(); });
   ['xDate','xRCur'].forEach(id=>{ const el = $('#'+id); if(el) el.addEventListener('change', ()=>{ expRead(); expPrefetch(f); }); });
   expPrefetch(f);
   const add = files => { expRead(); [...files].forEach(expAddReceipt); };
@@ -9482,7 +9488,7 @@ function expCheck(f){
     const mm = ((EXP.opt||{}).methods||[]).find(m=>m.name===f.method), fl = mm && (mm.fields||[]).find(x=>x.req && !String((f.payTo||{})[x.k]||'').trim());
     if(fl) return fl.label + ' is needed for ' + f.method + '.';
   }
-  if(PRACTICE && f.payType==='Other' && !String(f.payOther||'').trim()) return 'Say what it was paid with.';
+  if(FIN_ON && f.payType==='Other' && !String(f.payOther||'').trim()) return 'Say what it was paid with.';
   return '';
 }
 function expPubCheck(){
@@ -9553,7 +9559,7 @@ async function expSave(){
   const e = expCheck(f) || expPubCheck();
   if(e){ err.textContent = e; return; }
   // Even one is shown to check first (Gita, 2026-10-20), in case of a mistake.
-  if(PRACTICE && !f.editing){ expReview([f]); return; }
+  if(FIN_ON && !f.editing){ expReview([f]); return; }
   const btn = $('#xSave'); btn.disabled = true; btn.textContent = 'Saving…';
   try{
     const r = await expPost(f, false);
@@ -9791,7 +9797,7 @@ function reimbPublicDone(list){
 }
 /* ---- Finance's own To do: payments still owed, and expenses to pay back, across the system ---- */
 async function financeTodoModal(){
-  if(PRACTICE) return finGo('todo');
+  if(FIN_ON) return finGo('todo');
   if(FINP.on) $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>'; else openModal(`${mHead('Finance To do')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
     const [todo, all, opt] = await Promise.all([post({action:'expTodo'}), post({action:'expList', scope:'all'}),
@@ -9894,7 +9900,7 @@ async function finMark(idList, status, keep){
    for one person, whose setting wins over every place. ---- */
 const RS = { d:null, mode:'place', id:'', email:'' };
 async function reimbSettingsModal(){
-  if(PRACTICE) return finGo('settings');
+  if(FIN_ON) return finGo('settings');
   if(FINP.on) $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>'; else openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{ RS.d = (await post({action:'expRulesGet'})).result; }
   catch(e){ openModal(`${mHead('Reimbursement Settings')}<div class="m-body"><div class="err">${esc(e.message)}</div></div>
@@ -9929,7 +9935,7 @@ function rsDraw(){
     const set = target.methods && (m in target.methods) ? (target.methods[m] ? 'on' : 'off') : '';
     return `<div class="rs-row"><span>${esc(m)}</span><select data-rsm="${esc(m)}" ${dis}>
       ${opt('', aboveWord + (RS.mode==='place' ? ' (' + (above.on[m] ? 'on' : 'off') + ')' : ''), !set)}${opt('on','On',set==='on')}${opt('off','Off',set==='off')}</select>${
-      !ro && PRACTICE ? `<button type="button" class="btn btn-ghost btn-xs" data-act="rsgone" data-m="${esc(m)}" title="Remove ${esc(m)} for good, everywhere">🗑</button>` : ''}</div>`;
+      !ro && FIN_ON ? `<button type="button" class="btn btn-ghost btn-xs" data-act="rsgone" data-m="${esc(m)}" title="Remove ${esc(m)} for good, everywhere">🗑</button>` : ''}</div>`;
   }).join('') : '';
   const own = target && target.curs;
   const curBox = target ? `<div class="cash-sub">Currencies people can be paid back in</div>
@@ -9944,16 +9950,16 @@ function rsDraw(){
       <div class="fin-tabs">
         <button type="button" class="fin-tab${RS.mode==='place'?' on':''}" data-act="rsmode" data-mode="place">By place</button>
         <button type="button" class="fin-tab${RS.mode==='person'?' on':''}" data-act="rsmode" data-mode="person">By person</button></div>
-      ${RS.mode==='place' && PRACTICE ? `<div class="field"><label>Where</label>${comboHTML('rsPlaceC', (()=>{ const l = d.levels.find(x=>x.id===RS.id) || d.levels[0];
+      ${RS.mode==='place' && FIN_ON ? `<div class="field"><label>Where</label>${comboHTML('rsPlaceC', (()=>{ const l = d.levels.find(x=>x.id===RS.id) || d.levels[0];
           return l.label + (d.rules.levels[l.id]?' •':''); })(), 'Search for a season, region or event')}<div class="muted-note">• has its own settings</div></div>`
-      : RS.mode!=='place' && PRACTICE ? `<div class="field"><label>Person</label>${comboHTML('rsPersonC', RS.email ? ((d.people.find(p=>p.email===RS.email)||{}).name || RS.email) : '', 'Search for a name')}</div>`
+      : RS.mode!=='place' && FIN_ON ? `<div class="field"><label>Person</label>${comboHTML('rsPersonC', RS.email ? ((d.people.find(p=>p.email===RS.email)||{}).name || RS.email) : '', 'Search for a name')}</div>`
       : RS.mode==='place' ? `<div class="field"><label>Place</label><select id="rsPlace">${d.levels.map(l=>opt(l.id,
           (l.kind==='region'?'— ':l.kind==='event'?'—— ':'') + l.label + (l.closed?' (closed)':'') + (d.rules.levels[l.id]?' •':''), l.id===RS.id)).join('')}</select>
           <div class="muted-note">• has its own settings</div></div>`
       : `<div class="field"><label>Person</label><select id="rsPerson">${opt('','Choose someone…',!RS.email)}${d.people.map(p=>opt(p.email,
           p.name + ' (' + p.email + ')' + (d.rules.people[p.email]?' •':''), p.email===RS.email)).join('')}</select></div>`}
       ${target ? `<div class="cash-sub">Ways of paying back</div><div class="rs-rows">${rows}</div>${
-        (d.gone||[]).length && PRACTICE ? `<div class="muted-note">Removed for good: ${d.gone.map(g=>`<span class="no-edit">${esc(g)}</span>${ro ? '' : ` <button type="button" class="btn btn-ghost btn-xs" data-act="rsback" data-m="${esc(g)}">Bring back</button>`}`).join(' · ')}</div>` : ''}${curBox}` : ''}
+        (d.gone||[]).length && FIN_ON ? `<div class="muted-note">Removed for good: ${d.gone.map(g=>`<span class="no-edit">${esc(g)}</span>${ro ? '' : ` <button type="button" class="btn btn-ghost btn-xs" data-act="rsback" data-m="${esc(g)}">Bring back</button>`}`).join(' · ')}</div>` : ''}${curBox}` : ''}
       <div class="err" id="rsErr"></div>`,
     `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
       ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
@@ -11053,7 +11059,8 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
 /* Reports and Visualize are gone for now (Gita, 2026-10-20): every screen
    has its own ⬇️ CSV and 📋, and its charts sit at the bottom of the page. The
    Reports builder's code (qb*) stays, unused, for when it comes back. */
-const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements'], ['todo','💼','To do']];
+// To do stays in the practice space (Gita, 2026-10-21: "not needed" on live).
+const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements']].concat(PRACTICE ? [['todo','💼','To do']] : []);
 const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings'], ['reimb','💸','Reimbursements']];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
 const finSecName = sec => (FIN_SECS.concat(FIN_SEC_ALSO).find(x=>x[0]===sec) || [,,'Overview'])[2];
@@ -11103,7 +11110,7 @@ function finScopedTodo(){
 }
 async function finGo(sec, scope, opt){
   opt = opt || {};
-  if(!PRACTICE || !financeMe(ME || FINP.me)) return;
+  if(!FIN_ON || !financeMe(ME || FINP.me)) return;
   // After a refresh: the tabs and dates you had (sessionStorage, this tab only).
   if(!BACKTO.finDone){ BACKTO.finDone = true; const B = BACKTO.saved;
     if(B && B.fin){ FIN.rb.tab = B.fin.rb || FIN.rb.tab; EXP.tab = B.fin.exp || EXP.tab; FIN.f.from = B.fin.from || ''; FIN.f.to = B.fin.to || ''; } }
@@ -11712,8 +11719,38 @@ function datesRows(){
   });
   return DT.missing ? out.filter(r=>!r.x.from || !r.x.to) : out;
 }
+/* Finance's launch (b274, Gita): bring what was set up in the practice space
+   into the live app — the wording rewritten with the pencils, the
+   reimbursement settings and ways of paying back, and the places' dates and
+   recurring series. Read from practice with this device's practice sign-in,
+   so open the practice space once, signed in, on this device first. */
+function finCarryModal(){
+  if(PRACTICE || !isAdmin()) return;
+  openModal(`${mHead('Bring Wording & Settings from Practice')}<div class="m-body">
+      <div class="hint">Brings into the live app what you set up in the practice space:</div>
+      <ul class="hint"><li>wording you rewrote with the ✏️ pencils</li><li>reimbursement settings and ways of paying back</li><li>the dates of seasons, regions and events, and which are repeats</li></ul>
+      <div class="hint">Practice's expenses, receipts and links stay in practice. Live wording you changed yourself is kept unless practice rewrote the same words.</div>
+      <div class="err" id="modalErr"></div><div id="fcDone"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="fcGo">Bring them over</button></div>`);
+  $('#fcGo').addEventListener('click', async ()=>{
+    const b = $('#fcGo'), err = $('#modalErr'); err.textContent = ''; b.disabled = true; b.textContent = 'Bringing…';
+    try{
+      let tok = ''; try{ tok = localStorage.getItem('practice:tbs_session') || ''; }catch(e){}
+      if(!tok) throw new Error('Open the practice space on this device and sign in there once, then come back and try again.');
+      let r;
+      try{ const res = await fetch(practiceUrl(), {method:'POST', body:JSON.stringify({action:'finCarryOut', s:tok})}); r = JSON.parse(await res.text()); }
+      catch(e){ throw new Error('The practice space could not be reached. Try again in a moment.'); }
+      if(!r || !r.ok) throw new Error((r && r.error) || 'The practice space did not answer.');
+      const d = (await post({action:'finCarryIn', labels:r.result.labels, props:r.result.props})).result;
+      $('#fcDone').innerHTML = `<div class="cash-lede">✓ Done: ${d.words} rewritten wording${d.words===1?'':'s'}${d.set.length ? ' and the settings' : ''} brought over.</div>`;
+      b.hidden = true;
+      pull().catch(()=>{});
+    }catch(e){ err.textContent = e.message; b.disabled = false; b.textContent = 'Bring them over'; }
+  });
+}
 async function datesModal(){
-  if(!PRACTICE) return;
+  if(!FIN_ON) return;
   openModal(`${mHead('Dates & Repeats')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   if(!await placeMetaLoad(true)){ $('#modal .m-body').innerHTML = '<div class="err">Could not open the list. Try again in a moment.</div>'; return; }
   datesDraw();
@@ -12081,7 +12118,7 @@ function finShareReport(part){
    the To do; only Finance (and Universal) set how people are paid back. */
 function FIN_BTNS(fin){
   if(!fin) return [];
-  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`, `<button class="btn" data-act="fintodo">💼 Finance To do</button>`];
+  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   return b;
 }
@@ -14591,7 +14628,7 @@ function deleteRegionModal(){
    the server beside Finance's grouping (expenses.js placeMetaSet). */
 let PMETA = null, PMETA_AT = 0;
 async function placeMetaLoad(force){
-  if(!PRACTICE || SHARE_KEY || REIMB_KEY) return null;
+  if(!FIN_ON || SHARE_KEY || REIMB_KEY) return null;
   if(PMETA && !force && Date.now()-PMETA_AT < 60000) return PMETA;
   try{ PMETA = (await post({action:'placeMetaGet'})).result; PMETA_AT = Date.now(); }catch(e){}
   return PMETA;
@@ -14620,7 +14657,7 @@ function repeatMatch(kind, name, selfId){
   return {series:keys[0], items:by[keys[0]]};
 }
 function placeMetaHTML(kind){
-  if(!PRACTICE) return '';
+  if(!FIN_ON) return '';
   const word = {seasons:'season', regions:'region', events:'event'}[kind];
   return `<div class="field pm-dates"><label>Dates the ${word} runs <span class="muted-note">(from – to)</span></label>
       <div class="pm-row"><input type="date" id="pmFrom" aria-label="From"><span class="pm-to">to</span>
@@ -14675,7 +14712,7 @@ function placeMetaBind(kind, nameSel, selfId, parent){
     }));
     try{ applyLabels(); }catch(e){}
   };
-  if(PRACTICE){
+  if(FIN_ON){
     placeMetaLoad().then(M=>{
       st.cur = selfId && M ? ((M[kind]||[]).find(x=>x.id===selfId) || null) : null;
       if(st.cur){
@@ -14690,7 +14727,7 @@ function placeMetaBind(kind, nameSel, selfId, parent){
   return {
     // What to save, or what is still missing.
     read(){
-      if(!PRACTICE) return {};
+      if(!FIN_ON) return {};
       const from = ($('#pmFrom')||{}).value || '', to = ($('#pmTo')||{}).value || '';
       if(from && to && to < from) return {err:'The end date is before the start date.'};
       const ask = st.ask;
@@ -14709,7 +14746,7 @@ function placeMetaBind(kind, nameSel, selfId, parent){
   };
 }
 function placeMetaSave(kind, id, meta){
-  if(!PRACTICE || !id || !meta) return;
+  if(!FIN_ON || !id || !meta) return;
   const p = {action:'placeMetaSet', kind, id};
   ['from','to','series'].forEach(k=>{ if(meta[k]!==undefined) p[k] = meta[k]; });
   if(Object.keys(p).length <= 3) return;
@@ -14962,7 +14999,7 @@ function parseCurs(raw){
 
 function eventModal(edit, after){
   openModal(`
-    ${mHead(edit?(PRACTICE?'Edit event':'Rename event'):'New event')}
+    ${mHead(edit?(FIN_ON?'Edit event':'Rename event'):'New event')}
     <div class="m-body">
       <div class="field"><label>Event name</label><input id="evname" type="text" placeholder="e.g. Gurudeva's Welcome" value="${edit?esc(locName(edit)):''}"></div>
       ${placeMetaHTML('events')}
@@ -14971,7 +15008,7 @@ function eventModal(edit, after){
     </div>
     <div class="m-foot">
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn btn-primary" id="saveEv">${edit?(PRACTICE?'Save':'Rename'):'Create event'}</button>
+      <button class="btn btn-primary" id="saveEv">${edit?(FIN_ON?'Save':'Rename'):'Create event'}</button>
     </div>`);
   setTimeout(()=>$('#evname').focus(),50);
   const regName = ()=>((STATE.regions||[]).find(r=>r.regionId===CUR_REGION)||{}).name||'';
@@ -14982,7 +15019,7 @@ function eventModal(edit, after){
     const meta = pm.read();
     if(meta.err){ $('#modalErr').textContent = meta.err; return; }
     if(edit){
-      if(PRACTICE && locName(edit)===name){ await placeMetaSave('events', edit, meta); closeModal(); toast('Event saved'); return; }
+      if(FIN_ON && locName(edit)===name){ await placeMetaSave('events', edit, meta); closeModal(); toast('Event saved'); return; }
       const ok = await commitSync({action:'renameEvent',eventId:edit,name},'Event renamed', ()=>locName(edit)===name);
       if(ok!==false) placeMetaSave('events', edit, meta);
       return; }
@@ -16484,7 +16521,7 @@ function seasonEditModal(id){
     if(!name){ $('#modalErr').textContent='Give it a name.'; return; }
     const meta = pm.read();
     if(meta.err){ $('#modalErr').textContent = meta.err; return; }
-    if(PRACTICE && name===x.name){ await placeMetaSave('seasons', id, meta); closeModal(); toast('Season saved'); return; }
+    if(FIN_ON && name===x.name){ await placeMetaSave('seasons', id, meta); closeModal(); toast('Season saved'); return; }
     if(await commitSync({action:'saveSeason', seasonId:id, name},'Season renamed')) placeMetaSave('seasons', id, meta);
   });
 }
@@ -19293,7 +19330,7 @@ document.addEventListener('click',e=>{
     cashReopen(); return;
   }
   // In practice Record Costs is one with Expenses (b238).
-  if(PRACTICE && (a==='costs' || a==='concost' || a==='costedit')){
+  if(FIN_ON && (a==='costs' || a==='concost' || a==='costedit')){
     expensesModal(a==='costedit' ? t.dataset.id : null, a==='concost' ? t.dataset.id : null); return; }
   if(a==='costs'){ costsModal(); return; }
   // Expenses and Finance (b238).
@@ -19308,7 +19345,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='xrcptdel'){ expRead(); EXP.form.receipts.splice(Number(t.dataset.i), 1); expDraw(); return; }
   if(a==='rcptopen'){ receiptOpen(t.dataset.id); return; }
-  if(a==='fintodo'){ if(PRACTICE) finGo('todo'); else financeTodoModal(); return; }
+  if(a==='fintodo'){ finGo(PRACTICE ? 'todo' : 'overview'); return; }
   if(a==='fintab'){ EXP.tab = t.dataset.tab; finDraw(); return; }
   if(a==='exppaid'){ finMark(t.dataset.id, 'paid'); return; }
   if(a==='finsendlink'){ finSendLinkModal(); return; }
@@ -19321,7 +19358,7 @@ document.addEventListener('click',e=>{
   if(a==='rbline'){ const id = t.dataset.id; if(t.dataset.on) FIN.rbNo.delete(id); else FIN.rbNo.add(id); finRbRedraw(id); return; }
   if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
-  if(a==='reimbset'){ if(PRACTICE) finGo('settings'); else reimbSettingsModal(); return; }
+  if(a==='reimbset'){ if(FIN_ON) finGo('settings'); else reimbSettingsModal(); return; }
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
   if(a==='rsgone' || a==='rsback'){ rsGone(t.dataset.m, a==='rsgone'); return; }
   if(a==='finoverview'){ finGo('overview'); return; }
@@ -19335,6 +19372,7 @@ document.addEventListener('click',e=>{
   if(a==='finrepreset'){ FIN.rep = finRepDefault(); try{ localStorage.removeItem('tbs_finrep'); }catch(e){} finDrawAll(); return; }
   if(a==='viewas'){ viewAsModal(); return; }
   if(a==='placedates'){ datesModal(); return; }
+  if(a==='fincarry'){ finCarryModal(); return; }
   if(a==='viewstop'){ viewAsStart(null); return; }
   if(a==='concost'){ costsModal(null, t.dataset.id); return; }
   if(a==='costedit'){ costsModal(t.dataset.id); return; }

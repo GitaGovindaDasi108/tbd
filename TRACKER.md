@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b273**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b274**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2376,3 +2376,19 @@ Live unless marked practice.
   checks); browser-round2 checks list-view cards span the list rather than a
   one-column grid. Note: 15 browser tests print FAIL lines without setting an
   exit code, so read their output, not just the exit status.
+
+## Done in b274 — Finance goes live (Gita, 2026-10-21)
+- `FIN_ON` (index.html, next to `PRACTICE`) replaces the practice gate on Finance, Add an Expense,
+  Reimbursements (links, settings, To do) and Dates & Repeats (place dates/series on the
+  season/region/event forms). Setting it to `PRACTICE` sends them back to practice only.
+  The server gate in expenses.js `handle` is gone.
+- On live, Record Costs becomes 🧾 Add an Expense. Old costs are adopted as expenses (`adopt()`).
+  The menu's Money section is "Laksmi".
+- **Bring Wording & Settings from Practice** (App Development, Universal, live only):
+  - The live page reads practice's `finCarryOut` with this device's practice sign-in
+    (`practice:tbs_session`), then hands it to live's `finCarryIn`.
+  - It brings the `_labels`, `reimbRules`, `reimbGone`, and `placeDates` and `finSeries`
+    (merged, practice wins). Practice expenses, receipts and links stay behind.
+  - The step is logged in the Activity Log. `doSaveLabel` is now exported to the worker (build.cjs).
+- Still practice-only (Live app changes thread, if Gita picks them): in-place Edit Wording,
+  Add several titles, Subtract Stock, View as.

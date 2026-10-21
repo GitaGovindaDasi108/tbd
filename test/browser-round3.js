@@ -78,11 +78,13 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     // 1. Admin panel.
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);
     let cols = await panel(page);
-    t.push(['columns: Admin · Money · Books · Location', cols.map(c => c.title).join(',') === 'Admin,Money,Books,Location']);
+    // b274: Money is "Laksmi" (Gita, 2026-10-21).
+    t.push(['columns: Admin · Laksmi · Books · Location', cols.map(c => c.title).join(',') === 'Admin,Laksmi,Books,Location']);
     t.push(['Admin: Activity Log, App and Sales Support, Spreadsheet Links, Edit Wording',
       ['Activity Log', 'App and Sales Support', 'Spreadsheet Links', 'Edit Wording'].every(n => has(cols, 'Admin', new RegExp(n)))]);
-    t.push(['Money: Track Cash, Record Costs, Edit Payment Types',
-      ['Track Cash', 'Record Costs', 'Edit Payment Types'].every(n => has(cols, 'Money', new RegExp(n)))]);
+    // b274: Record Costs is Add an Expense.
+    t.push(['Laksmi: Track Cash, Add an Expense, Edit Payment Types',
+      ['Track Cash', 'Add an Expense', 'Edit Payment Types'].every(n => has(cols, 'Laksmi', new RegExp(n)))]);
     // b250: Edit Book Display left the menu (⇅ Arrange on the shelf does its work).
     t.push(['Books: Add New Stock, Transfer Existing Stock, Consignment Books (no Edit Book Display)',
       ['Add New Stock', 'Transfer Existing Stock', 'Consignment Books'].every(n => has(cols, 'Books', new RegExp(n))) && !has(cols, 'Books', /Edit Book Display/)]);

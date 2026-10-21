@@ -24,8 +24,8 @@
    leaves the costs. Costs recorded before, with Record Costs, are taken into
    the expenses list as they are (adopt()).
 
-   For now all of this is the practice space's only (the owner's wish: try it
-   there first); the live server refuses it. */
+   Tried in the practice space first, and on in the live app too since b274
+   (Gita, 2026-10-21). */
 
 /* Ways of being paid back, and what each needs from the person (the owner's
    list: cash, or any app the tour takes payments with). A payment type the
@@ -825,15 +825,50 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return { done: 'undone' };
   }
 
-  const READS = { expLinkList: 1, expLinkInfo: 1, expOptions: 1, expList: 1, expTodo: 1, receiptGet: 1, finData: 1, expRulesGet: 1, placeMetaGet: 1 };
+  /* ---- Finance's launch (b274, Gita): what was set up in practice, brought to live ----
+     Asked for by Universal on the live app. The page reads it from the
+     practice server with this device's practice sign-in (finCarryOut, there),
+     then hands it to live (finCarryIn, here): the wording rewritten with the
+     pencils, the reimbursement settings and ways of paying back, and the
+     places' dates and recurring series. Practice's expenses, receipts and links
+     are practice's own and stay there. */
+  const CARRY_PROPS = ['reimbRules', 'reimbGone', 'placeDates', 'finSeries'];
+  function carryOut(w) {
+    if (!practice) throw new Error('This is read from the practice space.');
+    if (!w.universal) throw new Error('Only Universal can bring settings to the live app.');
+    const labels = app.dbHas_('_labels') ? app.objectsOf_('_labels').filter(r => r && String(r.key)).map(r => ({ key: String(r.key), text: String(r.text == null ? '' : r.text) })) : [];
+    const props = {}; CARRY_PROPS.forEach(k => { const v = kv.getProp(k); if (v) props[k] = v; });
+    return { labels, props };
+  }
+  function carryIn(w, p) {
+    if (practice) throw new Error('Open the live app to bring practice settings into it.');
+    if (!w.universal) throw new Error('Only Universal can bring settings to the live app.');
+    const labels = Array.isArray(p.labels) ? p.labels.slice(0, 5000) : [];
+    let words = 0;
+    labels.forEach(l => { if (l && l.key && String(l.text || '')) { app.doSaveLabel({ key: String(l.key), text: String(l.text) }); words++; } });
+    const props = p.props && typeof p.props === 'object' ? p.props : {}, set = [];
+    CARRY_PROPS.forEach(k => {
+      if (typeof props[k] !== 'string' || !props[k]) return;
+      let v = parse(props[k], null);
+      if (v === null || typeof v !== 'object') return;
+      // Places' dates and series: practice's, over anything live already has for the same place.
+      if (k === 'placeDates' || k === 'finSeries') { const cur = parse(kv.getProp(k), {}); v = Object.assign({}, cur && typeof cur === 'object' ? cur : {}, v); }
+      kv.setProp(k, JSON.stringify(v)); set.push(k);
+    });
+    app.cacheClear_();
+    actLog(w, {}, 'finCarryIn', 'Brought from practice: ' + words + ' rewritten wording' + (words === 1 ? '' : 's') +
+      (set.length ? ', ' + set.map(k => ({ reimbRules: 'reimbursement settings', reimbGone: 'ways of paying back removed', placeDates: 'place dates', finSeries: 'recurring series' })[k]).join(', ') : ''), null);
+    return { words, set };
+  }
+
+  const READS = { expLinkList: 1, expLinkInfo: 1, expOptions: 1, expList: 1, expTodo: 1, receiptGet: 1, finData: 1, expRulesGet: 1, placeMetaGet: 1, finCarryOut: 1 };
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
-    placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel };
+    placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
-    if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');
     /* A closed link (b272, Gita): its page says so and offers "Request for
        this to be reactivated", which Finance sees as a red dot on Links. */
     if (isReimbKey(linkKey) && (action === 'expLinkInfo' || action === 'expLinkAsk')) {

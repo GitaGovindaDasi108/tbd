@@ -22,7 +22,7 @@ const build = (src.match(/var SERVER_BUILD = '([^']+)'/) || [])[1] || '?';
 const GOOGLE = ['Utilities', 'ContentService', 'LockService', 'Session', 'UrlFetchApp', 'SpreadsheetApp',
                 'DriveApp', 'ScriptApp', 'Logger', 'PropertiesService', 'CacheService'];
 // What the server calls in it.
-const EXPORTS = ['handle', 'purgeOrphans_', 'backfillRegionRates_', 'bumpRev_', 'cacheClear_', 'getRev_',
+const EXPORTS = ['handle', 'doSaveLabel', 'purgeOrphans_', 'backfillRegionRates_', 'bumpRev_', 'cacheClear_', 'getRev_',
                  'sheetMemoClear_', 'setSeasonContext_', 'flushStockMoves_',
                  // (and for the tests, which start from the same sample tour as test/mini.js)
                  'ensureReady', 'markDirtyAll_', 'doCreateRegion', 'dbUpdate_', 'activeSeasonId_', 'objectsOf_',

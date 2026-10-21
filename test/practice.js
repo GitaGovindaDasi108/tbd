@@ -82,6 +82,23 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   const ex = await ask(live, { action: 'practiceExport', secret: PHRASE });
   t.push(['the copy carries no spreadsheet bookkeeping (nothing to redraw, no claim)', ex.ok && !('dirtyLocs' in ex.result.props) && !('cfInFlight' in ex.result.props)]);
 
+  /* Finance's launch (b274): Universal brings practice's wording and Finance
+     settings to live; practice's expenses stay there. */
+  await P({ action: 'saveLabel', key: 'Panel: Finance › Overview', text: 'Laksmi Overview' });
+  await P({ action: 'expRulesSet', rules: {} }).catch(() => {});
+  await P({ action: 'placeMetaSet', kind: 'regions', id: 'rg_it', from: '2026-10-08', to: '2026-11-08' });
+  const out = await P({ action: 'finCarryOut' });
+  t.push(['b274: practice hands Universal its wording and settings', out.ok && out.result.labels.some(l => l.text === 'Laksmi Overview') && !!out.result.props.placeDates]);
+  t.push(['b274: …but not to a Regional Lead', !(await ask(practice, { s: 'Prita', action: 'finCarryOut' })).ok]);
+  t.push(['b274: live does not hand out its own (that is practice\'s side)', !(await L({ action: 'finCarryOut' })).ok]);
+  const inn = await L({ action: 'finCarryIn', labels: out.result.labels, props: out.result.props });
+  const lst = (await L({ action: 'getState', season: SA })).state;
+  t.push(['b274: live takes them: the wording is live\'s now', inn.ok && inn.result.words >= 1 && lst.labels['Panel: Finance › Overview'] === 'Laksmi Overview']);
+  const lm = await L({ action: 'placeMetaGet' });
+  t.push(['b274: …and Italy\'s dates', lm.ok && (lm.result.regions || []).some(r => r.id === 'rg_it' && r.from === '2026-10-08')]);
+  t.push(['b274: practice cannot be written to this way', !(await P({ action: 'finCarryIn', labels: [], props: {} })).ok]);
+  t.push(['b274: expenses work on the live app now', (await L({ action: 'expOptions' })).ok]);
+
   let bad = 0;
   t.forEach(([n, okk]) => { if (!okk) bad++; console.log((okk ? 'PASS' : 'FAIL'), n); });
   if (bad) process.exitCode = 1;

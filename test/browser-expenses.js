@@ -111,7 +111,7 @@ const API = 'http://api.test/';
     /* ---- A Seller records an expense to be paid back ---- */
     const sita = await open('sita@example.com', 'Sita');
     const menu = await sita.evaluate(() => [...document.querySelectorAll('#sideNav .sn-item')].map(b => b.innerText.trim()).join('|'));
-    t.push(['a Seller has Expenses in the menu', /Expenses/.test(menu)]);
+    t.push(['a Seller has Add an Expense in the menu (b274)', /Add an Expense/.test(menu)]);
     t.push(['…but not the Finance To do', !/Finance To do/.test(menu)]);
     await sita.evaluate(() => document.querySelector('#sideNav [data-act="expenses"]').click());
     await sita.waitForTimeout(800);
