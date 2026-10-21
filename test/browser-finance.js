@@ -35,6 +35,7 @@ const API = 'http://api.test/';
   const fetchImpl = async url => {
     if (/oauth2\/v3\/certs/.test(url)) return { ok: true, status: 200, json: async () => ({ keys: [pub] }) };
     if (/api\.frankfurter\.app\/\d{4}-\d\d-\d\d\?from=EUR&to=USD/.test(url)) { fxAsked.push(url); return { ok: true, status: 200, text: async () => JSON.stringify({ amount: 1, base: 'EUR', date: url.match(/app\/([\d-]+)/)[1], rates: { USD: 1.1 } }) }; }
+    if (/frankfurter\.app\/[\d-]+\?from=GBP/.test(url)) return new Promise(() => {});   // b267: a source that never answers
     if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80 }, time_last_update_utc: 'today' }) };
     throw new Error('offline');
   };
@@ -332,10 +333,20 @@ const API = 'http://api.test/';
     await pub.selectOption('#xCur', 'EUR'); await pub.waitForTimeout(200);
     if (await pub.$('#xRCur')) await pub.selectOption('#xRCur', 'USD');
     t.push(['…and Save becomes "Review all 2 expenses"', /Review all 2 expenses/.test(await pub.$eval('#xSave', e => e.textContent))]);
+    await pub.waitForTimeout(400);
+    t.push(['b267: the rate is asked for while the form is filled in, before Save', await pub.evaluate(() => Object.keys(FX).some(k => /\|EUR\|USD$/.test(k)))]);
     await pub.click('#xSave'); await pub.waitForTimeout(500);
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
     t.push(['the review shows both, with the total, before anything is sent', /Check your expenses/i.test(m) && /Parking at the fair/.test(m) && /Tea for the volunteers/.test(m) && /\$12/.test(m) && /8 €|€8/.test(m)]);
     t.push(['b260: euros paid back in dollars: the server finds that day\'s rate, and the review shows what to pay', fxAsked.length > 0 && /To pay back: \$8\.80 \(1 EUR = 1\.1 USD on \d{4}-\d\d-\d\d\)/.test(m)]);
+    t.push(['b267: so the check page comes straight up, no "Checking" page first', !/Checking the exchange rate/.test(m)]);
+    t.push(['b267: it says the rate is an estimate', /This is an estimate - reimbursement rate may change based on current exchange rates\./.test(m)]);
+    await pub.check('#xrExact'); await pub.waitForTimeout(200);
+    await pub.fill('[data-xex="1"]', '9.5'); await pub.waitForTimeout(150);
+    m = await pub.evaluate(() => document.querySelector('#modal').innerText);
+    t.push(['b267: "I have the exact numbers for reimbursement" gives each expense its own box, and the total follows', /To pay back: \$9\.50 \(the exact amount given\)/.test(m) && /\$21\.50/.test(await pub.$eval('#xrPay', e => e.textContent))]);
+    await pub.uncheck('#xrExact'); await pub.waitForTimeout(200);
+    t.push(['…and unticked, it goes back to the rate', /To pay back: \$8\.80 \(1 EUR/.test(await pub.evaluate(() => document.querySelector('#modal').innerText))]);
     await pub.screenshot({ path: shot('review') });
     await pub.click('#xrBack'); await pub.waitForTimeout(300);
     t.push(['…"Back" returns to the form as it was', await pub.$eval('#xDesc', e => e.value) === 'Tea for the volunteers']);
@@ -344,6 +355,7 @@ const API = 'http://api.test/';
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
     t.push(['sent: "received and will be processed at the earliest convenience", both listed', /2 expenses have been received and will be processed at the earliest convenience/.test(m) && /Tea for the volunteers/.test(m)]);
     t.push(['b259: the confirmation shows the dollars too', /To pay back: \$8\.80/.test(m)]);
+    t.push(['b267: …and says it is an estimate', /This is an estimate/.test(m)]);
     t.push(['…with no "Send in another": the link was for one', !(await pub.$('#rpAnother'))]);
     t.push(['…and Done and × leave for travelingmonk.com', await pub.$eval('#modal .m-foot a', a => a.href).catch(() => '') === 'https://travelingmonk.com/' && !!(await pub.$('#modal h3 a.x'))]);
     await pub.screenshot({ path: shot('public') });
@@ -467,6 +479,42 @@ const API = 'http://api.test/';
     t.push(['b265: dollars come last, out of brackets: (500 ден) $9.08', await own.evaluate(() => finDual(500, 'MKD', 9.08) === '(' + cashFmt(500, 'MKD') + ') $9.08' && finDual(20, 'USD', 20) === cashFmt(20, 'USD'))]);
     await own.evaluate(() => finGo('expenses')); await own.waitForTimeout(1500);
     t.push(['…and the Expenses list reads that way', /\(.*10.*\) \$12\.50/.test(await fpage(own))]);
+    // b267: quicker rates, a fallback, exact amounts flagged, totals by currency, dollars received.
+    let t0 = Date.now(); const slow = await srv.fxOn('2026-10-10', 'GBP', 'USD');
+    t.push(['b267: a source that does not answer is given up on in a few seconds', Date.now() - t0 < 5000]);
+    const inr = await srv.fxOn('2026-10-10', 'INR', 'USD');
+    t.push(['b267: no rate for the day: the fallback, from the rates kept every hour, says so', inr && inr.fallback && Math.abs(inr.rate - 1 / 80) < 1e-9 && slow === null]);
+    const last = srv.rateNow('EUR', 'USD');
+    t.push(['…and a pair looked up before falls back to its latest rate', last && last.rate === 1.1 && last.fallback]);
+    await O({ action: 'expSave', id: 'Xexact01', kind: 'reimburse', date: '2026-10-12', desc: 'Train tickets', amt: 10, cur: 'EUR', location: 'ev_z1', category: 'Travel',
+      method: 'Cash', reimbCur: 'USD', payTo: { phone: '+385 99 1' }, payExact: 20 });
+    await O({ action: 'expSave', id: 'Xinr0001', kind: 'reimburse', date: '2026-10-12', desc: 'Chai', amt: 800, cur: 'INR', location: 'ev_z1', category: 'Food',
+      method: 'Cash', reimbCur: 'USD', payTo: { phone: '+385 99 1' } });
+    const xl = (await O({ action: 'expList', scope: 'all' })).result, xe = xl.find(x => x.id === 'Xexact01'), xi = xl.find(x => x.id === 'Xinr0001');
+    t.push(['b267: an exact amount is kept, with that day\'s figure beside it', xe.payAmt.exact && xe.payAmt.amt === 20 && xe.payAmt.est === 11]);
+    t.push(['b267: with no rate for the day, Finance still gets a figure (the fallback)', xi.payAmt && xi.payAmt.fallback && xi.payAmt.amt === 10]);
+    srv.app.dbUpdate_('_expenses', { id: 'Xinr0001' }, { payAmt: '' }); srv.app.sheetMemoClear_(); srv.app.cacheClear_();
+    t.push(['…even one saved with none: Finance works one out', (await O({ action: 'expList', scope: 'all' })).result.find(x => x.id === 'Xinr0001').payAmt.amt === 10]);
+    await O({ action: 'expSave', id: 'Xpln0001', kind: 'reimburse', date: '2026-10-12', desc: 'Bus', amt: 765, cur: 'PLN', location: 'ev_z1', category: 'Travel',
+      method: 'Cash', reimbCur: 'USD', payTo: { phone: '+385 99 1' } });
+    // (Paid back in złoty, as someone could ask where złoty are offered.)
+    srv.app.dbUpdate_('_expenses', { id: 'Xpln0001' }, { reimbCur: 'PLN', payAmt: '' }); srv.app.sheetMemoClear_(); srv.app.cacheClear_();
+    await own.evaluate(() => { FIN.rb.tab = 'pending'; finGo('reimb', '', {reload:true}); }); await own.waitForTimeout(1800);
+    m = await fpage(own);
+    t.push(['b267: Reimbursements Due shows each currency it will be paid in, dollars first', new RegExp('\\$[\\d,.]+ \\+ ' + (await own.evaluate(() => cashFmt(765, 'PLN'))).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(m)]);
+    t.push(['b267: an exact amount well above the day\'s rate is flagged', /⚠ 82% more than that day's rate \(\$11\)/.test(await own.$eval('#finRbS', e => e.textContent)) && /⚠ 1 above the day's rate/.test(m)]);
+    t.push(['b267: totals put dollars first: $169.05 + 765 zł', await own.evaluate(() => finMix({ PLN: 765, USD: 169.05 }) === '$169.05 + ' + cashFmt(765, 'PLN') && finTotals([1], () => [[765, 'PLN'], [169.05, 'USD']]) === cashFmt(169.05, 'USD') + ' + ' + cashFmt(765, 'PLN'))]);
+    // Dollars received: 35 € taken at the Kirtan fetched $40.
+    await sell('eur1', 'ev_z1', 'sr_en', { legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] });
+    await own.evaluate(() => finGo('overview', '', {reload:true})); await own.waitForTimeout(1800);
+    await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
+    await own.click('#cvPlace .pp-in'); await own.fill('#cvPlace .pp-in', 'Kirtan'); await own.waitForTimeout(150); await own.click('#cvPlace .pp-row[data-v="ev_z1"]');
+    await own.selectOption('#cvCur', 'EUR'); await own.fill('#cvAmt', '35'); await own.fill('#cvUsd', '40');
+    await own.click('#cvSave'); await own.waitForTimeout(1500);
+    const sale = await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1'));
+    t.push(['b267: Dollars received: 35 € from the Kirtan fetched $40, and that sale now counts $40', sale && sale.gu === 40 && sale.cv === 1]);
+    t.push(['…listed with its rate, and the Overview button counts it', /\(.*35.*\) \$40/.test(await own.evaluate(() => document.querySelector('#modal').innerText)) && /Dollars received \(1\)/.test(await fpage(own))]);
+    await own.evaluate(() => closeModal());
     const phone = await open('owner@example.com', 'The Owner', 390);
     await phone.evaluate(() => finGo('overview', 'rg_zg')); await phone.waitForTimeout(1500);
     t.push(['phone width: no sideways scroll on the page', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)]);

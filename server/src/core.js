@@ -28,7 +28,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
 
   /* Expenses and their receipts (b238): kept and decided here, where the people are. */
-  const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv, practice: !!practice,
+  const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv, practice: !!practice, rateNow: (f, t) => rateNow(f, t),
     // A cost kept for an expense is written by Code.gs's own saveCost/deleteCost, as the owner's app would.
     asOwner: (params, name) => {
       app.setTrustedWho_({ role: 'admin', name: name || 'Expenses', email: '', grant: 'U' });
@@ -165,12 +165,13 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       /* An expense's dollars at the rate on its day (b265), looked up here
          (the page's own figure is never taken). */
       if (action === 'expSave') {
-        delete p.usdDay;
-        const cur = String(p.cur || '').toUpperCase();
-        if (cur && cur !== 'USD' && !(Number(p.usdAmt) > 0)) {
-          try { p.usdDay = await fxOn(/^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? p.date : new Date().toISOString().slice(0, 10), cur, 'USD'); }
-          catch (e) { p.usdDay = null; }
-        }
+        delete p.usdDay; delete p.payDay;
+        const cur = String(p.cur || '').toUpperCase(), rc = String(p.reimbCur || '').toUpperCase();
+        const day = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? p.date : new Date().toISOString().slice(0, 10);
+        const ask = (to, skip) => skip ? Promise.resolve(null) : fxOn(day, cur, to).catch(() => null);
+        // Both at once (b267): dollars, and what to pay back in when that is another currency.
+        [p.usdDay, p.payDay] = await Promise.all([ask('USD', !cur || cur === 'USD' || Number(p.usdAmt) > 0),
+          ask(rc, p.kind !== 'reimburse' || !rc || rc === cur || !/^[A-Z]{3}$/.test(rc))]);
       }
       try { return reply({ ok: true, result: expenses.handle(action, p, me, linkKey) }); }
       catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
@@ -555,7 +556,36 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
      day (Frankfurter; a weekend or holiday gives the last working day), and
      for currencies it does not carry (MKD, …) the open currency-api, which has
      every day too. Kept in the web cache, so each day is asked for once. */
-  async function fxOn(date, from, to) {
+  /* The exchange rate on a day (b260), quicker (b267, Gita: "very slow on
+     checking the exchange rate"): the three sources are asked at once, each
+     given a few seconds, and an answer is kept. When none answers, the
+     fallback: the latest rate this server has for the pair (kept fresh every
+     hour by the same lookup, refreshFx), else today's rate from the rates the
+     sales side already keeps (open.er-api). A fallback says so. */
+  const FX_WAIT = 3500;
+  const fxKey = (from, to) => from + '>' + to;
+  const fxLast = () => { try { return JSON.parse(kv.getProp('fxLast') || '{}') || {}; } catch (e) { return {}; } };
+  function fxKeep(from, to, r) {
+    const all = fxLast(), k = fxKey(from, to), had = all[k];
+    if (had && had.on > r.on) return;
+    all[k] = { rate: r.rate, on: r.on, src: r.src };
+    const keys = Object.keys(all); if (keys.length > 200) delete all[keys[0]];
+    kv.setProp('fxLast', JSON.stringify(all));
+  }
+  function rateNow(from, to) {
+    from = String(from || '').toUpperCase(); to = String(to || '').toUpperCase();
+    if (!from || !to) return null;
+    if (from === to) return { rate: 1, on: '', src: '' };
+    const last = fxLast()[fxKey(from, to)];
+    if (last && last.rate > 0) return { rate: last.rate, on: last.on, src: last.src, fallback: true };
+    const hit = web.get(RATES_URL);
+    let j = null; try { j = hit && hit.code === 200 ? JSON.parse(hit.text) : null; } catch (e) { j = null; }
+    const R = j && j.rates;
+    if (R && Number(R[from]) > 0 && Number(R[to]) > 0)
+      return { rate: Number(R[to]) / Number(R[from]), on: new Date().toISOString().slice(0, 10), src: 'open.er-api', fallback: true };
+    return null;
+  }
+  async function fxOn(date, from, to, noFallback) {
     date = String(date || ''); from = String(from || '').toUpperCase(); to = String(to || '').toUpperCase();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^[A-Z]{3}$/.test(from) || !/^[A-Z]{3}$/.test(to)) throw new Error('That exchange rate could not be asked for.');
     const today = new Date().toISOString().slice(0, 10);
@@ -564,21 +594,33 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const getJson = async url => {
       let hit = web.get(url);
       if (!hit) {
-        try { const r = await fetchImpl(url); hit = { code: r.status, text: await r.text() }; if (r.status === 200) web.put(url, r.status, hit.text); }
-        catch (e) { return null; }
+        try {
+          let tm;
+          const r = await Promise.race([fetchImpl(url), new Promise((_, no) => { tm = setTimeout(() => no(new Error('slow')), FX_WAIT); })])
+            .finally(() => clearTimeout(tm));
+          hit = { code: r.status, text: await r.text() }; if (r.status === 200) web.put(url, r.status, hit.text);
+        } catch (e) { return null; }
       }
       if (!hit || hit.code !== 200) return null;
       try { return JSON.parse(hit.text); } catch (e) { return null; }
     };
-    const ecb = await getJson('https://api.frankfurter.app/' + date + '?from=' + from + '&to=' + to);
-    if (ecb && ecb.rates && Number(ecb.rates[to]) > 0) return { rate: Number(ecb.rates[to]), on: String(ecb.date || date), src: 'European Central Bank' };
     const f = from.toLowerCase(), t = to.toLowerCase();
-    for (const url of ['https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@' + date + '/v1/currencies/' + f + '.json',
-                       'https://' + date + '.currency-api.pages.dev/v1/currencies/' + f + '.json']) {
-      const j = await getJson(url);
-      if (j && j[f] && Number(j[f][t]) > 0) return { rate: Number(j[f][t]), on: String(j.date || date), src: 'currency-api' };
-    }
-    return null;
+    const [ecb, a, b] = await Promise.all([
+      getJson('https://api.frankfurter.app/' + date + '?from=' + from + '&to=' + to),
+      getJson('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@' + date + '/v1/currencies/' + f + '.json'),
+      getJson('https://' + date + '.currency-api.pages.dev/v1/currencies/' + f + '.json')]);
+    let r = null;
+    if (ecb && ecb.rates && Number(ecb.rates[to]) > 0) r = { rate: Number(ecb.rates[to]), on: String(ecb.date || date), src: 'European Central Bank' };
+    else for (const j of [a, b]) if (j && j[f] && Number(j[f][t]) > 0) { r = { rate: Number(j[f][t]), on: String(j.date || date), src: 'currency-api' }; break; }
+    if (r) { try { fxKeep(from, to, r); } catch (e) {} return r; }
+    return noFallback ? null : rateNow(from, to);
+  }
+  /* Every hour (worker.js's alarm): today's rate for each pair asked for
+     before, so the fallback is never old. */
+  async function refreshFx() {
+    const today = new Date().toISOString().slice(0, 10);
+    const pairs = Object.keys(fxLast()).filter(k => fxLast()[k].on < today).slice(0, 30);
+    await Promise.all(pairs.map(k => { const [f, t] = k.split('>'); return fxOn(today, f, t, true).catch(() => null); }));
   }
   /* The rates, fetched ahead of the request that will want them. */
   async function warm() {
@@ -599,5 +641,5 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   /* The revision number: it changes on every save (Phase 4 sends it to the
      phones the moment it does). */
   function rev() { return Number(app.getRev_()) || 0; }
-  return { answer, request, bridge, relay, auth, warm, fetchWanted, housekeeping, rev, kv, store, forget, dump, build: CODE_BUILD, web, app };
+  return { answer, request, bridge, relay, auth, warm, refreshFx, rateNow, fxOn, fetchWanted, housekeeping, rev, kv, store, forget, dump, build: CODE_BUILD, web, app };
 }

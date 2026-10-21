@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b265';
+var SERVER_BUILD = 'b267';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -376,13 +376,14 @@ function financeData_() {
     if (!w) return;                                   // a place since deleted
     var b = s.bookId ? bookById_(String(s.bookId)) : null;
     var type = String(s.type || 'SALE'), got = received_(s);
-    var f = saleFactor_(s), gross = 0, cur = {}, pays = {}, legN = 0, giftN = 0;
+    var f = saleFactor_(s), gross = 0, cur = {}, cu = {}, pays = {}, legN = 0, giftN = 0;
     eachLeg_(s, function (l) {
       legN++; if (l.type === 'Gift') giftN++;
       if (!l.amt || l.type === 'Gift') return;
-      gross += legTruthUsd_(s, l, f);
+      var u = legTruthUsd_(s, l, f);
+      gross += u;
       pays[l.type] = 1;
-      if (got) cur[l.cur] = r2((cur[l.cur] || 0) + l.amt);
+      if (got) { cur[l.cur] = r2((cur[l.cur] || 0) + l.amt); cu[l.cur] = (cu[l.cur] || 0) + u; }
     });
     var pend = dueUsd_(s);
     sales.push({ id: String(s.saleId), d: day(s.ts), s: w.s, r: w.r, e: w.e, k: type,
@@ -390,7 +391,9 @@ function financeData_() {
       q: (type === 'SALE' || type === 'PREORDER') && s.bookId ? (Number(s.qty) || 1) : 0,
       g: legN > 0 && giftN === legN ? 1 : 0,          // a gift: every leg of it is Gift (as the app's isGift)
       by: String(s.soldBy || ''), pay: Object.keys(pays), con: isPartnerSale_(s) ? (partners[partnerOfBook_(String(s.bookId))] || 'Consignment') : '',
-      gu: r2(got ? gross : 0), pu: r2(pend), cur: cur });
+      gu: r2(got ? gross : 0), pu: r2(pend), cur: cur,
+      // b267: the dollars each currency counted for, so "dollars received" can replace them; and hand-entered dollars, which stay.
+      cu: cu, ua: usdActualIn_(s.usdActual) !== '' ? 1 : 0 });
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
