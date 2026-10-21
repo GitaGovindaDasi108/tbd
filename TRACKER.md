@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b265**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b266**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2243,3 +2243,18 @@ Live unless marked practice.
 - Finance shows dollars last and out of brackets: `finDual` → "(500 ден) $9.08".
   The details say how the dollars were worked out.
 - Tests: browser-finance (122).
+
+## Done in b266 — Card alignment: Q2 transit, bottom buttons, rows line up, language placement (live)
+- Selling card: "In transit" and "Expected" sit in the top right under in stock
+  and sold. Sell/Pre-order sit at the bottom of the card (`.bk-btns{margin-top:auto}`),
+  level across a row whatever the cards above them hold.
+- Warehouse Overview: "Expected: N" under "+N in transit ›" in the top right.
+- Distribution by Title / mini cards (`qLowHTML`): gifts bottom left; bottom
+  right "N distributed" with "(N Pre-Orders)" on its own line beneath.
+- Four-part cards line up across a row: each `.qcard` spans four rows of its
+  grid as a subgrid (`@supports (grid-template-rows:subgrid)`), so the bottom
+  halves and the Locations row start at the same height side by side. List
+  view switches it off. Arrange's Drag / Hide here sit in the fourth row.
+- Language: `.lang-tag` is inline (same line as the title) by default, as in
+  the sales log and lists; on cards (`.bname/.sc-name/.mc-name`) and buttons it
+  sits on its own line under the title.
