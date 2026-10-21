@@ -372,7 +372,8 @@ const API = 'http://api.test/';
       cream: (() => { const x = document.createElement('div'); x.style.background = 'var(--cream)'; document.body.appendChild(x); const c = getComputedStyle(x).backgroundColor; x.remove(); return c; })() }));
     let snv = await sn();
     t.push(['practice: no App Admin panel; a slim column down the left, the page\'s own cream', snv.panel === 0 && snv.width < 70 && snv.bg === snv.cream]);
-    t.push(['…sections in the owner\'s order: Books, Money, Season Admin, Advanced, App Development, Settings', /Books.*Money.*Season Admin.*Advanced.*App Development.*Settings/.test(snv.secs.join('|'))]);
+    // Money is "Laksmi" in practice (Gita, 2026-10-21).
+    t.push(['…sections in the owner\'s order: Books, Laksmi, Season Admin, Advanced, App Development, Settings', /Books.*Laksmi.*Season Admin.*Advanced.*App Development.*Settings/.test(snv.secs.join('|'))]);
     t.push(['…then Support; Sign Out at the foot', /Support/.test(snv.solo) && /Sign Out/.test(snv.foot)]);
     await pr.hover('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(350);
     snv = await sn();
