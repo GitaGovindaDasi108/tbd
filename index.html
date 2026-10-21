@@ -836,6 +836,7 @@ body.has-na .overlay{z-index:10000}
 .tcard.usd .value{color:var(--green)} .tcard.pend .value{color:var(--clay)}
 .tcard .sub{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 .tcard .sub b{color:var(--plum);font-weight:700}
+.dist-n, .tcard .sub b.dist-n{color:inherit;font-weight:800}   /* the distributed total stands out (b270) */
 
 /* ---------- Panels ---------- */
 .cols{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:stretch}
@@ -1079,8 +1080,10 @@ body.has-na .overlay{z-index:10000}
 .book .bk-btns{margin-top:auto}
 .book > .top{margin-bottom:8px}   /* Sell and Pre-order sit at the bottom, level across a row (b266) */
 .bk-q2 .region{text-align:right}
-.book .bk-btns>button{min-height:32px;padding:6px 4px;white-space:nowrap}
+.book .bk-btns>button{min-height:36px;padding:6px 4px;white-space:nowrap}
 @media (max-width:560px){ .book .bk-btns>button{font-size:12.5px} }
+/* A mouse needs less room than a finger (b270): touch screens keep 36px, computers get 26px. */
+@media (hover:hover) and (pointer:fine){ .book .bk-btns>button{min-height:26px;padding:3px 4px;font-size:12.5px;border-radius:7px} }
 /* Sold out: the name greys and says (Out), in place of a bubble. */
 .book.out .bname, .book.out .bname.other, .book.out .bname.aotm{color:#9A9189}
 .book.out .lang-tag{filter:grayscale(1);opacity:.7}
@@ -1907,7 +1910,8 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
 .list-view .book .sold-tag{display:none}
 .list-view .book .bk-btns{order:3;margin-top:0;flex:0 0 196px}
 .list-view .book .bk-btns>button{white-space:nowrap}
-.list-view .book .bk-btns>button{min-height:34px;padding:6px 8px}
+.list-view .book .bk-btns>button{min-height:36px;padding:6px 8px}
+@media (hover:hover) and (pointer:fine){ .list-view .book .bk-btns>button{min-height:26px;padding:3px 8px} }
 .list-view .stat-grid{grid-template-columns:1fr;gap:5px}
 .list-view .stat-card{flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;
   min-height:0;padding:7px 11px;column-gap:14px;row-gap:2px}
@@ -2011,7 +2015,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b269</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b270</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5472,7 +5476,7 @@ function qNameHTML(b, cls){
   const prices = (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ()
     ? `<div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${cashFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>` : '';
   return `<div class="${cls} ${catOfBook(b)}">${bookTitleHTML(b)}${
-    b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>${prices}`;
+    b.partnerId?'<span class="con-tag">consignment</span>':''}</div>${prices}`;
 }
 function renderWarehouseOverview(){
   /* Locations, one level down from where you are (b264): at Earthly HQ the
@@ -5694,7 +5698,7 @@ function renderInventory(){
       <div class="top" ${sellable?`data-act="sell" data-book="${b.id}"`:''}>
         <div class="bk-q1">
           <div class="bname ${catOfBook(b)}">${out ? bookTitleHTML(b).replace(/^([^<]*?)( <span class="lang-tag|$)/, '$1 <span class="bk-out">(Out)</span>$2') : bookTitleHTML(b)}${
-            b.partnerId?`<span class="con-tag">${esc((partnerById(b.partnerId)||{}).name||'consignment')}</span>`:''}</div>
+            b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
           <div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${cashFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>
           ${note}
         </div>
@@ -5774,7 +5778,7 @@ function preNote(c){
   return c.pre ? `(${c.pre} pre-order${c.pre===1?'':'s'})` : '';
 }
 function giftNote(c){
-  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} = ${c.sold+c.gift} distributed` : '';
+  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} = <b class="dist-n">${c.sold+c.gift}</b> distributed` : '';
 }
 /* The bottom half of a sales card (b264; b266): read across the card,
    "N sold + N gifts = N distributed", the pre-orders (counted in sold) beneath. */
@@ -14204,36 +14208,32 @@ function deliverModal(id, bundle){
   });
 }
 
-/* ---- Deleting an event ---- */
+/* ---- Deleting an event ----
+   Typing the name back is the check (b270). The old "it was a test, put
+   everything back" choice is gone: books sold here really left the shelf. */
 function deleteEventModal(){
   const loc=CUR_LOC, name=locName(loc);
   const s=(STATE.sales||[]).filter(x=>x.location===loc);
-  const soldHere=s.filter(x=>x.type==='SALE'&&x.bookId&&!fromOutside(x)).length;
   const left=(STATE.books||[]).reduce((t,b)=>t+invQty(loc,b.id),0);
 
   openModal(`
-    ${mHead('Delete '+name)}
+    ${mHead('Delete '+esc(name))}
     <div class="m-body">
       <div class="warn">This removes the event, its ${s.length} record${s.length===1?'':'s'} and its sheet tab. It cannot be undone.</div>
-      <div class="hint">${left} book${left===1?'':'s'} still at this event ${left===1?'goes':'go'} back to the warehouse either way.</div>
-      <div class="opts">
-        <button class="opt" data-restore="0">
-          <b>Delete — it was a real event</b>
-          <span>${soldHere} book${soldHere===1?'':'s'} sold here stay gone, because ${soldHere===1?'it':'they'} really left the shelf.</span>
-        </button>
-        <button class="opt" data-restore="1">
-          <b>Delete and put everything back</b>
-          <span>For a test run. The ${soldHere} book${soldHere===1?'':'s'} "sold" ${soldHere===1?'is':'are'} returned too, so the warehouse ends up exactly as it started.</span>
-        </button>
-      </div>
+      <div class="hint">${left} book${left===1?'':'s'} still at this event ${left===1?'goes':'go'} back to the warehouse.</div>
+      <div class="field"><label>Type <b>${esc(name)}</b> to confirm</label>
+        <input id="deName" type="text" placeholder="${esc(name)}" autocomplete="off"></div>
       <div class="err" id="modalErr"></div>
     </div>
-    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button></div>
-  `);
-  $('#modal').querySelectorAll('.opt').forEach(btn=>{
-    btn.addEventListener('click',()=>{
-      commitSync({action:'deleteEvent',eventId:loc,restoreSold:btn.dataset.restore==='1'},'Event deleted');
-    });
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="deGo">Delete event</button>
+    </div>`);
+  $('#deGo').addEventListener('click',()=>{
+    if($('#deName').value.trim().toLowerCase()!==String(name).trim().toLowerCase()){
+      $('#modalErr').textContent='Type the event name exactly to confirm.'; return;
+    }
+    commitSync({action:'deleteEvent',eventId:loc,restoreSold:false},'Event deleted');
   });
 }
 
@@ -14244,7 +14244,8 @@ function deleteEventModal(){
    always kept as the common currency everything is reported back in. */
 /* ---- Delete a region ----
    Deliberately effortful: the name must be typed back, and any physical books
-   still on the shelves can be sent to another region rather than vanishing. */
+   still on the shelves go to another region rather than vanishing (the
+   write-off choice, meant for test regions, went in b270). */
 function deleteRegionModal(){
   const reg = currentRegion();
   if(!reg){ return; }
@@ -14267,10 +14268,7 @@ function deleteRegionModal(){
       <div class="field"><label>Move Remaining Stock</label>
         <select id="drMove">
           ${others.map(r=>`<option value="${esc(r.regionId)}">Move to ${esc(r.name)}</option>`).join('')}
-          <option value="">Write them off — they are gone</option>
         </select></div>
-      <div class="hint">Books are physical, so moving them keeps the count honest. Writing them off
-        is for a region that was only ever a test.</div>
       <div class="field"><label>Type <b>${esc(reg.name)}</b> to confirm</label>
         <input id="drName" type="text" placeholder="${esc(reg.name)}" autocomplete="off"></div>
       <div class="err" id="modalErr"></div>
