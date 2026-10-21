@@ -698,7 +698,9 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!isFin(w)) throw new Error('The Finance To do is for Finance.');
     const F = facts();
     return { pending: F.pending.sort((a, b) => String(b.ts).localeCompare(String(a.ts))),
-      reimb: rows().filter(r => r.kind === 'reimburse' && r.status === 'pending').map(shown).sort((a, b) => String(b.ts).localeCompare(String(a.ts))) };
+      reimb: rows().filter(r => r.kind === 'reimburse' && r.status === 'pending').map(shown).sort((a, b) => String(b.ts).localeCompare(String(a.ts))),
+      // Closed links someone has asked to have reactivated: a red dot on Links.
+      asks: isFin(w) ? Object.values(getLinks()).filter(l => l.ask && (l.off || l.used)).length : 0 };
   }
   function rulesGet(w) {
     if (!isFin(w)) throw new Error('Only Finance can see these settings.');
@@ -770,7 +772,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function linkOff(w, p) {
     if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
     const L = getLinks(), k = clip(p.key, 60);
-    if (L[k]) { L[k].off = p.on ? false : true; if (p.on) { delete L[k].used; delete L[k].usedAt; } kv.setProp('reimbLinks', JSON.stringify(L)); }
+    if (L[k]) { L[k].off = p.on ? false : true; delete L[k].ask; if (p.on) { delete L[k].used; delete L[k].usedAt; } kv.setProp('reimbLinks', JSON.stringify(L)); }
     return linkList(w);
   }
   /* What the form needs to say at the top: which place, if one. */
@@ -823,18 +825,38 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return { done: 'undone' };
   }
 
-  const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1 };
+  const READS = { expLinkList: 1, expLinkInfo: 1, expOptions: 1, expList: 1, expTodo: 1, receiptGet: 1, finData: 1, expRulesGet: 1, placeMetaGet: 1 };
+  const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
-  const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
+  const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
     if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');
+    /* A closed link (b272, Gita): its page says so and offers "Request for
+       this to be reactivated", which Finance sees as a red dot on Links. */
+    if (isReimbKey(linkKey) && (action === 'expLinkInfo' || action === 'expLinkAsk')) {
+      const L = getLinks(), l = L[linkKey];
+      if (l && (l.off || l.used)) {
+        if (action === 'expLinkInfo') return { closed: l.used && !l.off ? 'used' : 'off', asked: !!l.ask, to: l.to ? { name: l.to.name } : null };
+        l.ask = { at: new Date(now()).toISOString(), name: clip(p.name, 60) || (l.to && l.to.name) || '', note: clip(p.note, 300) };
+        kv.setProp('reimbLinks', JSON.stringify(L));
+        actLog({ name: 'reimbursement link', open: true }, {}, 'expLinkAsk', 'Asked for a reimbursement link to be reactivated' + (l.ask.name ? ' (' + l.ask.name + ')' : ''), null);
+        try { app.bumpRev_(); } catch (e) {}
+        return { asked: true };
+      }
+      if (action === 'expLinkAsk') throw new Error('This link is working already. Open it again to send in an expense.');
+    }
     const w = whoFor(p, me, linkKey);
     if (w.open && !OPEN_ACTIONS[action]) throw new Error('A reimbursement link can only send in an expense.');
     if (/^(expList|expTodo|finData)$/.test(action)) adopt();
-    return ACTIONS[action](w, p);
+    const out = ACTIONS[action](w, p);
+    /* Anything written (a reimbursement sent in by link, one paid, a link
+       closed) moves the revision on, so every open Finance page hears of it
+       at once and fills it in without a refresh (Gita, 2026-10-21). */
+    if (!READS[action]) { try { app.bumpRev_(); } catch (e) {} }
+    return out;
   }
   return { handle, sweep, isAction: a => Object.prototype.hasOwnProperty.call(ACTIONS, a), effective, METHOD_FIELDS };
 }
