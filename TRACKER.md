@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b279**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b280**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2480,3 +2480,44 @@ Live app changes (Gita, 2026-10-21):
     Where, not on the sales side, an expense there, finData).
   - browser-finance: the form stays put on a currency change, "＋ Add" in Where, "Finance only" in
     search, and the columns line up.
+
+## Done in b280 — Sub-regions (practice only)
+
+Gita, 2026-10-21 (thread "Sub-regions within a region", Option A). Europe Tour 2026 had Madrid and
+Barcelona as two regions with two warehouses. The Spain shipment was split between them by hand, and
+the shared "Shipping to Spain" costs were filed under Barcelona. A region can now be split into
+**sub-regions**: one warehouse, one set of prices, one closing, but each event belongs to one
+sub-region (or none, "general"), so a city's sales can be looked at on their own.
+- **Gate:** `SUBR_ON = PRACTICE`. On the live app nothing shows (the server action exists, unused).
+- **Storage:** one `_meta` setting `subRegions` = { regions: { rg_…: [{id:'sr_…', name}] },
+  events: { ev_…: 'sr_…' } }, sent in the state as `subRegions`.
+  - Server action `setSubRegions` {regionId, list?, events?}, admin only. A removed sub-region's
+    events go back to general, and an event can only go in its own region's sub-region.
+  - Client mirror: `subApply`.
+- **Region page:** chips under the breadcrumb read "All of <region> · <sub-regions> · ⚙"
+  (`curSub`, sessionStorage `tbs_subr` per region).
+  - With one chosen, `renderAll` draws the whole page through `withSub`/`subState`: the other
+    sub-regions' events, and the general part's sales and costs (warehouse sales, region-wide
+    costs), are left out. Stock is untouched, since the warehouse is shared.
+  - A note says that selling straight from the warehouse counts for the whole region.
+  - The place picker groups events by sub-region (optgroups).
+- **⚙ / 🗺 Sub-regions** (left menu, region level; `subRegionsModal`): add, rename and remove
+  sub-regions, and say which one each event is in.
+- **Event form:** "Sub-region" select when the region has any; it defaults to the chip being looked at.
+- **Collections by Region** (season): each region's sub-regions beneath it, then "<region>, general"
+  (`cbr-sub` rows, for reading; the region's line is the one that adds up).
+- **WhatsApp report** (`buildReport`):
+  - On All, the books section gains "— BY SUB-REGION —": each sub-region's Big Books and
+    Adventures as "N Sold + N Gifts = N Distributed".
+  - The payments section gains "— BY SUB-REGION (after costs) —".
+  - With one sub-region chosen, the report is that sub-region's.
+- **Finance:**
+  - Scope ids `sr_…` (`finSubOf`, `finScopeF().u/uE`), with a sub-region picker in the bar. The
+    place search lists sub-regions under their region, tagged, with their events beneath.
+  - A region with sub-regions breaks down "By Sub-region" plus "<region>, general".
+  - A sub-region's page counts its own events' money and costs. Under the tiles,
+    `finSubShareHTML` shows its share of the region's general expenses, split by books
+    distributed, and "Net after its share". This sits beside Net, never in it.
+- **Not done yet:** a warehouse sale can't be put in a sub-region (it counts as general), and the
+  old Europe Tour Spain data hasn't been merged. Both are waiting on Gita.
+- Tests: browser-subregions.js (26 checks, incl. overflow at 390 and 1150 px).
