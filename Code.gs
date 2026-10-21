@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b267';
+var SERVER_BUILD = 'b269';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -376,10 +376,11 @@ function financeData_() {
     if (!w) return;                                   // a place since deleted
     var b = s.bookId ? bookById_(String(s.bookId)) : null;
     var type = String(s.type || 'SALE'), got = received_(s);
-    var f = saleFactor_(s), gross = 0, cur = {}, cu = {}, pays = {}, legN = 0, giftN = 0;
+    var f = saleFactor_(s), gross = 0, cur = {}, cu = {}, pays = {}, legN = 0, giftN = 0, other = 0;
     eachLeg_(s, function (l) {
       legN++; if (l.type === 'Gift') giftN++;
       if (!l.amt || l.type === 'Gift') return;
+      if (String(l.cur).toUpperCase() !== 'USD') other = 1;
       var u = legTruthUsd_(s, l, f);
       gross += u;
       pays[l.type] = 1;
@@ -393,7 +394,9 @@ function financeData_() {
       by: String(s.soldBy || ''), pay: Object.keys(pays), con: isPartnerSale_(s) ? (partners[partnerOfBook_(String(s.bookId))] || 'Consignment') : '',
       gu: r2(got ? gross : 0), pu: r2(pend), cur: cur,
       // b267: the dollars each currency counted for, so "dollars received" can replace them; and hand-entered dollars, which stay.
-      cu: cu, ua: usdActualIn_(s.usdActual) !== '' ? 1 : 0 });
+      cu: cu, ua: usdActualIn_(s.usdActual) !== '' ? 1 : 0,
+      // b269: its dollars are worked out from a rate (shown with ~), not money counted in dollars.
+      ue: other && usdActualIn_(s.usdActual) === '' ? 1 : 0 });
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
@@ -404,7 +407,7 @@ function financeData_() {
       cat: String(x.category || 'Other') + (String(x.category || 'Other') === 'Other' && x.catOther ? ': ' + String(x.catOther) : ''),
       kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
-      cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(expUsd_(x, loc)), usdExact: Number(x.usdAmt) > 0 ? 1 : 0 });
+      cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(expUsd_(x, loc)), usdExact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' ? 1 : 0 });
   });
   var list = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
   return { seasons: seasons, regions: list(regs), events: list(evs), sales: sales, expenses: expenses };

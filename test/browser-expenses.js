@@ -252,9 +252,9 @@ const API = 'http://api.test/';
     m = await fpage(own);
     t.push(['Universal: Menu › Finance goes to the Finance page', await onFin(own) && /#finance\/overview/.test(own.url())]);
     t.push(['…the app\'s own panels are out of the way', await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display === 'none')]);
-    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected \$/.test(m) && /Net/.test(m)]);
-    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending payments\s*\$3\.75/i.test(m)]);
-    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*\$[\d.]+\s*(₹[\d,]+\s*)?Expected \$17\.63/i.test(m)]);
+    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected ~\$/.test(m) && /Net/.test(m)]);
+    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending payments\s*~\$3\.75/i.test(m)]);
+    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*~?\$[\d.]+\s*(₹[\d,]+\s*)?Expected ~\$17\.63/i.test(m)]);
     t.push(['…the Overview keeps to its seven figures (no pending reimbursements)', !/Pending Reimbursements/i.test(m)]);
     t.push(['…at every level: the season row', /Kartika/.test(m)]);
     await own.click('#fpBody [data-act="fingo"]'); await own.waitForTimeout(500);       // Kartika

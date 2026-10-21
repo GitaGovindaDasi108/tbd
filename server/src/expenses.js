@@ -374,6 +374,9 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       x.from = (dt[k][x.id] || {}).from || ''; x.to = (dt[k][x.id] || {}).to || '';
     }));
     D.mayEdit = mayPay(w);
+    // An expense its place has no rate for still gets dollars (b269): the rate nearest its day, as an estimate.
+    D.expenses.forEach(x => { if (!(x.usd > 0) && x.amt > 0 && String(x.cur).toUpperCase() !== 'USD') {
+      const r = rateNow(String(x.cur).toUpperCase(), 'USD', x.d); if (r && r.rate > 0) { x.usd = Math.round(x.amt * r.rate * 100) / 100; x.usdExact = 0; } } });
     D.convs = convApply(D);
     return D;
   }
@@ -398,8 +401,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       if (x.con || x.ua || !x.cu) return;
       Object.keys(x.cur || {}).forEach(c => {
         const r = rateFor(x, c); if (r === null || !(c in x.cu)) return;
-        x.gu = Math.round((x.gu - x.cu[c] + x.cur[c] * r) * 100) / 100; x.cv = 1;
+        x.gu = Math.round((x.gu - x.cu[c] + x.cur[c] * r) * 100) / 100; x.cv = 1; (x.cvd = x.cvd || {})[c] = 1;
       });
+      // Every other currency in it counted at a real exchange: its dollars are no longer an estimate.
+      if (x.cv && !(x.pu > 0) && Object.keys(x.cur || {}).every(c => c === 'USD' || x.cvd[c])) x.ue = 0;
+      delete x.cvd;
     });
     return list;
   }
@@ -525,7 +531,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function payGuess(r) {
     const cur = String(r.cur || '').toUpperCase(), rc = String(r.reimbCur || '').toUpperCase();
     if (r.kind !== 'reimburse' || !rc || rc === cur) return null;
-    const x = rateNow(cur, rc);
+    const x = rateNow(cur, rc, String(r.date || ''));
     return x && x.rate > 0 ? { amt: Math.round((Number(r.amt) || 0) * x.rate * 100) / 100, cur: rc, rate: x.rate, on: x.on, fallback: true } : null;
   }
   /* The dollars at the rate on the day of the expense (b265): the rate comes

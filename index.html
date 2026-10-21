@@ -705,6 +705,9 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .rs-row>span{flex:1}
 /* Expenses & Reimbursements: two sections (b257) */
 .fin-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.fin-sh-btns{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+/* A colour key never squeezed away by a long name beside it (Gita, 2026-10-21). */
+.fin-key{flex:none}
 .fin-sh .fin-h3{margin:2px 0}
 .fin-tiles1{grid-template-columns:1fr !important;margin:6px 0 8px}
 .fin-flt{margin:4px 0 8px}
@@ -2008,7 +2011,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b268</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b269</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -8843,7 +8846,7 @@ function expCardHTML(x, fin){
   }
   const contact = fin ? expContactHTML(x) : '';
   return `<div class="exp-card exp-k-${esc(x.kind)}">
-      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt">${esc(fin && x.usd!==undefined ? finDual(x.amt, x.cur, x.usd) : cashFmt(x.amt, x.cur))}</span></div>
+      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt">${esc(fin && x.usd!==undefined ? finDual(x.amt, x.cur, x.usd, !x.usdExact) : cashFmt(x.amt, x.cur))}</span></div>
       <div class="exp-meta">${esc(x.date)} · ${who} · ${esc(x.placeLabel)}</div>
       ${String(x.cur).toUpperCase()!=='USD' && (Number(x.usdAmt) > 0 || (x.usdDay && x.usdDay.rate)) ? `<div class="exp-meta">${Number(x.usdAmt) > 0
         ? 'In dollars: ' + esc(finUsd(Number(x.usdAmt))) + ', the exact amount given'
@@ -9582,7 +9585,7 @@ function finDraw(){
     ${esc(label)} <span class="fin-n">${n}</span></button>`;
   let body = '';
   if(EXP.tab==='reimb') body = reimb.length
-    ? `<div class="hint">To pay back: <b>${esc(finTotals(reimb.filter(expPayOut), x=>[expPayOut(x)]) || finTotals(reimb, x=>[[x.amt, x.cur]]))}</b></div>${expGroups(reimb).map(expGroupHTML).join('')}`
+    ? `<div class="hint">To pay back: <b>${esc(finPayText(reimb) || finTotals(reimb, x=>[[x.amt, x.cur]]))}</b></div>${expGroups(reimb).map(expGroupHTML).join('')}`
     : '<div class="cash-empty">Nothing waiting to be paid back.</div>';
   if(EXP.tab==='pay') body = pend.length
     ? `<div class="hint">Still owed to the tour: <b>${esc(finTotals(pend, p=>(p.owed||[]).map(o=>[o.amt, o.cur])))}</b></div>
@@ -9801,6 +9804,8 @@ function finAgg(sales, exps){
   const addCur = (o, c, v) => { if(c && v) o[c] = (o[c]||0) + v; };
   sales.forEach(x=>{
     if(!x.con) Object.keys(x.cur||{}).forEach(c=>{ addCur(a.cur.coll, c, x.cur[c]); if(x.k==='DONATION') addCur(a.cur.don, c, x.cur[c]); });
+    // Which figures hold dollars worked out from a rate (~).
+    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
     const n = x.q || (x.b ? 1 : 0);
     if(x.g) a.gifts += n; else a.books += n;
@@ -9814,8 +9819,8 @@ function finAgg(sales, exps){
   a.gross = a.coll + a.pend;
   exps.forEach(x=>{
     if(x.st==='declined') return;
-    if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); }
-    if(x.kind==='reimburse' && x.st==='pending') a.reimb += x.usd;
+    if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); if(!x.usdExact) a.eExp = 1; }
+    if(x.kind==='reimburse' && x.st==='pending'){ a.reimb += x.usd; if(!x.usdExact) a.eReimb = 1; }
   });
   // What has actually been spent and kept (Gita, 2026-10-20); what is
   // expected once everything owed comes in and everyone is paid back.
@@ -9825,9 +9830,11 @@ function finAgg(sales, exps){
   a.margin = a.coll > 0 ? a.net / a.coll * 100 : null;
   return a;
 }
-const finUsd = n => { const a = Math.abs(Math.round(n*100)/100);
+/* Dollars worked out from an exchange rate carry ~ (Gita, 2026-10-21);
+   dollars counted or logged as dollars don't. */
+const finUsd = (n, est) => { const a = Math.abs(Math.round(n*100)/100);
   // Cents always in two places ($50.80, not $50.8); whole dollars as they are.
-  return (n<0?'−':'') + '$' + (a % 1 ? a.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : fmt(a)); };
+  return (est && a ? '~' : '') + (n<0?'−':'') + '$' + (a % 1 ? a.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : fmt(a)); };
 function finVal(m, v){
   if(v===null || v===undefined) return '—';
   if(m.pct) return Math.round(v*10)/10 + '%';
@@ -9924,13 +9931,13 @@ function finDist(sold, gift){
 const finPending = a => a.pend > 0.004;
 const finToRepay = a => a.reimb > 0.004;
 function finGrossParts(a){
-  return {l:'Gross', v:finUsd(a.coll), ex:finPending(a) ? 'Expected ' + finUsd(a.gross) : ''};
+  return {l:'Gross', v:finUsd(a.coll, a.eColl), ex:finPending(a) ? 'Expected ' + finUsd(a.gross, a.eColl || a.ePend) : ''};
 }
 function finExpParts(a){
-  return {l:'Expenses', v:finUsd(a.spent), ex:finToRepay(a) ? 'Expected ' + finUsd(a.exp) : ''};
+  return {l:'Expenses', v:finUsd(a.spent, a.eExp), ex:finToRepay(a) ? 'Expected ' + finUsd(a.exp, a.eExp) : ''};
 }
 function finNetParts(a){
-  return {l:'Net', v:finUsd(a.net), ex:finPending(a) || finToRepay(a) ? 'Expected ' + finUsd(a.netExp) : ''};
+  return {l:'Net', v:finUsd(a.net, a.eColl || a.eExp), ex:finPending(a) || finToRepay(a) ? 'Expected ' + finUsd(a.netExp, a.eColl || a.ePend || a.eExp) : ''};
 }
 const finExHTML = (m, cls) => m.ex ? `<div class="${cls} fin-ex-l">${esc(m.ex)}</div>` : '';
 /* The actual money, currency by currency, as the sales page's totals bar
@@ -9946,10 +9953,10 @@ function finCurs(o){
 function finOverviewFigs(a){
   const g = finGrossParts(a), e = finExpParts(a), n = finNetParts(a);
   return [
-    {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu), sub:finDist(a.bb, a.bbg)},
-    {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu), sub:finDist(a.av, a.avg)},
-    {k:'don',  l:'Donations',         v:finUsd(a.don), sub:'', cur:finCurs(a.cur.don)},
-    {k:'pend', l:'Pending Payments',  v:finUsd(a.pend), sub:''},
+    {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu, a.eBb), sub:finDist(a.bb, a.bbg)},
+    {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu, a.eAv), sub:finDist(a.av, a.avg)},
+    {k:'don',  l:'Donations',         v:finUsd(a.don, a.eDon), sub:'', cur:finCurs(a.cur.don)},
+    {k:'pend', l:'Pending Payments',  v:finUsd(a.pend, a.ePend), sub:''},
     {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
     {k:'exp',  l:e.l,                 v:e.v, sub:'', ex:e.ex, cur:finCurs(a.cur.exp)},
     {k:'net',  l:n.l,                 v:n.v, sub:a.margin===null ? '' : 'Margin ' + finVal({pct:true}, a.margin), ex:n.ex}];
@@ -9993,11 +10000,9 @@ function finOverviewHTML(){
       ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
   return `${finFiltersHTML(FIN.f, true)}
     <div class="fin-tiles">${tiles}</div>
-    <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. Net is Gross less Expenses; the margin is Net as a share of Gross.
+    <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ~ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
-    ${FIN.D.mayEdit || (FIN.D.convs||[]).length ? `<div class="fin-conv-row"><button type="button" class="btn btn-ghost btn-sm" onclick="finConvModal()">💱 Dollars received${
-      (FIN.D.convs||[]).length ? ' (' + FIN.D.convs.length + ')' : ''}</button>
-      <span class="muted-note">Took money in another currency and got dollars for it? Write it down here, and it replaces the estimated dollars.</span></div>` : ''}
+
     <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}</h3>
     <div class="fin-scroll"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${figs.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
       <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${figs.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
@@ -10969,19 +10974,18 @@ function finRender(){
    expense at all, so neither is counted. */
 function finExpList(){
   const f = finScopeF(), usd = {}, ff = FIN.f;
-  ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; });
+  const ux = {}; ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; ux[x.id] = x.usdExact; });
   return (EXP.all || []).filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e)
       && (!ff.from || x.date >= ff.from) && (!ff.to || x.date <= ff.to))
-    .map(x=>Object.assign({}, x, { usd: usd[x.id]===undefined ? null : usd[x.id], who: x.forName || x.byName || '',
+    .map(x=>Object.assign({}, x, { usd: usd[x.id]===undefined ? null : usd[x.id], usdExact: ux[x.id], who: x.forName || x.byName || '',
       type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other') }));
 }
 function finExpTotals(list){
   const T = {all:0, due:0, dueN:0, dueOut:{}};
   list.forEach(x=>{
     if(x.status==='declined' || x.partnerId) return;
-    const u = x.usd || 0; T.all += u;
-    if(x.kind==='reimburse' && x.status==='pending'){ T.due += u; T.dueN++;
-      const o = expPayOut(x) || [u, 'USD']; T.dueOut[o[1]] = (T.dueOut[o[1]]||0) + Number(o[0]||0); }
+    const u = x.usd || 0; T.all += u; if(!x.usdExact) T.est = 1;
+    if(x.kind==='reimburse' && x.status==='pending'){ T.due += u; T.dueN++; (T.dueList = T.dueList || []).push(x); if(!x.usdExact) T.estDue = 1; }
   });
   T.current = T.all - T.due;
   return T;
@@ -11040,6 +11044,29 @@ function finConvModal(edit){
     try{ done(await post({action:'finConvDel', id:b.dataset.cvdel})); }catch(err){ toast(err.message, true); }
   }));
 }
+/* What is owed (Gita, 2026-10-21): in whatever currency each person asked
+   for, with the dollars beside it: "500 € (~$555)". All in dollars, just the
+   one figure. Several currencies: "$169.05 + 765 zł (~$370)". ~ unless every
+   dollar in it was logged rather than worked out from a rate. */
+function finPayOut(xs){
+  const by = {}; let usd = 0, est = false, unknown = false;
+  const row = x => (FIN.D && FIN.D.expenses || []).find(y=>y.id===x.id) || {};
+  xs.forEach(x=>{
+    const o = expPayOut(x), r = row(x), u = x.usd!=null ? x.usd : r.usd, exact = x.usdExact!=null ? x.usdExact : r.usdExact;
+    if(!o){ est = true; if(u!=null){ by.USD = (by.USD||0) + u; usd += u; } return; }
+    by[o[1]] = (by[o[1]]||0) + Number(o[0]||0);
+    if(String(o[1]).toUpperCase()==='USD'){ usd += Number(o[0]||0); if(!(String(x.cur).toUpperCase()==='USD' || (x.payAmt && x.payAmt.exact))) est = true; }
+    else { if(!(u > 0)) unknown = true; else { usd += u; if(!exact) est = true; } }
+  });
+  return {by, usd, est, unknown};
+}
+function finPayText(xs){
+  const P = finPayOut(xs), ks = Object.keys(P.by).filter(c=>Math.abs(P.by[c]) > 0.004).sort((a,b)=>(a==='USD'?-1:b==='USD'?1:a.localeCompare(b)));
+  if(!ks.length) return '';
+  if(ks.length===1 && ks[0]==='USD') return finUsd(P.by.USD, P.est);
+  // Dollars not known for some of it (no rate anywhere yet): the amounts alone, never a wrong dollar figure.
+  return ks.map(c=>c==='USD' ? finUsd(P.by[c], P.est) : cashFmt(P.by[c], c)).join(' + ') + (P.unknown ? '' : ' (' + finUsd(P.usd, P.est) + ')');
+}
 /* What is owed, in the currencies it will be paid in, dollars first (b267,
    Gita): "$169.05 + 765 zł". */
 function finMix(o){
@@ -11047,8 +11074,8 @@ function finMix(o){
   return ks.map(c=>c==='USD' ? finUsd(o[c]) : cashFmt(o[c], c)).join(' + ');
 }
 function finExpFigs(T){
-  const ex = {l:'Expenses', v:finUsd(T.current), sub:'', ex:T.due > 0.004 ? 'Expected ' + finUsd(T.all) : ''};
-  return [ex, {l:'Reimbursements Due', v:esc(finMix(T.dueOut) || finUsd(0)), sub: T.dueN ? T.dueN + ' to pay back' : ''}];
+  const ex = {l:'Expenses', v:finUsd(T.current, T.est), sub:'', ex:T.due > 0.004 ? 'Expected ' + finUsd(T.all, T.est) : ''};
+  return [ex, {l:'Reimbursements Due', v:esc(finPayText(T.dueList || []) || finUsd(0)), sub: T.dueN ? T.dueN + ' to pay back' : ''}];
 }
 function finExpBarHTML(T, only){
   const figs = finExpFigs(T).filter((m,i)=>only===undefined || i===only);
@@ -11073,8 +11100,8 @@ function finWaExpBar(T, L){
 }
 /* Dollars always last and never in brackets (Gita, 2026-10-20): "(500 ден) $9.08",
    so a glance down the list reads dollars, and the bracket shows which are worked out. */
-const finDual = (amt, cur, usd) => String(cur).toUpperCase()==='USD' || usd===null || usd===undefined ? cashFmt(amt, cur) : '(' + cashFmt(amt, cur) + ') ' + finUsd(usd);
-const finExpAmt = x => finDual(x.amt, x.cur, x.usd);
+const finDual = (amt, cur, usd, est) => String(cur).toUpperCase()==='USD' || usd===null || usd===undefined ? cashFmt(amt, cur) : '(' + cashFmt(amt, cur) + ') ' + finUsd(usd, est);
+const finExpAmt = x => finDual(x.amt, x.cur, x.usd, !x.usdExact);
 
 /* Expenses: sort by date, name, amount or type; filter with checklists that
    drop down, as the sales log's do (Gita, 2026-10-20). */
@@ -11124,7 +11151,9 @@ function finExpSecHTML(){
           <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑 Delete</button>` : ''}</div>
       </div></div>`; };
   return `<div class="fin-sh"><h3 class="fin-h3">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h3>
-      <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></div>
+      <span class="fin-sh-btns">${FIN.D.mayEdit || (FIN.D.convs||[]).length ? `<button type="button" class="btn btn-ghost btn-xs" onclick="finConvModal()"
+        title="Took money in another currency and got dollars for it? Write it down, and it replaces the estimated dollars.">💱 Dollars received${(FIN.D.convs||[]).length ? ' (' + FIN.D.convs.length + ')' : ''}</button>` : ''}
+      <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></span></div>
     ${finExpBarHTML(finExpTotals(all), 0)}
     <div class="fin-filters">
       <label class="fin-search">Search<input type="search" id="finExQ" value="${esc(E.q)}" placeholder="Names, what for, places…"></label>
@@ -11240,7 +11269,7 @@ function expOver(x){
 function expGroupHTML(xs){
   const x = xs[0], may = EXP.opt && EXP.opt.mayPay, ids = xs.map(y=>y.id).join(',');
   const yes = xs.filter(y=>!FIN.rbNo.has(y.id)), unknown = yes.filter(y=>!expPayOut(y));
-  const total = finTotals(yes.filter(expPayOut), y=>[expPayOut(y)]) || '—';
+  const total = finPayText(yes) || '—';
   const open = FIN.rbOpen.has(ids);
   const ways = [...new Map(xs.map(y=>[[y.method, y.reimbCur, JSON.stringify(y.payTo||{})].join('|'), y])).values()];
   const items = xs.map(y=>{ const off = FIN.rbNo.has(y.id), out = expPayOut(y);
@@ -11281,7 +11310,7 @@ function finRbDoneHTML(x){
       <div class="li-row" data-act="rbopen" data-g="${esc(x.id)}"><span class="li-chev">▶</span>
         <span class="li-book no-edit">${esc(x.forName || x.byName || '')}</span>
         <span class="li-who">${esc(x.desc)}</span>
-        <span class="li-amt">${esc(out ? cashFmt(out[0], out[1]) : cashFmt(x.amt, x.cur))}</span>
+        <span class="li-amt">${esc(finPayText([x]) || cashFmt(x.amt, x.cur))}</span>
         <span class="badge ${x.status==='paid' ? 'sale' : 'rb-dec'}">${esc(when)}</span></div>
       <div class="li-det rb-det">${expCardHTML(x, true)}</div>
     </div>`;
@@ -11305,7 +11334,7 @@ function finReimbRender(){
   const tot = finTotals(list, x=>[[x.amt, x.cur]]);
   const empty = {pending:'Nothing waiting to be paid back here.', paid:'Nothing paid back yet.', declined:'Nothing declined.'}[R.tab] || 'None yet.';
   $('#fpBody').innerHTML = finExpTop() + (list.length
-    ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finTotals(list.filter(expPayOut), x=>[expPayOut(x)]) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(finRbDoneHTML).join('')}`
+    ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finPayText(list) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(finRbDoneHTML).join('')}`
     : `<div class="cash-empty">${empty}</div>`) + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   // Sent in before b259, or the rate was not found then: look it up now.
@@ -11320,11 +11349,11 @@ function finWaReimb(L, noBar){
   if(pend.length){
     if(!noBar) L.push('');
     expGroups(pend).forEach(xs=>{
-      L.push('*' + xs[0].who + '* - ' + (finTotals(xs.filter(expPayOut), x=>[expPayOut(x)]) || '—') + ' by ' + [...new Set(xs.map(x=>x.method + ' in ' + x.reimbCur))].join(', '));
+      L.push('*' + xs[0].who + '* - ' + (finPayText(xs) || '—') + ' by ' + [...new Set(xs.map(x=>x.method + ' in ' + x.reimbCur))].join(', '));
       xs.forEach(x=>{ const o = expOtherCur(x) && expPayOut(x);
         L.push('   ' + x.desc + ' - ' + (o && String(o[1]).toUpperCase()==='USD' ? finDual(x.amt, x.cur, o[0]) : cashFmt(x.amt, x.cur) + (o ? ' (' + cashFmt(...o) + ')' : ''))); });
     });
-    L.push('To pay back - ' + (finTotals(pend.filter(expPayOut), x=>[expPayOut(x)]) || finTotals(pend, x=>[[x.amt, x.cur]])));
+    L.push('To pay back - ' + (finPayText(pend) || finTotals(pend, x=>[[x.amt, x.cur]])));
   }
 }
 /* The links: make one (anywhere, or for one place), send it by WhatsApp or
@@ -11532,9 +11561,9 @@ function finDonutHTML(rows, label, totalLabel){
   const total = finShare(rows);
   if(!rows.length) return '';
   const legend = rows.map(r=>`<div class="fc-key"><span class="fin-key" style="background:${r.c}"></span><span class="no-edit">${esc(r.k)}</span>
-      <b>${finUsd(r.v)}</b> <span class="muted-note">${finPct(r.p)}</span></div>`).join('');
+      <b>${finUsd(r.v, r.e)}</b> <span class="muted-note">${finPct(r.p)}</span></div>`).join('');
   return `<div class="fc-donut"><div class="fc-ring">${finPieSVG(rows, total).replace('aria-label="Expenses by type"', `aria-label="${esc(label)}"`)}
-      <div class="fc-mid"><b>${finUsd(total)}</b><span>${esc(totalLabel || 'Total')}</span></div></div>
+      <div class="fc-mid"><b>${finUsd(total, rows.some(r=>r.e))}</b><span>${esc(totalLabel || 'Total')}</span></div></div>
     <div class="fc-legend">${legend}</div></div>`;
 }
 /* Bars across: what is in hand, and (lighter, behind) what is expected. */
@@ -11546,7 +11575,7 @@ function finHBarsHTML(rows){
       <span class="fc-hl no-edit">${esc(r.k)}</span>
       <span class="fc-ht">${r.ex!=null ? `<span class="fc-hb fc-exp" style="width:${w(r.ex)}%;border-color:${r.c}"></span>` : ''}
         <span class="fc-hb" style="width:${w(r.v)}%;background:${r.v < 0 ? '#e34948' : r.c}"></span></span>
-      <span class="fc-hv">${finUsd(r.v)}${r.ex!=null ? `<span class="fin-ex-l">Expected ${finUsd(r.ex)}</span>` : ''}</span></div>`; }).join('')}</div>`;
+      <span class="fc-hv">${finUsd(r.v, r.e)}${r.ex!=null ? `<span class="fin-ex-l">Expected ${finUsd(r.ex, r.e)}</span>` : ''}</span></div>`; }).join('')}</div>`;
 }
 /* Two bars a row (money in, money out), one row a place. */
 function finPairsHTML(rows, a, b){
@@ -11566,7 +11595,7 @@ function finMonthsHTML(series){
   const max = Math.max(1, ...series.flatMap(x=>ks.map(k=>x.by[k]||0)));
   const lab = k => FIN_MON[Number(k.slice(5,7))-1] + ' ' + k.slice(2,4);
   return `${series.length > 1 ? `<div class="fc-keys">${series.map(x=>`<span><span class="fin-key" style="background:${x.c}"></span>${esc(x.l)}</span>`).join('')}</div>` : ''}
-    <div class="fc-cols">${ks.map(k=>`<div class="fc-col"><div class="fc-cbars">${series.map(x=>`<span class="fc-cb" style="height:${(x.by[k]||0) ? Math.max(1.5, (x.by[k]||0)/max*100) : 0}%;background:${x.c}" title="${esc(x.l)}, ${lab(k)}: ${finUsd(x.by[k]||0)}"></span>`).join('')}</div>
+    <div class="fc-cols">${ks.map(k=>`<div class="fc-col"><div class="fc-cbars">${series.map(x=>`<span class="fc-cb" style="height:${(x.by[k]||0) ? Math.max(1.5, Math.abs(x.by[k]||0)/max*100) : 0}%;background:${(x.by[k]||0) < 0 ? '#e34948' : x.c}" title="${esc(x.l)}, ${lab(k)}: ${finUsd(x.by[k]||0)}"></span>`).join('')}</div>
       <div class="fc-cl">${lab(k)}</div></div>`).join('')}</div>`;
 }
 const finByMonth = (list, d, v) => { const by = {}; list.forEach(x=>{ const k = String(d(x)||'').slice(0,7), n = v(x); if(/^\d{4}-\d\d$/.test(k) && n) by[k] = (by[k]||0) + n; }); return by; };
@@ -11578,13 +11607,13 @@ function finChartsHTML(){
   if(sec==='overview'){
     const O = finOverviewRows(), a = O.total, {sales, exps} = finFiltered(FIN.f);
     out.push(finChart('Where the money comes from', finDonutHTML([
-      {k:'Big Books', v:a.bbu, c:FIN_C.bb}, {k:'Adventures', v:a.avu, c:FIN_C.av}, {k:'Donations', v:a.don, c:FIN_C.don},
-      {k:'Pending Payments', v:a.pend, c:FIN_C.pend}].filter(r=>r.v > 0.004), 'Where the money comes from', 'Expected Gross')));
+      {k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon},
+      {k:'Pending Payments', v:a.pend, c:FIN_C.pend, e:a.ePend}].filter(r=>r.v > 0.004), 'Where the money comes from', 'Expected Gross')));
     const pend = finPending(a), owe = finToRepay(a);
     out.push(finChart('Money in and out', finHBarsHTML([
-      {k:'Gross', v:a.coll, ex:pend ? a.gross : null, c:FIN_C.in},
-      {k:'Expenses', v:a.spent, ex:owe ? a.exp : null, c:FIN_C.out},
-      {k:'Net', v:a.net, ex:pend || owe ? a.netExp : null, c:FIN_C.net}])));
+      {k:'Gross', v:a.coll, ex:pend ? a.gross : null, c:FIN_C.in, e:a.eColl || a.ePend},
+      {k:'Expenses', v:a.spent, ex:owe ? a.exp : null, c:FIN_C.out, e:a.eExp},
+      {k:'Net', v:a.net, ex:pend || owe ? a.netExp : null, c:FIN_C.net, e:a.eColl || a.ePend || a.eExp}])));
     if(O.rows.length > 1) out.push(finChart(O.what.replace(/^By /, 'Gross and Expenses by '), finPairsHTML(
       O.rows.map(r=>({k:r.label, a:r.a.coll, b:r.a.exp})).filter(r=>r.a > 0.004 || r.b > 0.004), {l:'Gross', c:FIN_C.in}, {l:'Expenses', c:FIN_C.out}), true));
     out.push(finChart('Month by month', finMonthsHTML([
@@ -11595,8 +11624,17 @@ function finChartsHTML(){
   if(sec==='expenses'){
     const all = finExpList().filter(x=>x.status!=='declined' && !x.partnerId), byT = {};
     all.forEach(x=>{ byT[x.type] = (byT[x.type]||0) + (x.usd||0); });
+    /* Expenses always beside Gross and Net (Gita, 2026-10-21), for the place
+       chosen and the dates set, as the Overview counts them. */
+    const {sales, exps} = finFiltered(Object.assign({}, FIN.f, finScopeF())), a = finAgg(sales, exps), pend = finPending(a), owe = finToRepay(a);
+    out.push(finChart('Gross, Expenses and Net', finHBarsHTML([
+      {k:'Gross', v:a.coll, ex:pend ? a.gross : null, c:FIN_C.in, e:a.eColl || a.ePend},
+      {k:'Expenses', v:a.spent, ex:owe ? a.exp : null, c:FIN_C.out, e:a.eExp},
+      {k:'Net', v:a.net, ex:pend || owe ? a.netExp : null, c:FIN_C.net, e:a.eColl || a.ePend || a.eExp}])));
     out.push(finChart('Expenses by type', finDonutHTML(finTop(byT), 'Expenses by type', 'Expenses')));
-    out.push(finChart('Expenses month by month', finMonthsHTML([{l:'Expenses', c:FIN_C.out, by:finByMonth(all, x=>x.date, x=>x.usd||0)}])));
+    const gM = finByMonth(sales.filter(x=>!x.con), x=>x.d, x=>x.gu), eM = finByMonth(all, x=>x.date, x=>x.usd||0), nM = {};
+    [...new Set(Object.keys(gM).concat(Object.keys(eM)))].forEach(k=>{ nM[k] = (gM[k]||0) - (eM[k]||0); });
+    out.push(finChart('Month by month: Gross, Expenses and Net', finMonthsHTML([{l:'Gross', c:FIN_C.in, by:gM}, {l:'Expenses', c:FIN_C.out, by:eM}, {l:'Net', c:FIN_C.net, by:nM}]), true));
     const rb = finExpList().filter(x=>x.kind==='reimburse'), sum = k => rb.filter(x=>x.status===k).reduce((t,x)=>t+finUsdOf(x), 0);
     if(rb.length) out.push(finChart('Reimbursements', finHBarsHTML([{k:'Paid back', v:sum('paid'), c:FIN_C.in}, {k:'Pending', v:sum('pending'), c:'#eda100'},
       {k:'Declined', v:sum('declined'), c:'#9aa5b1'}])));
@@ -11613,7 +11651,7 @@ function finChartsHTML(){
   }
   const boxes = out.filter(Boolean);
   return boxes.length ? `<h3 class="fin-h3">📊 At a glance</h3><div class="fc-grid">${boxes.join('')}</div>
-    <div class="muted-note">In dollars, at each place's own rates. Declined expenses and consignment groups' money are left out.</div>` : '';
+    <div class="muted-note">In dollars, at each place's own rates; ~ marks dollars worked out from an exchange rate. Declined expenses and consignment groups' money are left out.</div>` : '';
 }
 /* Always the last thing on the page, under every section. */
 function finChartsMount(){

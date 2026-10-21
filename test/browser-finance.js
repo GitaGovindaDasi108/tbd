@@ -36,7 +36,7 @@ const API = 'http://api.test/';
     if (/oauth2\/v3\/certs/.test(url)) return { ok: true, status: 200, json: async () => ({ keys: [pub] }) };
     if (/api\.frankfurter\.app\/\d{4}-\d\d-\d\d\?from=EUR&to=USD/.test(url)) { fxAsked.push(url); return { ok: true, status: 200, text: async () => JSON.stringify({ amount: 1, base: 'EUR', date: url.match(/app\/([\d-]+)/)[1], rates: { USD: 1.1 } }) }; }
     if (/frankfurter\.app\/[\d-]+\?from=GBP/.test(url)) return new Promise(() => {});   // b267: a source that never answers
-    if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80 }, time_last_update_utc: 'today' }) };
+    if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80, PLN: 4 }, time_last_update_utc: 'today' }) };
     throw new Error('offline');
   };
   const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com', practice: true });
@@ -373,7 +373,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => { const g = [...document.querySelectorAll('#finRbS .exp-group')].find(e => /Bhima/.test(e.textContent));
       const row = [...g.querySelectorAll('[data-act="rbline"][data-on=""]')].find(b => /Parking/.test(b.closest('.exp-line, .exp-li, div').parentElement.innerText)) || g.querySelector('[data-act="rbline"][data-on=""]'); row.click(); }); await own.waitForTimeout(500);
     t.push(['b259: declining one line takes it off the total, and the row stays open', await own.evaluate(() => { const g = [...document.querySelectorAll('#finRbS .exp-group')].find(e => /Bhima/.test(e.textContent));
-      return /2 expenses · 1 declined/.test(g.querySelector('.li-row').innerText) && g.querySelector('.li-amt').textContent.trim() === '$8.80' && g.classList.contains('open'); })]);
+      return /2 expenses · 1 declined/.test(g.querySelector('.li-row').innerText) && g.querySelector('.li-amt').textContent.trim() === '~$8.80' && g.classList.contains('open'); })]);
     await own.evaluate(() => { FIN.rbNo.clear(); finReimbRender(); }); await own.waitForTimeout(300);
     t.push(['…with a one-tap WhatsApp confirmation, ready written', /received%20and%20will%20be%20processed/.test(await own.$eval('#fpBody a[href^="https://wa.me/385987"]', a => a.href))]);
     // b259: the charts under Expenses & Reimbursements, and its two CSVs.
@@ -513,10 +513,28 @@ const API = 'http://api.test/';
     await own.click('#cvSave'); await own.waitForTimeout(1500);
     const sale = await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1'));
     t.push(['b267: Dollars received: 35 € from the Kirtan fetched $40, and that sale now counts $40', sale && sale.gu === 40 && sale.cv === 1]);
-    t.push(['…listed with its rate, and the Overview button counts it', /\(.*35.*\) \$40/.test(await own.evaluate(() => document.querySelector('#modal').innerText)) && /Dollars received \(1\)/.test(await fpage(own))]);
+    t.push(['…listed with its rate', /\(.*35.*\) \$40/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
     await own.evaluate(() => closeModal());
+    t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
+    await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
+    t.push(['b269: …it sits beside Add an expense, and counts what is written down', await own.evaluate(() => { const b = [...document.querySelectorAll('#fpBody .fin-sh-btns button')].map(x => x.textContent.trim());
+      return b.length === 2 && /Dollars received \(1\)/.test(b[0]) && /Add an expense/.test(b[1]); })]);
+    t.push(['b269: the Expenses screen charts Gross, Expenses and Net', await own.evaluate(() => /Gross, Expenses and Net/.test(document.querySelector('#finCharts').innerText) && /Net/.test(document.querySelector('#finCharts').innerText))]);
+    t.push(['b269: every colour key in the charts keeps its square, even squeezed beside big figures', await own.evaluate(() => {
+      document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });
+      return [...document.querySelectorAll('#finCharts .fin-key')].every(k => k.getBoundingClientRect().width >= 10); })]);
+    t.push(['b269: estimated dollars carry ~, logged ones none: (10 €) ~$11 and (10 €) $12.50', await own.evaluate(() => { const t = document.querySelector('#fpBody').innerText;
+      return /\(10 €\) ~\$11\b/.test(t) && /\(10 €\) \$12\.50/.test(t) && /\n\$30\n/.test(t); })]);
+    t.push(['b269: what is owed reads in the person\'s currency, dollars beside: 765 zł (~$…)', await own.evaluate(() => {
+      const x = finExpList().find(y => y.id === 'Xpln0001'); return new RegExp('^' + cashFmt(765, 'PLN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\(~\\$[\\d.,]+\\)$').test(finPayText([x])); })]);
+    t.push(['b269: …and all in dollars, just one figure', await own.evaluate(() => finPayText([finExpList().find(y => y.id === 'Xexact01')]) === '$20')]);
+    // The fallback is the rate nearest the day asked for.
+    srv.kv.setProp('fxHist', JSON.stringify({ 'CHF>USD': { '2026-09-01': 1.1, '2026-10-01': 1.2, '2026-10-20': 1.3 } }));
+    t.push(['b269: no rate for the day: the nearest day\'s rate is used', srv.rateNow('CHF', 'USD', '2026-10-05').rate === 1.2 && srv.rateNow('CHF', 'USD', '2026-10-15').rate === 1.3 && srv.rateNow('CHF', 'USD', '2026-08-01').rate === 1.1]);
     const phone = await open('owner@example.com', 'The Owner', 390);
     await phone.evaluate(() => finGo('overview', 'rg_zg')); await phone.waitForTimeout(1500);
+    await phone.evaluate(() => document.querySelector('#finCharts').scrollIntoView()); await phone.screenshot({ path: shot('b269-phone-charts') });
+    t.push(['b269: on a phone too, every chart key keeps its colour square', await phone.evaluate(() => [...document.querySelectorAll('#finCharts .fin-key')].length > 0 && [...document.querySelectorAll('#finCharts .fin-key')].every(k => k.getBoundingClientRect().width >= 10))]);
     t.push(['phone width: no sideways scroll on the page', await phone.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)]);
     await phone.screenshot({ path: shot('fin-phone'), fullPage: true });
     await own.setViewportSize({ width: 1150, height: 1000 });
