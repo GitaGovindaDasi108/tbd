@@ -184,7 +184,7 @@ const API = 'http://api.test/';
     // Pencils on the Finance page and in its windows.
     await own.click('[data-act="finsec"][data-sec="overview"]'); await own.waitForTimeout(1200);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(800);
-    const pens = await own.evaluate(() => [...document.querySelectorAll('#finPage .pencil')].map(p => p.parentElement.textContent.replace('✏️', '').trim()));
+    const pens = await own.evaluate(() => [...document.querySelectorAll('#finPage .pencil')].map(p => p.parentElement.textContent.replace(/✏️/g, '').trim()));
     t.push(['Edit Wording works on the Finance page: pencils on headings and tiles', pens.includes('Big Books Sold') && pens.some(x => /^Overview/.test(x)) && pens.some(x => /^By Event/.test(x)) && pens.includes('Search')]);
     t.push(['…but not on place names', !pens.includes('Zagreb Kirtan')]);
     await own.click('.fp-h [data-act="finrep"]'); await own.waitForTimeout(800);
@@ -392,7 +392,7 @@ const API = 'http://api.test/';
     t.push(['…with a one-tap WhatsApp confirmation, ready written', /received%20and%20will%20be%20processed/.test(await own.$eval('#fpBody a[href^="https://wa.me/385987"]', a => a.href))]);
     // b259: the charts under Expenses & Reimbursements, and its two CSVs.
     m = await own.$eval('#finCharts', e => e.innerText);
-    t.push(['b259: under Expenses & Reimbursements: expenses by type, month by month, reimbursements, and who is still to be paid back', /Expenses by type/.test(m) && /Food/.test(m) && /Reimbursements/.test(m) && /Still to pay back, by person/.test(m) && /Bhima/.test(m)
+    t.push(['b276: under Expenses & Reimbursements: expenses by type, by month, and by the places under this page; no income charts', /Expenses by type/.test(m) && /Food/.test(m) && /Expenses by month/.test(m) && /Expenses by (Season|Region|Event)/.test(m) && !/Gross/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild && document.querySelectorAll('#finCharts .fin-pie').length >= 2)]);
     await own.screenshot({ path: shot('exp-charts'), fullPage: true });
     csv = await csvOf('expenses');
@@ -533,7 +533,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
     t.push(['b269: …it sits beside Add an expense, and counts what is written down', await own.evaluate(() => { const b = [...document.querySelectorAll('#fpBody .fin-sh-btns button')].map(x => x.textContent.trim());
       return b.length === 2 && /Dollars received \(1\)/.test(b[0]) && /Add an expense/.test(b[1]); })]);
-    t.push(['b269: the Expenses screen charts Gross, Expenses and Net', await own.evaluate(() => /Gross, Expenses and Net/.test(document.querySelector('#finCharts').innerText) && /Net/.test(document.querySelector('#finCharts').innerText))]);
+    t.push(['b276: the Expenses screen charts expenses only (income is on the Overview)', await own.evaluate(() => /Expenses by month/.test(document.querySelector('#finCharts').innerText) && !/Gross|Net/.test(document.querySelector('#finCharts').innerText))]);
     t.push(['b269: every colour key in the charts keeps its square, even squeezed beside big figures', await own.evaluate(() => {
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });
       return [...document.querySelectorAll('#finCharts .fin-key')].every(k => k.getBoundingClientRect().width >= 10); })]);
@@ -615,6 +615,20 @@ const API = 'http://api.test/';
     await lv.evaluate(() => finGo('overview', '')); await lv.waitForTimeout(1500);
     t.push(['b274: Finance opens on the live app', await lv.evaluate(() => FINP.on && /Big Books Sold/.test(document.querySelector('#fpBody').innerText))]);
     const lspill = [];
+    // b276 (Gita, 2026-10-21): Expenses & Reimbursements in the menu's Finance section.
+    const finAct = await lv.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="finance"] .sn-item')].map(b => b.dataset.act));
+    t.push(['b276: the menu\'s Finance section has Expenses & Reimbursements, after Overview', finAct.indexOf('finexpenses') === finAct.indexOf('finoverview') + 1 && finAct.includes('finexpenses')]);
+    await lv.evaluate(() => document.querySelector('#sideNav [data-act="finexpenses"]').click()); await lv.waitForTimeout(1500);
+    t.push(['b276: …and it opens Expenses & Reimbursements', await lv.evaluate(() => FINP.on && FINP.sec === 'expenses')]);
+    t.push(['b276: Expenses and Reimbursements side by side are the same height', await lv.evaluate(() => {
+      const a = document.querySelector('#finExS'), b = document.querySelector('#finRbS'); return !!a && !!b && Math.abs(a.offsetHeight - b.offsetHeight) <= 1; })]);
+    await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1200);
+    t.push(['b276: the Finance search reads "Search for Season, Region, or Event" when nothing is chosen', await lv.evaluate(() => {
+      const i = document.querySelector('#finPP .pp-in'); return !!i && i.placeholder === 'Search for Season, Region, or Event' && i.value === ''; })]);
+    await lv.evaluate(() => finGo('settings', '', {reload:true})); await lv.waitForTimeout(1500);
+    t.push(['b276: currencies for paying back start all ticked', await lv.evaluate(() => { const c = [...document.querySelectorAll('[data-rsc]')]; return c.length > 0 && c.every(x => x.checked); })]);
+    await lv.evaluate(() => { const r = document.querySelector('input[name="rsCurMode"][value="own"]'); r.checked = true; r.dispatchEvent(new Event('change')); }); await lv.waitForTimeout(200);
+    t.push(['b276: …and choosing "Only these" leaves them ticked, ready to untick', await lv.evaluate(() => [...document.querySelectorAll('[data-rsc]')].every(x => x.checked && !x.disabled))]);
     t.push(['b274: Finance on live has Overview and Expenses & Reimbursements, no To do', await lv.evaluate(() => !document.querySelector('[data-sec="todo"]') && !!document.querySelector('[data-sec="expenses"]'))]);
     for (const w of [1150, 390]) { await lv.setViewportSize({ width: w, height: 1000 });
       for (const sec of ['overview', 'expenses']) { await lv.evaluate(s => finGo(s, '', {reload:true}), sec); await lv.waitForTimeout(900);
