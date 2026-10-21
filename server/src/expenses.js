@@ -593,7 +593,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? String(p.date) : new Date(now()).toISOString().slice(0, 10);
     // On someone's behalf (Finance): their name and address go on it, Finance's as who entered it.
     let forEmail = '', forName = '';
-    if (p.forEmail && isFin(w)) {
+    if (p.forEmail === '*general' && isFin(w)) {
+      // General (b276): the tour's own expense, nobody's, so nobody is paid back.
+      forName = 'General';
+      if (kind === 'reimburse') throw new Error('A General expense is not paid back to anyone. Untick reimbursement, or choose whose expense it is.');
+    } else if (p.forEmail && isFin(w)) {
       forEmail = String(p.forEmail).trim().toLowerCase();
       const person = peopleList().find(x => x.email === forEmail);
       if (!person) throw new Error('Choose who the expense is for from the list.');

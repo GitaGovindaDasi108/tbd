@@ -143,6 +143,15 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['…and it is in that person\'s own list', r.ok && r.result.length === 1 && r.result[0].id === 'Xf1aaaaa']);
   r = await S({ action: 'expSave', id: 'Xs3aaaaa', kind: 'record', location: 'ev_cp', forEmail: 'ra@example.com', desc: 'x', cur: 'INR', amt: 1 });
   t.push(['someone not in Finance cannot record for another person', r.ok && !r.result.forEmail]);
+  // b276 (Gita): "General" — the tour's own expense, nobody's to pay back.
+  r = await Fi({ action: 'expSave', id: 'Xg1aaaaa', kind: 'record', location: 'rg_pl', forEmail: '*general', desc: 'Hall hire', cur: 'PLN', amt: 50 });
+  t.push(['Finance can record a General expense', r.ok && r.result.forName === 'General' && !r.result.forEmail]);
+  r = await Fi({ action: 'expSave', id: 'Xg2aaaaa', kind: 'reimburse', location: 'rg_pl', forEmail: '*general', desc: 'Hall hire', cur: 'PLN', amt: 50,
+    method: 'Bank transfer', reimbCur: 'PLN', payTo: { holder: 'X', iban: 'PL00' } });
+  t.push(['…but not to be paid back to anyone', !r.ok && /General/.test(r.error)]);
+  r = await S({ action: 'expSave', id: 'Xg3aaaaa', kind: 'record', location: 'ev_cp', forEmail: '*general', desc: 'x', cur: 'INR', amt: 1 });
+  t.push(['…and only Finance can choose General', r.ok && r.result.forName !== 'General']);
+  await Fi({ action: 'expDelete', id: 'Xg1aaaaa' }); await S({ action: 'expDelete', id: 'Xg3aaaaa' });
 
   // Rules: no PayPal anywhere, no UPI in Delhi except for Sita; rupees only in Delhi.
   r = await Fi({ action: 'expRulesSet', rules: { levels: { '': { methods: { PayPal: false } }, rg_in: { methods: { UPI: false }, curs: ['INR'] } },

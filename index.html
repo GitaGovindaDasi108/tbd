@@ -588,7 +588,7 @@ body.busy #busyBar{opacity:1}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
 .pencil{cursor:pointer;font-size:11px;margin-left:6px;opacity:.65;user-select:none}
 /* Rewriting in place (b254): words that can be rewritten show it, and open where they are. */
-body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:text;text-decoration:underline dotted rgba(91,45,110,.45);text-underline-offset:3px}
+body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input):not(textarea){cursor:text;text-decoration:underline dotted rgba(91,45,110,.45);text-underline-offset:3px}
 .lbl-in{position:fixed;z-index:400;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
 .lbl-in-box{background:#fff;color:var(--ink,#222);border:2px solid var(--plum,#5B2D6E);border-radius:6px;padding:2px 6px;outline:none;
   white-space:pre-wrap;box-shadow:0 6px 18px rgba(0,0,0,.18);text-transform:none;text-align:left}
@@ -597,6 +597,8 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .lbl-in-acts button[data-li="ok"]{background:var(--plum,#5B2D6E);color:#fff}
 .lbl-in-tip{font-size:11px;color:var(--muted);padding:0 6px}
 .pencil:hover{opacity:1}
+.ph-pencil{display:inline-block;margin:2px 0 0 4px}
+.lbl-hidden{opacity:.4;text-decoration:line-through}
 .lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
   margin:4px 0 12px;font-size:13.5px}
 .df-stale{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px}
@@ -711,7 +713,7 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .fin-sh .fin-h3{margin:2px 0}
 .fin-tiles1{grid-template-columns:1fr !important;margin:6px 0 8px}
 .fin-flt{margin:4px 0 8px}
-.fin-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start;margin-top:10px}
+.fin-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;margin-top:10px}
 .fin-col{min-width:0;border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--paper)}
 .fin-col>.fin-h3:first-child{margin-top:2px}
 .fin-col .fin-ex .fin-cs{font-size:12px;color:var(--muted);margin-top:3px;white-space:normal}
@@ -2142,7 +2144,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b275</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b276</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5408,7 +5410,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finoverview:['📈','Overview'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
+  finoverview:['📈','Overview'], finexpenses:['🧾','Expenses & Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5428,7 +5430,7 @@ const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','fintodo','reimbset']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finexpenses','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates','fincarry']},
@@ -5460,7 +5462,7 @@ function snKey(html){
 function renderSideNav(fams){
   let nav = document.getElementById('sideNav');
   if(!nav){
-    nav = document.createElement('aside'); nav.id = 'sideNav'; nav.className = 'side-nav no-edit';
+    nav = document.createElement('aside'); nav.id = 'sideNav'; nav.className = 'side-nav';
     document.body.appendChild(nav);
     const scrim = document.createElement('div'); scrim.id = 'snScrim'; scrim.className = 'sn-scrim'; scrim.dataset.act = 'snclose';
     document.body.appendChild(scrim);
@@ -5562,7 +5564,7 @@ const WO_OPEN = new Set();       // cards showing their bubbles (Warehouse Overv
    asked for, and kept open across redraws. `key` names the card. */
 function chipsToggleHTML(key, label, chips){
   const open = WO_OPEN.has(key);
-  return `<button type="button" class="wo-toggle" data-act="wotoggle" data-key="${esc(key)}" aria-expanded="${open}">
+  return `<button type="button" class="wo-toggle" data-act="wotoggle" data-k="${esc(key)}" aria-expanded="${open}">
       <span class="tw">${open?'▾':'▸'}</span> ${esc(label)}</button>
     <div class="wo-chips"${open?'':' hidden'}>${chips}</div>`;
 }
@@ -7217,7 +7219,7 @@ function renderSellers(){
     const mineAsks = asks.filter(h=>handKey(h)===k);
     const places = CUR_LEVEL==='region' && g.at.filter(x=>x.p.list.length || moneyLine(x.p.received)).length>1;
     return `<div class="sb-seller${open?' open':''}">
-      <button type="button" class="sb-line" data-act="sbtoggle" data-key="${esc(k)}" aria-expanded="${open}">
+      <button type="button" class="sb-line" data-act="sbtoggle" data-k="${esc(k)}" aria-expanded="${open}">
         <span class="tw">${open?'▾':'▸'}</span>
         <span class="sb-who">${esc(g.name || '(no name given)')}${mineAsks.length
           ? `<span class="sb-badge" title="${mineAsks.length} cash handover${mineAsks.length===1?'':'s'} waiting">${mineAsks.length}</span>` : ''}</span>
@@ -8626,7 +8628,7 @@ function closeModalFor(kind){
   locs.forEach(l=>{ const o=(STATE.outstanding||{})[l]||{owed:0,undelivered:0}; owed+=o.owed; und+=o.undelivered; });
 
   const body = rows.length ? rows.map(r=>`
-    <div class="cl-row" data-key="${esc(r.loc+'|'+r.book.id)}">
+    <div class="cl-row" data-k="${esc(r.loc+'|'+r.book.id)}">
       <div class="cl-name ${catOfBook(r.book)}">${esc(r.book.name)}
         ${locs.length>1?`<span class="cl-loc">${esc(locName(r.loc))}</span>`:''}</div>
       <div class="cl-exp">expected <b>${r.expected}</b></div>
@@ -9145,7 +9147,7 @@ async function expensesModal(editId, presetPartner){
   EXP.form = edit ? {id:edit.id, editing:true, kind:edit.kind, location:edit.location, date:edit.date, desc:edit.desc, cur:edit.cur, amt:edit.amt,
       category:edit.category||'Other', payType:edit.payType||'', partnerId:edit.partnerId||'',
       method:edit.method, reimbCur:edit.reimbCur, payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
-      forEmail:edit.forEmail||'', forName:edit.forName||'', catOther:edit.catOther||'', usdAmt:edit.usdAmt||''}
+      forEmail:edit.forEmail||(edit.forName==='General' ? '*general' : ''), forName:edit.forName||'', catOther:edit.catOther||'', usdAmt:edit.usdAmt||''}
     : {id:expId('X'), kind:presetPartner || FIN_ON ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
       cur:EXP.opt.defaultCur, amt:'', category:'Other', payType:'', partnerId:presetPartner||'',
       method:'', reimbCur:'', payTo:{}, notes:'', receipts:[], forEmail:'', forName:'', catOther:''};
@@ -9258,7 +9260,7 @@ function expDraw(){
       <div class="exp-form">
         ${forPick}${whoBox}
         ${expBatchHTML()}
-        ${P ? '' : FIN_ON ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement</label>` : `<div class="exp-kind">
+        ${P || f.forEmail==='*general' ? '' : FIN_ON ? `<label class="exp-rb"><input type="checkbox" id="xReimb" ${f.kind==='reimburse'?'checked':''}> Check to receive reimbursement</label>` : `<div class="exp-kind">
           <label class="exp-k${f.kind==='record'?' on':''}"><input type="radio" name="xKind" value="record" ${f.kind==='record'?'checked':''}>
             <b>For record-keeping</b><span>Spent and settled: kept in the records.</span></label>
           <label class="exp-k${f.kind==='reimburse'?' on':''}"><input type="radio" name="xKind" value="reimburse" ${f.kind==='reimburse'?'checked':''}>
@@ -9420,7 +9422,8 @@ function expBindFor(){
   const mineLabel = 'Mine (' + o.me.name + ')';
   const draw = q => {
     q = q.trim().toLowerCase();
-    const rows = [{email:'', name:mineLabel}].concat(o.people.filter(p=>p.email!==o.me.email))
+    // General (b276, Gita): the tour's own expense, nobody's to pay back.
+    const rows = [{email:'', name:mineLabel}, {email:'*general', name:'General'}].concat(o.people.filter(p=>p.email!==o.me.email))
       .filter(p=>!q || p.name.toLowerCase().includes(q) || p.email.includes(q));
     list.innerHTML = rows.map(p=>`<div class="pp-row${p.email===f.forEmail?' on':''}" data-email="${esc(p.email)}">${esc(p.name)}${
       p.email?` <span class="pp-tag">${esc(p.email)}</span>`:''}</div>`).join('') || '<div class="pp-empty">Nobody by that name.</div>';
@@ -9432,7 +9435,7 @@ function expBindFor(){
   list.addEventListener('click', async e=>{
     const r = e.target.closest('.pp-row'); if(!r) return;
     expRead();
-    f.forEmail = r.dataset.email; f.forName = f.forEmail ? (o.people.find(p=>p.email===f.forEmail)||{}).name || '' : '';
+    f.forEmail = r.dataset.email; if(f.forEmail==='*general') f.kind = 'record'; f.forName = f.forEmail==='*general' ? 'General' : f.forEmail ? (o.people.find(p=>p.email===f.forEmail)||{}).name || '' : '';
     if(f.forEmail) f.payTo = {};             // someone else's details, not this device's
     await expReloadOptions(); expDraw();
   });
@@ -9942,7 +9945,7 @@ function rsDraw(){
       <label class="ppl-pick"><input type="radio" name="rsCurMode" value="" ${own?'':'checked'} ${dis}>
         <span>${esc(aboveWord)}${RS.mode==='place' ? ': ' + esc(above.curs.join(', ')) : ''}</span></label>
       <label class="ppl-pick"><input type="radio" name="rsCurMode" value="own" ${own?'checked':''} ${dis}><span>Only these:</span></label>
-      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${(own||[]).includes(c)?'checked':''} ${own&&!ro?'':'disabled'}> ${esc(c)}</label>`).join('')}</div>` : '';
+      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${!own || own.includes(c)?'checked':''} ${own&&!ro?'':'disabled'}> ${esc(c)}</label>`).join('')}</div>` : '';
   finHost('Reimbursement Settings', `
       <div class="hint">Which ways of paying people back, and which currencies, are offered. Each place follows the one above it unless
         you set it here: switch PayPal off for everywhere, say, and on again for one region. A person's own setting wins over every place.</div>
@@ -10121,7 +10124,7 @@ function finPlaces(){
 }
 function finSearchHTML(){
   return `<label class="fin-search">Search<span class="pp fin-pp" id="finPP"><input class="pp-in" type="search" autocomplete="off" spellcheck="false"
-      placeholder="Search for season, region or event name" value="${esc(finScopeName() || 'Everywhere, every season')}">
+      placeholder="Search for Season, Region, or Event" value="${esc(finScopeName() || '')}">
     <span class="pp-list" hidden></span></span></label>`;
 }
 function finBindSearch(){
@@ -10154,7 +10157,7 @@ function finBindSearch(){
   list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(r) pick(r.dataset.id); });
   inp.addEventListener('blur', ()=>setTimeout(()=>{
     if(document.activeElement===inp) return;
-    list.hidden = true; inp.value = finScopeName() || 'Everywhere, every season';
+    list.hidden = true; inp.value = finScopeName() || '';
   }, 150));
 }
 
@@ -11676,7 +11679,7 @@ async function finLinksRender(focusNew){
         ${l.ask && (l.off || l.used) ? `<div class="exp-meta fin-ask"><span class="fin-dot" aria-hidden="true"></span><b>Asked to be reactivated</b> ${esc(String(l.ask.at).slice(0,10))}${
           l.ask.name ? ' by <span class="no-edit">' + esc(l.ask.name) + '</span>' : ''}${l.ask.note ? ': “<span class="no-edit">' + esc(l.ask.note) + '</span>”' : ''}</div>` : ''}
         <div class="exp-btns">${l.off || l.used ? '' : send(l)}
-          <button type="button" class="btn btn-ghost btn-xs" data-act="finlinkoff" data-key="${esc(l.key)}" data-on="${l.off||l.used?1:''}">${l.off||l.used?'Turn back on':'Turn off'}</button></div>
+          <button type="button" class="btn btn-ghost btn-xs" data-act="finlinkoff" data-k="${esc(l.key)}" data-on="${l.off||l.used?1:''}">${l.off||l.used?'Turn back on':'Turn off'}</button></div>
       </div>`).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   let place = '';
@@ -11898,7 +11901,8 @@ function finPairsHTML(rows, ser){
 const FIN_MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function finMonthsHTML(series){
   const ks = [...new Set(series.flatMap(x=>Object.keys(x.by)))].sort().slice(-12);
-  if(ks.length < 2) return '';
+  // One month is worth a column when it is the only thing charted (Expenses by month).
+  if(ks.length < (series.length > 1 ? 2 : 1)) return '';
   const max = Math.max(1, ...series.flatMap(x=>ks.map(k=>x.by[k]||0)));
   const lab = k => FIN_MON[Number(k.slice(5,7))-1] + ' ' + k.slice(2,4);
   // Month on top, its year under it; on a narrow screen just the month's first letter.
@@ -11933,24 +11937,25 @@ function finChartsHTML(){
     out.push(finChart('Expenses by type', finDonutHTML(finVizData().rows.map(r=>({k:r.k, v:r.v})), 'Expenses by type', 'Expenses')));
   }
   if(sec==='expenses'){
+    /* Expenses only: by type, by month, and by the places one level under the
+       page you are on (Gita, 2026-10-21: "Income is on the other page"). */
     const all = finExpList().filter(x=>x.status!=='declined' && !x.partnerId), byT = {};
     all.forEach(x=>{ byT[x.type] = (byT[x.type]||0) + (x.usd||0); });
-    /* Expenses always beside Gross and Net (Gita, 2026-10-21), for the place
-       chosen and the dates set, as the Overview counts them. */
-    const {sales, exps} = finFiltered(Object.assign({}, FIN.f, finScopeF())), a = finAgg(sales, exps), pend = finPending(a), owe = finToRepay(a);
-    out.push(finChart('Gross, Expenses and Net', finHBarsHTML([
-      {k:'Gross', v:a.coll, ex:pend ? a.gross : null, c:FIN_C.in, e:a.eColl || a.ePend},
-      {k:'Expenses', v:a.spent, ex:owe ? a.exp : null, c:FIN_C.out, e:a.eExp},
-      {k:'Net', v:a.net, ex:pend || owe ? a.netExp : null, c:FIN_C.net, e:a.eColl || a.ePend || a.eExp}])));
     out.push(finChart('Expenses by type', finDonutHTML(finTop(byT), 'Expenses by type', 'Expenses')));
-    const gM = finByMonth(sales.filter(x=>!x.con), x=>x.d, x=>x.gu), eM = finByMonth(all, x=>x.date, x=>x.usd||0), nM = {};
-    [...new Set(Object.keys(gM).concat(Object.keys(eM)))].forEach(k=>{ nM[k] = (gM[k]||0) - (eM[k]||0); });
-    out.push(finChart('Month by month: Gross, Expenses and Net', finMonthsHTML([{l:'Gross', c:FIN_C.in, by:gM}, {l:'Expenses', c:FIN_C.out, by:eM}, {l:'Net', c:FIN_C.net, by:nM}]), true));
-    const rb = finExpList().filter(x=>x.kind==='reimburse'), sum = k => rb.filter(x=>x.status===k).reduce((t,x)=>t+finUsdOf(x), 0);
-    if(rb.length) out.push(finChart('Reimbursements', finHBarsHTML([{k:'Paid back', v:sum('paid'), c:FIN_C.in}, {k:'Pending', v:sum('pending'), c:'#eda100'},
-      {k:'Declined', v:sum('declined'), c:'#9aa5b1'}])));
-    const byP = {}; rb.filter(x=>x.status==='pending').forEach(x=>{ const k = x.forName || x.byName || '(no name)'; byP[k] = (byP[k]||0) + finUsdOf(x); });
-    out.push(finChart('Still to pay back, by person', finDonutHTML(finTop(byP), 'Still to pay back, by person', 'Due')));
+    const f = finScopeF(), D = FIN.D, nm = (list, id) => (list.find(y=>y.id===id)||{}).name, byN = {};
+    let what = '';
+    if(!f.e){
+      what = f.r ? 'Event' : f.s ? 'Region' : 'Season';
+      all.forEach(x=>{
+        const k = f.r ? (nm(D.events, x.location) || (nm(D.regions, f.r) || 'Region') + ' Warehouse')
+          : f.s ? (nm(D.regions, x.regionId) || 'Season-wide')
+          : (nm(D.seasons, x.seasonId) || 'Earthly HQ');
+        byN[k] = (byN[k]||0) + (x.usd||0);
+      });
+      out.push(finChart('Expenses by ' + what, finDonutHTML(finTop(byN), 'Expenses by ' + what, 'Expenses')));
+    }
+    // The two rings side by side, the months across under them.
+    out.push(finChart('Expenses by month', finMonthsHTML([{l:'Expenses', c:FIN_C.out, by:finByMonth(all, x=>x.date, x=>x.usd||0)}]), true));
   }
   if(sec==='todo'){
     const f = finScopeF(), I = finIdx(), byE = {};
@@ -12118,7 +12123,8 @@ function finShareReport(part){
    the To do; only Finance (and Universal) set how people are paid back. */
 function FIN_BTNS(fin){
   if(!fin) return [];
-  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
+  const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`,
+    `<button class="btn" data-act="finexpenses">🧾 Expenses &amp; Reimbursements</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   return b;
 }
@@ -12405,6 +12411,52 @@ function lblTargets(scope){
   return out;
 }
 
+/* Hiding the words of a button or menu row takes the whole button away, not
+   just its words — an icon left on its own was "not hidden" (b276). Only when
+   those words are all the button says. */
+function lblHost(el, hide){
+  let host = el.parentElement && el.parentElement.closest('button, a');
+  if(!host || host===el) return;
+  const rest = [...host.querySelectorAll('*')].filter(x=>x!==el && !el.contains(x) && !x.contains(el) && !x.classList.contains('pencil'))
+    .some(x=>[...x.childNodes].some(n=>n.nodeType===3 && /[A-Za-z]{2}/.test(n.textContent)))
+    || [...host.childNodes].some(n=>n.nodeType===3 && /[A-Za-z]{2}/.test(n.textContent));
+  if(rest) return;
+  if(host.classList.contains('sn-gh') && host.parentElement) host = host.parentElement;   // a menu section, all of it
+  if(hide){ host.style.display='none'; host.setAttribute('data-lbl-hid','1'); }
+  else if(host.getAttribute('data-lbl-hid')){ host.style.display=''; host.removeAttribute('data-lbl-hid'); }
+}
+/* The grey words inside a box to type in (its placeholder) take a pencil too
+   (b276, Gita: "anywhere you've written text, I need a pencil"). The pencil
+   sits just after the box; rewriting changes the grey words, hiding empties them. */
+function lblPlaceholders(scope, map, byWords){
+  const root = scope===document ? document : scope;
+  if(!root.querySelectorAll) return;
+  root.querySelectorAll('input[placeholder], textarea[placeholder], input[data-ph-orig], textarea[data-ph-orig]').forEach(inp=>{
+    if(inp.closest('.lbl-in, #modal .no-edit')) return;
+    let orig = inp.getAttribute('data-ph-orig');
+    const cur = inp.getAttribute('placeholder') || '';
+    // The app changed the grey words itself since: start again from those.
+    if(orig===null || (cur && cur!==orig && cur!==inp.getAttribute('data-ph-shown'))){
+      orig = cur; inp.setAttribute('data-ph-orig', orig); inp.removeAttribute('data-key');
+    }
+    if(!/[A-Za-z]{2}/.test(orig)) return;
+    let key = inp.getAttribute('data-key');
+    if(!key){ key = labelContextOf(inp) + ' › ' + lblTemplate(orig); inp.setAttribute('data-key', key); }
+    const own = map[normLabelKey(key)];
+    const want = own!==undefined ? own : byWords[key.split(' › ').slice(1).join(' › ')];
+    const show = want==='\u0000hide' ? (EDIT_WORDING ? '🙈 ' + orig : '') : want ? lblFill(String(want).replace(/\*\*/g,'').replace(/\n+/g,' '), lblNumbers(orig)) : orig;
+    if(cur!==show) inp.setAttribute('placeholder', show);
+    inp.setAttribute('data-ph-shown', show);
+    const next = inp.nextElementSibling, has = next && next.classList.contains('pencil') && next.classList.contains('ph-pencil');
+    if(EDIT_WORDING && !has){
+      const p = document.createElement('span');
+      p.className = 'pencil ph-pencil'; p.textContent = '✏️'; p.title = 'Rewrite the grey words in this box';
+      p.dataset.act = 'editlabel'; p.dataset.key = key;
+      inp.after(p);
+    } else if(has){ if(!EDIT_WORDING) next.remove(); else next.dataset.key = key; }
+  });
+}
+
 /** Put your wording in place of the original, wherever it appears. */
 let LBL_BUSY = false;
 function applyLabels(root){
@@ -12443,9 +12495,12 @@ function applyLabels(root){
       const own = map[normLabelKey(key)];
       const want = own!==undefined ? own : byWords[tmpl];
       if(want==='\u0000hide'){                     // you asked for this one to go
-        el.style.display='none'; el.setAttribute('data-rewritten','1');
+        /* While you are editing wording, hidden words stay on screen, faded and
+           struck through, so a tap and ✓ can bring them back (b276). */
+        el.style.display = EDIT_WORDING ? '' : 'none'; el.classList.toggle('lbl-hidden', EDIT_WORDING);
+        el.setAttribute('data-rewritten','1'); lblHost(el, !EDIT_WORDING);
       }else if(want){
-        if(el.getAttribute('data-rewritten')==='1') el.style.display='';
+        if(el.getAttribute('data-rewritten')==='1'){ el.style.display=''; el.classList.remove('lbl-hidden'); lblHost(el, false); }
         /* Your capitals, not the app's: a heading styled in capitals shows your
            words exactly as typed once you have rewritten it. */
         el.style.textTransform='none';
@@ -12453,6 +12508,7 @@ function applyLabels(root){
         el.setAttribute('data-rewritten','1');
       }else if(el.getAttribute('data-rewritten')==='1'){
         el.style.textTransform=''; el.style.display='';     // back to the app's own styling
+        el.classList.remove('lbl-hidden'); lblHost(el, false);
         lblRestore(el);
         el.removeAttribute('data-rewritten');
       }
@@ -12468,6 +12524,7 @@ function applyLabels(root){
       }
       if(!EDIT_WORDING){ const p = el.querySelector(':scope > .pencil'); if(p) p.remove(); }
     });
+    lblPlaceholders(scope, map, byWords);
   } finally {
     if(LBL_OBS) LBL_OBS.takeRecords();          // our own changes are not news
     LBL_BUSY = false;
@@ -12609,7 +12666,8 @@ function labelInline(key){
   w.className = 'lbl-in no-edit';
   w.innerHTML = `<div class="lbl-in-box" contenteditable="true" spellcheck="true"></div>
     <div class="lbl-in-acts"><button type="button" data-li="ok" title="Keep (Enter)">✓</button><button type="button" data-li="no" title="Leave as it was (Esc)">✕</button><button type="button" data-li="hide" title="Don't show this at all">🙈</button>${
-      /#/.test(t.origTyped) ? '<span class="lbl-in-tip"># is a number the app fills in</span>' : ''}</div>`;
+      /#/.test(t.origTyped) ? '<span class="lbl-in-tip"># is a number the app fills in</span>' : ''}${
+      el.classList.contains('lbl-hidden') || /^🙈 /.test(el.getAttribute('placeholder')||'') ? '<span class="lbl-in-tip">Hidden now: ✓ brings it back</span>' : ''}</div>`;
   const box = w.firstElementChild;
   box.textContent = t.start;
   ['fontSize','fontWeight','fontFamily','lineHeight','letterSpacing','fontStyle'].forEach(k=>{ box.style[k] = cs[k]; });
@@ -12650,6 +12708,9 @@ function labelInlineEnd(keep){
   LBL_IN = null; cancelAnimationFrame(L.raf);
   const text = keep==='hide' ? '\u0000hide' : L.box.innerText.replace(/\u00a0/g,' ').replace(/\n{2,}/g,'\n').trim();
   L.w.remove();
+  // ✓ on hidden words brings them back, as they were or as just typed.
+  const labels = (STATE && STATE.labels) || {}, wasHidden = (labels[L.key]!==undefined ? labels[L.key] : labels[normLabelKey(L.key)])==='\u0000hide';
+  if(keep===true && wasHidden){ labelSave(normLabelKey(L.key), text===L.origTyped ? '' : text, L.origTyped); return; }
   if(keep && (keep==='hide' || text!==labelStartText(L.key, L.el).start)) labelSave(L.key, text, L.origTyped);
 }
 
@@ -19078,7 +19139,7 @@ document.addEventListener('click',e=>{
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
   if(a==='wotoggle'){
-    const id = t.dataset.key, open = !WO_OPEN.has(id);
+    const id = t.dataset.k, open = !WO_OPEN.has(id);
     if(open) WO_OPEN.add(id); else WO_OPEN.delete(id);
     const chips = t.nextElementSibling; if(chips) chips.hidden = !open;
     t.setAttribute('aria-expanded', open); t.querySelector('.tw').textContent = open ? '▾' : '▸';
@@ -19135,7 +19196,7 @@ document.addEventListener('click',e=>{
   if(a==='handover'){ handoverModal(); return; }
   if(a==='cntanswer'){ mismatchModal(t.dataset.id); return; }
   if(a==='sbtoggle'){
-    const k = t.dataset.key, open = !SB_OPEN.has(k);
+    const k = t.dataset.k, open = !SB_OPEN.has(k);
     if(open) SB_OPEN.add(k); else SB_OPEN.delete(k);
     const box = t.nextElementSibling; if(box) box.hidden = !open;
     t.closest('.sb-seller').classList.toggle('open', open);
@@ -19252,7 +19313,7 @@ document.addEventListener('click',e=>{
   if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; if(t.dataset.tab==='links') FIN_LINKS = null; finRender(); return; }
   if(a==='finrbsend'){ const go = ()=>{ const n = $('#fsName'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } };
     if(FINP.sec!=='expenses') finGo('expenses').then(go); else go(); return; }
-  if(a==='finlinkoff'){ post({action:'expLinkOff', key:t.dataset.key, on:!!t.dataset.on}).then(d=>{ FIN_LINKS = d.result;
+  if(a==='finlinkoff'){ post({action:'expLinkOff', key:t.dataset.k, on:!!t.dataset.on}).then(d=>{ FIN_LINKS = d.result;
       if(EXP.todo) EXP.todo.asks = d.result.filter(l=>l.ask && (l.off || l.used)).length; finNav(); finLinksRender(); toast(t.dataset.on ? 'Link turned back on' : 'Link turned off'); }).catch(e=>toast(e.message, true)); return; }
   if(a==='finviz'){ FIN.viz.form = t.dataset.form; finVisualRender(); return; }
   // In Finance, the top 📋 Report is Finance's own: the section being looked at.
@@ -19361,6 +19422,7 @@ document.addEventListener('click',e=>{
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
   if(a==='rsgone' || a==='rsback'){ rsGone(t.dataset.m, a==='rsgone'); return; }
   if(a==='finoverview'){ finGo('overview'); return; }
+  if(a==='finexpenses'){ FIN.rb.tab = 'pending'; finGo('expenses'); return; }
   if(a==='finreport' || a==='fincompare'){ finGo('overview'); return; }
   if(a==='fincsv'){ finCsvDownload(t.dataset.part||''); return; }
   if(a==='finsec'){ if(t.dataset.sec==='expenses') FIN.rb.tab = 'pending'; finGo(t.dataset.sec, undefined, {reload:true}); return; }

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b275**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b276**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2403,3 +2403,28 @@ Live unless marked practice.
 - **Subtract Stock:** in the menu wherever Add Stock is (`byKey.substock`).
 - Tests: browser-buttons and browser-round2 edit wording in place; browser-small258
   expects Subtract Stock in the live menu.
+
+## Done in b276 — Finance menu, wording fixes, Expenses charts, General expenses (live)
+- **Menu:** 🧾 Expenses & Reimbursements in the Finance section (`FIN_BTNS`, `SN_ITEMS.finexpenses`,
+  action `finexpenses` opens Expenses on its Pending tab).
+- **Hiding wording that wouldn't hide:** the Locations toggles (`.wo-toggle`), the seller rows
+  (`.sb-line`), link on/off buttons and closing-checklist rows used `data-key` for their own ids,
+  which is the label system's attribute. They now use `data-k`.
+- **Hiding a button's words hides the button** (`lblHost`), e.g. a menu row with its icon.
+  A menu section heading hides the whole section.
+- **Hidden wording can come back:** with Edit Wording on, hidden words show faded and struck
+  through (`.lbl-hidden`); tap them and ✓ brings them back.
+- **Pencils everywhere:** the left-hand menu takes pencils (it is no longer `.no-edit`), and the
+  grey words in boxes (placeholders) take one after the box (`lblPlaceholders`, `.ph-pencil`).
+  Place names in the breadcrumbs and language tags stay no-edit, since they are data.
+- **Finance search** placeholder: "Search for Season, Region, or Event"; the box is empty when
+  nothing is chosen.
+- **Expenses tab charts:** Expenses by type, Expenses by month, Expenses by Season/Region/Event
+  (one level under the page; none at an event). The income charts are on the Overview only.
+  `finMonthsHTML` draws a single month when it is the only series.
+- **Expenses and Reimbursements** side by side stretch to the same height (`.fin-two`).
+- **Reimbursement Settings:** the currency ticks start all on, ready to untick.
+- **General** in "Whose expense?" (Finance only): `forEmail:'*general'` saves `forName:'General'`
+  with no email; record-keeping only (server refuses reimbursement; the tick box is hidden).
+- Tests: new browser-wording276; browser-finance (menu, charts, search, height, currencies);
+  expenses.js (General).
