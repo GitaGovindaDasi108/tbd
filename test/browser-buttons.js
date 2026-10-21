@@ -65,13 +65,14 @@ const st0 = m.call({ action: 'getState' });
   await page.waitForTimeout(300);
   const after = await page.evaluate(() => ({
     fired: window.__buttonFired,
-    modal: (document.querySelector('#modal') || {}).textContent || '' }));
-  t.push(['tapping the pencil opens "Rewrite these words"', /Rewrite these words/.test(after.modal)]);
+    inPlace: !!document.querySelector('.lbl-in .lbl-in-box') }));
+  // b275: the words open for rewriting where they are (in-place editing went live).
+  t.push(['tapping the pencil opens the words for rewriting', after.inPlace]);
   t.push(['tapping the pencil does NOT press the button', after.fired === 0]);
 
   // Reword it and save.
-  await page.fill('#lblText', 'My **new** words');
-  await page.click('#lblSave');
+  await page.evaluate(() => { document.querySelector('.lbl-in .lbl-in-box').textContent = 'My **new** words'; });
+  await page.click('.lbl-in [data-li="ok"]');
   await page.waitForTimeout(1500);
   const now = await page.evaluate(() => {
     const b = document.querySelector('button[data-probe]') ||

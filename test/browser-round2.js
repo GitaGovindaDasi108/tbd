@@ -159,11 +159,13 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     const at = await page.evaluate(() => ({ lvl: CUR_LEVEL, name: locName(CUR_LOC) }));
     t.push(['a new event opens straight away', at.lvl === 'event' && at.name === 'Temple Day']);
 
-    // 9. The pencil returns to the dialog it was tapped in.
+    // 9. The pencil edits in place and leaves you in the dialog it was tapped in.
     await page.evaluate(r => goTo('region', r), pl.regionId);
     await page.evaluate(() => { EDIT_WORDING = true; addStockModal(); }); await page.waitForTimeout(400);
     await page.click('#modal .field label .pencil >> nth=0'); await page.waitForTimeout(300);
-    await page.fill('#lblText', 'Where are these books going?'); await page.click('#lblSave'); await page.waitForTimeout(500);
+    // b275: the pencil edits the words where they are (as in practice), not in a window.
+    await page.evaluate(() => { const b = document.querySelector('.lbl-in .lbl-in-box'); b.textContent = 'Where are these books going?'; });
+    await page.click('.lbl-in [data-li="ok"]'); await page.waitForTimeout(500);
     const back = await page.evaluate(() => ({ title: document.querySelector('#modal h3').textContent,
       label: document.querySelector('#modal .field label').textContent }));
     t.push(['after saving, you are back in Add Stock, with the new wording', /Add Stock/.test(back.title) && /Where are these books going/.test(back.label)]);
