@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b271**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b273**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2340,3 +2340,15 @@ Live unless marked practice.
   currencies don't fit.
 - Tests: browser-arrange reads the order after ⇅; browser-bookorder gives every
   title a gift (season and Earthly HQ) so Distribution by Title lists them.
+
+## Done in b273 — Every section half width when another follows (live)
+- On a computer every open panel with another after it shares its line:
+  `data-after` is gone, so the plain pairing in `foldRows` applies to the
+  warehouse overviews too (region: Totals by Payment + Warehouse Overview,
+  then Sales by Seller). At a season the Warehouse Overview moves into
+  `#salesFlow` (renderAll) so it can pair with To Do; it moves back for other levels.
+- Tests: browser-fold gives every title a gift (Distribution by Title only lists
+  distributed titles since b271, which had made it too short for the b236 stack
+  checks); browser-round2 checks list-view cards span the list rather than a
+  one-column grid. Note: 15 browser tests print FAIL lines without setting an
+  exit code, so read their output, not just the exit status.

@@ -224,7 +224,8 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);
     await page.click('#viewBtn'); await page.waitForTimeout(300);
     t.push(['"List view" turns the cards into rows', await page.evaluate(() => document.body.classList.contains('list-view')
-      && getComputedStyle(document.querySelector('.inv-grid')).gridTemplateColumns.split(' ').length === 1)]);
+      // b271: the list has columns of its own now (lined up from row to row), so check each card spans it.
+      && [...document.querySelectorAll('.inv-grid > .book')].every(b => b.getBoundingClientRect().width > document.querySelector('.inv-grid').getBoundingClientRect().width - 2))]);
     t.push(['…and the button now offers "Card view"', /Card view/.test(await page.textContent('#viewBtn'))]);
     await page.screenshot({ path: shot('5-list-desktop') });
     await page.reload(); await page.waitForTimeout(2000);

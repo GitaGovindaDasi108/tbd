@@ -2121,7 +2121,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b271</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b273</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2178,8 +2178,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
     </section>
   </div>
 
-  <!-- data-after: the whole width, or half when a panel follows it (b271). -->
-  <section class="panel" id="whOverviewPanel" data-fold="warehouses" data-after style="display:none">
+  <section class="panel" id="whOverviewPanel" data-fold="warehouses" style="display:none">
     <h2 class="sec-h2">Warehouse Overview <span class="hint">inventory and inventory locations</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
     <div class="body"><div id="whOverview"></div></div>
   </section>
@@ -2267,7 +2266,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   </div>
   <!-- The region's own Warehouse Overview (b264): each title's stock, and its
        Locations dropdown of the warehouse, events and devotees' homes. -->
-  <section class="panel" id="whRegionPanel" data-fold="warehouses" data-after style="display:none">
+  <section class="panel" id="whRegionPanel" data-fold="warehouses" style="display:none">
     <h2 class="sec-h2">Warehouse Overview <span class="hint">inventory and inventory locations</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" title="Copy just this section for WhatsApp">📋</button></h2>
     <div class="body"><div id="whRegion"></div></div>
   </section>
@@ -2303,7 +2302,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
         <div class="body" id="hqPayBody"></div>
       </section>
     </div>
-    <section class="panel" data-fold="sumWarehouses" data-after>
+    <section class="panel" data-fold="sumWarehouses">
       <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="hqWhOverview"></div></div>
     </section>
@@ -4824,6 +4823,10 @@ function renderAll(){
   $('#seasonTotals').style.display    = season?'':'none';
   $('#regionalTotals').style.display  = season?'':'none';
   $('#whOverviewPanel').style.display = season?'':'none';
+  /* At a season the To Do list sits in the next flow down; the Warehouse
+     Overview moves in beside it, so on a computer the two share a line (b273). */
+  { const wh = $('#whOverviewPanel'), home = season ? $('#salesFlow') : $('#seasonFlow');
+    if(wh && home && home.prepend && wh.parentElement !== home){ if(season) home.prepend(wh); else home.append(wh); } }
   if(season) $('#whRegionPanel').style.display = 'none';
   $('#regionCols').style.display      = season?'none':'';
   $('#regionBottom').style.display    = season?'none':'';
@@ -4957,8 +4960,8 @@ function applyFolds(){
    page, and the open panels after it pair up afresh — across what used to be
    separate rows — so the page never shows a half-empty line when it need
    not. Open panels pair in their order; a panel left without a partner, and
-   any marked data-full, takes the whole line. A warehouse overview (data-after)
-   shares a line only with the panel after it (b271). */
+   any marked data-full, takes the whole line. On a computer every open panel
+   with another after it shares its line (b272), the warehouse overviews too. */
 function flowItems(flow){
   const out = [];
   [...flow.children].forEach(k=>{
@@ -4991,8 +4994,6 @@ function foldRows(){
     // First the plain pairing, as before (b217): it gives every panel its width.
     let waiting = null;                   // an open panel still looking for a partner
     items.forEach(k=>{
-      // A warehouse overview pairs only with what comes after it (b271).
-      if(waiting && !alone(k) && k.hasAttribute('data-after')){ set(waiting, 'f-full'); waiting = k; return; }
       if(alone(k)){
         if(waiting) set(waiting, 'f-full');
         waiting = null;
