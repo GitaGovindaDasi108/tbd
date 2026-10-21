@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b266**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b267**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2258,3 +2258,26 @@ Live unless marked practice.
 - Language: `.lang-tag` is inline (same line as the title) by default, as in
   the sales log and lists; on cards (`.bname/.sc-name/.mc-name`) and buttons it
   sits on its own line under the title.
+## Done in b267 — Exchange rates: quicker, a fallback, exact amounts, flags, dollars received (practice)
+- **Quicker:** core.js `fxOn` asks its three sources at once, each given
+  3.5s (`FX_WAIT`). The page asks as soon as the day and both currencies are
+  chosen (`expPrefetch`; `fxOn` shares one request per pair), so the check
+  page comes straight up; anything still on its way fills in in place.
+- **Fallback:** no rate for the day → the latest rate this server has for the
+  pair (`fxLast`, refreshed hourly by `refreshFx` from worker.js's alarm),
+  else open.er-api's. Marked `fallback`; the page says "the latest rate".
+- **Check page:** "This is an estimate - reimbursement rate may change based
+  on current exchange rates." (also on the link's confirmation), and "I have
+  the exact numbers for reimbursement" gives each expense its own box
+  (`payExact`). The server looks up the day's rate itself on `expSave`
+  (`p.payDay`) and keeps it beside an exact amount (`payAmt.est`).
+- **Finance:** an exact amount over 10% above the day's figure is flagged
+  (`expOver`). An expense with no rate gets one from the fallback
+  (`payGuess` in `shown`). Reimbursements Due shows each pay-back currency,
+  dollars first (`finMix`); `finTotals` puts dollars first everywhere.
+- **Dollars received** (Finance Overview, `finConvModal`): "took X in a
+  currency from a place, received $V". Kept in setting `finConv`;
+  `convApply` replaces that place's (event over region over season) sales'
+  dollars in that currency (`cu` per currency from Code.gs), not sales with
+  hand-entered dollars. In the Activity Log.
+- Tests: browser-finance (139).

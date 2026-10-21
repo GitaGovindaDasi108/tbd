@@ -652,6 +652,11 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label){cursor:tex
 .exp-same{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:400;margin:2px 0 4px}
 .exp-same input{width:auto !important}
 .exp-fx{display:block;font-size:12.5px;color:#2F6FB0;font-weight:600;margin-top:2px}
+.fin-conv-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px}
+.exp-est{font-size:13px;color:var(--muted);font-style:italic;margin:2px 0 8px}
+.exp-exact{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--ink);margin-top:6px}
+.exp-exact input{width:120px;padding:6px 8px;border:1.5px solid var(--line-d);border-radius:8px}
+.exp-flag{display:block;font-size:12.5px;color:var(--clay);font-weight:700;margin-top:2px}
 .exp-form>.hint{margin:6px 0 8px}
 .exp-form .row2>:only-child{grid-column:1/-1}
 /* On a phone the form is one column, so labels and boxes line up (b257). */
@@ -2000,7 +2005,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b266</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b267</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -8895,6 +8900,7 @@ function expPlaceItems(places){
 }
 /* The Expenses window: the form, then the person's own expenses. */
 async function expensesModal(editId, presetPartner){
+  EXP.revExact = false;
   openModal(`${mHead('Expenses')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
     const [opt, list] = await Promise.all([
@@ -9159,6 +9165,8 @@ function expBind(){
     expDraw();
   });
   const xc = $('#xCur'); if(xc && PRACTICE) xc.addEventListener('change', ()=>{ expRead(); expDraw(); });
+  ['xDate','xRCur'].forEach(id=>{ const el = $('#'+id); if(el) el.addEventListener('change', ()=>{ expRead(); expPrefetch(f); }); });
+  expPrefetch(f);
   const add = files => { expRead(); [...files].forEach(expAddReceipt); };
   const cam = $('#xCam'); if(cam) cam.addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
   $('#xFiles').addEventListener('change', e=>{ add(e.target.files); e.target.value = ''; });
@@ -9343,7 +9351,7 @@ async function expPost(f, more){
     amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
     payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
     receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
-    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, usdAmt: Number(f.usdAmt) > 0 ? Number(f.usdAmt) : '', more: !!more});
+    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, payExact: expExactOf(f) || '', usdAmt: Number(f.usdAmt) > 0 ? Number(f.usdAmt) : '', more: !!more});
   if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
   return r;
 }
@@ -9352,9 +9360,14 @@ async function expPost(f, more){
    Central Bank's daily rates (Frankfurter; a weekend or holiday takes the
    day before). Worked out when it is checked, kept with the expense. */
 const FX = {};
+const FX_ASK = {};
 async function fxOn(date, from, to){
   const k = date + '|' + from + '|' + to;
   if(k in FX) return FX[k];
+  if(FX_ASK[k]) return FX_ASK[k];               // already being asked (the form asked ahead)
+  return FX_ASK[k] = fxAsk(k, date, from, to).finally(()=>{ delete FX_ASK[k]; });
+}
+async function fxAsk(k, date, from, to){
   // Asked of the server (b260), as the sales side's rates are: the browser's own request did not get through.
   let r = null;
   try{ r = (await post({action:'fxOn', date, from, to})).result || null; }catch(e){ r = null; }
@@ -9362,17 +9375,29 @@ async function fxOn(date, from, to){
   return r;
 }
 const expOtherCur = x => x.kind==='reimburse' && x.reimbCur && String(x.reimbCur).toUpperCase()!==String(x.cur).toUpperCase();
+const fxKeyOf = x => x.date + '|' + String(x.cur).toUpperCase() + '|' + String(x.reimbCur).toUpperCase();
+/* Asked for as soon as the day and both currencies are chosen (b267, Gita:
+   "very slow on checking the exchange rate"), so the check page has it ready. */
+function expPrefetch(x){
+  if(x && expOtherCur(x) && /^\d{4}-\d{2}-\d{2}$/.test(String(x.date||'')) && !(fxKeyOf(x) in FX)) fxOn(x.date, String(x.cur).toUpperCase(), String(x.reimbCur).toUpperCase());
+}
 async function expPayAmt(x){
   if(!expOtherCur(x)) return null;
   // Exact dollars given (b265) win over any rate when it is paid back in dollars.
   if(String(x.reimbCur).toUpperCase()==='USD' && Number(x.usdAmt) > 0) return {amt:Number(x.usdAmt), cur:'USD', exact:true, on:x.date};
   const r = await fxOn(x.date, String(x.cur).toUpperCase(), String(x.reimbCur).toUpperCase());
-  return r ? {amt:Math.round(Number(x.amt) * r.rate * 100) / 100, cur:x.reimbCur, rate:r.rate, on:r.on} : null;
+  return r ? {amt:Math.round(Number(x.amt) * r.rate * 100) / 100, cur:x.reimbCur, rate:r.rate, on:r.on, fallback:!!r.fallback} : null;
 }
+// Typed on the check page (b267): "I have the exact numbers for reimbursement".
+const expExactOf = x => EXP.revExact && Number(x.payExact) > 0 ? Math.round(Number(x.payExact) * 100) / 100 : 0;
+const EXP_EST_NOTE = 'This is an estimate - reimbursement rate may change based on current exchange rates.';
 // "≈ ₹3,040 (1 € = ₹89.43 on 2026-10-17)", or that the rate could not be found.
 function expPayAmtLine(x){
   if(!expOtherCur(x)) return '';
   const p = x.payAmt;
+  if(expExactOf(x)) return 'To pay back: ' + cashFmt(expExactOf(x), x.reimbCur) + ' (the exact amount given)';
+  if(p===undefined) return 'Checking the exchange rate…';
+  if(p && p.fallback && p.amt!=null) return 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (1 ' + x.cur + ' = ' + (Math.round(p.rate*10000)/10000) + ' ' + p.cur + ', the latest rate' + (p.on ? ', ' + p.on : '') + ')';
   if(p && p.exact) return 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (the exact dollar amount given)';
   return p && p.amt!=null ? 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (1 ' + x.cur + ' = ' + (Math.round(p.rate*10000)/10000) + ' ' + p.cur + ' on ' + p.on + ')'
     : 'To pay back in ' + x.reimbCur + ': the rate for ' + x.date + ' could not be found, so check it before paying.';
@@ -9382,26 +9407,47 @@ async function expReview(all){
   { const b = document.querySelector('#modal .exp-form') && document.querySelector('#modal .m-body');
     if(b){ EXP.formTop = b.scrollTop; EXP.formOvTop = $('#overlay').scrollTop; } }
   const P = EXP.pub, tot = finTotals(all, x=>[[Number(x.amt), x.cur]]);
-  if(all.some(expOtherCur)){
-    openModal(`${P ? pubHead('Checking the exchange rate…') : mHead('Checking the exchange rate…')}<div class="m-body"><div class="cash-empty">One moment…</div></div>`, true);
-    await Promise.all(all.map(async x=>{ x.payAmt = await expPayAmt(x); }));
-  }
-  const back = all.filter(expOtherCur), pay = back.length && back.every(x=>x.payAmt) ? finTotals(all.filter(x=>x.kind==='reimburse'), x=>[expOtherCur(x) ? [x.payAmt.amt, x.payAmt.cur] : [Number(x.amt), x.cur]]) : '';
-  openModal(`${P ? pubHead(all.length===1 ? 'Check your expense' : 'Check your expenses') : mHead(all.length===1 ? 'Check your expense' : 'Check your expenses')}
+  /* The rates were asked for while the form was filled in (b267), so this is
+     usually at once. Any still on its way shows "Checking…" in its own line,
+     and the page fills in where it stands, without a second page. */
+  const fx = all.filter(expOtherCur);
+  fx.forEach(x=>{ const r = FX[fxKeyOf(x)];
+    x.payAmt = String(x.reimbCur).toUpperCase()==='USD' && Number(x.usdAmt) > 0 ? {amt:Number(x.usdAmt), cur:'USD', exact:true, on:x.date}
+      : r ? {amt:Math.round(Number(x.amt) * r.rate * 100) / 100, cur:x.reimbCur, rate:r.rate, on:r.on, fallback:!!r.fallback} : undefined; });
+  const ready = Promise.all(fx.filter(x=>x.payAmt===undefined).map(async x=>{ x.payAmt = await expPayAmt(x); }));
+  const draw = () => {
+    const out = x => expExactOf(x) ? [expExactOf(x), x.reimbCur] : !expOtherCur(x) ? [Number(x.amt), x.cur] : x.payAmt && x.payAmt.amt!=null ? [x.payAmt.amt, x.payAmt.cur] : null;
+    const back = all.filter(x=>x.kind==='reimburse'), pay = back.length && fx.length && back.every(out) ? finTotals(back, x=>[out(x)]) : '';
+    openModal(`${P ? pubHead(all.length===1 ? 'Check your expense' : 'Check your expenses') : mHead(all.length===1 ? 'Check your expense' : 'Check your expenses')}
     <div class="m-body">
       <div class="hint">${all.length===1 ? 'Check it, then ' + (P ? 'send it in.' : 'save it.') : all.length + ' expenses. Check them, then ' + (P ? 'send them in' : 'save them') + ' together.'}</div>
-      <div class="exp-batch exp-rev">${all.map(x=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
+      <div class="exp-batch exp-rev">${all.map((x,i)=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
           <span class="muted-note">${esc([x.date, x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category, expPlaceName(x.location)].filter(Boolean).join(' · '))}${
             x.kind==='reimburse' && !P ? ' · to pay back' : ''} · ${x.receipts.length ? '🧾 ' + x.receipts.length : 'no receipt'}</span>${
-            expOtherCur(x) ? `<span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}</span>
+            expOtherCur(x) ? `<span class="exp-fx" data-fxline="${i}">${esc(expPayAmtLine(x))}</span>` : ''}${
+            expOtherCur(x) && EXP.revExact ? `<label class="exp-exact">Exact amount to pay back in ${esc(x.reimbCur)}
+              <input type="number" min="0" step="0.01" inputmode="decimal" data-xex="${i}" value="${esc(x.payExact||'')}" placeholder="0.00"></label>` : ''}</span>
           <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b></div>`).join('')}
         <div class="exp-bi exp-tot"><span class="exp-bi-t"><b>Total</b></span><b class="exp-bi-a">${esc(tot)}</b></div>
-        ${pay ? `<div class="exp-bi exp-tot"><span class="exp-bi-t"><b>To be paid back</b></span><b class="exp-bi-a">${esc(pay)}</b></div>` : ''}</div>
+        ${pay ? `<div class="exp-bi exp-tot"><span class="exp-bi-t"><b>To be paid back</b></span><b class="exp-bi-a" id="xrPay">${esc(pay)}</b></div>` : ''}</div>
+      ${fx.length ? `<div class="exp-est">${esc(EXP_EST_NOTE)}</div>
+        <label class="exp-rb"><input type="checkbox" id="xrExact" ${EXP.revExact ? 'checked' : ''}> I have the exact numbers for reimbursement</label>` : ''}
       ${all.some(x=>x.kind==='reimburse') ? `<div class="hint">To be paid back by <b>${esc([...new Set(all.filter(x=>x.kind==='reimburse').map(x=>x.method))].join(', '))}</b>.</div>` : ''}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" id="xrBack">← Change something</button>
       <button class="btn btn-primary" id="xrGo">${all.length===1 ? (P ? 'Send it in' : 'Save it') : P ? 'Send them in' : 'Save all ' + all.length}</button></div>`, true);
+    $('#modal').classList.add('still');
+    const ex = $('#xrExact');
+    if(ex) ex.addEventListener('change', ()=>{ const b = $('#modal .m-body'), top = b ? b.scrollTop : 0; EXP.revExact = ex.checked; draw(); const b2 = $('#modal .m-body'); if(b2) b2.scrollTop = top;
+      if(ex.checked){ const first = $('#modal [data-xex]'); if(first) first.focus({preventScroll:true}); } });
+    document.querySelectorAll('#modal [data-xex]').forEach(inp=>inp.addEventListener('input', ()=>{
+      const x = all[Number(inp.dataset.xex)]; x.payExact = inp.value;
+      const l = document.querySelector('#modal [data-fxline="' + inp.dataset.xex + '"]'); if(l) l.textContent = expPayAmtLine(x);
+      const pe = $('#xrPay'); if(pe && back.every(out)) pe.textContent = finTotals(back, y=>[out(y)]); }));
+    bind();
+  };
+  const bind = () => {
   $('#xrBack').addEventListener('click', ()=>expDraw());
   $('#xrGo').addEventListener('click', async ()=>{
     const go = $('#xrGo'); go.disabled = true;
@@ -9423,6 +9469,16 @@ async function expReview(all){
     if(FINP.on){ closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
     expensesModal();
   });
+  };
+  draw();
+  if(fx.some(x=>x.payAmt===undefined)){
+    await ready;
+    if(!$('#xrGo') || $('#xrGo').disabled) return;
+    // Someone typing an exact amount keeps their place: just the lines change.
+    if(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.xex!==undefined){
+      document.querySelectorAll('#modal [data-fxline]').forEach(l=>{ l.textContent = expPayAmtLine(all[Number(l.dataset.fxline)]); }); return; }
+    const b = $('#modal .m-body'), top = b ? b.scrollTop : 0; draw(); const b2 = $('#modal .m-body'); if(b2) b2.scrollTop = top;
+  }
 }
 
 /* A receipt, shown over everything (the noAccess page too), with a download. */
@@ -9468,6 +9524,7 @@ async function reimbPublicStart(){
 }
 function reimbPublicNew(){
   const o = EXP.opt;
+  EXP.revExact = false;
   EXP.batch = [];
   EXP.form = {id:expId('X'), kind:'reimburse', location:o.location, date:new Date().toISOString().slice(0,10), desc:'',
     cur:o.defaultCur, amt:'', category:'Other', payType:'', partnerId:'', method:'', reimbCur:'', payTo:{}, notes:'', receipts:[],
@@ -9482,6 +9539,7 @@ function reimbPublicDone(list){
     <div class="m-body">
       <div class="reimb-ok">✓</div>
       <div class="cash-lede">${list.length > 1 ? 'Your ' + list.length + ' expenses have' : 'Your expense has'} been received and will be processed at the earliest convenience.</div>
+      ${list.some(expOtherCur) ? `<div class="exp-est">${esc(EXP_EST_NOTE)}</div>` : ''}
       <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>${expOtherCur(x) ? `<br><span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
         Finance will be in touch${P.phone ? ' on ' + esc(P.phone) : P.email ? ' at ' + esc(P.email) : ''} if anything is needed.</div>
     </div>
@@ -9506,7 +9564,7 @@ async function financeTodoModal(){
 function finOwed(p){ return (p.owed||[]).map(o=>cashFmt(o.amt, o.cur)).join(' + '); }
 function finTotals(list, amt){
   const by = {}; list.forEach(x=>amt(x).forEach(([a,c])=>{ by[c] = (by[c]||0) + a; }));
-  return Object.keys(by).sort().map(c=>cashFmt(by[c], c)).join(' + ');
+  return Object.keys(by).sort((a,b)=>(a==='USD'?-1:b==='USD'?1:a.localeCompare(b))).map(c=>cashFmt(by[c], c)).join(' + ');
 }
 function finDraw(){
   const T = finScopedTodo(), q = EXP.q.trim().toLowerCase();
@@ -9929,8 +9987,11 @@ function finOverviewHTML(){
       ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
   return `${finFiltersHTML(FIN.f, true)}
     <div class="fin-tiles">${tiles}</div>
-    <div class="muted-note">In dollars, at each place's own rates. Net is Gross less Expenses; the margin is Net as a share of Gross.
+    <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
+    ${FIN.D.mayEdit || (FIN.D.convs||[]).length ? `<div class="fin-conv-row"><button type="button" class="btn btn-ghost btn-sm" onclick="finConvModal()">💱 Dollars received${
+      (FIN.D.convs||[]).length ? ' (' + FIN.D.convs.length + ')' : ''}</button>
+      <span class="muted-note">Took money in another currency and got dollars for it? Write it down here, and it replaces the estimated dollars.</span></div>` : ''}
     <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}</h3>
     <div class="fin-scroll"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${figs.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
       <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${figs.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
@@ -10909,18 +10970,79 @@ function finExpList(){
       type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other') }));
 }
 function finExpTotals(list){
-  const T = {all:0, due:0, dueN:0};
+  const T = {all:0, due:0, dueN:0, dueOut:{}};
   list.forEach(x=>{
     if(x.status==='declined' || x.partnerId) return;
     const u = x.usd || 0; T.all += u;
-    if(x.kind==='reimburse' && x.status==='pending'){ T.due += u; T.dueN++; }
+    if(x.kind==='reimburse' && x.status==='pending'){ T.due += u; T.dueN++;
+      const o = expPayOut(x) || [u, 'USD']; T.dueOut[o[1]] = (T.dueOut[o[1]]||0) + Number(o[0]||0); }
   });
   T.current = T.all - T.due;
   return T;
 }
+/* ---- Dollars received (b267, Gita): "took X in Y currency from this event,
+   season, region, and received V dollars" — it replaces the estimated dollars
+   for that money (server: expenses.js convApply). ---- */
+function finConvModal(edit){
+  const D = FIN.D, may = D.mayEdit, list = (D.convs||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const curs = [...new Set(D.sales.flatMap(x=>Object.keys(x.cur||{})).concat(['EUR','PLN','GBP','INR']))].filter(c=>c!=='USD').sort();
+  const e = edit || {};
+  const items = finPlaces().filter(p=>p.kind!=='all').map(p=>({v:p.id, l:p.name, shown:[p.name, p.rName, p.sName].filter(Boolean).join(' · '), kind:p.kind,
+    up:[p.rName, p.sName].filter(Boolean), upIds:[p.r, p.s].filter(x=>x && x!==p.id)}));
+  const shown = (items.find(i=>i.v===e.place)||{}).shown || '';
+  openModal(`${mHead('Dollars received')}<div class="m-body">
+      <div class="hint">When money in another currency is exchanged, write down what it fetched. That place's money in that currency then counts at this rate instead of the estimate. An event's own exchange wins over its region's, and a region's over its season's.</div>
+      ${list.length ? `<div class="exp-batch">${list.map(c=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(c.label)}</b>
+          <span class="muted-note">${esc(c.date)} · ${esc(cashFmt(c.amt, c.cur))} fetched ${esc(finUsd(c.usd))} · 1 ${esc(c.cur)} = $${esc(Math.round(c.usd / c.amt * 10000) / 10000)}${c.by ? ' · ' + esc(c.by) : ''}${c.note ? ' · ' + esc(c.note) : ''}</span></span>
+          <b class="exp-bi-a">(${esc(cashFmt(c.amt, c.cur))}) ${esc(finUsd(c.usd))}</b>
+          ${may ? `<span class="exp-btns"><button type="button" class="btn btn-ghost btn-xs" data-cvedit="${esc(c.id)}">Edit</button>
+            <button type="button" class="btn btn-ghost btn-xs" data-cvdel="${esc(c.id)}" title="Remove">🗑</button></span>` : ''}</div>`).join('')}</div>`
+        : '<div class="cash-empty">None written down yet.</div>'}
+      ${may ? `<div class="exp-form">
+        <div class="cash-sub">${e.id ? 'Change this exchange' : 'Write one down'}</div>
+        <div class="field"><label>Where the money came from</label>${comboHTML('cvPlace', shown, 'Search for an event, region or season')}</div>
+        <div class="row2">
+          <div class="field cost-amt"><label>Took</label><div class="cost-amt-row">
+            <input id="cvAmt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.amt||'')}" placeholder="0.00">
+            <select id="cvCur">${curs.map(c=>`<option ${c===e.cur?'selected':''}>${esc(c)}</option>`).join('')}</select></div></div>
+          <div class="field"><label>Dollars received</label><input id="cvUsd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.usd||'')}" placeholder="$ 0.00"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Date</label><input id="cvDate" type="date" value="${esc(e.date || new Date().toISOString().slice(0,10))}"></div>
+          <div class="field"><label>Note (optional)</label><input id="cvNote" type="text" maxlength="200" value="${esc(e.note||'')}" placeholder="e.g. Exchanged at the bank in Kraków"></div>
+        </div>
+        <div class="err" id="modalErr"></div>
+        <div class="cost-acts">${e.id ? `<button type="button" class="btn btn-ghost btn-sm" id="cvCancel">Cancel</button>` : ''}
+          <button type="button" class="btn btn-primary btn-sm" id="cvSave">${e.id ? 'Save changes' : 'Save'}</button></div>
+      </div>` : ''}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  if(!may) return;
+  let place = e.place || '';
+  comboBind('cvPlace', items, place, v=>{ place = v; });
+  const done = r => { FIN.D = r.result; finRender(); finConvModal(); };
+  $('#cvSave').addEventListener('click', async ()=>{
+    const b = $('#cvSave'); b.disabled = true;
+    try{ done(await post({action:'finConvSet', id:e.id||'', place, cur:$('#cvCur').value, amt:Number($('#cvAmt').value), usd:Number($('#cvUsd').value),
+      date:$('#cvDate').value, note:$('#cvNote').value})); toast('Written down. Those dollars are used from now on.'); }
+    catch(err){ b.disabled = false; $('#modalErr').textContent = err.message; }
+  });
+  const c = $('#cvCancel'); if(c) c.addEventListener('click', ()=>finConvModal());
+  document.querySelectorAll('#modal [data-cvedit]').forEach(b=>b.addEventListener('click', ()=>finConvModal(list.find(x=>x.id===b.dataset.cvedit))));
+  document.querySelectorAll('#modal [data-cvdel]').forEach(b=>b.addEventListener('click', async ()=>{
+    if(!confirm('Remove this exchange? That money goes back to the estimated dollars.')) return;
+    try{ done(await post({action:'finConvDel', id:b.dataset.cvdel})); }catch(err){ toast(err.message, true); }
+  }));
+}
+/* What is owed, in the currencies it will be paid in, dollars first (b267,
+   Gita): "$169.05 + 765 zł". */
+function finMix(o){
+  const ks = Object.keys(o||{}).filter(c=>Math.abs(o[c]) > 0.004).sort((a,b)=>(a==='USD'?-1:b==='USD'?1:a.localeCompare(b)));
+  return ks.map(c=>c==='USD' ? finUsd(o[c]) : cashFmt(o[c], c)).join(' + ');
+}
 function finExpFigs(T){
   const ex = {l:'Expenses', v:finUsd(T.current), sub:'', ex:T.due > 0.004 ? 'Expected ' + finUsd(T.all) : ''};
-  return [ex, {l:'Reimbursements Due', v:finUsd(T.due), sub: T.dueN ? T.dueN + ' to pay back' : ''}];
+  return [ex, {l:'Reimbursements Due', v:esc(finMix(T.dueOut) || finUsd(0)), sub: T.dueN ? T.dueN + ' to pay back' : ''}];
 }
 function finExpBarHTML(T, only){
   const figs = finExpFigs(T).filter((m,i)=>only===undefined || i===only);
@@ -11097,6 +11219,14 @@ function expGroups(list){
 }
 // What one line costs to pay back: in the currency asked for, at the day's rate.
 const expPayOut = x => !expOtherCur(x) ? [Number(x.amt), x.cur] : x.payAmt && x.payAmt.amt!=null ? [x.payAmt.amt, x.payAmt.cur] : null;
+/* An exact amount well above that day's rate is flagged for Finance (b267,
+   Gita): more than 10% over. They can always decline it. */
+const EXP_FLAG_OVER = 0.10;
+function expOver(x){
+  const p = x.payAmt;
+  if(!p || !p.exact || !(p.est > 0) || !(p.amt > p.est * (1 + EXP_FLAG_OVER))) return '';
+  return '⚠ ' + Math.round((p.amt / p.est - 1) * 100) + '% more than that day\'s rate (' + cashFmt(p.est, p.cur) + ')';
+}
 /* Reimbursements read like the sales log (Gita, 2026-10-20): one row a
    person, with the amount in the currency they asked for and Pay / Decline.
    Tapping the row opens everything else: each expense (each can be turned
@@ -11113,7 +11243,7 @@ function expGroupHTML(xs){
         ways.length > 1 ? ' · by ' + esc(y.method) + ' in ' + esc(y.reimbCur) : ''}</span></span>
         <span class="exp-amt">${expOtherCur(y) && out && String(out[1]).toUpperCase()==='USD' ? esc(finDual(y.amt, y.cur, out[0]))
           : esc(cashFmt(y.amt, y.cur)) + (expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : '')}</span></div>
-      ${expOtherCur(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}
+      ${expOtherCur(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}${expOver(y) ? `<span class="exp-flag">${esc(expOver(y))}</span>` : ''}
       ${y.notes ? `<div class="exp-note">💬 ${esc(y.notes)}</div>` : ''}${expReceiptsHTML(y)}
       ${may ? `<div class="exp-btns exp-line">${xs.length > 1 ? `
         <button type="button" class="btn btn-xs ${off ? 'btn-ghost' : 'btn-ok'}" data-act="rbline" data-id="${esc(y.id)}" data-on="1" aria-pressed="${!off}">✓ Accept</button>
@@ -11122,7 +11252,7 @@ function expGroupHTML(xs){
         <button class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(y.id)}">Edit</button>
         <button class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(y.id)}" title="Delete">🗑</button></div>` : ''}</div>`; }).join('');
   const sub = [xs.length === 1 ? esc(x.desc) : xs.length + ' expenses', yes.length < xs.length ? (xs.length - yes.length) + ' declined' : '',
-    unknown.length ? unknown.length + ' without a rate' : ''].filter(Boolean).join(' · ');
+    unknown.length ? unknown.length + ' without a rate' : '', xs.filter(expOver).length ? '⚠ ' + xs.filter(expOver).length + ' above the day\'s rate' : ''].filter(Boolean).join(' · ');
   return `<div class="log-item rb-item pending exp-group${open ? ' open' : ''}" data-group="${esc(ids)}">
       <div class="li-row" data-act="rbopen" data-g="${esc(ids)}"><span class="li-chev">▶</span>
         <span class="li-book no-edit">${esc(x.forName || x.byName || '')}</span>

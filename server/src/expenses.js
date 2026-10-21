@@ -73,7 +73,8 @@ const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk
 const MAX_FILES = 10;
 const CUR = /^[A-Z]{3}$/;
 
-export function makeExpenses({ exec, app, auth, people, places, kv, now, practice, asOwner }) {
+export function makeExpenses({ exec, app, auth, people, places, kv, now, practice, asOwner, rateNow }) {
+  rateNow = rateNow || (() => null);
   now = now || (() => Date.now());
   exec('CREATE TABLE IF NOT EXISTS receipt (id TEXT NOT NULL, part INTEGER NOT NULL, parts INTEGER NOT NULL, name TEXT NOT NULL, ' +
        'mime TEXT NOT NULL, size INTEGER NOT NULL, owner TEXT NOT NULL, at INTEGER NOT NULL, data TEXT NOT NULL, PRIMARY KEY (id, part))');
@@ -373,7 +374,60 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       x.from = (dt[k][x.id] || {}).from || ''; x.to = (dt[k][x.id] || {}).to || '';
     }));
     D.mayEdit = mayPay(w);
+    D.convs = convApply(D);
     return D;
+  }
+
+  /* ---- Dollars received (b267, Gita 2026-10-20) ----
+     Finance writes down a real exchange: "took 3,000 zł from this event (or
+     region, or season) and received $780". From then on that place's money in
+     that currency counts at what it actually fetched, instead of the
+     estimated rate. Several at one place add up; the nearest place wins (an
+     event's over its region's over its season's). A sale whose dollars were
+     entered by hand keeps them. Kept in the setting `finConv`. */
+  const getConvs = () => { const a = parse(kv.getProp('finConv'), []); return Array.isArray(a) ? a : []; };
+  function convApply(D) {
+    const P = places(), list = getConvs().map(c => {
+      const pl = placeOf(P, c.place);
+      return Object.assign({}, c, { label: pl ? labelOf(P, pl) : '(a place since removed)', kind: pl ? pl.kind : '' });
+    });
+    const by = {};
+    list.forEach(c => { if (!c.kind) return; const k = c.place + '|' + c.cur; const o = by[k] || (by[k] = { amt: 0, usd: 0 }); o.amt += Number(c.amt) || 0; o.usd += Number(c.usd) || 0; });
+    const rateFor = (x, cur) => { for (const id of [x.e, x.r, x.s]) { const o = id && by[id + '|' + cur]; if (o && o.amt > 0) return o.usd / o.amt; } return null; };
+    D.sales.forEach(x => {
+      if (x.con || x.ua || !x.cu) return;
+      Object.keys(x.cur || {}).forEach(c => {
+        const r = rateFor(x, c); if (r === null || !(c in x.cu)) return;
+        x.gu = Math.round((x.gu - x.cu[c] + x.cur[c] * r) * 100) / 100; x.cv = 1;
+      });
+    });
+    return list;
+  }
+  function convSet(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can write down dollars received.');
+    const pl = placeOf(w.P, clip(p.place, 60));
+    if (!pl) throw new Error('Choose the event, region or season the money came from.');
+    const cur = String(p.cur || '').toUpperCase();
+    if (!CUR.test(cur) || cur === 'USD') throw new Error('Choose the currency that was exchanged.');
+    const amt = Math.round((Number(p.amt) || 0) * 100) / 100, usd = Math.round((Number(p.usd) || 0) * 100) / 100;
+    if (!(amt > 0)) throw new Error('How much ' + cur + ' was exchanged?');
+    if (!(usd > 0)) throw new Error('How many dollars were received?');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? String(p.date) : new Date(now()).toISOString().slice(0, 10);
+    const all = getConvs(), id = clip(p.id, 40) || 'V' + Math.random().toString(36).slice(2, 10);
+    const row = { id, place: pl.id, cur, amt, usd, date, note: clip(p.note, 200), by: w.name, at: new Date(now()).toISOString() };
+    const i = all.findIndex(c => c.id === id);
+    if (i >= 0) all[i] = row; else all.push(row);
+    kv.setProp('finConv', JSON.stringify(all.slice(-2000)));
+    actLog(w, { seasonId: pl.seasonId, regionId: pl.regionId, location: pl.id }, 'finConv',
+      'Dollars received: ' + amt + ' ' + cur + ' from ' + labelOf(w.P, pl) + ' fetched $' + usd, null);
+    return finData(w);
+  }
+  function convDel(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can change dollars received.');
+    const id = clip(p.id, 40), all = getConvs(), gone = all.find(c => c.id === id);
+    kv.setProp('finConv', JSON.stringify(all.filter(c => c.id !== id)));
+    if (gone) actLog(w, {}, 'finConv', 'Dollars received removed: ' + gone.amt + ' ' + gone.cur + ' fetched $' + gone.usd, null);
+    return finData(w);
   }
   function cleanSeries(o) {
     const out = { seasons: {}, regions: {}, events: {} };
@@ -464,8 +518,16 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (w.email) return String(r.byEmail) === w.email || String(r.forEmail) === w.email;
     return String(r.byLink) === w.link && (!w.name || String(r.forName || r.byName) === w.name);
   }
-  const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null),
+  const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null) || payGuess(r),
     usdAmt: Number(r.usdAmt) > 0 ? Number(r.usdAmt) : null, usdDay: parse(r.usdDay, null) });
+  /* No rate came with it (b267): Finance still gets a figure and a total, at
+     the latest rate the server has (marked as a fallback). */
+  function payGuess(r) {
+    const cur = String(r.cur || '').toUpperCase(), rc = String(r.reimbCur || '').toUpperCase();
+    if (r.kind !== 'reimburse' || !rc || rc === cur) return null;
+    const x = rateNow(cur, rc);
+    return x && x.rate > 0 ? { amt: Math.round((Number(r.amt) || 0) * x.rate * 100) / 100, cur: rc, rate: x.rate, on: x.on, fallback: true } : null;
+  }
   /* The dollars at the rate on the day of the expense (b265): the rate comes
      from the server's own lookup (core.js puts it in p.usdDay), never the page. */
   function cleanUsdDay(x, amt) {
@@ -475,6 +537,21 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   /* What to pay back when it is in another currency than was spent (b259):
      worked out on the page from the rate on the day of the purchase, kept
      with the expense so Finance sees the same figure. */
+  /* What to pay back (b267): exact numbers typed on the check page win
+     ("I have the exact numbers for reimbursement"), then exact dollars when it
+     is paid back in dollars, then the day's rate the server looked up (core.js
+     puts it in p.payDay; a fallback rate says so). An exact amount keeps the
+     day's figure beside it (est), so Finance sees when it is well above. */
+  function payAmtFor(p, old, x) {
+    if (!x.reimbCur || x.reimbCur === x.cur) return '';
+    const day = p.payDay && Number(p.payDay.rate) > 0 && /^\d{4}-\d{2}-\d{2}$/.test(String(p.payDay.on || '')) ? p.payDay : null;
+    const est = day ? Math.round(x.amt * Number(day.rate) * 100) / 100 : null;
+    const exact = Math.round((Number(p.payExact) || 0) * 100) / 100 || (x.reimbCur === 'USD' && x.usdAmt ? x.usdAmt : 0);
+    if (exact > 0) return JSON.stringify({ amt: exact, cur: x.reimbCur, exact: true, est, rate: day ? Number(day.rate) : null, on: day ? day.on : x.date,
+      fallback: day && day.fallback ? true : undefined });
+    if (day) return JSON.stringify({ amt: est, cur: x.reimbCur, rate: Number(day.rate), on: String(day.on), fallback: day.fallback ? true : undefined });
+    return '';
+  }
   function cleanPayAmt(p, cur, reimbCur, amt) {
     const x = p && typeof p === 'object' ? p : null;
     if (!x || !reimbCur || reimbCur === cur) return '';
@@ -555,8 +632,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       // An edit that sends none keeps the rate it had, while the day and currencies are the same.
       usdAmt, usdDay: cur === 'USD' || usdAmt ? '' : cleanUsdDay(p.usdDay, amt) || (old && old.cur === cur && old.date === date ? (() => {
         const o = parse(old.usdDay, null); return o && o.rate > 0 ? JSON.stringify({ usd: Math.round(amt * o.rate * 100) / 100, rate: o.rate, on: o.on }) : ''; })() : ''),
-      payAmt: kind === 'reimburse' && reimbCur === 'USD' && usdAmt ? JSON.stringify({ amt: usdAmt, cur: 'USD', rate: usdAmt / amt, on: date, exact: true })
-        : kind === 'reimburse' ? cleanPayAmt(p.payAmt || (old && old.cur === cur && old.reimbCur === reimbCur && old.date === date ? parse(old.payAmt, null) : null), cur, reimbCur, amt) : ''
+      payAmt: kind === 'reimburse' ? payAmtFor(p, old, { cur, reimbCur, amt, date, usdAmt }) || cleanPayAmt(p.payAmt || (old && old.cur === cur && old.reimbCur === reimbCur && old.date === date ? parse(old.payAmt, null) : null), cur, reimbCur, amt) : ''
     };
     if (!row.byName && !forName) throw new Error('Say who you are first.');
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
@@ -745,7 +821,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
-    placeMetaGet, placeMetaSet, expUndo: undo };
+    placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
     if (!practice) throw new Error('Expenses are being tried in the practice space first. Open the practice space to use them.');

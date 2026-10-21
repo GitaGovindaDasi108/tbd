@@ -73,6 +73,7 @@ export class TbsServer extends DurableObject {
 
   async alarm() {
     await this.srv.warm();
+    try { await this.srv.refreshFx(); } catch (e) {}   // today's rates, for the fallback (b267)
     this.srv.housekeeping();
     await this.srv.fetchWanted();                // e.g. historical rates for a closed region
     this.srv.housekeeping();                     // ...used straight away
