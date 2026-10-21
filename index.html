@@ -2142,7 +2142,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b273</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b275</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2491,7 +2491,7 @@ const newBundleId = () => 'B' + Date.now().toString(36) + Math.random().toString
 
 /* While wording is being edited (b254) a message stays up longer and can be
    tapped, so its pencil can be reached like any other. */
-function toast(msg,isErr){const t=$('#toast'), ed=(()=>{ try{ return PRACTICE && EDIT_WORDING; }catch(e){ return false; } })();
+function toast(msg,isErr){const t=$('#toast'), ed=(()=>{ try{ return EDIT_WORDING; }catch(e){ return false; } })();
   t.textContent=msg;t.className=(isErr?'err show':'show')+(ed?' editing':'');
   clearTimeout(toast._t);toast._t=setTimeout(()=>t.className='',ed?10000:isErr?5000:2600);}
 function setStatus(kind,text){
@@ -5477,8 +5477,8 @@ function renderSideNav(fams){
   if(ME && !byKey.whoami) byKey.whoami = `<button class="btn" data-act="whoami">👤 Profile</button>`;
   // View as (b238): Universal, in the practice space.
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
-  // Subtract Stock (b258, practice): wherever Add Stock is offered.
-  if(PRACTICE && byKey.addstock && !byKey.substock) byKey.substock = `<button class="btn" data-act="substock">− Subtract Stock</button>`;
+  // Subtract Stock (b258; live since b275): wherever Add Stock is offered.
+  if(byKey.addstock && !byKey.substock) byKey.substock = `<button class="btn" data-act="substock">− Subtract Stock</button>`;
   // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
   if(PRACTICE && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   const sections = SN_SECTIONS.map(sec=>{
@@ -12192,7 +12192,7 @@ const EDIT_SEL = [
 ].join(', ');
 let EDIT_WORDING = false;
 try{ EDIT_WORDING = localStorage.getItem('tbs_edit_wording')==='1'; }catch(e){}
-const lblBodyClass = () => { try{ document.body.classList.toggle('editing-words', PRACTICE && EDIT_WORDING); }catch(e){} };
+const lblBodyClass = () => { try{ document.body.classList.toggle('editing-words', EDIT_WORDING); }catch(e){} };
 if(document.body) lblBodyClass(); else document.addEventListener('DOMContentLoaded', lblBodyClass);
 
 /* Your wording, with the little formatting the app understands:
@@ -12349,8 +12349,8 @@ function lblRestore(el){
 /* Everything with words in it: the listed kinds first, then every other piece
    of text on screen, so a pencil is offered everywhere — dialog headings,
    counts like "7 still coming", anything. */
-// Passing messages take a pencil in the practice space (b254), where it is being tried first.
-const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#bld,[contenteditable]' + (PRACTICE ? '' : ',#toast');
+// Passing messages take a pencil too (b254; live since b275).
+const LBL_SKIP = 'script,style,textarea,select,option,input,svg,.no-edit,.pencil,#bld,[contenteditable]';
 function lblTargets(scope){
   const out = new Set();
   scope.querySelectorAll(EDIT_SEL).forEach(el=>out.add(el));
@@ -15355,10 +15355,9 @@ function addStockModal(opts){
     const ta = $('#spPaste'); if(ta) ta.value = bulk.text;
   }
 
-  /* Several titles at once (b258, practice): paste from a spreadsheet or
+  /* Several titles at once (b258; live since b275): paste from a spreadsheet or
      upload a CSV, and each title found gets its line with its number filled in. */
   function bulkHTML(){
-    if(!PRACTICE) return '';
     return `<div class="sp-bulkadd">
         <button type="button" class="btn btn-ghost btn-sm" data-bulkopen>${bulk.open?'▾':'▸'} Add several titles at once</button>
         <div class="sp-bulkbox"${bulk.open?'':' hidden'}>
@@ -18958,13 +18957,13 @@ document.addEventListener('click',e=>{
   const p = e.target && e.target.closest && e.target.closest('.pencil');
   if(!p) return;
   e.preventDefault(); e.stopPropagation();
-  // In place in the practice space (b254), where it is being tried first; the window on the live app.
-  if(PRACTICE) labelInline(p.dataset.key); else editLabelModal(p.dataset.key);
+  // In place (b254; live since b275).
+  labelInline(p.dataset.key);
 }, true);
 /* With Edit Wording on, tapping words opens them for rewriting where they are.
    A button, link or form field keeps doing its job: its words go by its pencil. */
 document.addEventListener('click',e=>{
-  if(!PRACTICE || !EDIT_WORDING || !e.target || !e.target.closest) return;
+  if(!EDIT_WORDING || !e.target || !e.target.closest) return;
   if(e.target.closest('.lbl-in, .no-edit, button, a, input, select, textarea, [data-act], .pp-list, summary')) return;
   const el = e.target.closest('[data-key]');
   if(!el || !el.querySelector(':scope > .pencil')) return;

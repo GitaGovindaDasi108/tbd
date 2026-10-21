@@ -109,7 +109,8 @@ c({ action: 'sell', location: pl.whLoc, bookId: B1, legs: [{ type: 'Zelle', cur:
 
     // 8. No numbers on the menu.
     t.push(['no numbers on any menu item', await page.evaluate(() => !!document.querySelector('#sideNav') && !document.querySelector('#sideNav .sn-count, #sideNav .req-badge'))]);
-    t.push(['Subtract Stock is not in the live menu', await page.evaluate(() => !document.querySelector('#sideNav [data-act="substock"]'))]);
+    // b275: Subtract Stock went live (Gita, 2026-10-21).
+    t.push(['Subtract Stock is in the live menu too (b275)', await page.evaluate(() => !!document.querySelector('#sideNav [data-act="substock"]'))]);
     await page.close();
 
     // 3. The ☰ at the top left on a phone, and in a narrow window.

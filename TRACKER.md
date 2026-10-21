@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b273**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b275**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2376,3 +2376,14 @@ Live unless marked practice.
   checks); browser-round2 checks list-view cards span the list rather than a
   one-column grid. Note: 15 browser tests print FAIL lines without setting an
   exit code, so read their output, not just the exit status.
+
+## Done in b275 — Edit Wording in place, Add several titles, Subtract Stock go live (live; with Finance's b274 launch)
+- Gita (2026-10-21): these three practice features go live; View as stays practice-only.
+- **Edit Wording in place:** the PRACTICE gates are gone from `labelInline`
+  (the pencil edits the words where they are; `editLabelModal` stays as the
+  fallback when the words can't be found on the page), the tap-the-words handler,
+  `lblBodyClass`, `LBL_SKIP` (passing messages get a pencil) and `toast`.
+- **Add several titles at once** (Add Stock, paste or CSV): `bulkHTML` ungated.
+- **Subtract Stock:** in the menu wherever Add Stock is (`byKey.substock`).
+- Tests: browser-buttons and browser-round2 edit wording in place; browser-small258
+  expects Subtract Stock in the live menu.
