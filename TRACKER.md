@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b267**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b268**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2281,3 +2281,10 @@ Live unless marked practice.
   dollars in that currency (`cu` per currency from Code.gs), not sales with
   hand-entered dollars. In the Activity Log.
 - Tests: browser-finance (139).
+
+## Done in b268 — Pre-orders under sold; Expected in its own colour (live)
+- Distribution by Title and the mini cards: "(N Pre-Orders)" sits in the top
+  right under "sold", in the same grey (`qPreHTML`). Bottom left gifts, bottom
+  right "N distributed" (`qLowHTML`).
+- "Expected" is purple (`.region.expected`), apart from In transit's blue, on
+  the selling card and in the Warehouse Overview.

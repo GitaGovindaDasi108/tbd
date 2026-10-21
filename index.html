@@ -950,6 +950,9 @@ body.has-na .overlay{z-index:10000}
 .qty-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .region.total{color:var(--plum);font-weight:800}
 .region.transit{color:#2F6FB5;font-weight:800}
+/* Expected (on hand + on the way) in its own colour, apart from In transit (b268). */
+.region.expected{color:#7A3E9D;font-weight:800}
+.qcard .q-pre{text-transform:none;letter-spacing:.2px}
 .resv{font-size:10.5px;color:var(--gold);font-weight:700;letter-spacing:.3px;margin-top:2px}
 .region{font-size:9.5px;color:var(--blue);font-weight:600;letter-spacing:.2px;margin-top:2px;opacity:.9}
 .region + .region{margin-top:0}
@@ -2005,7 +2008,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b267</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b268</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5509,7 +5512,7 @@ function renderWarehouseOverview(){
       tl: qNameHTML(b, 'sc-name'),
       tr: `<span class="sc-big wo-big ${total?'':'zero'}">${total}</span><div class="sc-lbl">in stock</div>${
         transit?`<button type="button" class="sc-transit" data-act="wotransit" data-book="${esc(b.id)}" data-all="${UNIT===UNIT_SEASON?1:''}"
-        title="Where these are going">+${transit} in transit ›</button><div class="region transit">Expected: ${total+transit}</div>`:''}`,
+        title="Where these are going">+${transit} in transit ›</button><div class="region expected">Expected: ${total+transit}</div>`:''}`,
       full: where});
   }).join('');
   return `<div class="stat-grid" data-books="1">${cards}</div>`;
@@ -5535,7 +5538,7 @@ function renderSalesByRegion(){
       return qCardHTML({cls:`mini-card${b.partnerId?' consign':''}`,
         tl:`<div class="mc-name ${catOfBook(b)}">${bookTitleHTML(b)}${
           b.partnerId?'<span class="con-tag">consignment</span>':''}</div>`,
-        tr:`<span class="mc-big">${sold}</span><div class="mc-lbl">sold</div>`,
+        tr:`<span class="mc-big">${sold}</span><div class="mc-lbl">sold</div>${qPreHTML({pre}, 'mc')}`,
         ...qLowHTML({sold, pre, gift}, 'mc')});
     }).filter(Boolean).join('');
     const perBookWrap = perBook
@@ -5701,7 +5704,7 @@ function renderInventory(){
               const transit = inTransitQty(b.id); if(!transit) return '';
               const atEvents = eventsOfRegion(CUR_REGION).reduce((t,e)=>t+invQty(e.eventId,b.id),0);
               return `<div class="region transit">In transit: ${transit}</div>
-                <div class="region transit">Expected: ${q+atEvents+transit}</div>`;
+                <div class="region expected">Expected: ${q+atEvents+transit}</div>`;
             })()}</div>
         </div>
         ${(held || extra) ? `<div class="bk-more">${held?`<div class="resv">${held} pre-ordered · ${avail} free</div>`:''}${extra}</div>` : ''}
@@ -5774,11 +5777,14 @@ function giftNote(c){
    "N sold + N gifts = N distributed", the pre-orders (counted in sold) beneath. */
 function qLowHTML(c, p){
   const n = c.sold + c.gift;
-  /* b266 (Gita): gifts bottom left; bottom right "N distributed" with
-     "(N Pre-Orders)" on its own line beneath it. */
+  /* b268 (Gita): gifts bottom left, "N distributed" bottom right; the
+     pre-orders sit under "sold" in the top right (qPreHTML). */
   return {bl: c.gift ? `<div class="${p}-gift">+${c.gift} gift${c.gift===1?'':'s'}</div>` : '&nbsp;',
-          br: (n ? `<div class="q-dist"><b>${n}</b> distributed</div>` : '')
-            + (c.pre ? `<div class="${p}-pre">(${c.pre} Pre-Order${c.pre===1?'':'s'})</div>` : '')};
+          br: n ? `<div class="q-dist"><b>${n}</b> distributed</div>` : ''};
+}
+/* "(N Pre-Orders)" under "sold", in the same grey (b268). */
+function qPreHTML(c, p){
+  return c.pre ? `<div class="${p}-lbl q-pre">(${c.pre} Pre-Order${c.pre===1?'':'s'})</div>` : '';
 }
 /** Both parts on one line, for places too tight for two. */
 function countNote(c){
@@ -5853,7 +5859,7 @@ function renderTitleList(target){
     const lc = langCard(b);
     return qCardHTML({cls:`stat-card${dim}${b.partnerId?' consign':catOfBook(b)==='aotm'?' aotm-card':''}${lc.cls}`, style:lc.style, id:b.id,
       tl: qNameHTML(b, 'sc-name'),
-      tr: `<span class="sc-big ${sold?'':'zero'}">${sold}</span><div class="sc-lbl">sold</div>`,
+      tr: `<span class="sc-big ${sold?'':'zero'}">${sold}</span><div class="sc-lbl">sold</div>${qPreHTML({pre}, 'sc')}`,
       ...qLowHTML({sold, pre, gift}, 'sc'),
       full: chips});
   }).join('');
