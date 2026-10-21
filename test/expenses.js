@@ -259,6 +259,29 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['Finance can regroup one', r.ok && r.result.seasons.find(x => x.id === k25).series === 'Kartika (Vrindavan)']);
   r = await ask({ s: fa, action: 'finSeriesSet', kind: 'seasons', id: k25, series: 'x' });
   t.push(['…the Finance Assistant cannot', !r.ok]);
+  // b279 (Gita): Finance can add a place that is not in the system; it never reaches the sales side.
+  r = await S({ action: 'finPlaceAdd', name: 'Hotel Kraków', parent: 'rg_pl' });
+  t.push(['a Seller cannot add a Finance-only place', !r.ok]);
+  r = await Fi({ action: 'finPlaceAdd', name: '  Hotel   Kraków ', parent: 'rg_pl' });
+  const FP = r.ok && r.result.id;
+  t.push(['Finance can add one under a region', r.ok && /^fp_/.test(FP)]);
+  r = await Fi({ action: 'finPlaceAdd', name: 'hotel kraków', parent: 'rg_pl' });
+  t.push(['…the same name under the same place is kept once', r.ok && r.result.id === FP]);
+  r = await Fi({ action: 'finPlaceAdd', name: 'Somewhere', parent: 'ev_cp' });
+  t.push(['…it goes under Earthly HQ, a season or a region, not an event', !r.ok]);
+  r = await Fi({ action: 'expOptions' });
+  t.push(['…Finance sees it in Where, named with its region', r.ok && r.result.places.some(x => x.id === FP && x.kind === 'fin' && /Hotel Kraków/.test(x.label || x.name))]);
+  r = await S({ action: 'expOptions' });
+  t.push(['…a Seller does not', r.ok && !r.result.places.some(x => x.id === FP)]);
+  r = await O({ action: 'getState', season: SA });
+  t.push(['…and it is not added to the sales side', !JSON.stringify(r.state).includes(FP)]);
+  r = await Fi({ action: 'expSave', id: 'Xfp00001', kind: 'record', location: FP, desc: 'Room for books', cur: 'PLN', amt: 80 });
+  t.push(['an expense can be saved there', r.ok && r.result.location === FP]);
+  r = await Fi({ action: 'finData' });
+  t.push(['…Finance\'s figures carry the place, under its region', r.ok && r.result.finPlaces.some(x => x.id === FP && x.parent === 'rg_pl') && r.result.expenses.some(x => x.id === 'Xfp00001' && x.f === FP && x.r === 'rg_pl')]);
+  await Fi({ action: 'expDelete', id: 'Xfp00001' });
+  r = await Fi({ action: 'finPlaceAdd', name: 'Airport store', parent: '' });
+  t.push(['…a place can sit under Earthly HQ too', r.ok && /^fp_/.test(r.result.id)]);
 
   // View as (practice, Universal only).
   r = await O({ action: 'viewAsList' });
