@@ -164,10 +164,11 @@ const API = 'http://api.test/';
     await own.evaluate(() => goTo('season')); await own.waitForTimeout(800);
     const ST = '#seasonTitleList > .stat-grid';
     const titles = () => own.$$eval(ST + ' > [data-id]', c => c.map(x => x.dataset.id));
-    const sOrder = await titles();
     t.push(['season: Distribution by Title has the ⇅ too', await own.evaluate(() => { const g = document.querySelector('#seasonTitleList'); const h = g && g.closest('.panel').querySelector(':scope > h2'); return !!(h && h.querySelector('.arr-tg') && h.querySelector('.arr-tg').offsetParent); })]);
     t.push(['…and the Warehouse Overview', await own.evaluate(() => { const g = document.querySelector('#whOverview'); const h = g && g.closest('.panel').querySelector(':scope > h2'); return !!(h && h.querySelector('.arr-tg')); })]);
     await own.evaluate(() => document.querySelector('#seasonTitleList').closest('.panel').querySelector('.arr-tg').click()); await own.waitForTimeout(300);
+    // b271: titles nothing was distributed of only show while arranging.
+    const sOrder = await titles();
     await own.$eval(ST, g => g.scrollIntoView({ block: 'center' })); await own.waitForTimeout(200);
     const a = await centre(own, `${ST} > [data-id="${sOrder[2]}"] .sc-name`), b0 = await centre(own, `${ST} > [data-id="${sOrder[0]}"]`);
     await own.mouse.move(a.x, a.y); await own.mouse.down(); await own.mouse.move(b0.x, b0.y, { steps: 20 }); await own.mouse.up();
