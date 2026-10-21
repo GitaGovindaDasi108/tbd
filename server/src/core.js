@@ -564,20 +564,35 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
      sales side already keeps (open.er-api). A fallback says so. */
   const FX_WAIT = 3500;
   const fxKey = (from, to) => from + '>' + to;
-  const fxLast = () => { try { return JSON.parse(kv.getProp('fxLast') || '{}') || {}; } catch (e) { return {}; } };
+  /* Every day's rate this server has found, pair by pair (b269), so a missing
+     day can take the rate nearest to it (Gita: "a rate closest to that date"). */
+  const fxHist = () => {
+    let h = {}; try { h = JSON.parse(kv.getProp('fxHist') || '{}') || {}; } catch (e) { h = {}; }
+    // b267 kept only the latest rate a pair (fxLast): each becomes that day's entry.
+    if (!Object.keys(h).length) { try { const L = JSON.parse(kv.getProp('fxLast') || '{}') || {};
+      Object.keys(L).forEach(k => { if (L[k] && L[k].rate > 0 && L[k].on) h[k] = { [L[k].on]: L[k].rate }; }); } catch (e) {} }
+    return h;
+  };
   function fxKeep(from, to, r) {
-    const all = fxLast(), k = fxKey(from, to), had = all[k];
-    if (had && had.on > r.on) return;
-    all[k] = { rate: r.rate, on: r.on, src: r.src };
+    const all = fxHist(), k = fxKey(from, to), h = all[k] || (all[k] = {});
+    if (h[r.on] === r.rate) return;
+    h[r.on] = r.rate;
+    const days = Object.keys(h).sort(); if (days.length > 400) days.slice(0, days.length - 400).forEach(d => { delete h[d]; });
     const keys = Object.keys(all); if (keys.length > 200) delete all[keys[0]];
-    kv.setProp('fxLast', JSON.stringify(all));
+    kv.setProp('fxHist', JSON.stringify(all));
   }
-  function rateNow(from, to) {
+  const dayNo = d => Math.round(Date.parse(d + 'T00:00:00Z') / 864e5);
+  function rateNow(from, to, date) {
     from = String(from || '').toUpperCase(); to = String(to || '').toUpperCase();
     if (!from || !to) return null;
     if (from === to) return { rate: 1, on: '', src: '' };
-    const last = fxLast()[fxKey(from, to)];
-    if (last && last.rate > 0) return { rate: last.rate, on: last.on, src: last.src, fallback: true };
+    const h = fxHist()[fxKey(from, to)] || {}, days = Object.keys(h).filter(d => h[d] > 0);
+    if (days.length) {
+      // The nearest day to the one asked for (the later one on a tie); no day asked for: the latest.
+      const want = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '')) ? dayNo(date) : Infinity;
+      const best = days.sort().reduce((b, d) => !b ? d : (Math.abs(dayNo(d) - want) <= Math.abs(dayNo(b) - want) ? d : b), '');
+      return { rate: h[best], on: best, src: 'nearest day found', fallback: true };
+    }
     const hit = web.get(RATES_URL);
     let j = null; try { j = hit && hit.code === 200 ? JSON.parse(hit.text) : null; } catch (e) { j = null; }
     const R = j && j.rates;
@@ -613,13 +628,13 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     if (ecb && ecb.rates && Number(ecb.rates[to]) > 0) r = { rate: Number(ecb.rates[to]), on: String(ecb.date || date), src: 'European Central Bank' };
     else for (const j of [a, b]) if (j && j[f] && Number(j[f][t]) > 0) { r = { rate: Number(j[f][t]), on: String(j.date || date), src: 'currency-api' }; break; }
     if (r) { try { fxKeep(from, to, r); } catch (e) {} return r; }
-    return noFallback ? null : rateNow(from, to);
+    return noFallback ? null : rateNow(from, to, date);
   }
   /* Every hour (worker.js's alarm): today's rate for each pair asked for
      before, so the fallback is never old. */
   async function refreshFx() {
     const today = new Date().toISOString().slice(0, 10);
-    const pairs = Object.keys(fxLast()).filter(k => fxLast()[k].on < today).slice(0, 30);
+    const H = fxHist(), pairs = Object.keys(H).filter(k => !H[k][today]).slice(0, 30);
     await Promise.all(pairs.map(k => { const [f, t] = k.split('>'); return fxOn(today, f, t, true).catch(() => null); }));
   }
   /* The rates, fetched ahead of the request that will want them. */

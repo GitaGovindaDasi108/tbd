@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b268**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b269**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2288,3 +2288,22 @@ Live unless marked practice.
   right "N distributed" (`qLowHTML`).
 - "Expected" is purple (`.region.expected`), apart from In transit's blue, on
   the selling card and in the Warehouse Overview.
+## Done in b269 — Owed in the person's currency with dollars, ~ on estimates, nearest-day rates (practice)
+- **What is owed** (`finPayText`): in the currency each person asked for,
+  dollars in brackets: "500 € (~$555)"; all in dollars, one figure;
+  several currencies "$169.05 + 765 zł (~$370)". Per person, Reimbursements
+  Due, To pay back, Paid back rows, 📋. No dollars known: amounts only.
+- **~** marks dollars worked out from a rate (`finUsd(n, est)`): sales with
+  a non-dollar leg and no hand-entered dollars (`ue` from Code.gs; cleared
+  by Dollars received), expenses without exact dollars (`usdExact`). Tiles,
+  tables, lists and charts. Logged dollars have none.
+- **Fallback rate** = the nearest day's rate this server has found for the
+  pair (`fxHist`, every lookup and the hourly refresh; seeded from b267's
+  `fxLast`), else open.er-api's. Expenses with no rate at their place get
+  dollars this way in `finData`.
+- **Dollars received** moved beside 🧾 Add an expense (Expenses &
+  Reimbursements); off the Overview.
+- **Charts:** colour keys never shrink to nothing beside long figures
+  (`.fin-key{flex:none}`). The Expenses screen shows Gross, Expenses and Net
+  (bars, and month by month; a month below zero is red).
+- Tests: browser-finance (148), browser-expenses (68).
