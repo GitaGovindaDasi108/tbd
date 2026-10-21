@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b278**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b279**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2455,3 +2455,28 @@ Live unless marked practice.
   Who may edit them (`mine`) is unchanged.
 - Tests: expenses.js (payment types, the pool); browser-finance (no To do, payment types,
   windows stay open and still, ✕).
+
+## Done in b279
+
+Live app changes (Gita, 2026-10-21):
+- **Expense form stays on the field you change.** After a redraw it used to snap back to the last
+  spot tapped. Now `expHold` anchors on the element just changed or clicked (`_expTrig`, within
+  1.5s), then falls back to the focused field, then the last tap.
+- **Finance-only places.** Finance (`mayPay`) can type a place that isn't in the system into
+  "Where" on the expense form and choose "＋ Add". This is `finPlaceAdd`: the place is stored in
+  prop `finPlaces` as {id:'fp_…', name, parent}, where parent is '' (Earthly HQ), a season or a
+  region. The same name under the same parent is kept once, and each add goes in the Activity Log.
+  - It is never added to the sales side. Only Finance users see it in "Where" (`placeList`/`placeOf`
+    kind 'fin').
+  - In the Finance search it sits under its parent, tagged "Finance only".
+  - `finData.finPlaces`, plus `x.f` on expenses there, let it be chosen as a Finance scope
+    (`finScopeF().f`).
+- **Single lines show the original amount in its own grey column.** On Finance's Expenses rows the
+  original amount (`.fx-o`, blank for dollars) and the dollars (`.fx-a`) sit in fixed-width
+  columns, so every row lines up. Reimbursement rows (pending and done) work the same way
+  (`.li-orig` + `.li-amt`, `finPaySplit`), and the done badge is fixed width.
+- Tests:
+  - expenses.js: Finance-only places (who may add, dedupe, not for an event, Finance-only in
+    Where, not on the sales side, an expense there, finData).
+  - browser-finance: the form stays put on a currency change, "＋ Add" in Where, "Finance only" in
+    search, and the columns line up.

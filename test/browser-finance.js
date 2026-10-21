@@ -494,7 +494,8 @@ const API = 'http://api.test/';
     t.push(['…and Earthly HQ is a place an expense can belong to', (await O({ action: 'expList', scope: 'all' })).result.some(x => x.id === 'Xeur0001' && x.placeLabel === 'Earthly HQ')]);
     t.push(['b265: dollars come last, out of brackets: (500 ден) $9.08', await own.evaluate(() => finDual(500, 'MKD', 9.08) === '(' + cashFmt(500, 'MKD') + ') $9.08' && finDual(20, 'USD', 20) === cashFmt(20, 'USD'))]);
     await own.evaluate(() => finGo('expenses')); await own.waitForTimeout(1500);
-    t.push(['…and the Expenses list reads that way', /\(.*10.*\) \$12\.50/.test(await fpage(own))]);
+    const fxLine = (pg, o, a) => pg.evaluate(([o, a]) => [...document.querySelectorAll('.fx-item .fx-row')].some(r => r.querySelector('.fx-o').textContent.trim() === o && r.querySelector('.fx-a').textContent.trim() === a), [o, a]);
+    t.push(['…and the Expenses list reads that way (b279: the original amount in its own column)', await fxLine(own, await own.evaluate(() => cashFmt(10, 'EUR')), '$12.50')]);
     // b267: quicker rates, a fallback, exact amounts flagged, totals by currency, dollars received.
     let t0 = Date.now(); const slow = await srv.fxOn('2026-10-10', 'GBP', 'USD');
     t.push(['b267: a source that does not answer is given up on in a few seconds', Date.now() - t0 < 5000]);
@@ -540,7 +541,7 @@ const API = 'http://api.test/';
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });
       return [...document.querySelectorAll('#finCharts .fin-key')].every(k => k.getBoundingClientRect().width >= 10); })]);
     t.push(['b269: estimated dollars carry ~, logged ones none: (10 €) ~$11 and (10 €) $12.50', await own.evaluate(() => { const t = document.querySelector('#fpBody').innerText;
-      return /\(10 €\) ~\$11\b/.test(t) && /\(10 €\) \$12\.50/.test(t) && /\n\$30\n/.test(t); })]);
+      return /\n\$30\n/.test(t); }) && await fxLine(own, '10 €', '~$11') && await fxLine(own, '10 €', '$12.50')]);
     t.push(['b269: what is owed reads in the person\'s currency, dollars beside: 765 zł (~$…)', await own.evaluate(() => {
       const x = finExpList().find(y => y.id === 'Xpln0001'); return new RegExp('^' + cashFmt(765, 'PLN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\(~\\$[\\d.,]+\\)$').test(finPayText([x])); })]);
     t.push(['b269: …and all in dollars, just one figure', await own.evaluate(() => finPayText([finExpList().find(y => y.id === 'Xexact01')]) === '$20')]);
@@ -661,6 +662,36 @@ const API = 'http://api.test/';
     t.push(['b278: no Finance To do in the form on the live app', !(await lv.$('#modal [data-act="fintodo"]'))]);
     await lv.click('#modal h3 .x'); await lv.waitForTimeout(300);
     t.push(['b278: ✕ closes it', await lv.evaluate(() => !$('#overlay').classList.contains('show'))]);
+    // b279: the form keeps the field just changed where it was (not where the last tap was).
+    await lv.evaluate(() => expensesModal()); await lv.waitForTimeout(1500);
+    await lv.evaluate(() => { const b = document.querySelector('#modal .m-body'); if (b) b.scrollTop = 200; $('#overlay').scrollTop = 100; });
+    await lv.click('#xAmt'); await lv.keyboard.type('12'); await lv.click('#xDesc'); await lv.keyboard.type('Room');
+    const curTop = () => lv.evaluate(() => { const e = document.querySelector('#xCur'); return e ? Math.round(e.getBoundingClientRect().top) : null; });
+    const cur0 = await curTop();
+    if (cur0 !== null) { await lv.selectOption('#xCur', { index: 1 }); await lv.waitForTimeout(500); }
+    const cur1 = await curTop();
+    t.push(['b279: changing the currency leaves that field where it was, not where the last tap was (' + cur0 + ' → ' + cur1 + ')', cur0 !== null && Math.abs(cur1 - cur0) <= 2]);
+    // b279: Finance adds a place that is not in the system, for Finance only.
+    await lv.click('#xLocC .pp-in'); await lv.fill('#xLocC .pp-in', 'Hotel Sunrise'); await lv.waitForTimeout(200);
+    t.push(['b279: in Where, Finance typing a new place is offered "＋ Add"', await lv.evaluate(() => /Add “Hotel Sunrise”/.test((document.querySelector('#xLocC .pp-add') || {}).textContent || ''))]);
+    await lv.click('#xLocC .pp-add'); await lv.waitForTimeout(1500);
+    t.push(['b279: …which adds it and chooses it', await lv.evaluate(() => /^fp_/.test(EXP.form.location) && /Hotel Sunrise/.test(document.querySelector('#xLocC .pp-in').value))]);
+    await lv.click('#modal h3 .x'); await lv.waitForTimeout(300);
+    t.push(['b279: …and it is not added to the sales side', await lv.evaluate(() => !JSON.stringify(STATE.locations || []).includes('Hotel Sunrise') && !JSON.stringify(STATE.events || []).includes('Hotel Sunrise'))]);
+    await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1500);
+    await lv.click('#finPP .pp-in'); await lv.fill('#finPP .pp-in', 'Sunrise'); await lv.waitForTimeout(300);
+    t.push(['b279: the Finance search finds it, marked "Finance only"', await lv.evaluate(() => [...document.querySelectorAll('#finPP .pp-row')].some(x => /Hotel Sunrise/.test(x.textContent) && /Finance only/.test(x.textContent)))]);
+    await lv.evaluate(() => finGo('expenses', '', {reload:true})); await lv.waitForTimeout(1500);
+    t.push(['b279: Expenses single lines show the original amount in its own grey column, the dollars beside it, all lined up', await lv.evaluate(() => {
+      const rows = [...document.querySelectorAll('#finExS .fx-row')]; if (rows.length < 2) return false;
+      const edge = sel => { const v = rows.map(r => r.querySelector(sel).getBoundingClientRect().right); return Math.max(...v) - Math.min(...v) <= 2; };
+      const o = [...document.querySelectorAll('#finExS .fx-item .fx-o')];
+      return edge('.fx-o') && edge('.fx-a') && getComputedStyle(o[0]).color === getComputedStyle(document.querySelector('#finExS .fx-d')).color
+        && rows.slice(1).every(r => !/\(/.test(r.querySelector('.fx-a').textContent)); })]);
+    t.push(['b279: Reimbursement lines show it the same way, lined up', await lv.evaluate(() => {
+      const rows = [...document.querySelectorAll('#finRbS .rb-item .li-row')]; if (!rows.length) return true;
+      const e = sel => { const v = rows.map(r => { const x = r.querySelector(sel); return x ? x.getBoundingClientRect().right : 0; }); return Math.max(...v) - Math.min(...v) <= 2; };
+      return e('.li-orig') && e('.li-amt'); })]);
     await lv.evaluate(() => openModal('<h3>Plain</h3><div class="m-body">x</div>')); await lv.waitForTimeout(100);
     t.push(['b278: every window gets its ✕', await lv.evaluate(() => !!document.querySelector('#modal h3 .x'))]);
     await lv.evaluate(() => closeModal()); await lv.waitForTimeout(300);

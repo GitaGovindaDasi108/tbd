@@ -1502,7 +1502,14 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .fin-key{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:7px;vertical-align:-1px}
 .exp-locked{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;font-size:13.5px}
 .fin-ex{display:flex;flex-direction:column;gap:5px;margin-top:6px}
-.fx-row{display:grid;grid-template-columns:86px minmax(0,1fr) auto 14px;gap:10px;align-items:center;cursor:pointer;font-size:13.5px}
+.fx-row{display:grid;grid-template-columns:86px minmax(0,1fr) 110px 84px 14px;gap:10px;align-items:center;cursor:pointer;font-size:13.5px}
+.fx-o{text-align:right;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+/* The pending bar is 4px; the rest keep a matching 4px edge so every column lines up. */
+.fin-ex .fx-item,.rb-item{border-left-width:4px}
+.rb-item .li-orig{flex:0 0 104px;text-align:right;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.rb-item .li-amt{flex:0 0 78px;text-align:right;font-variant-numeric:tabular-nums}
+.rb-item .li-row > .badge{flex:0 0 126px;text-align:center;box-sizing:border-box}
+@media (max-width:560px){ .rb-item .li-orig{flex-basis:74px;font-size:11px} .rb-item .li-amt{flex-basis:64px} .rb-item .li-row > .badge{flex-basis:112px} }
 .fx-head{cursor:default;padding:0 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .fx-head .fx-h{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;box-shadow:none}
 .fx-d{color:var(--muted);font-size:12.5px;text-align:left}
@@ -1511,6 +1518,8 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .fx-item{padding:7px 10px}
 .fx-det>div{margin:2px 0}
 .fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
+.fin-ex .fx-head{padding:0 11px 0 14px}
+@media (max-width:560px){ .fx-row{grid-template-columns:64px minmax(0,1fr) 58px 62px 10px;gap:5px;font-size:12.5px} .fin-ex .fx-item{padding:6px} .fin-ex .fx-head{padding:0 7px 0 10px} .fx-d,.fx-o{font-size:11px} }
 .rb-item{margin:6px 0}
 .rb-item .li-btns .btn{min-width:56px}
 .rb-det .exp-gi{padding:6px 0;border-top:1px dashed var(--line)}
@@ -2151,7 +2160,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b278</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b279</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -9145,8 +9154,10 @@ function expPlaceItems(places){
   places.forEach(pl=>{
     const bits = pl.label.split(' · ');
     const name = bits[0], up = bits.slice(1);
-    const upIds = pl.kind==='event' ? [pl.regionId, pl.seasonId] : pl.kind==='region' ? [pl.seasonId] : [];
-    out.push({v:pl.id, l: pl.kind==='season' ? name + ' (the whole season)' : name, shown: pl.label, kind:pl.kind, up, upIds});
+    const upIds = pl.kind==='event' ? [pl.regionId, pl.seasonId] : pl.kind==='region' ? [pl.seasonId]
+      : pl.kind==='fin' ? [pl.parent, pl.seasonId].filter((x,i,a)=>x && a.indexOf(x)===i) : [];
+    out.push({v:pl.id, l: pl.kind==='season' ? name + ' (the whole season)' : name, shown: pl.label, kind: pl.kind==='fin' ? 'event' : pl.kind, up, upIds,
+      tag: pl.kind==='fin' ? 'Finance only' : ''});
   });
   return out;
 }
@@ -9200,6 +9211,11 @@ function expKeepPayTo(method, payTo){
    pop. Coming back from "Check your expenses" returns to where you were. */
 let _expTouched = null;
 $('#modal').addEventListener('pointerdown', e=>{ _expTouched = e.target; }, true);
+/* What the person just changed or chose (b279): the form redraws around THAT,
+   so it stays exactly where it was on the screen, not the field typed in
+   before or the spot first tapped (Gita: "squirrelly"). */
+let _expTrig = null;
+['change', 'click'].forEach(ev=>$('#modal').addEventListener(ev, e=>{ _expTrig = { el: e.target, key: expFieldKey(e.target), t: Date.now() }; }, true));
 $('#modal').addEventListener('focusin', e=>{ _expTouched = e.target; });
 function expFieldKey(el){
   if(!el || !el.closest) return '';
@@ -9220,7 +9236,8 @@ function expHold(){
   if(!ov.classList.contains('show') || !(onForm || onReview)) return ()=>{};
   const b = body(), st = onForm ? (b ? b.scrollTop : 0) : (EXP.formTop || 0), ost = onForm ? ov.scrollTop : (EXP.formOvTop || 0);
   const act = document.activeElement && m.contains(document.activeElement) ? document.activeElement : null;
-  const anc = onForm ? (act || (_expTouched && m.contains(_expTouched) ? _expTouched : null)) : null;
+  const trig = _expTrig && Date.now() - _expTrig.t < 1500 && _expTrig.key && m.contains(_expTrig.el) ? _expTrig.el : null;
+  const anc = onForm ? (trig || act || (_expTouched && m.contains(_expTouched) ? _expTouched : null)) : null;
   const ancKey = anc ? expFieldKey(anc) : '', ancTop = ancKey ? anc.getBoundingClientRect().top : 0;
   const actKey = act ? expFieldKey(act) : '';
   let sel = null; try{ if(act && typeof act.selectionStart==='number') sel = [act.selectionStart, act.selectionEnd]; }catch(e){}
@@ -9405,7 +9422,16 @@ function expBind(){
     if(!EXP.opt.spendCurs.includes(f.cur) || !f.amt) f.cur = EXP.opt.defaultCur; expDraw(); };
   const loc = $('#xLoc');
   if(loc) loc.addEventListener('change', ()=>{ expRead(); placeChanged(); });
-  comboBind('xLocC', expPlaceItems(o.places), f.location, v=>{ expRead(); f.location = v; placeChanged(); });
+  /* Finance adds a place that isn't in the app (b279): it goes under the season or
+     region chosen in Where (an event's region; Earthly HQ when nothing is), and
+     shows only in Finance, never in sales. */
+  comboBind('xLocC', expPlaceItems(o.places), f.location, v=>{ expRead(); f.location = v; placeChanged(); },
+    o.mayPay ? async name=>{ expRead();
+      const here = o.places.find(x=>x.id===f.location) || {};
+      const parent = here.kind==='season' || here.kind==='region' ? here.id : here.kind==='event' ? here.regionId : here.kind==='fin' ? (here.parent==='rg_hq' ? '' : here.parent) : '';
+      try{ const r = (await post({action:'finPlaceAdd', name, parent})).result; f.location = r.id;
+        await placeChanged(); const now = EXP.opt.places.find(x=>x.id===r.id); toast('“' + name + '” added' + (now ? ' (' + now.label.split(' · ').slice(1).join(' · ') + ')' : '')); }
+      catch(e){ toast(e.message, true); expDraw(); } } : null);
   // Anything chosen as Other asks what it is.
   /* Finance adds kinds of expense as they go, by typing one that isn't there
      (b277, Gita). An expense saved with a kind since removed keeps it. */
@@ -10155,7 +10181,7 @@ function finIdx(){
 }
 function finFiltered(f){
   const D = FIN.D;
-  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) &&
+  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.f || x.f===f.f) &&
     (!f.from || x.d >= f.from) && (!f.to || x.d <= f.to);
   return { sales: D.sales.filter(ok), exps: D.expenses.filter(ok) };
 }
@@ -10175,14 +10201,18 @@ function finFiltersHTML(f, search){
    Typing narrows it; a season or region that matches keeps everything beneath
    it. Choosing one takes the page there. ---- */
 function finPlaces(){
-  const D = FIN.D, out = [{kind:'all', id:'', name:'Everywhere, every season'}];
+  const D = FIN.D, out = [{kind:'all', id:'', name:'Everywhere, every season'}], fps = D.finPlaces || [];
   D.seasons.forEach(se=>{
     out.push({kind:'season', id:se.id, name:se.name, s:se.id});
     D.regions.filter(r=>r.seasonId===se.id).forEach(r=>{
       out.push({kind:'region', id:r.id, name:r.name, s:se.id, r:r.id, sName:se.name});
       D.events.filter(e=>e.regionId===r.id).forEach(e=>out.push({kind:'event', id:e.id, name:e.name, s:se.id, r:r.id, sName:se.name, rName:r.name}));
+      fps.filter(x=>x.parent===r.id).forEach(x=>out.push({kind:'event', fin:1, id:x.id, name:x.name, s:se.id, r:r.id, sName:se.name, rName:r.name}));
     });
+    fps.filter(x=>x.parent===se.id).forEach(x=>out.push({kind:'region', fin:1, id:x.id, name:x.name, s:se.id, sName:se.name}));
   });
+  // Finance-only places (b279) sit under the place they belong to; those under Earthly HQ come last.
+  fps.filter(x=>!x.parent || x.parent==='rg_hq').forEach(x=>out.push({kind:'season', fin:1, id:x.id, name:x.name}));
   return out;
 }
 function finSearchHTML(){
@@ -10199,13 +10229,14 @@ function finBindSearch(){
     const hit = v => String(v||'').toLowerCase().includes(q);
     const me = p => hit(p.name) || hit(p.rName) || hit(p.sName);
     return places.filter(p=>p.kind==='all' ? hit(p.name)
+      : p.fin ? me(p)
       : p.kind==='season' ? places.some(c=>c.s===p.id && me(c))
       : p.kind==='region' ? me(p) || places.some(c=>c.r===p.id && me(c))
       : me(p));
   };
   const draw = q => {
     const rows = shown(q);
-    list.innerHTML = rows.length ? rows.map(p=>`<span class="pp-row pp-${p.kind==='all'?'season':p.kind}${p.id===FINP.scope?' on':''}" data-id="${esc(p.id)}">${esc(p.name)}</span>`).join('')
+    list.innerHTML = rows.length ? rows.map(p=>`<span class="pp-row pp-${p.kind==='all'?'season':p.kind}${p.id===FINP.scope?' on':''}" data-id="${esc(p.id)}">${esc(p.name)}${p.fin ? '<span class="pp-tag">Finance only</span>' : ''}</span>`).join('')
       : '<span class="pp-empty">Nothing matches.</span>';
     list.hidden = false;
   };
@@ -11137,8 +11168,10 @@ function finParseHash(){
 }
 /* The place being looked at, as season / region / event ids. */
 function finScopeF(){
-  const D = FIN.D, id = FINP.scope, out = { s:'', r:'', e:'' };
+  const D = FIN.D, id = FINP.scope, out = { s:'', r:'', e:'', f:'' };
   if(!D || !id) return out;
+  const fp = (D.finPlaces||[]).find(x=>x.id===id);
+  if(fp){ out.f = fp.id; out.s = fp.seasonId==='HQ' ? '' : fp.seasonId; out.r = fp.regionId==='rg_hq' ? '' : fp.regionId; return out; }
   const se = D.seasons.find(x=>x.id===id), rg = D.regions.find(x=>x.id===id), ev = D.events.find(x=>x.id===id);
   if(se) out.s = se.id;
   else if(rg){ out.r = rg.id; out.s = rg.seasonId; }
@@ -11165,7 +11198,7 @@ function finScopeNote(){
 function finScopeName(){
   const f = finScopeF(), D = FIN.D; if(!D) return '';
   const nm = (list, id) => (list.find(x=>x.id===id)||{}).name || '';
-  return [nm(D.events, f.e), nm(D.regions, f.r), nm(D.seasons, f.s)].filter(Boolean).join(' · ');
+  return [nm(D.finPlaces||[], f.f), nm(D.events, f.e), nm(D.regions, f.r), nm(D.seasons, f.s)].filter(Boolean).join(' · ');
 }
 /* The To do, for the place being looked at only. */
 function finScopedTodo(){
@@ -11316,7 +11349,7 @@ function finRender(){
 function finExpList(){
   const f = finScopeF(), usd = {}, ff = FIN.f;
   const ux = {}; ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; ux[x.id] = x.usdExact; });
-  return (EXP.all || []).filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e)
+  return (EXP.all || []).filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e) && (!f.f || x.location===f.f)
       && (!ff.from || x.date >= ff.from) && (!ff.to || x.date <= ff.to))
     .map(x=>Object.assign({}, x, { usd: usd[x.id]===undefined ? null : usd[x.id], usdExact: ux[x.id], who: x.forName || x.byName || '',
       type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other') }));
@@ -11443,6 +11476,15 @@ function finWaExpBar(T, L){
    so a glance down the list reads dollars, and the bracket shows which are worked out. */
 const finDual = (amt, cur, usd, est) => String(cur).toUpperCase()==='USD' || usd===null || usd===undefined ? cashFmt(amt, cur) : '(' + cashFmt(amt, cur) + ') ' + finUsd(usd, est);
 const finExpAmt = x => finDual(x.amt, x.cur, x.usd, !x.usdExact);
+/* Single lines (b279, Gita): the original amount in its own grey column,
+   the dollars in the next, so every row lines up. */
+const finExpOrig = x => String(x.cur||'').toUpperCase()==='USD' ? '' : cashFmt(x.amt, x.cur);
+const finExpUsd = x => x.usd==null ? '—' : finUsd(x.usd, !x.usdExact);
+function finPaySplit(xs){
+  const P = finPayOut(xs), ks = Object.keys(P.by).filter(c=>c!=='USD' && Math.abs(P.by[c]) > 0.004).sort();
+  const d = P.unknown ? '' : Math.abs(P.usd) > 0.004 || !ks.length ? finUsd(P.usd, P.est) : '';
+  return {o: ks.map(c=>cashFmt(P.by[c], c)).join(' + '), d: d || '—'};
+}
 
 /* Expenses: sort by date, name, amount or type; filter with checklists that
    drop down, as the sales log's do (Gita, 2026-10-20). */
@@ -11477,7 +11519,7 @@ function finExpSecHTML(){
     return `<div class="log-item fx-item${x.status==='declined'?' fin-dim':''}${x.kind==='reimburse' && x.status==='pending' ? ' pending' : ''}${open?' open':''}" data-xid="${esc(x.id)}">
       <div class="fx-row" data-act="exopen" data-id="${esc(x.id)}"><span class="fx-d">${esc(x.date)}</span>
         <span class="fx-w no-edit">${esc(x.desc)}</span>
-        <span class="fx-a">${esc(finExpAmt(x))}</span><span class="li-chev">▶</span></div>
+        <span class="fx-o">${esc(finExpOrig(x))}</span><span class="fx-a">${esc(finExpUsd(x))}</span><span class="li-chev">▶</span></div>
       <div class="li-det fx-det">
         <div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>
         <div><span class="k">Type</span> <span class="v">${esc(x.type)}</span></div>
@@ -11509,7 +11551,7 @@ function finExpSecHTML(){
       ${facet('type', 'Type', E.types, types.map(t=>[t, t, all.filter(x=>x.type===t).length]))}
       ${facet('status', 'Status', E.sts, sts.map(k=>[k, EXP_STATUS[k], all.filter(x=>x.status===k).length]))}</span></div>
     <div class="fin-ex">
-      <div class="fx-row fx-head">${head('date','Date','fx-d')}<span class="fx-w">What for</span>${head('amount','Amount','fx-a')}<span class="li-chev"></span></div>
+      <div class="fx-row fx-head">${head('date','Date','fx-d')}<span class="fx-w">What for</span><span class="fx-o">Original</span>${head('amount','Dollars','fx-a')}<span class="li-chev"></span></div>
       ${list.map(row).join('') || `<div class="cash-empty">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</div>`}</div>`;
 }
 function finBindExpSec(){
@@ -11611,7 +11653,7 @@ function expOver(x){
 function expGroupHTML(xs){
   const x = xs[0], may = EXP.opt && EXP.opt.mayPay, ids = xs.map(y=>y.id).join(',');
   const yes = xs.filter(y=>!FIN.rbNo.has(y.id)), unknown = yes.filter(y=>!expPayOut(y));
-  const total = finPayText(yes) || '—';
+  const total = finPaySplit(yes);
   const open = FIN.rbOpen.has(ids);
   const ways = [...new Map(xs.map(y=>[[y.method, y.reimbCur, JSON.stringify(y.payTo||{})].join('|'), y])).values()];
   const items = xs.map(y=>{ const off = FIN.rbNo.has(y.id), out = expPayOut(y);
@@ -11634,7 +11676,7 @@ function expGroupHTML(xs){
       <div class="li-row" data-act="rbopen" data-g="${esc(ids)}"><span class="li-chev">▶</span>
         <span class="li-book no-edit">${esc(x.forName || x.byName || '')}</span>
         <span class="li-who">${sub}</span>
-        <span class="li-amt owed">${esc(total)}</span>
+        <span class="li-orig">${esc(total.o)}</span><span class="li-amt owed">${esc(total.d)}</span>
         ${may ? `<span class="li-btns"><button class="btn btn-primary btn-xs" data-act="exppaid" data-id="${esc(ids)}">Pay</button>
           <button class="btn btn-ghost btn-xs" data-act="expdecline" data-id="${esc(ids)}">Decline</button></span>` : ''}</div>
       <div class="li-det rb-det">
@@ -11652,7 +11694,7 @@ function finRbDoneHTML(x){
       <div class="li-row" data-act="rbopen" data-g="${esc(x.id)}"><span class="li-chev">▶</span>
         <span class="li-book no-edit">${esc(x.forName || x.byName || '')}</span>
         <span class="li-who">${esc(x.desc)}</span>
-        <span class="li-amt">${esc(finPayText([x]) || cashFmt(x.amt, x.cur))}</span>
+        <span class="li-orig">${esc(finPaySplit([x]).o)}</span><span class="li-amt">${esc(finPaySplit([x]).d)}</span>
         <span class="badge ${x.status==='paid' ? 'sale' : 'rb-dec'}">${esc(when)}</span></div>
       <div class="li-det rb-det">${expCardHTML(x, true)}</div>
     </div>`;
@@ -12007,11 +12049,12 @@ function finChartsHTML(){
     out.push(finChart('Expenses by type', finDonutHTML(finTop(byT), 'Expenses by type', 'Expenses')));
     const f = finScopeF(), D = FIN.D, nm = (list, id) => (list.find(y=>y.id===id)||{}).name, byN = {};
     let what = '';
-    if(!f.e){
+    if(!f.e && !f.f){
       what = f.r ? 'Event' : f.s ? 'Region' : 'Season';
       all.forEach(x=>{
-        const k = f.r ? (nm(D.events, x.location) || (nm(D.regions, f.r) || 'Region') + ' Warehouse')
-          : f.s ? (nm(D.regions, x.regionId) || 'Season-wide')
+        const fpN = nm(D.finPlaces || [], x.location);
+        const k = f.r ? (nm(D.events, x.location) || fpN || (nm(D.regions, f.r) || 'Region') + ' Warehouse')
+          : f.s ? (nm(D.regions, x.regionId) || fpN || 'Season-wide')
           : (nm(D.seasons, x.seasonId) || 'Earthly HQ');
         byN[k] = (byN[k]||0) + (x.usd||0);
       });

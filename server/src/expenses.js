@@ -133,8 +133,18 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   /* Earthly HQ (b265): where an expense starts for anyone who reaches every
      place (Gita, 2026-10-20). To the data it is a region of a season of its own. */
   const HQ = { id: 'rg_hq', kind: 'hq', seasonId: 'HQ', regionId: 'rg_hq', eventId: '' };
+  /* Finance-only places (b279, Gita): somewhere money was spent that isn't a
+     place in the app — never in sales, only in Finance's lists and searches.
+     Kept in `finPlaces` as { fp_…: { id, name, parent } }, parent being '' (Earthly
+     HQ), a season or a region, so it sits under it (sub-regions may sit beside). */
+  const getFP = () => { const o = parse(kv.getProp('finPlaces'), {}); return o && typeof o === 'object' ? o : {}; };
   function placeOf(P, id) {
     if (id === HQ.id) return Object.assign({}, HQ);
+    if (/^fp_/.test(String(id))) {
+      const fp = getFP()[id]; if (!fp) return null;
+      const up = (fp.parent && placeOf(P, fp.parent)) || Object.assign({}, HQ);
+      return { id, kind: 'fin', name: fp.name, parent: up.id, seasonId: up.seasonId, regionId: up.regionId, eventId: '' };
+    }
     if (P.events[id]) { const e = P.events[id], r = P.regions[e.regionId] || {}; return { id, kind: 'event', seasonId: r.seasonId || '', regionId: e.regionId, eventId: id }; }
     if (P.regions[id]) return { id, kind: 'region', seasonId: P.regions[id].seasonId, regionId: id, eventId: '' };
     if (P.seasons[id]) return { id, kind: 'season', seasonId: id, regionId: '', eventId: '' };
@@ -142,6 +152,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   }
   function inReach(w, pl) {
     const r = w.reach;
+    if (pl.kind === 'fin') return isFin(w);
     if (r.all) return true;
     if (pl.kind === 'hq') return false;
     if ((r.events || []).indexOf(pl.eventId) >= 0 && pl.eventId) return true;
@@ -151,6 +162,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   }
   function labelOf(P, pl) {
     if (pl.kind === 'hq') return 'Earthly HQ';
+    if (pl.kind === 'fin') { const up = placeOf(P, pl.parent); return pl.name + ' · ' + (up ? labelOf(P, up) : 'Earthly HQ'); }
     const role = pl.kind === 'event' ? 'S' : pl.kind === 'region' ? 'RL' : 'SL';
     return people.placeLabel(P, role, pl.id);
   }
@@ -172,7 +184,32 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
           out.push(Object.assign(pl, { closed: shut, label: shut ? label.replace(/^(.*?)( · |$)/, '$1 (closed)$2') : label }));
         });
     });
+    // Finance's own places, each just after the place it sits under.
+    if (isFin(w)) Object.values(getFP()).sort((a, b) => String(a.name).localeCompare(String(b.name))).forEach(fp => {
+      const pl = placeOf(P, fp.id); if (!pl) return;
+      let at = out.findIndex(x => x.id === pl.parent);
+      if (at < 0) at = out.length - 1;
+      // Past whatever already sits under the parent (its events, earlier Finance places).
+      while (at + 1 < out.length && (out[at + 1].kind === 'fin' && out[at + 1].parent === pl.parent || (pl.parent && out[at + 1].regionId === pl.parent && out[at + 1].kind === 'event'))) at++;
+      out.splice(at + 1, 0, Object.assign(pl, { closed: false, label: labelOf(P, pl) }));
+    });
     return out;
+  }
+  function finPlaceAdd(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can add a place.');
+    const name = clip(p.name, 80).replace(/\s+/g, ' ').trim();
+    if (!name) throw new Error('Type the name of the place.');
+    const P = places(), parent = String(p.parent || '');
+    const up = parent && parent !== HQ.id ? placeOf(P, parent) : null;
+    if (parent && parent !== HQ.id && (!up || (up.kind !== 'season' && up.kind !== 'region'))) throw new Error('A new place goes under Earthly HQ, a season or a region.');
+    const all = getFP(), pid = up ? up.id : '';
+    const same = Object.values(all).find(x => x.parent === pid && String(x.name).toLowerCase() === name.toLowerCase());
+    if (same) return { id: same.id };
+    const id = 'fp_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    all[id] = { id, name, parent: pid };
+    kv.setProp('finPlaces', JSON.stringify(all));
+    actLog(w, {}, 'finPlaceAdd', 'Added “' + name + '” as a Finance-only place', null);
+    return { id };
   }
 
   /* ---- Rules: which ways of paying back, and which currencies (Finance) ----
@@ -424,6 +461,12 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       x.from = (dt[k][x.id] || {}).from || ''; x.to = (dt[k][x.id] || {}).to || '';
     }));
     D.mayEdit = mayPay(w);
+    // Finance-only places (b279): their names, and their expenses tied to them.
+    const P = places(), fps = Object.values(getFP()).map(fp => placeOf(P, fp.id)).filter(Boolean);
+    D.finPlaces = fps.map(pl => ({ id: pl.id, name: pl.name, parent: pl.parent, seasonId: pl.seasonId, regionId: pl.regionId }));
+    const fpOf = {}; fps.forEach(pl => { fpOf[pl.id] = pl; });
+    const locOf = {}; rows().forEach(r => { if (fpOf[r.location]) locOf[r.id] = fpOf[r.location]; });
+    D.expenses.forEach(x => { const pl = locOf[x.id]; if (pl) { x.f = pl.id; x.s = pl.seasonId; x.r = pl.regionId === HQ.regionId ? '' : pl.regionId; } });
     // An expense its place has no rate for still gets dollars (b269): the rate nearest its day, as an estimate.
     D.expenses.forEach(x => { if (!(x.usd > 0) && x.amt > 0 && String(x.cur).toUpperCase() !== 'USD') {
       const r = rateNow(String(x.cur).toUpperCase(), 'USD', x.d); if (r && r.rate > 0) { x.usd = Math.round(x.amt * r.rate * 100) / 100; x.usdExact = 0; } } });
@@ -928,7 +971,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
+    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, finPlaceAdd, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
