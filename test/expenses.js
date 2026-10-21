@@ -151,6 +151,11 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['…but not to be paid back to anyone', !r.ok && /General/.test(r.error)]);
   r = await S({ action: 'expSave', id: 'Xg3aaaaa', kind: 'record', location: 'ev_cp', forEmail: '*general', desc: 'x', cur: 'INR', amt: 1 });
   t.push(['…and only Finance can choose General', r.ok && r.result.forName !== 'General']);
+  r = await Fi({ action: 'expList' });
+  t.push(['b278: a General expense is not in "My expenses" of whoever entered it', r.ok && !r.result.some(x => x.id === 'Xg1aaaaa')]);
+  t.push(['…nor one entered for someone else', r.ok && !r.result.some(x => x.id === 'Xf1aaaaa')]);
+  r = await Fi({ action: 'expList', scope: 'all' });
+  t.push(['…both are in the general pool', r.ok && r.result.some(x => x.id === 'Xg1aaaaa') && r.result.some(x => x.id === 'Xf1aaaaa')]);
   await Fi({ action: 'expDelete', id: 'Xg1aaaaa' }); await S({ action: 'expDelete', id: 'Xg3aaaaa' });
 
   // Rules: no PayPal anywhere, no UPI in Delhi except for Sita; rupees only in Delhi.
@@ -214,6 +219,18 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   r = await O({ action: 'expCatGone', name: 'Other' });
   t.push(['Other cannot be removed', !r.ok]);
   await S({ action: 'expDelete', id: 'Xcat0001' }); await S({ action: 'expDelete', id: 'Xcat0002' });
+  // b278 (Gita): how expenses were paid is Finance's own list too, starting from what the places use.
+  r = await S({ action: 'expOptions' });
+  const pays0 = r.result.payTypes;
+  t.push(['expense payment types start as the places\' own, with no Gift or Other', pays0.length > 0 && !pays0.some(x => /^(gift|other)$/i.test(x))]);
+  r = await S({ action: 'expPayAdd', name: 'Petty cash' });
+  t.push(['…a Seller cannot add one', !r.ok]);
+  r = await O({ action: 'expPayAdd', name: 'Petty cash' });
+  t.push(['…Finance can', r.ok && r.result.join('|') === pays0.concat(['Petty cash']).join('|')]);
+  r = await O({ action: 'expPayGone', name: pays0[0] });
+  t.push(['…and can remove one', r.ok && !r.result.includes(pays0[0]) && r.result.includes('Petty cash')]);
+  r = await O({ action: 'expPayGone', name: 'Other' });
+  t.push(['…but not Other', !r.ok]);
   r = await S({ action: 'expOptions' });
   const PT = (await O({ action: 'savePartner', regionId: 'rg_in', name: 'ISKCON Juhu', season: SA })).result;
   r = await S({ action: 'expOptions' });
