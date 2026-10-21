@@ -599,6 +599,11 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input)
 .pencil:hover{opacity:1}
 .ph-pencil{display:inline-block;margin:2px 0 0 4px}
 .lbl-hidden{opacity:.4;text-decoration:line-through}
+.rs-cats{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.rs-cat{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;font-size:13px;max-width:100%;overflow-wrap:anywhere}
+.rs-catadd{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.rs-catadd input{flex:1 1 160px;min-width:0;padding:7px 9px;border:1.5px solid var(--line-d);border-radius:8px;font-size:14px}
+.pp-add{color:var(--plum);font-weight:600}
 .lbl-orig{border:1px solid var(--line);border-radius:9px;padding:9px 11px;background:var(--paper2);
   margin:4px 0 12px;font-size:13.5px}
 .df-stale{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:8px}
@@ -2144,7 +2149,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b276</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b277</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -9089,7 +9094,8 @@ function comboHTML(id, shown, ph){
   return `<div class="pp cb" id="${id}"><input class="pp-in" type="search" autocomplete="off" spellcheck="false"
     placeholder="${esc(ph || 'Type to search')}" value="${esc(shown || '')}"><div class="pp-list" hidden></div></div>`;
 }
-function comboBind(id, items, cur, onPick){
+/* add (optional): offered as "＋ Add …" for words that match nothing exactly. */
+function comboBind(id, items, cur, onPick, add){
   const box = document.getElementById(id); if(!box) return;
   const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
   const label = v => { const it = items.find(x=>x.v===v); return it ? (it.shown || it.l) : ''; };
@@ -9100,19 +9106,22 @@ function comboBind(id, items, cur, onPick){
     // A season or region stays while anything beneath it is shown.
     items.forEach(x=>{ if(keep.has(x)) (x.upIds||[]).forEach(u=>{ const p = items.find(y=>y.v===u); if(p) keep.add(p); }); });
     const rows = items.filter(x=>keep.has(x));
-    list.innerHTML = rows.length ? rows.map(x=>`<div class="pp-row${x.kind?' pp-'+x.kind:''}${x.v===cur?' on':''}" data-v="${esc(x.v)}">${esc(x.l)}${
-        x.tag?`<span class="pp-tag">${esc(x.tag)}</span>`:''}</div>`).join('') : '<div class="pp-empty">Nothing matches.</div>';
+    const typed = inp.value.trim(), addRow = add && q && !items.some(x=>String(x.l).toLowerCase()===q)
+      ? `<div class="pp-row pp-add" data-add="1">＋ Add “${esc(typed)}”</div>` : '';
+    list.innerHTML = rows.length || addRow ? rows.map(x=>`<div class="pp-row${x.kind?' pp-'+x.kind:''}${x.v===cur?' on':''}" data-v="${esc(x.v)}">${esc(x.l)}${
+        x.tag?`<span class="pp-tag">${esc(x.tag)}</span>`:''}</div>`).join('') + addRow : '<div class="pp-empty">Nothing matches.</div>';
     list.hidden = false;
   };
+  const addIt = () => { const t = inp.value.trim(); list.hidden = true; inp.blur(); if(t) add(t); };
   const pick = v => { cur = v; inp.value = label(v); list.hidden = true; inp.blur(); onPick(v); };
   inp.addEventListener('focus', ()=>{ inp.select(); draw(''); });
   inp.addEventListener('input', ()=>draw(inp.value));
   inp.addEventListener('keydown', e=>{
-    if(e.key==='Enter'){ e.preventDefault(); const first = list.querySelector('.pp-row'); if(first) pick(first.dataset.v); }
+    if(e.key==='Enter'){ e.preventDefault(); const first = list.querySelector('.pp-row'); if(first) first.dataset.add ? addIt() : pick(first.dataset.v); }
     if(e.key==='Escape'){ e.stopPropagation(); inp.blur(); }
   });
   list.addEventListener('mousedown', e=>e.preventDefault());
-  list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(r) pick(r.dataset.v); });
+  list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(r) r.dataset.add ? addIt() : pick(r.dataset.v); });
   inp.addEventListener('blur', ()=>setTimeout(()=>{ if(document.activeElement===inp) return; list.hidden = true; inp.value = label(cur); }, 150));
 }
 /* The places an expense can belong to, as combo items: seasons, their regions, their events. */
@@ -9383,7 +9392,14 @@ function expBind(){
   if(loc) loc.addEventListener('change', ()=>{ expRead(); placeChanged(); });
   comboBind('xLocC', expPlaceItems(o.places), f.location, v=>{ expRead(); f.location = v; placeChanged(); });
   // Anything chosen as Other asks what it is.
-  comboBind('xCatC', (o.categories||[]).map(c=>({v:c, l:c})), f.category, v=>{ expRead(); f.category = v; expDraw(); if(v==='Other') $('#xCatOther').focus(); });
+  /* Finance adds kinds of expense as they go, by typing one that isn't there
+     (b277, Gita). An expense saved with a kind since removed keeps it. */
+  const cats = (o.categories||[]).concat(f.category && !(o.categories||[]).includes(f.category) ? [f.category] : []);
+  comboBind('xCatC', cats.map(c=>({v:c, l:c})), f.category, v=>{ expRead(); f.category = v; expDraw(); if(v==='Other') $('#xCatOther').focus(); },
+    o.mayPay ? async name=>{ expRead();
+      try{ o.categories = (await post({action:'expCatAdd', name})).result; f.category = o.categories.find(c=>c.toLowerCase()===name.toLowerCase()) || name; toast('“' + f.category + '” added'); }
+      catch(e){ toast(e.message, true); }
+      expDraw(); } : null);
   const pays = [{v:'', l:'—', shown:'—'}].concat((o.payTypes||[]).filter(t=>t!=='Other').map(t=>({v:t, l:t})), [{v:'Other', l:'Other'}]);
   comboBind('xPayC', pays, f.payType, v=>{ expRead(); f.payType = v; expDraw(); if(v==='Other') $('#xPayOther').focus(); });
   const m = $('#xMethod');
@@ -9963,6 +9979,11 @@ function rsDraw(){
           p.name + ' (' + p.email + ')' + (d.rules.people[p.email]?' •':''), p.email===RS.email)).join('')}</select></div>`}
       ${target ? `<div class="cash-sub">Ways of paying back</div><div class="rs-rows">${rows}</div>${
         (d.gone||[]).length && FIN_ON ? `<div class="muted-note">Removed for good: ${d.gone.map(g=>`<span class="no-edit">${esc(g)}</span>${ro ? '' : ` <button type="button" class="btn btn-ghost btn-xs" data-act="rsback" data-m="${esc(g)}">Bring back</button>`}`).join(' · ')}</div>` : ''}${curBox}` : ''}
+      ${FIN_ON ? `<div class="cash-sub">Kinds of expense</div>
+      <div class="rs-cats">${(d.cats||[]).map(c=>`<span class="rs-cat"><span class="no-edit">${esc(c)}</span>${c==='Other' || ro ? '' :
+        ` <button type="button" class="btn btn-ghost btn-xs" data-act="rscatgone" data-c="${esc(c)}" title="Remove ${esc(c)} (expenses already saved keep it)">🗑</button>`}</span>`).join('')}</div>
+      ${ro ? '' : `<div class="rs-catadd"><input id="rsCatNew" type="text" maxlength="60" placeholder="A new kind of expense"><button type="button" class="btn btn-ghost btn-sm" data-act="rscatadd">＋ Add</button></div>`}
+      <div class="muted-note">"Other" is always there, for anything else; whoever chooses it says what it was.</div>` : ''}
       <div class="err" id="rsErr"></div>`,
     `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
       ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
@@ -9979,6 +10000,14 @@ function rsDraw(){
     finRoot().querySelectorAll('[data-rsc]').forEach(c=>{ c.disabled = r.value!=='own'; });
   }));
   const sv = $('#rsSave'); if(sv) sv.addEventListener('click', rsSave);
+}
+/* Add or remove a kind of expense (b277). */
+async function rsCat(name, add){
+  name = String(name||'').trim();
+  if(!name){ $('#rsErr').textContent = 'Type the new kind of expense first.'; return; }
+  if(!add && !confirm('Remove "' + name + '" as a kind of expense? Expenses already saved keep it.')) return;
+  try{ RS.d.cats = (await post({action: add ? 'expCatAdd' : 'expCatGone', name})).result; rsDraw(); toast(add ? '“' + name + '” added' : name + ' removed'); }
+  catch(e){ $('#rsErr').textContent = e.message; }
 }
 /* Remove a way of paying back for good, everywhere, or bring it back (b257). */
 async function rsGone(m, gone){
@@ -19420,6 +19449,7 @@ document.addEventListener('click',e=>{
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
   if(a==='reimbset'){ if(FIN_ON) finGo('settings'); else reimbSettingsModal(); return; }
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
+  if(a==='rscatadd' || a==='rscatgone'){ rsCat(a==='rscatadd' ? ($('#rsCatNew')||{}).value : t.dataset.c, a==='rscatadd'); return; }
   if(a==='rsgone' || a==='rsback'){ rsGone(t.dataset.m, a==='rsgone'); return; }
   if(a==='finoverview'){ finGo('overview'); return; }
   if(a==='finexpenses'){ FIN.rb.tab = 'pending'; finGo('expenses'); return; }

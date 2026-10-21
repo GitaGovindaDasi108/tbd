@@ -67,6 +67,8 @@ const API = 'http://api.test/';
   await sell('z5', 'ev_z1', 'sr_en', { pending: true, name: 'Arjuna', phone: '+385 1', legs: [{ type: 'Cash', cur: 'USD', amt: 40 }] });
   await O({ action: 'donate', saleId: 'z6', location: 'ev_z1', legs: [{ type: 'Cash', cur: 'USD', amt: 10 }], season: SA });
   await sell('a1', 'wh_at', 'sr_en', { legs: [{ type: 'Cash', cur: 'USD', amt: 40 }] });
+  // b277: the kinds of expense are Finance's own list, added to as they go.
+  await O({ action: 'expCatAdd', name: 'Travel' }); await O({ action: 'expCatAdd', name: 'Food' });
   await O({ action: 'expSave', id: 'Xvan001', kind: 'record', date: '2026-10-19', desc: 'Van hire', amt: 20, cur: 'USD', location: 'ev_z1', category: 'Travel' });
   await O({ action: 'expSave', id: 'Xlunch01', kind: 'reimburse', date: '2026-10-18', desc: 'Lunch for helpers', amt: 30, cur: 'USD', location: 'ev_z1', category: 'Food',
     method: 'Cash', reimbCur: 'USD', payTo: { phone: '+385 99 1' } });
@@ -629,9 +631,22 @@ const API = 'http://api.test/';
     t.push(['b276: currencies for paying back start all ticked', await lv.evaluate(() => { const c = [...document.querySelectorAll('[data-rsc]')]; return c.length > 0 && c.every(x => x.checked); })]);
     await lv.evaluate(() => { const r = document.querySelector('input[name="rsCurMode"][value="own"]'); r.checked = true; r.dispatchEvent(new Event('change')); }); await lv.waitForTimeout(200);
     t.push(['b276: …and choosing "Only these" leaves them ticked, ready to untick', await lv.evaluate(() => [...document.querySelectorAll('[data-rsc]')].every(x => x.checked && !x.disabled))]);
+    // b277: kinds of expense, in Settings and on the form.
+    t.push(['b277: Settings lists the kinds of expense, Other last with no 🗑', await lv.evaluate(() => { const c = [...document.querySelectorAll('.rs-cat')].map(x => x.textContent.replace(/🗑/g, '').trim());
+      return c[0] === 'Card machine fee' && c[c.length - 1] === 'Other' && !document.querySelector('.rs-cat:last-child [data-act="rscatgone"]'); })]);
+    await lv.fill('#rsCatNew', 'Stall rent'); await lv.click('[data-act="rscatadd"]'); await lv.waitForTimeout(900);
+    t.push(['b277: …adding one there puts it before Other', await lv.evaluate(() => [...document.querySelectorAll('.rs-cat')].map(x => x.textContent.replace(/🗑/g, '').trim()).slice(-2).join('|') === 'Stall rent|Other')]);
+    await lv.evaluate(() => { window.confirm = () => true; document.querySelector('[data-act="rscatgone"][data-c="Stall rent"]').click(); }); await lv.waitForTimeout(900);
+    t.push(['b277: …and 🗑 removes it', await lv.evaluate(() => !document.querySelector('[data-c="Stall rent"]'))]);
+    await lv.evaluate(() => expensesModal()); await lv.waitForTimeout(1500);
+    await lv.click('#xCatC .pp-in'); await lv.fill('#xCatC .pp-in', 'Petrol'); await lv.waitForTimeout(200);
+    t.push(['b277: on the form, Finance typing a new kind is offered "＋ Add"', await lv.evaluate(() => /Add “Petrol”/.test((document.querySelector('#xCatC .pp-add') || {}).textContent || ''))]);
+    await lv.click('#xCatC .pp-add'); await lv.waitForTimeout(1200);
+    t.push(['b277: …which adds it and chooses it', await lv.evaluate(() => EXP.form.category === 'Petrol' && EXP.opt.categories.includes('Petrol') && document.querySelector('#xCatC .pp-in').value === 'Petrol')]);
+    await lv.evaluate(() => closeModal()); await lv.waitForTimeout(300);
     t.push(['b274: Finance on live has Overview and Expenses & Reimbursements, no To do', await lv.evaluate(() => !document.querySelector('[data-sec="todo"]') && !!document.querySelector('[data-sec="expenses"]'))]);
     for (const w of [1150, 390]) { await lv.setViewportSize({ width: w, height: 1000 });
-      for (const sec of ['overview', 'expenses']) { await lv.evaluate(s => finGo(s, '', {reload:true}), sec); await lv.waitForTimeout(900);
+      for (const sec of ['overview', 'expenses', 'settings']) { await lv.evaluate(s => finGo(s, '', {reload:true}), sec); await lv.waitForTimeout(900);
         (await spill(lv)).forEach(x => lspill.push(w + ' ' + sec + ': ' + x)); } }
     t.push(['b274: no overflow on the live app\'s Finance either' + (lspill.length ? ' — ' + lspill.slice(0, 3).join(' | ') : ''), !lspill.length]);
     await lv.evaluate(() => finLeave()); await lv.waitForTimeout(400);
