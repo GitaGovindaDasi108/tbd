@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b269**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b270**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2307,3 +2307,15 @@ Live unless marked practice.
   (`.fin-key{flex:none}`). The Expenses screen shows Gross, Expenses and Net
   (bars, and month by month; a month below zero is red).
 - Tests: browser-finance (148), browser-expenses (68).
+
+## Done in b270 — Touch-sized buttons, "Consignment" tag, simpler Delete, bold distributed (live)
+- **Sell / Pre-order:** 36px tall on touch screens; 26px on computers
+  (`@media (hover:hover) and (pointer:fine)`), on shelf cards and in list view.
+  Chosen by pointer, not width, so tablets get the touch size.
+- **Consignment titles:** the tag on cards reads "Consignment" instead of the
+  group's name (`qNameHTML`, shelf card).
+- **Delete an event:** type the event's name to confirm; the "it was a test,
+  put everything back" choice is gone (always `restoreSold:false`).
+  **Delete a region:** "Write them off" (for test regions) removed; remaining
+  stock always moves to another region. Season delete already typed the name.
+- **Totals tiles:** "+N gifts = **N** distributed", the total in bold (`giftNote`, `.dist-n`).
