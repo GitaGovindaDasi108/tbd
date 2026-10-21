@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b270**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b271**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2319,3 +2319,24 @@ Live unless marked practice.
   **Delete a region:** "Write them off" (for test regions) removed; remaining
   stock always moves to another region. Season delete already typed the name.
 - **Totals tiles:** "+N gifts = **N** distributed", the total in bold (`giftNote`, `.dist-n`).
+
+## Done in b271 — Lines everywhere, half-width Warehouse Overview, distributed-only titles (live)
+- **Warehouse Overview** (season, region, Earthly HQ's Seasonal one): `data-after`
+  in place of `data-full` — the whole width, or half when an open panel follows
+  it (`foldRows` pairs it only with the panel after it). At a region it sits
+  beside Sales by Seller.
+- **List view, every toggle:** one compact line per title, columns lined up
+  down the list (each line a subgrid of its list).
+  Selling shelf: name · language · prices | stock · sold | pre-ordered | Sell Pre-order.
+  Title cards: name · language | number | gifts | distributed | Locations
+  (prices hidden on title lines). Sales by Region's dropdown: one heading row
+  (Sold / Gifts / Distributed) with bare numbers beneath (`.mc-head`, `.q-word`).
+  An open Locations list or the shelf's Stored At drops to a second line.
+  Phones: names may wrap; figures stack in their own narrow column.
+- **Distribution by Title** shows only titles distributed at that place (every
+  title while arranging, so all can be ordered); "Nothing distributed here yet."
+  when empty. The shelf and Warehouse Overview still show every title.
+- **Collections by Region / Season** scroll sideways (`.ptg-scroll`) when the
+  currencies don't fit.
+- Tests: browser-arrange reads the order after ⇅; browser-bookorder gives every
+  title a gift (season and Earthly HQ) so Distribution by Title lists them.
