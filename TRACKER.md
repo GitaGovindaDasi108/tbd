@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b276**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b277**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2428,3 +2428,13 @@ Live unless marked practice.
   with no email; record-keeping only (server refuses reimbursement; the tick box is hidden).
 - Tests: new browser-wording276; browser-finance (menu, charts, search, height, currencies);
   expenses.js (General).
+
+## Done in b277 — Kinds of expense are Finance's own list (live)
+- `expCats` (server prop, expenses.js `getCats`/`catList`): starts as just "Card machine fee";
+  "Other" (with its own words) is always last and can't be removed. `expOptions.categories`
+  and `expRulesGet.cats` give the list.
+- `expCatAdd` / `expCatGone` (Finance: `mayPay`), each in the Activity Log. An expense keeps a kind
+  since removed when it is edited; a new one can't choose it (it becomes Other).
+- Form: Finance typing a kind that isn't there gets "＋ Add “…”" (`comboBind`'s new `add`
+  argument). Settings: "Kinds of expense" chips with 🗑, and an Add box.
+- Tests: expenses.js (list, add, remove, keep); browser-finance (Settings and form).

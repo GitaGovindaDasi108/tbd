@@ -239,10 +239,13 @@ const API = 'http://api.test/';
     await own.evaluate(() => expensesModal()); await own.waitForTimeout(1000);
     await own.click('#xCatC .pp-in'); await own.waitForTimeout(150);
     const cats = await own.$$eval('#xCatC .pp-row', os => os.map(o => o.dataset.v));
-    t.push(['the form has the kinds of expense from Record Costs (card machine fee, venue…)', cats.includes('Card machine fee') && cats.includes('Venue')]);
+    t.push(['the form has the kinds of expense: Card machine fee, then Other (b277: Finance adds the rest)', cats.join('|') === 'Card machine fee|Other']);
     await pick(own, 'xLocC', 'Chowpatty', 'ev_cp'); await own.waitForTimeout(600);
     t.push(['…and "Paid with" (the place\'s payment types), as Record Costs had', !!(await own.$('#xPayC'))]);
-    await pick(own, 'xCatC', 'Venue', 'Venue'); await own.fill('#xAmt', '800'); await own.fill('#xDesc', 'Hall hire');
+    // b277: Venue isn't there to start with; Finance adds it from the form.
+    await own.click('#xCatC .pp-in'); await own.fill('#xCatC .pp-in', 'Venue'); await own.waitForTimeout(150);
+    await own.click('#xCatC .pp-add'); await own.waitForTimeout(1200);
+    await own.fill('#xAmt', '800'); await own.fill('#xDesc', 'Hall hire');
     await saveIt(own, 1500);
     const st = (await O({ action: 'getState', season: SA })).state;
     t.push(['…saved: the venue expense is also a cost at the event, so net totals take it off', (st.costs || []).some(c => c.location === 'ev_cp' && Number(c.amt) === 800 && c.category === 'Venue')]);

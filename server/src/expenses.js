@@ -205,6 +205,30 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      takes (but card and gift), and a bank transfer. */
   /* Ways of paying back Finance removed for good (Gita, 2026-10-20: "delete
      reimbursement types completely if they will never be used"). */
+  /* Kinds of expense (b276+, Gita 2026-10-21): Finance's own list, starting with
+     just "Card machine fee" and added to as they go. "Other" (with its own words)
+     is always there last. Expenses keep the kind they were saved with. */
+  const getCats = () => { const a = parse(kv.getProp('expCats'), null); return Array.isArray(a) ? a.map(x => String(x)).filter(Boolean) : ['Card machine fee']; };
+  const catList = () => getCats().filter(c => c.toLowerCase() !== 'other').concat(['Other']);
+  function catAdd(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can add kinds of expense.');
+    const name = clip(p.name, 60).replace(/\s+/g, ' ').trim();
+    if (!name) throw new Error('Type the new kind of expense.');
+    const cur = getCats();
+    if (name.toLowerCase() !== 'other' && !cur.some(c => c.toLowerCase() === name.toLowerCase())) {
+      kv.setProp('expCats', JSON.stringify(cur.concat([name]).slice(0, 200)));
+      actLog(w, {}, 'expCatAdd', 'Added “' + name + '” as a kind of expense', null);
+    }
+    return catList();
+  }
+  function catGone(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can remove kinds of expense.');
+    const name = clip(p.name, 60), cur = getCats();
+    if (!cur.some(c => c === name)) throw new Error('There is no kind of expense called that.');
+    kv.setProp('expCats', JSON.stringify(cur.filter(c => c !== name)));
+    actLog(w, {}, 'expCatGone', 'Removed “' + name + '” as a kind of expense (expenses already saved keep it)', null);
+    return catList();
+  }
   const getGone = () => { const a = parse(kv.getProp('reimbGone'), []); return Array.isArray(a) ? a.map(x => String(x)) : []; };
   function allMethods(F, withGone) {
     const seen = {}, out = [];
@@ -266,7 +290,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return {
       places: list, location: pl ? pl.id : '', defaultCur: regionCurs(F, pl)[0] || 'USD',
       spendCurs: [...spend], methods: eff.methods.map(m => methodInfo(F, m)), curs: eff.curs,
-      categories: F.categories, payTypes: F.payTypes.filter(t => String(t).toLowerCase() !== 'gift'),
+      categories: catList(), payTypes: F.payTypes.filter(t => String(t).toLowerCase() !== 'gift'),
       // The consignment groups of the place's region (and only the place's own event's, for an event group).
       partners: pl && pl.regionId ? F.partners.filter(g => g.regionId === pl.regionId && (!g.eventId || g.eventId === pl.eventId))
         .map(g => ({ id: g.id, name: g.name })) : [],
@@ -624,7 +648,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       if (!h || (!kept && h.owner !== ownerTag(w))) throw new Error('A receipt did not finish sending. Add it again.');
       return { id: rid, name: h.name, mime: h.mime, size: h.size };
     });
-    const category = F.categories.indexOf(String(p.category)) >= 0 ? String(p.category) : 'Other';
+    // A kind since removed from the list stays on the expense that already had it.
+    const category = catList().indexOf(String(p.category)) >= 0 || (old && String(old.category) === String(p.category) && p.category) ? String(p.category) : 'Other';
     const catOther = category === 'Other' ? clip(p.catOther, 60) : '';
     const payType = clip(p.payType, 40);
     const partnerId = clip(p.partnerId, 40);
@@ -721,7 +746,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     ['USD', 'EUR', 'GBP', 'INR', 'PLN'].forEach(c => curs.add(c));
     // Each level's own chain, everywhere first, so the page can show what it inherits.
     levels.forEach(l => { l.chain = l.id ? chainOf(placeOf(P, l.id)) : ['']; });
-    return { rules: getRules(), methods: allMethods(F), gone: getGone(), curs: [...curs], levels, people: peopleList(), mayEdit: mayPay(w),
+    return { rules: getRules(), methods: allMethods(F), gone: getGone(), cats: catList(), curs: [...curs], levels, people: peopleList(), mayEdit: mayPay(w),
       // What each level gives now, before any person's own setting.
       regionCurs: Object.fromEntries(levels.map(l => [l.id, regionCurs(F, placeOf(P, l.id))])) };
   }
@@ -869,7 +894,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
+    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {

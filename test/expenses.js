@@ -194,7 +194,27 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   costs = (await O({ action: 'getState', season: SA })).state.costs;
   t.push(['…and comes back if it is waiting again', costs.some(c => c.id === 'Xk1aaaaa')]);
   r = await S({ action: 'expOptions' });
-  t.push(['the form offers the kinds of cost and the payment types', r.ok && r.result.categories.includes('Travel') && r.result.categories.includes('Card machine fee') && r.result.payTypes.includes('Card')]);
+  t.push(['the form offers the kinds of cost and the payment types', r.ok && r.result.payTypes.includes('Card')]);
+  // b277 (Gita): the kinds start as just Card machine fee (and Other), and Finance adds as they go.
+  t.push(['the kinds of expense start as just Card machine fee, then Other', JSON.stringify(r.result.categories) === JSON.stringify(['Card machine fee', 'Other'])]);
+  r = await S({ action: 'expCatAdd', name: 'Hall hire' });
+  t.push(['…a Seller cannot add one', !r.ok]);
+  r = await O({ action: 'expCatAdd', name: '  Hall   hire ' });
+  t.push(['…Finance can, and it goes before Other', r.ok && JSON.stringify(r.result) === JSON.stringify(['Card machine fee', 'Hall hire', 'Other'])]);
+  r = await O({ action: 'expCatAdd', name: 'hall hire' });
+  t.push(['…the same kind twice is kept once', r.ok && r.result.length === 3]);
+  r = await S({ action: 'expSave', id: 'Xcat0001', kind: 'record', location: 'ev_cp', desc: 'Hall', cur: 'INR', amt: 5, category: 'Hall hire' });
+  t.push(['…and anyone can then choose it', r.ok && r.result.category === 'Hall hire']);
+  r = await O({ action: 'expCatGone', name: 'Hall hire' });
+  t.push(['Finance can remove a kind', r.ok && !r.result.includes('Hall hire')]);
+  r = await S({ action: 'expSave', id: 'Xcat0001', kind: 'record', location: 'ev_cp', desc: 'Hall, edited', cur: 'INR', amt: 6, category: 'Hall hire' });
+  t.push(['…an expense saved with it keeps it when edited', r.ok && r.result.category === 'Hall hire']);
+  r = await S({ action: 'expSave', id: 'Xcat0002', kind: 'record', location: 'ev_cp', desc: 'x', cur: 'INR', amt: 1, category: 'Hall hire' });
+  t.push(['…but a new expense can no longer choose it', r.ok && r.result.category === 'Other']);
+  r = await O({ action: 'expCatGone', name: 'Other' });
+  t.push(['Other cannot be removed', !r.ok]);
+  await S({ action: 'expDelete', id: 'Xcat0001' }); await S({ action: 'expDelete', id: 'Xcat0002' });
+  r = await S({ action: 'expOptions' });
   const PT = (await O({ action: 'savePartner', regionId: 'rg_in', name: 'ISKCON Juhu', season: SA })).result;
   r = await S({ action: 'expOptions' });
   t.push(['…and the region\'s consignment groups', r.ok && r.result.partners.some(g => g.id === PT)]);
