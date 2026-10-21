@@ -104,7 +104,8 @@ const sellKey = ok(m.call({ action: 'setKey', kind: 'event', id: 'ev_yoga' }), '
     await page.evaluate(() => closeModal()); await page.waitForTimeout(200);
 
     r = await search(page, 'expenses');
-    t.push(['another word for a button ("expenses") finds Record Costs', r.some(x => /Record Costs/.test(x))]);
+    // b274: Record Costs is Add an Expense on live too.
+    t.push(['"expenses" finds Add an Expense', r.some(x => /Add an Expense/.test(x))]);
     await page.keyboard.press('Escape'); await page.waitForTimeout(100);
     t.push(['Escape shuts the list', !(await page.isVisible('#gsList'))]);
 
@@ -182,7 +183,7 @@ const sellKey = ok(m.call({ action: 'setKey', kind: 'event', id: 'ev_yoga' }), '
     t.push(['menu: the left-hand menu is there', !!(await page.$('#sideNav .sn-item'))]);
     r = await search(page, 'cash Tracker');
     t.push(['"cash Tracker" finds Track Cash, from the folded menu', r[0] === 'Track Cash' && (await heads(page))[0] === 'Actions']);
-    t.push(['…tagged with its menu section', await page.evaluate(() => /Money/.test(document.querySelector('#gsList .gs-row .gs-tag').textContent))]);
+    t.push(['…tagged with its menu section', await page.evaluate(() => /Laksmi/.test(document.querySelector('#gsList .gs-row .gs-tag').textContent))]);
     await page.keyboard.press('Enter'); await page.waitForTimeout(500);
     t.push(['…Enter opens Cash Tracking', await page.evaluate(() => /Cash Tracking/i.test(document.querySelector('#modal').textContent || ''))]);
     await page.evaluate(() => closeModal()); await page.waitForTimeout(200);

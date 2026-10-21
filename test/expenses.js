@@ -61,7 +61,7 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   {
     const ls = (JSON.parse(await live.request({ postData: { contents: JSON.stringify({ action: 'signIn', idToken: await token('owner@example.com', 'O') }) } }))).result.session;
     const r0 = JSON.parse(await live.request({ postData: { contents: JSON.stringify({ s: ls, action: 'expOptions' }) } }));
-    t.push(['the live server refuses expenses (practice space first)', !r0.ok && /practice space/.test(r0.error)]);
+    t.push(['b274: the live server takes expenses too now (Finance is live)', r0.ok && !!r0.result]);
   }
   // A cost recorded the old way, before the two were one.
   await O({ action: 'saveCost', id: 'Cold1', location: 'ev_cp', category: 'Card machine fee', cur: 'INR', amt: 25, note: 'SumUp', season: SA });

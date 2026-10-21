@@ -73,7 +73,7 @@ const API = 'http://api.test/';
 
   const browser = await chromium.launch();
   const t = [], errors = [];
-  async function open(email, name, width) {
+  async function open(email, name, width, live) {
     const ctx = await browser.newContext({ viewport: { width: width || 1150, height: 1000 } });
     await ctx.addInitScript(tok => { window.__TOKEN = tok; }, await token(email, name));
     const page = await ctx.newPage();
@@ -101,7 +101,7 @@ const API = 'http://api.test/';
       }
       return route.fulfill({ status: 204, body: '' });
     });
-    await page.goto('http://app.test/index.html?practice'); await page.waitForTimeout(1500);
+    await page.goto('http://app.test/index.html' + (live ? '?menu' : '?practice')); await page.waitForTimeout(1500);
     await page.click('#fakeGsi'); await page.waitForTimeout(2500);
     return page;
   }
@@ -606,6 +606,24 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal()); await own.waitForTimeout(300);
     await own.reload(); await own.waitForTimeout(3500);
     t.push(['b272: …and once closed, a refresh leaves it closed', await own.evaluate(() => !$('#overlay').classList.contains('show'))]);
+    /* b274: Finance is live. The live app (no ?practice) has it all, in the menu
+       as Gita named it, plus Universal's "Bring Wording & Settings from Practice". */
+    const lv = await open('owner@example.com', 'The Owner', 1150, true);
+    const menu = await lv.evaluate(() => [...document.querySelectorAll('#sideNav .sn-item, #sideNav .sn-gh')].map(b => b.textContent.replace(/\s+/g, ' ').trim()).join('|'));
+    t.push(['b274: the live app\'s menu has Laksmi, Add an Expense, Finance and Dates & Repeats, and no Record Costs or To do', /Laksmi/.test(menu) && /Add an Expense/.test(menu) && /Finance/.test(menu) && /Dates & Repeats/.test(menu) && !/Record Costs/.test(menu) && !/To do/.test(menu)]);
+    t.push(['b274: …and Universal\'s "Bring Wording & Settings from Practice"', /Bring Wording & Settings from Practice/.test(menu)]);
+    await lv.evaluate(() => finGo('overview', '')); await lv.waitForTimeout(1500);
+    t.push(['b274: Finance opens on the live app', await lv.evaluate(() => FINP.on && /Big Books Sold/.test(document.querySelector('#fpBody').innerText))]);
+    const lspill = [];
+    t.push(['b274: Finance on live has Overview and Expenses & Reimbursements, no To do', await lv.evaluate(() => !document.querySelector('[data-sec="todo"]') && !!document.querySelector('[data-sec="expenses"]'))]);
+    for (const w of [1150, 390]) { await lv.setViewportSize({ width: w, height: 1000 });
+      for (const sec of ['overview', 'expenses']) { await lv.evaluate(s => finGo(s, '', {reload:true}), sec); await lv.waitForTimeout(900);
+        (await spill(lv)).forEach(x => lspill.push(w + ' ' + sec + ': ' + x)); } }
+    t.push(['b274: no overflow on the live app\'s Finance either' + (lspill.length ? ' — ' + lspill.slice(0, 3).join(' | ') : ''), !lspill.length]);
+    await lv.evaluate(() => finLeave()); await lv.waitForTimeout(400);
+    await lv.evaluate(() => document.querySelector('[data-act="fincarry"]').click()); await lv.waitForTimeout(400);
+    await lv.click('#fcGo'); await lv.waitForTimeout(600);
+    t.push(['b274: with no practice sign-in on this device, it says to open practice first', /Open the practice space on this device and sign in/.test(await lv.$eval('#modalErr', e => e.textContent))]);
   } catch (e) { errors.push('test: ' + e.stack); }
   await browser.close();
   let bad = 0;
