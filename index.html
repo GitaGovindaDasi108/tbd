@@ -1613,7 +1613,9 @@ body.has-va{padding-top:44px}
   display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .overlay.show{display:flex}
 .modal{background:var(--paper);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
-  border:1px solid var(--line);margin:auto;animation:pop .12s ease;overflow:hidden;
+  /* Pinned to the top, not centred (b278, Gita: "not squirrelly"): a window
+     whose contents grow or shrink stays where it is instead of sliding. */
+  border:1px solid var(--line);margin:0 auto auto;animation:pop .12s ease;overflow:hidden;
   display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
 .modal.wide{max-width:620px}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
@@ -2149,7 +2151,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b277</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b278</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -7342,7 +7344,19 @@ document.addEventListener('wheel', e=>{
 }, {passive:false});
 
 function openModal(html,wide){
-  const m=$('#modal'); m.className='modal'+(wide?' wide':''); m.innerHTML=html;
+  const m=$('#modal'), ov=$('#overlay');
+  /* The same window drawn again (a choice changed, a list filled in) keeps its
+     place and scroll and doesn't pop in again (b278). */
+  const head = el => { const h = el.querySelector('h3'); return h ? (h.getAttribute('data-orig') || h.textContent).replace(/[×✕]/g,'').trim() : ''; };
+  const again = ov.classList.contains('show') ? head(m) : null;
+  const ovTop = ov.scrollTop, bodyTop = (m.querySelector('.m-body')||{}).scrollTop || 0;
+  m.className='modal'+(wide?' wide':''); m.innerHTML=html;
+  if(again!==null && again && head(m)===again){
+    m.classList.add('still'); ov.scrollTop = ovTop; const b = m.querySelector('.m-body'); if(b) b.scrollTop = bodyTop;
+  }
+  // Every window has its ✕ (it only closes when you ask it to: ✕, Cancel or the button that finishes it).
+  if(!m.querySelector('.x')){ const h = m.querySelector('h3');
+    if(h) h.insertAdjacentHTML('beforeend', '<button class="x" onclick="closeModal()" aria-label="Close">×</button>'); }
   if(!$('#overlay').classList.contains('show')) BACKTO.page = BACKTO.clicked && Date.now() - BACKTO.clicked.t < 8000 ? BACKTO.clicked : null;
   BACKTO.clicked = null;
   $('#overlay').classList.add('show');
@@ -7357,7 +7371,8 @@ function closeModal(){
   // A change that arrived live while the form was open (Phase 4): fetch it now.
   if(typeof LIVE !== 'undefined' && LIVE.due) setTimeout(()=>{ if(LIVE.due && !$('#overlay').classList.contains('show')) liveRev(NaN); }, 0);
 }
-$('#overlay').addEventListener('click',e=>{if(e.target===$('#overlay'))closeModal();});
+/* A tap outside the window no longer closes it (b278, Gita): halfway through
+   a form, a stray tap lost everything typed. ✕, Cancel or finishing does. */
 
 /* ---- A refresh comes back to exactly where you were (Gita, 2026-10-21) ----
    The place (season, region, event) and a Finance address were already kept.
@@ -7423,7 +7438,7 @@ function backToRestore(){
     setTimeout(tick, 150);
   })();
 }
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+// Esc no longer closes a window either (b278): only ✕, Cancel or finishing it.
 
 /* Attach a delegated listener to the modal exactly once.
 
@@ -9342,7 +9357,7 @@ function expDraw(){
       ${edit || P ? '' : `<div class="cash-sub">Your expenses</div>
       ${EXP.list.length ? EXP.list.map(x=>expCardHTML(x, false)).join('') : '<div class="cash-empty">None recorded yet.</div>'}`}
     </div>
-    ${P ? '' : `<div class="m-foot">${o.fin ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
+    ${P ? '' : `<div class="m-foot">${o.fin && PRACTICE ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
       <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`}`, true);
   expBind();
   keep();
@@ -9401,7 +9416,13 @@ function expBind(){
       catch(e){ toast(e.message, true); }
       expDraw(); } : null);
   const pays = [{v:'', l:'—', shown:'—'}].concat((o.payTypes||[]).filter(t=>t!=='Other').map(t=>({v:t, l:t})), [{v:'Other', l:'Other'}]);
-  comboBind('xPayC', pays, f.payType, v=>{ expRead(); f.payType = v; expDraw(); if(v==='Other') $('#xPayOther').focus(); });
+  // Finance adds payment types as they go, as with kinds (b278); one saved and since removed stays on its expense.
+  if(f.payType && !pays.some(x=>x.v===f.payType)) pays.splice(1, 0, {v:f.payType, l:f.payType});
+  comboBind('xPayC', pays, f.payType, v=>{ expRead(); f.payType = v; expDraw(); if(v==='Other') $('#xPayOther').focus(); },
+    o.mayPay ? async name=>{ expRead();
+      try{ o.payTypes = (await post({action:'expPayAdd', name})).result; f.payType = o.payTypes.find(c=>c.toLowerCase()===name.toLowerCase()) || name; toast('“' + f.payType + '” added'); }
+      catch(e){ toast(e.message, true); }
+      expDraw(); } : null);
   const m = $('#xMethod');
   if(m) m.addEventListener('change', ()=>{
     expRead();
@@ -9983,9 +10004,14 @@ function rsDraw(){
       <div class="rs-cats">${(d.cats||[]).map(c=>`<span class="rs-cat"><span class="no-edit">${esc(c)}</span>${c==='Other' || ro ? '' :
         ` <button type="button" class="btn btn-ghost btn-xs" data-act="rscatgone" data-c="${esc(c)}" title="Remove ${esc(c)} (expenses already saved keep it)">🗑</button>`}</span>`).join('')}</div>
       ${ro ? '' : `<div class="rs-catadd"><input id="rsCatNew" type="text" maxlength="60" placeholder="A new kind of expense"><button type="button" class="btn btn-ghost btn-sm" data-act="rscatadd">＋ Add</button></div>`}
-      <div class="muted-note">"Other" is always there, for anything else; whoever chooses it says what it was.</div>` : ''}
+      <div class="muted-note">"Other" is always there, for anything else; whoever chooses it says what it was.</div>
+      <div class="cash-sub">How expenses were paid</div>
+      <div class="rs-cats">${(d.pays||[]).concat(['Other']).map(c=>`<span class="rs-cat"><span class="no-edit">${esc(c)}</span>${c==='Other' || ro ? '' :
+        ` <button type="button" class="btn btn-ghost btn-xs" data-act="rspaygone" data-c="${esc(c)}" title="Remove ${esc(c)} (expenses already saved keep it)">🗑</button>`}</span>`).join('')}</div>
+      ${ro ? '' : `<div class="rs-catadd"><input id="rsPayNew" type="text" maxlength="40" placeholder="A new payment type"><button type="button" class="btn btn-ghost btn-sm" data-act="rspayadd">＋ Add</button></div>`}
+      <div class="muted-note">For expenses only: how a sale was paid is set at each place, as before.</div>` : ''}
       <div class="err" id="rsErr"></div>`,
-    `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>
+    `${PRACTICE ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
       ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
   const ps = $('#rsPlace'); if(ps) ps.addEventListener('change', ()=>{ RS.id = ps.value; rsDraw(); });
   // Searchable, as every place list is (b254, practice).
@@ -10007,6 +10033,14 @@ async function rsCat(name, add){
   if(!name){ $('#rsErr').textContent = 'Type the new kind of expense first.'; return; }
   if(!add && !confirm('Remove "' + name + '" as a kind of expense? Expenses already saved keep it.')) return;
   try{ RS.d.cats = (await post({action: add ? 'expCatAdd' : 'expCatGone', name})).result; rsDraw(); toast(add ? '“' + name + '” added' : name + ' removed'); }
+  catch(e){ $('#rsErr').textContent = e.message; }
+}
+/* Add or remove a way an expense was paid (b278). */
+async function rsPay(name, add){
+  name = String(name||'').trim();
+  if(!name){ $('#rsErr').textContent = 'Type the new payment type first.'; return; }
+  if(!add && !confirm('Remove "' + name + '" as a way an expense was paid? Expenses already saved keep it.')) return;
+  try{ RS.d.pays = (await post({action: add ? 'expPayAdd' : 'expPayGone', name})).result; rsDraw(); toast(add ? '“' + name + '” added' : name + ' removed'); }
   catch(e){ $('#rsErr').textContent = e.message; }
 }
 /* Remove a way of paying back for good, everywhere, or bring it back (b257). */
@@ -19449,6 +19483,7 @@ document.addEventListener('click',e=>{
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
   if(a==='reimbset'){ if(FIN_ON) finGo('settings'); else reimbSettingsModal(); return; }
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
+  if(a==='rspayadd' || a==='rspaygone'){ rsPay(a==='rspayadd' ? ($('#rsPayNew')||{}).value : t.dataset.c, a==='rspayadd'); return; }
   if(a==='rscatadd' || a==='rscatgone'){ rsCat(a==='rscatadd' ? ($('#rsCatNew')||{}).value : t.dataset.c, a==='rscatadd'); return; }
   if(a==='rsgone' || a==='rsback'){ rsGone(t.dataset.m, a==='rsgone'); return; }
   if(a==='finoverview'){ finGo('overview'); return; }

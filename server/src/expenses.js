@@ -229,6 +229,32 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     actLog(w, {}, 'expCatGone', 'Removed “' + name + '” as a kind of expense (expenses already saved keep it)', null);
     return catList();
   }
+  /* How an expense was paid (b278, Gita): Finance's own list too, starting as
+     the payment types already used at the places, and added to as they go.
+     Only Finance's expenses use it; the sales' payment types are untouched. */
+  const getPays = F => { const a = parse(kv.getProp('expPays'), null);
+    return Array.isArray(a) ? a.map(x => String(x)).filter(Boolean)
+      : [...new Set((F || facts()).payTypes.map(t => String(t)))].filter(t => !/^(gift|other)$/i.test(t)); };
+  const payList = F => getPays(F).filter(t => !/^(gift|other)$/i.test(t));
+  function payAdd(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can add payment types.');
+    const name = clip(p.name, 40).replace(/\s+/g, ' ').trim();
+    if (!name) throw new Error('Type the new payment type.');
+    const cur = getPays();
+    if (!/^(gift|other)$/i.test(name) && !cur.some(c => c.toLowerCase() === name.toLowerCase())) {
+      kv.setProp('expPays', JSON.stringify(cur.concat([name]).slice(0, 100)));
+      actLog(w, {}, 'expPayAdd', 'Added “' + name + '” as a way an expense was paid', null);
+    }
+    return payList();
+  }
+  function payGone(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can remove payment types.');
+    const name = clip(p.name, 40), cur = getPays();
+    if (!cur.some(c => c === name)) throw new Error('There is no payment type called that.');
+    kv.setProp('expPays', JSON.stringify(cur.filter(c => c !== name)));
+    actLog(w, {}, 'expPayGone', 'Removed “' + name + '” as a way an expense was paid (expenses already saved keep it)', null);
+    return payList();
+  }
   const getGone = () => { const a = parse(kv.getProp('reimbGone'), []); return Array.isArray(a) ? a.map(x => String(x)) : []; };
   function allMethods(F, withGone) {
     const seen = {}, out = [];
@@ -290,7 +316,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return {
       places: list, location: pl ? pl.id : '', defaultCur: regionCurs(F, pl)[0] || 'USD',
       spendCurs: [...spend], methods: eff.methods.map(m => methodInfo(F, m)), curs: eff.curs,
-      categories: catList(), payTypes: F.payTypes.filter(t => String(t).toLowerCase() !== 'gift'),
+      categories: catList(), payTypes: payList(F),
       // The consignment groups of the place's region (and only the place's own event's, for an event group).
       partners: pl && pl.regionId ? F.partners.filter(g => g.regionId === pl.regionId && (!g.eventId || g.eventId === pl.eventId))
         .map(g => ({ id: g.id, name: g.name })) : [],
@@ -548,6 +574,14 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (w.email) return String(r.byEmail) === w.email || String(r.forEmail) === w.email;
     return String(r.byLink) === w.link && (!w.name || String(r.forName || r.byName) === w.name);
   }
+  /* "My expenses" (b278, Gita): only those that are yours by name. One entered
+     as General, or for someone else, goes in the general pool (Finance's list),
+     though whoever entered it may still change it. */
+  function ownList(w, r) {
+    if (!w.email) return mine(w, r);
+    if (String(r.forEmail)) return String(r.forEmail) === w.email;
+    return String(r.byEmail) === w.email && String(r.forName) !== 'General';
+  }
   const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null) || payGuess(r),
     usdAmt: Number(r.usdAmt) > 0 ? Number(r.usdAmt) : null, usdDay: parse(r.usdDay, null) });
   /* No rate came with it (b267): Finance still gets a figure and a total, at
@@ -720,7 +754,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function list(w, p) {
     fresh();
     const all = p.scope === 'all' && isFin(w);
-    return rows().filter(r => all || mine(w, r)).map(shown).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
+    return rows().filter(r => all || ownList(w, r)).map(shown).sort((a, b) => String(b.ts).localeCompare(String(a.ts)));
   }
   /* Finance's To do: every payment still owed, and every expense still to be paid back, across the system. */
   function todo(w) {
@@ -746,7 +780,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     ['USD', 'EUR', 'GBP', 'INR', 'PLN'].forEach(c => curs.add(c));
     // Each level's own chain, everywhere first, so the page can show what it inherits.
     levels.forEach(l => { l.chain = l.id ? chainOf(placeOf(P, l.id)) : ['']; });
-    return { rules: getRules(), methods: allMethods(F), gone: getGone(), cats: catList(), curs: [...curs], levels, people: peopleList(), mayEdit: mayPay(w),
+    return { rules: getRules(), methods: allMethods(F), gone: getGone(), cats: catList(), pays: payList(F), curs: [...curs], levels, people: peopleList(), mayEdit: mayPay(w),
       // What each level gives now, before any person's own setting.
       regionCurs: Object.fromEntries(levels.map(l => [l.id, regionCurs(F, placeOf(P, l.id))])) };
   }
@@ -894,7 +928,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
+    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {

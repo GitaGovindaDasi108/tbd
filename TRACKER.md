@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b277**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b278**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2438,3 +2438,20 @@ Live unless marked practice.
 - Form: Finance typing a kind that isn't there gets "＋ Add “…”" (`comboBind`'s new `add`
   argument). Settings: "Kinds of expense" chips with 🗑, and an Add box.
 - Tests: expenses.js (list, add, remove, keep); browser-finance (Settings and form).
+
+## Done in b278 — No Finance To do on live, expense payment types, steady windows, General pool (live)
+- **Finance To do** is practice-only everywhere now: the expense form's footer and Settings' footer
+  join the menu and Finance bar (already gated).
+- **How expenses were paid** is Finance's own list (prop `expPays`, expenses.js `getPays`/`payList`):
+  it starts as the payment types the places already use (no Gift/Other), and Finance adds with "＋ Add"
+  on the form or in Settings ("How expenses were paid", 🗑 to remove). `expPayAdd`/`expPayGone`,
+  in the Activity Log. Sales' payment types are untouched.
+- **Windows (every pop-up):** a tap outside and Esc no longer close them; only ✕, Cancel or
+  finishing. Every window gets a ✕ if it had none (`openModal`). Windows sit at the top
+  (`.modal{margin:0 auto auto}`) so they don't slide when their contents change, and the same window
+  drawn again keeps its scroll and doesn't pop in again.
+- **"Your expenses"** (`expList` without scope, `ownList`): only expenses that are yours by name;
+  General ones, or ones entered for someone else, are only in Finance's pool (scope:'all').
+  Who may edit them (`mine`) is unchanged.
+- Tests: expenses.js (payment types, the pool); browser-finance (no To do, payment types,
+  windows stay open and still, ✕).
