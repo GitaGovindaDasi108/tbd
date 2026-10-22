@@ -201,7 +201,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', 'sr_m')); await own.waitForTimeout(1200);
     m = await own.$eval('#fpBody', e => e.innerText);
     t.push(['Finance on Madrid: Sub-region level, its own expense only ($10)', /Sub-region/.test(await own.$eval('#fpNav .lvl-chip', e => e.textContent)) && /Expenses\s*\$10\b/.test(m)]);
-    t.push(['…and its share of Spain\'s shared costs, by books distributed, beside Net', /Shared with all of Spain: \$100 of expenses\. Madrid distributed [\d.]+% of Spain's books/.test(m) && /Net after its share/.test(m)]);
+    t.push(['b289: shared costs are not split over the sub-regions (no share line on Madrid)', !/Shared with all of Spain|Net after its share/.test(m)]);
     await own.click('#finPP .pp-in'); await own.fill('#finPP .pp-in', 'madr'); await own.waitForTimeout(200);
     const hits = await own.$$eval('#finPP .pp-row', rs => rs.map(r => r.textContent));
     t.push(['the Finance search finds the sub-region, tagged, with its events beneath', hits.includes('MadridSub-region') && hits.includes('Madrid Class') && hits.indexOf('MadridSub-region') < hits.indexOf('Madrid Class')]);
@@ -249,11 +249,47 @@ const API = 'http://api.test/';
     t.push(['b284: undo puts Madrid back as its own region, with its event, books and expense', un.ok && ms.regions.some(r => r.regionId === 'rg_md' && r.whLoc === 'wh_md')
       && ms.events.find(e => e.eventId === 'ev_md1').regionId === 'rg_md' && !ms.events.some(e => e.eventId === 'wh_md')
       && (ms.inventory.find(i => i.location === 'wh_md' && i.bookId === 'sr_en') || {}).qty === 6 && ex2.regionId === 'rg_md' && ex2.location === 'rg_md' && !ms.subRegions.events.ev_md1]);
+    // b289: selling straight from the warehouse asks which sub-region.
+    await own.evaluate(() => { closeModal(); finLeave && FINP.on && finLeave(); setSub(''); goTo('region', 'rg_sp'); }); await own.waitForTimeout(400);
+    await own.evaluate(() => saleModal({ bookId: 'sr_en' })); await own.waitForTimeout(200);
+    t.push(['b289: a warehouse sale asks which sub-region, with nothing chosen yet', await own.$eval('#csSub', e => e.value) === '' &&
+      JSON.stringify(await own.$$eval('#csSub option', o => o.map(x => x.textContent))) === JSON.stringify(['Choose…', 'Madrid', 'Barcelona', 'Valencia', 'All of Spain (none of them)'])]);
+    for (const w of [1150, 390]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(200); (await spill(own)).forEach(x => spills.push(w + ' sale window: ' + x)); }
+    await own.setViewportSize({ width: 390, height: 900 }); await own.screenshot({ path: shot('sale-ask-phone') });
+    await own.setViewportSize({ width: 1150, height: 900 });
+    await own.fill('#pamt', '40');
+    await own.click('#saveSale'); await own.waitForTimeout(300);
+    t.push(['b289: …and will not record it until one is chosen', /Choose which sub-region/.test(await own.$eval('#modalErr', e => e.textContent)) && !!(await own.$('#csSub'))]);
+    await own.selectOption('#csSub', 'sr_b'); await own.click('#saveSale'); await own.waitForTimeout(1500);
+    let ws = (await O({ action: 'getState', season: SA })).state;
+    const wsale = ws.sales.find(x => x.location === 'wh_sp' && x.saleId !== 'w1');
+    t.push(['b289: the server keeps the warehouse sale as Barcelona\'s', wsale && ws.subRegions.sales[wsale.saleId] === 'sr_b' && !ws.subRegions.sales.w1]);
+    t.push(['b289: Barcelona chosen: the page counts it, Madrid\'s does not', await own.evaluate(id => { setSub('sr_b'); const b = withSub(() => scopedSales().some(x => x.saleId === id));
+      setSub('sr_m'); const m = withSub(() => scopedSales().some(x => x.saleId === id)); setSub(''); return b && !m; }, wsale && wsale.saleId)]);
+    r = await own.evaluate(() => { setSub(''); return buildReport(''); });
+    t.push(['b289: the report\'s By sub-region gives it to Barcelona (2 Big Books now)', /Barcelona\nBig Books = 2 Sold \+ 0 Gifts = 2 Distributed/.test(r) && /Spain, general\nBig Books = 1 Sold/.test(r)]);
+    await own.evaluate(() => goTo('season')); await own.waitForTimeout(400);
+    const cbr = await own.$$eval('#collByRegion tr.cbr-sub', rs => rs.map(x => x.innerText.replace(/\s+/g, ' ')));
+    t.push(['b289: Collections by Region gives Barcelona the 40 it took at the warehouse', cbr.some(x => /^Barcelona 55 40 /.test(x)) && cbr.some(x => /^Spain, general -60 /.test(x))]);
+    await own.evaluate(() => finGo('overview', 'sr_b', { reload: true })); await own.waitForTimeout(1500);
+    m = await own.$eval('#fpBody', e => e.innerText);
+    t.push(['b289: Finance on Barcelona lists it as Sold from the warehouse', /Sold from the warehouse/.test(m)]);
+    await own.evaluate(() => finGo('overview', 'rg_sp')); await own.waitForTimeout(800);
+    m = await own.$eval('#fpBody', e => e.innerText);
+    t.push(['b289: Spain itself still carries the shared $100 shipping', /Expenses\s*\$1[0-9][0-9]\b/.test(m)]);
+    await own.evaluate(() => { finLeave(); setSub('sr_m'); goTo('region', 'rg_sp'); }); await own.waitForTimeout(400);
+    await own.evaluate(() => { setSub('sr_m'); saleModal({ bookId: 'adv_en' }); }); await own.waitForTimeout(200);
+    t.push(['b289: on Madrid\'s page it starts at Madrid', await own.$eval('#csSub', e => e.value) === 'sr_m']);
+    await own.evaluate(() => { closeModal(); donationModal(); }); await own.waitForTimeout(200);
+    t.push(['b289: a donation at the warehouse asks too', !!(await own.$('#csSub'))]);
+    await own.evaluate(() => { closeModal(); goTo('event', 'ev_m1'); saleModal({ bookId: 'sr_en' }); }); await own.waitForTimeout(200);
+    t.push(['b289: a sale at an event does not ask (it is the event\'s)', !(await own.$('#csSub'))]);
+    await own.evaluate(() => closeModal());
     t.push(['no overflow anywhere (region page, window, season, Finance; phone and computer)' + (spills.length ? ' — ' + spills.slice(0, 4).join(' | ') : ''), !spills.length]);
-    // The live app: nothing of it yet.
+    // b289: on in the live app too.
     const lv = await open('owner@example.com', 'The Owner', 1150, true);
     await lv.evaluate(() => goTo('region', 'rg_sp')); await lv.waitForTimeout(400);
-    t.push(['the live app shows no sub-regions yet (practice first)', await lv.evaluate(() => !document.querySelector('.subr-bar') && !document.querySelector('[data-act="pickloc"] optgroup') && !document.querySelector('[data-act="subregions"]'))]);
+    t.push(['b289: the live app has sub-regions (in the place picker and the menu)', await lv.evaluate(() => !!document.querySelector('[data-act="pickloc"] optgroup') && !!document.querySelector('[data-act="subregions"]'))]);
   } catch (e) { errors.push('test: ' + e.stack); }
   await browser.close();
   let bad = 0;

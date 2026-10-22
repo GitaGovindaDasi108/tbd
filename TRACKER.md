@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b287**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b289**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2639,3 +2639,35 @@ region, then we don't need [the question for its own events] … Spain is just t
   `intoSub`.
 - Client only; SERVER_BUILD stays b284.
 - Tests: browser-subregions 47 (chip checks replaced by picker checks; container-region checks).
+
+## Done in b289 — sub-regions go live; warehouse sales ask which sub-region; no split of shared costs
+
+Gita, 2026-10-22, answering the open questions: keep the name "Sub-regions"; "Don't split them. Show
+shared costs only on the whole region" (a per-book cost may come later, once printing costs are
+caught); "When someone sells straight from the warehouse … Yes, always ask"; "Now. Put them on live";
+and leave the old Madrid/Barcelona data as it is (she will bring Madrid in herself).
+- **Live:** `SUBR_ON = true`. The Sub-regions window, Bring in another region, the place-picker
+  groups, Collections, the report and Finance's sub-region scopes are all live now.
+- **Warehouse sales:** a sale, pre-order, several-books sale or donation recorded at a region's
+  warehouse, in a region with sub-regions, asks "Which sub-region is this for?" (`subAskHTML`,
+  `#csSub`): the sub-regions, then "All of <region> (none of them)". Nothing is preselected unless
+  the page is on one sub-region; it will not record until one is chosen. An edit shows the current
+  answer (old untagged sales: "none of them").
+  - Sent as `subRegion` on sell / sellBundle / donate / editSale / editBundle. After the action the
+    server's dispatcher calls `tagSaleSub_`, which keeps it in meta `subRegions.sales` keyed by the
+    sale id (a bundle's id for several books): valid only at a region warehouse, for one of that
+    region's sub-regions; anything else removes the tag. Removing a sub-region drops its tags.
+    Old payloads have no `subRegion`, so recorded sessions replay unchanged.
+  - Client `saleSub(x)` = the event's sub-region, else the tag. Used by `subState` (a sub-region's
+    page), `subParts` (each part now carries a `sale` test, used by the report's By sub-region blocks
+    and Collections by Region) — costs still go by place.
+  - Finance: `financeData_` gives each warehouse sale `u` (its tag). `finFiltered` and the pending
+    list count `!x.e && x.u === f.u` in a sub-region; By Sub-region adds them to their sub-region and
+    takes them out of "general"; a sub-region's By Event starts with "Sold from the warehouse".
+- **Shared costs:** the "Shared with all of <region> … its share … Net after its share" line
+  (`finSubShare`, `.fin-share`) is gone. A sub-region shows its own costs only; shared ones show on
+  the region (and its ", general" row).
+- The grey "Selling straight from the warehouse counts for all of …" note is gone (it now asks).
+- SERVER_BUILD b289.
+- Tests: browser-subregions 58 (+11: the question, refusing without an answer, the server tag,
+  page/report/Collections/Finance counting it, preselect, donation, events don't ask, live on).
