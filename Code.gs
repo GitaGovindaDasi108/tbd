@@ -661,6 +661,7 @@ function handle(e) {
         case 'markDeliveredBundle': doMarkDeliveredBundle(params); break;
         case 'editBundle':       doEditBundle(params);       break;
         case 'donate':           doDonate(params);           break;
+        case 'importSales':      result = doImportSales(params); break;
         case 'setPayTypes':      doSetPayTypes(params);      break;
         case 'addPayType':       result = doAddPayType(params); break;
         case 'setMenuOrder':     result = doSetMenuOrder(params); break;
@@ -1361,7 +1362,7 @@ function isClosedLoc_(loc) { return !!closedAtOf_(loc); }
 
 /* Actions that change what happened somewhere. Reading is always allowed. */
 var MUTATING_ACTIONS = {
-  sell:1, sellBundle:1, donate:1, editSale:1, editBundle:1, deleteSale:1,
+  sell:1, sellBundle:1, donate:1, importSales:1, editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1,
   transferBulk:1, transferExternal:1, adjustStockBulk:1, setStockBulk:1,
   undoStockMove:1, transferMulti:1, fulfilRemote:1
@@ -6216,6 +6217,48 @@ function doDonate(p) {
   markDirty_(loc);
 }
 
+/**
+ * A sales spreadsheet uploaded into one place (b288, practice first).
+ *
+ * The page has already read the file, matched its titles and payment types,
+ * and left out what was not wanted; each row arrives as a sale, a pre-order or
+ * a donation with its own id. Stock is checked for the whole file before
+ * anything is written, so a file either goes in whole or not at all. Each row
+ * is then recorded exactly as if it had been entered by hand, and a resend
+ * changes nothing (every row's id is remembered).
+ */
+function doImportSales(p) {
+  var loc = placeOf_(p.location);
+  var rows = (p.rows || []).filter(function (r) { return r && r.saleId; });
+  if (!rows.length) throw new Error('There is nothing to upload.');
+  if (rows.length > 2000) throw new Error('That is more rows than one upload can take (2000).');
+  var fresh = rows.filter(function (r) {
+    return !saleIdTaken_(String(r.saleId)) && (_rebuilding || !isDeleted_(String(r.saleId)));
+  });
+  var need = {};
+  fresh.forEach(function (r) {
+    if (r.kind === 'donation') return;
+    if (!bookById_(String(r.bookId))) throw new Error('A title in the file is no longer in the catalogue. Check the titles again.');
+    if (r.kind === 'sale') need[r.bookId] = (need[r.bookId] || 0) + 1;
+  });
+  var map = loadInvMap_(), short = [];
+  Object.keys(need).forEach(function (b) {
+    var have = getQty_(map, loc, b);
+    if (have < need[b]) short.push(bookName_(b) + ': ' + need[b] + ' sold, ' + Math.max(0, have) + ' on hand');
+  });
+  if (short.length) {
+    throw new Error('Not enough copies at ' + locLabel_(loc) + ' for every sale in the file (' + short.join('; ') +
+      '). Add or transfer the stock first, then upload again.');
+  }
+  fresh.forEach(function (r) {
+    var q = { saleId: r.saleId, location: loc, legs: r.legs || [], name: r.name, phone: r.phone,
+              comments: r.comments, ts: r.ts, by: p.by, override: true };
+    if (r.kind === 'donation') doDonate(q);
+    else doSell(Object.assign(q, { bookId: r.bookId, isPreorder: r.kind === 'preorder' }));
+  });
+  return rows.map(function (r) { return String(r.saleId); });
+}
+
 /** Is this sale id already in the log? */
 function saleIdTaken_(id) {
   var rows = objectsOf_('_sales');
@@ -9078,6 +9121,18 @@ function describe_(action, p, result, moves, who) {
       break;
     }
     case 'editShipment':   d = { text: 'Changed a shipment’s details' }; break;
+    case 'importSales': {
+      var cnt = { sale: 0, preorder: 0, donation: 0 };
+      (p.rows || []).forEach(function (r) { if (cnt[r.kind] !== undefined) cnt[r.kind]++; });
+      var bits = [];
+      if (cnt.sale) bits.push(plural_(cnt.sale, 'sale'));
+      if (cnt.preorder) bits.push(plural_(cnt.preorder, 'pre-order'));
+      if (cnt.donation) bits.push(plural_(cnt.donation, 'donation'));
+      d = { text: 'Uploaded ' + (namesList_(bits) || 'nothing') + ' from a spreadsheet' +
+                  (p.fileName ? ' (' + String(p.fileName).slice(0, 80) + ')' : '') + ' into ' + locLabel_(p.location),
+            undo: result && result.length ? { type: 'sales', ids: result } : null };
+      break;
+    }
     case 'createEvent':
       d = { text: 'Created event “' + p.name + '” in ' + reg(p.regionId), undo: { type: 'event', eventId: String(result || p.eventId) } };
       locs[String(result || p.eventId)] = 1; break;
@@ -9416,6 +9471,8 @@ function doUndoActivity(p, who) {
     setSaleFields_(fh, { type: 'PREORDER', delivered: false, dsource: '', fulfilLoc: '', fulfilAt: '' });
     markDirty_(fh.o.location);
   }
+  // A spreadsheet uploaded by mistake (b288): every row it made comes out again, copies back on the shelf.
+  else if (u.type === 'sales') (u.ids || []).forEach(function (sid) { doDeleteSale({ saleId: sid }); });
   else if (u.type === 'cash') (u.ids || []).forEach(function (cid) { doCashDelete({ id: cid }); });
   else if (u.type === 'cost') doDeleteCost({ id: u.id });
   else if (u.type === 'book') {
