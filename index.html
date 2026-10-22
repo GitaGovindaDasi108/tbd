@@ -1086,6 +1086,34 @@ body.has-na .overlay{z-index:10000}
 .sp-bulkbox textarea{width:100%;box-sizing:border-box;margin:6px 0;font-size:14px}
 .sp-bulkacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .sp-csv{cursor:pointer}
+/* Upload Sales Spreadsheet (b288) */
+.sup-file{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;font-size:13px;min-width:0}
+.sup-file>span{min-width:0;overflow-wrap:anywhere}
+.sup-sum{font-weight:700;font-size:14px}
+.sup-fix{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
+.sup-sec{display:flex;flex-direction:column;gap:6px;min-width:0}
+.sup-h{font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sup-alls{display:flex;gap:4px}
+.sup-map{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:6px 10px;align-items:center}
+.sup-map select{width:100%;min-width:0;padding:6px 9px;border:1.5px solid var(--line-d);border-radius:9px;background:#fff;color:var(--ink);font-size:14px}
+.sup-k{font-size:13px;overflow-wrap:anywhere}
+.sup-k.sup-ask{color:var(--clay);font-weight:700}
+.sup-rows{border:1px solid var(--line);border-radius:9px;max-height:340px;overflow:auto}
+.sup-row{display:grid;grid-template-columns:20px 96px minmax(0,1fr) 84px 48px;gap:8px;align-items:center;padding:5px 8px;border-bottom:1px solid var(--line);font-size:12.5px;cursor:pointer}
+.sup-row:last-child{border-bottom:0}
+.sup-row.off{color:var(--muted)}
+.sup-row.off .sup-what{text-decoration:line-through}
+.sup-row input{margin:0}
+.sup-when,.sup-pay{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sup-what{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sup-amt{text-align:right;font-variant-numeric:tabular-nums}
+.sup-tag{font-size:11px;color:#6B4FA0;font-weight:700}
+.sup-note{font-size:11px;color:var(--clay);font-weight:700}
+@media (max-width:560px){
+  .sup-row{grid-template-columns:20px minmax(0,1fr) auto;grid-template-areas:"c what amt" "c when pay";row-gap:1px}
+  .sup-row input{grid-area:c} .sup-what{grid-area:what} .sup-amt{grid-area:amt} .sup-when{grid-area:when;color:var(--muted)} .sup-pay{grid-area:pay;text-align:right;color:var(--muted)}
+  .sup-map{grid-template-columns:minmax(0,1fr)} .sup-map select{margin-bottom:4px}
+}
 .book.has-lang, .stat-card.has-lang{border-left:4px solid var(--lc)}
 .con-tag{display:inline-block;margin-left:6px;background:var(--consign-l);color:var(--consign);
   border:1px solid var(--consign-b);border-radius:999px;padding:1px 7px;font-size:9.5px;
@@ -2224,7 +2252,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b287</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b288</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5512,6 +5540,8 @@ function renderAdmin(){
     cols[3].push(`<button class="btn" data-act="deleteregion">Delete Region</button>`);
   }else{
     cols[3].push(`<button class="btn" data-act="renameevent">Rename Event</button>`);
+    // Sales taken somewhere else, a whole spreadsheet at once (b288, practice first).
+    if(PRACTICE) cols[3].push(`<button class="btn" data-act="salesupload">📤 Upload Sales Spreadsheet</button>`);
     cols[3].push(closureOf(CUR_LOC)
       ? `<button class="btn" data-act="reopenhere">Reopen Event</button>`
       : `<button class="btn" data-act="closehere">Close Event</button>`);
@@ -5569,6 +5599,7 @@ const SN_ITEMS = {
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
+  salesupload:['📤','Upload Sales Spreadsheet'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -15200,6 +15231,264 @@ function donationModal(edit){
   });
 }
 
+/* ---- Upload a sales spreadsheet into an event (b288, practice first) ----
+   Gita, 2026-10-22: sales taken somewhere else (a form, another sheet) go into
+   an event in one go. The file is read here: one row per sale, pre-order or
+   donation. Titles and payment types the app knows are matched by themselves;
+   anything else is asked once per name, never guessed at. Every row is shown
+   with a tick box before anything is saved, and the server takes the whole file
+   or none of it (doImportSales). The Activity Log can undo the whole upload. */
+const SUP_ON = PRACTICE;
+let SUP = null;            // the file being uploaded, kept while stock is added and the window reopened
+
+/* A CSV file as rows of cells: quoted cells may hold commas, quotes and line breaks. */
+function csvRows(text){
+  const out = []; let row = [], cell = '', q = false;
+  const s = String(text||'').replace(/^﻿/, '');
+  const tab = !s.split(/\r?\n/)[0].includes(',') && s.includes('\t');
+  const sep = tab ? '\t' : ',';
+  for(let i=0;i<s.length;i++){
+    const c = s[i];
+    if(q){
+      if(c==='"'){ if(s[i+1]==='"'){ cell+='"'; i++; } else q = false; }
+      else cell += c;
+    }else if(c==='"' && !cell) q = true;
+    else if(c===sep){ row.push(cell); cell=''; }
+    else if(c==='\n' || c==='\r'){ if(c==='\r' && s[i+1]==='\n') i++; row.push(cell); out.push(row); row=[]; cell=''; }
+    else cell += c;
+  }
+  if(cell || row.length){ row.push(cell); out.push(row); }
+  return out.map(r=>r.map(c=>c.trim()));
+}
+/* "6/7/2026, 5:33:15 PM", "07.06.2026 17:33" or "2026-06-07 17:33", in this device's time.
+   Day and month are read month first unless dayFirst. */
+function supDate(raw, dayFirst){
+  const s = String(raw||'').trim(); if(!s) return null;
+  let y, mo, d, h = 12, mi = 0, se = 0;
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if(m){ y=+m[1]; mo=+m[2]; d=+m[3]; if(m[4]!==undefined){ h=+m[4]; mi=+m[5]; se=+(m[6]||0); } }
+  else{
+    m = s.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:[T ,]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([AaPp])?\.?[Mm]?\.?)?\s*$/);
+    if(!m) return null;
+    y = +m[3]; if(y<100) y += 2000;
+    if(dayFirst){ d=+m[1]; mo=+m[2]; } else { mo=+m[1]; d=+m[2]; }
+    if(m[4]!==undefined){
+      h=+m[4]; mi=+m[5]; se=+(m[6]||0);
+      const ap = (m[7]||'').toLowerCase();
+      if(ap==='p' && h<12) h += 12; if(ap==='a' && h===12) h = 0;
+    }
+  }
+  const dt = new Date(y, mo-1, d, h, mi, se);
+  return (isNaN(dt) || dt.getMonth()!==mo-1 || dt.getDate()!==d) ? null : dt;
+}
+const supNorm = v => String(v||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+/* The app's title for a name in the file: the same name, or the only title
+   with that name in any language. Otherwise '' and the person chooses. */
+function supFindBook(name){
+  const n = supNorm(name), books = STATE.books||[];
+  const same = books.find(b=>supNorm(b.name)===n);
+  if(same) return same.id;
+  const base = supNorm(bookLang({name}).base);
+  const g = books.filter(b=>supNorm(bookLang(b).base)===base);
+  return (g.length===1 && !bookLang({name}).lang) ? g[0].id : '';
+}
+/* The payment type here for a method in the file ("credit card" is Card). */
+function supFindPay(name){
+  const types = curPayTypes(), n = supNorm(name).replace(/[\s_-]+/g,'');
+  const same = types.find(t=>supNorm(t).replace(/[\s_-]+/g,'')===n);
+  if(same) return same;
+  if(/card|credit|debit|visa|mastercard|sumup|square/.test(n)) return types.find(t=>/^card$/i.test(t)) || '';
+  return '';
+}
+const supTitleCase = s => String(s||'').replace(/\b\w/g, c=>c.toUpperCase());
+
+/* Read the file: which column is which, then each row as {kind, book, pay, amt, name, phone, tsRaw}. */
+function supRead(text, fileName){
+  const all = csvRows(text);
+  const hi = all.findIndex(r=>r.some(c=>/book|title/i.test(c)) && r.some(c=>/amount|price|total|paid/i.test(c)));
+  if(hi<0) return {err:'This file has no heading row the app recognises. It needs columns for the book and the amount, and ideally the payment method, type, name, phone and date.'};
+  const head = all[hi];
+  const col = re => head.findIndex(c=>re.test(c));
+  const C = {book:col(/book|title/i), pay:col(/pay|method/i), amt:col(/amount|price|total|paid/i),
+             type:col(/^type$|kind|sale type/i), phone:col(/phone|mobile|tel/i), ts:col(/time|date|when/i)};
+  C.name = head.findIndex((c,i)=>/name|customer/i.test(c) && i!==C.phone && i!==C.book);
+  const curM = (head[C.amt]||'').match(/\(([A-Za-z]{3})\)/);
+  const rows = [], skipped = []; let blank = 0, dayFirst = null;
+  all.slice(hi+1).forEach((r, k)=>{
+    const line = hi + k + 2;
+    const v = i => i>=0 ? (r[i]||'') : '';
+    if(!r.some(c=>c)){ blank++; return; }
+    const type = v(C.type), book = v(C.book);
+    const kind = /pre/i.test(type) ? 'preorder' : (/don/i.test(type) || /^donations?$/i.test(book)) ? 'donation'
+      : /gift/i.test(type) ? 'gift' : (!type || /sale|sold/i.test(type)) ? 'sale' : '';
+    const amt = Number(String(v(C.amt)).replace(/[^\d.\-]/g,''));
+    const why = !kind ? 'type “'+type+'” not recognised' : (kind!=='donation' && !book) ? 'no book' : (v(C.amt)==='' && kind!=='gift') || isNaN(amt) ? 'no amount' : '';
+    if(why){ skipped.push({line, why, text:r.filter(Boolean).join(', ')}); return; }
+    const dm = String(v(C.ts)).match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-]\d/);
+    if(dm && dayFirst===null){ if(+dm[1]>12) dayFirst = true; else if(+dm[2]>12) dayFirst = false; }
+    rows.push({line, kind, book: kind==='donation' ? '' : book, pay:v(C.pay), amt: kind==='gift' ? 0 : amt,
+               name:v(C.name), phone:v(C.phone), tsRaw:v(C.ts)});
+  });
+  if(!rows.length) return {err:'No sales found in this file.'};
+  const cur = curM && curCurrencies().includes(curM[1].toUpperCase()) ? curM[1].toUpperCase() : (curM ? curM[1].toUpperCase() : defaultCur());
+  const books = {}, pays = {};
+  rows.forEach(r=>{
+    if(r.kind!=='donation' && !(r.book in books)) books[r.book] = supFindBook(r.book);
+    if(r.kind!=='gift' && !(r.pay in pays)) pays[r.pay] = supFindPay(r.pay) || (r.pay ? '+'+supTitleCase(r.pay) : (curPayTypes()[0]||'Cash'));
+  });
+  // A row that looks like someone trying the form out starts unticked.
+  const off = new Set(rows.map((r,i)=>/\btest\b|not a pre-?order/i.test(r.name) ? i : -1).filter(i=>i>=0));
+  return {fileName, loc:CUR_LOC, cur, dayFirst:!!dayFirst, rows, skipped, blank, books, pays, off, testy:new Set(off), on:new Set()};
+}
+
+/* Each row as it would be saved, with what stops it. */
+function supPlan(){
+  const S = SUP, sales = (STATE.sales||[]).filter(s=>s.location===S.loc);
+  return S.rows.map((r,i)=>{
+    const bookId = r.kind==='donation' ? '' : (S.books[r.book]||'');
+    const ts = supDate(r.tsRaw, S.dayFirst);
+    const type = r.kind==='gift' ? 'Gift' : String(S.pays[r.pay]||'').replace(/^\+/, '');
+    const kind = r.kind==='gift' ? 'sale' : r.kind;
+    const T = kind==='preorder' ? 'PREORDER' : kind==='donation' ? 'DONATION' : 'SALE';
+    // Already here: the same title, kind and amount within a minute of the same time.
+    const dup = !!ts && sales.some(s=>(s.type===T || (T==='PREORDER' && s.type==='SALE' && s.delivered)) && String(s.bookId||'')===bookId
+      && Math.abs(new Date(s.ts) - ts) < 60000 && Math.abs(legs(s).reduce((t,l)=>t+(Number(l.amt)||0),0) - r.amt) < 0.01);
+    const note = bookId==='-' ? 'title left out' : (kind!=='donation' && !bookId) ? 'title not matched yet' : dup ? 'already in the app'
+      : S.testy.has(i) ? 'looks like a test entry' : (r.tsRaw && !ts) ? 'date not understood, today is used' : '';
+    const blocked = bookId==='-' || (kind!=='donation' && !bookId);
+    const on = !blocked && (S.on.has(i) || (!S.off.has(i) && !dup));
+    return {i, r, kind, bookId, ts, type, dup, note, blocked, on};
+  });
+}
+
+function salesUploadModal(){
+  if(!SUP_ON || !isAdmin() || CUR_LEVEL!=='event') return;
+  if(SUP && SUP.loc!==CUR_LOC) SUP = null;
+  openModal(`
+    ${mHead('Upload Sales Spreadsheet')}
+    <div class="m-body" id="supBody"></div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-gold" id="supGo" disabled>Upload</button>
+    </div>`, true);
+  const m = $('#modal');
+  const draw = () => {
+    const body = $('#supBody'), top = body.scrollTop;
+    body.innerHTML = SUP ? supHTML() : supStartHTML();
+    body.scrollTop = top;
+    const n = SUP ? supPlan().filter(x=>x.on).length : 0;
+    const go = $('#supGo'); go.disabled = !n || !!supStop();
+    go.textContent = n ? 'Upload ' + n + ' row' + (n===1?'':'s') : 'Upload';
+    try{ applyLabels(m); }catch(e){}
+  };
+  m.addEventListener('change', e=>{
+    const t = e.target;
+    if(t.id==='supFile'){
+      const f = t.files && t.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload = () => { const r = supRead(String(rd.result||''), f.name);
+        if(r.err){ SUP = null; draw(); $('#supMsg').innerHTML = `<div class="warn">${esc(r.err)}</div>`; return; }
+        SUP = r; draw(); };
+      rd.readAsText(f); return;
+    }
+    if(!SUP) return;
+    if(t.dataset.supbook!==undefined) SUP.books[t.dataset.supbook] = t.value;
+    else if(t.dataset.suppay!==undefined) SUP.pays[t.dataset.suppay] = t.value;
+    else if(t.id==='supCur') SUP.cur = t.value;
+    else if(t.id==='supDay') SUP.dayFirst = t.value==='1';
+    else if(t.dataset.suprow!==undefined){
+      const i = +t.dataset.suprow;
+      if(t.checked){ SUP.off.delete(i); SUP.on.add(i); } else { SUP.on.delete(i); SUP.off.add(i); }
+    } else return;
+    draw();
+  });
+  m.addEventListener('click', e=>{
+    if(e.target.closest('[data-supagain]')){ SUP = null; draw(); return; }
+    if(e.target.closest('[data-supall]')){ const on = e.target.closest('[data-supall]').dataset.supall==='1';
+      supPlan().forEach(x=>{ if(on){ SUP.off.delete(x.i); SUP.on.add(x.i); } else { SUP.on.delete(x.i); SUP.off.add(x.i); } }); draw(); return; }
+  });
+  $('#supGo').addEventListener('click', supUpload);
+  draw();
+}
+function supStartHTML(){
+  return `<div class="hint">Every row of the file is recorded at <b>${esc(locName(CUR_LOC))}</b>. A CSV file, one row per sale, with columns for
+      the book, payment method, amount, type (Sale, Pre-Order or Donation), customer name and phone, and the date and time.
+      From Google Sheets: File → Download → Comma-separated values (.csv).</div>
+    <div><label class="btn btn-plum sp-csv">📄 Choose CSV file<input type="file" id="supFile" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden></label></div>
+    <div class="hint">Nothing is saved until you have checked every row and pressed Upload.</div>
+    <div id="supMsg"></div><div class="err" id="modalErr"></div>`;
+}
+/* What stops the whole file: a closed event, or too few copies for the sales in it. */
+function supStop(){
+  if(isClosedHere()) return 'This event is closed. Reopen it first to add sales to it.';
+  const ask = Object.keys(SUP.books).filter(k=>!SUP.books[k]);
+  if(ask.length) return 'Choose the app’s title for ' + ask.map(k=>'“'+esc(k)+'”').join(', ') + ' under Titles (or “Leave these rows out”).';
+  const need = {};
+  supPlan().filter(x=>x.on && x.kind==='sale').forEach(x=>{ need[x.bookId] = (need[x.bookId]||0) + 1; });
+  const short = Object.keys(need).filter(b=>invQty(SUP.loc, b) < need[b])
+    .map(b=>`${esc(bookById(b).name)}: ${need[b]} sold, ${Math.max(0, invQty(SUP.loc, b))} on hand`);
+  return short.length ? 'Not enough copies at ' + esc(locName(SUP.loc)) + ' for every sale in the file:<br>' + short.join('<br>') : '';
+}
+function supHTML(){
+  const S = SUP, plan = supPlan(), on = plan.filter(x=>x.on);
+  const cnt = k => on.filter(x=>x.kind===k).length;
+  const total = on.reduce((t,x)=>t + (Number(x.r.amt)||0), 0);
+  const parts = [[cnt('sale'),'sale'], [cnt('preorder'),'pre-order'], [cnt('donation'),'donation']].filter(p=>p[0]).map(p=>p[0]+' '+p[1]+(p[0]===1?'':'s'));
+  const bookOpts = sel => `<option value=""${!sel?' selected':''}>Choose the title…</option>`
+    + [...(STATE.books||[])].sort((a,b)=>a.name.localeCompare(b.name)).map(b=>`<option value="${esc(b.id)}"${sel===b.id?' selected':''}>${esc(b.name)}</option>`).join('')
+    + `<option value="-"${sel==='-'?' selected':''}>Leave these rows out</option>`;
+  const types = curPayTypes().filter(t=>t!=='Gift');
+  const payOpts = (name, sel) => types.map(t=>`<option value="${esc(t)}"${sel===t?' selected':''}>${esc(t)}</option>`).join('')
+    + (name ? `<option value="+${esc(supTitleCase(name))}"${sel==='+'+supTitleCase(name)?' selected':''}>＋ New: ${esc(supTitleCase(name))}</option>` : '');
+  const nOf = f => plan.reduce((m,x)=>{ const k = f(x); if(k!==null) m[k] = (m[k]||0)+1; return m; }, {});
+  const bookN = nOf(x=>x.kind==='donation' ? null : x.r.book), payN = nOf(x=>x.r.kind==='gift' ? null : x.r.pay);
+  const stop = supStop();
+  const firstD = (plan.find(x=>/^\d{1,2}[\/.\-]\d{1,2}/.test(x.r.tsRaw))||{}).r;
+  const dayQ = firstD ? (()=>{ const a = supDate(firstD.tsRaw, false), b = supDate(firstD.tsRaw, true);
+      const f = d => d ? d.toLocaleDateString(LOCALE, {day:'numeric', month:'long', year:'numeric'}) : '';
+      return a && b && +a!==+b ? `<div class="field"><label>“${esc(firstD.tsRaw.split(/[ ,]/)[0])}” is</label>
+        <select id="supDay"><option value="0"${!S.dayFirst?' selected':''}>${f(a)}</option><option value="1"${S.dayFirst?' selected':''}>${f(b)}</option></select></div>` : ''; })() : '';
+  const when = d => d ? d.toLocaleDateString(LOCALE, {day:'numeric', month:'short'}) + ' ' + d.toLocaleTimeString(LOCALE, {hour:'2-digit', minute:'2-digit'}) : '—';
+  const kindTxt = {sale:'Sale', preorder:'Pre-order', donation:'Donation'};
+  return `<div class="sup-file"><span>📄 <b>${esc(S.fileName)}</b> · ${S.rows.length} row${S.rows.length===1?'':'s'} read</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-supagain>Choose another file</button></div>
+    <div class="sup-sum">${on.length ? 'Ready to upload: ' + parts.join(', ') + ' · ' + fmt(total) + ' ' + esc(S.cur) : 'Nothing ticked to upload yet.'}</div>
+    ${stop && !/^Not enough/.test(stop) ? `<div class="warn">${stop}</div>` : stop ? `<div class="warn">${stop}<div class="sup-fix"><button type="button" class="btn btn-sm" data-act="addstock">＋ Add New Stock</button>
+        <button type="button" class="btn btn-sm" data-act="xfer">⇄ Transfer Existing Stock</button></div>
+        <div class="hint">Your file stays here: come back with 📤 Upload Sales Spreadsheet.</div></div>` : ''}
+    ${Object.keys(bookN).length ? `<div class="sup-sec"><div class="sup-h">Titles</div><div class="sup-map">${Object.keys(bookN).map(k=>`
+      <div class="sup-k${S.books[k]?'':' sup-ask'}">${esc(k)} <span class="muted-note">×${bookN[k]}</span></div>
+      <select data-supbook="${esc(k)}">${bookOpts(S.books[k])}</select>`).join('')}</div></div>` : ''}
+    ${Object.keys(payN).length ? `<div class="sup-sec"><div class="sup-h">Payment types</div><div class="sup-map">${Object.keys(payN).map(k=>`
+      <div class="sup-k">${esc(k||'(blank)')} <span class="muted-note">×${payN[k]}</span></div>
+      <select data-suppay="${esc(k)}">${payOpts(k, S.pays[k])}</select>`).join('')}</div></div>` : ''}
+    <div class="row2"><div class="field"><label>The amounts are in</label><select id="supCur">${curOptions(S.cur)}</select></div>${dayQ}</div>
+    <div class="sup-sec"><div class="sup-h">Every row <span class="sup-alls"><button type="button" class="btn btn-ghost btn-xs" data-supall="1">Tick all</button><button type="button" class="btn btn-ghost btn-xs" data-supall="0">Untick all</button></span></div>
+      <div class="sup-rows">${plan.map(x=>`<label class="sup-row${x.on?'':' off'}">
+        <input type="checkbox" data-suprow="${x.i}"${x.on?' checked':''}${x.blocked?' disabled':''}>
+        <span class="sup-when">${esc(when(x.ts))}</span>
+        <span class="sup-what">${x.kind==='donation' ? 'Donation' : esc(x.bookId && x.bookId!=='-' ? bookById(x.bookId).name : x.r.book)}${x.kind==='preorder' ? ' <span class="sup-tag">Pre-order</span>' : ''}${x.r.name ? ` <span class="muted-note">· ${esc(x.r.name)}</span>` : ''}${x.note ? ` <span class="sup-note">${esc(x.note)}</span>` : ''}</span>
+        <span class="sup-pay">${esc(x.type)}</span>
+        <span class="sup-amt">${fmt(x.r.amt)}</span></label>`).join('')}</div></div>
+    ${S.skipped.length || S.blank ? `<div class="hint">Left out: ${[S.blank ? S.blank + ' blank row' + (S.blank===1?'':'s') : ''].concat(S.skipped.map(s=>'row ' + s.line + ' (' + esc(s.why) + (s.text ? ': ' + esc(s.text.slice(0,60)) : '') + ')')).filter(Boolean).join('; ')}.</div>` : ''}
+    <div class="err" id="modalErr"></div>`;
+}
+function supUpload(){
+  if(!SUP || supStop()) return;
+  const S = SUP, plan = supPlan().filter(x=>x.on);
+  if(!plan.length) return;
+  // New payment types go on this place's list first, exactly as "＋ Add" on the sale form does.
+  [...new Set(plan.map(x=>x.type).filter((t,k,a)=>t && t!=='Gift' && !curPayTypes().some(c=>c.toLowerCase()===t.toLowerCase())))]
+    .forEach(name=>commit({action:'addPayType', location:S.loc, name}, st=>ptAddLocal(st, S.loc, name), '', {keepOpen:true}));
+  const rows = plan.map(x=>({saleId:newSaleId(), kind:x.kind, bookId:x.bookId,
+    legs:[{type:x.type, cur:S.cur, amt:Number(x.r.amt)||0}],
+    name:x.r.name, phone:cleanPhone(x.r.phone), ts:(x.ts||new Date()).toISOString()}));
+  const ids = new Set(rows.map(r=>r.saleId));
+  commitSync({action:'importSales', location:S.loc, fileName:S.fileName, rows},
+    rows.length + ' row' + (rows.length===1?'':'s') + ' uploaded to ' + locName(S.loc),
+    () => (STATE.sales||[]).some(s=>ids.has(s.saleId))).then(ok=>{ if(ok) SUP = null; });
+}
+
 /* ---- Delivering a pre-order ---- */
 function deliverModal(id, bundle){
   const members = bundle
@@ -20348,6 +20637,7 @@ document.addEventListener('click',e=>{
   if(a==='newregion'){ regionModal(); return; }
   if(a==='editregion'){ regionModal(currentRegion()); return; }
   if(a==='deleteregion'){ deleteRegionModal(); return; }
+  if(a==='salesupload'){ salesUploadModal(); return; }
   if(a==='stock' || a==='addstock'){ addStockModal(); return; }
   if(a==='substock'){ subtractStockModal(); return; }
   if(a==='addnewplace'){ addNewPlaceModal(t.dataset.then); return; }

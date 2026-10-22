@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b287**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b288**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2639,3 +2639,28 @@ region, then we don't need [the question for its own events] … Spain is just t
   `intoSub`.
 - Client only; SERVER_BUILD stays b284.
 - Tests: browser-subregions 47 (chip checks replaced by picker checks; container-region checks).
+
+## Done in b288 — Upload Sales Spreadsheet into an event (practice only)
+
+Gita, 2026-10-22: sales taken somewhere else (her ISV form sheet) go into an event in one go.
+- **Event menu › 📤 Upload Sales Spreadsheet** (`salesUploadModal`, Universal, `SUP_ON` = PRACTICE).
+  Reads a CSV (`csvRows`, quoted cells, tab files too) by its headings: Book/Title, Payment/Method,
+  Amount (currency from "(USD)" in the heading), Type (Sale, Pre-Order, Donation, Gift), Name,
+  Phone, Date/Time (`supDate`: "6/7/2026, 5:33:15 PM", "07.06.2026 17:33", ISO; month first unless a
+  day over 12 says otherwise, with a choice shown for the first date).
+- Titles match by exact name, or the only title of that name in any language (`supFindBook`);
+  anything else ("Sri Radha (Signed)", "Govardhana" when there are two languages) must be chosen,
+  or "Leave these rows out". Payment methods match the place's types ignoring case/spaces, "credit
+  card" → Card; an unknown one becomes "＋ New: Venmo", added to the place's list on upload
+  (`addPayType`).
+- Every row has a tick box. Blank rows and rows with no book or amount are listed as left out. A
+  name like "test" / "Not a Preorder" starts unticked. A row already at the event (same title,
+  kind and amount within a minute) starts unticked as "already in the app".
+- Upload waits until every title is chosen and the event has the copies for the ticked sales
+  (with ＋ Add New Stock / ⇄ Transfer Existing Stock; the file is kept in `SUP` while you do).
+- **Server `importSales` (`doImportSales`):** checks stock for the whole file first, then records
+  each row through `doSell` / `doDonate` with the page's own sale ids (a resend changes nothing).
+  In MUTATING_ACTIONS (closed places refuse it), owner only. Activity Log: "Uploaded 46 sales,
+  10 pre-orders and 1 donation from a spreadsheet (file.csv) into <place>", undo {type:'sales'}
+  deletes every row and puts the copies back.
+- SERVER_BUILD b288. Test: browser-salesupload288 (23, a made-up file shaped like Gita's).
