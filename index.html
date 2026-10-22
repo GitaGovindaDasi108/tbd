@@ -2187,7 +2187,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b283</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b284</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -15550,6 +15550,9 @@ function subRegionsModal(){
       <button type="button" class="btn btn-ghost sr-add" id="srAdd">＋ Add a sub-region</button>
       <div class="sr-sec">Which sub-region is each event in?</div>
       <div id="srEvents"></div>
+      ${regionsList().some(x=>x.regionId!==rid && x.regionId!==HQ_REGION) ? `<div class="sr-sec">A region made separately?</div>
+      <div class="hint">If a city was set up as its own region (with its own warehouse), bring it in here as a sub-region. Its events, sales, books and expenses come with it.</div>
+      <button type="button" class="btn btn-ghost sr-add" id="srMerge">⤵ Bring in another region…</button>` : ''}
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot">
@@ -15575,6 +15578,7 @@ function subRegionsModal(){
     all('#srList [data-i]').forEach(inp=>inp.addEventListener('change', ()=>{ read(); draw(); }));
   };
   draw();
+  const mg = $('#srMerge'); if(mg) mg.addEventListener('click', ()=>mergeRegionModal(rid));
   $('#srAdd').addEventListener('click', ()=>{ read(); list.push({id:'sr_' + Math.random().toString(36).slice(2,8), name:''}); draw();
     const last = all('#srList [data-i]').pop(); if(last) last.focus(); });
   $('#srSave').addEventListener('click', ()=>{
@@ -15587,6 +15591,50 @@ function subRegionsModal(){
     if(!ids.has(curSub())) setSub('');
     commit({action:'setSubRegions', regionId:rid, list:clean, events}, st=>subApply(st, rid, clean, events), 'Sub-regions saved');
     closeModal();
+  });
+}
+/* Bring a region made separately into this one as a sub-region (b284, Gita:
+   Madrid and Barcelona were two regions). The server moves everything across
+   (doMergeRegion) and the Activity Log can undo it. */
+function mergeRegionModal(rid){
+  if(!isAdmin()) return;
+  const into = regionById(rid); if(!into) return;
+  const others = regionsList().filter(x=>x.regionId!==rid && x.regionId!==HQ_REGION);
+  if(!others.length) return;
+  const hasSubs = subRegionsOf(rid).length > 0;
+  openModal(`
+    ${mHead('Bring a region into ' + into.name)}
+    <div class="m-body">
+      <div class="field"><label>Region to bring in</label><select id="mgFrom">${others.map(x=>`<option value="${esc(x.regionId)}">${esc(x.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>Its sub-region will be called</label><input id="mgFromSub" type="text" maxlength="60"></div>
+      ${hasSubs ? '' : `<div class="field"><label>${esc(into.name)}'s own events go in the sub-region</label><input id="mgIntoSub" type="text" maxlength="60" value="${esc(into.name)}"></div>`}
+      <div class="field"><label>Name of the combined region</label><input id="mgName" type="text" maxlength="80" value="${esc(into.name)}" placeholder="e.g. Spain"></div>
+      <div class="hint" id="mgWhat"></div>
+      <div class="field"><label>Type <b id="mgTypeName"></b> to confirm</label><input id="mgConfirm" type="text" autocomplete="off"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="mgGo">Bring it in</button>
+    </div>`);
+  const fill = ()=>{
+    const f = regionById($('#mgFrom').value) || {};
+    $('#mgFromSub').value = f.name || '';
+    $('#mgTypeName').textContent = f.name || '';
+    const n = eventsOfRegion(f.regionId).length;
+    $('#mgWhat').innerHTML = `${esc(f.name)}'s ${n} event${n===1?'':'s'} move here, with every sale. Its warehouse books go to ${esc(into.name)}'s warehouse, and what was sold or spent at its warehouse stays ${esc(f.name)}'s. Its own prices, links and settings are dropped (${esc(into.name)}'s apply). <b>${esc(f.name)} stops being a region of its own.</b> The Activity Log can undo this.`;
+  };
+  fill();
+  $('#mgFrom').addEventListener('change', fill);
+  $('#mgGo').addEventListener('click', async ()=>{
+    const fromRegion = $('#mgFrom').value, f = regionById(fromRegion) || {};
+    const typed = $('#mgConfirm').value.trim();
+    if(typed.toLowerCase() !== String(f.name||'').trim().toLowerCase()){ $('#modalErr').textContent = 'Type ' + f.name + ' exactly to confirm.'; return; }
+    const ok = await commitSync({action:'mergeRegion', fromRegion, intoRegion:rid, confirmName:typed,
+      fromSub:$('#mgFromSub').value.trim() || f.name, intoSub:$('#mgIntoSub') ? $('#mgIntoSub').value.trim() : '',
+      newName:$('#mgName').value.trim() || into.name}, f.name + ' is now part of ' + ($('#mgName').value.trim() || into.name),
+      ()=>!regionById(fromRegion));
+    if(ok!==false) goTo('region', rid);
   });
 }
 function eventModal(edit, after){

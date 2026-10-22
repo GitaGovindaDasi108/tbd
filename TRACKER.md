@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b283**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b284**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2573,3 +2573,29 @@ Live app changes (Gita, 2026-10-22):
 - SERVER_BUILD b283 (Code.gs changed).
 - Tests: browser-paytypes283 (12), browser-menuorder283 (10), and expenses.js b283 permission checks.
   browser-round4/round6 now choose the type through the search.
+
+## Done in b284 — bring a separately made region in as a sub-region (practice only)
+
+Gita, 2026-10-22: "I want to add the already-populated regions to this". Madrid and Barcelona were
+made as two regions, each with its own warehouse.
+- **Sub-regions window › ⤵ Bring in another region…** (`mergeRegionModal`) asks four things: the
+  region to bring in, its sub-region's name (its own name by default), the sub-region for this
+  region's own events (only when it has none yet), and the combined region's name. The merged
+  region's name must be typed to confirm.
+- **Server `mergeRegion` (`doMergeRegion`):**
+  - Re-points every column that names the old region to the target: events, holders, shipments
+    (from/to), consignment partners, sales' `fulfilBy`, org-chart scope, mismatches' `placeId`,
+    cash and change (`BANK_<id>` → `BANK_<target>`), and expenses (`regionId`; region-wide ones
+    go to the old warehouse id, `placeLabel` renamed).
+  - Its prices are dropped.
+  - The old warehouse becomes an EVENT of the target, named "<sub> (warehouse)", with the same id
+    and the same closedAt. Sales, costs and cash recorded there stay where they are, now in the
+    sub-region. Its books move to the target's warehouse (TRANSFER moves).
+  - The old region row is deleted. An existing sub-region of the same name is reused.
+  - Everything changed is stored in `_meta` `mergeUndo:<fromId>`. The Activity Log entry carries
+    undo {type:'merge'}, and `undoMerge_` puts it all back (books as far as still in the target
+    warehouse).
+- Lost on a merge: the old region's coordinator/seller links, payment-type list, book order,
+  hidden titles and frozen closing rates. Its places use the target's from then on.
+- Tests: browser-subregions (+11: the window, the name check, the region gone, events and old
+  warehouse in the sub-region, books moved, sales and the expense still Madrid's, undo).
