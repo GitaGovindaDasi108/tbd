@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b282**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b283**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,3 +2548,28 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b283
+
+Live app changes (Gita, 2026-10-22):
+- **A region's new payment type didn't stick.** In Edit Payment Types, a name typed in "Add another"
+  was lost unless "Add" was pressed before Save. Save now keeps it, and Enter adds it.
+- **Payment type is a searchable dropdown** on every sales form: sale, pre-order, edit, and each
+  part of a Mixed payment (`ptSearchable`, applied by a MutationObserver on `#modal`).
+  - The `<select>` stays hidden as the source of truth. The search sets it and fires `change`, and
+    when code sets it (Mixed, editing a sale) the search shows it (`box._set` in `comboBind`).
+- **Universal, Finance (F) and coordinators can "＋ Add" a payment type** there, the same way as
+  kinds of expense.
+  - Server `addPayType` (Code.gs `doAddPayType`, in COORD_EXTRA, so a coordinator can add only in
+    their own region).
+  - It joins the event's own list if the event has one, else its region's. A place still following
+    the tour starts from `PAY_TYPES`. It goes before Other/Gift, and the same name twice is kept once.
+  - core.js lets a signed-in Finance user run just this action as the owner would (`finAdd`).
+- **App Development › Reorganize Menu** (Universal), live.
+  - Move sections and their items with ▲▼, or move an item into another section.
+  - Saved for everyone as meta `menuOrder` {sections, items} (`setMenuOrder`, owner only), and sent in
+    state as `menuOrder`. `snOrdered()` builds the menu from it.
+  - "Back to the original order" clears it. The place section's own actions are not reordered.
+- SERVER_BUILD b283 (Code.gs changed).
+- Tests: browser-paytypes283 (12), browser-menuorder283 (10), and expenses.js b283 permission checks.
+  browser-round4/round6 now choose the type through the search.

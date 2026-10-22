@@ -243,6 +243,21 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   costs = (await O({ action: 'getState', season: SA })).state.costs;
   t.push(['deleting the expense deletes its cost', r.ok && !costs.some(c => c.id === 'Xs9aaaaa')]);
 
+  // b283 (Gita): a payment type typed into the sale form joins that place's list. Universal, Finance and coordinators.
+  await O({ action: 'peopleAdd', email: 'rl@example.com', name: 'Rama', role: 'RL', placeId: 'rg_pl' });
+  const rl = await sessionOf('rl@example.com', 'Rama');
+  const regPays = async id => (await O({ action: 'getState', season: SA })).state.regions.find(x => x.regionId === id).payTypes;
+  r = await S({ action: 'addPayType', location: 'ev_cp', name: 'Paytm', season: SA });
+  t.push(['b283: a Seller cannot add a payment type', !r.ok]);
+  r = await Fi({ action: 'addPayType', location: 'ev_cp', name: 'Paytm', season: SA });
+  t.push(['b283: Finance can, and it joins the region\'s own list', r.ok && JSON.stringify(await regPays('rg_in')) === JSON.stringify(['Cash', 'UPI', 'Card', 'Paytm'])]);
+  r = await ask({ s: rl, action: 'addPayType', location: 'wh_pl', name: 'Blik', season: SA });
+  const pl = await regPays('rg_pl');
+  t.push(['b283: a coordinator can, in their own region, starting from the tour\'s list and before Other (' + pl.join(', ') + ')', r.ok && pl.includes('Blik') && pl.includes('Cash') && pl.indexOf('Blik') < pl.indexOf('Other')]);
+  r = await ask({ s: rl, action: 'addPayType', location: 'ev_cp', name: 'Paytm2', season: SA });
+  t.push(['b283: …but not in another region', !r.ok]);
+  r = await O({ action: 'addPayType', location: 'ev_cp', name: 'paytm', season: SA });
+  t.push(['b283: the same type twice is kept once', r.ok && (await regPays('rg_in')).filter(x => /paytm/i.test(x)).length === 1]);
   // The finance section's rows.
   r = await S({ action: 'finData' });
   t.push(['the finance figures are Finance\'s only', !r.ok]);

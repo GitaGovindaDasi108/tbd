@@ -29,6 +29,12 @@ c({ action: 'closeLocation', kind: 'event', id: 'ev_fest', counts: {} });
 const state = () => m.call({ action: 'getState', season: SA }).state;
 const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.location === loc && i.bookId === b); return r ? Number(r.qty) : 0; };
 
+// b283: the payment type is a searchable dropdown; choose by typing, as a person would.
+async function pickPay(page, v) {
+  const inp = '.field:has(#ptype) .pt-search .pp-in';
+  await page.click(inp); await page.fill(inp, v); await page.waitForTimeout(100);
+  await page.click('.field:has(#ptype) .pt-search .pp-row[data-v="' + v + '"]'); await page.waitForTimeout(100);
+}
 (async () => {
   const browser = await chromium.launch();
   const t = [], errors = [];
@@ -108,7 +114,7 @@ const qty = (loc, b) => { const r = (state().inventory || []).find(i => i.locati
 
     // 3. Mixed payments.
     await page.evaluate(b => saleModal({ bookId: b, isPreorder: false, loc: CUR_LOC }), B0); await page.waitForTimeout(300);
-    await page.selectOption('#ptype', 'Mixed');
+    await pickPay(page, 'Mixed');
     const legs = await page.$$eval('#mixLegs [data-mix="cur"]', s => s.map(x => x.value));
     await page.fill('#mixLegs [data-mix="amt"][data-i="0"]', '100'); await page.waitForTimeout(100);
     const fill = await page.evaluate(() => ({ second: document.querySelector('#mixLegs [data-mix="amt"][data-i="1"]').value,

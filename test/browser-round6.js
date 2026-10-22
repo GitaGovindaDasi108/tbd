@@ -20,6 +20,12 @@ const c = (p, w) => ok(m.call(Object.assign({ season: SA }, p)), w || p.action);
 c({ action: 'adjustStockBulk', location: pl.whLoc, items: [{ bookId: B0, delta: 20 }, { bookId: B1, delta: 10 }], override: true });
 const state = () => m.call({ action: 'getState', season: SA }).state;
 
+// b283: the payment type is a searchable dropdown; choose by typing, as a person would.
+async function pickPay(page, v) {
+  const inp = '.field:has(#ptype) .pt-search .pp-in';
+  await page.click(inp); await page.fill(inp, v); await page.waitForTimeout(100);
+  await page.click('.field:has(#ptype) .pt-search .pp-row[data-v="' + v + '"]'); await page.waitForTimeout(100);
+}
 (async () => {
   const browser = await chromium.launch();
   const t = [], errors = [];
@@ -47,7 +53,7 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
 
     // 1. A plain sale: payment type, currency, amount — and Specialized Sales, closed.
     await page.evaluate(b => saleModal({ bookId: b, isPreorder: false, loc: CUR_LOC }), B0); await page.waitForTimeout(300);
-    t.push(['plain sale shows payment type, currency, amount', await shown('#ptype') && await shown('#pcur') && await shown('#pamt')]);
+    t.push(['plain sale shows payment type, currency, amount', await shown('.field:has(#ptype) .pt-search') && await shown('#pcur') && await shown('#pamt')]);
     t.push(['…and hides the rest', !(await shown('#paySeg')) && !(await shown('#cname')) && !(await shown('#ccomments')) && !(await shown('#csTs'))]);
     t.push(['"Specialized Sales" sits below, closed', /Specialized Sales/.test(await page.textContent('#specBox > summary')) &&
       await page.evaluate(() => !document.querySelector('#specBox').open)]);
@@ -65,13 +71,13 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     // 2. Dollars actually received: not on the sale screen — in the sales log, after the sale.
     //    Only for money arriving in a dollar account (Zelle...), never for card or cash (b210).
     await page.evaluate(b => saleModal({ bookId: b, isPreorder: false, loc: CUR_LOC }), B0); await page.waitForTimeout(300);
-    await page.selectOption('#ptype', 'Card'); await page.click('#specBox > summary');
+    await pickPay(page, 'Card'); await page.click('#specBox > summary');
     await page.fill('#cname', 'Card Zero');
     await page.click('#saveSale'); await page.waitForTimeout(1200);
     const s0 = state().sales.find(x => x.name === 'Card Zero');
     t.push(['a card sale has no "$ Received" button', !!s0 && (await page.locator(`.usd-btn[data-id="${s0.saleId}"]`).count()) === 0]);
     await page.evaluate(b => saleModal({ bookId: b, isPreorder: false, loc: CUR_LOC }), B0); await page.waitForTimeout(300);
-    await page.selectOption('#ptype', 'Zelle'); await page.click('#specBox > summary');
+    await pickPay(page, 'Zelle'); await page.click('#specBox > summary');
     t.push(['the sale screen has no dollars-received box', !(await page.$('#usdAct')) && !/Dollars actually received/i.test(await page.textContent('#modal'))]);
     await page.fill('#cname', 'Card One');
     await page.click('#saveSale'); await page.waitForTimeout(1200);
@@ -95,7 +101,7 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
     // 3. Multiple books: the same button, one figure shared out over the books.
     await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
     await page.click(`.mb-plus[data-book="${B0}"][data-kind="buy"]`); await page.click(`.mb-plus[data-book="${B1}"][data-kind="buy"]`);
-    await page.selectOption('#ptype', 'Zelle');
+    await pickPay(page, 'Zelle');
     await page.click('#specBox > summary'); await page.fill('#cname', 'Two Books');
     await page.click('#saveBundle'); await page.waitForTimeout(1500);
     let mem = state().sales.filter(x => x.name === 'Two Books');
