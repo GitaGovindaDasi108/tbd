@@ -99,6 +99,30 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['b274: practice cannot be written to this way', !(await P({ action: 'finCarryIn', labels: [], props: {} })).ok]);
   t.push(['b274: expenses work on the live app now', (await L({ action: 'expOptions' })).ok]);
 
+  /* b288: wording changed in both places is hers to choose; one side alone wins. */
+  await L({ action: 'saveLabel', key: 'Panel: X › Both', text: 'Live old' });
+  await L({ action: 'saveLabel', key: 'Panel: X › LiveOnly', text: 'Same' });
+  await L({ action: 'saveLabel', key: 'Panel: X › PracOnly', text: 'Same' });
+  t.push(['b288: starting practice over remembers live\'s wording as it was', (await P({ action: 'practiceReset' })).ok && (await P({ action: 'finCarryOut' })).result.base['Panel: X › Both'] === 'Live old']);
+  await P({ action: 'saveLabel', key: 'Panel: X › Both', text: 'Practice new' });
+  await L({ action: 'saveLabel', key: 'Panel: X › Both', text: 'Live new' });
+  await L({ action: 'saveLabel', key: 'Panel: X › LiveOnly', text: 'Live edit' });
+  await P({ action: 'saveLabel', key: 'Panel: X › PracOnly', text: 'Practice edit' });
+  const o2 = (await P({ action: 'finCarryOut' })).result;
+  const plan = await L({ action: 'finCarryIn', labels: o2.labels, props: o2.props, base: o2.base, plan: true });
+  t.push(['b288: the plan: one changed in both (both versions shown), practice-only comes over, live-only stays',
+    plan.ok && plan.result.both.length === 1 && plan.result.both[0].practice === 'Practice new' && plan.result.both[0].live === 'Live new' && plan.result.take === 1 && plan.result.keep === 1]);
+  t.push(['b288: …nothing written until she has chosen', !(await L({ action: 'finCarryIn', labels: o2.labels, props: o2.props, base: o2.base, choices: {} })).ok]);
+  const go = await L({ action: 'finCarryIn', labels: o2.labels, props: o2.props, base: o2.base, choices: { 'Panel: X › Both': 'live' } });
+  const lab = (await L({ action: 'getState', season: SA })).state.labels;
+  t.push(['b288: her choice (live\'s) kept, practice-only brought over, live-only untouched',
+    go.ok && lab['Panel: X › Both'] === 'Live new' && lab['Panel: X › PracOnly'] === 'Practice edit' && lab['Panel: X › LiveOnly'] === 'Live edit']);
+  // Edit Finance-Only Locations (b288): practice only.
+  const fpa = await P({ action: 'finPlaceAdd', name: 'Airport', parent: '' });
+  t.push(['b288: a Finance-only place can be renamed in practice', fpa.ok && (await P({ action: 'finPlaceEdit', id: fpa.result.id, name: 'Airport store' })).ok]);
+  t.push(['b288: …and removed when nothing is recorded there', (await P({ action: 'finPlaceEdit', id: fpa.result.id, remove: true })).ok]);
+  t.push(['b288: not on the live app yet', !(await L({ action: 'finPlaceEdit', id: 'fp_x', name: 'y' })).ok]);
+
   let bad = 0;
   t.forEach(([n, okk]) => { if (!okk) bad++; console.log((okk ? 'PASS' : 'FAIL'), n); });
   if (bad) process.exitCode = 1;

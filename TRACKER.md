@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b287**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b289**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,12 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b289
+
+Practice first, then the wording merge (Gita, 2026-10-22):
+- Finance › Edit Finance-Only Locations (practice only): choose a Finance-only place from a searchable list; rename it, move it under Earthly HQ, a season or a region, or remove it once no expense is recorded there. Server `finPlaceEdit` (expenses.js), refused on live for now.
+- Bring Wording & Settings from Practice: three-way. Starting practice over (practiceReset) keeps prop `labelsBase`, live's wording at that copy. `finCarryOut` hands it over with practice's wording; `finCarryIn` with `plan:true` sorts each difference: changed only in practice comes over, changed only in live stays, changed in both is listed with both versions. Nothing is written until each of those has a choice (`choices` {key: 'practice'|'live'}). Before the first practice copy since b289 there's no record, so every difference is listed to choose.
 
 ## Done in b287
 

@@ -1516,6 +1516,12 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .lbl-pop-h .x{position:static;background:none;border:0;font-size:18px;cursor:pointer;color:var(--muted)}
 .lbl-pop-row{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 8px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
 .lbl-pop-row:hover{background:var(--paper2)}
+.fc-all{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+.fc-item{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:0 0 8px;background:var(--paper);min-width:0}
+.fc-orig{font-size:12px;color:var(--muted);margin:0 0 6px;overflow-wrap:anywhere}
+.fc-ctx{display:inline-block;margin-right:6px;font-weight:700}
+.fc-opt{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:4px 0;cursor:pointer;overflow-wrap:anywhere;min-width:0}
+.fc-opt input{margin-top:3px;flex:none}
 .fin-away{margin:8px 0;padding:8px 10px;border:1.5px solid #d93025;border-radius:10px;background:#fff6f5;font-size:13px;line-height:1.5}
 .fin-away .btn{margin-left:4px}
 /* Links, one line each (b284). */
@@ -2224,7 +2230,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b287</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b289</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5588,7 +5594,7 @@ const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','fintodo','reimbset']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','fintodo','reimbset','finplaces']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
@@ -10574,6 +10580,52 @@ function finPlaces(){
   fps.filter(x=>!x.parent || x.parent==='rg_hq').forEach(x=>out.push({kind:'season', fin:1, id:x.id, name:x.name}));
   return out;
 }
+/* Edit Finance-Only Locations (b288, Gita, practice first): choose one of
+   Finance's own places from a searchable list, then rename it, move it under
+   another season or region, or remove it once no expense is recorded there. */
+async function finPlacesModal(pick){
+  const head = mHead('Edit Finance-Only Locations');
+  if(!FIN.D){ openModal(`${head}<div class="m-body"><div class="cash-empty">Loading…</div></div>`);
+    try{ FIN.D = (await post({action:'finData'})).result; }catch(e){ openModal(`${head}<div class="m-body"><div class="err">${esc(e.message)}</div></div>`); return; } }
+  const D = FIN.D, fps = D.finPlaces || [];
+  const nm = id => { const x = D.seasons.find(y=>y.id===id) || D.regions.find(y=>y.id===id); return x ? x.name : ''; };
+  const under = fp => { const r = D.regions.find(y=>y.id===fp.parent); return !fp.parent || fp.parent==='rg_hq' ? 'Earthly HQ'
+    : r ? r.name + ' · ' + nm(r.seasonId) : nm(fp.parent) || 'Earthly HQ'; };
+  if(!fps.length){ openModal(`${head}<div class="m-body"><div class="hint">There are no Finance-only places yet. Finance adds one by typing a new name in "Where" on Add an Expense.</div>
+      <div class="m-foot"><button class="btn" type="button" onclick="closeModal()">Close</button></div></div>`); return; }
+  const cur = fps.find(x=>x.id===pick) || null;
+  const items = fps.slice().sort((a,b)=>String(a.name).localeCompare(String(b.name))).map(x=>({v:x.id, l:x.name, shown:x.name + ' · ' + under(x), up:[under(x)]}));
+  const ups = [{v:'', l:'Earthly HQ', kind:'season'}];
+  D.seasons.forEach(se=>{ ups.push({v:se.id, l:se.name, kind:'season'});
+    D.regions.filter(r=>r.seasonId===se.id).forEach(r=>ups.push({v:r.id, l:r.name, shown:r.name + ' · ' + se.name, kind:'region', up:[se.name]})); });
+  const parent = cur ? (cur.parent==='rg_hq' ? '' : cur.parent || '') : '';
+  const used = cur ? (D.expenses||[]).filter(x=>x.f===cur.id).length : 0;
+  openModal(`${head}<div class="m-body">
+      <div class="field"><label>Finance-only place</label>${comboHTML('fplC', cur ? cur.name + ' · ' + under(cur) : '', 'Search Finance-only places')}</div>
+      ${cur ? `<div class="field"><label>Name</label><input id="fplName" type="text" maxlength="80" value="${esc(cur.name)}"></div>
+      <div class="field"><label>Sits under</label>${comboHTML('fplUp', (ups.find(u=>u.v===parent)||{}).shown || (ups.find(u=>u.v===parent)||{}).l || 'Earthly HQ', 'Search for Earthly HQ, a season or a region')}</div>
+      <div class="hint">${used ? used + ' expense' + (used===1?' is':'s are') + ' recorded here.' : 'No expenses are recorded here.'}</div>
+      <div class="m-foot"><button class="btn btn-ghost" type="button" id="fplDel"${used ? ' disabled title="Move its expenses to another place first"' : ''}>Remove</button>
+        <button class="btn btn-ghost" type="button" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" type="button" id="fplSave">Save</button></div>`
+      : `<div class="hint">Choose a place to rename it, move it, or remove it.</div>
+      <div class="m-foot"><button class="btn btn-ghost" type="button" onclick="closeModal()">Close</button></div>`}
+    </div>`);
+  comboBind('fplC', items, cur ? cur.id : '', v=>finPlacesModal(v));
+  if(!cur) return;
+  let up = parent;
+  comboBind('fplUp', ups, parent, v=>{ up = v; });
+  const done = async (r, msg) => { FIN.D = null; FIN_LINKS = null; finCacheDrop(); toast(msg);
+    if(FINP.on){ await finGo(FINP.sec, FINP.scope, {reload:true}); } finPlacesModal(r && !r.removed ? cur.id : ''); };
+  $('#fplSave').onclick = async ()=>{
+    const name = $('#fplName').value.trim(); if(!name){ toast('Type the name of the place.', true); return; }
+    try{ const r = (await post({action:'finPlaceEdit', id:cur.id, name, parent:up})).result; await done(r, 'Saved'); }
+    catch(e){ toast(e.message, true); } };
+  $('#fplDel').onclick = async ()=>{
+    if(!confirm('Remove “' + cur.name + '” as a Finance-only place?')) return;
+    try{ const r = (await post({action:'finPlaceEdit', id:cur.id, remove:true})).result; await done(r, '“' + cur.name + '” removed'); }
+    catch(e){ toast(e.message, true); } };
+}
 function finSearchHTML(){
   return `<label class="fin-search">Search<span class="pp fin-pp" id="finPP"><input class="pp-in" type="search" autocomplete="off" spellcheck="false"
       placeholder="Search for Season, Region, or Event" value="${esc(finScopeName() || '')}">
@@ -12328,23 +12380,52 @@ function finCarryModal(){
   openModal(`${mHead('Bring Wording & Settings from Practice')}<div class="m-body">
       <div class="hint">Brings into the live app what you set up in the practice space:</div>
       <ul class="hint"><li>wording you rewrote with the ✏️ pencils</li><li>reimbursement settings and ways of paying back</li><li>the dates of seasons, regions and events, and which are repeats</li></ul>
-      <div class="hint">Practice's expenses, receipts and links stay in practice. Live wording you changed yourself is kept unless practice rewrote the same words.</div>
+      <div class="hint">Practice's expenses, receipts and links stay in practice. Wording changed only in practice comes over; wording changed only here stays as it is; wording changed in both places is shown side by side for you to choose.</div>
       <div class="err" id="modalErr"></div><div id="fcDone"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="fcGo">Bring them over</button></div>`);
+  let R = null;                     // what practice handed over
+  const send = async choices => {
+    const d = (await post({action:'finCarryIn', labels:R.labels, props:R.props, base:R.base, choices})).result;
+    $('#fcDone').innerHTML = `<div class="cash-lede">✓ Done: ${d.words} rewritten wording${d.words===1?'':'s'}${d.set.length ? ' and the settings' : ''} brought over.</div>`;
+    $('#fcGo').hidden = true; const ch = $('#fcBoth'); if(ch) ch.remove();
+    pull().catch(()=>{});
+  };
   $('#fcGo').addEventListener('click', async ()=>{
     const b = $('#fcGo'), err = $('#modalErr'); err.textContent = ''; b.disabled = true; b.textContent = 'Bringing…';
     try{
+      // Second press: the choices for wording changed in both places.
+      if($('#fcBoth')){
+        const ch = {}; let open = 0;
+        document.querySelectorAll('#fcBoth .fc-item').forEach(it=>{ const r = it.querySelector('input:checked'); if(r) ch[it.dataset.key] = r.value; else open++; });
+        if(open) throw new Error('Choose a version for ' + (open===1 ? 'the last wording' : 'each of the ' + open + ' wordings left') + '.');
+        await send(ch); return;
+      }
       let tok = ''; try{ tok = localStorage.getItem('practice:tbs_session') || ''; }catch(e){}
       if(!tok) throw new Error('Open the practice space on this device and sign in there once, then come back and try again.');
       let r;
       try{ const res = await fetch(practiceUrl(), {method:'POST', body:JSON.stringify({action:'finCarryOut', s:tok})}); r = JSON.parse(await res.text()); }
       catch(e){ throw new Error('The practice space could not be reached. Try again in a moment.'); }
       if(!r || !r.ok) throw new Error((r && r.error) || 'The practice space did not answer.');
-      const d = (await post({action:'finCarryIn', labels:r.result.labels, props:r.result.props})).result;
-      $('#fcDone').innerHTML = `<div class="cash-lede">✓ Done: ${d.words} rewritten wording${d.words===1?'':'s'}${d.set.length ? ' and the settings' : ''} brought over.</div>`;
-      b.hidden = true;
-      pull().catch(()=>{});
+      R = r.result; if(R.base === undefined) R.base = null;
+      const plan = (await post({action:'finCarryIn', labels:R.labels, props:R.props, base:R.base, plan:true})).result;
+      if(!plan.both.length){ await send({}); return; }
+      /* Changed in both places (b288): both versions side by side, one choice each. */
+      const words = t => t ? esc(t) : '<i>the original wording</i>';
+      $('#fcDone').innerHTML = `<div id="fcBoth">
+        <div class="cash-lede">${plan.both.length} wording${plan.both.length===1?' was':'s were'} changed in both places. Choose which to keep for each.</div>
+        ${plan.take ? `<div class="hint">${plan.take} more, changed only in practice, will come over too.</div>` : ''}
+        <div class="fc-all"><button type="button" class="btn btn-ghost" data-fcall="practice">Practice's for all</button><button type="button" class="btn btn-ghost" data-fcall="live">Live's for all</button></div>
+        ${plan.both.map((x,i)=>{ const at = x.key.split(' › '), ctx = at.length > 1 ? at[0] : '', orig = at.length > 1 ? at.slice(1).join(' › ') : x.key;
+          return `<div class="fc-item" data-key="${esc(x.key)}">
+            <div class="fc-orig">${ctx ? `<span class="fc-ctx">${esc(ctx)}</span>` : ''}${esc(orig)}</div>
+            <label class="fc-opt"><input type="radio" name="fc${i}" value="practice"><span><b>Practice:</b> ${words(x.practice)}</span></label>
+            <label class="fc-opt"><input type="radio" name="fc${i}" value="live"><span><b>Live:</b> ${words(x.live)}</span></label>
+          </div>`; }).join('')}
+      </div>`;
+      document.querySelectorAll('#fcBoth [data-fcall]').forEach(x=>x.addEventListener('click', ()=>{
+        document.querySelectorAll('#fcBoth input[value="' + x.dataset.fcall + '"]').forEach(i=>{ i.checked = true; }); }));
+      b.disabled = false; b.textContent = 'Bring them over';
     }catch(e){ err.textContent = e.message; b.disabled = false; b.textContent = 'Bring them over'; }
   });
 }
@@ -12740,6 +12821,8 @@ function FIN_BTNS(fin){
   const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`,
     `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
+  // b288 (Gita): practice first.
+  if(PRACTICE && (fin==='F' || fin==='U')) b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
   return b;
 }
 
@@ -20304,6 +20387,7 @@ document.addEventListener('click',e=>{
   if(a==='rbline'){ const id = t.dataset.id; if(t.dataset.on) FIN.rbNo.delete(id); else FIN.rbNo.add(id); finRbRedraw(id); return; }
   if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
+  if(a==='finplaces'){ finPlacesModal(); return; }
   if(a==='reimbset'){ if(FIN_ON) finGo('settings'); else reimbSettingsModal(); return; }
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
   if(a==='rspayadd' || a==='rspaygone'){ rsPay(a==='rspayadd' ? ($('#rsPayNew')||{}).value : t.dataset.c, a==='rspayadd'); return; }

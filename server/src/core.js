@@ -541,6 +541,11 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     // On past both copies' revisions, so every phone in practice fetches afresh.
     kv.setProp('rev', String(Math.max(rev, Number((r.result.props || {}).rev || 0)) + 1));
     app.sheetMemoClear_(); app.setSeasonContext_(''); app.cacheClear_();
+    /* The wording as live had it at this copy (b288), so bringing wording back
+       to live can tell which side changed a word since: practice, live, or both. */
+    const base = {};
+    (app.dbHas_('_labels') ? app.objectsOf_('_labels') : []).forEach(x => { if (x && String(x.key)) base[String(x.key)] = String(x.text == null ? '' : x.text); });
+    kv.setProp('labelsBase', JSON.stringify(base));
   }
 
   /* Fetch what the rules asked for and could not have (see google.js). */
