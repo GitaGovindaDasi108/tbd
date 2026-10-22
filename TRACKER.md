@@ -2616,3 +2616,19 @@ made as two regions, each with its own warehouse.
   hidden titles and frozen closing rates. Its places use the target's from then on.
 - Tests: browser-subregions (+11: the window, the name check, the region gone, events and old
   warehouse in the sub-region, books moved, sales and the expense still Madrid's, undo).
+
+## Done in b285 — sub-regions chosen in the place picker; a container region asks less (practice only)
+
+Gita, 2026-10-22: "The new bubble line is too much. remove it." and "If there are no events in the
+region, then we don't need [the question for its own events] … Spain is just the container".
+- The line of sub-region chips under the bar (`.subr-bar`/`.subr-chip`, action `subpick`) is gone.
+  The place picker does it instead: each sub-region's group starts with "🗺 All of <sub>" (value
+  `__sub:<id>`), and the warehouse reads "🏠 Warehouse · all of <region>" and clears the choice.
+  Inside a sub-region the picker is drawn from the whole region (`wholeRegion`, `SUB_FULL`), so
+  you can move between sub-regions. Sub-regions with no events still get their group.
+- The grey warehouse note stays. The ⚙ chip went with the chips: Sub-regions is in the menu.
+- `mergeRegionModal`: no "<region>'s own events go in the sub-region" field when the region has no
+  events (or already has sub-regions); the server already makes no extra sub-region for an empty
+  `intoSub`.
+- Client only; SERVER_BUILD stays b284.
+- Tests: browser-subregions 47 (chip checks replaced by picker checks; container-region checks).
