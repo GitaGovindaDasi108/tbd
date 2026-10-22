@@ -619,6 +619,16 @@ const API = 'http://api.test/';
     t.push(['b272: the Overview charts Net beside Gross and Expenses, by place and month by month', await own.evaluate(() => { const c = document.querySelector('#finCharts');
       return /Month by month: Gross, Expenses and Net/.test(c.innerText) && [...c.querySelectorAll('.fc-keys')].every(k => /Net/.test(k.textContent)); })]);
     t.push(['b272: books on two lines: "65 Sold + 13 Gifts", then "= 78 Distributed"', await own.evaluate(() => /Sold \+ \d+ Gifts?<br>= \d+ Distributed/.test(document.querySelector('.fin-tile .fin-ts').innerHTML))]);
+    // ---- Finance never sits blank (b287) ----
+    await own.evaluate(() => { finLeave({quiet:true}); FIN.D = null; localStorage.setItem(finCacheKey(), JSON.stringify([{sales:{}}, null, [], {curs:[]}])); });
+    await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(1500);
+    t.push(['b287: a device copy that won\'t draw is dropped and Finance opens with fresh figures', await own.evaluate(() => /Gross/.test(document.querySelector('#fpBody').innerText) && !/couldn't open/.test(document.querySelector('#fpBody').innerText))]);
+    await own.evaluate(() => { finLeave({quiet:true}); FIN.D = null; window.__post = post; post = async () => { throw new Error('No connection to the server.'); }; });
+    await own.evaluate(() => finGo('overview', '', {reload:true})); await own.waitForTimeout(500);
+    t.push(['b287: no answer from the server shows why, with Try again', await own.evaluate(() => /couldn't open: No connection/.test(document.querySelector('#fpBody').innerText) && !!document.querySelector('#finRetry'))]);
+    await own.evaluate(() => { post = window.__post; document.querySelector('#finRetry').click(); }); await own.waitForTimeout(1500);
+    t.push(['…and Try again opens it', await own.evaluate(() => /Gross/.test(document.querySelector('#fpBody').innerText))]);
+    await own.evaluate(() => finLeave({quiet:true}));
     // A refresh comes back to exactly where you were.
     const where = pg => pg.evaluate(() => ({ hash: location.hash, sec: FINP.sec, scope: FINP.scope, tab: FIN.rb.tab, y: Math.round(window.scrollY), modal: $('#overlay').classList.contains('show') }));
     await own.setViewportSize({ width: 1150, height: 700 });

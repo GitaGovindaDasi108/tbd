@@ -124,14 +124,18 @@ m.call({ action: 'setSeason', seasonId: S1 });
   // ---- Selling cards ----
   await page.setViewportSize({ width: 390, height: 900 });
   await page.evaluate(() => goTo('season')); await page.waitForTimeout(600);
-  t.push(['on a phone, a card with no Sell button has 16px under its gifts/distributed line', await page.evaluate(() => { const c = [...document.querySelectorAll('.stat-grid > .qcard')].find(x => !x.querySelector('.q-full:not(:empty)') && x.querySelector('.q-br'));
-    return !!c && getComputedStyle(c).paddingBottom === '16px'; })]);
+  t.push(['on a phone, a card with no Sell button has 8px under its gifts/distributed line (b287: half of b286)', await page.evaluate(() => { const c = [...document.querySelectorAll('.stat-grid > .qcard')].find(x => !x.querySelector('.q-full:not(:empty)') && x.querySelector('.q-br'));
+    return !!c && getComputedStyle(c).paddingBottom === '8px'; })]);
   t.push(['"N distributed" is bold as a whole', await page.evaluate(() => { const d = document.querySelector('.q-dist'); if(!d) return true;
     return getComputedStyle(d.querySelector('b')).fontWeight === getComputedStyle(d.querySelector('.q-word')).fontWeight && Number(getComputedStyle(d.querySelector('.q-word')).fontWeight) >= 700; })]);
   t.push(['the consignment bubble sits on its own line under the title, the size of the language bubble', await page.evaluate(() => {
     const host = document.createElement('div'); host.className = 'bname'; host.innerHTML = 'X <span class="lang-tag">English</span><span class="con-tag">consignment</span>'; document.body.appendChild(host);
     const l = getComputedStyle(host.querySelector('.lang-tag')), c = getComputedStyle(host.querySelector('.con-tag'));
     const ok = c.display === 'table' && c.marginLeft === l.marginLeft && c.lineHeight === l.lineHeight && c.fontSize === l.fontSize; host.remove(); return ok; })]);
+  t.push(['b287: with nothing in stock (a closed place), the consignment bubble greys out like the language bubble', await page.evaluate(() => {
+    const host = document.createElement('div'); host.className = 'book out'; host.innerHTML = '<div class="bname">X <span class="lang-tag">English</span><span class="con-tag">consignment</span></div>'; document.body.appendChild(host);
+    const l = getComputedStyle(host.querySelector('.lang-tag')), c = getComputedStyle(host.querySelector('.con-tag'));
+    const ok = /grayscale/.test(c.filter) && c.filter === l.filter && c.opacity === l.opacity; host.remove(); return ok; })]);
   t.push(['no overflow on the season page on a phone', !(await overflow())]);
   t.push(['no errors in the page' + (errors.length ? ' — ' + errors.slice(0, 2).join(' | ') : ''), !errors.length]);
   await browser.close();
