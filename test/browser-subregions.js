@@ -62,6 +62,14 @@ const API = 'http://api.test/';
   await O({ action: 'expCatAdd', name: 'Shipping' });
   await O({ action: 'expSave', id: 'Xship001', kind: 'record', date: '2026-10-10', desc: 'Shipping to Spain', amt: 100, cur: 'USD', location: 'rg_sp', category: 'Shipping' });
   await O({ action: 'expSave', id: 'Xhall001', kind: 'record', date: '2026-10-11', desc: 'Madrid hall', amt: 10, cur: 'USD', location: 'ev_m1', category: 'Shipping' });
+  // b284: Madrid made separately, as its own region with its own warehouse.
+  await O({ action: 'createRegion', regionId: 'rg_md', whLoc: 'wh_md', name: 'Madrid', currencies: 'EUR,USD', season: SA });
+  await O({ action: 'createEvent', eventId: 'ev_md1', name: 'Madrid Mela', regionId: 'rg_md', season: SA });
+  await O({ action: 'adjustStockBulk', location: 'wh_md', items: [{ bookId: 'sr_en', delta: 7 }], override: true, season: SA });
+  await O({ action: 'adjustStockBulk', location: 'ev_md1', items: [{ bookId: 'sr_en', delta: 5 }], override: true, season: SA });
+  await sell('md1', 'ev_md1', 'sr_en', { legs: [{ type: 'Cash', cur: 'USD', amt: 40 }] });
+  await sell('md2', 'wh_md', 'sr_en', { legs: [{ type: 'Cash', cur: 'USD', amt: 40 }] });
+  await O({ action: 'expSave', id: 'Xmdvan01', kind: 'record', date: '2026-10-12', desc: 'Madrid van', amt: 30, cur: 'USD', location: 'rg_md', category: 'Shipping' });
   const set = await O({ action: 'setSubRegions', regionId: 'rg_sp', season: SA,
     list: [{ id: 'sr_m', name: 'Madrid' }, { id: 'sr_b', name: 'Barcelona' }], events: { ev_m1: 'sr_m', ev_b1: 'sr_b' } });
   const st0 = (await O({ action: 'getState', season: SA })).state;
@@ -143,7 +151,7 @@ const API = 'http://api.test/';
     r = await own.evaluate(() => buildReport(''));
     t.push(['…the report is Madrid\'s, with no By sub-region block', /Big Books Total|Sri Radha/.test(r) && !/BY SUB-REGION/.test(r) && /= 2 Sold/.test(r)]);
     await own.screenshot({ path: shot('madrid') });
-    t.push(['…and the real data is untouched outside the drawing', await own.evaluate(() => STATE.sales.length) === 6]);
+    t.push(['…and the real data is untouched outside the drawing', await own.evaluate(() => STATE.sales.length) === 8]);
     // A new event from Madrid's page starts in Madrid.
     await own.evaluate(() => eventModal()); await own.waitForTimeout(200);
     t.push(['a new event asks which sub-region, starting at the one you are looking at', await own.$eval('#evsub', e => e.value) === 'sr_m']);
@@ -192,6 +200,40 @@ const API = 'http://api.test/';
     for (const w of [1150, 390]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(300); (await spill(own)).forEach(x => spills.push(w + ' finance: ' + x)); }
     await own.screenshot({ path: shot('finance-phone'), fullPage: true });
     await own.setViewportSize({ width: 1150, height: 900 });
+    // b284: bring the separately made Madrid region into Spain.
+    await own.evaluate(() => finLeave()); await own.waitForTimeout(400);
+    await own.evaluate(() => goTo('region', 'rg_sp')); await own.waitForTimeout(400);
+    await own.click('.subr-chip[data-act="subregions"]'); await own.waitForTimeout(300);
+    await own.click('#srMerge'); await own.waitForTimeout(300);
+    t.push(['b284: the Sub-regions window offers to bring in another region', /Bring a region into Spain/.test(await own.$eval('#modal', e => e.innerText))]);
+    await own.selectOption('#mgFrom', 'rg_md'); await own.waitForTimeout(100);
+    t.push(['b284: …naming its sub-region after it, and asking for its name to confirm', await own.$eval('#mgFromSub', e => e.value) === 'Madrid' && await own.$eval('#mgTypeName', e => e.textContent) === 'Madrid']);
+    for (const w of [1150, 390]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(200); (await spill(own)).forEach(x => spills.push(w + ' merge window: ' + x)); }
+    await own.setViewportSize({ width: 1150, height: 900 });
+    await own.click('#mgGo'); await own.waitForTimeout(300);
+    t.push(['b284: without typing the name it refuses', /Type Madrid exactly/.test(await own.$eval('#modalErr', e => e.textContent))]);
+    await own.fill('#mgConfirm', 'Madrid'); await own.click('#mgGo'); await own.waitForTimeout(2000);
+    let ms = (await O({ action: 'getState', season: SA })).state;
+    const srM = ms.subRegions.regions.rg_sp.find(x => x.name === 'Madrid');
+    t.push(['b284: Madrid is no longer a region of its own', !ms.regions.some(r => r.regionId === 'rg_md')]);
+    t.push(['b284: its event and its old warehouse are Spain\'s, in the existing Madrid sub-region', srM && srM.id === 'sr_m' && ms.events.find(e => e.eventId === 'ev_md1').regionId === 'rg_sp'
+      && ms.subRegions.events.ev_md1 === 'sr_m' && ms.subRegions.events.wh_md === 'sr_m' && /Madrid \(warehouse\)/.test((ms.events.find(e => e.eventId === 'wh_md') || {}).name)]);
+    const inv = (loc, b) => (ms.inventory.find(i => i.location === loc && i.bookId === b) || {}).qty || 0;
+    t.push(['b284: its warehouse books are now in Spain\'s warehouse', inv('wh_md', 'sr_en') === 0 && inv('wh_sp', 'sr_en') === 15]);
+    t.push(['b284: every Madrid sale is still there and counts for Spain › Madrid', await own.evaluate(() => { setSub('sr_m'); return withSub(() => scopedSales().map(x => x.saleId).sort().join(',')); }) === 'm1,m2,m3,md1,md2']);
+    const ex = (await O({ action: 'expList', scope: 'all' })).result.find(x => x.id === 'Xmdvan01');
+    t.push(['b284: its region-wide expense stays Madrid\'s (on its old warehouse), now under Spain', ex && ex.regionId === 'rg_sp' && ex.location === 'wh_md']);
+    t.push(['b284: the page is on Spain afterwards', await own.evaluate(() => CUR_REGION) === 'rg_sp']);
+    // Undo from the Activity Log.
+    const act = (await O({ action: 'activity', season: SA })).result;
+    const row = (act.rows || act || []).find(r => /^Merged Madrid into Spain/.test(r.text || ''));
+    t.push(['b284: the Activity Log says so, with Undo', !!row]);
+    const un = row ? await O({ action: 'undoActivity', id: row.id, season: SA }) : {};
+    ms = (await O({ action: 'getState', season: SA })).state;
+    const ex2 = (await O({ action: 'expList', scope: 'all' })).result.find(x => x.id === 'Xmdvan01');
+    t.push(['b284: undo puts Madrid back as its own region, with its event, books and expense', un.ok && ms.regions.some(r => r.regionId === 'rg_md' && r.whLoc === 'wh_md')
+      && ms.events.find(e => e.eventId === 'ev_md1').regionId === 'rg_md' && !ms.events.some(e => e.eventId === 'wh_md')
+      && (ms.inventory.find(i => i.location === 'wh_md' && i.bookId === 'sr_en') || {}).qty === 6 && ex2.regionId === 'rg_md' && ex2.location === 'rg_md' && !ms.subRegions.events.ev_md1]);
     t.push(['no overflow anywhere (region page, window, season, Finance; phone and computer)' + (spills.length ? ' — ' + spills.slice(0, 4).join(' | ') : ''), !spills.length]);
     // The live app: nothing of it yet.
     const lv = await open('owner@example.com', 'The Owner', 1150, true);
