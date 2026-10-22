@@ -670,6 +670,7 @@ function handle(e) {
         case 'setRegionHidden':  result = doSetRegionHidden(params); break;
         case 'setSeasonHidden':  result = doSetSeasonHidden(params); break;
         case 'setSubRegions':    result = doSetSubRegions(params); break;
+        case 'mergeRegion':      result = doMergeRegion(params); break;
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
@@ -6529,6 +6530,161 @@ function doSetSubRegions(p) {
   return { regions: v.regions[regionId] || [] };
 }
 
+/* ---- Merging a region into another as a sub-region (b284, Gita: "add the
+   already-populated regions") ----
+   Madrid and Barcelona were made as two regions, each with its own warehouse.
+   Merging Madrid into Barcelona (renamed Spain):
+     • Madrid's events move to Spain, in a sub-region "Madrid"; Spain's own
+       events go in a sub-region of their own ("Barcelona").
+     • Madrid's warehouse becomes a place of Spain's, in the Madrid sub-region,
+       so whatever was sold, spent or handed over there stays Madrid's. Its
+       books go to Spain's warehouse: one warehouse from then on.
+     • Its devotees' homes, shipments, consignment groups, cash, expenses and
+       pre-orders it was asked to fulfil all point at Spain instead.
+     • The Madrid region itself goes; its prices, links and settings go with it.
+   Everything changed is written down (setting 'mergeUndo:<id>'), so the
+   Activity Log can put it all back. */
+function doMergeRegion(p) {
+  var fromId = String(p.fromRegion || ''), intoId = String(p.intoRegion || '');
+  var from = regionById_(fromId), into = regionById_(intoId);
+  if (!from || !into) throw new Error('That region is no longer listed.');
+  if (fromId === intoId) throw new Error('Choose a different region to merge into.');
+  if (fromId === HQ_REGION || intoId === HQ_REGION) throw new Error('Earthly HQ cannot be merged.');
+  if (String(from.seasonId || '') !== String(into.seasonId || '')) throw new Error('Both regions must be in the same season.');
+  if (String(p.confirmName || '').trim().toLowerCase() !== String(from.name).trim().toLowerCase())
+    throw new Error('Type the name of the region being merged, exactly, to confirm.');
+  var fromSub = String(p.fromSub || from.name).trim().slice(0, 60) || from.name;
+  var intoSub = String(p.intoSub || '').trim().slice(0, 60);
+  var newName = String(p.newName || '').trim().slice(0, 80) || into.name;
+  var U = { fromId: fromId, intoId: intoId, intoName: into.name, sets: [], dels: {}, adds: [], stock: [],
+            sub: String(getMeta_('subRegions', '') || '') };
+  var fromRow = null;
+  objectsOf_('_regions').forEach(function (r) { if (String(r.regionId) === fromId) fromRow = r; });
+  U.dels._regions = [fromRow];
+
+  // Every column that names the region (or its money holder) is pointed at Spain.
+  var repoint = function (t, key, cols, a, b) {
+    if (!dbHas_(t)) return;
+    var hit = function (o) { return cols.some(function (c) { return String(o[c] == null ? '' : o[c]) === a; }); };
+    objectsOf_(t).forEach(function (o) {
+      cols.forEach(function (c) { if (String(o[c] == null ? '' : o[c]) === a) U.sets.push([t, key, String(o[key]), c, o[c]]); });
+    });
+    dbUpdate_(t, hit, function (o) {
+      var f = {}; cols.forEach(function (c) { if (String(o[c] == null ? '' : o[c]) === a) f[c] = b; }); return f;
+    });
+  };
+  repoint('_events', 'eventId', ['regionId'], fromId, intoId);
+  repoint('_holders', 'holderId', ['regionId'], fromId, intoId);
+  repoint('_shipments', 'shipId', ['fromRegion', 'toRegion'], fromId, intoId);
+  repoint('_partners', 'partnerId', ['regionId'], fromId, intoId);
+  repoint('_sales', 'saleId', ['fulfilBy'], fromId, intoId);
+  repoint('_org', 'id', ['scope'], fromId, intoId);
+  repoint('_mismatches', 'id', ['placeId'], fromId, intoId);
+  repoint('_cash', 'id', ['fromAcct', 'toAcct'], 'BANK_' + fromId, 'BANK_' + intoId);
+  repoint('_change', 'id', ['loc'], 'BANK_' + fromId, 'BANK_' + intoId);
+  /* Expenses are Finance's (server/src/expenses.js); a merge is the one time
+     they are touched from here. A region-wide Madrid expense goes on Madrid's
+     old warehouse, so it stays Madrid's, and the place names follow. */
+  if (dbHas_('_expenses')) {
+    var relabel = function (lbl) {
+      return String(lbl || '').split(' · ').map(function (x) { return x === from.name || x === into.name ? newName : x; }).join(' · ');
+    };
+    objectsOf_('_expenses').forEach(function (x) {
+      var rid = String(x.regionId || '');
+      if (rid !== fromId && rid !== intoId) return;
+      var f = {};
+      if (rid === fromId) f.regionId = intoId;
+      if (String(x.location || '') === fromId) { f.location = from.whLoc; f.placeLabel = fromSub + ' (warehouse) · ' + relabel(x.placeLabel); }
+      else if (relabel(x.placeLabel) !== String(x.placeLabel || '')) f.placeLabel = relabel(x.placeLabel);
+      Object.keys(f).forEach(function (c) { U.sets.push(['_expenses', 'id', String(x.id), c, x[c]]); });
+      if (Object.keys(f).length) dbUpdate_('_expenses', { id: String(x.id) }, f);
+    });
+  }
+  // Its prices go; Spain's apply.
+  U.dels._prices = dbHas_('_prices') ? objectsOf_('_prices').filter(function (r) { return String(r.regionId) === fromId; }) : [];
+  if (U.dels._prices.length) dbDelete_('_prices', function (r) { return String(r.regionId) === fromId; });
+
+  // The old warehouse becomes one of Spain's places, with its books moved to Spain's warehouse.
+  dbInsert_('_events', { eventId: from.whLoc, name: fromSub + ' (warehouse)', createdAt: from.createdAt || new Date(),
+                         regionId: intoId, closedAt: from.closedAt || '' });
+  U.adds.push(['_events', 'eventId', from.whLoc]);
+  var map = loadInvMap_();
+  allBooks_().forEach(function (b) {
+    var q = getQty_(map, from.whLoc, b.id);
+    if (q > 0) {
+      setQty_(map, from.whLoc, b.id, 0); addQty_(map, into.whLoc, b.id, q);
+      U.stock.push([b.id, q]);
+      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: from.whLoc, toLoc: into.whLoc, bookId: b.id, qty: q,
+                         note: 'Merged ' + from.name + ' into ' + newName });
+    }
+  });
+  saveInvMap_(map);
+  dbDelete_('_regions', function (r) { return String(r.regionId) === fromId; });
+  if (newName !== into.name) dbUpdate_('_regions', { regionId: intoId }, { name: newName });
+
+  // Sub-regions: Madrid's places in "Madrid", Spain's own events in theirs.
+  var v = subRegionsGet_(), list = (v.regions[intoId] || []).slice();
+  var subId = function (name) {
+    var have = list.filter(function (x) { return x.name.toLowerCase() === name.toLowerCase(); })[0];
+    if (have) return have.id;
+    var id = 'sr_' + Utilities.getUuid().slice(0, 6); list.push({ id: id, name: name }); return id;
+  };
+  var fromSr = subId(fromSub), intoSr = intoSub ? subId(intoSub) : '';
+  objectsOf_('_events').forEach(function (e) {
+    var id = String(e.eventId);
+    if (String(e.regionId) !== intoId) return;
+    var wasFrom = U.sets.some(function (s) { return s[0] === '_events' && s[2] === id; }) || id === from.whLoc;
+    if (wasFrom) v.events[id] = fromSr;
+    else if (intoSr && !v.events[id]) v.events[id] = intoSr;
+  });
+  v.regions[intoId] = list;
+  delete v.regions[fromId];
+  setMeta_('subRegions', JSON.stringify(v));
+  setMeta_('regionSheetId:' + fromId, '');
+  propDel_(CLOSE_DRAFT_PREFIX + 'region:' + fromId);
+
+  setMeta_('mergeUndo:' + fromId, JSON.stringify(U));
+  markDirtyAll_();
+  return { into: intoId, name: newName };
+}
+
+/* Put a merge back exactly as it was (from the Activity Log). */
+function undoMerge_(fromId) {
+  var U = null;
+  try { U = JSON.parse(String(getMeta_('mergeUndo:' + fromId, '') || '')); } catch (e) { U = null; }
+  if (!U || !U.fromId) throw new Error('This merge can no longer be undone.');
+  if (regionById_(U.fromId)) return;                               // already back
+  var fromRow = U.dels._regions[0];
+  var whLoc = String(fromRow.whLoc);
+  var held = 0, map = loadInvMap_();
+  allBooks_().forEach(function (b) { held += getQty_(map, whLoc, b.id); });
+  // Its books come back off Spain's warehouse (as many as are still there).
+  var into = regionById_(U.intoId);
+  (U.stock || []).forEach(function (x) {
+    var q = Math.min(Number(x[1]) || 0, into ? getQty_(map, into.whLoc, x[0]) : 0);
+    if (q > 0 && into) {
+      addQty_(map, into.whLoc, x[0], -q); addQty_(map, whLoc, x[0], q);
+      stockMoveAppend_({ kind: 'TRANSFER', fromLoc: into.whLoc, toLoc: whLoc, bookId: x[0], qty: q, note: 'Undid the merge of ' + fromRow.name });
+    }
+  });
+  saveInvMap_(map);
+  dbDelete_('_events', function (e) { return String(e.eventId) === whLoc; });
+  dbAddCols_('_regions', REGION_HEADERS);
+  dbInsert_('_regions', fromRow);
+  (U.dels._prices || []).forEach(function (r) { dbInsert_('_prices', r); });
+  // Newest change first, so a row touched twice ends where it began.
+  (U.sets || []).slice().reverse().forEach(function (s) {
+    if (!dbHas_(s[0])) return;
+    var m = {}; m[s[1]] = s[2]; var f = {}; f[s[3]] = s[4] == null ? '' : s[4];
+    dbUpdate_(s[0], m, f);
+  });
+  if (U.intoName) dbUpdate_('_regions', { regionId: U.intoId }, { name: U.intoName });
+  setMeta_('subRegions', U.sub || '');
+  setMeta_('mergeUndo:' + fromId, '');
+  void held;
+  markDirtyAll_();
+}
+
 function doCreateEvent(p) {
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Enter an event name.');
@@ -8930,6 +9086,8 @@ function describe_(action, p, result, moves, who) {
     case 'setEventHidden': case 'setRegionHidden': d = { text: 'Changed what is shown for ' + (p.eventId ? locLabel_(p.eventId) : reg(p.regionId)) }; break;
     case 'setSeasonHidden': d = { text: 'Changed which titles the season page shows' }; break;
     case 'setSubRegions': d = { text: 'Changed the sub-regions of ' + reg(p.regionId) }; break;
+    case 'mergeRegion': d = { text: 'Merged ' + String(p.confirmName || 'a region') + ' into ' + String((result && result.name) || reg(p.intoRegion)) + ' as a sub-region',
+      undo: { type: 'merge', fromRegion: String(p.fromRegion) } }; regions[String(p.intoRegion)] = 1; break;
     case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
     case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
     case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;
@@ -9265,6 +9423,7 @@ function doUndoActivity(p, who) {
     if (allBooks_().some(function (b) { return b.id === String(u.bookId); })) doDeleteBook({ bookId: u.bookId });
   }
   else if (u.type === 'change') doChangeDelete({ id: u.id });
+  else if (u.type === 'merge') undoMerge_(String(u.fromRegion));
   else if (u.type === 'label') doSaveLabel({ key: u.key, text: u.text || '' });
   else if (u.type === 'regionBooks') {
     dbUpdate_('_regions', { regionId: String(u.regionId) }, function (row) {
