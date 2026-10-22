@@ -165,6 +165,15 @@ tr.cbr-sub td{color:var(--muted)}
 .cl-ok{color:var(--green);font-weight:700} .cl-bad{color:var(--clay);font-weight:700}
 @media (max-width:560px){ .cl-row{grid-template-columns:1fr 68px 38px} .cl-exp{display:none} }
 .crumb-pick{position:relative;display:inline-flex}
+/* The path as links (b293): each step a link, a ▾ beside it opens the others at that level. */
+.crumb-step{display:inline-flex;align-items:center;min-width:0;max-width:100%}
+.crumb-link{border:0;background:none;padding:4px 2px;font:inherit;font-size:13.5px;font-weight:700;
+  color:var(--lvl,var(--plum));text-decoration:underline;text-underline-offset:3px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:60vw}
+.crumb-more{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:26px;font-size:11px;color:var(--lvl,var(--plum));opacity:.8;cursor:pointer;flex:none}
+.crumb-more select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font-size:16px;
+  appearance:none;-webkit-appearance:none;border:0}
 .crumb-sel{appearance:none;-webkit-appearance:none;border:1.5px solid var(--lvl-line,var(--line-d));
   background:var(--paper);color:var(--lvl,var(--plum));border-radius:999px;
   padding:5px 26px 5px 12px;font-weight:700;font-size:13px;cursor:pointer;
@@ -610,6 +619,7 @@ body:not(.editing-words) .pencil, body:not(.editing-words) .sel-pencil{display:n
 /* Rewriting in place (b254): words that can be rewritten show it, and open where they are. */
 body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input):not(textarea){cursor:text;text-decoration:underline dotted rgba(91,45,110,.45);text-underline-offset:3px}
 .lbl-in{position:fixed;z-index:400;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.pp-list.lbl-hold{display:block !important}
 .lbl-in-box{background:#fff;color:var(--ink,#222);border:2px solid var(--plum,#5B2D6E);border-radius:6px;padding:2px 6px;outline:none;
   white-space:pre-wrap;box-shadow:0 6px 18px rgba(0,0,0,.18);text-transform:none;text-align:left}
 .lbl-in-acts{display:flex;gap:4px;align-items:center;background:#fff;border-radius:999px;padding:2px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
@@ -620,6 +630,19 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input)
 .ph-pencil{display:inline-block;margin:2px 0 0 4px}
 .lbl-hidden{opacity:.4;text-decoration:line-through}
 .rs-cats{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+/* Reimbursement Settings as tiles (b293, Gita): each part its own square, its
+   choices one under another; four across on a wide screen, two on a narrower
+   one, one under another on a phone. */
+.rs-tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;align-items:start;margin-top:10px}
+@media (max-width:1100px){ .rs-tiles{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:560px){ .rs-tiles{grid-template-columns:minmax(0,1fr)} }
+.rs-tile{border:1px solid var(--line);border-radius:11px;padding:10px 12px;background:var(--paper);min-width:0}
+.rs-tile .cash-sub{margin-top:0;border-top:0;padding-top:0}
+.rs-tile .rs-cats{flex-direction:column;flex-wrap:nowrap;align-items:stretch}
+.rs-tile .rs-cat{justify-content:space-between;border-radius:8px}
+.rs-tile .rs-curs{flex-direction:column;flex-wrap:nowrap;margin-left:0}
+.rs-tile .rs-catadd input{flex:1 1 100%}
+.rs-tile .rs-catadd .btn{margin-left:auto}
 .rs-cat{display:inline-flex;align-items:center;gap:4px;border:1.5px solid var(--line);border-radius:999px;padding:3px 6px 3px 10px;font-size:13px;max-width:100%;overflow-wrap:anywhere}
 .rs-catadd{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
 .rs-catadd input{flex:1 1 160px;min-width:0;padding:7px 9px;border:1.5px solid var(--line-d);border-radius:8px;font-size:14px}
@@ -1608,6 +1631,8 @@ body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
 .mo-lift{box-shadow:0 8px 24px rgba(0,0,0,.18);background:var(--paper);border-radius:8px;opacity:.96;cursor:grabbing}
 body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 @media (max-width:560px){ .mo-row{padding-left:6px} }
+.fx-ds{display:none}
+@media (max-width:560px){ .fx-dl{display:none} .fx-ds{display:inline} }
 .fx-head{cursor:default;padding:0 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .fx-head .fx-h{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;box-shadow:none}
 .fx-d{color:var(--muted);font-size:12.5px;text-align:left}
@@ -1728,6 +1753,8 @@ body.has-va{padding-top:44px}
   display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
 .modal.wide{max-width:620px}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
+@keyframes finIn{from{opacity:.55}to{opacity:1}}
+#fpBody.fin-in{animation:finIn .22s ease-out}
 /* A form redrawn in place (b263) doesn't pop in again: it just changes. */
 .modal.still{animation:none}
 .modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--gold-l);
@@ -2265,7 +2292,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b292</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b293</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2670,7 +2697,8 @@ function catOfBook(b){ const c=(b&&b.cat)||'big'; return CATS.includes(c) ? c : 
    Colours are handed out in the order languages first appear in the catalogue,
    so a language keeps its colour as others are added. Eight soft hues that sit
    with the app's warm palette; a ninth language takes the first again, deeper. */
-const LANG_HUES = ['#3E6FA8','#B5482F','#2E8065','#8A4FA0','#B7841C','#2B8A9A','#A33F6B','#5F7D2C'];
+// b293 (Gita): "Spanish needs a not green color" — the third colour (Spanish's) is a deep rose now, not green.
+const LANG_HUES = ['#3E6FA8','#B5482F','#A33F6B','#8A4FA0','#B7841C','#2B8A9A','#C9682A','#5F7D2C'];
 function bookLang(b){
   const m = String((b&&b.name)||'').match(/^(.*\S)\s*\(([^()]+)\)\s*$/);
   return m ? {base:m[1], lang:m[2].trim()} : {base:String((b&&b.name)||''), lang:''};
@@ -2855,6 +2883,22 @@ function closedLast(list){
   return list.filter(x=>!x.closedAt).concat(list.filter(x=>x.closedAt)
     .sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0));
 }
+/* Any menu of places (b293, Gita: "When something closes, it should
+   automatically sort itself to the bottom of the menu, and then should sort by
+   alphabetical order"): open ones as they were, then closed ones A to Z. */
+function closedSort(list, shut){
+  const key = x => String(x.name||'').toLowerCase();
+  return list.filter(x=>!shut(x)).concat(list.filter(x=>shut(x)).sort((a,b)=>key(a)<key(b)?-1:key(a)>key(b)?1:0));
+}
+/* The path at the top as links (b293, Gita): each step you are in is a link to
+   its page, a ▾ beside it lists the others at that level, and the last step is
+   a drop-down of what lies below. Sales and Finance draw it the same way. */
+function crumbLink(label, attrs, sib, on){
+  return `<span class="crumb-step"><button type="button" class="crumb-link no-edit${on?' on':''}" ${attrs}>${esc(label)}</button>${
+    sib ? `<span class="crumb-more no-edit" title="Others here">▾<select ${sib.attrs} aria-label="Others here">${sib.opts}</select></span>` : ''}</span>`;
+}
+function crumbNext(attrs, opts){ return `<span class="crumb-pick"><select class="crumb-sel" ${attrs}>${opts}</select></span>`; }
+const CRUMB_SEP = `<span class="crumb-sep">›</span>`;
 function regionById(id){ return regionsList().find(r=>r.regionId===id)||null; }
 function isWarehouseLoc(loc){ return regionsList().some(r=>r.whLoc===loc); }
 function regionOfLoc(loc){
@@ -2935,7 +2979,7 @@ function curSub(){
   const id = subPicks()[CUR_REGION] || '';
   return subRegionsOf(CUR_REGION).some(x=>x.id===id) ? id : '';
 }
-function setSub(id){ const m = subPicks(); if(id) m[CUR_REGION] = id; else delete m[CUR_REGION];
+function setSub(id, rid){ rid = rid || CUR_REGION; const m = subPicks(); if(id) m[rid] = id; else delete m[rid];
   try{ sessionStorage.setItem(SUBR_KEY, JSON.stringify(m)); }catch(e){} }
 /* The region as one sub-region sees it: the other sub-regions' events, and what
    was sold or spent there, are left out; so is the general part (warehouse sales
@@ -5356,16 +5400,11 @@ function renderTabs(){
 
   /* Earthly HQ — above every season, and the way to reach any of them. */
   const seasons = STATE.seasons || [];
-  h += `<button class="crumb-btn no-edit ${isHQ()?'on':''}" data-act="gohq"
-          title="Every season, added up">🌍 Earthly HQ</button><span class="crumb-sep">›</span>`;
+  h += crumbLink('🌍 Earthly HQ', 'data-act="gohq" title="Every season, added up"', null, isHQ());
   if(isHQ()){
-    h += `<span class="crumb-pick">
-      <select class="crumb-sel" data-act="pickseason" title="Open a season">
-        ${opt('','Choose a season…',true)}
-        ${seasons.map(x=>opt(x.seasonId, x.name, false)).join('')}
-        ${opt('__new','＋ New season…',false)}
-      </select>
-    </span></div></div>`;
+    h += CRUMB_SEP + crumbNext('data-act="pickseason" title="Open a season"',
+        opt('','Choose a season…',true) + closedSort(seasons, x=>!!x.closedAt).map(x=>opt(x.seasonId, x.name + (x.closedAt?' ✓':''), false)).join('') +
+        opt('__new','＋ New season…',false)) + `</div></div>`;
     $('#locTabs').innerHTML=h;
     const hs=$('#locTabs').querySelector('[data-act="pickseason"]');
     if(hs) hs.addEventListener('change',()=>{
@@ -5376,61 +5415,50 @@ function renderTabs(){
     return;
   }
 
-  /* Season — the way back up from a region or event. With more than one tour on
-     record it becomes a picker, exactly like regions and events, rather than
-     being buried in a panel. */
-  if(seasons.length > 1 && isAdmin()){
-    /* The picker moves BETWEEN tours. Going UP to the tour-wide view is
-       "Seasonal HQ", the first choice in the region picker (b215) — it used to
-       be a ⌂ button here, which you had to know about. */
-    h += `<span class="crumb-pick">
-      <select class="crumb-sel ${CUR_LEVEL==='season'?'on':''}" data-act="pickseason"
-        title="Switch tour">
-        ${seasons.map(x=>opt(x.seasonId, x.name, x.seasonId===STATE.activeSeason)).join('')}
-        ${opt('__new','＋ New season…',false)}
-      </select>
-    </span>`;
+  /* The path as links (b293, Gita): the season, region, sub-region and event
+     you are in are each a link to their page (the season's name takes you up
+     to the season even while a region is open), with a ▾ beside each listing
+     the others at that level; the last step is a drop-down of what is below. */
+  // no-edit: these are the places' own names, changed by renaming, not wording.
+  h += CRUMB_SEP + crumbLink(STATE.seasonName||'Season', 'data-act="goseason" title="The whole tour"',
+    {attrs:'data-act="pickseason"', opts: closedSort(seasons, x=>!!x.closedAt).map(x=>opt(x.seasonId, x.name + (x.closedAt?' ✓':''), x.seasonId===STATE.activeSeason)).join('') + opt('__new','＋ New season…',false)},
+    CUR_LEVEL==='season');
+  const regOpts = cur => closedSort(regions, r=>!!r.closedAt).map(r=>opt(r.regionId, r.name+mark(regionClosure(r.regionId)), r.regionId===cur)).join('') + opt('__new','＋ New region…',false);
+  if(CUR_LEVEL==='season' || !reg){
+    h += CRUMB_SEP + crumbNext('data-act="pickregion" title="Open a region"', opt('','Regions…',true) + regOpts(''));
   }else{
-    // no-edit: this is the season's name, changed by renaming the season, not wording.
-    h += `<button class="crumb-btn no-edit ${CUR_LEVEL==='season'?'on':''}" data-act="goseason"
-            title="The whole tour">${esc(STATE.seasonName||'Season')}</button>`;
-  }
-
-  /* Region picker. Seasonal HQ heads it — the whole season's overview — just
-     as the Warehouse heads the place picker, so going up is the same move as
-     going sideways (b215). ⌂ marks it as the season's home page (b220): the
-     old home button's symbol, as 🏠 is already the Warehouse's. */
-  h += `<span class="crumb-sep">›</span>
-    <span class="crumb-pick">
-      <select class="crumb-sel ${CUR_LEVEL!=='season'?'on':''}" data-act="pickregion">
-        ${opt(SEASONAL_HQ,'⌂ Seasonal HQ',CUR_LEVEL==='season')}
-        ${regions.map(r=>opt(r.regionId,r.name+mark(regionClosure(r.regionId)),r.regionId===CUR_REGION&&CUR_LEVEL!=='season')).join('')}
-        ${opt('__new','＋ New region…',false)}
-      </select>
-    </span>`;
-
-  // Place picker — this region's warehouse and its events
-  if(CUR_LEVEL!=='season' && reg){
-    h += `<span class="crumb-sep">›</span>
-      <span class="crumb-pick">
-        <select class="crumb-sel ${CUR_LEVEL==='event'?'on':''}" data-act="pickloc">
-          ${opt(reg.whLoc, subRegionsOf(reg.regionId).length ? '🏠 Warehouse · ' + reg.name + ' Summary' : '🏠 Warehouse', CUR_LOC===reg.whLoc && !curSub())}
-          ${wholeRegion(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
-            const subs = subRegionsOf(reg.regionId);
-            if(!subs.length) return eventsOfRegion(reg.regionId).map(evOpt).join('');
-            /* Sub-regions (b280): each one's events under its name, the rest after.
-               The sub-region itself is the first choice in its group (b285: this
-               replaces the line of chips under the bar). */
-            const known = new Set(subs.map(x=>x.id)), cs = curSub();
-            const rest = eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId)));
-            /* b291 (Gita): "<sub-region> Summary", its events indented beneath it. */
-            const ind = '\u00a0\u00a0\u00a0\u00a0';
-            return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 ' + x.name + ' Summary', cs===x.id)}${
-                eventsOfSub(reg.regionId, x.id).map(e=>opt(e.eventId, ind + e.name + mark(closureOf(e.eventId)), CUR_LOC===e.eventId)).join('')}</optgroup>`).join('') +
-              (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })}
-          ${opt('__new','＋ New event…',false)}
-        </select>
-      </span>`;
+    h += CRUMB_SEP + crumbLink(reg.name, `data-act="goregion" data-id="${esc(reg.regionId)}"`,
+      {attrs:'data-act="pickregion"', opts:regOpts(reg.regionId)}, CUR_LEVEL==='region' && !curSub());
+    wholeRegion(()=>{
+      const subs = subRegionsOf(reg.regionId);
+      const sid = CUR_LEVEL==='event' ? subOfEvent(CUR_LOC) : curSub();
+      const su = subs.find(x=>x.id===sid);
+      const evSort = list => closedSort(list, e=>!!closureOf(e.eventId));
+      const evOpt = (e, ind) => opt(e.eventId, (ind||'') + e.name + mark(closureOf(e.eventId)), CUR_LOC===e.eventId);
+      /* A sub-region's events, or the whole region's: each sub-region (b280) as
+         "<name> Summary" with its events indented beneath (b291), the rest after. */
+      const placeOpts = s => {
+        if(s) return evSort(eventsOfSub(reg.regionId, s)).map(e=>evOpt(e)).join('') + opt('__new','＋ New event…',false);
+        if(!subs.length) return evSort(eventsOfRegion(reg.regionId)).map(e=>evOpt(e)).join('') + opt('__new','＋ New event…',false);
+        const known = new Set(subs.map(x=>x.id));
+        const rest = evSort(eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId))));
+        const ind = '    ';
+        return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 ' + x.name + ' Summary', false)}${
+            evSort(eventsOfSub(reg.regionId, x.id)).map(e=>evOpt(e, ind)).join('')}</optgroup>`).join('') +
+          (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(e=>evOpt(e)).join('')}</optgroup>` : '') +
+          opt('__new','＋ New event…',false);
+      };
+      if(su) h += CRUMB_SEP + crumbLink(su.name, `data-act="gosub" data-id="${esc(su.id)}"`,
+        {attrs:'data-act="pickloc"', opts: opt(reg.whLoc, reg.name + ' Summary', false) + subs.map(x=>opt('__sub:' + x.id, x.name, x.id===su.id)).join('')},
+        CUR_LEVEL==='region');
+      if(CUR_LEVEL==='event'){
+        const ev = (STATE.events||[]).find(e=>e.eventId===CUR_LOC);
+        h += CRUMB_SEP + crumbLink((ev ? ev.name : locName(CUR_LOC)) + mark(closureOf(CUR_LOC)), 'data-act="goevent"',
+          {attrs:'data-act="pickloc"', opts:placeOpts(su ? su.id : '')}, true);
+      }else{
+        h += CRUMB_SEP + crumbNext('data-act="pickloc" title="Open an event"', opt('','Events…',true) + placeOpts(su ? su.id : ''));
+      }
+    });
   }
   const shut = CUR_LEVEL==='event' ? closureOf(CUR_LOC)
              : CUR_LEVEL==='region' ? regionClosure(CUR_REGION) : '';
@@ -5449,29 +5477,27 @@ function renderTabs(){
   $('#locTabs').innerHTML=h;
 
   // Wire the pickers here, since this markup is rebuilt on every render.
-  const ss=$('#locTabs').querySelector('[data-act="pickseason"]');
-  if(ss) ss.addEventListener('change',()=>{
+  $('#locTabs').querySelectorAll('[data-act="pickseason"]').forEach(ss=>ss.addEventListener('change',()=>{
     const v=ss.value;
     if(v==='__new'){ renderTabs(); newSeasonModal(); return; }
     if(!v || v===STATE.activeSeason) return;
     switchSeason(v); woJump();
-  });
-  const rs=$('#locTabs').querySelector('[data-act="pickregion"]');
-  if(rs) rs.addEventListener('change',()=>{
+  }));
+  $('#locTabs').querySelectorAll('[data-act="pickregion"]').forEach(rs=>rs.addEventListener('change',()=>{
     const v=rs.value;
     if(v==='__new'){ renderTabs(); regionModal(); return; }
     if(v===SEASONAL_HQ){ if(CUR_LEVEL!=='season') goTo('season'); woJump(); return; }
-    if(v) goTo('region',v);
-  });
-  const ls=$('#locTabs').querySelector('[data-act="pickloc"]');
-  if(ls) ls.addEventListener('change',()=>{
+    if(v){ setSub('', v); goTo('region',v); }
+  }));
+  $('#locTabs').querySelectorAll('[data-act="pickloc"]').forEach(ls=>ls.addEventListener('change',()=>{
     const v=ls.value;
+    if(!v) return;
     if(v==='__new'){ renderTabs(); eventModal(); return; }
     if(v.startsWith('__sub:')){ setSub(v.slice(6)); clearLogFilters();
       if(CUR_LEVEL==='region') renderAll(); else goTo('region', CUR_REGION); return; }
-    if(isWarehouseLoc(v)) setSub('');         // the warehouse is all of the region
+    if(isWarehouseLoc(v)) setSub('', regionOfLoc(v));   // the warehouse is all of the region
     goTo(isWarehouseLoc(v)?'region':'event', isWarehouseLoc(v)?regionOfLoc(v):v);
-  });
+  }));
 }
 
 /* The working surface stays clean: selling and reading live at the top, while
@@ -5583,8 +5609,8 @@ function renderAdmin(){
     cols[3].push(`<button class="btn" data-act="deleteregion">Delete Region</button>`);
   }else{
     cols[3].push(`<button class="btn" data-act="renameevent">Rename Event</button>`);
-    // Sales taken somewhere else, a whole spreadsheet at once (b288, practice first).
-    if(PRACTICE) cols[3].push(`<button class="btn" data-act="salesupload">📤 Upload Sales Spreadsheet</button>`);
+    // Sales taken somewhere else, a whole spreadsheet at once (b288; live since b293).
+    cols[3].push(`<button class="btn" data-act="salesupload">📤 Upload Sales Spreadsheet</button>`);
     cols[3].push(closureOf(CUR_LOC)
       ? `<button class="btn" data-act="reopenhere">Reopen Event</button>`
       : `<button class="btn" data-act="closehere">Close Event</button>`);
@@ -5692,7 +5718,12 @@ function snOrdered(order){
    actions too. Drag a section by its heading, an item by its row (⠿), into any
    section. Everyone's menu follows once saved. */
 function menuOrderModal(){
-  const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.slice()}));
+  /* Only items the menu can really show (b293, Gita: "remnants of menu items that
+     no longer exist"): Record Costs went into Add an Expense, Edit Book Display
+     onto the shelf (⇅ Arrange); View as is practice only, Bring Wording live only. */
+  const gone = a => a==='bookdisplay' || a==='fintodo' || (a==='costs' && FIN_ON) || (a==='viewas' && !PRACTICE)
+    || (a==='fincarry' && PRACTICE) || (a==='subregions' && !SUBR_ON) || !(MO_NAMES[a] || SN_ITEMS[a]);
+  const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.filter(a=>!gone(a))}));
   const name = a => MO_NAMES[a] || SN_ITEMS[a] || ['•', a];
   openModal(`${mHead('Reorganize Menu')}<div class="m-body">
       <div class="hint">Drag a section by its heading, or an item by its row, to where it should go, into any section. The menu changes for everyone once you save. Each person still sees only the items their access allows.</div>
@@ -6026,6 +6057,7 @@ function renderSalesByRegion(){
   return regions.map(r=>{
     const locs = locsInRegion(r.regionId);
     const allHere = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
+    const uncN = uncatBooks((STATE.sales||[]).filter(x=>locs.includes(x.location)));
     const sales = allHere.filter(x=>!isPartnerSale(x));   // headline counts stay ours
     const count=(cat,type)=>sales.filter(x=>catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
     const gcount=(cat)=>sales.filter(x=>catOf(x.bookId)===cat && isGift(x)).length;
@@ -6054,6 +6086,7 @@ function renderSalesByRegion(){
           ${(function(){
             const line = (label, cat) => {
               const c = bookCounts(sales.filter(x=>catOf(x.bookId)===cat));
+              if(cat==='big') c.sold += uncN;
               if(!c.sold && !c.gift) return '';
               return `<span class="sbr-line"><b>${c.sold}</b> ${label} sold${
                 c.pre?` <span class="muted">${preNote(c)}</span>`:''}${
@@ -6123,9 +6156,16 @@ function renderTotals(){
         c.pre?`<span class="value-pre">${preNote(c)}</span>`:''}</div>
       <div class="sub">${giftNote(c) || '&nbsp;'}</div></div>`;
       const big=cnt('big'), aotm=cnt('aotm'), oth=cnt('other');
+      // Uncategorized sales' books are Big Books sold (b293).
+      const unc = s.filter(isUncat), uncN = uncatBooks(unc);
+      big.sold += uncN;
       return tile('', 'Big Books', big)
         + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '')
-        + tile('aotm', 'AoTM', aotm);
+        + tile('aotm', 'AoTM', aotm)
+        + (unc.length ? `<div class="tcard"><div class="label">Uncategorized Sales</div>
+            <div class="value">${uncN}<span class="value-lbl">books</span></div>
+            <div class="sub">${hideMoney() ? '&nbsp;' : '$' + fmt(unc.filter(received).reduce((t,x)=>t+saleUsd(x),0))
+              + (unc.some(x=>x.est) ? ' · estimate' : '')}</div></div>` : '');
     })()}
     ${hideMoney() ? '' : `
     <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
@@ -6241,6 +6281,7 @@ function renderInventory(){
   const un = unlistedTitles(), offHere = un.hidden.length + un.other.length;
   $('#invMulti').innerHTML =
     `<button class="multi-btn" data-act="multi" data-mode="sale">+ Multiple Book Sale</button>`
+    + (UNCAT_ON ? `<button class="multi-btn ghost" data-act="uncat">+ Uncategorized Sales</button>` : '')
     + (offHere ? `<button class="multi-btn ghost" data-act="hiddenpre">+ Pre-Orders (Unlisted Titles)</button>` : '');
 }
 
@@ -6830,7 +6871,9 @@ function logItemHTML(x, opts){
   }
   const book = x._bundle
     ? ((opts.context==='pre') ? bundlePreTitle() : (x._count+' Books'))
-    : (isDon?'Donation':bookById(x.bookId).name);
+    : isDon ? 'Donation'
+    : isUncat(x) ? 'Uncategorized sales · ' + (Number(x.qty)||0) + ' book' + ((Number(x.qty)||0)===1?'':'s') + (x.est ? ' (estimate)' : '')
+    : bookById(x.bookId).name;
   // A delivered pre-order becomes an ordinary SALE, so without this it would be
   // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
   const wasPreorder = x.type==='SALE' && !!x.dsource;
@@ -7569,7 +7612,8 @@ function renderSellers(){
   }));
   const asks = handoversHere().filter(h=>h.status==='waiting');
   const cell = m => esc(moneyLine(m)) || '—';
-  const sold = (list, cat) => list.filter(x=>x.bookId && (x.type==='SALE' || x.type==='PREORDER') && !isGift(x) && catOf(x.bookId)===cat).length;
+  const sold = (list, cat) => list.filter(x=>x.bookId && (x.type==='SALE' || x.type==='PREORDER') && !isGift(x) && catOf(x.bookId)===cat).length
+    + (cat==='big' ? uncatBooks(list) : 0);
   const cashRow = (label, p) => {
     const sub = {}; add(sub, p.received); add(sub, p.waiting); add(sub, p.movedOn);
     return `<tr>${label!==null?`<td class="sb-place">${esc(label)}</td>`:''}<td>${cell(p.taken)}</td><td><b>${cell(p.withThem)}</b></td>
@@ -10499,8 +10543,8 @@ function rsDraw(){
   /* Just the currencies, ticked (b284, Gita): to start with, the ones the place
      selected has (its region's own); changed, they become this place's own. */
   const base = (above && above.curs && above.curs.length) ? above.curs : d.curs;
-  const curBox = target ? `<div class="cash-sub">Currencies people can be paid back in</div>
-      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${(own ? own.includes(c) : base.includes(c))?'checked':''} ${dis}> ${esc(c)}</label>`).join('')}</div>` : '';
+  const curBox = target ? `<section class="rs-tile"><div class="cash-sub">Currencies people can be paid back in</div>
+      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${(own ? own.includes(c) : base.includes(c))?'checked':''} ${dis}> ${esc(c)}</label>`).join('')}</div></section>` : '';
   finHost('Reimbursement Settings', `
       <div class="hint">Which ways of paying people back, and which currencies, are offered. Each place follows the one above it unless
         you set it here: switch PayPal off for everywhere, say, and on again for one region. A person's own setting wins over every place.</div>
@@ -10516,18 +10560,20 @@ function rsDraw(){
           <div class="muted-note">• has its own settings</div></div>`
       : `<div class="field"><label>Person</label><select id="rsPerson">${opt('','Choose someone…',!RS.email)}${d.people.map(p=>opt(p.email,
           p.name + ' (' + p.email + ')' + (d.rules.people[p.email]?' •':''), p.email===RS.email)).join('')}</select></div>`}
-      ${target ? `<div class="cash-sub">Ways of paying back</div><div class="rs-rows">${rows}</div>${
-        (d.gone||[]).length && FIN_ON ? `<div class="muted-note">Removed for good: ${d.gone.map(g=>`<span class="no-edit">${esc(g)}</span>${ro ? '' : ` <button type="button" class="btn btn-ghost btn-xs" data-act="rsback" data-m="${esc(g)}">Bring back</button>`}`).join(' · ')}</div>` : ''}${curBox}` : ''}
-      ${FIN_ON ? `<div class="cash-sub">Kinds of expense</div>
+      <div class="rs-tiles">
+      ${target ? `<section class="rs-tile"><div class="cash-sub">Ways of paying back</div><div class="rs-rows">${rows}</div>${
+        (d.gone||[]).length && FIN_ON ? `<div class="muted-note">Removed for good: ${d.gone.map(g=>`<span class="no-edit">${esc(g)}</span>${ro ? '' : ` <button type="button" class="btn btn-ghost btn-xs" data-act="rsback" data-m="${esc(g)}">Bring back</button>`}`).join(' · ')}</div>` : ''}</section>${curBox}` : ''}
+      ${FIN_ON ? `<section class="rs-tile"><div class="cash-sub">Kinds of expense</div>
       <div class="rs-cats">${(d.cats||[]).map(c=>`<span class="rs-cat"><span class="no-edit">${esc(c)}</span>${c==='Other' || ro ? '' :
         ` <button type="button" class="btn btn-ghost btn-xs" data-act="rscatgone" data-c="${esc(c)}" title="Remove ${esc(c)} (expenses already saved keep it)">🗑</button>`}</span>`).join('')}</div>
       ${ro ? '' : `<div class="rs-catadd"><input id="rsCatNew" type="text" maxlength="60" placeholder="A new kind of expense"><button type="button" class="btn btn-ghost btn-sm" data-act="rscatadd">＋ Add</button></div>`}
-      <div class="muted-note">"Other" is always there, for anything else; whoever chooses it says what it was.</div>
-      <div class="cash-sub">How expenses were paid</div>
+      <div class="muted-note">"Other" is always there, for anything else; whoever chooses it says what it was.</div></section>
+      <section class="rs-tile"><div class="cash-sub">How expenses were paid</div>
       <div class="rs-cats">${(d.pays||[]).concat(['Other']).map(c=>`<span class="rs-cat"><span class="no-edit">${esc(c)}</span>${c==='Other' || ro ? '' :
         ` <button type="button" class="btn btn-ghost btn-xs" data-act="rspaygone" data-c="${esc(c)}" title="Remove ${esc(c)} (expenses already saved keep it)">🗑</button>`}</span>`).join('')}</div>
       ${ro ? '' : `<div class="rs-catadd"><input id="rsPayNew" type="text" maxlength="40" placeholder="A new payment type"><button type="button" class="btn btn-ghost btn-sm" data-act="rspayadd">＋ Add</button></div>`}
-      <div class="muted-note">For expenses only: how a sale was paid is set at each place, as before.</div>` : ''}
+      <div class="muted-note">For expenses only: how a sale was paid is set at each place, as before.</div></section>` : ''}
+      </div>
       <div class="err" id="rsErr"></div>`,
     `${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
   const ps = $('#rsPlace'); if(ps) ps.addEventListener('change', ()=>{ RS.id = ps.value; rsDraw(); });
@@ -10628,7 +10674,7 @@ function finAgg(sales, exps){
     // Which figures hold dollars worked out from a rate (~).
     if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
-    const n = x.q || (x.b ? 1 : 0);
+    const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0));
     if(x.g) a.gifts += n; else a.books += n;
     if(x.con){ a.con += x.gu; return; }          // the groups' money, never ours
     a.coll += x.gu; a.pend += x.pu;
@@ -11890,7 +11936,7 @@ async function finQuietRefresh(){
     const same = JSON.stringify([FIN.D, EXP.todo, EXP.all]) === JSON.stringify([d.result, todo.result, all.result || []]);
     FIN.D = d.result; EXP.todo = todo.result; EXP.all = all.result || []; if(o) EXP.opt = o.result; FIN.fromCache = false;
     finCacheSave();
-    if(!same) FIN_LINKS = null;
+    if(!same && FIN_LINKS) setTimeout(finLinksQuiet, 0);   // kept on screen while the latest arrive (b293)
     if(!same && FINP.on && !$('#overlay').classList.contains('show')){ const y = window.scrollY; finRender(); window.scrollTo(0, y); }
     else if(!same) FIN.due = true;
   }catch(e){ FIN.due = true; }
@@ -11912,26 +11958,50 @@ window.addEventListener('popstate', ()=>{
 /* The bar at the top: where you are, walked down like the rest of the app. */
 function finNav(){
   const D = FIN.D, f = finScopeF(), opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
-  const lvl = f.e ? 'Event' : f.u ? 'Sub-region' : f.r ? 'Region' : f.s ? 'Season' : 'Everywhere';
-  let h = `<div class="navbar"><span class="lvl-chip">Finance · ${lvl}</span><div class="crumbs">
-    <button type="button" class="crumb-btn${FINP.scope?'':' on'}" data-act="fingo" data-scope="">All seasons</button>`;
+  /* Exactly the Sales app's path (b293, Gita: "The locations menu in Finance
+     should look exactly the same (minus the color) as the menu in the Sales App"). */
+  const lvl = f.e ? 'Event' : f.r ? 'Region' : f.s ? 'Season' : 'Earthly HQ';
+  let h = `<div class="navbar"><span class="lvl-chip">${lvl}</span><div class="crumbs">` +
+    crumbLink('🌍 Earthly HQ', 'data-act="fingo" data-scope="" title="Every season, added up"', null, !FINP.scope);
   if(D){
-    h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.s && !f.r?' on':''}" data-fpick="s">
-      ${opt('', 'Choose a season…', !f.s)}${D.seasons.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.s)).join('')}</select></span>`;
-    if(f.s){
-      const regs = D.regions.filter(r=>r.seasonId===f.s);
-      if(regs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.r && !f.e?' on':''}" data-fpick="r">
-        ${opt('', 'The whole season', !f.r)}${regs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.r)).join('')}</select></span>`;
-    }
-    if(f.r){
-      // Sub-regions (b280): All, or one of them, before the events.
-      const subs = finSubsOf(f.r), rName = (D.regions.find(x=>x.id===f.r)||{}).name || '';
-      const evSub = f.e ? subOfEvent(f.e) : '', inSub = f.u || (subs.some(x=>x.id===evSub) ? evSub : '');
-      if(subs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.u?' on':''}" data-fpick="u">
-        ${opt('', rName + ' Summary', !inSub)}${subs.map(x=>opt(x.id, x.name, x.id===inSub)).join('')}</select></span>`;
-      const evs = D.events.filter(e=>e.regionId===f.r && (!inSub || eventsOfSubAny(f.r, inSub).includes(e.id)));
-      if(evs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.e?' on':''}" data-fpick="e">
-        ${opt('', inSub ? 'The whole sub-region' : 'The whole region', !f.e)}${evs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.e)).join('')}</select></span>`;
+    const mk = st => st==='complete' ? ' ✓' : st==='pending' ? ' •' : '';
+    const regShut = id => !!(D.regions.find(r=>r.id===id)||{}).closed;
+    const fMark = (k, x) => {
+      if(!(x.closed || (k==='e' && regShut(x.regionId)))) return '';
+      const st = !STATE ? '' : k==='r' ? regionClosure(x.id) : k==='e' ? closureOf(x.id) : '';
+      return st ? mk(st) : ' ✓';
+    };
+    const sOpts = closedSort(D.seasons, x=>x.closed).map(x=>opt(x.id, x.name + fMark('s', x), x.id===f.s)).join('');
+    if(!f.s) h += CRUMB_SEP + crumbNext('data-fpick="s" title="Open a season"', opt('', 'Choose a season…', true) + sOpts);
+    else{
+      const se = D.seasons.find(x=>x.id===f.s) || {};
+      h += CRUMB_SEP + crumbLink(se.name || 'Season', `data-act="fingo" data-scope="${esc(f.s)}"`, {attrs:'data-fpick="s"', opts:sOpts}, !f.r);
+      const regs = closedSort(D.regions.filter(r=>r.seasonId===f.s), x=>x.closed);
+      const rOpts = regs.map(x=>opt(x.id, x.name + fMark('r', x), x.id===f.r)).join('');
+      if(!f.r){ if(regs.length) h += CRUMB_SEP + crumbNext('data-fpick="r" title="Open a region"', opt('', 'Regions…', true) + rOpts); }
+      else{
+        const rg = D.regions.find(x=>x.id===f.r) || {};
+        h += CRUMB_SEP + crumbLink(rg.name || '', `data-act="fingo" data-scope="${esc(f.r)}"`, {attrs:'data-fpick="r"', opts:rOpts}, !f.e && !f.u);
+        // Sub-regions (b280), as on the Sales side: "<name> Summary" with its events indented beneath.
+        const subs = finSubsOf(f.r), evSub = f.e ? subOfEvent(f.e) : '', inSub = f.u || (subs.some(x=>x.id===evSub) ? evSub : '');
+        const evSort = list => closedSort(list, e=>e.closed || regShut(e.regionId));
+        const evOpt = (e, ind) => opt(e.id, (ind||'') + e.name + fMark('e', e), e.id===f.e);
+        const evsOf = sid => evSort(D.events.filter(e=>e.regionId===f.r && (!sid || eventsOfSubAny(f.r, sid).includes(e.id))));
+        const placeOpts = sid => {
+          if(sid || !subs.length) return evsOf(sid).map(e=>evOpt(e)).join('');
+          const inAny = new Set(subs.flatMap(x=>eventsOfSubAny(f.r, x.id)));
+          const rest = evsOf('').filter(e=>!inAny.has(e.id)), ind = '    ';
+          return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt(x.id, '🗺 ' + x.name + ' Summary', false)}${evsOf(x.id).map(e=>evOpt(e, ind)).join('')}</optgroup>`).join('') +
+            (rest.length ? `<optgroup label="${esc(rg.name || '')}, general">${rest.map(e=>evOpt(e)).join('')}</optgroup>` : '');
+        };
+        const su = subs.find(x=>x.id===inSub);
+        if(su) h += CRUMB_SEP + crumbLink(su.name, `data-act="fingo" data-scope="${esc(su.id)}"`,
+          {attrs:'data-fpick="u"', opts: opt(f.r, (rg.name || '') + ' Summary', false) + subs.map(x=>opt(x.id, x.name, x.id===su.id)).join('')}, !f.e);
+        if(f.e){
+          const ev = D.events.find(x=>x.id===f.e) || {};
+          h += CRUMB_SEP + crumbLink((ev.name || '') + fMark('e', ev), `data-act="fingo" data-scope="${esc(f.e)}"`, {attrs:'data-fpick="e"', opts:placeOpts(inSub)}, true);
+        }else if(evsOf(inSub).length || subs.length) h += CRUMB_SEP + crumbNext('data-fpick="e" title="Open an event"', opt('', 'Events…', true) + placeOpts(inSub));
+      }
     }
   }
   // Unchanged, left exactly as it is (b291): the bar stays still while the figures change.
@@ -11939,9 +12009,8 @@ function finNav(){
   FIN.navH = h;
   $('#fpNav').innerHTML = h + '</div></div>';
   $('#fpNav').querySelectorAll('[data-fpick]').forEach(sel=>sel.addEventListener('change', ()=>{
-    const k = sel.dataset.fpick, cur = finScopeF();
-    const upSub = k==='e' && !cur.u && cur.e && finSubsOf(cur.r).some(x=>x.id===subOfEvent(cur.e)) ? subOfEvent(cur.e) : '';
-    finGo(FINP.sec, sel.value || (k==='e' ? (cur.u || upSub || cur.r) : k==='u' ? cur.r : k==='r' ? cur.s : ''));
+    // Going up is the path's links now (b293); a drop-down only goes to a place.
+    if(sel.value) finGo(FINP.sec, sel.value);
   }));
   }
   const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
@@ -11958,9 +12027,17 @@ function finNav(){
   const wt = $('#whTitle'); if(wt) wt.textContent = ': Finance';
   const sl = $('#seasonLine'); if(sl){ sl.textContent = finScopeName(); sl.style.display = sl.textContent ? '' : 'none'; }
 }
+/* The wording is put on before the page is shown (b293): drawn and then
+   re-worded 60ms later, every edited word flickered from the app's own wording to yours. */
 function finRender(){
+  finRender0();
+  try{ if(FINP.on) applyLabels(); }catch(e){}
+}
+function finRender0(){
   if(!FINP.on) return;
   finNav();
+  // New figures step in over the old ones (b293): a short fade, nothing blanked first.
+  const fb = $('#fpBody'); if(fb){ fb.classList.remove('fin-in'); void fb.offsetWidth; fb.classList.add('fin-in'); }
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
   if(sec==='expenses'){
@@ -12177,7 +12254,7 @@ function finExpSecHTML(){
      for and what it cost; tapping it opens the rest. */
   const row = x => { const open = FIN.exOpen.has(x.id), rc = x.receipts || [];
     return `<div class="log-item fx-item${x.status==='declined'?' fin-dim':''}${x.kind==='reimburse' && x.status==='pending' ? ' pending' : ''}${open?' open':''}" data-xid="${esc(x.id)}">
-      <div class="fx-row" data-act="exopen" data-id="${esc(x.id)}"><span class="fx-d">${esc(x.date)}</span>
+      <div class="fx-row" data-act="exopen" data-id="${esc(x.id)}"><span class="fx-d"><span class="fx-dl">${esc(x.date)}</span><span class="fx-ds">${esc(finShortDate(x.date))}</span></span>
         <span class="fx-w no-edit">${esc(x.desc)}</span>
         <span class="fx-o">${esc(finExpOrig(x))}</span><span class="fx-a">${esc(finExpUsd(x))}</span><span class="li-chev">▶</span></div>
       <div class="li-det fx-det">
@@ -12426,7 +12503,15 @@ const reimbEmail = (name, url) => 'Hare Krishna' + (name ? ', ' + name : '') + '
   'For security purposes, the link disables after you click submit.\n\n' +
   'If you make any mistakes or need to submit additional expenses, you can click the link and request for it to be reactivated. If you\u2019ve made a mistake, please note this in the comments.\n\n' +
   'Thank you for your service to Srila Gurudeva!\n\nIn Gratitude, Your Servant,\n' + String((ME && ME.name) || (FINP.me && FINP.me.name) || '');
+// On a phone the date is MM/DD/YY (b293, Gita).
+const finShortDate = d => { const m = /^(\d{4})-(\d\d)-(\d\d)/.exec(String(d||'')); return m ? m[2] + '/' + m[3] + '/' + m[1].slice(2) : String(d||''); };
 const FIN_LINK_OPEN = new Set();
+// The links already here stay on screen while the latest are fetched; redrawn only if they changed (b293).
+async function finLinksQuiet(){
+  try{ const L = (await post({action:'expLinkList'})).result;
+    if(JSON.stringify(L) === JSON.stringify(FIN_LINKS)) return;
+    FIN_LINKS = L; if(FINP.on && FINP.sec==='reimb' && FIN.rb.tab==='links'){ const y = window.scrollY; finLinksRender(); window.scrollTo(0, y); } }catch(e){}
+}
 // Asked to be turned back on first, then the ones still working, then the rest; newest first within each.
 function finLinksSorted(){
   const rank = l => (l.ask && (l.off || l.used)) ? 0 : (l.off || l.used) ? 2 : 1;
@@ -12817,9 +12902,10 @@ function finChartsMount(){
 }
 /* Dollars received, from the figure itself (b291, Gita, practice first): any
    dollar amount with a ~ is an estimate from an exchange rate; tapping it opens
-   Dollars received for the place being looked at, to put in the exact amount. */
+   Dollars received for the place being looked at, to put in the exact amount.
+   Live since b293 (Gita, 2026-10-22: "You can push dollars in finance to live app"). */
 function finEstMark(){
-  if(!PRACTICE || !FINP.on || !FIN.D || !FIN.D.mayEdit) return;
+  if(!FINP.on || !FIN.D || !FIN.D.mayEdit) return;
   const body = $('#fpBody'); if(!body) return;
   const re = /−?~\$[\d,]+(?:\.\d+)?/g, hits = [];
   const walk = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, { acceptNode: n =>
@@ -13592,7 +13678,11 @@ function labelInline(key){
   box.textContent = t.start;
   ['fontSize','fontWeight','fontFamily','lineHeight','letterSpacing','fontStyle'].forEach(k=>{ box.style[k] = cs[k]; });
   document.body.appendChild(w);
-  LBL_IN = { key, el, w, box, origTyped:t.origTyped, raf:0 };
+  /* Words inside a drop-down's list (b293, Gita: "it starts, but has no staying
+     power"): the list closed as soon as the box took the focus, and the box lost
+     its words. The list is held open until the rewording is done. */
+  const hold = el.closest('.pp-list'); if(hold) hold.classList.add('lbl-hold');
+  LBL_IN = { key, el, w, box, origTyped:t.origTyped, raf:0, hold };
   const place = () => {
     if(!LBL_IN) return;
     let e = LBL_IN.el;
@@ -13626,6 +13716,7 @@ function labelInline(key){
 function labelInlineEnd(keep){
   const L = LBL_IN; if(!L) return;
   LBL_IN = null; cancelAnimationFrame(L.raf);
+  if(L.hold){ L.hold.classList.remove('lbl-hold'); const inp = L.hold.parentElement && L.hold.parentElement.querySelector('.pp-in'); if(inp && inp.isConnected) setTimeout(()=>inp.focus(), 0); }
   const text = keep==='hide' ? '\u0000hide' : L.box.innerText.replace(/\u00a0/g,' ').replace(/\n{2,}/g,'\n').trim();
   L.w.remove();
   // ✓ on hidden words brings them back, as they were or as just typed.
@@ -13940,8 +14031,11 @@ function buildReport(part, opts){
     const counted = b => ({b, c:bookCounts(s.filter(x=>x.bookId===b.id))});
     const shown = r => r.c.sold || r.c.gift;
     // Our own titles, by kind.
+    // Uncategorized sales (b293) are a line of their own among the Big Books.
+    const uncN = uncatBooks(s), uncEst = s.some(x=>isUncat(x) && x.est);
     CATS.forEach(kind=>group(
-      shelf().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown),
+      shelf().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown)
+        .concat(kind==='big' && uncN ? [{b:{name:'Uncategorized sales' + (uncEst ? ' (estimate)' : '')}, c:{sold:uncN, pre:0, gift:0}}] : []),
       CAT_SHORT[kind]));
     // Then consignment, on its own.
     const con = shelf().filter(b=>isPartnerBook(b.id)).map(counted).filter(shown);
@@ -15448,6 +15542,80 @@ function donationModal(edit){
   });
 }
 
+/* ---- Uncategorized sales (b293, practice first; Gita) ----
+   Money taken for books without knowing which titles: the total, and how many
+   books that is at the usual Big Book price here, rounded down to whole books.
+   The number can be changed and is ticked as an estimate. The books count in
+   Big Books sold, and an "Uncategorized Sales" card shows the total; nothing
+   comes off a shelf. */
+const UNCAT_ON = PRACTICE;
+function isUncat(x){ return !!x && x.type==='UNCAT'; }
+function uncatBooks(list){ return (list||[]).filter(isUncat).reduce((t,x)=>t+(Number(x.qty)||0), 0); }
+/* The usual price of a Big Book here, in that currency: the most common one on the shelf. */
+function uncatMsrp(cur){
+  const n = {};
+  shelfBooks().filter(b=>catOfBook(b)==='big' && !isPartnerBook(b.id)).forEach(b=>{
+    const p = Number(priceFor(b, cur)) || 0; if(p > 0) n[p] = (n[p]||0) + 1; });
+  const ps = Object.keys(n).map(Number).sort((a,b)=>n[b]-n[a] || b-a);
+  return ps[0] || 0;
+}
+function uncatModal(edit){
+  const L0 = edit ? legs(edit) : [];
+  openModal(`
+    ${mHead(edit ? 'Edit Uncategorized Sales' : 'Uncategorized Sales')}
+    <div class="m-body">
+      <div class="hint">Money taken for books when you don't know which titles. The books count in Big Books sold; nothing comes off a shelf.</div>
+      <div class="row2">
+        <div class="field"><label>Total taken</label><input id="ucAmt" type="number" step="0.01" min="0" inputmode="decimal"></div>
+        <div class="field"><label>Currency</label><select id="ucCur">${curOptions(L0[0] ? L0[0].cur : defaultCur())}</select></div>
+      </div>
+      <div class="field"><label>Payment type</label><select id="ucType">${payTypeOptions(false,false)}</select></div>
+      <div class="field"><label>Books sold</label><input id="ucN" type="number" min="0" step="1" inputmode="numeric">
+        <div class="hint" id="ucHow"></div></div>
+      <label class="cl-check"><input type="checkbox" id="ucEst" ${!edit || edit.est ? 'checked' : ''}> This is an estimate</label>
+      <div class="field"><label>Comments (optional)</label><textarea id="ucCom"></textarea></div>
+      <div class="field"><label>Date &amp; Time</label>
+        <input id="ucTs" type="datetime-local" value="${esc(toLocalInput(edit ? edit.ts : new Date()))}"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="ucSave">${edit ? 'Save changes' : 'Record'}</button>
+    </div>`);
+  let typed = !!edit;            // once the number is typed, the total no longer changes it
+  const fill = () => {
+    const amt = Number($('#ucAmt').value) || 0, cur = $('#ucCur').value, m = uncatMsrp(cur);
+    if(!typed) $('#ucN').value = m > 0 && amt > 0 ? Math.floor(amt / m + 1e-9) : '';
+    $('#ucHow').textContent = m > 0 ? `At ${cashFmt(m, cur)} a Big Book, ${amt > 0 ? cashFmt(amt, cur) + ' is ' + Math.floor(amt / m + 1e-9) + ' books' : 'each book'}, rounded down.`
+      : 'No Big Book price in this currency here: type the number of books.';
+  };
+  if(edit){
+    if(L0[0]){ $('#ucAmt').value = L0[0].amt; setSel($('#ucType'), L0[0].type); }
+    $('#ucN').value = Number(edit.qty) || 0; $('#ucCom').value = edit.comments || '';
+  }
+  $('#ucAmt').addEventListener('input', fill); $('#ucCur').addEventListener('change', fill);
+  $('#ucN').addEventListener('input', ()=>{ typed = $('#ucN').value !== ''; });
+  fill();
+  $('#ucSave').addEventListener('click', ()=>{
+    const amt = Number($('#ucAmt').value) || 0, n = Math.floor(Number($('#ucN').value) || 0);
+    if(!(amt > 0)){ $('#modalErr').textContent = 'Enter the total taken.'; return; }
+    if($('#ucN').value === '' || n < 0){ $('#modalErr').textContent = 'Enter how many books were sold.'; return; }
+    const L = [{type:$('#ucType').value, cur:$('#ucCur').value, amt}];
+    const est = $('#ucEst').checked, comments = $('#ucCom').value.trim(), tsVal = fromLocalInput($('#ucTs').value);
+    if(edit){
+      commit({action:'uncatSale', editId:edit.saleId, location:edit.location, qty:n, est, legs:L, comments, ts:tsVal},
+        st=>{ const d = findSale(st, edit.saleId); if(d) Object.assign(d, legFields(L), {qty:n, est, comments, ts:tsVal||d.ts}); },
+        'Uncategorized sales updated');
+    }else{
+      const id = newSaleId(), loc = CUR_LOC;
+      commit({action:'uncatSale', saleId:id, location:loc, qty:n, est, legs:L, comments, ts:tsVal},
+        st=>{ st.sales.push(Object.assign({saleId:id, ts:tsVal||new Date().toISOString(), location:loc, type:'UNCAT',
+                bookId:'', qty:n, est, pending:false, paid:true, delivered:true, name:'', phone:'', comments}, legFields(L))); },
+        'Uncategorized sales recorded');
+    }
+  });
+}
+
 /* ---- Upload a sales spreadsheet into an event (b288, practice first) ----
    Gita, 2026-10-22: sales taken somewhere else (a form, another sheet) go into
    an event in one go. The file is read here: one row per sale, pre-order or
@@ -15455,7 +15623,7 @@ function donationModal(edit){
    anything else is asked once per name, never guessed at. Every row is shown
    with a tick box before anything is saved, and the server takes the whole file
    or none of it (doImportSales). The Activity Log can undo the whole upload. */
-const SUP_ON = PRACTICE;
+const SUP_ON = true;   // live since b293 (Gita, 2026-10-22: "make JUST upload spreadsheets to events live")
 let SUP = null;            // the file being uploaded, kept while stock is added and the window reopened
 
 /* A CSV file as rows of cells: quoted cells may hold commas, quotes and line breaks. */
@@ -15740,9 +15908,8 @@ function deliverPickModal(id, bundle){
       <div class="err" id="modalErr"></div>
       <div class="cash-sub">Or</div>
       <div class="opts">
-        ${bundle ? '' : `<button class="opt" data-ask="1"><b>Another region will fulfill it</b>
-          <span>Sends them a request with the name, number and comments. They deliver it from their own stock; the sale stays here.</span></button>`}
-        <button class="opt" data-out="1"><b>From outside the tour</b>
+        <!-- b293 (Gita): another region is just another place in "Fulfilled from" above. -->
+        <button class="opt" data-out="1"><b>Delivered from outside the system</b>
           <span>Sourced from beyond this system entirely. Nothing comes off a shelf, and the ${n>1?'sales':'sale'} still count${n>1?'':'s'}.</span></button>
       </div>
     </div>
@@ -15768,7 +15935,6 @@ function deliverPickModal(id, bundle){
   };
   $('#dvGo').addEventListener('click', ()=>send(true));
   $('#modal').querySelector('[data-out]').addEventListener('click', ()=>send(false));
-  const ask = $('#modal').querySelector('[data-ask]'); if(ask) ask.addEventListener('click', ()=>askRegionModal(id));
 }
 function deliverModal(id, bundle){
   if(PRACTICE) return deliverPickModal(id, bundle);
@@ -20603,6 +20769,7 @@ document.addEventListener('click',e=>{
   if(a==='renameevent'){ eventModal(CUR_LOC); return; }
   if(a==='deleteevent'){ deleteEventModal(); return; }
   if(a==='donation'){ donationModal(); return; }
+  if(a==='uncat'){ uncatModal(); return; }
   if(a==='cash'){ cashModal(); return; }
   if(a==='org'){ orgModal(); return; }
   if(a==='transfers'){ transfersModal(); return; }
@@ -20778,7 +20945,7 @@ document.addEventListener('click',e=>{
   // The Summaries Portal's buttons report over every season, as that portal shows.
   if(a==='finrep'){ finShareReport(t.dataset.part||''); return; }
   if(a==='finexsort'){ const k = t.dataset.k; if(FIN.ex.sort===k) FIN.ex.dir = -FIN.ex.dir; else { FIN.ex.sort = k; FIN.ex.dir = k==='date'||k==='amount' ? -1 : 1; } finExpensesRender(); return; }
-  if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; if(t.dataset.tab==='links') FIN_LINKS = null; finRender(); return; }
+  if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; finRender(); if(t.dataset.tab==='links' && FIN_LINKS) finLinksQuiet(); return; }
   if(a==='finrbsend'){ const go = ()=>{ const n = $('#fsName'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } };
     if(FINP.sec!=='reimb') finGo('reimb').then(go); else go(); return; }
   if(a==='finest'){ const f = finScopeF(); finConvModal({place: f.e || f.r || f.s || ''}); return; }
@@ -20908,7 +21075,10 @@ document.addEventListener('click',e=>{
   if(a==='finreimb'){ FIN.rb.tab = 'pending'; finGo('reimb'); return; }
   if(a==='finreport' || a==='fincompare'){ finGo('overview'); return; }
   if(a==='fincsv'){ finCsvDownload(t.dataset.part||''); return; }
-  if(a==='finsec'){ if(t.dataset.sec==='reimb') FIN.rb.tab = 'pending'; finGo(t.dataset.sec, undefined, {reload:true}); return; }
+  /* Another section draws at once from the figures already here, and the latest
+     step in quietly behind (b293, Gita: "a flash where things disappear then
+     reappear"); it used to blank the page to "Adding everything up…" and fetch it all again. */
+  if(a==='finsec'){ if(t.dataset.sec==='reimb') FIN.rb.tab = 'pending'; finGo(t.dataset.sec).then(()=>{ FIN.due = true; finQuietRefresh(); }); return; }
   if(a==='fingo'){ finGo(FINP.sec, t.dataset.scope); return; }
   if(a==='finleave'){ finLeave(); return; }
   if(a==='finsort'){ const R = FIN.rep, k = t.dataset.k; R.sort = {k, dir: R.sort.k===k ? -R.sort.dir : (k.startsWith('d')?1:-1)}; finDrawAll(); return; }
@@ -20931,6 +21101,10 @@ document.addEventListener('click',e=>{
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
   if(a==='goseason'){ goTo('season'); woJump(); return; }
+  // The path's links (b293): a region opens whole, a sub-region opens as itself.
+  if(a==='goregion'){ setSub('', t.dataset.id); goTo('region', t.dataset.id); return; }
+  if(a==='gosub'){ setSub(t.dataset.id, CUR_REGION); goTo('region', CUR_REGION); return; }
+  if(a==='goevent'){ renderAll(); window.scrollTo(0, 0); return; }
   if(a==='gohq'){ if(!isHQ()) switchSeason(HQ_ID); return; }
   // From HQ's summaries: open that season (or HQ's own row: stay here).
   if(a==='goseasonid'){
@@ -21033,7 +21207,7 @@ document.addEventListener('click',e=>{
       return;
     }
     const s=(STATE.sales||[]).find(x=>x.saleId===id);
-    const label=s?(s.type==='DONATION'?'this donation':bookById(s.bookId).name):'this record';
+    const label=s?(s.type==='DONATION'?'this donation':isUncat(s)?'these uncategorized sales':bookById(s.bookId).name):'this record';
     if(!confirm('Delete '+label+'? '+(s&&s.type==='SALE'?'One copy will be returned to stock.':''))) return;
     commit({action:'deleteSale',saleId:id},
       st=>{const i=st.sales.findIndex(x=>x.saleId===id); if(i<0)return;
@@ -21052,6 +21226,7 @@ document.addEventListener('click',e=>{
   if(a==='editsale'){
     const s=(STATE.sales||[]).find(x=>x.saleId===t.dataset.id); if(!s)return;
     if(s.type==='DONATION'){ donationModal(s); return; }
+    if(isUncat(s)){ uncatModal(s); return; }
     saleModal({bookId:s.bookId,isPreorder:s.type==='PREORDER',loc:s.location,edit:s});
     return;
   }

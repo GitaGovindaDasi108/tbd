@@ -139,6 +139,14 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(600);
     m = await fpage(own);
     t.push(['Zagreb\'s events in the app\'s order: Kirtan before Fair', m.indexOf('Zagreb Kirtan') < m.indexOf('Zagreb Fair')]);
+    // b293: the same path as the Sales side: links, a ▾ of the others at each level, then Events….
+    t.push(['b293: the path reads Earthly HQ › Kartika › Zagreb as links, the chip just "Region"', await own.$eval('#fpNav', x => [...x.querySelectorAll('.crumb-link')].map(l => l.textContent).join(' › ')) === '🌍 Earthly HQ › Kartika › Zagreb'
+      && await own.$eval('#fpNav .lvl-chip', x => x.textContent.trim()) === 'Region']);
+    t.push(['b293: …then an Events… drop-down in the app\'s order', JSON.stringify(await own.$$eval('#fpNav select.crumb-sel[data-fpick="e"] option', o => o.map(x => x.textContent))) === JSON.stringify(['Events…', 'Zagreb Kirtan', 'Zagreb Fair'])]);
+    t.push(['b293: Zagreb\'s ▾ lists the other regions', JSON.stringify(await own.$$eval('#fpNav .crumb-more [data-fpick="r"] option', o => o.map(x => x.textContent))) === JSON.stringify(['Athens', 'Zagreb'])]);
+    await own.click('#fpNav .crumb-link[data-scope="' + SA + '"]'); await own.waitForTimeout(600);
+    t.push(['b293: Kartika\'s link goes up to the season', await own.evaluate(() => !!finScopeF().s && !finScopeF().r)]);
+    await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(600);
     // The search, before the dates, on the same line.
     const line = await own.evaluate(() => { const f = document.querySelector('#fpBody .fin-filters'); return [...f.children].map(c => c.className || c.tagName); });
     t.push(['a search field comes first on the date line', /fin-search/.test(line[0]) && line.length === 3]);
@@ -249,6 +257,16 @@ const API = 'http://api.test/';
     t.push(['…Reimbursement Settings is inside it, not on the bar', /⚙️ Settings/.test(m) && !/Reimbursement Settings/.test(await own.$eval('#fpSecs', e => e.innerText))]);
     await own.click('[data-act="finrbtab"][data-tab="settings"]'); await own.waitForTimeout(1200);
     t.push(['…its Where is a searchable drop-down', !!(await own.$('#rsPlaceC .pp-in')) && /By place/.test(await fpage(own))]);
+    // b293: each group in its own square: four across on a computer, one under another on a phone.
+    const rsTiles = () => own.$$eval('#fpBody .rs-tile', x => x.map(e => { const r = e.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.width)]; }));
+    const rsW = await rsTiles(), rsB = await own.$eval('#fpBody', e => e.getBoundingClientRect().width);
+    t.push(['b293: Reimbursement Settings are four squares side by side, each a quarter wide', rsW.length === 4 && new Set(rsW.map(x => x[0])).size === 4 && rsW.every(x => x[1] <= rsB / 4 + 2)]);
+    await own.setViewportSize({ width: 390, height: 1000 }); await own.waitForTimeout(300);
+    const rsN = await rsTiles();
+    t.push(['b293: …on a phone, one under another, nothing spilling', rsN.length === 4 && new Set(rsN.map(x => x[0])).size === 1 &&
+      await own.evaluate(() => ![...document.querySelectorAll('#fpBody *, #fpNav *')].some(e => e.offsetParent && e.getBoundingClientRect().right > document.documentElement.clientWidth + 1))]);
+    await own.screenshot({ path: shot('b293-rs-phone') });
+    await own.setViewportSize({ width: 1150, height: 1000 }); await own.waitForTimeout(300);
     // b257: a way of paying back can be removed for good, and brought back.
     const ways = () => own.$$eval('.rs-row label > span', ss => ss.map(x => x.textContent.trim()));
     const had = await ways();
