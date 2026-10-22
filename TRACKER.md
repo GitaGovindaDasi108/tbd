@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b280**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b281**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2521,3 +2521,15 @@ sub-region (or none, "general"), so a city's sales can be looked at on their own
 - **Not done yet:** a warehouse sale can't be put in a sub-region (it counts as general), and the
   old Europe Tour Spain data hasn't been merged. Both are waiting on Gita.
 - Tests: browser-subregions.js (26 checks, incl. overflow at 390 and 1150 px).
+
+## Done in b281 — the left-hand menu follows Finance
+
+Gita, 2026-10-22: "the left-hand menu isn't changing to reflect where you are". On the sales pages
+it already did. Inside Finance, the menu's place section (Season / Region / Event Admin, with Edit
+Region, Sub-regions, Close…) stayed wherever the sales pages had been left.
+- `finSyncPlace()` runs after every `finGo`. It sets `CUR_LEVEL`/`CUR_REGION`/`CUR_LOC` from
+  Finance's place, so a sub-region also picks its chip, then redraws the menu (`renderAdmin`).
+- This works only within the season the tab has open. A place in another season leaves the menu as
+  it was.
+- "Go to Sales Portal" now lands on the same place.
+- Tests: browser-subregions (+3: Region, Event, Season Admin as Finance moves).

@@ -2176,7 +2176,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b280</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b281</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -11385,8 +11385,28 @@ async function finGo(sec, scope, opt){
   const f = finScopeF(), here = f.e ? ['events', f.e] : f.r ? ['regions', f.r] : f.s ? ['seasons', f.s] : null;
   if(here && FIN.cmp.at !== FINP.scope){ FIN.cmp.kind = here[0]; FIN.cmp.series = ((FIN.D[here[0]].find(x=>x.id===here[1]))||{}).series || ''; FIN.cmp.at = FINP.scope; }
   finRender();
+  finSyncPlace();
   if(!opt.fromHistory) window.scrollTo(0, 0);
   backToBoot();
+}
+/* The left-hand menu follows the place Finance is looking at (b281, Gita:
+   "the left-hand menu isn't changing to reflect where you are"). Its place
+   section (Season / Region / Event Admin) used to stay wherever the sales
+   pages were left. Only within the season this tab has open; a place in
+   another season leaves it as it was. Going back to the sales pages lands there too. */
+function finSyncPlace(){
+  if(!STATE || !FINP.on) return;
+  const f = finScopeF();
+  let lvl = 'season', reg = '', loc = SEASON;
+  if(f.e && (STATE.events||[]).some(e=>e.eventId===f.e)){ lvl = 'event'; loc = f.e; reg = regionOfLoc(f.e); }
+  else if(f.r && regionById(f.r)){ lvl = 'region'; reg = f.r; loc = regionById(f.r).whLoc; }
+  else if(f.r || (f.s && f.s!==STATE.activeSeason)) return;
+  if(lvl!==CUR_LEVEL || reg!==CUR_REGION || loc!==CUR_LOC){
+    CUR_LEVEL = lvl; CUR_REGION = reg; CUR_LOC = loc;
+    savePos(); applyLevelTheme();
+  }
+  if(lvl==='region' && SUBR_ON) setSub(f.u || '');
+  renderAdmin();
 }
 /* Something was saved somewhere (a reimbursement sent in by link, one paid on
    another phone): Finance fills it in by itself, no refresh needed (Gita,
