@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b283';
+var SERVER_BUILD = 'b286';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -583,7 +583,11 @@ function handle(e) {
     // The activity log, fetched when it is opened rather than with every refresh.
     if (action === 'activity') {
       if (who.role === 'seller') throw new Error('That action is not available on this link.');
-      var sid = (who.role === 'admin') ? activeSeasonId_()
+      /* Universal gets the whole log, every season and Earthly HQ (b284: Gita
+         found it incomplete — wording, Finance and menu changes are app-wide but
+         were filed under whichever season the device was on, so most of them
+         never showed). The app sorts out what belongs where you are standing. */
+      var sid = (who.role === 'admin') ? ''
         : ((regionById_(String(who.regionId || '')) || {}).seasonId || activeSeasonId_());
       return raw(JSON.stringify({ ok: true, result: activityList_(who, sid) }));
     }
@@ -1052,6 +1056,7 @@ function stateJson_() {
   // The left-hand menu as Universal arranged it (b283, Reorganize Menu).
   var mo = menuOrder_();
   if (mo) st.menuOrder = mo;
+  st.payTop = payTop_();
   /* Who made each sale, by sign-in, and the cash handed to Event Leads (b223) —
      sent only once there are any, so nothing changes for a tour without them. */
   if (dbCols_('_sales').indexOf('soldById') >= 0) {
@@ -6365,7 +6370,23 @@ function doSetPayTypes(p) {
   }
   var match = {}; match[idField] = id;
   if (!dbUpdate_(sheetName, match, { payTypes: value })) throw new Error('That place is no longer listed.');
+  /* Which of them stand on their own rather than under "Digital Payments"
+     (b284, Gita): kept per place beside the list; anything else, a type added
+     later included, goes under Digital Payments. Not sent (an older phone)
+     leaves it as it was; following the level above again forgets it. */
+  if (p.top !== undefined || !ordered.length) {
+    var map = payTop_();
+    if (!ordered.length || !p.top) delete map[id];
+    else {
+      var on = {}; ordered.forEach(function (t) { on[t.toLowerCase()] = t; });
+      map[id] = (p.top || []).map(function (x) { return on[String(x).trim().toLowerCase()]; }).filter(Boolean);
+    }
+    setMeta_('payTop', JSON.stringify(map));
+  }
   markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
+}
+function payTop_() {
+  try { var o = JSON.parse(String(getMeta_('payTop', '') || '{}')); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 }
 
 /* A new payment type, typed into the sale form's search (b283, Gita: "the
@@ -9032,7 +9053,8 @@ function addedBookId_(r) {
   return hit ? hit.id : '';
 }
 
-/* The log, for one season (and, on a regional link, one region). Newest first. */
+/* The log, for one season (and, on a regional link, one region), or with no
+   season the whole of it. Newest first. */
 function activityList_(who, seasonId) {
   if (!dbHas_('_activity')) return [];
   var seasonRegions = {};
@@ -9041,10 +9063,10 @@ function activityList_(who, seasonId) {
   objectsOf_('_activity').forEach(function (r) {
     if (!r || !r.id) return;
     var regions = String(r.regions || '').split(',').filter(Boolean);
-    var mine = String(r.season) === seasonId || regions.some(function (x) { return seasonRegions[x]; });
+    var mine = !seasonId || String(r.season) === seasonId || regions.some(function (x) { return seasonRegions[x]; });
     if (!mine) return;
     if (who.role !== 'admin' && regions.indexOf(String(who.regionId)) < 0) return;
-    out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''),
+    out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''), season: String(r.season || ''),
       text: stockEntryText_(r), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
       moves: String(r.moves || '').split(',').filter(Boolean),
       canUndo: (String(r.action) === 'addBook' ? !!addedBookId_(r) : !!String(r.undo || '')) && !r.undoneAt, undoneAt: r.undoneAt || '', undoneBy: String(r.undoneBy || ''),

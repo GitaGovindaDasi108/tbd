@@ -159,7 +159,7 @@ const API = 'http://api.test/';
     t.push(['b259: Overview ⬇️ CSV: a row per event and the total, every figure with its Expected', csv.got && /^Finance Overview Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[0].includes('Expected Gross (USD)') &&
       JSON.stringify(csv.rows.map(r => r[0])) === JSON.stringify(['', 'Zagreb Kirtan', 'Zagreb Fair', 'Total']) && csv.rows[3][9] === 105 && csv.rows[3][10] === 145]);
     m = await own.$eval('#finCharts', e => e.innerText);
-    t.push(['b259: under the Overview: where the money comes from, money in and out (with Expected), by event, and expenses by type', /Where the money comes from/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
+    t.push(['b284: under the Overview, with a payment pending: Income by Source (Actual) and (Expected), money in and out (with Expected), by event, and expenses by type', /Income by Source \(Actual\)/.test(m) && /Income by Source \(Expected\)/.test(m) && /Expected Gross/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild)]);
     await own.screenshot({ path: shot('overview-charts'), fullPage: true });
     await own.click('.fin-h3 [data-act="finrep"]'); await own.waitForTimeout(400);
@@ -177,7 +177,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal());
     t.push(['To do tabs read Pending Reimbursements / Pending Payments', /Pending Reimbursements/.test(await fpage(own)) && /Pending Payments/.test(await fpage(own))]);
     // b259: no Reports or Visualize; each screen has ⬇️ CSV and 📋, and its charts at the bottom.
-    t.push(['b259: the Finance bar is Overview, Expenses & Reimbursements and To do: no Reports, no Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'todo'])]);
+    t.push(['b284: the Finance bar is Overview, Expenses, Reimbursements and To do: no Reports, no Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'reimb', 'todo'])]);
     csv = await csvOf('todo');
     t.push(['b259: To do has ⬇️ CSV beside its 📋, downloading what the tab shows', csv.got && /^Pending Reimbursements Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[1][11] === '30 USD' && csv.rows.length === 2 && csv.rows[1][1] === 'Lunch for helpers']);
     t.push(['b259: …and its charts sit under everything else', await own.evaluate(() => { const c = document.querySelector('#finCharts'); return !!c && c === document.querySelector('#fpBody').lastElementChild && /Pending Payments, by place/.test(c.innerText) && /Pending Reimbursements, by person/.test(c.innerText); })]);
@@ -210,12 +210,14 @@ const API = 'http://api.test/';
     /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);
     m = await fpage(own);
-    t.push(['Expenses: the bar says Expenses $20 with Expected Expenses $50, while Lunch is owed', /Expenses\s*\$20\s*Expected \$50/.test(m) && /Reimbursements Due\s*\$30/.test(m)]);
-    t.push(['b259: the Reimbursements Due total sits over the Reimbursements section', await own.evaluate(() => !!document.querySelector('#finRbS') && /Reimbursements Due/.test(document.querySelector('#finRbS').innerText) && !/Reimbursements Due/.test(document.querySelector('#finExS').innerText))]);
-    t.push(['b259: "Add an expense" and "Send Reimbursements Link" are small buttons on the right of each title row', await own.evaluate(() => {
-      const ok = (sel, btn) => { const h = document.querySelector(sel + ' .fin-sh'), b = h && h.querySelector(btn); if(!b) return false;
-        const hr = h.getBoundingClientRect(), br = b.getBoundingClientRect(); return Math.abs(hr.right - br.right) < 4 && br.top < hr.bottom && br.height < 34; };
-      return ok('#finExS', '[data-act="expenses"]') && ok('#finRbS', '[data-act="finsendlink"]') && !document.querySelector('#fsName'); })]);
+    t.push(['Expenses: the bar says Expenses $20 with Expected Expenses $50, while Lunch is owed', /Expenses\s*\$20\s*Expected \$50/.test(m)]);
+    const btnRight = (sel, btn) => own.evaluate(([sel, btn]) => { const h = document.querySelector(sel + ' .fin-sh'), b = h && h.querySelector(btn); if(!b) return false;
+        const hr = h.getBoundingClientRect(), br = b.getBoundingClientRect(); return Math.abs(hr.right - br.right) < 4 && br.top < hr.bottom && br.height < 34; }, [sel, btn]);
+    const exBtn = await btnRight('#finExS', '[data-act="expenses"]');
+    await own.evaluate(() => finGo('reimb', 'rg_zg')); await own.waitForTimeout(800);
+    t.push(['b284: Reimbursements is its own screen, Reimbursements Due over it, no expenses list', await own.evaluate(() => !!document.querySelector('#finRbS') && /Reimbursements Due\s*\$30/.test(document.querySelector('#finRbS').innerText) && !document.querySelector('#finExS'))]);
+    t.push(['b259: "Add an expense" and "Send Reimbursements Link" are small buttons on the right of each title row', exBtn && await btnRight('#finRbS', '[data-act="finsendlink"]') && !(await own.$('#fsName'))]);
+    await own.evaluate(() => finGo('expenses', 'rg_zg')); await own.waitForTimeout(800);
     t.push(['b259: no Add an expense or Edit Wording on the Finance bar; the way out says Go to Sales Portal', await own.evaluate(() => {
       const bar = document.querySelector('#fpSecs').innerText; return !/Add an expense|Edit Wording/.test(bar) && /Go to Sales Portal/.test(document.querySelector('#finPage').innerText) && !/Back to app/.test(document.querySelector('#finPage').innerText); })]);
     const order = () => own.$$eval('.fin-ex .fx-item .fx-w', ts => ts.map(x => x.textContent.trim()));
@@ -240,14 +242,13 @@ const API = 'http://api.test/';
     await own.click('[data-act="finexclr"][data-f="type"]'); await own.waitForTimeout(300);
     t.push(['…Clear brings them all back', (await order()).length === 2]);
     t.push(['…each row can be edited', (await own.$$('.fin-ex [data-act="expedit"]')).length === 2]);
-    t.push(['b255: Expenses and Reimbursements are one page, one button on the bar', /Expenses & Reimbursements/.test(await own.$eval('#fpSecs', e => e.innerText)) && !(await own.$('#fpSecs [data-sec="reimb"]'))]);
+    t.push(['b284: Expenses and Reimbursements are two buttons on the bar', !!(await own.$('#fpSecs [data-sec="expenses"]')) && !!(await own.$('#fpSecs [data-sec="reimb"]'))]);
+    await own.click('#fpSecs [data-sec="reimb"]'); await own.waitForTimeout(1200);
     await own.click('[data-act="finrbtab"][data-tab="pending"]'); await own.waitForTimeout(800);
     m = await fpage(own);
     const rbs = await own.$eval('#finRbS', e => e.innerText);
     t.push(['Reimbursements: Lunch is pending, with the same bar', /Lunch for helpers/.test(rbs) && /Reimbursements Due\s*\$30/.test(m) && !/Van hire/.test(rbs)]);
-    t.push(['b257: Expenses and Reimbursements are two sections side by side, Expenses on the left half', await own.evaluate(() => {
-      const a = document.querySelector('#finExS').getBoundingClientRect(), b = document.querySelector('#finRbS').getBoundingClientRect();
-      return a.right <= b.left && Math.abs(a.width - b.width) < 30 && /Van hire/.test(document.querySelector('#finExS').innerText); })]);
+    t.push(['b284: Reimbursements has its own charts: waiting by person, paid back by month', await own.evaluate(() => /Waiting to be paid back, by person/.test(document.querySelector('#finCharts').innerText))]);
     t.push(['…Paid back and Declined are separate tabs', !!(await own.$('[data-act="finrbtab"][data-tab="paid"]')) && !!(await own.$('[data-act="finrbtab"][data-tab="declined"]'))]);
     t.push(['b260: reimbursements are rows: the person, the amount, Pay and Decline', await own.evaluate(() => { const r = document.querySelector('#finRbS .rb-item .li-row');
       return !!r && /The Owner/.test(r.innerText) && /\$30/.test(r.innerText) && !!r.querySelector('[data-act="exppaid"]') && /^Pay$/.test(r.querySelector('[data-act="exppaid"]').textContent.trim()) && /^Decline$/.test(r.querySelector('[data-act="expdecline"]').textContent.trim()); })]);
@@ -280,7 +281,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal()); await own.waitForTimeout(800);
     m = await fpage(own);
     await own.screenshot({ path: shot('expenses'), fullPage: true });
-    t.push(['…and the Links tab lists it as sent to Bhima, not used yet', /Sent to Bhima · \+385 98 7654 · not used yet/.test(m)]);
+    t.push(['…and the Links tab lists it as sent to Bhima, not used yet (in its dropdown)', /Sent to Bhima · \+385 98 7654 · not used yet/.test(await own.$eval('#fpBody', e => e.textContent))]);
     // Someone not in the app opens it: no sign-in, only the form.
     const ctx = await browser.newContext({ viewport: { width: 390, height: 900 } });
     const pub = await ctx.newPage();
@@ -326,6 +327,9 @@ const API = 'http://api.test/';
     t.push(['…and a field being typed in keeps its cursor through a redraw', await pub.evaluate(() => document.activeElement && document.activeElement.id === 'xDesc' && document.activeElement.selectionStart === 3)]);
     t.push(['…ticking it fills in the number from above, and it cannot be typed over', await pub.$eval('[data-payto="phone"]', i => i.value === '+385 98 7' && i.readOnly) && await pub.$eval('#xAmt', e => e.value) === '12']);
     // b255: a second one in the same form, then check them both before sending.
+    t.push(['b284: paid back in the currency spent (dollars) unless "a different currency" is ticked: no currency menu until then', await pub.evaluate(() => {
+      const ok = EXP.opt.curs.includes(EXP.form.cur);
+      return ok ? !!document.querySelector('#xOtherCur') && !document.querySelector('#xRCur') : !document.querySelector('#xOtherCur') && !!document.querySelector('#xRCur') && /can't be paid back here/.test(document.querySelector('#modal').innerText); })]);
     await pub.click('#xMore'); await pub.waitForTimeout(400);
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
     t.push(['"Add another expense" keeps the first in a list and starts the next', /Added so far\s*1/i.test(m) && /Parking at the fair/.test(m) && await pub.$eval('#xAmt', e => e.value) === '']);
@@ -333,6 +337,9 @@ const API = 'http://api.test/';
     await pub.fill('#xAmt', '8'); await pub.fill('#xDesc', 'Tea for the volunteers');
     // b259: spent in euros, to be paid back in dollars.
     await pub.selectOption('#xCur', 'EUR'); await pub.waitForTimeout(200);
+    // b284: paid back in another currency only when ticked; until then the currency menu is not there.
+    t.push(['b284: "Same as above" is only offered when there is something above to copy, so it can never wipe a number', await pub.evaluate(() => { const was = EXP.pub.phone; EXP.pub.phone = ''; const r = expSameHas('phone'); EXP.pub.phone = was; return r === '' && expSameHas('phone') === 'phone'; })]);
+    if (await pub.$('#xOtherCur')) await pub.check('#xOtherCur'); await pub.waitForTimeout(200);
     if (await pub.$('#xRCur')) await pub.selectOption('#xRCur', 'USD');
     t.push(['b272: no exact-dollars box on the link\'s form (it is asked on the check page)', !(await pub.$('#xUsd'))]);
     t.push(['…and Save becomes "Review all 2 expenses"', /Review all 2 expenses/.test(await pub.$eval('#xSave', e => e.textContent))]);
@@ -357,7 +364,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => poll()); await own.waitForTimeout(800);       // Finance open, watching
     await pub.click('#xrGo'); await pub.waitForTimeout(2500);
     await own.evaluate(() => poll()); await own.waitForTimeout(2000);
-    t.push(['b272: Finance, open on another screen, gets the new reimbursements with no refresh', await own.evaluate(() => FINP.on && EXP.todo.reimb.some(x => /Tea for the volunteers/.test(x.desc)) && /\d/.test(document.querySelector('[data-sec="expenses"] .fin-n').textContent))]);
+    t.push(['b272: Finance, open on another screen, gets the new reimbursements with no refresh', await own.evaluate(() => FINP.on && EXP.todo.reimb.some(x => /Tea for the volunteers/.test(x.desc)) && /\d/.test(document.querySelector('[data-sec="reimb"] .fin-n').textContent))]);
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
     t.push(['sent: "received and will be processed at the earliest convenience", both listed', /2 expenses have been received and will be processed at the earliest convenience/.test(m) && /Tea for the volunteers/.test(m)]);
     t.push(['b259: the confirmation shows the dollars too', /To pay back: \$8\.80/.test(m)]);
@@ -372,8 +379,10 @@ const API = 'http://api.test/';
     t.push(['b272: …pressed, it says the request has been sent', /Your request has been sent/.test(await pub.evaluate(() => document.querySelector('#modal').innerText))]);
     await own.evaluate(() => poll()); await own.waitForTimeout(2500);
     t.push(['b272: Finance sees a red dot on Links (and on Expenses), with the request on the link', await own.evaluate(() =>
-      !!document.querySelector('[data-tab="links"] .fin-dot') && !!document.querySelector('[data-sec="expenses"] .fin-dot') && /Asked to be reactivated.*Bhima.*Two more receipts/.test(document.querySelector('#fpBody').innerText))]);
-    await own.click('.fin-ask ~ .exp-btns [data-act="finlinkoff"]'); await own.waitForTimeout(1500);
+      !!document.querySelector('[data-tab="links"] .fin-dot') && !!document.querySelector('[data-sec="reimb"] .fin-dot') && /Asked to be reactivated.*Bhima.*Two more receipts/.test(document.querySelector('#fpBody').textContent))]);
+    t.push(['b284: …that link is first, one line, in colour with a red border, Turn Back On beside the name', await own.evaluate(() => { const f = document.querySelector('.fl-item');
+      return f.classList.contains('fl-ask') && !f.classList.contains('fin-dim') && getComputedStyle(f).borderTopColor === 'rgb(217, 48, 37)' && /Turn Back On/.test(f.querySelector('.fl-row').innerText) && f.querySelector('.fl-row').getBoundingClientRect().height < 50; })]);
+    await own.click('.fl-ask [data-act="finlinkoff"]'); await own.waitForTimeout(1500);
     t.push(['b272: turning it back on clears the dot', await own.evaluate(() => !document.querySelector('.fin-dot'))]);
     await pub.goto(url); await pub.waitForTimeout(1500);
     t.push(['b272: …and the link opens the form again', !!(await pub.$('#xAmt'))]);
@@ -392,15 +401,16 @@ const API = 'http://api.test/';
       return /2 expenses · 1 declined/.test(g.querySelector('.li-row').innerText) && g.querySelector('.li-amt').textContent.trim() === '~$8.80' && g.classList.contains('open'); })]);
     await own.evaluate(() => { FIN.rbNo.clear(); finReimbRender(); }); await own.waitForTimeout(300);
     t.push(['…with a one-tap WhatsApp confirmation, ready written', /received%20and%20will%20be%20processed/.test(await own.$eval('#fpBody a[href^="https://wa.me/385987"]', a => a.href))]);
-    // b259: the charts under Expenses & Reimbursements, and its two CSVs.
+    // b259: the charts under Expenses, and the two CSVs.
+    csv = await csvOf('reimb');
+    t.push(['b259: Reimbursements ⬇️ CSV: the tab being looked at (Pending), with what to pay back', /^Reimbursements Pending /.test(csv.name) && csv.rows.some(r => r[1] === 'Tea for the volunteers' && r[11] === '8.8 USD') && csv.rows.some(r => r[1] === 'Parking at the fair' && r[11] === '12 USD')]);
+    await own.evaluate(() => finGo('expenses', 'rg_zg')); await own.waitForTimeout(1000);
     m = await own.$eval('#finCharts', e => e.innerText);
     t.push(['b276: under Expenses & Reimbursements: expenses by type, by month, and by the places under this page; no income charts', /Expenses by type/.test(m) && /Food/.test(m) && /Expenses by month/.test(m) && /Expenses by (Season|Region|Event)/.test(m) && !/Gross/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild && document.querySelectorAll('#finCharts .fin-pie').length >= 2)]);
     await own.screenshot({ path: shot('exp-charts'), fullPage: true });
     csv = await csvOf('expenses');
     t.push(['b259: Expenses ⬇️ CSV: a row per expense listed, with date, what for, who, type, amount and status', csv.rows[0].join('|').startsWith('Date|What for|Who|Type|Where|Amount|Currency|In dollars') && csv.rows.length === 1 + (await own.$$('.fin-ex .fx-item')).length]);
-    csv = await csvOf('reimb');
-    t.push(['b259: Reimbursements ⬇️ CSV: the tab being looked at (Pending), with what to pay back', /^Reimbursements Pending /.test(csv.name) && csv.rows.some(r => r[1] === 'Tea for the volunteers' && r[11] === '8.8 USD') && csv.rows.some(r => r[1] === 'Parking at the fair' && r[11] === '12 USD')]);
     /* ---- b255: dates, repeats, and the Dates & Repeats page ---- */
     await O({ action: 'placeMetaSet', kind: 'events', id: 'ev_z1', from: '2025-10-22', to: '2025-10-24' });
     await own.evaluate(() => { finLeave({quiet:true}); goTo('region', 'rg_at'); eventModal(); }); await own.waitForTimeout(1200);
@@ -521,6 +531,22 @@ const API = 'http://api.test/';
     t.push(['b267: Reimbursements Due shows each currency it will be paid in, dollars first', new RegExp('\\$[\\d,.]+ \\+ ' + (await own.evaluate(() => cashFmt(765, 'PLN'))).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(m)]);
     t.push(['b267: an exact amount well above the day\'s rate is flagged', /⚠ 82% more than that day's rate \(\$11\)/.test(await own.$eval('#finRbS', e => e.textContent)) && /⚠ 1 above the day's rate/.test(m)]);
     t.push(['b267: totals put dollars first: $169.05 + 765 zł', await own.evaluate(() => finMix({ PLN: 765, USD: 169.05 }) === '$169.05 + ' + cashFmt(765, 'PLN') && finTotals([1], () => [[765, 'PLN'], [169.05, 'USD']]) === cashFmt(169.05, 'USD') + ' + ' + cashFmt(765, 'PLN'))]);
+    // b284: waiting to be paid back somewhere else than the place being looked at: said, with where.
+    await O({ action: 'expSave', id: 'Xaway001', kind: 'reimburse', date: '2026-10-12', desc: 'Taxi', amt: 5, cur: 'USD', location: 'rg_at', category: 'Travel', method: 'Cash', reimbCur: 'USD', payTo: { phone: '+30 1' } });
+    await own.evaluate(() => { FIN.rb.tab = 'pending'; finGo('reimb', 'rg_zg', {reload:true}); }); await own.waitForTimeout(1500);
+    t.push(['b284: a reimbursement waiting in another place is flagged on Reimbursements, with where, and one tap shows every season', await own.evaluate(() => {
+      const n = document.querySelector('.fin-away'); return !!n && /1 more is waiting to be paid back elsewhere/.test(n.innerText) && /Athens/.test(n.innerText) && !!n.querySelector('[data-act="fingo"][data-scope=""]'); })]);
+    await O({ action: 'expDelete', id: 'Xaway001' });
+    // b284: choosing Where in the expense form leaves the form where it was.
+    await own.evaluate(() => expensesModal()); await own.waitForTimeout(1200);
+    await own.$eval('#xLocC .pp-in', i => i.scrollIntoView({ block: 'center' })); await own.waitForTimeout(200);
+    const whereTop = () => own.$eval('#xLocC .pp-in', i => Math.round(i.getBoundingClientRect().top));
+    const wt0 = await whereTop();
+    await own.click('#xLocC .pp-in'); await own.fill('#xLocC .pp-in', 'Kirtan'); await own.waitForTimeout(200);
+    await own.click('#xLocC .pp-row[data-v="ev_z1"]'); await own.waitForTimeout(800);
+    const wt1 = await whereTop();
+    t.push(['b284: choosing Where keeps the form still (the box stays put) and Where is chosen' + (Math.abs(wt1 - wt0) > 2 ? ' ' + wt0 + '→' + wt1 : ''), Math.abs(wt1 - wt0) <= 2 && await own.evaluate(() => EXP.form.location === 'ev_z1')]);
+    await own.evaluate(() => closeModal()); await own.waitForTimeout(300);
     // Dollars received: 35 € taken at the Kirtan fetched $40.
     await sell('eur1', 'ev_z1', 'sr_en', { legs: [{ type: 'Cash', cur: 'EUR', amt: 35 }] });
     await own.evaluate(() => finGo('overview', '', {reload:true})); await own.waitForTimeout(1800);
@@ -581,10 +607,14 @@ const API = 'http://api.test/';
         E.forEach(x => D.expenses.push(Object.assign({}, x, { id: x.id + m, d: mm, date: mm, usd: (x.usd || 0) * (m * 13 % 7 + 1) * 60 }))); } });
     const spilt = [];
     for (const w of [1440, 1000, 820, 700, 560, 390, 360]) { await own.setViewportSize({ width: w, height: 1000 });
-      for (const sec of ['overview', 'expenses', 'todo']) { await own.evaluate(s => finGo(s, ''), sec); await own.waitForTimeout(500);
+      for (const sec of ['overview', 'expenses', 'reimb', 'todo']) { await own.evaluate(s => finGo(s, ''), sec); await own.waitForTimeout(500);
         (await spill(own)).forEach(x => spilt.push(w + ' ' + sec + ': ' + x));
         if (w === 390 || w === 1440) await own.locator('#fpBody').screenshot({ path: shot('b271-' + w + '-' + sec) }); } }
     t.push(['b272: no overflow on any Finance screen, from a wide computer to a small phone' + (spilt.length ? ' — ' + spilt.slice(0, 4).join(' | ') : ''), !spilt.length]);
+    await own.setViewportSize({ width: 1440, height: 1000 }); await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(600);
+    t.push(['b284: on a computer the charts sit several to a row, none wider than half the page', await own.evaluate(() => {
+      const g = document.querySelector('#finCharts .fc-grid'), W = g.getBoundingClientRect().width, bs = [...g.querySelectorAll('.fc-box')].map(b => b.getBoundingClientRect());
+      return bs.length > 2 && bs.every(b => b.width <= W / 2 + 1) && bs[0].top === bs[1].top; })]);
     await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(500);
     t.push(['b272: the Overview charts Net beside Gross and Expenses, by place and month by month', await own.evaluate(() => { const c = document.querySelector('#finCharts');
       return /Month by month: Gross, Expenses and Net/.test(c.innerText) && [...c.querySelectorAll('.fc-keys')].every(k => /Net/.test(k.textContent)); })]);
@@ -620,11 +650,11 @@ const API = 'http://api.test/';
     const lspill = [];
     // b276 (Gita, 2026-10-21): Expenses & Reimbursements in the menu's Finance section.
     const finAct = await lv.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="finance"] .sn-item')].map(b => b.dataset.act));
-    t.push(['b276: the menu\'s Finance section has Expenses & Reimbursements, after Overview', finAct.indexOf('finexpenses') === finAct.indexOf('finoverview') + 1 && finAct.includes('finexpenses')]);
+    t.push(['b284: the menu\'s Finance section has Expenses then Reimbursements, after Overview', finAct.indexOf('finexpenses') === finAct.indexOf('finoverview') + 1 && finAct.indexOf('finreimb') === finAct.indexOf('finexpenses') + 1]);
     await lv.evaluate(() => document.querySelector('#sideNav [data-act="finexpenses"]').click()); await lv.waitForTimeout(1500);
-    t.push(['b276: …and it opens Expenses & Reimbursements', await lv.evaluate(() => FINP.on && FINP.sec === 'expenses')]);
-    t.push(['b276: Expenses and Reimbursements side by side are the same height', await lv.evaluate(() => {
-      const a = document.querySelector('#finExS'), b = document.querySelector('#finRbS'); return !!a && !!b && Math.abs(a.offsetHeight - b.offsetHeight) <= 1; })]);
+    t.push(['b284: …Expenses opens the Expenses screen', await lv.evaluate(() => FINP.on && FINP.sec === 'expenses' && !!document.querySelector('#finExS') && !document.querySelector('#finRbS'))]);
+    await lv.evaluate(() => document.querySelector('#sideNav [data-act="finreimb"]').click()); await lv.waitForTimeout(1500);
+    t.push(['b284: …and Reimbursements its own', await lv.evaluate(() => FINP.on && FINP.sec === 'reimb' && !!document.querySelector('#finRbS') && !document.querySelector('#finExS'))]);
     await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1200);
     { // b281: a long note hidden in Finance stays hidden (the server keeps the first 300 characters of its key).
       const cap = () => lv.evaluate(() => { const e = [...document.querySelectorAll('#fpBody .muted-note')].find(x => /Consignment money/.test(x.textContent)); return e ? { key: e.getAttribute('data-key'), shown: !!e.offsetParent } : null; });
@@ -647,9 +677,9 @@ const API = 'http://api.test/';
     t.push(['b276: the Finance search reads "Search for Season, Region, or Event" when nothing is chosen', await lv.evaluate(() => {
       const i = document.querySelector('#finPP .pp-in'); return !!i && i.placeholder === 'Search for Season, Region, or Event' && i.value === ''; })]);
     await lv.evaluate(() => finGo('settings', '', {reload:true})); await lv.waitForTimeout(1500);
-    t.push(['b276: currencies for paying back start all ticked', await lv.evaluate(() => { const c = [...document.querySelectorAll('[data-rsc]')]; return c.length > 0 && c.every(x => x.checked); })]);
-    await lv.evaluate(() => { const r = document.querySelector('input[name="rsCurMode"][value="own"]'); r.checked = true; r.dispatchEvent(new Event('change')); }); await lv.waitForTimeout(200);
-    t.push(['b276: …and choosing "Only these" leaves them ticked, ready to untick', await lv.evaluate(() => [...document.querySelectorAll('[data-rsc]')].every(x => x.checked && !x.disabled))]);
+    t.push(['b284: currencies for paying back are checkboxes only, ticked as the place selected has them, ready to untick', await lv.evaluate(() => {
+      const c = [...document.querySelectorAll('[data-rsc]')], lv0 = RS.d.levels.find(l => l.id === RS.id) || RS.d.levels[0], inh = rsInherited(lv0).curs, base = inh.length ? inh : RS.d.curs;
+      return c.length > 0 && !document.querySelector('input[name="rsCurMode"]') && c.every(x => x.checked === base.includes(x.dataset.rsc) && !x.disabled); })]);
     // b277: kinds of expense, in Settings and on the form.
     t.push(['b278: no Finance To do in Settings or the menu on the live app', !(await lv.$('[data-act="fintodo"]'))]);
     t.push(['b278: Settings lists how expenses were paid, Other last', await lv.evaluate(() => { const g = [...document.querySelectorAll('.rs-cats')][1]; if (!g) return false;
@@ -706,6 +736,7 @@ const API = 'http://api.test/';
       const o = [...document.querySelectorAll('#finExS .fx-item .fx-o')];
       return edge('.fx-o') && edge('.fx-a') && getComputedStyle(o[0]).color === getComputedStyle(document.querySelector('#finExS .fx-d')).color
         && rows.slice(1).every(r => !/\(/.test(r.querySelector('.fx-a').textContent)); })]);
+    await lv.evaluate(() => finGo('reimb', '', {reload:true})); await lv.waitForTimeout(1500);
     t.push(['b279: Reimbursement lines show it the same way, lined up', await lv.evaluate(() => {
       const rows = [...document.querySelectorAll('#finRbS .rb-item .li-row')]; if (!rows.length) return true;
       const e = sel => { const v = rows.map(r => { const x = r.querySelector(sel); return x ? x.getBoundingClientRect().right : 0; }); return Math.max(...v) - Math.min(...v) <= 2; };
@@ -713,9 +744,9 @@ const API = 'http://api.test/';
     await lv.evaluate(() => openModal('<h3>Plain</h3><div class="m-body">x</div>')); await lv.waitForTimeout(100);
     t.push(['b278: every window gets its ✕', await lv.evaluate(() => !!document.querySelector('#modal h3 .x'))]);
     await lv.evaluate(() => closeModal()); await lv.waitForTimeout(300);
-    t.push(['b274: Finance on live has Overview and Expenses & Reimbursements, no To do', await lv.evaluate(() => !document.querySelector('[data-sec="todo"]') && !!document.querySelector('[data-sec="expenses"]'))]);
+    t.push(['b274: Finance on live has Overview, Expenses and Reimbursements, no To do', await lv.evaluate(() => !document.querySelector('[data-sec="todo"]') && !!document.querySelector('[data-sec="expenses"]') && !!document.querySelector('[data-sec="reimb"]'))]);
     for (const w of [1150, 390]) { await lv.setViewportSize({ width: w, height: 1000 });
-      for (const sec of ['overview', 'expenses', 'settings']) { await lv.evaluate(s => finGo(s, '', {reload:true}), sec); await lv.waitForTimeout(900);
+      for (const sec of ['overview', 'expenses', 'reimb', 'settings']) { await lv.evaluate(s => finGo(s, '', {reload:true}), sec); await lv.waitForTimeout(900);
         (await spill(lv)).forEach(x => lspill.push(w + ' ' + sec + ': ' + x)); } }
     t.push(['b274: no overflow on the live app\'s Finance either' + (lspill.length ? ' — ' + lspill.slice(0, 3).join(' | ') : ''), !lspill.length]);
     await lv.evaluate(() => finLeave()); await lv.waitForTimeout(400);

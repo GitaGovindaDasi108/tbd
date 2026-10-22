@@ -451,10 +451,20 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      unless Finance has named it otherwise (finSeries). */
   const seriesOf = name => String(name || '').replace(/\b(19|20)\d{2}\b/g, '').replace(/[\s\-–—,·:()]+$/g, '')
     .replace(/^[\s\-–—,·:()]+/g, '').replace(/\s{2,}/g, ' ').trim() || String(name || '');
+  /* The sums behind Finance, worked out once per change (b284, Gita: "slow
+     for finances to load"): every sale in every season is gone through, so the
+     answer is kept until anything is saved (the revision moves) or five
+     minutes pass (rates). Each request gets its own copy to dress. */
+  let finMemo = null;
+  function finSums() {
+    const key = String(app.getRev_()) + '|' + Math.floor(Date.now() / 300000);
+    if (!finMemo || finMemo.key !== key) finMemo = { key, json: JSON.stringify(app.financeData_()) };
+    return JSON.parse(finMemo.json);
+  }
   function finData(w) {
     if (!isFin(w)) throw new Error('The finance section is for Finance.');
     fresh();
-    const D = app.financeData_(), own = cleanSeries(parse(kv.getProp('finSeries'), {}));
+    const D = finSums(), own = cleanSeries(parse(kv.getProp('finSeries'), {}));
     const dt = getDates();
     ['seasons', 'regions', 'events'].forEach(k => D[k].forEach(x => {
       x.series = own[k][x.id] || seriesOf(x.name);
