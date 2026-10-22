@@ -1527,6 +1527,16 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .rb-item .li-row > .badge{flex:0 0 126px;text-align:center;box-sizing:border-box}
 @media (max-width:560px){ .rb-item .li-orig{flex-basis:74px;font-size:11px} .rb-item .li-amt{flex-basis:64px} .rb-item .li-row > .badge{flex-basis:112px} }
 body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
+.mo-list{display:flex;flex-direction:column;gap:8px}
+.mo-sec{border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:var(--paper2)}
+.mo-sh,.mo-row{display:flex;align-items:center;gap:8px;min-width:0}
+.mo-sh{font-weight:700;color:var(--plum)}
+.mo-row{padding:4px 0 4px 14px;border-top:1px dashed var(--line);font-size:13.5px}
+.mo-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mo-btns{display:flex;gap:4px;align-items:center;flex:none}
+.mo-btns select{max-width:130px;font-size:12.5px;padding:2px 4px}
+.mo-note{margin:2px 0 2px 14px}
+@media (max-width:560px){ .mo-btns select{max-width:96px} .mo-row{padding-left:6px} }
 .fx-head{cursor:default;padding:0 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .fx-head .fx-h{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;box-shadow:none}
 .fx-d{color:var(--muted);font-size:12.5px;text-align:left}
@@ -2177,7 +2187,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b282</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b283</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5514,7 +5524,7 @@ const SN_ITEMS = {
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses & Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
-  editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
+  editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
 };
 if(PRACTICE) SN_ITEMS.practice = ['🧪','Leave Practice'];
@@ -5535,9 +5545,75 @@ const SN_SECTIONS = [
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
-  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates','fincarry']},
+  {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
+/* The sections and their items in the order Universal arranged them (b283,
+   Reorganize Menu): a section's listed items first, in that order, then any
+   of its own not moved elsewhere; sections not listed keep their places after. */
+function snOrdered(order){
+  const O = order === undefined ? (STATE && STATE.menuOrder) || null : order;
+  const secs = SN_SECTIONS.map(sec=>({sec, acts:(sec.acts||[]).slice()}));
+  if(!O || !O.sections) return secs;
+  const by = {}; secs.forEach(x=>{ by[x.sec.key] = x; });
+  const known = new Set(SN_SECTIONS.flatMap(x=>x.acts||[]));
+  const placed = new Set(Object.values(O.items||{}).flat());
+  secs.forEach(x=>{ if(!x.sec.fam) x.acts = x.acts.filter(a=>!placed.has(a)); });
+  Object.keys(O.items||{}).forEach(k=>{ const x = by[k]; if(x && !x.sec.fam) x.acts = (O.items[k]||[]).filter(a=>known.has(a)).concat(x.acts); });
+  const keys = (O.sections||[]).filter(k=>by[k]);
+  return keys.map(k=>by[k]).concat(secs.filter(x=>!keys.includes(x.sec.key)));
+}
+/* App Development › Reorganize Menu (b283, Gita): move sections and their
+   items up and down, or an item into another section. Everyone's menu follows. */
+function menuOrderModal(){
+  let M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, fam:!!x.sec.fam, acts:x.acts.slice()}));
+  const name = a => (SN_ITEMS[a] || ['•', a]);
+  openModal(`${mHead('Reorganize Menu')}<div class="m-body">
+      <div class="hint">Move sections and the items in them with ▲ ▼, or put an item in another section. The menu changes for everyone once you save. Each person still sees only the items their access allows.</div>
+      <div id="moList" class="mo-list"></div>
+      <div class="err" id="modalErr"></div></div>
+    <div class="m-foot"><button type="button" class="btn btn-ghost btn-sm" id="moReset">Back to the original order</button>
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="moSave">Save</button></div>`, true);
+  const draw = () => {
+    const homes = M.filter(x=>!x.fam);
+    $('#moList').innerHTML = M.map((s,i)=>`<div class="mo-sec">
+        <div class="mo-sh"><span class="mo-t">${s.icon} ${esc(s.label)}</span><span class="mo-btns">
+          <button type="button" class="btn btn-ghost btn-xs" data-mo="sup" data-i="${i}" ${i ? '' : 'disabled'} title="Move this section up">▲</button>
+          <button type="button" class="btn btn-ghost btn-xs" data-mo="sdown" data-i="${i}" ${i < M.length-1 ? '' : 'disabled'} title="Move this section down">▼</button></span></div>
+        ${s.fam ? '<div class="hint mo-note">This place’s own actions, as they come.</div>' : s.acts.length ? s.acts.map((a,j)=>`<div class="mo-row">
+          <span class="mo-t">${name(a)[0]} ${esc(name(a)[1])}</span><span class="mo-btns">
+          <button type="button" class="btn btn-ghost btn-xs" data-mo="up" data-i="${i}" data-j="${j}" ${j ? '' : 'disabled'} title="Move up">▲</button>
+          <button type="button" class="btn btn-ghost btn-xs" data-mo="down" data-i="${i}" data-j="${j}" ${j < s.acts.length-1 ? '' : 'disabled'} title="Move down">▼</button>
+          <select data-mo="to" data-i="${i}" data-j="${j}" title="Section">${homes.map(h=>`<option value="${esc(h.key)}" ${h.key===s.key?'selected':''}>${esc(h.label)}</option>`).join('')}</select></span></div>`).join('')
+          : '<div class="hint mo-note">Nothing here now.</div>'}</div>`).join('');
+  };
+  draw();
+  $('#moList').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-mo]'); if(!b) return;
+    const i = Number(b.dataset.i), j = Number(b.dataset.j), mv = b.dataset.mo;
+    const swap = (arr, a, c) => { [arr[a], arr[c]] = [arr[c], arr[a]]; };
+    if(mv==='sup') swap(M, i, i-1); else if(mv==='sdown') swap(M, i, i+1);
+    else if(mv==='up') swap(M[i].acts, j, j-1); else if(mv==='down') swap(M[i].acts, j, j+1);
+    draw();
+  });
+  $('#moList').addEventListener('change', e=>{
+    const sel = e.target.closest('select[data-mo="to"]'); if(!sel) return;
+    const from = M[Number(sel.dataset.i)], to = M.find(x=>x.key===sel.value);
+    if(!to || to===from) return;
+    const [a] = from.acts.splice(Number(sel.dataset.j), 1); to.acts.push(a); draw();
+  });
+  const save = order => commit({action:'setMenuOrder', order}, st=>{ st.menuOrder = order; },
+    order ? 'Menu arranged' : 'Menu back to its original order');
+  $('#moSave').addEventListener('click', ()=>{
+    const items = {}; M.filter(x=>!x.fam).forEach(x=>{ items[x.key] = x.acts.slice(); });
+    save({sections: M.map(x=>x.key), items}); closeModal();
+  });
+  $('#moReset').addEventListener('click', ()=>{
+    if(!confirm('Put the menu back to the app’s own order, for everyone?')) return;
+    save(null); closeModal();
+  });
+}
 /* One menu row from a panel button: its own attributes (so it does exactly
    what the button does) and the menu's icon and words. Any count it carried is dropped. */
 function snRow(html, key){
@@ -5593,8 +5669,10 @@ function renderSideNav(fams){
   if(!PRACTICE && isAdmin() && ME && !byKey.fincarry) byKey.fincarry = `<button class="btn" data-act="fincarry">📥 Bring Wording &amp; Settings from Practice</button>`;
   // Back to the sales side from Finance (b282, Gita): for anyone with Finance, shown only while in Finance.
   if(byKey.finoverview && !byKey.finleave) byKey.finleave = `<button class="btn" data-act="finleave">🏠 Go to Sales Portal</button>`;
-  const sections = SN_SECTIONS.map(sec=>{
-    const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
+  // Reorganize Menu (b283): Universal, in App Development.
+  if(isAdmin() && !byKey.menuorder) byKey.menuorder = `<button class="btn" data-act="menuorder">↕ Reorganize Menu</button>`;
+  const sections = snOrdered().map(({sec, acts})=>{
+    const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : acts.filter(k=>byKey[k]);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
   }).filter(x=>x.rows.length);
   const support = byKey.org ? snRow(byKey.org, 'org').replace('<span class="sn-ic">•</span><span class="sn-t">App and Sales Support</span>', '<span class="sn-ic">🛟</span><span class="sn-t">Support</span>') : '';
@@ -7597,6 +7675,67 @@ function payTypeOptions(includeMixed,includeGift){
   return opts;
 }
 
+/* ---- Payment type as a searchable dropdown (b283, Gita: "with so many
+   payment types… a searchable dropdown in the sales portal") ----
+   The select stays, hidden, as the form's source of truth: the search sets it
+   and fires its change, and anything that sets it by code shows in the search.
+   Universal, Finance and coordinators can type a new type and "＋ Add" it, as
+   with the kinds of expense; it joins the list where the sale is made. */
+const mayAddPayType = () => !!STATE && (isAdmin() || STATE.role==='coordinator' || financeMe()==='F');
+function ptAddLocal(st, loc, name){
+  const ev = (st.events||[]).find(e=>e.eventId===loc);
+  let tgt, list;
+  if(ev && (ev.payTypes||[]).length){ tgt = ev; list = ev.payTypes.slice(); }
+  else {
+    const rid = ev ? ev.regionId : (regionOfLoc(loc) || CUR_REGION);
+    tgt = (st.regions||[]).find(x=>x.regionId===rid); if(!tgt) return;
+    list = (tgt.payTypes||[]).length ? tgt.payTypes.slice() : (st.payTypes||['Cash','Card','Zelle','PayPal','Wise','Other','Gift']).slice();
+  }
+  if(list.some(t=>t.toLowerCase()===name.toLowerCase())) return;
+  let at = list.findIndex(t=>/^(other|gift)$/i.test(t)); if(at < 0) at = list.length;
+  list.splice(at, 0, name); tgt.payTypes = list;
+}
+function ptAddType(name, sel){
+  name = String(name).replace(/[,\s]+/g, ' ').trim().slice(0, 40);
+  if(!name) return;
+  const have = [...sel.options].find(o=>o.value.toLowerCase()===name.toLowerCase());
+  if(have){ sel.value = have.value; sel.dispatchEvent(new Event('change', {bubbles:true})); return have.value; }
+  const loc = CUR_LOC;
+  commit({action:'addPayType', location: loc, name}, st=>ptAddLocal(st, loc, name), '“' + name + '” added as a payment type here', {keepOpen:true});
+  // Every payment-type list in this window gets it, before Mixed.
+  document.querySelectorAll('#modal select#ptype, #modal select[data-mix="type"]').forEach(x=>{
+    if([...x.options].some(o=>o.value===name)) return;
+    const o = document.createElement('option'); o.value = name; o.textContent = name;
+    x.insertBefore(o, [...x.options].find(y=>y.value==='Mixed' || y.value==='Gift') || null);
+    if(x._ptItems) x._ptItems.splice(x._ptItems.findIndex(i=>i.v==='Mixed' || i.v==='Gift') < 0 ? x._ptItems.length : x._ptItems.findIndex(i=>i.v==='Mixed' || i.v==='Gift'), 0, {v:name, l:name});
+  });
+  sel.value = name; sel.dispatchEvent(new Event('change', {bubbles:true}));
+  return name;
+}
+function ptSearchable(sel){
+  if(!sel || sel._ptItems) return;
+  const id = 'pts' + Math.random().toString(36).slice(2, 9);
+  const items = sel._ptItems = [...sel.options].map(o=>({v:o.value, l:o.textContent}));
+  const shown = () => (items.find(i=>i.v===sel.value) || {}).l || ((sel.selectedOptions||[])[0] || {}).textContent || '';
+  sel.insertAdjacentHTML('beforebegin', comboHTML(id, shown(), 'Search payment types'));
+  sel.hidden = true;
+  const box = document.getElementById(id), inp = box.querySelector('.pp-in');
+  box.classList.add('pt-search');
+  // Set by code (editing a sale, Mixed): the search shows it.
+  const d = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  Object.defineProperty(sel, 'value', { configurable:true, get(){ return d.get.call(this); },
+    set(v){ d.set.call(this, v); const now = d.get.call(this);
+      // A type this list no longer offers (an old sale being edited) still shows.
+      if(now && !items.some(i=>i.v===now)) items.push({v:now, l:((this.selectedOptions||[])[0] || {}).textContent || now});
+      if(box._set) box._set(now); else if(document.activeElement!==inp) inp.value = shown(); } });
+  comboBind(id, items, sel.value, v=>{ sel.value = v; sel.dispatchEvent(new Event('change', {bubbles:true})); },
+    mayAddPayType() ? name=>ptAddType(name, sel) : null);
+}
+// Any payment-type list that appears in a window becomes searchable.
+if(typeof MutationObserver!=='undefined' && document.getElementById('modal'))
+  new MutationObserver(()=>{ document.querySelectorAll('#modal select#ptype, #modal select[data-mix="type"]').forEach(ptSearchable); })
+    .observe(document.getElementById('modal'), {childList:true, subtree:true});
+
 /* ---- Mixed payments: as many as it takes, and the rest fills itself ----
    Type one payment and the next one still blank fills with what is left of the
    total. When the currencies differ, what is left is worked out with today's
@@ -9236,7 +9375,8 @@ function comboBind(id, items, cur, onPick, add){
         x.tag?`<span class="pp-tag">${esc(x.tag)}</span>`:''}</div>`).join('') + addRow : '<div class="pp-empty">Nothing matches.</div>';
     list.hidden = false;
   };
-  const addIt = () => { const t = inp.value.trim(); list.hidden = true; inp.blur(); if(t) add(t); };
+  // An add that names what it chose (b283) leaves the box showing it.
+  const addIt = () => { const t = inp.value.trim(); list.hidden = true; inp.blur(); if(!t) return; const v = add(t); if(typeof v==='string' && items.some(x=>x.v===v)){ cur = v; inp.value = label(v); } };
   const pick = v => { cur = v; inp.value = label(v); list.hidden = true; inp.blur(); onPick(v); };
   inp.addEventListener('focus', ()=>{ inp.select(); draw(''); });
   inp.addEventListener('input', ()=>draw(inp.value));
@@ -9247,6 +9387,8 @@ function comboBind(id, items, cur, onPick, add){
   list.addEventListener('mousedown', e=>e.preventDefault());
   list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(r) r.dataset.add ? addIt() : pick(r.dataset.v); });
   inp.addEventListener('blur', ()=>setTimeout(()=>{ if(document.activeElement===inp) return; list.hidden = true; inp.value = label(cur); }, 150));
+  // Chosen by code (b283): the box follows.
+  box._set = v => { cur = v; if(document.activeElement!==inp) inp.value = label(v); };
 }
 /* The places an expense can belong to, as combo items: seasons, their regions, their events. */
 function expPlaceItems(places){
@@ -16881,8 +17023,9 @@ function payTypesModal(){
     else row.parentNode.insertBefore(sib, row);
   });
 
+  $('#ptNew').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#ptAdd').click(); } });
   $('#ptAdd').addEventListener('click',()=>{
-    const name=$('#ptNew').value.trim();
+    const name=$('#ptNew').value.replace(/[,\s]+/g,' ').trim();
     if(!name){ $('#modalErr').textContent='Type a name first.'; return; }
     if([...document.querySelectorAll('#modal .pt-box')].some(b=>b.value.toLowerCase()===name.toLowerCase())){
       $('#modalErr').textContent='That one is already listed.'; return;
@@ -16903,6 +17046,10 @@ function payTypesModal(){
   });
 
   $('#ptSave').addEventListener('click',()=>{
+    /* Typed in "Add another" but not added: it is kept, not lost (b283, Gita:
+       "I added a payment type at the regional level and it didn't stick"). */
+    const pending = $('#ptNew').value.replace(/[,\s]+/g,' ').trim();
+    if(pending && ![...document.querySelectorAll('#modal .pt-box')].some(b=>b.value.toLowerCase()===pending.toLowerCase())) $('#ptAdd').click();
     const types=[...document.querySelectorAll('#modal .pt-box')].filter(b=>b.checked).map(b=>b.value);
     if(!types.length){ $('#modalErr').textContent='Keep at least one way of paying.'; return; }
     commit({action:'setPayTypes', kind, id, types},
@@ -19244,7 +19391,7 @@ const GS_ALSO = {
   activity:'log history undo changes', org:'support help contacts phone',
   sharelinks:'links share sellers', eventorder:'order sort arrange events',
   specreport:'report whatsapp', report:'report whatsapp summary',
-  drivefolder:'spreadsheets sheets google drive files', editwording:'wording labels text words',
+  drivefolder:'spreadsheets sheets google drive files', editwording:'wording labels text words', menuorder:'menu order arrange organize reorganise sidebar',
   admins:'admin access users people permissions', signout:'log out logout',
   cash:'cash money tracker tracking track', costs:'costs expenses spending bills', paytypes:'payment types upi zelle paypal',
   addstock:'add stock books printer new', xfer:'transfer move stock books send',
@@ -19742,6 +19889,7 @@ document.addEventListener('click',e=>{
       .then(()=>toast('Link copied')).catch(()=>{ prompt('Copy this link:', url); });
     return;
   }
+  if(a==='menuorder'){ menuOrderModal(); return; }
   if(a==='editwording'){
     EDIT_WORDING = !EDIT_WORDING; lblBodyClass(); if(!EDIT_WORDING) labelInlineEnd(true);
     try{ localStorage.setItem('tbs_edit_wording', EDIT_WORDING?'1':'0'); }catch(e){}

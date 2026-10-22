@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b280';
+var SERVER_BUILD = 'b283';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -658,6 +658,8 @@ function handle(e) {
         case 'editBundle':       doEditBundle(params);       break;
         case 'donate':           doDonate(params);           break;
         case 'setPayTypes':      doSetPayTypes(params);      break;
+        case 'addPayType':       result = doAddPayType(params); break;
+        case 'setMenuOrder':     result = doSetMenuOrder(params); break;
         case 'setPayTypeCurrency': result = doSetPayTypeCurrency(params); break;
         case 'createEvent':      result = doCreateEvent(params);  break;
         case 'setEventHidden':   result = doSetEventHidden(params); break;
@@ -1047,6 +1049,9 @@ function stateJson_() {
   // The currency each payment type arrives in, once any has been set (b210).
   var ptc = payTypeCurrencies_();
   if (Object.keys(ptc).length) st.payTypeCur = ptc;
+  // The left-hand menu as Universal arranged it (b283, Reorganize Menu).
+  var mo = menuOrder_();
+  if (mo) st.menuOrder = mo;
   /* Who made each sale, by sign-in, and the cash handed to Event Leads (b223) —
      sent only once there are any, so nothing changes for a tour without them. */
   if (dbCols_('_sales').indexOf('soldById') >= 0) {
@@ -2181,6 +2186,8 @@ var COORD_EXTRA = {
   transferBulk:1, createEvent:1, adjustStockBulk:1, setStockBulk:1, closeLocation:1, saveCloseDraft:1,
   // Add Stock: books on their way in, and switching on an existing title here.
   sendShipment:1, regionAddBooks:1,
+  // A payment type typed into the sale form (b283), at their own region's places.
+  addPayType:1,
   // Books in transit: marking their own region's deliveries as arrived.
   receiveShipment:1,
   // Transfer Existing Stock: moves within the region, and its sub-warehouses.
@@ -6361,6 +6368,57 @@ function doSetPayTypes(p) {
   markDirtyRegions_([kind === 'event' ? regionOfLoc_(id) : id]);
 }
 
+/* A new payment type, typed into the sale form's search (b283, Gita: "the
+   same way we can add types of expenses"). It joins the list where the sale is
+   being made: the event's own list if it has one, else its region's; a place
+   still following the tour starts from the tour's list. It goes in before
+   Other and Gift. Universal, Finance and the region's coordinator may add. */
+function doAddPayType(p) {
+  var name = String(p.name || '').replace(/[,\s]+/g, ' ').trim().slice(0, 40);
+  if (!name) throw new Error('Type the name of the payment type.');
+  if (/^mixed$/i.test(name)) throw new Error('“Mixed” is already how several payments are recorded.');
+  var loc = String(p.location || '');
+  var ev = eventById_(loc), kind, id, list;
+  if (ev && parsePayList_(ev.payTypes).length) { kind = 'event'; id = ev.eventId; list = parsePayList_(ev.payTypes); }
+  else {
+    var reg = regionById_(ev ? ev.regionId : (regionOfLoc_(loc) || loc));
+    if (!reg) throw new Error('Which place is this for?');
+    kind = 'region'; id = reg.regionId;
+    list = parsePayList_(reg.payTypes);
+    if (!list.length) list = PAY_TYPES.slice();
+  }
+  var same = list.filter(function (t) { return t.toLowerCase() === name.toLowerCase(); })[0];
+  if (same) return { type: same, kind: kind, id: id, types: list };
+  var at = list.length;
+  for (var i = 0; i < list.length; i++) if (/^(other|gift)$/i.test(list[i])) { at = i; break; }
+  list.splice(at, 0, name);
+  doSetPayTypes({ kind: kind, id: id, types: list });
+  return { type: name, kind: kind, id: id, types: list };
+}
+
+/* The left-hand menu, arranged by hand (b283, Gita: "a Reorganize Menu
+   function, whereby I can organize the menu by hand"). Owner only (no link
+   may run it). Kept as { sections: [key, ...], items: { sectionKey: [act, ...] } };
+   an empty order goes back to the app's own. */
+function menuOrder_() {
+  try { var o = JSON.parse(String(getMeta_('menuOrder', '') || 'null')); return o && o.sections ? o : null; } catch (e) { return null; }
+}
+function doSetMenuOrder(p) {
+  var key = function (x) { return String(x || '').replace(/[^a-z0-9_]/gi, '').slice(0, 40); };
+  var o = p.order || null;
+  if (!o || !o.sections) { setMeta_('menuOrder', ''); return null; }
+  var out = { sections: [], items: {} };
+  (o.sections || []).slice(0, 40).forEach(function (k) { k = key(k); if (k && out.sections.indexOf(k) < 0) out.sections.push(k); });
+  var seen = {};
+  Object.keys(o.items || {}).slice(0, 40).forEach(function (sk) {
+    var list = [];
+    (o.items[sk] || []).slice(0, 80).forEach(function (a) { a = key(a); if (a && !seen[a]) { seen[a] = 1; list.push(a); } });
+    out.items[key(sk)] = list;
+  });
+  setMeta_('menuOrder', JSON.stringify(out));
+  return out;
+}
+
 /* Titles an event is not offering.
 
    Hidden only for selling: a hidden title can still be pre-ordered, because
@@ -8906,6 +8964,8 @@ function describe_(action, p, result, moves, who) {
             undo: (!(_activityBefore && _activityBefore.existed) && (result || p.id)) ? { type: 'cost', id: String(result || p.id) } : null }; break;
     case 'deleteCost':   d = { text: 'Deleted a cost' }; break;
     case 'setPayTypes':  d = { text: 'Changed the payment types taken' + (p.location ? ' at ' + locLabel_(p.location) : '') }; break;
+    case 'setMenuOrder': d = { text: p.order ? 'Rearranged the left-hand menu' : 'Put the left-hand menu back to the app\'s own order' }; break;
+    case 'addPayType':   d = { text: 'Added “' + String(p.name || '').trim() + '” as a payment type' + (p.location ? ' at ' + locLabel_(p.location) : '') }; break;
     case 'setPayTypeCurrency':
       d = { text: (p.cur && String(p.cur).toUpperCase() !== 'NONE')
         ? p.type + ' payments now arrive in ' + String(p.cur).toUpperCase()

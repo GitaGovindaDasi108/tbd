@@ -186,7 +186,10 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
        for (g), or their first usable one. Code.gs is told who that is directly
        (setTrustedWho_), so nothing in the request can claim more. */
     let acting = null;
-    if (!linkKey && !universal) {
+    /* Finance may add a payment type from the sale form (b283, Gita), though it
+       has no selling role of its own: that one action, as the owner would. */
+    const finAdd = !linkKey && !universal && action === 'addPayType' && auth.grantsOf(me).some(g => g.role === 'F');
+    if (!linkKey && !universal && !finAdd) {
       acting = people.acting(places(), auth.grantsOf(me), String(p.g || ''));
       if (!acting.who) {
         return reply({ ok: false, noAccess: true, me: meInfo(me),
@@ -237,7 +240,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       } catch (err) { return text; }
     }
     // Who is asking, told to Code.gs directly: the role acted in, their name, their address (b223).
-    if (universal) app.setTrustedWho_({ role: 'admin', name: auth.nameOf(me), email: me, grant: 'U' });
+    if (universal || finAdd) app.setTrustedWho_({ role: 'admin', name: auth.nameOf(me), email: me, grant: universal ? 'U' : 'F' });
     if (acting) {
       app.setTrustedWho_(Object.assign({ name: auth.nameOf(me), email: me, grant: acting.grant.role }, acting.who));
       const out = answer(e);
