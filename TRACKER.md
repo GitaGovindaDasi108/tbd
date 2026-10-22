@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b286**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b287**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,13 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b287
+
+Live fixes after b286 (Gita, 2026-10-22):
+- Finance never sits blank: a device copy that won't draw is dropped and the figures fetched afresh once; if the server doesn't answer (45 s limit) Finance says why with "↻ Try again". The device copy is skipped when it would be over ~900 KB or there's no room, so it never crowds out the rest of the app's storage.
+- Phone cards with no Sell button: the room under "N distributed" halved (16px to 8px).
+- The Consignment bubble greys out with the language bubble when nothing is in stock (a closed place).
 
 ## Done in b286
 
