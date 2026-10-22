@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b290**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b292**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,33 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b292
+Gita's next list (Live app changes, 2026-10-22), on the same PR as b291.
+- Finance To do is gone everywhere, practice too (FIN_SECS, FIN_BTNS; an old #finance/todo address opens the Overview).
+- Finance-only people (no sales side) get Send Reimbursements Link and Add an Expense on the Finance bar too, beside Leave Finance.
+- App Development › Reorganize Menu is drag and drop: drag a section by its heading or an item by its row, into any section; a dashed gap shows where it lands. Every item is listed, the place's own actions too (Change Event Order, Change Regional Order, Edit/Rename, Sub-regions, Upload Sales Spreadsheet, Close/Reopen, Delete), arranged once for every level (SN_PLACE_KEY). Change Event Order and Change Regional Order are now two menu items (they were one key, so one hid the other).
+- The menu's round ☰ no longer sits over an open window.
+- Practice: delivering a pre-order asks "Fulfilled from" in a searchable drop-down of every warehouse, store and open event, each with its copies, starting where you are (deliverPickModal); Another region and Outside the tour stay below.
+
+## Done in b291
+Gita's list of 16 (Live app changes, 2026-10-22) and two later asks.
+- Live: Finance holds still. Its menus and page colour no longer change while you move between places; only the figures change. The left-hand menu and Finance's own menu redraw only when the place really changed. The page scrolls to the top only for a new section.
+- Live: Reimbursement Settings start at the Finance person's region, and each pay-back method is an on/off tick (rsDraw/rsSave store only what differs from the inherited setting).
+- Live: the Add an Expense window has only the ✕ (the Finance To do and Close buttons are gone).
+- Live: Finance's top row has 🧾 Add an Expense where "← Go to Sales Portal" was (that link is in the menu).
+- Live: Dollars received is off the Expenses screen. Practice: every "~$…" figure on a Finance screen is a button that opens Dollars received for the exact amount (finEstMark).
+- Live: a General expense shows no "Who".
+- Live: Send Reimbursements Link asks "For" which place (defaults to where you are; FIN.sendPlace). The email's subject is "One-time reimbursement link" and its body is Gita's text (reimbEmail).
+- Live: a link's form always accepts its own place, including Earthly HQ, Finance-only places and closed places (server inReach/options). Before, those links said "Choose where the expense belongs."
+- Live: reimbursement links can be deleted (🗑 Delete link in the link's details, expLinkDel). Expenses already sent through it stay.
+- Live: turning Edit Wording off removes every pencil. While it is on, the menu reads "Turn off Editing Wording".
+- Live: the events drop-down says "X Summary" for a region or sub-region (was "All of X"), with its events indented under it.
+- Practice: picking a season's name opens its page at the Warehouse Overview, unfolded (woJump).
+- Live: Send Reimbursements Link sits beside Add an Expense on the Finance bar (off the Reimbursements title row).
+- Live: on a phone the Expenses list's Dollars column is wide enough that the figures sit right under their title.
+- Live: closing a region closes its open events at the same moment (Code.gs regionEventsSet_); reopening it reopens those, and an event closed on its own stays closed.
+- Live: on a phone the top total cards show the title, the number sold, then the pre-orders on a line of their own.
 
 ## Done in b290
 

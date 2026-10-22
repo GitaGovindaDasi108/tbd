@@ -319,6 +319,20 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
     t.push(['View as is refused on the live server', !r1.ok]);
   }
 
+  // b291: a link for Earthly HQ starts its form there and saves there; Finance can delete a link.
+  {
+    const lk = (await O({ action: 'expLinkMake', place: 'rg_hq', toName: 'Bhima', toPhone: '+385987654' })).result.key;
+    let q = await ask({ k: lk, by: 'Bhima', action: 'expOptions' });
+    t.push(['b291: an Earthly HQ link\'s form starts at Earthly HQ', q.ok && q.result.location === 'rg_hq']);
+    q = await ask({ k: lk, by: 'Bhima', action: 'expSave', id: 'Xhq1aaaa', kind: 'reimburse', location: 'rg_hq', desc: 'Train', cur: 'EUR', amt: 12,
+      method: q.result.methods[0] && q.result.methods[0].name, payTo: { phone: '+385987654' }, reimbCur: 'USD', contactPhone: '+385987654' });
+    t.push(['b291: …and its expense is saved there', q.ok && q.result.location === 'rg_hq']);
+    q = await O({ action: 'expLinkDel', key: lk });
+    t.push(['b291: Finance deletes a link', q.ok && !q.result.some(l => l.key === lk)]);
+    q = await ask({ k: lk, by: 'Bhima', action: 'expOptions' });
+    t.push(['b291: …and it no longer opens', !q.ok]);
+  }
+
   // Receipts are not in the state, nor in the copies.
   const state = JSON.stringify((await O({ action: 'getState' })).state);
   t.push(['receipts never travel in the state', !state.includes(png.slice(0, 40))]);

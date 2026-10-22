@@ -23,6 +23,14 @@ A({ action: 'closeLocation', kind: 'region', id: 'rg_0' });
 A({ action: 'closeLocation', kind: 'region', id: 'rg_1' });
 t.push(['closed regions go below the open ones, A to Z', regs().join() === [first, 'Malta', 'Austria', 'Wales'].join()]);
 
+// b291: closing a region closes its events with it; reopening it reopens those, not one closed on its own.
+const ev = id => A({ action: 'getState' }).state.events.find(e => e.eventId === id) || {};
+A({ action: 'closeLocation', kind: 'region', id: R });
+t.push(['b291: closing a region closes every event under it', ['ev_0', 'ev_2', 'ev_3'].every(id => !!ev(id).closedAt)]);
+A({ action: 'reopenLocation', kind: 'region', id: R });
+t.push(['b291: reopening it reopens the events that closed with it', ['ev_0', 'ev_2', 'ev_3'].every(id => !ev(id).closedAt)]);
+t.push(['b291: …and an event closed on its own day stays closed', !!ev('ev_1').closedAt]);
+
 let bad = 0;
 t.forEach(([what, pass]) => { if (!pass) bad++; console.log((pass ? 'PASS ' : 'FAIL ') + what); });
 console.log(bad ? bad + ' failed' : 'all ' + t.length + ' passed');

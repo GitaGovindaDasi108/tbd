@@ -170,17 +170,11 @@ const API = 'http://api.test/';
     r = await repText(own);
     t.push(['📋 Report at the top: the whole section, with headings', /^\*Zagreb · Kartika — Finance Overview\*\n\n\*OVERVIEW\*\nBig Books Sold/.test(r) && /\*BY EVENT\*/.test(r) && !/SALES BY TITLE/.test(r)]);
     await own.evaluate(() => closeModal());
-    await own.click('[data-act="finsec"][data-sec="todo"]'); await own.waitForTimeout(1200);
-    await own.click('.fp-h [data-act="finrep"]'); await own.waitForTimeout(400);
-    r = await repText(own);
-    t.push(['the To do\'s 📋: what is owed and the expenses', /\*Pending Payments\*\nSri Radha \(English\) - \$40/.test(r) && /\*Every Expense\*/.test(r) && /Van hire/.test(r)]);
-    await own.evaluate(() => closeModal());
-    t.push(['To do tabs read Pending Reimbursements / Pending Payments', /Pending Reimbursements/.test(await fpage(own)) && /Pending Payments/.test(await fpage(own))]);
-    // b259: no Reports or Visualize; each screen has ⬇️ CSV and 📋, and its charts at the bottom.
-    t.push(['b284: the Finance bar is Overview, Expenses, Reimbursements and To do: no Reports, no Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'reimb', 'todo'])]);
-    csv = await csvOf('todo');
-    t.push(['b259: To do has ⬇️ CSV beside its 📋, downloading what the tab shows', csv.got && /^Pending Reimbursements Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[1][11] === '30 USD' && csv.rows.length === 2 && csv.rows[1][1] === 'Lunch for helpers']);
-    t.push(['b259: …and its charts sit under everything else', await own.evaluate(() => { const c = document.querySelector('#finCharts'); return !!c && c === document.querySelector('#fpBody').lastElementChild && /Pending Payments, by place/.test(c.innerText) && /Pending Reimbursements, by person/.test(c.innerText); })]);
+    // b292: no To do anywhere, practice too.
+    t.push(['b292: the Finance bar is Overview, Expenses and Reimbursements: no To do, Reports or Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'reimb'])
+      && await own.evaluate(() => !FIN_BTNS('U').some(b => /To do/.test(b)))]);
+    await own.evaluate(() => finGo('todo', 'rg_zg')); await own.waitForTimeout(800);
+    t.push(['b292: an old To do address opens the Overview', /#finance\/overview/.test(own.url())]);
     await own.evaluate(() => finGo('report', 'rg_zg')); await own.waitForTimeout(800);
     t.push(['b259: an old Reports address opens the Overview', /#finance\/overview/.test(own.url())]);
     // Pencils on the Finance page and in its windows.
@@ -202,10 +196,10 @@ const API = 'http://api.test/';
     await own.keyboard.press('Control+A'); await own.keyboard.type('Donations Received'); await own.keyboard.press('Enter'); await own.waitForTimeout(1500);
     t.push(['Enter keeps it: the tile now reads Donations Received', /Donations Received/.test(await fpage(own)) && !(await own.$('.lbl-in'))]);
     // A button's words by its pencil; Esc leaves them alone.
-    await own.click('#fpSecs [data-sec="todo"] .pencil'); await own.waitForTimeout(300);
-    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/todo/.test(own.url())]);
+    await own.click('#fpSecs [data-sec="reimb"] .pencil'); await own.waitForTimeout(300);
+    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/reimb/.test(own.url())]);
     await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
-    t.push(['Esc leaves it as it was', /To do/.test(await own.$eval('#fpSecs [data-sec="todo"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
+    t.push(['Esc leaves it as it was', /Reimbursements/.test(await own.$eval('#fpSecs [data-sec="reimb"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(500);
     /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);
@@ -213,13 +207,13 @@ const API = 'http://api.test/';
     t.push(['Expenses: the bar says Expenses $20 with Expected Expenses $50, while Lunch is owed', /Expenses\s*\$20\s*Expected \$50/.test(m)]);
     const btnRight = (sel, btn) => own.evaluate(([sel, btn]) => { const h = document.querySelector(sel + ' .fin-sh'), b = h && h.querySelector(btn); if(!b) return false;
         const hr = h.getBoundingClientRect(), br = b.getBoundingClientRect(); return Math.abs(hr.right - br.right) < 4 && br.top < hr.bottom && br.height < 34; }, [sel, btn]);
-    const exBtn = await btnRight('#finExS', '[data-act="expenses"]');
+    const exBtn = !(await own.$('#finExS [data-act="expenses"]')) && !!(await own.$('#fpSecs [data-act="expenses"]'));
     await own.evaluate(() => finGo('reimb', 'rg_zg')); await own.waitForTimeout(800);
     t.push(['b284: Reimbursements is its own screen, Reimbursements Due over it, no expenses list', await own.evaluate(() => !!document.querySelector('#finRbS') && /Reimbursements Due\s*\$30/.test(document.querySelector('#finRbS').innerText) && !document.querySelector('#finExS'))]);
-    t.push(['b259: "Add an expense" and "Send Reimbursements Link" are small buttons on the right of each title row', exBtn && await btnRight('#finRbS', '[data-act="finsendlink"]') && !(await own.$('#fsName'))]);
+    t.push(['b291: Send Reimbursements Link and Add an Expense sit side by side on the Finance bar, not on the title rows', exBtn && await own.evaluate(() => { const a = document.querySelector('#fpSecs [data-act="finsendlink"]'), b = document.querySelector('#fpSecs [data-act="expenses"]'); return !!a && !!b && a.nextElementSibling === b && !document.querySelector('#finRbS [data-act="finsendlink"]'); }) && !(await own.$('#fsName'))]);
     await own.evaluate(() => finGo('expenses', 'rg_zg')); await own.waitForTimeout(800);
-    t.push(['b259: no Add an expense or Edit Wording on the Finance bar; the way out says Go to Sales Portal', await own.evaluate(() => {
-      const bar = document.querySelector('#fpSecs').innerText; return !/Add an expense|Edit Wording/.test(bar) && /Go to Sales Portal/.test(document.querySelector('#finPage').innerText) && !/Back to app/.test(document.querySelector('#finPage').innerText); })]);
+    t.push(['b291: the Finance bar has 🧾 Add an Expense where Go to Sales Portal was (that is in the menu); no Edit Wording', await own.evaluate(() => {
+      const bar = document.querySelector('#fpSecs').innerText; return /Add an Expense/.test(bar) && !/Edit Wording|Go to Sales Portal/.test(bar) && !/Back to app/.test(document.querySelector('#finPage').innerText); })]);
     const order = () => own.$$eval('.fin-ex .fx-item .fx-w', ts => ts.map(x => x.textContent.trim()));
     t.push(['b260: an expense is one row: date, what for and amount; the rest opens beneath it', await own.evaluate(() => {
       const it = document.querySelector('.fin-ex .fx-item'), r = it.querySelector('.fx-row');
@@ -256,7 +250,7 @@ const API = 'http://api.test/';
     await own.click('[data-act="finrbtab"][data-tab="settings"]'); await own.waitForTimeout(1200);
     t.push(['…its Where is a searchable drop-down', !!(await own.$('#rsPlaceC .pp-in')) && /By place/.test(await fpage(own))]);
     // b257: a way of paying back can be removed for good, and brought back.
-    const ways = () => own.$$eval('.rs-row > span', ss => ss.map(x => x.textContent.trim()));
+    const ways = () => own.$$eval('.rs-row label > span', ss => ss.map(x => x.textContent.trim()));
     const had = await ways();
     await own.click('[data-act="rsgone"][data-m="Bank transfer"]'); await own.waitForTimeout(1200);
     t.push(['b257: 🗑 removes a way of paying back for good', had.includes('Bank transfer') && !(await ways()).includes('Bank transfer') && /Removed for good: Bank transfer/.test(await fpage(own))]);
@@ -560,8 +554,9 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal());
     t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
-    t.push(['b269: …it sits beside Add an expense, and counts what is written down', await own.evaluate(() => { const b = [...document.querySelectorAll('#fpBody .fin-sh-btns button')].map(x => x.textContent.trim());
-      return b.length === 2 && /Dollars received \(1\)/.test(b[0]) && /Add an expense/.test(b[1]); })]);
+    t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen', await own.evaluate(() => !document.querySelector('#fpBody .fin-sh-btns') && !/Dollars received/.test(document.querySelector('#fpBody').innerText))]);
+    t.push(['b291: in practice a "~$" figure is a button that opens Dollars received', await own.evaluate(() => { const b = document.querySelector('#fpBody .fin-est'); if(!b || !/^−?~\$/.test(b.textContent)) return false;
+      b.click(); const ok = !!document.querySelector('#cvAmt'); closeModal(); return ok; })]);
     t.push(['b276: the Expenses screen charts expenses only (income is on the Overview)', await own.evaluate(() => /Expenses by month/.test(document.querySelector('#finCharts').innerText) && !/Gross|Net/.test(document.querySelector('#finCharts').innerText))]);
     t.push(['b269: every colour key in the charts keeps its square, even squeezed beside big figures', await own.evaluate(() => {
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });

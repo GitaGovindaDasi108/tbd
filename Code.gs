@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b290';
+var SERVER_BUILD = 'b292';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -1488,7 +1488,10 @@ function doCloseLocation(p) {
     }));
   }
 
-  setClosed_(kind, id, new Date());
+  var closedNow = new Date();
+  setClosed_(kind, id, closedNow);
+  // Closing a region closes everything under it (b291, Gita): its open events close with it, at the same moment.
+  if (kind === 'region') regionEventsSet_(id, '', closedNow);
   // A region's dollars stop moving the day it closes.
   if (kind === 'region') freezeRegionRates_(id, null);
   /* Only redraw the spreadsheets if the closing actually changed a number.
@@ -1631,8 +1634,22 @@ function backfillRegionRates_() {
   return done;
 }
 
+/* A region's events closed (or reopened) with it: only those whose closing
+   matches `from` ('' = still open), so an event closed on its own day stays
+   closed when the region reopens. */
+function regionEventsSet_(regionId, from, to) {
+  var t = function (v) { if (!v) return 0; var d = new Date(v).getTime(); return isNaN(d) ? -1 : d; };
+  var want = t(from);
+  objectsOf_('_events').forEach(function (e) {
+    if (String(e.regionId || '') !== String(regionId)) return;
+    if (t(e.closedAt) !== want) return;
+    dbUpdate_('_events', { eventId: String(e.eventId) }, { closedAt: to });
+  });
+}
 function doReopenLocation(p) {
   var kind = String(p.kind || 'event'), id = String(p.id || '');
+  // Reopening a region reopens the events that closed with it (b291).
+  if (kind === 'region') { var was = regionById_(id); if (was && was.closedAt) regionEventsSet_(id, was.closedAt, ''); }
   setClosed_(kind, id, '');
   // Open again: its dollars follow the rates again until it closes once more.
   if (kind === 'region' && dbCols_('_regions').indexOf('frozenRates') >= 0) {

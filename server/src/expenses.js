@@ -152,6 +152,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   }
   function inReach(w, pl) {
     const r = w.reach;
+    // A link's own place is always where its form records (b291: Earthly HQ, a Finance-only place or a closed one too).
+    if (w.open && w.linkPlace && pl.id === w.linkPlace) return true;
     if (pl.kind === 'fin') return isFin(w);
     if (r.all) return true;
     if (pl.kind === 'hq') return false;
@@ -179,7 +181,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
              Universal reach every place, closed ones too (expenses come in after an
              event ends). A link stays with the places still running. */
           const shut = !open(pl);
-          if (shut && w.open) return;
+          if (shut && w.open && pl.id !== w.linkPlace) return;
           const label = labelOf(P, pl);
           out.push(Object.assign(pl, { closed: shut, label: shut ? label.replace(/^(.*?)( · |$)/, '$1 (closed)$2') : label }));
         });
@@ -372,7 +374,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   function options(w, p) {
     const F = facts(), rules = getRules();
     const list = placeList(w);
-    const want = String(p.location || '');
+    if (w.open && w.linkPlace && !list.some(x => x.id === w.linkPlace)) {
+      const lp = placeOf(w.P, w.linkPlace);
+      if (lp) list.unshift(Object.assign(lp, { closed: false, label: labelOf(w.P, lp) }));
+    }
+    const want = String(p.location || '') || (w.open ? w.linkPlace || '' : '');
     /* A new expense starts at Earthly HQ for whoever reaches it (Gita,
        2026-10-20), and can be moved to its event. Anyone else starts where they
        are (or their only place). */
@@ -924,6 +930,14 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (L[k]) { L[k].off = p.on ? false : true; delete L[k].ask; if (p.on) { delete L[k].used; delete L[k].usedAt; } kv.setProp('reimbLinks', JSON.stringify(L)); }
     return linkList(w);
   }
+  /* Deleting a link (b291, Gita): gone from the list for good; anything already
+     sent in through it stays, as an expense. */
+  function linkDel(w, p) {
+    if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
+    const L = getLinks(), k = clip(p.key, 60);
+    if (L[k]) { delete L[k]; kv.setProp('reimbLinks', JSON.stringify(L)); }
+    return linkList(w);
+  }
   /* What the form needs to say at the top: which place, if one. */
   function linkInfo(w) {
     if (!w.open) throw new Error('This is for a reimbursement link.');
@@ -1049,7 +1063,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const READS = { expLinkList: 1, expLinkInfo: 1, expOptions: 1, expList: 1, expTodo: 1, receiptGet: 1, finData: 1, expRulesGet: 1, placeMetaGet: 1, finCarryOut: 1 };
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
-  const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
+  const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkDel: linkDel, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, finPlaceAdd, finPlaceEdit, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
   /* One request: who is asking, then the action. */
