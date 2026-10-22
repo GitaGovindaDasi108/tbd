@@ -123,13 +123,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .navbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 4px}
 .crumbs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
 .fin-share{font-size:13px;margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow-wrap:anywhere}
-.subr-bar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:2px 0 6px;min-width:0}
-.subr-chip{border:1px solid var(--lvl-line,var(--line-d));background:var(--paper);color:var(--lvl,var(--plum));
-  border-radius:999px;padding:3px 11px;font-size:12.5px;font-weight:600;cursor:pointer;max-width:100%;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.subr-chip.on{background:var(--lvl-soft,#FBEEDA);border-color:var(--lvl,var(--plum));font-weight:800}
 .subr-note{font-size:12px;color:var(--muted);margin:-2px 0 6px}
-.subr-chip.subr-set{padding:3px 8px;color:var(--muted)}
 .sr-sec{font-weight:800;font-size:13px;margin:14px 0 6px;color:var(--ink)}
 .sr-row{display:flex;gap:8px;align-items:center;margin:0 0 6px;min-width:0}
 .sr-row input,.sr-row select{flex:1 1 auto;min-width:0}
@@ -2187,7 +2181,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b284</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b285</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2847,8 +2841,16 @@ let SUB_IN = false;
 function withSub(fn){
   const sid = SUB_IN ? '' : curSub();
   if(!sid) return fn();
-  const keep = STATE; SUB_IN = true; STATE = subState(CUR_REGION, sid);
-  try{ return fn(); } finally{ STATE = keep; SUB_IN = false; }
+  const keep = STATE; SUB_IN = true; SUB_FULL = keep; STATE = subState(CUR_REGION, sid);
+  try{ return fn(); } finally{ STATE = keep; SUB_IN = false; SUB_FULL = null; }
+}
+/* The whole region again, inside a sub-region's drawing: the place picker lists
+   every sub-region so you can move between them (b285). */
+let SUB_FULL = null;
+function wholeRegion(fn){
+  if(!SUB_IN || !SUB_FULL) return fn();
+  const sub = STATE; STATE = SUB_FULL;
+  try{ return fn(); } finally{ STATE = sub; }
 }
 /** The org chart / settings scope for the page we're on. */
 /** Human name for the page whose chart/settings we're editing. */
@@ -5297,16 +5299,18 @@ function renderTabs(){
     h += `<span class="crumb-sep">›</span>
       <span class="crumb-pick">
         <select class="crumb-sel ${CUR_LEVEL==='event'?'on':''}" data-act="pickloc">
-          ${opt(reg.whLoc,'🏠 Warehouse',CUR_LOC===reg.whLoc)}
-          ${(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
+          ${opt(reg.whLoc, subRegionsOf(reg.regionId).length ? '🏠 Warehouse · all of ' + reg.name : '🏠 Warehouse', CUR_LOC===reg.whLoc && !curSub())}
+          ${wholeRegion(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
             const subs = subRegionsOf(reg.regionId);
             if(!subs.length) return eventsOfRegion(reg.regionId).map(evOpt).join('');
-            // Sub-regions (b280): each one's events under its name, the rest after.
-            const known = new Set(subs.map(x=>x.id));
+            /* Sub-regions (b280): each one's events under its name, the rest after.
+               The sub-region itself is the first choice in its group (b285: this
+               replaces the line of chips under the bar). */
+            const known = new Set(subs.map(x=>x.id)), cs = curSub();
             const rest = eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId)));
-            return subs.map(x=>{ const evs = eventsOfSub(reg.regionId, x.id);
-                return evs.length ? `<optgroup label="${esc(x.name)}">${evs.map(evOpt).join('')}</optgroup>` : ''; }).join('') +
-              (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })()}
+            return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 All of ' + x.name, cs===x.id)}${
+                eventsOfSub(reg.regionId, x.id).map(evOpt).join('')}</optgroup>`).join('') +
+              (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })}
           ${opt('__new','＋ New event…',false)}
         </select>
       </span>`;
@@ -5314,15 +5318,10 @@ function renderTabs(){
   const shut = CUR_LEVEL==='event' ? closureOf(CUR_LOC)
              : CUR_LEVEL==='region' ? regionClosure(CUR_REGION) : '';
   h += `</div></div>`;
-  /* Sub-regions (b280): All, or one of them. The warehouse stays shared. */
-  const subs = CUR_LEVEL==='region' && reg ? subRegionsOf(reg.regionId) : [];
-  if(subs.length){
-    const cur = curSub();
-    h += `<div class="subr-bar">${[{id:'', name:'All of ' + reg.name}].concat(subs).map(x=>
-        `<button type="button" class="subr-chip${x.id===cur?' on':''}" data-act="subpick" data-id="${esc(x.id)}">${esc(x.name)}</button>`).join('')}${
-        isAdmin() ? `<button type="button" class="subr-chip subr-set" data-act="subregions" title="Sub-regions">⚙</button>` : ''}</div>${
-        cur ? `<div class="subr-note">Selling straight from the warehouse counts for all of ${esc(reg.name)}, not for ${esc(subName(reg.regionId, cur))} alone.</div>` : ''}`;
-  }
+  /* Sub-regions (b280): one is chosen in the place picker above (b285). The
+     warehouse stays shared. */
+  const curS = CUR_LEVEL==='region' && reg ? curSub() : '';
+  if(curS) h += `<div class="subr-note">Selling straight from the warehouse counts for all of ${esc(reg.name)}, not for ${esc(subName(reg.regionId, curS))} alone.</div>`;
   if(shut){
     h += `<div class="closed-note ${shut}">
       ${shut==='complete'
@@ -5353,6 +5352,9 @@ function renderTabs(){
   if(ls) ls.addEventListener('change',()=>{
     const v=ls.value;
     if(v==='__new'){ renderTabs(); eventModal(); return; }
+    if(v.startsWith('__sub:')){ setSub(v.slice(6)); clearLogFilters();
+      if(CUR_LEVEL==='region') renderAll(); else goTo('region', CUR_REGION); return; }
+    if(isWarehouseLoc(v)) setSub('');         // the warehouse is all of the region
     goTo(isWarehouseLoc(v)?'region':'event', isWarehouseLoc(v)?regionOfLoc(v):v);
   });
 }
@@ -15601,13 +15603,15 @@ function mergeRegionModal(rid){
   const into = regionById(rid); if(!into) return;
   const others = regionsList().filter(x=>x.regionId!==rid && x.regionId!==HQ_REGION);
   if(!others.length) return;
+  // A region with sub-regions, or no events of its own, is only their container:
+  // nothing of its own needs a sub-region (Gita, 2026-10-22).
   const hasSubs = subRegionsOf(rid).length > 0;
   openModal(`
     ${mHead('Bring a region into ' + into.name)}
     <div class="m-body">
       <div class="field"><label>Region to bring in</label><select id="mgFrom">${others.map(x=>`<option value="${esc(x.regionId)}">${esc(x.name)}</option>`).join('')}</select></div>
       <div class="field"><label>Its sub-region will be called</label><input id="mgFromSub" type="text" maxlength="60"></div>
-      ${hasSubs ? '' : `<div class="field"><label>${esc(into.name)}'s own events go in the sub-region</label><input id="mgIntoSub" type="text" maxlength="60" value="${esc(into.name)}"></div>`}
+      ${hasSubs || !eventsOfRegion(rid).length ? '' : `<div class="field"><label>${esc(into.name)}'s own events go in the sub-region</label><input id="mgIntoSub" type="text" maxlength="60" value="${esc(into.name)}"></div>`}
       <div class="field"><label>Name of the combined region</label><input id="mgName" type="text" maxlength="80" value="${esc(into.name)}" placeholder="e.g. Spain"></div>
       <div class="hint" id="mgWhat"></div>
       <div class="field"><label>Type <b id="mgTypeName"></b> to confirm</label><input id="mgConfirm" type="text" autocomplete="off"></div>
@@ -19915,7 +19919,6 @@ document.addEventListener('click',e=>{
   if(a==='report'){ const part=t.dataset.part||'';
     if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
-  if(a==='subpick'){ setSub(t.dataset.id||''); clearLogFilters(); renderAll(); return; }
   if(a==='subregions'){ subRegionsModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list

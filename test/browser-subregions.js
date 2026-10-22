@@ -65,6 +65,7 @@ const API = 'http://api.test/';
   // b284: Madrid made separately, as its own region with its own warehouse.
   await O({ action: 'createRegion', regionId: 'rg_md', whLoc: 'wh_md', name: 'Madrid', currencies: 'EUR,USD', season: SA });
   await O({ action: 'createEvent', eventId: 'ev_md1', name: 'Madrid Mela', regionId: 'rg_md', season: SA });
+  await O({ action: 'createRegion', regionId: 'rg_es', whLoc: 'wh_es', name: 'Iberia', currencies: 'EUR,USD', season: SA });
   await O({ action: 'adjustStockBulk', location: 'wh_md', items: [{ bookId: 'sr_en', delta: 7 }], override: true, season: SA });
   await O({ action: 'adjustStockBulk', location: 'ev_md1', items: [{ bookId: 'sr_en', delta: 5 }], override: true, season: SA });
   await sell('md1', 'ev_md1', 'sr_en', { legs: [{ type: 'Cash', cur: 'USD', amt: 40 }] });
@@ -131,10 +132,10 @@ const API = 'http://api.test/';
   try {
     const own = await open('owner@example.com', 'The Owner');
     await own.evaluate(() => goTo('region', 'rg_sp')); await own.waitForTimeout(500);
-    const chips = await own.$$eval('.subr-bar .subr-chip', b => b.map(x => x.textContent.trim()));
-    t.push(['the Spain page has All of Spain · Madrid · Barcelona, and ⚙', JSON.stringify(chips) === JSON.stringify(['All of Spain', 'Madrid', 'Barcelona', '⚙'])]);
+    t.push(['b285: no line of chips under the bar any more', await own.evaluate(() => !document.querySelector('.subr-bar, .subr-chip'))]);
+    t.push(['b285: the warehouse is "all of Spain" in the place picker', (await own.$eval('[data-act="pickloc"] option', o => o.textContent)) === '🏠 Warehouse · all of Spain']);
     const groups = await own.$$eval('[data-act="pickloc"] optgroup', g => g.map(x => x.label + ':' + [...x.children].map(o => o.textContent).join('|')));
-    t.push(['the place picker groups events by sub-region, then the general ones', JSON.stringify(groups) === JSON.stringify(['Madrid:Madrid Class', 'Barcelona:Barcelona Festival', 'Spain, general:Online Kirtan'])]);
+    t.push(['the place picker groups events by sub-region, each sub-region first, then the general ones', JSON.stringify(groups) === JSON.stringify(['Madrid:🗺 All of Madrid|Madrid Class', 'Barcelona:🗺 All of Barcelona|Barcelona Festival', 'Spain, general:Online Kirtan'])]);
     t.push(['All of Spain: every sale (6)', await own.evaluate(() => scopedSales().length) === 6]);
     let r = await own.evaluate(() => buildReport(''));
     t.push(['the report on All of Spain adds a By sub-region block, Big Books and Adventures apart', /— BY SUB-REGION —\nMadrid\nBig Books = 2 Sold \+ 1 Gift = 3 Distributed/.test(r)
@@ -143,11 +144,11 @@ const API = 'http://api.test/';
     for (const w of [1150, 390]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(300); (await spill(own)).forEach(x => spills.push(w + ' region: ' + x)); }
     await own.setViewportSize({ width: 390, height: 900 }); await own.screenshot({ path: shot('region-phone') });
     await own.setViewportSize({ width: 1150, height: 900 });
-    await own.click('.subr-chip[data-id="sr_m"]'); await own.waitForTimeout(400);
+    await own.selectOption('[data-act="pickloc"]', '__sub:sr_m'); await own.waitForTimeout(400);
     t.push(['Madrid chosen: the page counts Madrid\'s 3 sales only', await own.evaluate(() => withSub(()=>scopedSales().map(x=>x.saleId).sort().join(','))) === 'm1,m2,m3']);
     t.push(['…the title says Spain › Madrid', /Spain › Madrid/.test(await own.$eval('#whTitle', e => e.textContent))]);
-    t.push(['…the place picker lists Madrid\'s events only', JSON.stringify(await own.$$eval('[data-act="pickloc"] option', o => o.map(x => x.textContent))) === JSON.stringify(['🏠 Warehouse', 'Madrid Class', '＋ New event…'])]);
-    t.push(['…the Madrid chip is the one lit', await own.$eval('.subr-chip.on', e => e.dataset.id) === 'sr_m']);
+    t.push(['b285: …the place picker still lists every sub-region, to move between them', JSON.stringify(await own.$$eval('[data-act="pickloc"] option', o => o.map(x => x.textContent))) === JSON.stringify(['🏠 Warehouse · all of Spain', '🗺 All of Madrid', 'Madrid Class', '🗺 All of Barcelona', 'Barcelona Festival', 'Online Kirtan', '＋ New event…'])]);
+    t.push(['b285: …with All of Madrid the one chosen', await own.$eval('[data-act="pickloc"]', e => e.value) === '__sub:sr_m']);
     r = await own.evaluate(() => buildReport(''));
     t.push(['…the report is Madrid\'s, with no By sub-region block', /Big Books Total|Sri Radha/.test(r) && !/BY SUB-REGION/.test(r) && /= 2 Sold/.test(r)]);
     await own.screenshot({ path: shot('madrid') });
@@ -160,7 +161,7 @@ const API = 'http://api.test/';
     t.push(['…and it is saved there', await own.evaluate(id => subOfEvent(id), nid) === 'sr_m']);
     // The Sub-regions window.
     await own.evaluate(() => goTo('region', 'rg_sp')); await own.waitForTimeout(300);
-    await own.click('.subr-chip[data-act="subregions"]'); await own.waitForTimeout(300);
+    await own.evaluate(() => subRegionsModal()); await own.waitForTimeout(300);
     t.push(['⚙ opens Sub-regions of Spain, with each event\'s sub-region', /Sub-regions of Spain/.test(await own.$eval('#modal', e => e.innerText)) && await own.$eval('#srEvents select[data-ev="ev_b1"]', e => e.value) === 'sr_b']);
     await own.click('#srAdd'); await own.fill('#srList [data-i="2"]', 'Valencia'); await own.press('#srList [data-i="2"]', 'Tab');
     await own.selectOption('#srEvents select[data-ev="ev_g1"]', { label: 'Valencia' });
@@ -170,7 +171,15 @@ const API = 'http://api.test/';
     await own.click('#srSave'); await own.waitForTimeout(1500);
     const st = (await O({ action: 'getState', season: SA })).state.subRegions;
     t.push(['adding Valencia and putting Online Kirtan in it saves on the server', st.regions.rg_sp.length === 3 && st.regions.rg_sp[2].name === 'Valencia' && st.events.ev_g1 === st.regions.rg_sp[2].id]);
-    t.push(['…and the chips show it', (await own.$$eval('.subr-bar .subr-chip', b => b.map(x => x.textContent.trim()))).includes('Valencia')]);
+    t.push(['…and the place picker shows it', (await own.$$eval('[data-act="pickloc"] optgroup', g => g.map(x => x.label))).includes('Valencia')]);
+    await own.evaluate(() => { closeModal(); setSub(''); goTo('region', 'rg_sp'); }); await own.waitForTimeout(300);
+    await own.selectOption('[data-act="pickloc"]', '__sub:sr_b'); await own.waitForTimeout(300);
+    t.push(['b285: choosing All of Barcelona in the picker shows Barcelona', /Spain › Barcelona/.test(await own.$eval('#whTitle', e => e.textContent))]);
+    await own.selectOption('[data-act="pickloc"]', 'wh_sp'); await own.waitForTimeout(300);
+    t.push(['b285: …and the warehouse goes back to all of Spain', await own.evaluate(() => curSub()) === '' && !/›/.test(await own.$eval('#whTitle', e => e.textContent))]);
+    await own.evaluate(() => { setSub('sr_b'); goTo('event', 'ev_b1'); }); await own.waitForTimeout(300);
+    await own.selectOption('[data-act="pickloc"]', 'wh_sp'); await own.waitForTimeout(300);
+    t.push(['b285: from an event, the warehouse is all of Spain too', await own.evaluate(() => CUR_LEVEL === 'region' && curSub() === '')]);
     // Collections by Region, at the season.
     await own.evaluate(() => goTo('season')); await own.waitForTimeout(500);
     const sub = await own.$$eval('#collByRegion tr.cbr-sub th', h => h.map(x => x.textContent.trim()));
@@ -203,9 +212,15 @@ const API = 'http://api.test/';
     // b284: bring the separately made Madrid region into Spain.
     await own.evaluate(() => finLeave()); await own.waitForTimeout(400);
     await own.evaluate(() => goTo('region', 'rg_sp')); await own.waitForTimeout(400);
-    await own.click('.subr-chip[data-act="subregions"]'); await own.waitForTimeout(300);
+    await own.evaluate(() => subRegionsModal()); await own.waitForTimeout(300);
+    await own.evaluate(() => mergeRegionModal('rg_es')); await own.waitForTimeout(200);
+    t.push(['b285: a region with no events is only a container: no sub-region of its own asked for', !(await own.$('#mgIntoSub')) && !!(await own.$('#mgFromSub'))]);
+    await own.evaluate(() => mergeRegionModal('rg_md')); await own.waitForTimeout(200);
+    t.push(['b285: …a region with events of its own still asks', !!(await own.$('#mgIntoSub'))]);
+    await own.evaluate(() => { closeModal(); subRegionsModal(); }); await own.waitForTimeout(300);
     await own.click('#srMerge'); await own.waitForTimeout(300);
     t.push(['b284: the Sub-regions window offers to bring in another region', /Bring a region into Spain/.test(await own.$eval('#modal', e => e.innerText))]);
+    t.push(['b285: Spain has sub-regions, so it asks nothing about its own events', !(await own.$('#mgIntoSub'))]);
     await own.selectOption('#mgFrom', 'rg_md'); await own.waitForTimeout(100);
     t.push(['b284: …naming its sub-region after it, and asking for its name to confirm', await own.$eval('#mgFromSub', e => e.value) === 'Madrid' && await own.$eval('#mgTypeName', e => e.textContent) === 'Madrid']);
     for (const w of [1150, 390]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(200); (await spill(own)).forEach(x => spills.push(w + ' merge window: ' + x)); }
