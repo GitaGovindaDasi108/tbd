@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b281**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b282**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2533,3 +2533,18 @@ Region, Sub-regions, Close…) stayed wherever the sales pages had been left.
   it was.
 - "Go to Sales Portal" now lands on the same place.
 - Tests: browser-subregions (+3: Region, Event, Season Admin as Finance moves).
+
+## Done in b282
+
+Live app changes (Gita, 2026-10-22):
+- **A long caption that refused to stay hidden.** The Finance Overview note ("In dollars, at each
+  place's own rates…") was hidden, but it came back after every redraw. The server keeps only the
+  first 300 characters of a wording key (Code.gs `doSaveLabel`), while the page looked the note up
+  by its full key.
+  - `normLabelKey` now clips to `LBL_KEY_MAX` (300).
+  - `applyLabels` matches a cut-short key by how the words begin.
+  - Wording Gita already saved works as it is.
+- **"Go to Sales Portal" in the left-hand menu** for anyone with Finance (`finleave`, top of the
+  Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
+- Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
+  plus the menu row and where it goes.

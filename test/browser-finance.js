@@ -626,6 +626,24 @@ const API = 'http://api.test/';
     t.push(['b276: Expenses and Reimbursements side by side are the same height', await lv.evaluate(() => {
       const a = document.querySelector('#finExS'), b = document.querySelector('#finRbS'); return !!a && !!b && Math.abs(a.offsetHeight - b.offsetHeight) <= 1; })]);
     await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1200);
+    { // b281: a long note hidden in Finance stays hidden (the server keeps the first 300 characters of its key).
+      const cap = () => lv.evaluate(() => { const e = [...document.querySelectorAll('#fpBody .muted-note')].find(x => /Consignment money/.test(x.textContent)); return e ? { key: e.getAttribute('data-key'), shown: !!e.offsetParent } : null; });
+      await lv.evaluate(() => { EDIT_WORDING = true; lblBodyClass(); finRender(); applyLabels(); }); await lv.waitForTimeout(400);
+      const c0 = await cap();
+      await lv.evaluate(k => labelSave(k, '\u0000hide', '\u0001'), c0.key); await lv.waitForTimeout(800);
+      await lv.evaluate(() => { EDIT_WORDING = false; lblBodyClass(); finRender(); applyLabels(); }); await lv.waitForTimeout(400);
+      const sc = await lv.evaluate(() => FIN.D.seasons[0].id);
+      await lv.evaluate(s => finGo('overview', s, {reload:true}), sc); await lv.waitForTimeout(1500);
+      const c1 = await cap();
+      await lv.reload(); await lv.waitForTimeout(3000); await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1500);
+      const c2 = await cap();
+      t.push(['b282: the long Overview note, once hidden, stays hidden at another place and after a refresh', c0.key.length > 300 && c1 && !c1.shown && c2 && !c2.shown]);
+      await lv.evaluate(k => labelSave(k, '', '\u0001'), c0.key); await lv.waitForTimeout(800);
+      t.push(['b282: …and the left-hand menu has Go to Sales Portal while in Finance', await lv.evaluate(() => { const b = document.querySelector('#sideNav .sn-item[data-act="finleave"]'); return !!b && getComputedStyle(b).display !== 'none' && /Go to Sales Portal/.test(b.textContent); })]);
+      await lv.evaluate(() => document.querySelector('#sideNav .sn-item[data-act="finleave"]').click()); await lv.waitForTimeout(800);
+      t.push(['b282: …which takes you to the sales side, where the row is not shown', await lv.evaluate(() => !document.body.classList.contains('fin-mode') && getComputedStyle(document.querySelector('#sideNav .sn-item[data-act="finleave"]')).display === 'none')]);
+      await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1500);
+    }
     t.push(['b276: the Finance search reads "Search for Season, Region, or Event" when nothing is chosen', await lv.evaluate(() => {
       const i = document.querySelector('#finPP .pp-in'); return !!i && i.placeholder === 'Search for Season, Region, or Event' && i.value === ''; })]);
     await lv.evaluate(() => finGo('settings', '', {reload:true})); await lv.waitForTimeout(1500);

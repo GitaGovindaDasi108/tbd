@@ -1526,6 +1526,7 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .rb-item .li-amt{flex:0 0 78px;text-align:right;font-variant-numeric:tabular-nums}
 .rb-item .li-row > .badge{flex:0 0 126px;text-align:center;box-sizing:border-box}
 @media (max-width:560px){ .rb-item .li-orig{flex-basis:74px;font-size:11px} .rb-item .li-amt{flex-basis:64px} .rb-item .li-row > .badge{flex-basis:112px} }
+body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
 .fx-head{cursor:default;padding:0 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .fx-head .fx-h{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;box-shadow:none}
 .fx-d{color:var(--muted);font-size:12.5px;text-align:left}
@@ -2176,7 +2177,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b281</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b282</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5511,7 +5512,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finoverview:['📈','Overview'], finexpenses:['🧾','Expenses & Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
+  finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses & Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5531,7 +5532,7 @@ const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finoverview','finexpenses','fintodo','reimbset']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','practice','permissions','viewas','placedates','fincarry']},
@@ -5590,6 +5591,8 @@ function renderSideNav(fams){
   if(FIN_ON && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   // Finance's launch (b274): Universal, on the live app, brings over what was set up in practice.
   if(!PRACTICE && isAdmin() && ME && !byKey.fincarry) byKey.fincarry = `<button class="btn" data-act="fincarry">📥 Bring Wording &amp; Settings from Practice</button>`;
+  // Back to the sales side from Finance (b282, Gita): for anyone with Finance, shown only while in Finance.
+  if(byKey.finoverview && !byKey.finleave) byKey.finleave = `<button class="btn" data-act="finleave">🏠 Go to Sales Portal</button>`;
   const sections = SN_SECTIONS.map(sec=>{
     const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : sec.acts.filter(k=>byKey[k]);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
@@ -12596,13 +12599,17 @@ function labelContextOf(el){
    "Adjust stock — Italy — Warehouse" names the place you happen to be in. Keyed
    literally, wording saved in one was looked up under a different key in the
    other and never appeared. The variable part is dropped. */
+/* The server keeps the first 300 characters of a key (doSaveLabel), so a long
+   sentence is looked up by those same 300 (b282: a long Finance note that
+   would not stay hidden). */
+const LBL_KEY_MAX = 300;
 function normLabelKey(key){
   const bits = String(key||'').split(' › ');
-  if(bits.length < 2) return key;
+  if(bits.length < 2) return String(key||'').slice(0, LBL_KEY_MAX);
   let ctx = bits[0]
     .replace(/\s+—\s+.*$/, '')                    // drop "— Italy — Warehouse"
     .replace(/^Dialog:\s*(Edit|New|Adjust)\s+/i, 'Dialog: ');   // one dialog, either mode
-  return ctx + ' › ' + bits.slice(1).join(' › ');
+  return (ctx + ' › ' + bits.slice(1).join(' › ')).slice(0, LBL_KEY_MAX);
 }
 
 /* What the app itself wrote there, remembered so it can be put back exactly —
@@ -12753,6 +12760,9 @@ function applyLabels(root){
     if(raw[k] && raw[k]!=='\u0000hide') byWords[String(k).split(' › ').slice(1).join(' › ')] = raw[k];
   });
   const words = new Set(Object.keys(raw).map(k=>String(k).split(' › ').slice(1).join(' › ')));
+  // Words cut short at the server's limit are matched by how they begin.
+  const longW = Object.keys(raw).filter(k=>String(k).length >= LBL_KEY_MAX).map(k=>[String(k).split(' › ').slice(1).join(' › '), raw[k]]);
+  const known = t => words.has(t) || longW.some(([w])=>w && t.startsWith(w));
   const scope = root || document;
   LBL_BUSY = true;
   try{
@@ -12769,12 +12779,13 @@ function applyLabels(root){
       if(el.tagName==='BUTTON' && !buttonEditable(el)) return;
       /* With nothing saved for these words and no pencils showing, there is
          nothing to do — which keeps this quick on a long sales log. */
-      if(!EDIT_WORDING && !el.hasAttribute('data-rewritten') && !words.has(lblTemplate(labelTextOf(el)))) return;
+      if(!EDIT_WORDING && !el.hasAttribute('data-rewritten') && !known(lblTemplate(labelTextOf(el)))) return;
       const key = labelKeyOf(el);
       if(!key) return;
       const tmpl = key.split(' › ').slice(1).join(' › ');
       const own = map[normLabelKey(key)];
-      const want = own!==undefined ? own : byWords[tmpl];
+      const want = own!==undefined ? own : byWords[tmpl] !== undefined ? byWords[tmpl]
+        : (longW.find(([w, v])=>w && v!=='\u0000hide' && tmpl.startsWith(w)) || [])[1];
       if(want==='\u0000hide'){                     // you asked for this one to go
         /* While you are editing wording, hidden words stay on screen, faded and
            struck through, so a tap and ✓ can bring them back (b276). */
