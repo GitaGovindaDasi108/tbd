@@ -212,6 +212,39 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return { id };
   }
 
+  /* Edit Finance-Only Locations (b287, Gita): rename one, move it under another
+     place, or remove it once no expense is recorded there. */
+  function finPlaceEdit(w, p) {
+    if (!mayPay(w)) throw new Error('Only Finance can change a place.');
+    if (!practice) throw new Error('Changing Finance-only places is in the practice space for now.');
+    const all = getFP(), id = String(p.id || ''), fp = all[id];
+    if (!fp) throw new Error('There is no Finance-only place like that.');
+    const used = rows().filter(r => String(r.location || '') === id).length;
+    if (p.remove) {
+      if (used) throw new Error('“' + fp.name + '” has ' + used + ' expense' + (used === 1 ? '' : 's') + ' recorded there. Move ' + (used === 1 ? 'it' : 'them') + ' to another place first.');
+      delete all[id];
+      kv.setProp('finPlaces', JSON.stringify(all));
+      actLog(w, {}, 'finPlaceEdit', 'Removed “' + fp.name + '” as a Finance-only place', null);
+      return { id, removed: true };
+    }
+    const name = clip(p.name == null ? fp.name : p.name, 80).replace(/\s+/g, ' ').trim();
+    if (!name) throw new Error('Type the name of the place.');
+    let pid = fp.parent;
+    if (p.parent != null) {
+      const parent = String(p.parent || ''), P = places();
+      const up = parent && parent !== HQ.id ? placeOf(P, parent) : null;
+      if (parent && parent !== HQ.id && (!up || (up.kind !== 'season' && up.kind !== 'region'))) throw new Error('A place goes under Earthly HQ, a season or a region.');
+      pid = up ? up.id : '';
+    }
+    if (Object.values(all).some(x => x.id !== id && x.parent === pid && String(x.name).toLowerCase() === name.toLowerCase()))
+      throw new Error('There is already a Finance-only place called “' + name + '” there.');
+    const was = fp.name;
+    all[id] = { id, name, parent: pid };
+    kv.setProp('finPlaces', JSON.stringify(all));
+    actLog(w, {}, 'finPlaceEdit', was === name ? 'Moved the Finance-only place “' + name + '”' : 'Renamed the Finance-only place “' + was + '” to “' + name + '”', null);
+    return { id, used };
+  }
+
   /* ---- Rules: which ways of paying back, and which currencies (Finance) ----
      Kept as { levels: { '' (everywhere) | season | region | event id:
      { methods: { Wise: false, ... }, curs: ['EUR', ...] } }, people: { email:
@@ -954,13 +987,49 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!w.universal) throw new Error('Only Universal can bring settings to the live app.');
     const labels = app.dbHas_('_labels') ? app.objectsOf_('_labels').filter(r => r && String(r.key)).map(r => ({ key: String(r.key), text: String(r.text == null ? '' : r.text) })) : [];
     const props = {}; CARRY_PROPS.forEach(k => { const v = kv.getProp(k); if (v) props[k] = v; });
-    return { labels, props };
+    // The wording as live had it when practice was last copied from it (b288); null before the first copy since.
+    const base = parse(kv.getProp('labelsBase'), null);
+    return { labels, props, base: base && typeof base === 'object' ? base : null };
+  }
+  /* Which practice wording goes to live (b288, Gita: "show me both and let me
+     choose each time"). Against the wording as it was when practice was last
+     copied from live: changed only in practice, it comes over; changed only in
+     live, live keeps its own; changed in both, nothing is written until she
+     picks. With no record of that copy, every difference is hers to pick. */
+  function carryPlan(liveMap, prac, base) {
+    const P = {}; prac.forEach(l => { if (l && l.key) P[String(l.key)] = String(l.text == null ? '' : l.text); });
+    const keys = new Set(Object.keys(P).concat(Object.keys(liveMap), base ? Object.keys(base) : []));
+    const take = [], both = []; let keep = 0;
+    keys.forEach(k => {
+      const pv = P[k] || '', lv = liveMap[k] || '';
+      if (pv === lv) return;
+      if (base) {
+        const bv = base[k] || '';
+        if (pv === bv) { keep++; return; }
+        if (lv === bv) { take.push({ key: k, text: pv }); return; }
+      }
+      both.push({ key: k, practice: pv, live: lv });
+    });
+    return { take, both, keep };
   }
   function carryIn(w, p) {
     if (practice) throw new Error('Open the live app to bring practice settings into it.');
     if (!w.universal) throw new Error('Only Universal can bring settings to the live app.');
     const labels = Array.isArray(p.labels) ? p.labels.slice(0, 5000) : [];
     let words = 0;
+    if (p.base !== undefined || p.plan) {
+      // b288: only what changed on practice's side alone, plus the words she chose practice's version of.
+      const liveMap = {};
+      (app.dbHas_('_labels') ? app.objectsOf_('_labels') : []).forEach(x => { if (x && String(x.key)) liveMap[String(x.key)] = String(x.text == null ? '' : x.text); });
+      const base = p.base && typeof p.base === 'object' ? p.base : null;
+      const plan = carryPlan(liveMap, labels, base);
+      if (p.plan) return { plan: true, take: plan.take.length, keep: plan.keep, both: plan.both };
+      const pick = p.choices && typeof p.choices === 'object' ? p.choices : {};
+      const open = plan.both.filter(x => pick[x.key] !== 'practice' && pick[x.key] !== 'live');
+      if (open.length) throw new Error(open.length + ' wording' + (open.length === 1 ? ' was' : 's were') + ' changed in both places. Choose which to keep for each.');
+      plan.take.concat(plan.both.filter(x => pick[x.key] === 'practice').map(x => ({ key: x.key, text: x.practice })))
+        .forEach(l => { app.doSaveLabel({ key: l.key, text: l.text }); words++; });
+    } else
     labels.forEach(l => { if (l && l.key && String(l.text || '')) { app.doSaveLabel({ key: String(l.key), text: String(l.text) }); words++; } });
     const props = p.props && typeof p.props === 'object' ? p.props : {}, set = [];
     CARRY_PROPS.forEach(k => {
@@ -981,7 +1050,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
-    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, finPlaceAdd, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
+    expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, finPlaceAdd, finPlaceEdit, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
     placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {

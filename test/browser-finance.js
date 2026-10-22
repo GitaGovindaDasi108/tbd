@@ -629,6 +629,22 @@ const API = 'http://api.test/';
     await own.evaluate(() => { post = window.__post; document.querySelector('#finRetry').click(); }); await own.waitForTimeout(1500);
     t.push(['…and Try again opens it', await own.evaluate(() => /Gross/.test(document.querySelector('#fpBody').innerText))]);
     await own.evaluate(() => finLeave({quiet:true}));
+    // ---- Edit Finance-Only Locations (b288, practice) ----
+    await own.evaluate(async () => { await post({action:'finPlaceAdd', name:'Hotel Lobby', parent:'rg_zg'}); FIN.D = null; });
+    t.push(['b288: the Finance menu has Edit Finance-Only Locations in practice', await own.evaluate(() => FIN_BTNS('U').some(b => /Edit Finance-Only Locations/.test(b)))]);
+    await own.evaluate(() => finPlacesModal()); await own.waitForTimeout(800);
+    await own.fill('#fplC .pp-in', 'Hotel'); await own.waitForTimeout(200);
+    await own.evaluate(() => { const r = [...document.querySelectorAll('#fplC .pp-row')].find(x => /Hotel Lobby/.test(x.textContent)); r && r.dispatchEvent(new MouseEvent('mousedown', {bubbles:true})); r && r.click(); });
+    await own.waitForTimeout(500);
+    t.push(['b288: choosing one from the searchable list shows its name, where it sits, and Remove', await own.evaluate(() => $('#fplName') && $('#fplName').value === 'Hotel Lobby' && !!$('#fplDel') && /No expenses are recorded here/.test($('#modal').innerText))]);
+    for (const w of [390, 1150]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(200);
+      t.push(['b288: no overflow in Edit Finance-Only Locations at ' + w + 'px', await own.evaluate(() => { const m = $('#modal'); return m.scrollWidth <= m.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; })]); }
+    await own.fill('#fplName', 'Hotel Lobby Kiosk'); await own.click('#fplSave'); await own.waitForTimeout(1500);
+    await own.locator('#modal').screenshot({ path: shot('b288-finplaces') });
+    t.push(['b288: Save renames it', await own.evaluate(() => (FIN.D.finPlaces || []).some(x => x.name === 'Hotel Lobby Kiosk') && $('#fplName').value === 'Hotel Lobby Kiosk')]);
+    await own.click('#fplDel'); await own.waitForTimeout(1500);
+    t.push(['b288: Remove takes it away', await own.evaluate(() => !(FIN.D.finPlaces || []).some(x => /Hotel Lobby/.test(x.name)) && !$('#fplName'))]);
+    await own.evaluate(() => closeModal());
     // A refresh comes back to exactly where you were.
     const where = pg => pg.evaluate(() => ({ hash: location.hash, sec: FINP.sec, scope: FINP.scope, tab: FIN.rb.tab, y: Math.round(window.scrollY), modal: $('#overlay').classList.contains('show') }));
     await own.setViewportSize({ width: 1150, height: 700 });
@@ -655,6 +671,25 @@ const API = 'http://api.test/';
     const menu = await lv.evaluate(() => [...document.querySelectorAll('#sideNav .sn-item, #sideNav .sn-gh')].map(b => b.textContent.replace(/\s+/g, ' ').trim()).join('|'));
     t.push(['b274: the live app\'s menu has Laksmi, Add an Expense, Finance and Dates & Repeats, and no Record Costs or To do', /Laksmi/.test(menu) && /Add an Expense/.test(menu) && /Finance/.test(menu) && /Dates & Repeats/.test(menu) && !/Record Costs/.test(menu) && !/To do/.test(menu)]);
     t.push(['b274: …and Universal\'s "Bring Wording & Settings from Practice"', /Bring Wording & Settings from Practice/.test(menu)]);
+    { // b288: wording changed in both places is shown side by side, one choice each (servers stood in for).
+      await lv.evaluate(() => {
+        localStorage.setItem('practice:tbs_session', 'tok'); window.__sent = [];
+        const of = window.fetch; window.fetch = async (u, o) => /finCarryOut/.test(String(o && o.body)) ? { text: async () => JSON.stringify({ ok: true, result: { labels: [], props: {}, base: {} } }) } : of(u, o);
+        window.__post = post; post = async q => { if (q.action !== 'finCarryIn') return window.__post(q); window.__sent.push(q);
+          return { result: q.plan ? { plan: true, take: 2, keep: 1, both: [{ key: 'Panel: Finance › Overview', practice: 'Laksmi Overview', live: 'Money Overview' }, { key: 'Sell', practice: '', live: 'Sell a book' }] } : { words: 3, set: [] } }; };
+        finCarryModal(); });
+      await lv.click('#fcGo'); await lv.waitForTimeout(500);
+      t.push(['b288: Bring Wording: words changed in both places are listed with both versions', await lv.evaluate(() => document.querySelectorAll('#fcBoth .fc-item').length === 2 && /Laksmi Overview/.test($('#fcBoth').innerText) && /Money Overview/.test($('#fcBoth').innerText) && /the original wording/.test($('#fcBoth').innerText) && /2 more, changed only in practice/.test($('#fcBoth').innerText))]);
+      for (const w of [390, 1150]) { await lv.setViewportSize({ width: w, height: 900 }); await lv.waitForTimeout(200);
+        t.push(['b288: no overflow in the choices at ' + w + 'px', await lv.evaluate(() => { const m = $('#modal'); return m.scrollWidth <= m.clientWidth + 1 && document.documentElement.scrollWidth <= innerWidth; })]); }
+      await lv.setViewportSize({ width: 390, height: 900 }); await lv.waitForTimeout(500); await lv.screenshot({ path: shot('b288-choices-390') }); await lv.setViewportSize({ width: 1150, height: 900 });
+      await lv.click('#fcGo'); await lv.waitForTimeout(300);
+      t.push(['b288: …nothing is sent until each has a choice', await lv.evaluate(() => window.__sent.length === 1 && /Choose a version/.test($('#modalErr').textContent))]);
+      await lv.click('#fcBoth [data-fcall="live"]'); await lv.evaluate(() => { document.querySelector('#fcBoth .fc-item input[value="practice"]').checked = true; });
+      await lv.click('#fcGo'); await lv.waitForTimeout(500);
+      t.push(['b288: …then her choices go over (practice for the first, live for the second)', await lv.evaluate(() => { const q = window.__sent[1]; return !!q && q.choices['Panel: Finance › Overview'] === 'practice' && q.choices['Sell'] === 'live' && /Done: 3 rewritten/.test($('#fcDone').innerText); })]);
+      await lv.evaluate(() => { post = window.__post; localStorage.removeItem('practice:tbs_session'); closeModal(); });
+    }
     await lv.evaluate(() => finGo('overview', '')); await lv.waitForTimeout(1500);
     t.push(['b274: Finance opens on the live app', await lv.evaluate(() => FINP.on && /Big Books Sold/.test(document.querySelector('#fpBody').innerText))]);
     const lspill = [];
