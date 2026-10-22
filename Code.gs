@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b289';
+var SERVER_BUILD = 'b290';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -369,7 +369,7 @@ function financeData_() {
     return rid ? { r: rid, e: ev ? ev.id : '', s: regs[rid].seasonId } : null;
   };
   var r2 = function (n) { return Math.round(n * 100) / 100; };
-  var sales = [];
+  var sales = [], subTag = subRegionsGet_().sales;   // b289: warehouse sales' sub-regions
   objectsOf_('_sales').forEach(function (s) {
     if (!s || !s.saleId) return;
     var w = where(s.location);
@@ -396,7 +396,8 @@ function financeData_() {
       // b267: the dollars each currency counted for, so "dollars received" can replace them; and hand-entered dollars, which stay.
       cu: cu, ua: usdActualIn_(s.usdActual) !== '' ? 1 : 0,
       // b269: its dollars are worked out from a rate (shown with ~), not money counted in dollars.
-      ue: other && usdActualIn_(s.usdActual) === '' ? 1 : 0 });
+      ue: other && usdActualIn_(s.usdActual) === '' ? 1 : 0,
+      u: w.e ? '' : String(subTag[String(s.bundle || '')] || subTag[String(s.saleId)] || '') });
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
@@ -746,6 +747,7 @@ function handle(e) {
         case 'saveCloseDraft':   doSaveCloseDraft(params);   break;
         default: throw new Error('Unknown action: ' + action);
       }
+      if (params.subRegion !== undefined && SALE_SUB_KEY_[action]) tagSaleSub_(action, params);
       cacheClear_();                       // data changed; drop the stale copy
       activityRecord_(action, params, result, who);   // before the movements are flushed
       // Deliberately NOT returning the state. The page already applied this
@@ -6534,7 +6536,21 @@ function subRegionsGet_() {
   try { v = JSON.parse(String(getMeta_('subRegions', '') || '{}')) || {}; } catch (e) { v = {}; }
   if (!v.regions || typeof v.regions !== 'object') v.regions = {};
   if (!v.events || typeof v.events !== 'object') v.events = {};
+  if (!v.sales || typeof v.sales !== 'object') v.sales = {};
   return v;
+}
+/* A sale straight from a region's warehouse says which sub-region it is for
+   (b289, Gita: "Yes, always ask"). Kept by the sale's id, or its bundle's,
+   in the same setting: { sales: { S…|B…: 'sr_…' } }. A sale anywhere else
+   counts for its event's sub-region, so it keeps no tag. */
+var SALE_SUB_KEY_ = { sell: 'saleId', donate: 'saleId', editSale: 'saleId', sellBundle: 'keepBundleId', editBundle: 'bundle' };
+function tagSaleSub_(action, p) {
+  var key = String(p[SALE_SUB_KEY_[action]] || '');
+  if (!key) return;
+  var v = subRegionsGet_(), loc = String(p.location || ''), sr = String(p.subRegion || '');
+  var ok = sr && isRegionWarehouse_(loc) && (v.regions[regionOfLoc_(loc)] || []).some(function (x) { return x.id === sr; });
+  if (ok) v.sales[key] = sr; else if (v.sales[key]) delete v.sales[key]; else return;
+  setMeta_('subRegions', JSON.stringify(v));
 }
 /* Save a region's sub-regions (names, added, removed) and/or which sub-region
    its events are in. A removed sub-region's events go back to "general". */
@@ -6558,6 +6574,9 @@ function doSetSubRegions(p) {
       if (e && String(e.regionId) === regionId && !seen[v.events[ev]]) delete v.events[ev];
     });
   }
+  // A removed sub-region's warehouse sales go back to "general" too.
+  var live = {}; Object.keys(v.regions).forEach(function (r) { (v.regions[r] || []).forEach(function (x) { live[x.id] = 1; }); });
+  Object.keys(v.sales).forEach(function (k) { if (!live[v.sales[k]]) delete v.sales[k]; });
   if (p.events) {
     var evs = typeof p.events === 'string' ? JSON.parse(p.events || '{}') : p.events;
     var mine = {}; (v.regions[regionId] || []).forEach(function (x) { mine[x.id] = 1; });

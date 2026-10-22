@@ -122,8 +122,6 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* ---- Compact breadcrumb navigation ---- */
 .navbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 4px}
 .crumbs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
-.fin-share{font-size:13px;margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow-wrap:anywhere}
-.subr-note{font-size:12px;color:var(--muted);margin:-2px 0 6px}
 .sr-sec{font-weight:800;font-size:13px;margin:14px 0 6px;color:var(--ink)}
 .sr-row{display:flex;gap:8px;align-items:center;margin:0 0 6px;min-width:0}
 .sr-row input,.sr-row select{flex:1 1 auto;min-width:0}
@@ -2258,7 +2256,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b289</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b290</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2876,14 +2874,42 @@ function locsInRegion(regionId){
    One region, one warehouse, one set of prices and one closing, split into
    sub-regions so each city's sales can be looked at on their own. Each event
    belongs to one sub-region, or to none ("general"); what is sold from the
-   warehouse is general too. The region page shows All, or one sub-region. */
-const SUBR_ON = PRACTICE;
+   warehouse asks which sub-region it is for (b289). The region page shows All,
+   or one sub-region. Live since b289 (Gita, 2026-10-22: "Now. Put them on live"). */
+const SUBR_ON = true;
 function subRegionsOf(rid){
   if(!SUBR_ON || !STATE) return [];
   const v = STATE.subRegions || {};
   return ((v.regions||{})[rid] || []).filter(x=>x && x.id && x.name);
 }
 function subOfEvent(evId){ const v = (STATE && STATE.subRegions) || {}; return (v.events||{})[evId] || ''; }
+/* A sale counts for its event's sub-region, or, sold straight from the
+   warehouse, for the one chosen then (b289). */
+function saleSubTag(x){ const S = ((STATE && STATE.subRegions) || {}).sales || {}; return (x && ((x.bundle && S[x.bundle]) || S[x.saleId])) || ''; }
+function saleSub(x){ return subOfEvent(x.location) || (isWarehouseLoc(x.location) ? saleSubTag(x) : ''); }
+/* "Which sub-region?" on a sale, pre-order, several books or donation made at a
+   region's warehouse; '' when the region has none. */
+function subAskHTML(loc, cur){
+  const rid = isWarehouseLoc(loc) ? regionOfLoc(loc) : '', subs = rid ? subRegionsOf(rid) : [];
+  if(!subs.length) return '';
+  const r = regionById(rid) || {};
+  return `<div class="field" id="csSubF"><label>Which sub-region is this for?</label><select id="csSub">
+    <option value="" ${cur===''?'selected':''}>Choose…</option>
+    ${subs.map(x=>`<option value="${esc(x.id)}" ${cur===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}
+    <option value="-" ${cur==='-'?'selected':''}>All of ${esc(r.name||'the region')} (none of them)</option></select></div>`;
+}
+/* What was chosen: undefined with no question, null when it still needs an answer. */
+function subAskVal(loc){
+  const el = $('#csSub'); if(!el || !isWarehouseLoc(loc) || !subRegionsOf(regionOfLoc(loc)).length) return undefined;
+  return el.value === '' ? null : (el.value === '-' ? '' : el.value);
+}
+function subAskApply(st, key, v){
+  if(v === undefined || !key) return;
+  const S = Object.assign({}, (st.subRegions||{}).sales);
+  if(v) S[key] = v; else delete S[key];
+  st.subRegions = Object.assign({}, st.subRegions, {sales:S});
+}
+const SUB_ASK_ERR = 'Choose which sub-region this is for.';
 function subName(rid, id){ const x = subRegionsOf(rid).find(s=>s.id===id); return x ? x.name : ''; }
 function eventsOfSub(rid, sid){ return eventsOfRegion(rid).filter(e=>subOfEvent(e.eventId)===sid); }
 /* Everything in the region that is no sub-region's own: the warehouse, devotees'
@@ -2903,14 +2929,16 @@ function curSub(){
 function setSub(id){ const m = subPicks(); if(id) m[CUR_REGION] = id; else delete m[CUR_REGION];
   try{ sessionStorage.setItem(SUBR_KEY, JSON.stringify(m)); }catch(e){} }
 /* The region as one sub-region sees it: the other sub-regions' events, and what
-   was sold or spent there, are left out; so is the general part (warehouse sales,
-   region-wide costs). Stock stays as it is: the warehouse is shared. */
+   was sold or spent there, are left out; so is the general part (warehouse sales
+   for none of them, region-wide costs: shared costs show only on the whole region,
+   Gita 2026-10-22). Stock stays as it is: the warehouse is shared. */
 function subState(rid, sid){
   const keep = new Set(eventsOfSub(rid, sid).map(e=>e.eventId));
   const drop = new Set(locsInRegion(rid).filter(l=>!keep.has(l)));
   return Object.assign({}, STATE, {
     events: (STATE.events||[]).filter(e=>(e.regionId||'')!==rid || keep.has(e.eventId)),
-    sales: (STATE.sales||[]).filter(x=>!drop.has(x.location)),
+    // Warehouse sales made for this sub-region stay in (b289).
+    sales: (STATE.sales||[]).filter(x=>!drop.has(x.location) || saleSub(x)===sid),
     costs: (STATE.costs||[]).filter(c=>!drop.has(c.location))
   });
 }
@@ -5398,8 +5426,6 @@ function renderTabs(){
   h += `</div></div>`;
   /* Sub-regions (b280): one is chosen in the place picker above (b285). The
      warehouse stays shared. */
-  const curS = CUR_LEVEL==='region' && reg ? curSub() : '';
-  if(curS) h += `<div class="subr-note">Selling straight from the warehouse counts for all of ${esc(reg.name)}, not for ${esc(subName(reg.regionId, curS))} alone.</div>`;
   if(shut){
     h += `<div class="closed-note ${shut}">
       ${shut==='complete'
@@ -6312,10 +6338,10 @@ function scopedAllCosts(){
 function renderCollectionsByRegion(target){
   const el = $(target); if(!el) return;
   const curs = curAllCurrencies();
-  const calc = locs=>{
+  const calc = (locs, saleOk)=>{
     const got = {}, mine = [], spent = [];
     (STATE.sales||[]).forEach(x=>{
-      if(!x || !locs.includes(x.location)) return;
+      if(!x || !(saleOk ? saleOk(x) : locs.includes(x.location))) return;
       if(pendingFlag(x) || isPartnerSale(x)) return;        // not in hand, or not ours
       mine.push(x);
       legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
@@ -6336,8 +6362,7 @@ function renderCollectionsByRegion(target){
        region's general part (the warehouse, events in none, region-wide costs).
        Shown for reading; the region's line is still the one that adds up. */
     const subs = subRegionsOf(r.regionId);
-    x.subs = !subs.length ? [] : subs.map(sr=>Object.assign({name:sr.name}, calc(eventsOfSub(r.regionId, sr.id).map(e=>e.eventId))))
-      .concat([Object.assign({name:r.name + ', general'}, calc(generalLocsOf(r.regionId)))])
+    x.subs = !subs.length ? [] : subParts(r.regionId).map(p=>Object.assign({name:p.name}, calc(p.locs, p.sale)))
       .filter((y,i,a)=>i<a.length-1 || Object.keys(y.got).some(c=>Math.abs(y.got[c])>0.004));
     return x;
   });
@@ -8078,6 +8103,7 @@ function saleModal(opts){
         ? preorderWarning([shortfallLine(opts.bookId, onHand-1, loc)].filter(Boolean), ['sell it','sell them'])
         : ''}
       ${isPre?`<div class="note">A pre-order holds a copy aside without handing it over. ${onHand} in stock here, ${held} already pre-ordered. Press <b>Delivered</b> in the log when the book changes hands.</div>`:''}
+      ${subAskHTML(edit ? edit.location : loc, edit ? (saleSubTag(edit) || '-') : curSub())}
       <div class="field">
         <label>Payment type</label>
         <select id="ptype">${payTypeOptions(true,true)}</select>
@@ -8280,10 +8306,11 @@ function saleModal(opts){
       if(!checkMoveStock()) return;
       const newLoc = ($('#csLoc')||{}).value || edit.location;
       const moved = newLoc !== edit.location;
+      const sv = subAskVal(newLoc); if(sv===null){ $('#modalErr').textContent=SUB_ASK_ERR; return; }
       commit({action:'editSale',saleId:edit.saleId,type:edit.type,
               location:newLoc,bookId:edit.bookId,
-              legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur},
-        st=>{ const s=findSale(st,edit.saleId); if(!s)return;
+              legs:L,pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,subRegion:sv},
+        st=>{ subAskApply(st, edit.saleId, sv); const s=findSale(st,edit.saleId); if(!s)return;
               /* If the sale moved, the copy moves with it: back onto the shelf
                  it was wrongly taken from, and off the one it really left. */
               if(moved && edit.type==='SALE' && edit.bookId){
@@ -8300,6 +8327,7 @@ function saleModal(opts){
         $('#modalErr').textContent='There are no copies of '+book.name+' left at '+locName(loc)+' — it may have just been sold. Pre-order it instead.';
         return;
       }
+      const sv = subAskVal(loc); if(sv===null){ $('#modalErr').textContent=SUB_ASK_ERR; return; }
       const id=newSaleId();
       const other = $('#fulSel') && $('#fulSel').value==='other';
       if(other && !(fulPick && fulPick.value)){ $('#modalErr').textContent='Choose the region that will fulfill it.'; return; }
@@ -8308,13 +8336,14 @@ function saleModal(opts){
          is refused here, with the dialog still open — never after it closed. */
       if(fulfilBy){
         commitSync({action:'sell',saleId:id,location:loc,bookId:opts.bookId,isPreorder:true,legs:L,
-          pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy},
+          pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy,subRegion:sv},
           'Pre-order recorded — request sent to '+fulPick.value.name);
         return;
       }
       commit({action:'sell',saleId:id,location:loc,bookId:opts.bookId,isPreorder:isPre,legs:L,
-              pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy},
+              pending,dueamt,duecur,name,phone,comments,ts:tsVal,changeamt,changecur,override:true,fulfilBy,subRegion:sv},
         st=>{
+          subAskApply(st, id, sv);
           st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,
             type:isPre?'PREORDER':'SALE',bookId:opts.bookId,qty:1,
             pending,paid:!pending&&dueamt<=0,dueamt,duecur,changeamt,changecur,
@@ -8442,6 +8471,7 @@ function bundleModal(edit){
       <div id="mbWarn" class="warn" hidden></div>
       <div id="preWarn"></div>
       <div class="mb-count" id="mbCount">Nothing selected yet.</div>
+      ${subAskHTML(loc, edit ? (saleSubTag(edit.members[0]) || '-') : curSub())}
 
       <div class="field">
         <label>Payment type</label>
@@ -8718,6 +8748,7 @@ function bundleModal(edit){
     /* An edit keeps the transaction's real id on screen too, matching the
        server. Only a brand-new transaction gets a temporary id, until the
        server's real one arrives. */
+    const sv = subAskVal(loc); if(sv===null){ $('#modalErr').textContent=SUB_ASK_ERR; return; }
     const bundleId = edit ? edit.bundle : newBundleId();
 
     // Optimistic split, matching the server: proportional to list price (USD),
@@ -8749,9 +8780,9 @@ function bundleModal(edit){
     const usdParts = splitUsdActual(hadUsd.length ? Math.round(hadUsd.reduce((t,m)=>t+Number(m.usdActual),0)*100)/100 : '', perItem);
     const payload = edit
       ? {action:'editBundle',bundle:edit.bundle,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,override:true,
-         ts:tsVal}
+         ts:tsVal,subRegion:sv}
       : {action:'sellBundle',keepBundleId:bundleId,location:loc,items,legs:L,pending,dueamt,duecur,name,phone,comments,
-         ts:tsVal,changeamt,changecur,override:true};
+         ts:tsVal,changeamt,changecur,override:true,subRegion:sv};
 
     commit(payload,
       st=>{
@@ -8760,6 +8791,7 @@ function bundleModal(edit){
         // An edit keeps whoever made the sale (b258), as the server does.
         const was = edit ? (st.sales.filter(x=>x.bundle===edit.bundle).find(m=>m.soldBy||m.soldById) || {}) : null;
         const seller = was ? {soldBy:was.soldBy||'', soldById:was.soldById||''} : {};
+        subAskApply(st, bundleId, sv);
         if(edit){
           st.sales.filter(x=>x.bundle===edit.bundle).forEach(m=>{
             if(m.type==='SALE' && m.bookId) invAdd(st,m.location,m.bookId,1);
@@ -10572,7 +10604,7 @@ function finIdx(){
 }
 function finFiltered(f){
   const D = FIN.D;
-  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.f || x.f===f.f) && (!f.uE || f.uE.includes(x.e)) &&
+  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.f || x.f===f.f) && (!f.uE || f.uE.includes(x.e) || (f.u && !x.e && x.u===f.u)) &&
     (!f.from || x.d >= f.from) && (!f.to || x.d <= f.to);
   return { sales: D.sales.filter(ok), exps: D.expenses.filter(ok) };
 }
@@ -10762,12 +10794,15 @@ function finOverviewRows(){
        none, costs shared by all of it). */
     what = 'By Sub-region';
     const mine = new Set();
+    const known = new Set(finSubsOf(f.r).map(sr=>sr.id)), wh = x=>!x.e && x.u && known.has(x.u);
     finSubsOf(f.r).forEach(sr=>{ const evs = eventsOfSubAny(f.r, sr.id); evs.forEach(e=>mine.add(e));
-      add(sr.name, sr.id, sales.filter(x=>evs.includes(x.e)), exps.filter(x=>evs.includes(x.e))); });
-    const gS = sales.filter(x=>!mine.has(x.e)), gE = exps.filter(x=>!mine.has(x.e));
+      add(sr.name, sr.id, sales.filter(x=>evs.includes(x.e) || (!x.e && x.u===sr.id)), exps.filter(x=>evs.includes(x.e))); });
+    const gS = sales.filter(x=>!mine.has(x.e) && !wh(x)), gE = exps.filter(x=>!mine.has(x.e));
     if(gS.length || gE.length) add((I.r[f.r]||{}).name + ', general', '', gS, gE);
   } else if(f.u){
     what = 'By Event';
+    const wS = sales.filter(x=>!x.e);                 // sold from the warehouse for it (b289)
+    if(wS.length) add('Sold from the warehouse', '', wS, []);
     D.events.filter(ev=>f.uE.includes(ev.id)).forEach(ev=>add(ev.name, ev.id, sales.filter(x=>x.e===ev.id), exps.filter(x=>x.e===ev.id)));
   } else if(f.r){
     what = 'By Event';
@@ -10785,22 +10820,6 @@ function finOverviewRows(){
   }
   return { what, rows, total: finAgg(sales, exps) };
 }
-/* A sub-region's share of what its region spent as a whole (b280): the region's
-   general expenses, split by books distributed. Shown beside Net, never in it. */
-function finSubShare(a){
-  const f = FIN.f; if(!f || !f.u || !f.uE) return null;
-  const all = finFiltered(Object.assign({}, f, {u:'', uE:null}));
-  const mine = new Set(); finSubsOf(f.r).forEach(sr=>eventsOfSubAny(f.r, sr.id).forEach(e=>mine.add(e)));
-  const S = finAgg([], all.exps.filter(x=>!mine.has(x.e))), shared = S.exp, est = !!S.eExp;
-  const R = finAgg(all.sales, []), dist = n => n.books + n.gifts;
-  if(shared <= 0.004 || !dist(R)) return null;
-  const pct = dist(a) / dist(R), part = shared * pct;
-  return {shared, pct, part, net:a.net - part, est, netEst: est || !!(a.eExp || a.eColl), region:(finIdx().r[f.r]||{}).name || 'the region', name:(finSubOf(f.u)||{}).name || 'This sub-region'};
-}
-function finSubShareHTML(a){
-  const x = finSubShare(a); if(!x) return '';
-  return `<div class="fin-share">Shared with all of ${esc(x.region)}: ${esc(finUsd(x.shared, x.est))} of expenses. ${esc(x.name)} distributed ${Math.round(x.pct*1000)/10}% of ${esc(x.region)}'s books, so its share is ${esc(finUsd(x.part, x.est))}. <b>Net after its share: ${esc(finUsd(x.net, x.netEst))}</b></div>`;
-}
 const finRepBtn = (part, title) => `<button type="button" class="btn btn-gold btn-sm sec-rep" data-act="finrep" data-part="${part}" title="${esc(title || 'Copy just this section for WhatsApp')}">📋</button>`;
 function finOverviewHTML(){
   const O = finOverviewRows(), a = O.total, figs = finOverviewFigs(a);
@@ -10811,7 +10830,6 @@ function finOverviewHTML(){
       ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
   return `${finFiltersHTML(FIN.f, true)}
     <div class="fin-tiles">${tiles}</div>
-    ${finSubShareHTML(a)}
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ~ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
 
@@ -12684,7 +12702,7 @@ function finChartsHTML(){
   }
   if(sec==='todo'){
     const f = finScopeF(), I = finIdx(), byE = {};
-    FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.uE || f.uE.includes(x.e)))
+    FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.uE || f.uE.includes(x.e) || (f.u && !x.e && x.u===f.u)))
       .forEach(x=>{ const k = x.e ? (I.e[x.e]||{}).name || 'An event' : ((I.r[x.r]||{}).name || 'Region') + ' Warehouse'; byE[k] = (byE[k]||0) + x.pu; });
     out.push(finChart('Pending Payments, by place', finDonutHTML(finTop(byE), 'Pending Payments, by place', 'Owed to the tour')));
     const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', u = (FIN.D.expenses.find(y=>y.id===x.id)||{}).usd || 0; byP[k] = (byP[k]||0) + u; });
@@ -13723,8 +13741,10 @@ function subParts(rid){
   const subs = subRegionsOf(rid);
   if(!subs.length) return [];
   const r = regionById(rid) || {};
-  return subs.map(x=>({name:x.name, locs:eventsOfSub(rid, x.id).map(e=>e.eventId)}))
-    .concat([{name:(r.name||'Region') + ', general', locs:generalLocsOf(rid), general:true}]);
+  // Sales go by saleSub, so warehouse sales made for a sub-region count there (b289).
+  const inReg = new Set(locsInRegion(rid)), known = new Set(subs.map(x=>x.id));
+  return subs.map(x=>({name:x.name, locs:eventsOfSub(rid, x.id).map(e=>e.eventId), sale:y=>inReg.has(y.location) && saleSub(y)===x.id}))
+    .concat([{name:(r.name||'Region') + ', general', locs:generalLocsOf(rid), general:true, sale:y=>inReg.has(y.location) && !known.has(saleSub(y))}]);
 }
 function buildReport(part, opts){
   // One sub-region chosen (b280): the report is that sub-region's, like the page.
@@ -13819,7 +13839,7 @@ function buildReport(part, opts){
     }
     /* Sub-regions (b280): each one's Big Books and Adventures, in the totals' own form. */
     const parts = !combo && CUR_LEVEL==='region' && !SUB_IN ? subParts(CUR_REGION) : [];
-    const rows = parts.map(p=>({p, mine:s.filter(x=>p.locs.includes(x.location) && x.bookId && !isPartnerBook(x.bookId))}))
+    const rows = parts.map(p=>({p, mine:s.filter(x=>(p.sale ? p.sale(x) : p.locs.includes(x.location)) && x.bookId && !isPartnerBook(x.bookId))}))
       .filter(x=>x.mine.length);
     if(rows.length){
       gap(); L.push('— BY SUB-REGION —');
@@ -13990,7 +14010,7 @@ function buildReport(part, opts){
       const byRegion = parts.map(r=>{
         const locs = r.locs, got = {}, mine = [], spent = [];
         (STATE.sales||[]).forEach(x=>{
-          if(!x || !locs.includes(x.location) || pendingFlag(x) || isPartnerSale(x)) return;
+          if(!x || !(r.sale ? r.sale(x) : locs.includes(x.location)) || pendingFlag(x) || isPartnerSale(x)) return;
           mine.push(x);
           legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
         });
@@ -15239,6 +15259,7 @@ function donationModal(edit){
     ${mHead(edit?'Edit donation':'Record donation')}
     <div class="m-body">
       <div class="hint">Donations add to collections but are not book inventory.</div>
+      ${subAskHTML(edit ? edit.location : CUR_LOC, edit ? (saleSubTag(edit) || '-') : curSub())}
       <div class="field"><label>Payment type</label><select id="ptype">${payTypeOptions(true,false)}</select></div>
       <div id="singlePay"><div class="row2">
         <div class="field"><label>Currency</label><select id="pcur">${curOptions(defaultCur())}</select></div>
@@ -15298,16 +15319,17 @@ function donationModal(edit){
     const changeamt = Math.max(0, Number(($('#chgamt')||{}).value)||0);
     const changecur = changeamt ? (($('#chgcur')||{}).value || defaultCur()) : '';
     const tsVal = fromLocalInput($('#csTs').value);
+    const sv = subAskVal(edit ? edit.location : CUR_LOC); if(sv===null){ $('#modalErr').textContent=SUB_ASK_ERR; return; }
     if(edit){
       commit({action:'editSale',saleId:edit.saleId,type:'DONATION',location:edit.location,bookId:'',
-              legs:L,pending:false,dueamt:0,duecur:'',name,phone,comments,ts:tsVal},
-        st=>{ const d=findSale(st,edit.saleId); if(!d)return;
+              legs:L,pending:false,dueamt:0,duecur:'',name,phone,comments,ts:tsVal,subRegion:sv},
+        st=>{ subAskApply(st, edit.saleId, sv); const d=findSale(st,edit.saleId); if(!d)return;
               Object.assign(d, legFields(L), {pending:false,paid:true,dueamt:0,duecur:'',name,phone,comments,ts:tsVal||d.ts}); },
         'Donation updated');
     }else{
       const id=newSaleId(), loc=CUR_LOC;
-      commit({action:'donate',saleId:id,location:loc,legs:L,name,phone,comments,ts:tsVal,changeamt,changecur},
-        st=>{ st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,type:'DONATION',
+      commit({action:'donate',saleId:id,location:loc,legs:L,name,phone,comments,ts:tsVal,changeamt,changecur,subRegion:sv},
+        st=>{ subAskApply(st, id, sv); st.sales.push(Object.assign({saleId:id,ts:tsVal||new Date().toISOString(),location:loc,type:'DONATION',
                 bookId:'',qty:0,pending:false,paid:true,delivered:true,name,phone,comments}, legFields(L))); },
         'Donation recorded');
     }
