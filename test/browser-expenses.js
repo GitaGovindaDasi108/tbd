@@ -211,9 +211,9 @@ const API = 'http://api.test/';
     await fin.evaluate(() => reimbSettingsModal()); await fin.waitForTimeout(800);
     m = await fpage(fin);
     t.push(['Reimbursement Settings: by place and by person', /By place/.test(m) && /By person/.test(m) && /UPI/.test(m)]);
-    await fin.selectOption('[data-rsm="UPI"]', 'off'); await fin.click('#rsSave'); await fin.waitForTimeout(800);
+    await fin.uncheck('[data-rsm="UPI"]'); await fin.click('#rsSave'); await fin.waitForTimeout(800);
     await pick(fin, 'rsPlaceC', 'Delhi', 'rg_in'); await fin.waitForTimeout(300);
-    t.push(['…a region below shows UPI off, from above', /As above \(off\)/.test(await fin.$eval('[data-rsm="UPI"] option', o => o.textContent))]);
+    t.push(['…a region below shows UPI off, from above (b291: a tick, on or off)', await fin.$eval('[data-rsm="UPI"]', o => o.type === 'checkbox' && !o.checked)]);
     await fin.screenshot({ path: shot('settings') });
     await sita.evaluate(() => expensesModal()); await sita.waitForTimeout(1000);
     await sita.check('#xReimb'); await sita.waitForTimeout(300);
@@ -282,7 +282,7 @@ const API = 'http://api.test/';
     t.push(['b259: …and its charts sit at the bottom: the expenses include the venue', /At a glance/.test(await fpage(own)) && /Venue/.test(await own.$eval('#finCharts', e => e.innerText))]);
     await own.screenshot({ path: shot('fin-report'), fullPage: true });
     t.push(['b259: no Reports, Compare or Visualize on the Finance bar', !(await own.$('#fpSecs [data-sec="report"]')) && !(await own.$('#fpSecs [data-sec="compare"]')) && !(await own.$('#fpSecs [data-sec="visual"]'))]);
-    await own.click('[data-act="finleave"]'); await own.waitForTimeout(500);
+    await own.evaluate(() => document.querySelector('#sideNav .sn-item[data-act="finleave"]').click()); await own.waitForTimeout(500);
     t.push(['← Go to Sales Portal leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
       await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display !== 'none')]);
 
@@ -318,7 +318,7 @@ const API = 'http://api.test/';
   } catch (e) { errors.push('test: ' + (e.stack || e.message)); }
   await browser.close();
 
-  t.push(['no errors on the pages', !errors.length]);
+  t.push(['no errors on the pages', !errors.length]); if(errors.length) console.log(errors.join('\n'));
   if (errors.length) console.log(errors.join('\n'));
   let bad = 0;
   t.forEach(([n, ok]) => { if (!ok) bad++; console.log((ok ? '  ok  ' : '  FAIL ') + n); });

@@ -217,6 +217,7 @@ tr.cbr-sub td{color:var(--muted)}
 /* "sold" set small beside the big number in the totals bar. */
 .tcard .sub-cost{color:var(--clay);font-weight:700}
 .tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);margin-left:6px}
+@media (max-width:560px){ .tcard .value-pre{display:block;margin-left:0;line-height:1.3} }   /* on a phone: title, number sold, then the pre-orders on a line of their own (b291, Gita) */
 .tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
   letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-left:7px}
 .sc-none{font-size:10.5px;color:var(--muted)}
@@ -605,6 +606,7 @@ body.busy #busyBar{opacity:1}
 .qr-img{width:100%;max-width:230px;height:auto;border-radius:8px;display:block;margin:0 auto 8px}
 .qr-line{font-size:12px;color:var(--muted);word-break:break-all;line-height:1.5}
 .pencil{cursor:pointer;font-size:11px;margin-left:6px;opacity:.65;user-select:none}
+body:not(.editing-words) .pencil, body:not(.editing-words) .sel-pencil{display:none}
 /* Rewriting in place (b254): words that can be rewritten show it, and open where they are. */
 body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input):not(textarea){cursor:text;text-decoration:underline dotted rgba(91,45,110,.45);text-underline-offset:3px}
 .lbl-in{position:fixed;z-index:400;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
@@ -727,6 +729,7 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input)
 .fin-n{font-weight:700;margin-left:2px}
 .fin-q{width:100%;margin-bottom:6px}
 .rs-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--line)}
+.rs-onoff{display:flex;gap:8px;align-items:center;flex:1 1 auto;min-width:0;cursor:pointer}
 .rs-row>span{flex:1}
 /* Expenses & Reimbursements: two sections (b257) */
 .fin-sh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
@@ -1514,6 +1517,7 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fp-sec.on{background:var(--lvl);color:#fff;border-color:var(--lvl)}
 .fp-sec .fin-n{margin-left:4px}
 .fp-gap{flex:1}
+.fp-acts{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end}
 .fp-body{background:var(--paper);border:1px solid var(--lvl-line);border-radius:14px;padding:14px 16px;min-height:200px}
 .fp-body .m-foot{border:0;padding:12px 0 0;background:none}
 .fp-h{font-size:20px;margin:0 0 4px;color:var(--lvl)}
@@ -1548,6 +1552,7 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fc-ctx{display:inline-block;margin-right:6px;font-weight:700}
 .fc-opt{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:4px 0;cursor:pointer;overflow-wrap:anywhere;min-width:0}
 .fc-opt input{margin-top:3px;flex:none}
+.fin-est{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
 .fin-away{margin:8px 0;padding:8px 10px;border:1.5px solid #d93025;border-radius:10px;background:#fff6f5;font-size:13px;line-height:1.5}
 .fin-away .btn{margin-left:4px}
 /* Links, one line each (b284). */
@@ -1608,7 +1613,7 @@ body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
 .fx-det>div{margin:2px 0}
 .fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
 .fin-ex .fx-head{padding:0 11px 0 14px}
-@media (max-width:560px){ .fx-row{grid-template-columns:64px minmax(0,1fr) 58px 62px 10px;gap:5px;font-size:12.5px} .fin-ex .fx-item{padding:6px} .fin-ex .fx-head{padding:0 7px 0 10px} .fx-d,.fx-o{font-size:11px} }
+@media (max-width:560px){ .fx-row{grid-template-columns:64px minmax(0,1fr) 60px 72px 10px;gap:5px;font-size:12.5px} .fin-ex .fx-item{padding:6px} .fin-ex .fx-head{padding:0 7px 0 10px} .fx-d,.fx-o{font-size:11px} }
 .rb-item{margin:6px 0}
 .rb-item .li-btns .btn{min-width:56px}
 .rb-det .exp-gi{padding:6px 0;border-top:1px dashed var(--line)}
@@ -2256,7 +2261,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b290</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b291</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5362,7 +5367,7 @@ function renderTabs(){
     if(hs) hs.addEventListener('change',()=>{
       const v=hs.value;
       if(v==='__new'){ renderTabs(); newSeasonModal(); return; }
-      if(v) switchSeason(v);
+      if(v){ switchSeason(v); woJump(); }
     });
     return;
   }
@@ -5405,7 +5410,7 @@ function renderTabs(){
     h += `<span class="crumb-sep">›</span>
       <span class="crumb-pick">
         <select class="crumb-sel ${CUR_LEVEL==='event'?'on':''}" data-act="pickloc">
-          ${opt(reg.whLoc, subRegionsOf(reg.regionId).length ? '🏠 Warehouse · all of ' + reg.name : '🏠 Warehouse', CUR_LOC===reg.whLoc && !curSub())}
+          ${opt(reg.whLoc, subRegionsOf(reg.regionId).length ? '🏠 Warehouse · ' + reg.name + ' Summary' : '🏠 Warehouse', CUR_LOC===reg.whLoc && !curSub())}
           ${wholeRegion(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
             const subs = subRegionsOf(reg.regionId);
             if(!subs.length) return eventsOfRegion(reg.regionId).map(evOpt).join('');
@@ -5414,8 +5419,10 @@ function renderTabs(){
                replaces the line of chips under the bar). */
             const known = new Set(subs.map(x=>x.id)), cs = curSub();
             const rest = eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId)));
-            return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 All of ' + x.name, cs===x.id)}${
-                eventsOfSub(reg.regionId, x.id).map(evOpt).join('')}</optgroup>`).join('') +
+            /* b291 (Gita): "<sub-region> Summary", its events indented beneath it. */
+            const ind = '\u00a0\u00a0\u00a0\u00a0';
+            return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 ' + x.name + ' Summary', cs===x.id)}${
+                eventsOfSub(reg.regionId, x.id).map(e=>opt(e.eventId, ind + e.name + mark(closureOf(e.eventId)), CUR_LOC===e.eventId)).join('')}</optgroup>`).join('') +
               (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })}
           ${opt('__new','＋ New event…',false)}
         </select>
@@ -5443,13 +5450,13 @@ function renderTabs(){
     const v=ss.value;
     if(v==='__new'){ renderTabs(); newSeasonModal(); return; }
     if(!v || v===STATE.activeSeason) return;
-    switchSeason(v);
+    switchSeason(v); woJump();
   });
   const rs=$('#locTabs').querySelector('[data-act="pickregion"]');
   if(rs) rs.addEventListener('change',()=>{
     const v=rs.value;
     if(v==='__new'){ renderTabs(); regionModal(); return; }
-    if(v===SEASONAL_HQ){ if(CUR_LEVEL!=='season') goTo('season'); return; }
+    if(v===SEASONAL_HQ){ if(CUR_LEVEL!=='season') goTo('season'); woJump(); return; }
     if(v) goTo('region',v);
   });
   const ls=$('#locTabs').querySelector('[data-act="pickloc"]');
@@ -5733,7 +5740,8 @@ function snRow(html, key){
   // No numbers on menu items, ever (b258, Gita's rule), until there is a to-do section for them.
   const badge = '';
   const named = SN_ITEMS[key];
-  const text = named ? named[1] : inner.replace(/<[^>]+>/g,'').replace(/\s*\(\d+[^)]*\)\s*$/,'').replace(/^[^\w(]+/, '').trim();
+  // b291 (Gita): the menu says how to stop while wording is being edited.
+  const text = key==='editwording' && EDIT_WORDING ? 'Turn off Editing Wording' : named ? named[1] : inner.replace(/<[^>]+>/g,'').replace(/\s*\(\d+[^)]*\)\s*$/,'').replace(/^[^\w(]+/, '').trim();
   // A place's own actions get an icon from what they do.
   const guess = t => /order/i.test(t) ? '↕' : /reopen/i.test(t) ? '🔓' : /close/i.test(t) ? '🔒' : /delete/i.test(t) ? '🗑'
     : /rename|edit/i.test(t) ? '✎' : '•';
@@ -9179,6 +9187,9 @@ function closeModalFor(kind){
         }else{
           const r=(st.regions||[]).find(v=>v.regionId===id); if(r) r.closedAt=when;
           st.regions = closedLast(st.regions||[]);
+          // Everything under it closes with it (b291, Gita).
+          (st.events||[]).forEach(v=>{ if(v.regionId===id && !v.closedAt) v.closedAt=when; });
+          st.events = closedLast(st.events||[]);
         }
       }, 'Closed');
     closeModal();
@@ -9194,6 +9205,9 @@ function reopenHere(){
   const id = isEvent ? CUR_LOC : CUR_REGION;
   commit({action:'reopenLocation',kind:isEvent?'event':'region',id},
     st=>{
+      // The region's events that closed with it open again with it (b291).
+      if(!isEvent){ const r = (st.regions||[]).concat(st.allRegions||[]).find(v=>v.regionId===id), at = r && r.closedAt ? new Date(r.closedAt).getTime() : NaN;
+        (st.events||[]).forEach(v=>{ if(v.regionId===id && v.closedAt && new Date(v.closedAt).getTime()===at) v.closedAt=''; }); }
       (isEvent ? (st.events||[]).filter(v=>v.eventId===id)
                : (st.regions||[]).concat(st.allRegions||[]).filter(v=>v.regionId===id))
         .forEach(x=>{ x.closedAt=''; });
@@ -9789,8 +9803,7 @@ function expDraw(){
       ${edit || P ? '' : `<div class="cash-sub">Your expenses</div>
       ${EXP.list.length ? EXP.list.map(x=>expCardHTML(x, false)).join('') : '<div class="cash-empty">None recorded yet.</div>'}`}
     </div>
-    ${P ? '' : `<div class="m-foot">${o.fin && PRACTICE ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
-      <button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`}`, true);
+    ${''/* b291 (Gita): no Finance To do or Close at the foot; the ✕ top right closes it. */}`, true);
   expBind();
   keep();
 }
@@ -10421,11 +10434,12 @@ function rsDraw(){
     target = RS.email ? (d.rules.people[RS.email] || {}) : null;
     above = { on: Object.fromEntries(d.methods.map(m=>[m, true])), curs: null };
   }
-  const aboveWord = RS.mode==='place' ? 'As above' : 'As the place says';
   const rows = target ? d.methods.map(m=>{
     const set = target.methods && (m in target.methods) ? (target.methods[m] ? 'on' : 'off') : '';
-    return `<div class="rs-row"><span>${esc(m)}</span><select data-rsm="${esc(m)}" ${dis}>
-      ${opt('', aboveWord + (RS.mode==='place' ? ' (' + (above.on[m] ? 'on' : 'off') + ')' : ''), !set)}${opt('on','On',set==='on')}${opt('off','Off',set==='off')}</select>${
+    /* On or off, nothing else (b291, Gita): ticked is on. It starts as the place
+       above has it; changed here, it becomes this place's own. */
+    return `<div class="rs-row"><label class="rs-onoff"><input type="checkbox" data-rsm="${esc(m)}" data-was="${above.on[m]?1:''}" ${(set ? set==='on' : !!above.on[m])?'checked':''} ${dis}>
+      <span>${esc(m)}</span></label>${
       !ro && FIN_ON ? `<button type="button" class="btn btn-ghost btn-xs" data-act="rsgone" data-m="${esc(m)}" title="Remove ${esc(m)} for good, everywhere">🗑</button>` : ''}</div>`;
   }).join('') : '';
   const own = target && target.curs;
@@ -10462,8 +10476,7 @@ function rsDraw(){
       ${ro ? '' : `<div class="rs-catadd"><input id="rsPayNew" type="text" maxlength="40" placeholder="A new payment type"><button type="button" class="btn btn-ghost btn-sm" data-act="rspayadd">＋ Add</button></div>`}
       <div class="muted-note">For expenses only: how a sale was paid is set at each place, as before.</div>` : ''}
       <div class="err" id="rsErr"></div>`,
-    `${PRACTICE ? `<button class="btn btn-ghost" data-act="fintodo">💼 Finance To do</button>` : ''}
-      ${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
+    `${!ro && target ? `<button class="btn btn-primary" id="rsSave">Save</button>` : ''}`);
   const ps = $('#rsPlace'); if(ps) ps.addEventListener('change', ()=>{ RS.id = ps.value; rsDraw(); });
   // Searchable, as every place list is (b254, practice).
   const lv = d.levels.map(l=>{ const bits = l.label.split(' · ');
@@ -10500,7 +10513,7 @@ async function rsGone(m, gone){
 async function rsSave(){
   const d = RS.d, rules = JSON.parse(JSON.stringify(d.rules));
   const x = {}, methods = {};
-  finRoot().querySelectorAll('[data-rsm]').forEach(s=>{ if(s.value) methods[s.dataset.rsm] = s.value==='on'; });
+  finRoot().querySelectorAll('[data-rsm]').forEach(s=>{ if(s.checked !== !!s.dataset.was) methods[s.dataset.rsm] = s.checked; });
   if(Object.keys(methods).length) x.methods = methods;
   // Ticked as the place above has them: it simply follows; otherwise these are its own.
   const ticked = [...finRoot().querySelectorAll('[data-rsc]:checked')].map(c=>c.dataset.rsc);
@@ -11728,7 +11741,7 @@ async function finGo(sec, scope, opt){
   if(sec==='compare' || sec==='report' || sec==='visual') sec = 'overview';
   if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
   if(scope===undefined) scope = FINP.scope;
-  const fresh = !FINP.on || opt.reload;
+  const fresh = !FINP.on || opt.reload, sameSec = FINP.on && FINP.sec === sec;
   if(!opt.fromHistory && location.hash !== finHash(sec, scope)) history.pushState(null, '', finHash(sec, scope));
   try{ closeModal(); }catch(e){}
   FINP.on = true; FINP.sec = sec; FINP.scope = scope;
@@ -11763,7 +11776,8 @@ async function finGo(sec, scope, opt){
     finFailed(e, sec, scope); return;
   }
   finSyncPlace();
-  if(!opt.fromHistory) window.scrollTo(0, 0);
+  // Another place on the same screen keeps your spot on the page (b291); a different screen starts at its top.
+  if(!opt.fromHistory && !sameSec) window.scrollTo(0, 0);
   backToBoot();
 }
 /* The left-hand menu follows the place Finance is looking at (b281, Gita:
@@ -11778,12 +11792,13 @@ function finSyncPlace(){
   if(f.e && (STATE.events||[]).some(e=>e.eventId===f.e)){ lvl = 'event'; loc = f.e; reg = regionOfLoc(f.e); }
   else if(f.r && regionById(f.r)){ lvl = 'region'; reg = f.r; loc = regionById(f.r).whLoc; }
   else if(f.r || (f.s && f.s!==STATE.activeSeason)) return;
-  if(lvl!==CUR_LEVEL || reg!==CUR_REGION || loc!==CUR_LOC){
-    CUR_LEVEL = lvl; CUR_REGION = reg; CUR_LOC = loc;
-    savePos(); applyLevelTheme();
-  }
+  const moved = lvl!==CUR_LEVEL || reg!==CUR_REGION || loc!==CUR_LOC;
+  /* No colour change while in Finance (b291, Gita: "the top menus should be
+     purely still and only the data should change"): the page takes the place's
+     colours when you go back to the sales side. */
+  if(moved){ CUR_LEVEL = lvl; CUR_REGION = reg; CUR_LOC = loc; savePos(); }
   if(lvl==='region' && SUBR_ON) setSub(f.u || '');
-  renderAdmin();
+  if(moved || !FIN.menuOnce){ FIN.menuOnce = true; renderAdmin(); }
 }
 /* Something was saved somewhere (a reimbursement sent in by link, one paid on
    another phone): Finance fills it in by itself, no refresh needed (Gita,
@@ -11830,7 +11845,8 @@ async function finQuietRefresh(){
 function finLeave(opt){
   opt = opt || {};
   if(!FINP.on) return;
-  FINP.on = false; document.body.classList.remove('fin-mode'); $('#finPage').hidden = true;
+  FINP.on = false; document.body.classList.remove('fin-mode'); $('#finPage').hidden = true; FIN.menuOnce = false; FIN.navH = ''; FIN.secsH = '';
+  applyLevelTheme();
   if(!opt.fromHistory && /^#finance/.test(location.hash)) history.pushState(null, '', location.pathname + location.search);
   if(!opt.quiet) renderAll();
 }
@@ -11857,24 +11873,30 @@ function finNav(){
       const subs = finSubsOf(f.r), rName = (D.regions.find(x=>x.id===f.r)||{}).name || '';
       const evSub = f.e ? subOfEvent(f.e) : '', inSub = f.u || (subs.some(x=>x.id===evSub) ? evSub : '');
       if(subs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.u?' on':''}" data-fpick="u">
-        ${opt('', 'All of ' + rName, !inSub)}${subs.map(x=>opt(x.id, x.name, x.id===inSub)).join('')}</select></span>`;
+        ${opt('', rName + ' Summary', !inSub)}${subs.map(x=>opt(x.id, x.name, x.id===inSub)).join('')}</select></span>`;
       const evs = D.events.filter(e=>e.regionId===f.r && (!inSub || eventsOfSubAny(f.r, inSub).includes(e.id)));
       if(evs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.e?' on':''}" data-fpick="e">
         ${opt('', inSub ? 'The whole sub-region' : 'The whole region', !f.e)}${evs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.e)).join('')}</select></span>`;
     }
   }
+  // Unchanged, left exactly as it is (b291): the bar stays still while the figures change.
+  if(FIN.navH !== h || !$('#fpNav').firstChild){
+  FIN.navH = h;
   $('#fpNav').innerHTML = h + '</div></div>';
   $('#fpNav').querySelectorAll('[data-fpick]').forEach(sel=>sel.addEventListener('change', ()=>{
     const k = sel.dataset.fpick, cur = finScopeF();
     const upSub = k==='e' && !cur.u && cur.e && finSubsOf(cur.r).some(x=>x.id===subOfEvent(cur.e)) ? subOfEvent(cur.e) : '';
     finGo(FINP.sec, sel.value || (k==='e' ? (cur.u || upSub || cur.r) : k==='u' ? cur.r : k==='r' ? cur.s : ''));
   }));
+  }
   const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
-  $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
+  const secs = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
       k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='reimb' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}${
       k==='reimb' && EXP.todo && EXP.todo.asks ? ' <span class="fin-dot" title="Someone asked for a link to be reactivated"></span>' : ''}</button>`).join('') +
     `<span class="fp-gap"></span>
-     <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Go to Sales Portal' : 'Leave Finance'}</button>`;
+     ${STATE ? `<span class="fp-acts"><button type="button" class="btn btn-ghost btn-sm" data-act="finsendlink">📨 Send Reimbursements Link</button><button type="button" class="btn btn-primary btn-sm" data-act="expenses">🧾 Add an Expense</button></span>`
+       : `<button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← Leave Finance</button>`}`;
+  if(FIN.secsH !== secs){ FIN.secsH = secs; $('#fpSecs').innerHTML = secs; }
   void fin;
   // The top 📋 Report is Finance's own here, for everyone who can see Finance.
   const rb = $('#reportBtn'); if(rb) rb.style.display = '';
@@ -11899,7 +11921,8 @@ function finRender(){
       post({action:'expRulesGet'}).then(d=>{ RS.d = d.result; if(FINP.on && FINP.sec==='reimb') finRender(); })
         .catch(e=>{ $('#fpBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; }); return; }
     // Start at the place being looked at.
-    const id = f.e || f.r || f.s || '';
+    // Where you are (b291, Gita: "auto-set to the region the finance person is in"): Finance's place, or with none chosen the region open on the sales side.
+    const id = f.e || f.r || f.s || (CUR_REGION && RS.d.levels.some(l=>l.id===CUR_REGION) ? CUR_REGION : '');
     if(RS.d.levels.some(l=>l.id===id) && RS.at !== FINP.scope){ RS.id = id; RS.mode = 'place'; RS.at = FINP.scope; }
     rsDraw(); return;
   }
@@ -12036,9 +12059,19 @@ function finSendLinkModal(){
         <div class="field"><label for="fsName">Name</label><input id="fsName" type="text" maxlength="60" autocomplete="off" placeholder="Who it is for"></div>
         <div class="field"><label for="fsTo">Email or WhatsApp number</label><input id="fsTo" type="text" maxlength="120" autocomplete="off" placeholder="name@mail.com or +48 600 000 000"></div>
       </div>
-      <div class="muted-note">For <span class="no-edit">${esc(finScopeName() || 'anywhere')}</span>. They fill in the form without signing in, and the link turns itself off once they have sent it.</div>
+      <div class="field"><label>For</label>${comboHTML('fsPlace', '', 'Search for a season, region or event')}</div>
+      <div class="muted-note">They fill in the form without signing in, and the link turns itself off once they have sent it.</div>
       <div id="fsDone"></div></div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button type="button" class="btn btn-primary" id="fsGo">Send</button></div>`, true);
+  /* Where the link is for (b291, Gita): chosen here, starting where you are:
+     the place Finance is looking at, or with none the place open on the sales side. */
+  const f = finScopeF(), P = finLinkPlaces();
+  const side = CUR_LEVEL==='event' ? CUR_LOC : CUR_LEVEL==='region' ? CUR_REGION : CUR_LEVEL==='season' ? STATE && STATE.activeSeason : '';
+  const here = f.e || f.r || f.s || (P.some(p=>p.id===side) ? side : '');
+  FIN.sendPlace = here;
+  const items = [{v:'', l:'Anywhere'}].concat(expPlaceItems(P));
+  const it = items.find(i=>i.v===here); const inp = $('#fsPlace .pp-in'); if(inp) inp.value = it ? (it.shown || it.l) : 'Anywhere';
+  comboBind('fsPlace', items, here, v=>{ FIN.sendPlace = v; });
   finBindSend();
   const n = $('#fsName'); if(n) n.focus();
 }
@@ -12094,7 +12127,7 @@ function finExpSecHTML(){
         <span class="fx-w no-edit">${esc(x.desc)}</span>
         <span class="fx-o">${esc(finExpOrig(x))}</span><span class="fx-a">${esc(finExpUsd(x))}</span><span class="li-chev">▶</span></div>
       <div class="li-det fx-det">
-        <div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>
+        ${x.forEmail==='*general' || x.who==='General' ? '' /* b291: a General cost is nobody's */ : `<div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>`}
         <div><span class="k">Type</span> <span class="v">${esc(x.type)}</span></div>
         <div><span class="k">Where</span> <span class="v no-edit">${esc(x.placeLabel)}</span></div>
         <div><span class="k">Status</span> ${expStatusHTML(x)}</div>
@@ -12106,11 +12139,9 @@ function finExpSecHTML(){
           <span class="exp-gap"></span>${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">✏️ Edit</button>
           <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑 Delete</button>` : ''}</div>
       </div></div>`; };
-  return `<div class="fin-sh"><span></span>
-      <span class="fin-sh-btns">${FIN.D.mayEdit || (FIN.D.convs||[]).length ? `<button type="button" class="btn btn-ghost btn-xs" onclick="finConvModal()"
-        title="Took money in another currency and got dollars for it? Write it down, and it replaces the estimated dollars.">💱 Dollars received${(FIN.D.convs||[]).length ? ' (' + FIN.D.convs.length + ')' : ''}</button>` : ''}
-      <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></span></div>
-    ${finExpBarHTML(finExpTotals(all), 0)}
+  /* b291 (Gita): Add an Expense sits at the top of every Finance screen now, and
+     Dollars received is reached by tapping a ~ figure (practice), not a button here. */
+  return `${finExpBarHTML(finExpTotals(all), 0)}
     <div class="fin-filters">
       <label class="fin-search">Search<input type="search" id="finExQ" value="${esc(E.q)}" placeholder="Names, what for, places…"></label>
       <label>Sort by<select id="finExSort">${[['date','Date'],['name','Name'],['amount','Amount'],['type','Type']].map(([k,l])=>
@@ -12158,8 +12189,7 @@ function finExpTop(){
   const tab = (k, l, c, dot) => `<button type="button" class="fin-tab${R.tab===k?' on':''}" data-act="finrbtab" data-tab="${k}">${esc(l)}${c===undefined?'':` <span class="fin-n">${c}</span>`}${
     dot ? ' <span class="fin-dot" title="Someone asked for a link to be reactivated"></span>' : ''}</button>`;
   return `<h2 class="fp-h">Reimbursements ${finRepBtn('reimb')} ${finCsvBtn('reimb')}</h2>${finScopeNote()}
-    <div class="fin-one"><section class="fin-col" id="finRbS"><div class="fin-sh"><span></span>
-      <button type="button" class="btn btn-ghost btn-xs" data-act="finsendlink">📨 Send Reimbursements Link</button></div>
+    <div class="fin-one"><section class="fin-col" id="finRbS">
     ${finExpBarHTML(finExpTotals(all), 1)}
     <div class="fin-tabs fin-tabs-wide">${tab('pending','Pending', n('pending'))}${tab('paid','Paid back', n('paid'))}${tab('declined','Declined', n('declined'))}${tab('links', 'Links', undefined, EXP.todo && EXP.todo.asks)}${tab('settings','⚙️ Settings')}</div>`;
 }
@@ -12180,12 +12210,12 @@ function finBindSend(){
     const win = window.open('', email ? GMAIL_TAB : '_blank');
     go.disabled = true; go.textContent = 'Sending…';
     try{
-      const f = finScopeF(), place = f.e || f.r || f.s || '';
+      const place = FIN.sendPlace || '';
       const r = (await post({action:'expLinkMake', place, toName:name, toEmail:email, toPhone:phone})).result;
       FIN_LINKS = r.list;
       const msg = 'Hare Krishna ' + name + '! ' + reimbMsg(reimbUrl(r.key));
       const url = phone ? 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg)
-        : gmailUrl(email, 'Send in an expense to be paid back', msg);
+        : gmailUrl(email, REIMB_SUBJECT, reimbEmail(name, reimbUrl(r.key)));
       if(win) win.location.href = url; else window.open(url, email ? GMAIL_TAB : '_blank');
       if(FIN.rb.tab==='links') await finLinksRender();
       const d2 = $('#fsDone');
@@ -12334,6 +12364,14 @@ const gmailUrl = (to, su, body) => 'https://mail.google.com/mail/?view=cm&fs=1' 
   '&su=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(body);
 const reimbUrl = key => location.origin + location.pathname + '?' + (PRACTICE ? 'practice&' : '') + 'reimb=' + encodeURIComponent(key);
 const reimbMsg = url => 'Hare Krishna! If you spent money for the tour and would like to be paid back, please send it in here, with a photo of the receipt: ' + url;
+/* The email that carries a reimbursement link (b291, Gita's own words). */
+const REIMB_SUBJECT = 'One-time reimbursement link';
+const reimbEmail = (name, url) => 'Hare Krishna' + (name ? ', ' + name : '') + '. Please accept my respectful obeisances. All glories to Srila Prabhupada and Srila Gurudeva.\n\n' +
+  'You can use the following link to submit all expenses for which you need reimbursement.\n\n' + url + '\n\n' +
+  'You can add multiple expenses and receipts using this link.\n\n' +
+  'For security purposes, the link disables after you click submit.\n\n' +
+  'If you make any mistakes or need to submit additional expenses, you can click the link and request for it to be reactivated. If you\u2019ve made a mistake, please note this in the comments.\n\n' +
+  'Thank you for your service to Srila Gurudeva!\n\nIn Gratitude, Your Servant,\n' + String((ME && ME.name) || (FINP.me && FINP.me.name) || '');
 const FIN_LINK_OPEN = new Set();
 // Asked to be turned back on first, then the ones still working, then the rest; newest first within each.
 function finLinksSorted(){
@@ -12349,7 +12387,7 @@ async function finLinksRender(focusNew){
   }
   const send = l => { const url = reimbUrl(l.key), msg = reimbMsg(url);
     return `<a class="btn btn-ghost btn-xs" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 WhatsApp</a>
-      <a class="btn btn-ghost btn-xs" href="${esc(gmailUrl('', 'Send in an expense to be paid back', msg))}" target="${GMAIL_TAB}">✉️ Gmail</a>
+      <a class="btn btn-ghost btn-xs" href="${esc(gmailUrl((l.to && l.to.email) || '', REIMB_SUBJECT, reimbEmail((l.to && l.to.name) || '', url)))}" target="${GMAIL_TAB}">✉️ Gmail</a>
       <button type="button" class="btn btn-ghost btn-xs" data-act="slcopy" data-link="${esc(url)}">📋 Copy link</button>`; };
   const toLine = l => l.to ? `<div class="exp-meta">Sent to <span class="no-edit">${esc(l.to.name)}${l.to.phone ? ' · ' + esc(l.to.phone) : ''}${l.to.email ? ' · ' + esc(l.to.email) : ''}</span>${
       l.used ? ' · <b>used</b> ' + esc(String(l.usedAt||'').slice(0,10)) : ' · not used yet'}</div>` : '';
@@ -12376,7 +12414,7 @@ async function finLinksRender(focusNew){
             l.ask.name ? ' by <span class="no-edit">' + esc(l.ask.name) + '</span>' : ''}${l.ask.note ? ': “<span class="no-edit">' + esc(l.ask.note) + '</span>”' : ''}</div>` : ''}
           <div class="exp-meta">${l.label && l.to ? '<span class="no-edit">' + esc(l.label) + '</span> · ' : ''}<span class="no-edit">${esc(l.placeLabel)}</span> · ${l.sent} sent in · made by <span class="no-edit">${esc(l.by)}</span>, ${esc(String(l.at).slice(0,10))}${l.off?' · turned off':''}</div>
           ${toLine(l)}
-          ${off ? '' : `<div class="exp-btns">${send(l)}</div>`}
+          <div class="exp-btns">${off ? '' : send(l)}<button type="button" class="btn btn-ghost btn-xs" data-act="finlinkdel" data-k="${esc(l.key)}">🗑 Delete link</button></div>
         </div></div>`; }).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   let place = '';
@@ -12721,6 +12759,25 @@ function finChartsMount(){
   body.appendChild(box);
   try{ box.innerHTML = finChartsHTML(); }catch(e){ box.innerHTML = ''; }
   box.hidden = !box.innerHTML;
+  finEstMark();
+}
+/* Dollars received, from the figure itself (b291, Gita, practice first): any
+   dollar amount with a ~ is an estimate from an exchange rate; tapping it opens
+   Dollars received for the place being looked at, to put in the exact amount. */
+function finEstMark(){
+  if(!PRACTICE || !FINP.on || !FIN.D || !FIN.D.mayEdit) return;
+  const body = $('#fpBody'); if(!body) return;
+  const re = /−?~\$[\d,]+(?:\.\d+)?/g, hits = [];
+  const walk = document.createTreeWalker(body, NodeFilter.SHOW_TEXT, { acceptNode: n =>
+    n.nodeValue.includes('~$') && !(n.parentElement && n.parentElement.closest('button, a, input, select, textarea, svg, .fin-est')) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
+  while(walk.nextNode()) hits.push(walk.currentNode);
+  hits.forEach(n=>{
+    const t = n.nodeValue, frag = document.createDocumentFragment(); let at = 0;
+    t.replace(re, (m, i)=>{ frag.append(t.slice(at, i)); const b = document.createElement('button');
+      b.type = 'button'; b.className = 'fin-est no-edit'; b.dataset.act = 'finest'; b.title = 'An estimate from the exchange rate. Tap to put in the dollars actually received.';
+      b.textContent = m; frag.append(b); at = i + m.length; return m; });
+    frag.append(t.slice(at)); n.replaceWith(frag);
+  });
 }
 
 /* ---- ⬇️ CSV on every screen (Gita, 2026-10-20): what the section shows, as a spreadsheet ---- */
@@ -13263,6 +13320,7 @@ function lblSelectPop(pen){
 /** Put your wording in place of the original, wherever it appears. */
 let LBL_BUSY = false;
 function applyLabels(root){
+  lblBodyClass();   // pencils show only while editing (b291); the class follows the flag
   /* Looked up on the steady form of the key, so wording saved before — under a
      heading that has since changed — is still found. */
   const raw = (STATE && STATE.labels) || {};
@@ -17539,6 +17597,20 @@ function deleteSeasonNow(x){
   commit(payload, st=>dropSeason(st, sid), 'Season deleted', {anySeason:true});
 }
 
+/* A season's name takes you to its Warehouse Overview (b291, practice; Gita
+   chose this on the card): the season's page opens scrolled to it, unfolded.
+   Regions already open at their warehouse. */
+let WO_PEND = false;
+function woJump(){
+  WO_PEND = PRACTICE;
+  if(!PRACTICE) return;
+  setTimeout(()=>{
+    if(CUR_LEVEL!=='season' || isHQ()) return;
+    const p = $('#whOverviewPanel'); if(!p || p.style.display==='none') return;
+    if(isFolded('warehouses')){ setFolded('warehouses', false); applyFolds(); }
+    p.scrollIntoView({block:'start'});
+  }, 60);
+}
 async function switchSeason(id){
   if(!id || id===STATE.activeSeason) return;
   SEASON_EPOCH++;                 // anything already in flight is now out of date
@@ -17563,6 +17635,8 @@ async function switchSeason(id){
     if(d.state){
       seasonCacheSave(id, d.state, d.rev);
       BASE = d.state; REV = d.rev; STATE = derive(); renderAll();
+      if(WO_PEND && !cached) woJump();
+      WO_PEND = false;
       setStatus('ok','Saved · '+clock());
       if(!cached) toast('Now showing ' + (id===HQ_ID ? 'Earthly HQ'
         : ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name));
@@ -20589,9 +20663,13 @@ document.addEventListener('click',e=>{
   if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; if(t.dataset.tab==='links') FIN_LINKS = null; finRender(); return; }
   if(a==='finrbsend'){ const go = ()=>{ const n = $('#fsName'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } };
     if(FINP.sec!=='reimb') finGo('reimb').then(go); else go(); return; }
+  if(a==='finest'){ const f = finScopeF(); finConvModal({place: f.e || f.r || f.s || ''}); return; }
   if(a==='finlinktog'){ const k = t.dataset.k; FIN_LINK_OPEN.has(k) ? FIN_LINK_OPEN.delete(k) : FIN_LINK_OPEN.add(k); finLinksRender(); return; }
   if(a==='finlinkoff'){ post({action:'expLinkOff', key:t.dataset.k, on:!!t.dataset.on}).then(d=>{ FIN_LINKS = d.result;
       if(EXP.todo) EXP.todo.asks = d.result.filter(l=>l.ask && (l.off || l.used)).length; finNav(); finLinksRender(); toast(t.dataset.on ? 'Link turned back on' : 'Link turned off'); }).catch(e=>toast(e.message, true)); return; }
+  if(a==='finlinkdel'){ if(!confirm('Delete this link? It stops working, and it leaves the list. Expenses already sent in through it stay.')) return;
+    post({action:'expLinkDel', key:t.dataset.k}).then(d=>{ FIN_LINKS = d.result; FIN_LINK_OPEN.delete(t.dataset.k);
+      if(EXP.todo) EXP.todo.asks = d.result.filter(l=>l.ask && (l.off || l.used)).length; finNav(); finLinksRender(); toast('Link deleted'); }).catch(e=>toast(e.message, true)); return; }
   if(a==='finviz'){ FIN.viz.form = t.dataset.form; finVisualRender(); return; }
   // In Finance, the top 📋 Report is Finance's own: the section being looked at.
   if(a==='report' && FINP.on){ finShareReport(''); return; }
@@ -20622,6 +20700,9 @@ document.addEventListener('click',e=>{
   if(a==='menuorder'){ menuOrderModal(); return; }
   if(a==='editwording'){
     EDIT_WORDING = !EDIT_WORDING; lblBodyClass(); if(!EDIT_WORDING) labelInlineEnd(true);
+    // Every pencil goes when editing ends (b291, Gita: they stayed on words with nothing rewritten).
+    if(!EDIT_WORDING) document.querySelectorAll('.pencil, .sel-pencil').forEach(p=>p.remove());
+    try{ renderAdmin(); }catch(e){}
     try{ localStorage.setItem('tbs_edit_wording', EDIT_WORDING?'1':'0'); }catch(e){}
     toast(EDIT_WORDING ? 'Tap a pencil to rewrite any wording' : 'Finished editing wording');
     renderAll(); if(FINP.on) finRender(); return;
@@ -20731,12 +20812,12 @@ document.addEventListener('click',e=>{
   }
   if(a==='qr'){ qrModal(); return; }
   if(a==='qredit'){ qrEditModal(); return; }
-  if(a==='goseason'){ goTo('season'); return; }
+  if(a==='goseason'){ goTo('season'); woJump(); return; }
   if(a==='gohq'){ if(!isHQ()) switchSeason(HQ_ID); return; }
   // From HQ's summaries: open that season (or HQ's own row: stay here).
   if(a==='goseasonid'){
     const sid = t.dataset.season;
-    if(sid && sid!==HQ_ID && sid!==STATE.activeSeason) switchSeason(sid);
+    if(sid && sid!==HQ_ID && sid!==STATE.activeSeason){ switchSeason(sid); woJump(); }
     return;
   }
   if(a==='goregion'){ goTo('region', t.dataset.region); return; }

@@ -213,13 +213,13 @@ const API = 'http://api.test/';
     t.push(['Expenses: the bar says Expenses $20 with Expected Expenses $50, while Lunch is owed', /Expenses\s*\$20\s*Expected \$50/.test(m)]);
     const btnRight = (sel, btn) => own.evaluate(([sel, btn]) => { const h = document.querySelector(sel + ' .fin-sh'), b = h && h.querySelector(btn); if(!b) return false;
         const hr = h.getBoundingClientRect(), br = b.getBoundingClientRect(); return Math.abs(hr.right - br.right) < 4 && br.top < hr.bottom && br.height < 34; }, [sel, btn]);
-    const exBtn = await btnRight('#finExS', '[data-act="expenses"]');
+    const exBtn = !(await own.$('#finExS [data-act="expenses"]')) && !!(await own.$('#fpSecs [data-act="expenses"]'));
     await own.evaluate(() => finGo('reimb', 'rg_zg')); await own.waitForTimeout(800);
     t.push(['b284: Reimbursements is its own screen, Reimbursements Due over it, no expenses list', await own.evaluate(() => !!document.querySelector('#finRbS') && /Reimbursements Due\s*\$30/.test(document.querySelector('#finRbS').innerText) && !document.querySelector('#finExS'))]);
-    t.push(['b259: "Add an expense" and "Send Reimbursements Link" are small buttons on the right of each title row', exBtn && await btnRight('#finRbS', '[data-act="finsendlink"]') && !(await own.$('#fsName'))]);
+    t.push(['b291: Send Reimbursements Link and Add an Expense sit side by side on the Finance bar, not on the title rows', exBtn && await own.evaluate(() => { const a = document.querySelector('#fpSecs [data-act="finsendlink"]'), b = document.querySelector('#fpSecs [data-act="expenses"]'); return !!a && !!b && a.nextElementSibling === b && !document.querySelector('#finRbS [data-act="finsendlink"]'); }) && !(await own.$('#fsName'))]);
     await own.evaluate(() => finGo('expenses', 'rg_zg')); await own.waitForTimeout(800);
-    t.push(['b259: no Add an expense or Edit Wording on the Finance bar; the way out says Go to Sales Portal', await own.evaluate(() => {
-      const bar = document.querySelector('#fpSecs').innerText; return !/Add an expense|Edit Wording/.test(bar) && /Go to Sales Portal/.test(document.querySelector('#finPage').innerText) && !/Back to app/.test(document.querySelector('#finPage').innerText); })]);
+    t.push(['b291: the Finance bar has 🧾 Add an Expense where Go to Sales Portal was (that is in the menu); no Edit Wording', await own.evaluate(() => {
+      const bar = document.querySelector('#fpSecs').innerText; return /Add an Expense/.test(bar) && !/Edit Wording|Go to Sales Portal/.test(bar) && !/Back to app/.test(document.querySelector('#finPage').innerText); })]);
     const order = () => own.$$eval('.fin-ex .fx-item .fx-w', ts => ts.map(x => x.textContent.trim()));
     t.push(['b260: an expense is one row: date, what for and amount; the rest opens beneath it', await own.evaluate(() => {
       const it = document.querySelector('.fin-ex .fx-item'), r = it.querySelector('.fx-row');
@@ -256,7 +256,7 @@ const API = 'http://api.test/';
     await own.click('[data-act="finrbtab"][data-tab="settings"]'); await own.waitForTimeout(1200);
     t.push(['…its Where is a searchable drop-down', !!(await own.$('#rsPlaceC .pp-in')) && /By place/.test(await fpage(own))]);
     // b257: a way of paying back can be removed for good, and brought back.
-    const ways = () => own.$$eval('.rs-row > span', ss => ss.map(x => x.textContent.trim()));
+    const ways = () => own.$$eval('.rs-row label > span', ss => ss.map(x => x.textContent.trim()));
     const had = await ways();
     await own.click('[data-act="rsgone"][data-m="Bank transfer"]'); await own.waitForTimeout(1200);
     t.push(['b257: 🗑 removes a way of paying back for good', had.includes('Bank transfer') && !(await ways()).includes('Bank transfer') && /Removed for good: Bank transfer/.test(await fpage(own))]);
@@ -560,8 +560,9 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal());
     t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
-    t.push(['b269: …it sits beside Add an expense, and counts what is written down', await own.evaluate(() => { const b = [...document.querySelectorAll('#fpBody .fin-sh-btns button')].map(x => x.textContent.trim());
-      return b.length === 2 && /Dollars received \(1\)/.test(b[0]) && /Add an expense/.test(b[1]); })]);
+    t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen', await own.evaluate(() => !document.querySelector('#fpBody .fin-sh-btns') && !/Dollars received/.test(document.querySelector('#fpBody').innerText))]);
+    t.push(['b291: in practice a "~$" figure is a button that opens Dollars received', await own.evaluate(() => { const b = document.querySelector('#fpBody .fin-est'); if(!b || !/^−?~\$/.test(b.textContent)) return false;
+      b.click(); const ok = !!document.querySelector('#cvAmt'); closeModal(); return ok; })]);
     t.push(['b276: the Expenses screen charts expenses only (income is on the Overview)', await own.evaluate(() => /Expenses by month/.test(document.querySelector('#finCharts').innerText) && !/Gross|Net/.test(document.querySelector('#finCharts').innerText))]);
     t.push(['b269: every colour key in the charts keeps its square, even squeezed beside big figures', await own.evaluate(() => {
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });

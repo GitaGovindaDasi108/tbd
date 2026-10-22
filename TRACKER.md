@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b290**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b291**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,25 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b291
+Gita's list of 16 (Live app changes, 2026-10-22) and two later asks.
+- Live: Finance holds still. Its menus and page colour no longer change while you move between places; only the figures change. The left-hand menu and Finance's own menu redraw only when the place really changed. The page scrolls to the top only for a new section.
+- Live: Reimbursement Settings start at the Finance person's region, and each pay-back method is an on/off tick (rsDraw/rsSave store only what differs from the inherited setting).
+- Live: the Add an Expense window has only the ✕ (the Finance To do and Close buttons are gone).
+- Live: Finance's top row has 🧾 Add an Expense where "← Go to Sales Portal" was (that link is in the menu).
+- Live: Dollars received is off the Expenses screen. Practice: every "~$…" figure on a Finance screen is a button that opens Dollars received for the exact amount (finEstMark).
+- Live: a General expense shows no "Who".
+- Live: Send Reimbursements Link asks "For" which place (defaults to where you are; FIN.sendPlace). The email's subject is "One-time reimbursement link" and its body is Gita's text (reimbEmail).
+- Live: a link's form always accepts its own place, including Earthly HQ, Finance-only places and closed places (server inReach/options). Before, those links said "Choose where the expense belongs."
+- Live: reimbursement links can be deleted (🗑 Delete link in the link's details, expLinkDel). Expenses already sent through it stay.
+- Live: turning Edit Wording off removes every pencil. While it is on, the menu reads "Turn off Editing Wording".
+- Live: the events drop-down says "X Summary" for a region or sub-region (was "All of X"), with its events indented under it.
+- Practice: picking a season's name opens its page at the Warehouse Overview, unfolded (woJump).
+- Live: Send Reimbursements Link sits beside Add an Expense on the Finance bar (off the Reimbursements title row).
+- Live: on a phone the Expenses list's Dollars column is wide enough that the figures sit right under their title.
+- Live: closing a region closes its open events at the same moment (Code.gs regionEventsSet_); reopening it reopens those, and an event closed on its own stays closed.
+- Live: on a phone the top total cards show the title, the number sold, then the pre-orders on a line of their own.
 
 ## Done in b290
 
