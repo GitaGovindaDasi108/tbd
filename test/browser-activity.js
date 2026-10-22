@@ -90,7 +90,7 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
     t.push(['a cost is recorded', r.some(x => /Recorded a cost: 12 PLN/.test(x.text))]);
     t.push(['creating an event is recorded', r.some(x => /Created event “Festival”/.test(x.text))]);
     t.push(['sales are not in it (they keep their own log)', !r.some(x => /sale|Sold/i.test(x.text))]);
-    t.push(['the region view leaves out Italy', !r.some(x => /Italy/.test(x.text))]);
+    t.push(['b284: Universal sees every place\'s activity wherever the log is opened, Italy included', r.some(x => /Italy/.test(x.text))]);
     t.push(['a rename cannot be undone here, so it has no Delete', r.some(x => /Renamed an event/.test(x.text) && !x.undo)]);
     t.push(['a transfer can be undone, so it has Delete', !!moved && moved.undo]);
     await page.screenshot({ path: shot('1-log') });
@@ -119,7 +119,7 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
     await page.evaluate(() => { closeModal(); goTo('event', 'ev_fest'); }); await page.waitForTimeout(300);
     await openLog(page);
     r = await rows(page);
-    t.push(['at an event, only what touched that event', r.length >= 1 && r.every(x => /Festival/.test(x.text))]);
+    t.push(['b284: opened at an event, Universal still sees all of it', r.some(x => /Festival/.test(x.text)) && r.some(x => /Italy/.test(x.text))]);
     await page.evaluate(() => closeModal());
 
     // Opens at once the second time (what this device last saw), then refreshes.

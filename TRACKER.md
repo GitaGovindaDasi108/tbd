@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b284**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b286**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2549,6 +2549,23 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b286
+
+Live app changes (Gita, 2026-10-22, 18 points plus payment-type groups).
+
+- **Activity Log complete and fast.** Universal gets the whole log from the server (every season and Earthly HQ; it used to send only the season the device was on, 9 of 284 entries). The season page and Earthly HQ show it all, entries from another season tagged with its name; regions and events still show their own. The log is fetched quietly a few seconds after the app opens and kept on the device (one copy), so it opens at once.
+- **Finance opens at once.** The figures last seen are kept on the device per person (live and practice apart) and shown straight away, then refreshed by themselves. The server keeps the sums (`financeData_`) until anything is saved or five minutes pass (expenses.js `finSums`), 112 ms to 11 ms on a copy of the live data.
+- Selling cards: on a phone a card without Sell/Pre-order has 16px under its gifts/distributed line. "N distributed" is bold as a whole wherever it appears. The consignment bubble sits on its own line under the title, the same size and shape as the language bubble.
+- Expense form: choosing Where from the search list no longer moves the form (the anchor is the search box, not the list row that has just closed).
+- Finance charts: "Income by Source" (centre: Gross); while payments are pending, two rings: "Income by Source (Actual)" (Gross) and "(Expected)" (Expected Gross). As many charts a row as fit, none wider than half (auto-fill). Expenses by place has its own colours (`VIZ_PLACE`).
+- **Expenses and Reimbursements are two screens** (`FIN_SECS` expenses / reimb; Reimbursement Settings is a tab of Reimbursements; left menu has both). Reimbursements has its own charts (waiting by person, paid back by month).
+- Links: one line each (name and Turn Back On / Turn off), the rest in a dropdown; a link someone asked to have back comes first, in colour, with a red border.
+- Reimbursements: when some are waiting outside the place being looked at, a red note lists where, with "Show every season" (Gita's link submission for Skopje was in another season).
+- Reimbursement form: "Same as above" is offered only when there is something above to copy, and never wipes what was typed. "Pay me back in a different currency" is a checkbox; the currency menu shows only when it is ticked (otherwise paid back in the currency spent).
+- Reimbursement Settings: currencies are checkboxes only, ticked to start with as the place selected has them; ticked differently they become that place's own.
+- Pencils on drop-down menus: in Edit Wording a ✏️ beside each menu lists its choices; each opens the usual window, and the wording shows in the menu (`lblOptions`).
+- **Payment types in groups:** Cash, Digital Payments (accounts indented under it), Card, Other, Gift, Mixed (two or more forms of payment). In Payments taken here, ⇤/⇥ bring a type out from under Digital Payments or put it back, ▲▼ arrange (the group moves as one). Saved per place as meta `payTop` (`setPayTypes` `top`), sent in state as `payTop`. A type added later goes under Digital Payments.
+
 ## Done in b283
 
 Live app changes (Gita, 2026-10-22):
@@ -2599,3 +2616,19 @@ made as two regions, each with its own warehouse.
   hidden titles and frozen closing rates. Its places use the target's from then on.
 - Tests: browser-subregions (+11: the window, the name check, the region gone, events and old
   warehouse in the sub-region, books moved, sales and the expense still Madrid's, undo).
+
+## Done in b285 — sub-regions chosen in the place picker; a container region asks less (practice only)
+
+Gita, 2026-10-22: "The new bubble line is too much. remove it." and "If there are no events in the
+region, then we don't need [the question for its own events] … Spain is just the container".
+- The line of sub-region chips under the bar (`.subr-bar`/`.subr-chip`, action `subpick`) is gone.
+  The place picker does it instead: each sub-region's group starts with "🗺 All of <sub>" (value
+  `__sub:<id>`), and the warehouse reads "🏠 Warehouse · all of <region>" and clears the choice.
+  Inside a sub-region the picker is drawn from the whole region (`wholeRegion`, `SUB_FULL`), so
+  you can move between sub-regions. Sub-regions with no events still get their group.
+- The grey warehouse note stays. The ⚙ chip went with the chips: Sub-regions is in the menu.
+- `mergeRegionModal`: no "<region>'s own events go in the sub-region" field when the region has no
+  events (or already has sub-regions); the server already makes no extra sub-region for an empty
+  `intoSub`.
+- Client only; SERVER_BUILD stays b284.
+- Tests: browser-subregions 47 (chip checks replaced by picker checks; container-region checks).

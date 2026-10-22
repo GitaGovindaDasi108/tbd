@@ -123,13 +123,7 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 .navbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 4px}
 .crumbs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
 .fin-share{font-size:13px;margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow-wrap:anywhere}
-.subr-bar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:2px 0 6px;min-width:0}
-.subr-chip{border:1px solid var(--lvl-line,var(--line-d));background:var(--paper);color:var(--lvl,var(--plum));
-  border-radius:999px;padding:3px 11px;font-size:12.5px;font-weight:600;cursor:pointer;max-width:100%;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.subr-chip.on{background:var(--lvl-soft,#FBEEDA);border-color:var(--lvl,var(--plum));font-weight:800}
 .subr-note{font-size:12px;color:var(--muted);margin:-2px 0 6px}
-.subr-chip.subr-set{padding:3px 8px;color:var(--muted)}
 .sr-sec{font-weight:800;font-size:13px;margin:14px 0 6px;color:var(--ink)}
 .sr-row{display:flex;gap:8px;align-items:center;margin:0 0 6px;min-width:0}
 .sr-row input,.sr-row select{flex:1 1 auto;min-width:0}
@@ -250,10 +244,14 @@ tr.cbr-sub td{color:var(--muted)}
   .mini-grid:has(> .qcard){row-gap:0} .mini-grid > .qcard{margin-bottom:6px}
 }
 .qcard > .q-full:empty{display:none}
+/* A card with no Sell / Pre-order beneath (b284, Gita): on a phone its gifts
+   and distributed lines sat on the bottom edge. The same room under them as
+   under the buttons on a selling card. */
+@media (max-width:700px){ .stat-card.qcard:not(:has(> .q-full:not(:empty))){padding-bottom:16px} }
 .qcard .price{font-size:11px;color:var(--muted);margin-top:2px}
 .qcard .sc-transit{display:block;margin-left:auto;font-size:10.5px;padding:1px 0 0}
 .q-bl, .q-br{font-size:10.5px;line-height:1.3}
-.q-dist{color:var(--muted)} .q-dist b{color:var(--plum)}
+.q-dist{color:var(--muted)} .q-dist b, .q-dist .q-word{color:var(--plum);font-weight:800}
 .mini-card .q-bl, .mini-card .q-br{font-size:9.5px}
 .mini-card.qcard .mc-name{min-height:0}
 .mc-pre{color:var(--saffron-d);font-weight:700} .mc-gift{color:var(--gold);font-weight:700}
@@ -331,6 +329,12 @@ button.sc-transit:hover{color:#1F4F86}
 .pt-row .pt-move{cursor:pointer;font-size:9px;color:var(--muted);font-weight:400;padding:0 1px;user-select:none}
 .pt-row .pt-move:hover{color:var(--plum)}
 .pt-row .pt-lbl{display:flex;align-items:center;gap:9px;flex:1;min-width:0;cursor:pointer}
+/* Digital Payments in the list of payment types (b284): its heading, and its types indented. */
+.pt-row.pt-head{font-weight:700;font-size:12px;letter-spacing:.3px;text-transform:uppercase;color:var(--plum);cursor:default}
+.pt-row.pt-head .pt-hl{flex:1}
+.pt-sub{padding-left:24px !important}
+.pt-none{font-size:12px;color:var(--muted);padding:4px 0}
+.pt-ind{background:none;border:1px solid var(--line-d);border-radius:6px;font-size:12px;line-height:1;padding:3px 6px;cursor:pointer;color:var(--plum)}
 .pt-row input{width:17px;height:17px}
 .rp-add{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
 .rp-add input{flex:1 1 180px;border:1px solid var(--line-d);border-radius:8px;padding:7px 9px;font-size:12.5px}
@@ -734,6 +738,7 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input)
 .fin-sh .fin-h3{margin:2px 0}
 .fin-tiles1{grid-template-columns:1fr !important;margin:6px 0 8px}
 .fin-flt{margin:4px 0 8px}
+.fin-one{margin-top:10px}
 .fin-two{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:stretch;margin-top:10px}
 .fin-col{min-width:0;border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--paper)}
 .fin-col>.fin-h3:first-child{margin-top:2px}
@@ -1072,6 +1077,10 @@ body.has-na .overlay{z-index:10000}
 /* On a card or a button the language sits on its own line under the title;
    in a log, a list or a report it follows the title on the same line (b266). */
 .bname .lang-tag, .sc-name .lang-tag, .mc-name .lang-tag, button .lang-tag, .btn .lang-tag{display:table;margin:2px 0 0}
+/* The consignment bubble sits the same way (b284, Gita: out of line with the
+   language bubble): its own line under the title, the same size and shape. */
+.bname .con-tag, .sc-name .con-tag, .mc-name .con-tag{display:table;margin:2px 0 0;padding:0 6px;font-size:10px;line-height:16px;
+  letter-spacing:.2px;vertical-align:1px;padding-right:calc(6px - .2px)}
 .sp-bulkadd{margin:4px 0 10px}
 .sp-bulkbox{margin-top:8px;padding:10px;border:1px dashed var(--line-d);border-radius:10px;background:var(--paper2)}
 .sp-bulkbox textarea{width:100%;box-sizing:border-box;margin:6px 0;font-size:14px}
@@ -1440,7 +1449,8 @@ body.sn-open .sn-group:not(.shut) .sn-items{display:block}
 .sn-items .sn-item{font-size:13px;font-weight:400;min-height:32px;color:#4A4A4A}
 .sn-items .sn-item .sn-ic{font-size:13px;opacity:.75}
 .sn-items .sn-item .sn-ic{flex-basis:30px;width:30px}
-.sn-items{border-left:1px solid var(--line-d);margin-left:27px}
+/* No vertical line beside each section's items (b284, Gita: "confusing"); the indent alone shows they belong. */
+.sn-items{margin-left:28px}
 .sn-items .sn-item{padding-left:6px}
 .sn-items .sn-item .sn-t{padding-left:2px}
 .sn-count,.side-nav .req-badge{margin-left:auto;opacity:0;font-size:10.5px;font-weight:800;background:var(--paper2);border:1px solid var(--line-d);
@@ -1499,6 +1509,26 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fin-nw{white-space:nowrap}
 .fin-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#e34948;vertical-align:1px;margin-left:2px}
 .fin-ask{color:#b3261e}
+/* A menu's choices to rewrite (b284). */
+.lbl-pop{position:absolute;z-index:3000;width:260px;max-width:calc(100vw - 16px);max-height:60vh;overflow:auto;background:#fff;
+  border:1.5px solid var(--line-d);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);padding:6px;box-sizing:border-box}
+.lbl-pop-h{display:flex;justify-content:space-between;align-items:center;font-size:12px;font-weight:700;color:var(--muted);padding:2px 4px 6px}
+.lbl-pop-h .x{position:static;background:none;border:0;font-size:18px;cursor:pointer;color:var(--muted)}
+.lbl-pop-row{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:7px 8px;font:inherit;font-size:13.5px;cursor:pointer;color:var(--ink)}
+.lbl-pop-row:hover{background:var(--paper2)}
+.fin-away{margin:8px 0;padding:8px 10px;border:1.5px solid #d93025;border-radius:10px;background:#fff6f5;font-size:13px;line-height:1.5}
+.fin-away .btn{margin-left:4px}
+/* Links, one line each (b284). */
+.fl-item{border:1.5px solid var(--line);border-radius:10px;margin:6px 0;padding:0 10px;background:#fff}
+.fl-item.fl-ask{border-color:#d93025;box-shadow:0 0 0 1px #d93025 inset}
+.fl-row{display:flex;align-items:center;gap:8px;min-height:40px}
+.fl-tog{flex:1;min-width:0;display:flex;align-items:center;gap:7px;background:none;border:0;padding:6px 0;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.fl-tog b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fl-item .li-chev{font-size:10px;color:var(--muted);transition:transform .15s}
+.fl-item.open .li-chev{transform:rotate(90deg)}
+.fl-item .fl-det{display:none;padding:0 0 9px}
+.fl-item.open .fl-det{display:block}
+.fl-item .fl-det .exp-btns{margin-top:6px}
 .fin-cs{font-size:11px;color:var(--muted);font-weight:400}
 .fin-tbl td{vertical-align:top}
 .fin-tiles2{grid-template-columns:repeat(auto-fit,minmax(200px,260px))}
@@ -1555,9 +1585,11 @@ body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
 .rb-det .exp-card{border:0;padding:0;margin:0;background:transparent}
 .badge.rb-dec{background:#F4E3E1;color:#A23B2C}
 .fin-charts{margin-top:22px;border-top:1.5px solid var(--line);padding-top:4px}
-.fc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;margin:8px 0}
+/* As many charts a row as fit, none wider than half the screen (b284, Gita):
+   auto-fill keeps the empty places, so a chart alone never stretches across. */
+.fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px;margin:8px 0}
 .fc-box{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper);min-width:0;container-type:inline-size;overflow:hidden}
-.fc-wide{grid-column:1/-1}
+.fc-wide{}
 .fc-h{margin:0 0 10px;font-size:14px;color:var(--ink)}
 .fc-donut{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
 .fc-ring{position:relative;flex:0 0 170px;width:170px}.fc-ring .fin-pie{width:170px}
@@ -1799,6 +1831,10 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   padding:9px 12px 4px}
 .pp-row{padding:8px 12px;font-size:13.5px;cursor:pointer;color:var(--ink);line-height:1.3}
 .pp-row.pp-region{padding-left:24px;font-weight:700;color:var(--plum)}
+/* Payment types: a group's heading, and its types indented beneath (b284). */
+.pp-row.pp-head{cursor:default;font-weight:700;color:var(--muted);font-size:12px;letter-spacing:.3px;text-transform:uppercase;padding-top:9px}
+.pp-row.pp-head:hover{background:none}
+.pp-row.pp-sub{padding-left:28px}
 .pp-row.pp-event{padding-left:44px}
 .pp-row:hover{background:#FFF3E4}
 .pp-row.on{background:var(--plum);color:var(--gold-l)}
@@ -2049,6 +2085,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
 .list-view .stat-grid > .qcard > .arr-grip, .list-view .stat-grid > .qcard > .arr-hide{grid-column:6;grid-row:1;margin:0;width:auto}
 .list-view .qcard .sc-name, .list-view .qcard .mc-name{min-height:0}
 .list-view .qcard .sc-name .lang-tag, .list-view .book .bname .lang-tag{display:inline-block;margin:0 0 0 5px}
+.list-view .qcard .sc-name .con-tag, .list-view .book .bname .con-tag, .list-view .mini-card .mc-name .con-tag{display:inline-block;margin:0 0 0 5px}
 /* Prices belong on the selling line; on the title lines they only cost room. */
 .list-view .stat-grid > .qcard .price{display:none}
 .list-view .qcard > .q-tr .sc-big{font-size:15px}
@@ -2187,7 +2224,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b284</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b286</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2847,8 +2884,16 @@ let SUB_IN = false;
 function withSub(fn){
   const sid = SUB_IN ? '' : curSub();
   if(!sid) return fn();
-  const keep = STATE; SUB_IN = true; STATE = subState(CUR_REGION, sid);
-  try{ return fn(); } finally{ STATE = keep; SUB_IN = false; }
+  const keep = STATE; SUB_IN = true; SUB_FULL = keep; STATE = subState(CUR_REGION, sid);
+  try{ return fn(); } finally{ STATE = keep; SUB_IN = false; SUB_FULL = null; }
+}
+/* The whole region again, inside a sub-region's drawing: the place picker lists
+   every sub-region so you can move between them (b285). */
+let SUB_FULL = null;
+function wholeRegion(fn){
+  if(!SUB_IN || !SUB_FULL) return fn();
+  const sub = STATE; STATE = SUB_FULL;
+  try{ return fn(); } finally{ STATE = sub; }
 }
 /** The org chart / settings scope for the page we're on. */
 /** Human name for the page whose chart/settings we're editing. */
@@ -4132,6 +4177,7 @@ async function pull(){
   BASE = d.state; REV = d.rev;
   // What the server says it is running, from this reply — not from a saved copy.
   LIVE_BUILD = d.build || (d.state && d.state.serverBuild) || LIVE_BUILD;
+  if(!ACT_PREFETCHED) setTimeout(activityPrefetch, 3000);   // the log, ready before it is opened
   // Only retire ops that existed when this read began; anything committed while
   // it was in flight is not represented in what came back.
   const pulledSeason = (BASE && BASE.activeSeason) || '';
@@ -5297,16 +5343,18 @@ function renderTabs(){
     h += `<span class="crumb-sep">›</span>
       <span class="crumb-pick">
         <select class="crumb-sel ${CUR_LEVEL==='event'?'on':''}" data-act="pickloc">
-          ${opt(reg.whLoc,'🏠 Warehouse',CUR_LOC===reg.whLoc)}
-          ${(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
+          ${opt(reg.whLoc, subRegionsOf(reg.regionId).length ? '🏠 Warehouse · all of ' + reg.name : '🏠 Warehouse', CUR_LOC===reg.whLoc && !curSub())}
+          ${wholeRegion(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
             const subs = subRegionsOf(reg.regionId);
             if(!subs.length) return eventsOfRegion(reg.regionId).map(evOpt).join('');
-            // Sub-regions (b280): each one's events under its name, the rest after.
-            const known = new Set(subs.map(x=>x.id));
+            /* Sub-regions (b280): each one's events under its name, the rest after.
+               The sub-region itself is the first choice in its group (b285: this
+               replaces the line of chips under the bar). */
+            const known = new Set(subs.map(x=>x.id)), cs = curSub();
             const rest = eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId)));
-            return subs.map(x=>{ const evs = eventsOfSub(reg.regionId, x.id);
-                return evs.length ? `<optgroup label="${esc(x.name)}">${evs.map(evOpt).join('')}</optgroup>` : ''; }).join('') +
-              (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })()}
+            return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 All of ' + x.name, cs===x.id)}${
+                eventsOfSub(reg.regionId, x.id).map(evOpt).join('')}</optgroup>`).join('') +
+              (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })}
           ${opt('__new','＋ New event…',false)}
         </select>
       </span>`;
@@ -5314,15 +5362,10 @@ function renderTabs(){
   const shut = CUR_LEVEL==='event' ? closureOf(CUR_LOC)
              : CUR_LEVEL==='region' ? regionClosure(CUR_REGION) : '';
   h += `</div></div>`;
-  /* Sub-regions (b280): All, or one of them. The warehouse stays shared. */
-  const subs = CUR_LEVEL==='region' && reg ? subRegionsOf(reg.regionId) : [];
-  if(subs.length){
-    const cur = curSub();
-    h += `<div class="subr-bar">${[{id:'', name:'All of ' + reg.name}].concat(subs).map(x=>
-        `<button type="button" class="subr-chip${x.id===cur?' on':''}" data-act="subpick" data-id="${esc(x.id)}">${esc(x.name)}</button>`).join('')}${
-        isAdmin() ? `<button type="button" class="subr-chip subr-set" data-act="subregions" title="Sub-regions">⚙</button>` : ''}</div>${
-        cur ? `<div class="subr-note">Selling straight from the warehouse counts for all of ${esc(reg.name)}, not for ${esc(subName(reg.regionId, cur))} alone.</div>` : ''}`;
-  }
+  /* Sub-regions (b280): one is chosen in the place picker above (b285). The
+     warehouse stays shared. */
+  const curS = CUR_LEVEL==='region' && reg ? curSub() : '';
+  if(curS) h += `<div class="subr-note">Selling straight from the warehouse counts for all of ${esc(reg.name)}, not for ${esc(subName(reg.regionId, curS))} alone.</div>`;
   if(shut){
     h += `<div class="closed-note ${shut}">
       ${shut==='complete'
@@ -5353,6 +5396,9 @@ function renderTabs(){
   if(ls) ls.addEventListener('change',()=>{
     const v=ls.value;
     if(v==='__new'){ renderTabs(); eventModal(); return; }
+    if(v.startsWith('__sub:')){ setSub(v.slice(6)); clearLogFilters();
+      if(CUR_LEVEL==='region') renderAll(); else goTo('region', CUR_REGION); return; }
+    if(isWarehouseLoc(v)) setSub('');         // the warehouse is all of the region
     goTo(isWarehouseLoc(v)?'region':'event', isWarehouseLoc(v)?regionOfLoc(v):v);
   });
 }
@@ -5522,7 +5568,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses & Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
+  finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile']
@@ -5542,7 +5588,7 @@ const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','fintodo','reimbset']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','fintodo','reimbset']},
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
@@ -6102,7 +6148,7 @@ function preNote(c){
   return c.pre ? `(${c.pre} pre-order${c.pre===1?'':'s'})` : '';
 }
 function giftNote(c){
-  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} = <b class="dist-n">${c.sold+c.gift}</b> distributed` : '';
+  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} = <b class="dist-n">${c.sold+c.gift} distributed</b>` : '';
 }
 /* The bottom half of a sales card (b264; b266): read across the card,
    "N sold + N gifts = N distributed", the pre-orders (counted in sold) beneath. */
@@ -7668,10 +7714,45 @@ function curPayTypes(){
   return all;
 }
 
+/* Payment types in groups (b284, Gita): Cash, then "Digital Payments" with
+   the accounts indented under it (Rasika GPay, Wise, Zelle…), then Card,
+   Other and Mixed. A coordinator can bring any of them out to stand on its own
+   and put it where they like (Payments taken here); until then cash, card,
+   other and gift stand on their own and everything else is digital. */
+const PAY_TOP_DEF = /^(cash|card|other|gift|cheque|check)$/i;
+const PAY_DIGITAL = 'Digital Payments';
+// The place whose list is used here, and which types it keeps on their own (null: never arranged).
+function payTopHere(){
+  let src = '';
+  if(CUR_LEVEL==='event'){ const e=(STATE.events||[]).find(x=>x.eventId===CUR_LOC); if(e && (e.payTypes||[]).length) src = e.eventId; }
+  if(!src){ const r=currentRegion(); if(r && (r.payTypes||[]).length) src = r.regionId; }
+  const t = src && STATE.payTop && STATE.payTop[src];
+  return Array.isArray(t) ? new Set(t) : null;
+}
+/* In the order shown: [{t, dig}], the digital ones together. Arranged by hand,
+   the group sits where its first member was put; otherwise Cash, the group,
+   Card, Other, Gift. */
+function payGrouped(types, top){
+  const dig = t => top ? !top.has(t) : !PAY_TOP_DEF.test(t);
+  if(top){
+    const first = types.findIndex(dig), d = types.filter(dig), out = [];
+    types.forEach((t,i)=>{ if(i===first) d.forEach(x=>out.push({t:x, dig:true})); if(!dig(t)) out.push({t, dig:false}); });
+    return out;
+  }
+  const rank = t => dig(t) ? 1 : /^cash$/i.test(t) ? 0 : /^card$/i.test(t) ? 2 : /^gift$/i.test(t) ? 4 : 3;
+  return types.map((t,i)=>({t, i, r:rank(t)})).sort((a,b)=>a.r-b.r || a.i-b.i).map(x=>({t:x.t, dig:x.r===1}));
+}
 function payTypeOptions(includeMixed,includeGift){
   const base=curPayTypes().filter(t=>includeGift||t!=='Gift');
-  let opts=base.map(t=>`<option value="${t}">${t}</option>`).join('');
-  if(includeMixed) opts+=`<option value="Mixed">Mixed (several payments)</option>`;
+  const g = payGrouped(base, payTopHere());
+  let opts = '', inGrp = false;
+  g.forEach(x=>{
+    if(x.dig && !inGrp){ opts += `<optgroup label="${PAY_DIGITAL}">`; inGrp = true; }
+    if(!x.dig && inGrp){ opts += '</optgroup>'; inGrp = false; }
+    opts += `<option value="${esc(x.t)}">${esc(x.t)}</option>`;
+  });
+  if(inGrp) opts += '</optgroup>';
+  if(includeMixed) opts+=`<option value="Mixed">Mixed (two or more forms of payment)</option>`;
   return opts;
 }
 
@@ -7706,8 +7787,15 @@ function ptAddType(name, sel){
   document.querySelectorAll('#modal select#ptype, #modal select[data-mix="type"]').forEach(x=>{
     if([...x.options].some(o=>o.value===name)) return;
     const o = document.createElement('option'); o.value = name; o.textContent = name;
-    x.insertBefore(o, [...x.options].find(y=>y.value==='Mixed' || y.value==='Gift') || null);
-    if(x._ptItems) x._ptItems.splice(x._ptItems.findIndex(i=>i.v==='Mixed' || i.v==='Gift') < 0 ? x._ptItems.length : x._ptItems.findIndex(i=>i.v==='Mixed' || i.v==='Gift'), 0, {v:name, l:name});
+    // A new account joins Digital Payments (b284); cash, card and the like stand on their own.
+    const grp = !PAY_TOP_DEF.test(name) && x.querySelector('optgroup');
+    if(grp) grp.appendChild(o);
+    else x.insertBefore(o, [...x.children].find(y=>y.value==='Mixed' || y.value==='Gift') || null);
+    if(x._ptItems){
+      const it = x._ptItems, lastSub = it.map(i=>i.kind).lastIndexOf('sub');
+      if(grp && lastSub >= 0) it.splice(lastSub + 1, 0, {v:name, l:name, kind:'sub', upIds:['@' + grp.label]});
+      else { const at = it.findIndex(i=>i.v==='Mixed' || i.v==='Gift'); it.splice(at < 0 ? it.length : at, 0, {v:name, l:name}); }
+    }
   });
   sel.value = name; sel.dispatchEvent(new Event('change', {bubbles:true}));
   return name;
@@ -7715,7 +7803,14 @@ function ptAddType(name, sel){
 function ptSearchable(sel){
   if(!sel || sel._ptItems) return;
   const id = 'pts' + Math.random().toString(36).slice(2, 9);
-  const items = sel._ptItems = [...sel.options].map(o=>({v:o.value, l:o.textContent}));
+  // A group (Digital Payments) becomes a heading with its types indented beneath (b284).
+  const items = sel._ptItems = [];
+  [...sel.children].forEach(c=>{
+    if(c.tagName==='OPTGROUP'){
+      const h = '@' + c.label; items.push({v:h, l:c.label, kind:'head'});
+      [...c.children].forEach(o=>items.push({v:o.value, l:o.textContent, kind:'sub', upIds:[h]}));
+    } else items.push({v:c.value, l:c.textContent});
+  });
   const shown = () => (items.find(i=>i.v===sel.value) || {}).l || ((sel.selectedOptions||[])[0] || {}).textContent || '';
   sel.insertAdjacentHTML('beforebegin', comboHTML(id, shown(), 'Search payment types'));
   sel.hidden = true;
@@ -9371,7 +9466,7 @@ function comboBind(id, items, cur, onPick, add){
     const rows = items.filter(x=>keep.has(x));
     const typed = inp.value.trim(), addRow = add && q && !items.some(x=>String(x.l).toLowerCase()===q)
       ? `<div class="pp-row pp-add" data-add="1">＋ Add “${esc(typed)}”</div>` : '';
-    list.innerHTML = rows.length || addRow ? rows.map(x=>`<div class="pp-row${x.kind?' pp-'+x.kind:''}${x.v===cur?' on':''}" data-v="${esc(x.v)}">${esc(x.l)}${
+    list.innerHTML = rows.length || addRow ? rows.map(x=>x.kind==='head' ? `<div class="pp-row pp-head">${esc(x.l)}</div>` : `<div class="pp-row${x.kind?' pp-'+x.kind:''}${x.v===cur?' on':''}" data-v="${esc(x.v)}">${esc(x.l)}${
         x.tag?`<span class="pp-tag">${esc(x.tag)}</span>`:''}</div>`).join('') + addRow : '<div class="pp-empty">Nothing matches.</div>';
     list.hidden = false;
   };
@@ -9381,11 +9476,11 @@ function comboBind(id, items, cur, onPick, add){
   inp.addEventListener('focus', ()=>{ inp.select(); draw(''); });
   inp.addEventListener('input', ()=>draw(inp.value));
   inp.addEventListener('keydown', e=>{
-    if(e.key==='Enter'){ e.preventDefault(); const first = list.querySelector('.pp-row'); if(first) first.dataset.add ? addIt() : pick(first.dataset.v); }
+    if(e.key==='Enter'){ e.preventDefault(); const first = list.querySelector('.pp-row:not(.pp-head)'); if(first) first.dataset.add ? addIt() : pick(first.dataset.v); }
     if(e.key==='Escape'){ e.stopPropagation(); inp.blur(); }
   });
   list.addEventListener('mousedown', e=>e.preventDefault());
-  list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(r) r.dataset.add ? addIt() : pick(r.dataset.v); });
+  list.addEventListener('click', e=>{ const r = e.target.closest('.pp-row:not(.pp-head)'); if(r) r.dataset.add ? addIt() : pick(r.dataset.v); });
   inp.addEventListener('blur', ()=>setTimeout(()=>{ if(document.activeElement===inp) return; list.hidden = true; inp.value = label(cur); }, 150));
   // Chosen by code (b283): the box follows.
   box._set = v => { cur = v; if(document.activeElement!==inp) inp.value = label(v); };
@@ -9423,7 +9518,7 @@ async function expensesModal(editId, presetPartner){
   if(editId && !edit && EXP.opt.fin){ try{ edit = ((await post({action:'expList', scope:'all'})).result||[]).find(x=>x.id===editId) || null; }catch(e){} }
   EXP.form = edit ? {id:edit.id, editing:true, kind:edit.kind, location:edit.location, date:edit.date, desc:edit.desc, cur:edit.cur, amt:edit.amt,
       category:edit.category||'Other', payType:edit.payType||'', partnerId:edit.partnerId||'',
-      method:edit.method, reimbCur:edit.reimbCur, payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
+      method:edit.method, reimbCur:edit.reimbCur, otherCur:!!(edit.reimbCur && edit.reimbCur!==edit.cur), payTo:Object.assign({}, edit.payTo), notes:edit.notes, receipts:edit.receipts.slice(),
       forEmail:edit.forEmail||(edit.forName==='General' ? '*general' : ''), forName:edit.forName||'', catOther:edit.catOther||'', usdAmt:edit.usdAmt||''}
     : {id:expId('X'), kind:presetPartner || FIN_ON ? 'record' : 'reimburse', location:EXP.opt.location, date:new Date().toISOString().slice(0,10), desc:'',
       cur:EXP.opt.defaultCur, amt:'', category:'Other', payType:'', partnerId:presetPartner||'',
@@ -9479,7 +9574,12 @@ function expHold(){
   const b = body(), st = onForm ? (b ? b.scrollTop : 0) : (EXP.formTop || 0), ost = onForm ? ov.scrollTop : (EXP.formOvTop || 0);
   const act = document.activeElement && m.contains(document.activeElement) ? document.activeElement : null;
   const trig = _expTrig && Date.now() - _expTrig.t < 1500 && _expTrig.key && m.contains(_expTrig.el) ? _expTrig.el : null;
-  const anc = onForm ? (trig || act || (_expTouched && m.contains(_expTouched) ? _expTouched : null)) : null;
+  let anc = onForm ? (trig || act || (_expTouched && m.contains(_expTouched) ? _expTouched : null)) : null;
+  /* A choice from a search list (Where, b284): the list has already closed, so
+     the line tapped has no place on screen any more and the form leapt to put
+     the next question at the top. The search box itself is what stays put. */
+  const pp = anc && anc.closest && anc.closest('.pp');
+  if(pp && pp.querySelector('.pp-in')) anc = pp.querySelector('.pp-in');
   const ancKey = anc ? expFieldKey(anc) : '', ancTop = ancKey ? anc.getBoundingClientRect().top : 0;
   const actKey = act ? expFieldKey(act) : '';
   let sel = null; try{ if(act && typeof act.selectionStart==='number') sel = [act.selectionStart, act.selectionEnd]; }catch(e){}
@@ -9505,6 +9605,10 @@ function expDraw(){
   const o = EXP.opt, f = EXP.form, edit = !!f.editing;
   const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
   const method = o.methods.find(m=>m.name===f.method) || null;
+  /* Paid back in the currency it was spent in, unless "a different currency"
+     is ticked (b284, Gita); a currency Finance doesn't pay back in always asks. */
+  const sameCurOk = o.curs.includes(f.cur);
+  if(f.kind==='reimburse' && !f.otherCur && !f.lockPay && sameCurOk) f.reimbCur = f.cur;
   if(f.kind==='reimburse' && !o.curs.includes(f.reimbCur))
     f.reimbCur = (method && o.curs.includes(method.cur)) ? method.cur : (o.curs.includes(f.cur) ? f.cur : o.curs[0] || '');
   const bySeason = {};
@@ -9531,7 +9635,7 @@ function expDraw(){
       <input id="xWho" type="text" maxlength="40" placeholder="So Finance knows who it was"></div>` : '';
   f.same = f.same || {};
   const fields = method ? method.fields.map(fl=>{
-    const src = expSameSrc(fl.k), same = src && f.same[fl.k];
+    const src = expSameHas(fl.k), same = src && f.same[fl.k];
     return `<div class="field"><label>${esc(fl.label)}${fl.req?'':' (optional)'}</label>
       ${src ? `<label class="exp-same"><input type="checkbox" data-same="${esc(fl.k)}" ${same?'checked':''}> Same as above</label>` : ''}
       <input data-payto="${esc(fl.k)}" type="${fl.type==='tel'?'tel':'text'}" value="${esc(same ? P[src] : f.payTo[fl.k]||'')}" placeholder="${esc(fl.ph||'')}"${same?' readonly':''}>
@@ -9594,12 +9698,12 @@ function expDraw(){
             <button type="button" class="btn btn-ghost btn-xs" data-xb="edit" data-i="${li}">Change it on the first one</button></div>`; })()
         : f.kind==='reimburse' ? `
         <div class="exp-reimb">
-          <div class="row2">
-            <div class="field"><label>Pay me back by</label>
-              <select id="xMethod">${opt('','Choose…',!method)}${o.methods.map(m=>opt(m.name,m.name,m.name===f.method)).join('')}</select></div>
-            <div class="field"><label>Pay me back in</label>
-              <select id="xRCur">${o.curs.map(c=>opt(c,c,c===f.reimbCur)).join('')}</select></div>
-          </div>
+          <div class="field"><label>Pay me back by</label>
+            <select id="xMethod">${opt('','Choose…',!method)}${o.methods.map(m=>opt(m.name,m.name,m.name===f.method)).join('')}</select></div>
+          ${sameCurOk ? `<label class="exp-rb"><input type="checkbox" id="xOtherCur" ${f.otherCur?'checked':''}> Pay me back in a different currency</label>` : ''}
+          ${!sameCurOk || f.otherCur ? `<div class="field"><label>Pay me back in</label>
+            <select id="xRCur">${o.curs.map(c=>opt(c,c,c===f.reimbCur)).join('')}</select>
+            ${sameCurOk ? '' : `<div class="muted-note">${esc(f.cur)} can't be paid back here, so choose one of these.</div>`}</div>` : ''}
           ${fields}
           ${o.methods.length ? '' : '<div class="err">Finance has not switched on any way of paying back here. Ask them.</div>'}
         </div>` : ''}
@@ -9635,6 +9739,9 @@ function expSameSrc(k){
   if(k==='zelle' || k==='paypal') return email ? 'email' : 'phone';
   return '';
 }
+/* Only when there is something above to copy (b284, Gita: ticking it wiped
+   the number she had typed, because the box it copies from was empty). */
+function expSameHas(k){ const src = expSameSrc(k); return src && String(EXP.pub[src]||'').trim() ? src : ''; }
 /* Whatever has been typed, kept as the form is redrawn. */
 function expRead(){
   const f = EXP.form, v = id => { const el = document.getElementById(id); return el ? el.value : null; };
@@ -9651,14 +9758,18 @@ function expRead(){
   if(v('xOwner')!==null) f.partnerId = v('xOwner');
   if(v('xMethod')!==null) f.method = v('xMethod');
   if(v('xRCur')!==null) f.reimbCur = v('xRCur');
+  if(f.kind==='reimburse' && !f.otherCur && !f.lockPay && EXP.opt && EXP.opt.curs.includes(f.cur)) f.reimbCur = f.cur;
   document.querySelectorAll('#modal [data-payto]').forEach(i=>{ f.payTo[i.dataset.payto] = i.value.trim(); });
   // "Same as above" follows what is at the top, even if that changed since.
-  Object.keys(f.same||{}).forEach(k=>{ const src = f.same[k] && expSameSrc(k); if(src) f.payTo[k] = String(EXP.pub[src]).trim(); });
+  Object.keys(f.same||{}).forEach(k=>{ const src = f.same[k] && expSameHas(k); if(src) f.payTo[k] = String(EXP.pub[src]).trim(); });
   if(v('xWho')!==null && v('xWho').trim()) setWhoAmI(v('xWho'));
 }
 function expBind(){
   const f = EXP.form, o = EXP.opt;
   document.querySelectorAll('#modal input[name="xKind"]').forEach(r=>r.addEventListener('change', ()=>{ expRead(); f.kind = r.value; expDraw(); }));
+  const oc = $('#xOtherCur'); if(oc) oc.addEventListener('change', ()=>{ expRead(); f.otherCur = oc.checked;
+    if(f.otherCur && f.reimbCur===f.cur){ const m = o.methods.find(x=>x.name===f.method); const alt = (m && m.cur && m.cur!==f.cur && o.curs.includes(m.cur)) ? m.cur : o.curs.find(c=>c!==f.cur); if(alt) f.reimbCur = alt; }
+    expDraw(); expPrefetch(f); });
   const rbx = $('#xReimb'); if(rbx) rbx.addEventListener('change', ()=>{ expRead(); f.kind = rbx.checked ? 'reimburse' : 'record'; expDraw(); });
   const placeChanged = async ()=>{ f.reimbCur = ''; await expReloadOptions();
     if(!EXP.opt.spendCurs.includes(f.cur) || !f.amt) f.cur = EXP.opt.defaultCur; expDraw(); };
@@ -9716,8 +9827,11 @@ function expBind(){
   // A field ticked "Same as above" follows the top as it is typed.
   ['xPubPhone','xPubEmail'].forEach(id=>{ const el = $('#'+id); if(el) el.addEventListener('input', ()=>{
     EXP.pub[id==='xPubPhone' ? 'phone' : 'email'] = el.value;
-    document.querySelectorAll('#modal [data-same]:checked').forEach(c=>{ const src = expSameSrc(c.dataset.same), i = document.querySelector('#modal [data-payto="' + c.dataset.same + '"]');
+    document.querySelectorAll('#modal [data-same]:checked').forEach(c=>{ const src = expSameHas(c.dataset.same), i = document.querySelector('#modal [data-payto="' + c.dataset.same + '"]');
       if(src && i) i.value = String(EXP.pub[src]||''); }); }); });
+  // Ticking it keeps what was typed when the box above is empty; it only copies what is there.
+  document.querySelectorAll('#modal [data-same]').forEach(c=>c.addEventListener('click', e=>{
+    if(c.checked && !expSameHas(c.dataset.same)){ e.preventDefault(); toast('Fill in your number or email above first', true); } }, true));
   document.querySelectorAll('#modal [data-xb]').forEach(b=>b.addEventListener('click', ()=>expBatchAct(b.dataset.xb, Number(b.dataset.i))));
 }
 /* Finance's searchable list of people. */
@@ -9822,7 +9936,7 @@ function expBatchHTML(){
 // The next form keeps where, whose, the currency, the date and how to be paid back.
 function expNextForm(f){
   return {id:expId('X'), kind:f.kind, location:f.location, date:f.date, desc:'', cur:f.cur, amt:'', category:'Other', payType:f.payType,
-    payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:Object.assign({}, f.payTo), same:Object.assign({}, f.same), notes:'', receipts:[],
+    payOther:f.payOther, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, otherCur:f.otherCur, payTo:Object.assign({}, f.payTo), same:Object.assign({}, f.same), notes:'', receipts:[],
     forEmail:f.forEmail, forName:f.forName, catOther:'', lockPay: !!(f.lockPay || f.kind==='reimburse')};
 }
 /* One way of being paid back per form (Gita, 2026-10-20): several expenses,
@@ -10246,11 +10360,11 @@ function rsDraw(){
       !ro && FIN_ON ? `<button type="button" class="btn btn-ghost btn-xs" data-act="rsgone" data-m="${esc(m)}" title="Remove ${esc(m)} for good, everywhere">🗑</button>` : ''}</div>`;
   }).join('') : '';
   const own = target && target.curs;
+  /* Just the currencies, ticked (b284, Gita): to start with, the ones the place
+     selected has (its region's own); changed, they become this place's own. */
+  const base = (above && above.curs && above.curs.length) ? above.curs : d.curs;
   const curBox = target ? `<div class="cash-sub">Currencies people can be paid back in</div>
-      <label class="ppl-pick"><input type="radio" name="rsCurMode" value="" ${own?'':'checked'} ${dis}>
-        <span>${esc(aboveWord)}${RS.mode==='place' ? ': ' + esc(above.curs.join(', ')) : ''}</span></label>
-      <label class="ppl-pick"><input type="radio" name="rsCurMode" value="own" ${own?'checked':''} ${dis}><span>Only these:</span></label>
-      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${!own || own.includes(c)?'checked':''} ${own&&!ro?'':'disabled'}> ${esc(c)}</label>`).join('')}</div>` : '';
+      <div class="rs-curs">${d.curs.map(c=>`<label><input type="checkbox" data-rsc="${esc(c)}" ${(own ? own.includes(c) : base.includes(c))?'checked':''} ${dis}> ${esc(c)}</label>`).join('')}</div>` : '';
   finHost('Reimbursement Settings', `
       <div class="hint">Which ways of paying people back, and which currencies, are offered. Each place follows the one above it unless
         you set it here: switch PayPal off for everywhere, say, and on again for one region. A person's own setting wins over every place.</div>
@@ -10290,9 +10404,6 @@ function rsDraw(){
   comboBind('rsPlaceC', lv, RS.id || '', v=>{ RS.id = v; rsDraw(); });
   comboBind('rsPersonC', d.people.map(p=>({v:p.email, l:p.name, tag:p.email + (d.rules.people[p.email]?' •':''), up:[p.email]})), RS.email, v=>{ RS.email = v; rsDraw(); });
   const pp = $('#rsPerson'); if(pp) pp.addEventListener('change', ()=>{ RS.email = pp.value; rsDraw(); });
-  finRoot().querySelectorAll('input[name="rsCurMode"]').forEach(r=>r.addEventListener('change', ()=>{
-    finRoot().querySelectorAll('[data-rsc]').forEach(c=>{ c.disabled = r.value!=='own'; });
-  }));
   const sv = $('#rsSave'); if(sv) sv.addEventListener('click', rsSave);
 }
 /* Add or remove a kind of expense (b277). */
@@ -10322,11 +10433,12 @@ async function rsSave(){
   const x = {}, methods = {};
   finRoot().querySelectorAll('[data-rsm]').forEach(s=>{ if(s.value) methods[s.dataset.rsm] = s.value==='on'; });
   if(Object.keys(methods).length) x.methods = methods;
-  const mode = (finRoot().querySelector('input[name="rsCurMode"]:checked')||{}).value;
-  if(mode==='own'){
-    x.curs = [...finRoot().querySelectorAll('[data-rsc]:checked')].map(c=>c.dataset.rsc);
-    if(!x.curs.length){ $('#rsErr').textContent = 'Tick at least one currency, or choose "' + (RS.mode==='place'?'As above':'As the place says') + '".'; return; }
-  }
+  // Ticked as the place above has them: it simply follows; otherwise these are its own.
+  const ticked = [...finRoot().querySelectorAll('[data-rsc]:checked')].map(c=>c.dataset.rsc);
+  if(!ticked.length){ $('#rsErr').textContent = 'Tick at least one currency.'; return; }
+  const lv = RS.mode==='place' ? (d.levels.find(l=>l.id===RS.id) || d.levels[0]) : null;
+  const inh = lv ? rsInherited(lv).curs : null, base = (inh && inh.length) ? inh : d.curs;
+  if(ticked.length!==base.length || ticked.some(c=>!base.includes(c))) x.curs = ticked;
   const bag = RS.mode==='place' ? rules.levels : rules.people, key = RS.mode==='place' ? RS.id : RS.email;
   if(Object.keys(x).length) bag[key] = x; else delete bag[key];
   try{ RS.d = (await post({action:'expRulesSet', rules})).result; toast('Saved'); rsDraw(); }
@@ -11434,8 +11546,10 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
    has its own ⬇️ CSV and 📋, and its charts sit at the bottom of the page. The
    Reports builder's code (qb*) stays, unused, for when it comes back. */
 // To do stays in the practice space (Gita, 2026-10-21: "not needed" on live).
-const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses & Reimbursements']].concat(PRACTICE ? [['todo','💼','To do']] : []);
-const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings'], ['reimb','💸','Reimbursements']];
+/* Expenses and Reimbursements are two screens (b284, Gita: "you can just split them"). */
+const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursements']].concat(PRACTICE ? [['todo','💼','To do']] : []);
+const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings']];
+const FIN_RB_TABS = ['pending','paid','declined','links','settings'];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
 const finSecName = sec => (FIN_SECS.concat(FIN_SEC_ALSO).find(x=>x[0]===sec) || [,,'Overview'])[2];
 function finHash(sec, scope){ return '#finance/' + sec + (scope ? '/' + encodeURIComponent(scope) : ''); }
@@ -11473,7 +11587,7 @@ function finScopeF(){
 }
 /* Write a section into the page, or (outside the page) into a window. */
 function finHost(title, body, foot){
-  if(FINP.on && FINP.sec==='expenses'){     // the settings, inside Expenses & Reimbursements (b254, b255)
+  if(FINP.on && FINP.sec==='reimb'){     // the settings, inside Reimbursements (b254, b255, b284)
     $('#fpBody').innerHTML = `${finExpTop()}<div class="cash-sub">${esc(title)}</div>${body}${foot ? `<div class="m-foot">${foot}</div>` : ''}${FIN_EXP_END}`;
     finBindExpTop(); finChartsMount(); return;
   }
@@ -11507,8 +11621,8 @@ async function finGo(sec, scope, opt){
   // After a refresh: the tabs and dates you had (sessionStorage, this tab only).
   if(!BACKTO.finDone){ BACKTO.finDone = true; const B = BACKTO.saved;
     if(B && B.fin){ FIN.rb.tab = B.fin.rb || FIN.rb.tab; EXP.tab = B.fin.exp || EXP.tab; FIN.f.from = B.fin.from || ''; FIN.f.to = B.fin.to || ''; } }
-  if(sec==='settings'){ sec = 'expenses'; FIN.rb.tab = 'settings'; }
-  if(sec==='reimb'){ sec = 'expenses'; if(['settings','links'].includes(FIN.rb.tab)) FIN.rb.tab = 'pending'; }
+  if(sec==='settings'){ sec = 'reimb'; FIN.rb.tab = 'settings'; }
+  if(sec==='reimb' && !FIN_RB_TABS.includes(FIN.rb.tab)) FIN.rb.tab = FIN.rb.tab==='done' ? 'paid' : 'pending';
   // b256: Compare is part of Reports ("Compared with").
   if(sec==='compare' || sec==='report' || sec==='visual') sec = 'overview';
   if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
@@ -11518,12 +11632,21 @@ async function finGo(sec, scope, opt){
   try{ closeModal(); }catch(e){}
   FINP.on = true; FINP.sec = sec; FINP.scope = scope;
   document.body.classList.add('fin-mode'); $('#finPage').hidden = false;
-  if(fresh || !FIN.D){
+  /* Opened before on this device (b284, "slow for finances to load"): the
+     figures it last saw show at once, and the latest replace them by
+     themselves a moment later. */
+  if(fresh && !opt.reload){
+    // (Not while a refresh is putting you back where you were: that waits for the real figures, so the scroll lands true.)
+    if(!FIN.D && !BACKTO.saved){ const c = finCacheLoad(); if(c){ FIN.D = c[0]; EXP.todo = c[1]; EXP.all = c[2] || []; EXP.opt = c[3]; } }
+    if(FIN.D){ FIN.due = true; setTimeout(finQuietRefresh, 50); }
+  }
+  if((fresh && opt.reload) || !FIN.D){
     $('#fpBody').innerHTML = '<div class="cash-empty">Adding everything up…</div>'; finNav();
     try{
       const [d, todo, all, o] = await Promise.all([post({action:'finData'}), post({action:'expTodo'}), post({action:'expList', scope:'all'}),
         post({action:'expOptions'})]);
       FIN.D = d.result; EXP.todo = todo.result; EXP.all = all.result || []; EXP.opt = o.result;
+      finCacheSave();
     }catch(e){ $('#fpBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
   }
   // Compare starts at the same kind of place, and its own group.
@@ -11563,15 +11686,21 @@ function finHeard(rev){
   if(rev === FIN.rev) return;
   FIN.rev = rev; FIN.due = true; finQuietRefresh();
 }
+// Finance's figures as this device last saw them, per person and per app (live or practice).
+function finCacheKey(){ return 'tbs_fin_' + (PRACTICE ? 'p_' : 'l_') + String((ME && ME.email) || (FINP.me && FINP.me.email) || ''); }
+function finCacheLoad(){ try{ const c = JSON.parse(localStorage.getItem(finCacheKey()) || 'null'); return (c && c[0] && c[0].sales) ? c : null; }catch(e){ return null; } }
+function finCacheSave(){ try{ localStorage.setItem(finCacheKey(), JSON.stringify([FIN.D, EXP.todo, EXP.all, EXP.opt])); }catch(e){} }
 async function finQuietRefresh(){
   if(!FIN.due || FIN.busy || !FINP.on) return;
   const a = document.activeElement;
   if($('#overlay').classList.contains('show') || (a && a.closest && a.closest('#fpBody') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))){ setTimeout(finQuietRefresh, 2000); return; }
   FIN.due = false; FIN.busy = true;
   try{
-    const [d, todo, all] = await Promise.all([post({action:'finData'}), post({action:'expTodo'}), post({action:'expList', scope:'all'})]);
+    const [d, todo, all, o] = await Promise.all([post({action:'finData'}), post({action:'expTodo'}), post({action:'expList', scope:'all'}),
+      EXP.opt ? null : post({action:'expOptions'})]);
     const same = JSON.stringify([FIN.D, EXP.todo, EXP.all]) === JSON.stringify([d.result, todo.result, all.result || []]);
-    FIN.D = d.result; EXP.todo = todo.result; EXP.all = all.result || [];
+    FIN.D = d.result; EXP.todo = todo.result; EXP.all = all.result || []; if(o) EXP.opt = o.result;
+    finCacheSave();
     if(!same) FIN_LINKS = null;
     if(!same && FINP.on && !$('#overlay').classList.contains('show')){ const y = window.scrollY; finRender(); window.scrollTo(0, y); }
     else if(!same) FIN.due = true;
@@ -11623,8 +11752,8 @@ function finNav(){
   }));
   const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
   $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
-      k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='expenses' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}${
-      k==='expenses' && EXP.todo && EXP.todo.asks ? ' <span class="fin-dot" title="Someone asked for a link to be reactivated"></span>' : ''}</button>`).join('') +
+      k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='reimb' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}${
+      k==='reimb' && EXP.todo && EXP.todo.asks ? ' <span class="fin-dot" title="Someone asked for a link to be reactivated"></span>' : ''}</button>`).join('') +
     `<span class="fp-gap"></span>
      <button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← ${STATE ? 'Go to Sales Portal' : 'Leave Finance'}</button>`;
   void fin;
@@ -11639,11 +11768,16 @@ function finRender(){
   finNav();
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
-  if(sec==='expenses'){ if(FIN.rb.tab==='expenses') FIN.rb.tab = 'pending'; if(FIN.rb.tab==='done') FIN.rb.tab = 'paid'; }
-  if(sec==='expenses' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
   if(sec==='expenses'){
+    $('#fpBody').innerHTML = `<h2 class="fp-h">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h2>${finScopeNote()}
+      <div class="fin-one"><section class="fin-col" id="finExS">${finExpSecHTML()}</section></div>`;
+    finBindExpSec(); finChartsMount(); return;
+  }
+  if(sec==='reimb' && !FIN_RB_TABS.includes(FIN.rb.tab)) FIN.rb.tab = FIN.rb.tab==='done' ? 'paid' : 'pending';
+  if(sec==='reimb' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
+  if(sec==='reimb'){
     if(!RS.d){ $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>';
-      post({action:'expRulesGet'}).then(d=>{ RS.d = d.result; if(FINP.on && FINP.sec==='expenses') finRender(); })
+      post({action:'expRulesGet'}).then(d=>{ RS.d = d.result; if(FINP.on && FINP.sec==='reimb') finRender(); })
         .catch(e=>{ $('#fpBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; }); return; }
     // Start at the place being looked at.
     const id = f.e || f.r || f.s || '';
@@ -11853,7 +11987,7 @@ function finExpSecHTML(){
           <span class="exp-gap"></span>${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">✏️ Edit</button>
           <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑 Delete</button>` : ''}</div>
       </div></div>`; };
-  return `<div class="fin-sh"><h3 class="fin-h3">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h3>
+  return `<div class="fin-sh"><span></span>
       <span class="fin-sh-btns">${FIN.D.mayEdit || (FIN.D.convs||[]).length ? `<button type="button" class="btn btn-ghost btn-xs" onclick="finConvModal()"
         title="Took money in another currency and got dollars for it? Write it down, and it replaces the estimated dollars.">💱 Dollars received${(FIN.D.convs||[]).length ? ' (' + FIN.D.convs.length + ')' : ''}</button>` : ''}
       <button type="button" class="btn btn-ghost btn-xs" data-act="expenses">🧾 Add an expense</button></span></div>
@@ -11904,9 +12038,8 @@ function finExpTop(){
   const n = k => rb.filter(x=>x.status===k).length;
   const tab = (k, l, c, dot) => `<button type="button" class="fin-tab${R.tab===k?' on':''}" data-act="finrbtab" data-tab="${k}">${esc(l)}${c===undefined?'':` <span class="fin-n">${c}</span>`}${
     dot ? ' <span class="fin-dot" title="Someone asked for a link to be reactivated"></span>' : ''}</button>`;
-  return `<h2 class="fp-h">Expenses &amp; Reimbursements ${finRepBtn('', 'Copy this page for WhatsApp')}</h2>${finScopeNote()}
-    <div class="fin-two"><section class="fin-col" id="finExS">${finExpSecHTML()}</section>
-    <section class="fin-col" id="finRbS"><div class="fin-sh"><h3 class="fin-h3">Reimbursements ${finRepBtn('reimb')} ${finCsvBtn('reimb')}</h3>
+  return `<h2 class="fp-h">Reimbursements ${finRepBtn('reimb')} ${finCsvBtn('reimb')}</h2>${finScopeNote()}
+    <div class="fin-one"><section class="fin-col" id="finRbS"><div class="fin-sh"><span></span>
       <button type="button" class="btn btn-ghost btn-xs" data-act="finsendlink">📨 Send Reimbursements Link</button></div>
     ${finExpBarHTML(finExpTotals(all), 1)}
     <div class="fin-tabs fin-tabs-wide">${tab('pending','Pending', n('pending'))}${tab('paid','Paid back', n('paid'))}${tab('declined','Declined', n('declined'))}${tab('links', 'Links', undefined, EXP.todo && EXP.todo.asks)}${tab('settings','⚙️ Settings')}</div>`;
@@ -12037,14 +12170,22 @@ function finReimbRender(){
   const list = all.filter(x=>x.status===R.tab);
   const tot = finTotals(list, x=>[[x.amt, x.cur]]);
   const empty = {pending:'Nothing waiting to be paid back here.', paid:'Nothing paid back yet.', declined:'Nothing declined.'}[R.tab] || 'None yet.';
-  $('#fpBody').innerHTML = finExpTop() + (list.length
+  /* Waiting somewhere else (b284, Gita: "it didn't show up in requests" — it
+     was sent in for Skopje while she was looking at the US Tour). Said here,
+     with the places, and one tap shows every season. */
+  const f = finScopeF(), here = new Set(all.map(x=>x.id));
+  const away = R.tab==='pending' && (f.s || f.r || f.e || f.f) ? (EXP.all || []).filter(x=>x.kind==='reimburse' && x.status==='pending' && !here.has(x.id)) : [];
+  const awayNote = away.length ? `<div class="fin-away"><span class="fin-dot" aria-hidden="true"></span> ${away.length===1 ? '1 more is' : away.length + ' more are'} waiting to be paid back elsewhere:
+      <span class="no-edit">${esc([...new Set(away.map(x=>String(x.placeLabel||'').split(' · ').slice(0,2).join(' · ')))].slice(0,4).join('; '))}</span>
+      <button type="button" class="btn btn-ghost btn-xs" data-act="fingo" data-scope="">Show every season</button></div>` : '';
+  $('#fpBody').innerHTML = finExpTop() + awayNote + (list.length
     ? `${R.tab==='pending' ? `<div class="hint">To pay back: <b>${esc(finPayText(list) || tot)}</b></div>${expGroups(list).map(expGroupHTML).join('')}` : list.map(finRbDoneHTML).join('')}`
     : `<div class="cash-empty">${empty}</div>`) + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   // Sent in before b259, or the rate was not found then: look it up now.
   const need = R.tab==='pending' ? list.filter(x=>expOtherCur(x) && !x.payAmt && !x.fxTried) : [];
   if(need.length) Promise.all(need.map(async x=>{ x.fxTried = true; x.payAmt = await expPayAmt(x); }))
-    .then(()=>{ if(FINP.on && FINP.sec==='expenses' && FIN.rb.tab==='pending' && need.some(x=>x.payAmt)) finReimbRender(); });
+    .then(()=>{ if(FINP.on && FINP.sec==='reimb' && FIN.rb.tab==='pending' && need.some(x=>x.payAmt)) finReimbRender(); });
 }
 function finWaReimb(L, noBar){
   const all = finExpList(), T = finExpTotals(all);
@@ -12074,12 +12215,18 @@ const gmailUrl = (to, su, body) => 'https://mail.google.com/mail/?view=cm&fs=1' 
   '&su=' + encodeURIComponent(su) + '&body=' + encodeURIComponent(body);
 const reimbUrl = key => location.origin + location.pathname + '?' + (PRACTICE ? 'practice&' : '') + 'reimb=' + encodeURIComponent(key);
 const reimbMsg = url => 'Hare Krishna! If you spent money for the tour and would like to be paid back, please send it in here, with a photo of the receipt: ' + url;
+const FIN_LINK_OPEN = new Set();
+// Asked to be turned back on first, then the ones still working, then the rest; newest first within each.
+function finLinksSorted(){
+  const rank = l => (l.ask && (l.off || l.used)) ? 0 : (l.off || l.used) ? 2 : 1;
+  return FIN_LINKS.slice().sort((a,b)=>rank(a)-rank(b) || String(b.at).localeCompare(String(a.at)));
+}
 async function finLinksRender(focusNew){
   if(!FIN_LINKS){
     $('#fpBody').innerHTML = finExpTop() + '<div class="cash-empty">Opening…</div>' + FIN_EXP_END;
     try{ FIN_LINKS = (await post({action:'expLinkList'})).result; }
     catch(e){ $('#fpBody').innerHTML = finExpTop() + `<div class="err">${esc(e.message)}</div>` + FIN_EXP_END; return; }
-    if(!(FINP.on && FINP.sec==='expenses' && FIN.rb.tab==='links')) return;
+    if(!(FINP.on && FINP.sec==='reimb' && FIN.rb.tab==='links')) return;
   }
   const send = l => { const url = reimbUrl(l.key), msg = reimbMsg(url);
     return `<a class="btn btn-ghost btn-xs" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 WhatsApp</a>
@@ -12097,15 +12244,21 @@ async function finLinksRender(focusNew){
       <div class="btn-row"><button type="button" class="btn btn-primary btn-sm" id="finLinkMake">Make the link</button></div>
     </div>
     <div class="cash-sub">Links</div>
-    ${FIN_LINKS.length ? FIN_LINKS.map(l=>`<div class="exp-card${l.off||l.used?' fin-dim':''}">
-        <div class="exp-top"><b class="no-edit">${esc(l.label || l.placeLabel)}</b><span class="muted-note">${l.sent} sent in</span></div>
-        <div class="exp-meta"><span class="no-edit">${esc(l.placeLabel)}</span> · made by <span class="no-edit">${esc(l.by)}</span>, ${esc(String(l.at).slice(0,10))}${l.off?' · turned off':''}</div>
-        ${toLine(l)}
-        ${l.ask && (l.off || l.used) ? `<div class="exp-meta fin-ask"><span class="fin-dot" aria-hidden="true"></span><b>Asked to be reactivated</b> ${esc(String(l.ask.at).slice(0,10))}${
-          l.ask.name ? ' by <span class="no-edit">' + esc(l.ask.name) + '</span>' : ''}${l.ask.note ? ': “<span class="no-edit">' + esc(l.ask.note) + '</span>”' : ''}</div>` : ''}
-        <div class="exp-btns">${l.off || l.used ? '' : send(l)}
-          <button type="button" class="btn btn-ghost btn-xs" data-act="finlinkoff" data-k="${esc(l.key)}" data-on="${l.off||l.used?1:''}">${l.off||l.used?'Turn back on':'Turn off'}</button></div>
-      </div>`).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
+    ${FIN_LINKS.length ? finLinksSorted().map(l=>{ const off = l.off || l.used, ask = l.ask && off, open = FIN_LINK_OPEN.has(l.key);
+      /* One line each (b284, Gita): the name and its button; everything else
+         in the dropdown. A link someone asked to have back comes first, in full
+         colour with a red edge; other links that are off stay greyed. */
+      return `<div class="fl-item${ask ? ' fl-ask' : off ? ' fin-dim' : ''}${open?' open':''}">
+        <div class="fl-row"><button type="button" class="fl-tog" data-act="finlinktog" data-k="${esc(l.key)}"><span class="li-chev">▶</span>
+            ${ask ? '<span class="fin-dot" aria-hidden="true"></span>' : ''}<b class="no-edit">${esc((l.to && l.to.name) || l.label || l.placeLabel)}</b></button>
+          <button type="button" class="btn ${off ? 'btn-primary' : 'btn-ghost'} btn-xs" data-act="finlinkoff" data-k="${esc(l.key)}" data-on="${off?1:''}">${off?'Turn Back On':'Turn off'}</button></div>
+        <div class="li-det fl-det">
+          ${ask ? `<div class="exp-meta fin-ask"><b>Asked to be reactivated</b> ${esc(String(l.ask.at).slice(0,10))}${
+            l.ask.name ? ' by <span class="no-edit">' + esc(l.ask.name) + '</span>' : ''}${l.ask.note ? ': “<span class="no-edit">' + esc(l.ask.note) + '</span>”' : ''}</div>` : ''}
+          <div class="exp-meta">${l.label && l.to ? '<span class="no-edit">' + esc(l.label) + '</span> · ' : ''}<span class="no-edit">${esc(l.placeLabel)}</span> · ${l.sent} sent in · made by <span class="no-edit">${esc(l.by)}</span>, ${esc(String(l.at).slice(0,10))}${l.off?' · turned off':''}</div>
+          ${toLine(l)}
+          ${off ? '' : `<div class="exp-btns">${send(l)}</div>`}
+        </div></div>`; }).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   let place = '';
   const P = FIN.D, items = [{v:'', l:'Anywhere'}].concat(expPlaceItems(finLinkPlaces()));
@@ -12221,6 +12374,8 @@ function datesDraw(){
    beside them so nothing rests on colour alone. Eight colours at most, in a
    fixed order; anything past the seventh type is gathered as Everything else. */
 const VIZ_COLORS = ['#2a78d6','#eb6834','#1baf7a','#eda100','#e87ba4','#008300','#6250d6','#e34948'];
+// Places (Expenses by season, region or event): a set of their own (b284).
+const VIZ_PLACE = ['#6250d6','#0e9f9a','#d9822b','#b5179e','#4c956c','#3a86ff','#c9a227','#8d6e63'];
 function finVizData(){
   const {exps} = finFiltered(Object.assign({}, FIN.f, finScopeF()));
   const by = {};
@@ -12344,10 +12499,16 @@ function finChartsHTML(){
   const sec = FINP.sec, out = [];
   if(sec==='overview'){
     const O = finOverviewRows(), a = O.total, {sales, exps} = finFiltered(FIN.f);
-    out.push(finChart('Where the money comes from', finDonutHTML([
-      {k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon},
-      {k:'Pending Payments', v:a.pend, c:FIN_C.pend, e:a.ePend}].filter(r=>r.v > 0.004), 'Where the money comes from', 'Expected Gross')));
+    /* Income by Source (b284, Gita): one ring of what has come in, called
+       Gross. While payments are pending, a second ring beside it with them
+       added, called Expected Gross — never "Expected" when nothing is owed. */
+    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
     const pend = finPending(a), owe = finToRepay(a);
+    if(pend){
+      out.push(finChart('Income by Source (Actual)', finDonutHTML(src.map(r=>Object.assign({}, r)).filter(r=>r.v > 0.004), 'Income by Source (Actual)', 'Gross')));
+      out.push(finChart('Income by Source (Expected)', finDonutHTML(src.map(r=>Object.assign({}, r)).concat([{k:'Pending Payments', v:a.pend, c:FIN_C.pend, e:a.ePend}])
+        .filter(r=>r.v > 0.004), 'Income by Source (Expected)', 'Expected Gross')));
+    } else out.push(finChart('Income by Source', finDonutHTML(src.filter(r=>r.v > 0.004), 'Income by Source', 'Gross')));
     out.push(finChart('Money in and out', finHBarsHTML([
       {k:'Gross', v:a.coll, ex:pend ? a.gross : null, c:FIN_C.in, e:a.eColl || a.ePend},
       {k:'Expenses', v:a.spent, ex:owe ? a.exp : null, c:FIN_C.out, e:a.eExp},
@@ -12378,10 +12539,18 @@ function finChartsHTML(){
           : (nm(D.seasons, x.seasonId) || 'Earthly HQ');
         byN[k] = (byN[k]||0) + (x.usd||0);
       });
-      out.push(finChart('Expenses by ' + what, finDonutHTML(finTop(byN), 'Expenses by ' + what, 'Expenses')));
+      // Its own colours (b284), so it never reads as the by-type ring beside it.
+      out.push(finChart('Expenses by ' + what, finDonutHTML(finTop(byN).map((r,i)=>Object.assign(r, {c:VIZ_PLACE[i % VIZ_PLACE.length]})), 'Expenses by ' + what, 'Expenses')));
     }
     // The two rings side by side, the months across under them.
     out.push(finChart('Expenses by month', finMonthsHTML([{l:'Expenses', c:FIN_C.out, by:finByMonth(all, x=>x.date, x=>x.usd||0)}]), true));
+  }
+  if(sec==='reimb'){
+    // Reimbursements on their own screen (b284): who is waiting, and what was paid back month by month.
+    const rb = finExpList().filter(x=>x.kind==='reimburse'), byP = {};
+    rb.filter(x=>x.status==='pending').forEach(x=>{ const k = x.who || '(no name)'; byP[k] = (byP[k]||0) + (x.usd||0); });
+    out.push(finChart('Waiting to be paid back, by person', finDonutHTML(finTop(byP).map((r,i)=>Object.assign(r, {c:VIZ_PLACE[i % VIZ_PLACE.length]})), 'Waiting to be paid back, by person', 'To pay back')));
+    out.push(finChart('Paid back, by month', finMonthsHTML([{l:'Paid back', c:FIN_C.net, by:finByMonth(rb.filter(x=>x.status==='paid'), x=>x.paidOn || x.date, x=>x.usd||0)}]), true));
   }
   if(sec==='todo'){
     const f = finScopeF(), I = finIdx(), byE = {};
@@ -12536,7 +12705,8 @@ function finReportText(part){
   if(part==='todo' || (!part && sec==='todo')) run('', finWaTodo);
   if(part==='expenses') run('', finWaExpenses);
   if(part==='reimb') run('', finWaReimb);
-  if(!part && sec==='expenses'){ run('', L=>finWaExpBar(finExpTotals(finExpList()), L)); run('Expenses', L=>finWaExpenses(L, true)); run('Pending Reimbursements', L=>finWaReimb(L, true)); }
+  if(!part && sec==='expenses') run('', finWaExpenses);
+  if(!part && sec==='reimb') run('', finWaReimb);
   if(part==='visual' || (!part && sec==='visual')) run('Expenses by Type', finWaVisual);
   if(!part && L.length) L.unshift('*' + where + ' — Finance ' + finSecName(sec) + '*', '');
   return L.join('\n').replace(/\n{3,}/g, '\n\n').trim();
@@ -12550,7 +12720,7 @@ function finShareReport(part){
 function FIN_BTNS(fin){
   if(!fin) return [];
   const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`,
-    `<button class="btn" data-act="finexpenses">🧾 Expenses &amp; Reimbursements</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
+    `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   return b;
 }
@@ -12887,6 +13057,59 @@ function lblPlaceholders(scope, map, byWords){
   });
 }
 
+/* The choices in a drop-down menu take your wording too (b284, Gita: "pencils
+   are everywhere, but they don't work for the drop-down menus"). A choice
+   inside a menu can't carry a pencil of its own, so the menu gets one beside
+   it: tapping it lists the menu's choices, and each opens the usual window. */
+function lblOptions(scope, map, byWords){
+  const root = scope===document ? document : scope;
+  if(!root.querySelectorAll) return;
+  root.querySelectorAll('select').forEach(sel=>{
+    if(sel.closest('.lbl-in, .no-edit, #lblPop')) return;
+    let any = false;
+    [...sel.options].forEach(o=>{
+      let orig = o.getAttribute('data-ot');
+      const cur = o.textContent;
+      if(orig===null || (cur!==orig && cur!==o.getAttribute('data-os'))){ orig = cur; o.setAttribute('data-ot', orig); o.removeAttribute('data-key'); }
+      if(!/[A-Za-z]{2}/.test(orig)) return;
+      any = true;
+      let key = o.getAttribute('data-key');
+      if(!key){ key = labelContextOf(sel) + ' › ' + lblTemplate(orig); o.setAttribute('data-key', key); }
+      const own = map[normLabelKey(key)];
+      const want = own!==undefined ? own : byWords[key.split(' › ').slice(1).join(' › ')];
+      const show = want==='\u0000hide' ? (EDIT_WORDING ? '🙈 ' + orig : orig) : want ? lblFill(String(want).replace(/\*\*/g,'').replace(/\n+/g,' '), lblNumbers(orig)) : orig;
+      if(cur!==show) o.textContent = show;
+      o.setAttribute('data-os', show);
+      o.hidden = want==='\u0000hide' && !EDIT_WORDING && !o.selected;
+    });
+    const next = sel.nextElementSibling, has = next && next.classList.contains('sel-pencil');
+    if(EDIT_WORDING && any && !has){
+      const p = document.createElement('span');
+      p.className = 'pencil sel-pencil'; p.textContent = '✏️'; p.title = 'Rewrite the choices in this menu';
+      p.dataset.act = 'editselect';
+      sel.after(p);
+    } else if(has && !EDIT_WORDING) next.remove();
+  });
+}
+// The list of a menu's choices, to pick the one to rewrite.
+function lblSelectPop(pen){
+  const sel = pen.previousElementSibling; if(!sel || sel.tagName!=='SELECT') return;
+  let pop = document.getElementById('lblPop'); if(pop) pop.remove();
+  pop = document.createElement('div'); pop.id = 'lblPop'; pop.className = 'lbl-pop no-edit';
+  const opts = [...sel.options].filter(o=>o.getAttribute('data-key'));
+  pop.innerHTML = `<div class="lbl-pop-h">Rewrite which choice?<button type="button" class="x" data-lpx="1" aria-label="Close">×</button></div>` +
+    opts.map((o,i)=>`<button type="button" class="lbl-pop-row" data-i="${i}">✏️ ${esc(o.textContent)}</button>`).join('');
+  document.body.appendChild(pop);
+  const r = pen.getBoundingClientRect();
+  pop.style.top = (window.scrollY + r.bottom + 4) + 'px';
+  pop.style.left = Math.max(8, Math.min(window.scrollX + r.left - 200, window.scrollX + innerWidth - pop.offsetWidth - 8)) + 'px';
+  pop.addEventListener('click', e=>{
+    if(e.target.closest('[data-lpx]')){ pop.remove(); return; }
+    const b = e.target.closest('.lbl-pop-row'); if(!b) return;
+    pop.remove(); editLabelModal(opts[Number(b.dataset.i)].getAttribute('data-key'));
+  });
+}
+
 /** Put your wording in place of the original, wherever it appears. */
 let LBL_BUSY = false;
 function applyLabels(root){
@@ -12959,6 +13182,7 @@ function applyLabels(root){
       if(!EDIT_WORDING){ const p = el.querySelector(':scope > .pencil'); if(p) p.remove(); }
     });
     lblPlaceholders(scope, map, byWords);
+    lblOptions(scope, map, byWords);
   } finally {
     if(LBL_OBS) LBL_OBS.takeRecords();          // our own changes are not news
     LBL_BUSY = false;
@@ -15601,13 +15825,15 @@ function mergeRegionModal(rid){
   const into = regionById(rid); if(!into) return;
   const others = regionsList().filter(x=>x.regionId!==rid && x.regionId!==HQ_REGION);
   if(!others.length) return;
+  // A region with sub-regions, or no events of its own, is only their container:
+  // nothing of its own needs a sub-region (Gita, 2026-10-22).
   const hasSubs = subRegionsOf(rid).length > 0;
   openModal(`
     ${mHead('Bring a region into ' + into.name)}
     <div class="m-body">
       <div class="field"><label>Region to bring in</label><select id="mgFrom">${others.map(x=>`<option value="${esc(x.regionId)}">${esc(x.name)}</option>`).join('')}</select></div>
       <div class="field"><label>Its sub-region will be called</label><input id="mgFromSub" type="text" maxlength="60"></div>
-      ${hasSubs ? '' : `<div class="field"><label>${esc(into.name)}'s own events go in the sub-region</label><input id="mgIntoSub" type="text" maxlength="60" value="${esc(into.name)}"></div>`}
+      ${hasSubs || !eventsOfRegion(rid).length ? '' : `<div class="field"><label>${esc(into.name)}'s own events go in the sub-region</label><input id="mgIntoSub" type="text" maxlength="60" value="${esc(into.name)}"></div>`}
       <div class="field"><label>Name of the combined region</label><input id="mgName" type="text" maxlength="80" value="${esc(into.name)}" placeholder="e.g. Spain"></div>
       <div class="hint" id="mgWhat"></div>
       <div class="field"><label>Type <b id="mgTypeName"></b> to confirm</label><input id="mgConfirm" type="text" autocomplete="off"></div>
@@ -17016,7 +17242,8 @@ function payTypesModal(){
   const inherited = here.length===0;
   const active = new Set(inherited ? curPayTypes() : here);
   // Everything the tour knows, plus anything this place has added of its own.
-  const known = [...new Set([...(STATE.payTypes||[]), ...here])];
+  // In this place's own order first (b284), then the rest the tour knows, unticked.
+  const known = [...new Set([...(inherited ? curPayTypes() : here), ...(STATE.payTypes||[])])];
 
   openModal(`
     ${mHead('Payments taken at ' + esc(isEvent ? locName(CUR_LOC) : reg.name))}
@@ -17025,14 +17252,9 @@ function payTypesModal(){
         ? 'Please select the payment types accepted in this region.'
         : 'select the forms of payment accepted in this region'}</div>
 
-      <div class="hint">The order here is the order they appear when recording a sale.</div>
-      <div id="ptList">${known.map(t=>`
-        <div class="pt-row">
-          <span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>
-          <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(t)}" ${active.has(t)?'checked':''}>
-            <span>${esc(t)}</span></label>
-          ${ptCurSelect(t)}
-        </div>`).join('')}</div>
+      <div class="hint">The order here is the order they appear when recording a sale. ⇤ brings a type out from under
+        Digital Payments to stand on its own; ⇥ puts it back under.</div>
+      <div id="ptList"></div>
       <div class="hint">The currency beside each type is what it always arrives in, across the whole tour —
         for example Zelle in dollars, UPI in rupees. Leave it at “—” for cash and card.
         Payments into a dollar account can have the dollars actually received entered on the sale.</div>
@@ -17061,14 +17283,42 @@ function payTypesModal(){
   });
 
   /* Arranging the list: the order you leave it in is the order it is saved in,
-     and that is the order the payment buttons appear in when recording a sale. */
+     and that is the order they appear in when recording a sale. The types under
+     Digital Payments move as one block, and among themselves (b284). */
+  const on = {}; known.forEach(t=>{ on[t] = active.has(t); });
+  const g0 = payGrouped(known, (()=>{ const t = STATE.payTop && STATE.payTop[id]; return Array.isArray(t) && !inherited ? new Set(t) : inherited ? payTopHere() : null; })());
+  const units = []; let grp = null;
+  g0.forEach(x=>{ if(x.dig){ if(!grp){ grp = {group:[]}; units.push(grp); } grp.group.push(x.t); } else units.push({t:x.t}); });
+  if(!grp){ grp = {group:[]}; units.splice(Math.min(1, units.length), 0, grp); }
+  const mv = '<span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>';
+  const rowHTML = (t, dig) => `<div class="pt-row${dig?' pt-sub':''}" data-t="${esc(t)}">${mv}
+      <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(t)}" ${on[t]?'checked':''}><span>${esc(t)}</span></label>
+      <button type="button" class="pt-ind" data-ind="${dig?'out':'in'}" title="${dig?'Stand on its own':'Put under Digital Payments'}">${dig?'⇤':'⇥'}</button>
+      ${ptCurSelect(t)}</div>`;
+  const drawPt = () => {
+    $('#ptList').innerHTML = units.map(u=>u.group
+      ? `<div class="pt-row pt-head" data-grp="1">${mv}<span class="pt-hl">${PAY_DIGITAL}</span></div>` +
+        (u.group.length ? u.group.map(t=>rowHTML(t, true)).join('') : '<div class="pt-sub pt-none">Nothing here yet: ⇥ puts a type under it.</div>')
+      : rowHTML(u.t, false)).join('');
+  };
+  drawPt();
+  $('#ptList').addEventListener('change', e=>{ const b = e.target.closest('.pt-box'); if(b) on[b.value] = b.checked; });
   $('#ptList').addEventListener('click', e=>{
-    const mv = e.target.closest('.pt-move'); if(!mv) return;
-    const row = mv.closest('.pt-row'); if(!row) return;
-    const sib = mv.dataset.mv==='up' ? row.previousElementSibling : row.nextElementSibling;
-    if(!sib) return;
-    if(mv.dataset.mv==='up') row.parentNode.insertBefore(row, sib);
-    else row.parentNode.insertBefore(sib, row);
+    const row = e.target.closest('.pt-row'); if(!row) return;
+    const t = row.dataset.t, inGrp = t!==undefined && grp.group.includes(t);
+    const ind = e.target.closest('.pt-ind');
+    if(ind){
+      const ui = units.indexOf(grp);
+      if(inGrp){ grp.group.splice(grp.group.indexOf(t), 1); units.splice(ui + 1, 0, {t}); }
+      else { units.splice(units.findIndex(u=>u.t===t), 1); grp.group.push(t); }
+      drawPt(); return;
+    }
+    const m = e.target.closest('.pt-move'); if(!m) return;
+    const d = m.dataset.mv==='up' ? -1 : 1;
+    const swap = (a, i) => { const j = i + d; if(i < 0 || j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; };
+    if(inGrp) swap(grp.group, grp.group.indexOf(t));
+    else swap(units, row.dataset.grp ? units.indexOf(grp) : units.findIndex(u=>u.t===t));
+    drawPt();
   });
 
   $('#ptNew').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); $('#ptAdd').click(); } });
@@ -17078,13 +17328,10 @@ function payTypesModal(){
     if([...document.querySelectorAll('#modal .pt-box')].some(b=>b.value.toLowerCase()===name.toLowerCase())){
       $('#modalErr').textContent='That one is already listed.'; return;
     }
-    $('#ptList').insertAdjacentHTML('beforeend',
-      `<div class="pt-row">
-        <span class="pt-move" data-mv="up" title="Move up">▲</span><span class="pt-move" data-mv="down" title="Move down">▼</span>
-        <label class="pt-lbl"><input type="checkbox" class="pt-box" value="${esc(name)}" checked>
-          <span>${esc(name)}</span></label>
-        ${ptCurSelect(name)}
-      </div>`);
+    // A new one goes under Digital Payments, unless it is cash, card or the like.
+    on[name] = true;
+    if(PAY_TOP_DEF.test(name)) units.push({t:name}); else grp.group.push(name);
+    drawPt();
     $('#ptNew').value=''; $('#modalErr').textContent='';
   });
 
@@ -17098,12 +17345,15 @@ function payTypesModal(){
        "I added a payment type at the regional level and it didn't stick"). */
     const pending = $('#ptNew').value.replace(/[,\s]+/g,' ').trim();
     if(pending && ![...document.querySelectorAll('#modal .pt-box')].some(b=>b.value.toLowerCase()===pending.toLowerCase())) $('#ptAdd').click();
-    const types=[...document.querySelectorAll('#modal .pt-box')].filter(b=>b.checked).map(b=>b.value);
+    const flat = units.flatMap(u=>u.group ? u.group : [u.t]);
+    const types = flat.filter(t=>on[t]);
     if(!types.length){ $('#modalErr').textContent='Keep at least one way of paying.'; return; }
-    commit({action:'setPayTypes', kind, id, types},
+    const top = units.filter(u=>!u.group && on[u.t]).map(u=>u.t);
+    commit({action:'setPayTypes', kind, id, types, top},
       st=>{
         if(isEvent){ const e=(st.events||[]).find(x=>x.eventId===id); if(e) e.payTypes=types; }
         else { const r=(st.regions||[]).find(x=>x.regionId===id); if(r) r.payTypes=types; }
+        st.payTop = Object.assign({}, st.payTop||{}, {[id]: top});
       }, 'Saved');
   });
 }
@@ -18803,7 +19053,7 @@ function actSettle(list){
   });
 }
 function activityCacheLoad(sid){ try{ return JSON.parse(localStorage.getItem(ACT_CACHE+sid) || 'null'); }catch(e){ return null; } }
-function activityCacheSave(sid, list){ try{ localStorage.setItem(ACT_CACHE+sid, JSON.stringify(list.slice(0,600))); }catch(e){} }
+function activityCacheSave(sid, list){ try{ localStorage.setItem(ACT_CACHE+sid, JSON.stringify(list.slice(0,1500))); }catch(e){} }
 
 /* Stock movements the log has no entry for — made before the log existed, or
    moments ago and not yet fetched — shown one by one, each undoable as before. */
@@ -18819,13 +19069,11 @@ function looseMoveEntries(list){
         locs:[m.fromLoc, m.toLoc].filter(Boolean), regions:[], canUndo:true, loose:true};
     });
 }
-/* What belongs to where you are standing. */
-function activityHere(list){
-  if(CUR_LEVEL==='season') return list;
-  if(CUR_LEVEL==='event') return list.filter(e=>(e.locs||[]).includes(CUR_LOC));
-  const mine = new Set(locsInRegion(CUR_REGION));
-  return list.filter(e=>(e.regions||[]).includes(CUR_REGION) || (e.locs||[]).some(l=>mine.has(l)));
-}
+/* Everything your permission covers, wherever you open it (b284, Gita:
+   "whatever the level of permission should show activity at that level,
+   regardless of where they are in the app"). The server already sends only
+   that: all of it for Universal, a coordinator's own region. */
+function activityHere(list){ return list; }
 
 // Who this device is, as the log names it.
 function meLabel(){ return whoAmI() || (ME && ME.name) || (SHARE_KEY ? (isSeller() ? 'seller link' : 'coordinator link') : 'main app'); }
@@ -18864,9 +19112,29 @@ function undoMovesFit(ids){
 }
 
 const AL_PAGE = 50;
+/* The whole log is kept on the device under one name, and fetched quietly
+   soon after the app opens, so the log opens at once, already complete. */
+const ACT_ALL = 'all';
+let ACT_PREFETCHED = false;
+function activityPrefetch(){
+  if(ACT_PREFETCHED || isSeller() || REIMB_KEY || !STATE) return;
+  ACT_PREFETCHED = true;
+  post({action:'activity'}).then(d=>{
+    if(d && Array.isArray(d.result)){ actSettle(d.result); activityCacheSave(ACT_ALL, actOverlay(d.result)); }
+  }).catch(()=>{ ACT_PREFETCHED = false; });
+}
+// A season's name, for entries from another season shown on the whole log.
+function actSeasonTag(e){
+  const sid = String(e.season||'');
+  if(!sid || sid===STATE.activeSeason) return '';
+  if(sid===HQ_ID) return 'Earthly HQ';
+  const s = (STATE.seasons||[]).find(x=>x.seasonId===sid);
+  return s ? (s.name||'') : '';
+}
+
 function activityModal(){
   if(isSeller()) return;
-  const sid = STATE.activeSeason;
+  const sid = ACT_ALL;
   let list = activityCacheLoad(sid) || [], fresh = false;
   const where = CUR_LEVEL==='season' ? (STATE.seasonName||'this season')
     : CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'this region');
@@ -18906,9 +19174,9 @@ function activityModal(){
       h += `<div class="al-row${undone?' undone':''}">
         <div class="al-time">${isNaN(d)?'':esc(time(d))}</div>
         <div class="al-main"><div class="al-text">${esc(e.text)}</div>
-          <div class="al-meta">${esc(e.who||'')}${undone
-            ? `${e.who?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>`
-            : (someGone ? `${e.who?' · ':''}<span class="al-undone">Partly undone</span>` : '')}</div>
+          <div class="al-meta">${esc([e.who||'', actSeasonTag(e)].filter(Boolean).join(' · '))}${undone
+            ? `${(e.who||actSeasonTag(e))?' · ':''}<span class="al-undone">Undone${e.undoneBy?' by '+esc(e.undoneBy):''}</span>`
+            : (someGone ? `${(e.who||actSeasonTag(e))?' · ':''}<span class="al-undone">Partly undone</span>` : '')}</div>
           ${parts.length ? `<button type="button" class="al-tog" data-altog="${esc(e.id)}">${open?'▾':'▸'} ${parts.length===1?'1 title':parts.length+' titles'}</button>
             <div class="al-parts" ${open?'':'hidden'}>${parts.map(x=>`<div class="al-part${(x.undone||undone)?' undone':''}">
               <span class="al-part-t">${esc(x.text)}</span>
@@ -19649,6 +19917,8 @@ document.addEventListener('click',e=>{
   const p = e.target && e.target.closest && e.target.closest('.pencil');
   if(!p) return;
   e.preventDefault(); e.stopPropagation();
+  // A drop-down menu's pencil lists its choices (b284).
+  if(p.classList.contains('sel-pencil')){ lblSelectPop(p); return; }
   // In place (b254; live since b275).
   labelInline(p.dataset.key);
 }, true);
@@ -19906,7 +20176,8 @@ document.addEventListener('click',e=>{
   if(a==='finexsort'){ const k = t.dataset.k; if(FIN.ex.sort===k) FIN.ex.dir = -FIN.ex.dir; else { FIN.ex.sort = k; FIN.ex.dir = k==='date'||k==='amount' ? -1 : 1; } finExpensesRender(); return; }
   if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; if(t.dataset.tab==='links') FIN_LINKS = null; finRender(); return; }
   if(a==='finrbsend'){ const go = ()=>{ const n = $('#fsName'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } };
-    if(FINP.sec!=='expenses') finGo('expenses').then(go); else go(); return; }
+    if(FINP.sec!=='reimb') finGo('reimb').then(go); else go(); return; }
+  if(a==='finlinktog'){ const k = t.dataset.k; FIN_LINK_OPEN.has(k) ? FIN_LINK_OPEN.delete(k) : FIN_LINK_OPEN.add(k); finLinksRender(); return; }
   if(a==='finlinkoff'){ post({action:'expLinkOff', key:t.dataset.k, on:!!t.dataset.on}).then(d=>{ FIN_LINKS = d.result;
       if(EXP.todo) EXP.todo.asks = d.result.filter(l=>l.ask && (l.off || l.used)).length; finNav(); finLinksRender(); toast(t.dataset.on ? 'Link turned back on' : 'Link turned off'); }).catch(e=>toast(e.message, true)); return; }
   if(a==='finviz'){ FIN.viz.form = t.dataset.form; finVisualRender(); return; }
@@ -19915,7 +20186,6 @@ document.addEventListener('click',e=>{
   if(a==='report'){ const part=t.dataset.part||'';
     if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
-  if(a==='subpick'){ setSub(t.dataset.id||''); clearLogFilters(); renderAll(); return; }
   if(a==='subregions'){ subRegionsModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
@@ -19945,6 +20215,7 @@ document.addEventListener('click',e=>{
     renderAll(); if(FINP.on) finRender(); return;
   }
   if(a==='editlabel'){ editLabelModal(t.dataset.key); return; }
+  if(a==='editselect'){ lblSelectPop(t); return; }
   if(a==='hidebooks'){ hideBooksModal(); return; }
   if(a==='hiddenpre'){ hiddenPreorderModal(); return; }
   if(a==='usdactual'){ usdActualModal(t.dataset.id, t.dataset.bundle); return; }
@@ -20021,10 +20292,11 @@ document.addEventListener('click',e=>{
   if(a==='rscatadd' || a==='rscatgone'){ rsCat(a==='rscatadd' ? ($('#rsCatNew')||{}).value : t.dataset.c, a==='rscatadd'); return; }
   if(a==='rsgone' || a==='rsback'){ rsGone(t.dataset.m, a==='rsgone'); return; }
   if(a==='finoverview'){ finGo('overview'); return; }
-  if(a==='finexpenses'){ FIN.rb.tab = 'pending'; finGo('expenses'); return; }
+  if(a==='finexpenses'){ finGo('expenses'); return; }
+  if(a==='finreimb'){ FIN.rb.tab = 'pending'; finGo('reimb'); return; }
   if(a==='finreport' || a==='fincompare'){ finGo('overview'); return; }
   if(a==='fincsv'){ finCsvDownload(t.dataset.part||''); return; }
-  if(a==='finsec'){ if(t.dataset.sec==='expenses') FIN.rb.tab = 'pending'; finGo(t.dataset.sec, undefined, {reload:true}); return; }
+  if(a==='finsec'){ if(t.dataset.sec==='reimb') FIN.rb.tab = 'pending'; finGo(t.dataset.sec, undefined, {reload:true}); return; }
   if(a==='fingo'){ finGo(FINP.sec, t.dataset.scope); return; }
   if(a==='finleave'){ finLeave(); return; }
   if(a==='finsort'){ const R = FIN.rep, k = t.dataset.k; R.sort = {k, dir: R.sort.k===k ? -R.sort.dir : (k.startsWith('d')?1:-1)}; finDrawAll(); return; }

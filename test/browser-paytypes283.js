@@ -46,7 +46,7 @@ m.call({ season: st.activeSeason, action: 'sell', location: R0.whLoc, bookId: BK
   await sale(); await page.waitForTimeout(400);
   t.push(['the payment type is a search box (the list behind it hidden)', await page.isVisible(inp) && !(await page.isVisible('#ptype'))]);
   await page.click(inp); await page.fill(inp, 'pay'); await page.waitForTimeout(150);
-  t.push(['typing narrows the list', await page.evaluate(() => { const r = [...document.querySelectorAll('.field:has(#ptype) .pt-search .pp-row:not(.pp-add)')].map(x => x.dataset.v); return r.length > 0 && r.every(v => /pay/i.test(v) || v === 'Mixed'); })]);
+  t.push(['typing narrows the list', await page.evaluate(() => { const r = [...document.querySelectorAll('.field:has(#ptype) .pt-search .pp-row:not(.pp-add):not(.pp-head)')].map(x => x.dataset.v); return r.length > 0 && r.every(v => /pay/i.test(v) || v === 'Mixed'); })]);
   await page.fill(inp, 'Revolut'); await page.waitForTimeout(150);
   t.push(['Universal is offered "＋ Add “Revolut”"', /Add “Revolut”/.test(await page.textContent('.field:has(#ptype) .pt-search .pp-add'))]);
   await page.click('.field:has(#ptype) .pt-search .pp-add'); await page.waitForTimeout(1200);
