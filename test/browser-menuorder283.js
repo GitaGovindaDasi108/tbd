@@ -1,5 +1,5 @@
 /* Optional, needs Playwright + Chromium: node test/browser-menuorder283.js
-   b283: App Development › Reorganize Menu. Sections and items move up and down,
+   b283: App Development › Reorganize Menu (b292: by dragging). Sections and items move,
    an item moves to another section, the menu follows after a refresh, and
    "Back to the original order" undoes it; no overflow on a phone. */
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){ return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
@@ -45,11 +45,29 @@ m.call({ season: st.activeSeason, action: 'sell', location: R0.whLoc, bookId: BK
   const s0 = await secs();
   await page.evaluate(() => document.querySelector('#sideNav .sn-item[data-act="menuorder"]').click()); await page.waitForTimeout(300);
   t.push(['it opens the Reorganize Menu window', await page.isVisible('#moList')]);
-  // Move the second section up, the dev section's second item up, and Track Cash into Books.
-  await page.click('#moList .mo-sec:nth-child(2) [data-mo="sup"]'); await page.waitForTimeout(100);
-  const devI = await page.evaluate(() => [...document.querySelectorAll('#moList .mo-sec')].findIndex(s => /App Development/.test(s.querySelector('.mo-sh').textContent)));
-  await page.evaluate(i => document.querySelectorAll('#moList .mo-sec')[i].querySelectorAll('.mo-row')[1].querySelector('[data-mo="up"]').click(), devI); await page.waitForTimeout(100);
-  await page.evaluate(() => { const r = [...document.querySelectorAll('#moList .mo-row')].find(x => /Track Cash/.test(x.textContent)); const s = r.querySelector('select'); s.value = 'books'; s.dispatchEvent(new Event('change', { bubbles: true })); }); await page.waitForTimeout(100);
+  // b292: every item is listed, the place's own actions too.
+  const listed = await page.evaluate(() => [...document.querySelectorAll('#moList .mo-row')].map(r => r.dataset.a));
+  t.push(['b292: the window lists every item, including the place\'s own (Change Event Order, Close / Reopen)', listed.includes('reorderevent') && listed.includes('closeplace') && listed.includes('editplace') && !listed.includes('fintodo')]);
+  t.push(['b292: no ▲ ▼ or section drop-downs: it is all dragging', !(await page.$('#moList [data-mo]')) && !(await page.$('#moList select'))]);
+  // Real drags with the mouse: a point inside an element, then move in steps and let go.
+  const box = (sel) => page.evaluate(sel => { const r = (typeof sel === 'string' ? document.querySelector(sel) : null).getBoundingClientRect(); return { x: r.left + 20, y: r.top + r.height / 2, top: r.top, bottom: r.bottom }; }, sel);
+  const drag = async (from, to, after) => {
+    await page.evaluate(sel => document.querySelector(sel).scrollIntoView({ block: 'center' }), from);
+    const a = await box(from); await page.mouse.move(a.x, a.y); await page.mouse.down();
+    const b = await box(to); const ty = after ? b.bottom - 3 : b.top + 3;
+    for (let i = 1; i <= 12; i++) await page.mouse.move(a.x, a.y + (ty - a.y) * i / 12);
+    await page.waitForTimeout(80);
+    t.push(['b292: while dragging, a gap shows where it will land', !!(await page.$('#moList .mo-gap'))]);
+    await page.mouse.up(); await page.waitForTimeout(150);
+  };
+  await page.evaluate(() => { const S = [...document.querySelectorAll('#moList .mo-sec')]; S[0].id = 'moS0'; S[1].id = 'moS1'; S[0].querySelector('.mo-sh').id = 'moS0h'; S[1].querySelector('.mo-sh').id = 'moS1h'; });
+  await drag('#moS1h', '#moS0h', false);   // second section above the first
+  t.push(['b292: dragging the second section\'s heading above the first swaps them', await page.evaluate(() => document.querySelector('#moList .mo-sec').id === 'moS1') && !(await page.$('#moList .mo-gap'))]);
+  await page.evaluate(() => { const rows = [...document.querySelectorAll('#moList .mo-sec[data-sec="dev"] .mo-row')]; rows[0].id = 'moD0'; rows[1].id = 'moD1'; });
+  await drag('#moD1', '#moD0', false);    // Reorganize Menu above Edit Wording
+  await page.evaluate(() => { [...document.querySelectorAll('#moList .mo-row')].find(x => x.dataset.a === 'cash').id = 'moCash'; document.querySelector('#moList .mo-sec[data-sec="books"] .mo-row').id = 'moB0'; });
+  await drag('#moCash', '#moB0', true);   // Track Cash into Books
+  t.push(['b292: a dragged item lands in the other section, in place', await page.evaluate(() => [...document.querySelectorAll('#moList .mo-sec[data-sec="books"] .mo-row')].map(r => r.dataset.a)[1] === 'cash')]);
   for (const w of [390, 1100]) {
     await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(300);
     const over = await page.evaluate(() => { const m = document.querySelector('#modal'); return [...m.querySelectorAll('*')].filter(e => e.offsetParent && e.getBoundingClientRect().right > m.getBoundingClientRect().right + 1).map(e => e.className || e.tagName).slice(0, 3); });

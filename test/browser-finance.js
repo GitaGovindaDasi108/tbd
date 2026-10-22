@@ -170,17 +170,11 @@ const API = 'http://api.test/';
     r = await repText(own);
     t.push(['📋 Report at the top: the whole section, with headings', /^\*Zagreb · Kartika — Finance Overview\*\n\n\*OVERVIEW\*\nBig Books Sold/.test(r) && /\*BY EVENT\*/.test(r) && !/SALES BY TITLE/.test(r)]);
     await own.evaluate(() => closeModal());
-    await own.click('[data-act="finsec"][data-sec="todo"]'); await own.waitForTimeout(1200);
-    await own.click('.fp-h [data-act="finrep"]'); await own.waitForTimeout(400);
-    r = await repText(own);
-    t.push(['the To do\'s 📋: what is owed and the expenses', /\*Pending Payments\*\nSri Radha \(English\) - \$40/.test(r) && /\*Every Expense\*/.test(r) && /Van hire/.test(r)]);
-    await own.evaluate(() => closeModal());
-    t.push(['To do tabs read Pending Reimbursements / Pending Payments', /Pending Reimbursements/.test(await fpage(own)) && /Pending Payments/.test(await fpage(own))]);
-    // b259: no Reports or Visualize; each screen has ⬇️ CSV and 📋, and its charts at the bottom.
-    t.push(['b284: the Finance bar is Overview, Expenses, Reimbursements and To do: no Reports, no Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'reimb', 'todo'])]);
-    csv = await csvOf('todo');
-    t.push(['b259: To do has ⬇️ CSV beside its 📋, downloading what the tab shows', csv.got && /^Pending Reimbursements Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[1][11] === '30 USD' && csv.rows.length === 2 && csv.rows[1][1] === 'Lunch for helpers']);
-    t.push(['b259: …and its charts sit under everything else', await own.evaluate(() => { const c = document.querySelector('#finCharts'); return !!c && c === document.querySelector('#fpBody').lastElementChild && /Pending Payments, by place/.test(c.innerText) && /Pending Reimbursements, by person/.test(c.innerText); })]);
+    // b292: no To do anywhere, practice too.
+    t.push(['b292: the Finance bar is Overview, Expenses and Reimbursements: no To do, Reports or Visualize', JSON.stringify(await own.$$eval('#fpSecs [data-act="finsec"]', bs => bs.map(b => b.dataset.sec))) === JSON.stringify(['overview', 'expenses', 'reimb'])
+      && await own.evaluate(() => !FIN_BTNS('U').some(b => /To do/.test(b)))]);
+    await own.evaluate(() => finGo('todo', 'rg_zg')); await own.waitForTimeout(800);
+    t.push(['b292: an old To do address opens the Overview', /#finance\/overview/.test(own.url())]);
     await own.evaluate(() => finGo('report', 'rg_zg')); await own.waitForTimeout(800);
     t.push(['b259: an old Reports address opens the Overview', /#finance\/overview/.test(own.url())]);
     // Pencils on the Finance page and in its windows.
@@ -202,10 +196,10 @@ const API = 'http://api.test/';
     await own.keyboard.press('Control+A'); await own.keyboard.type('Donations Received'); await own.keyboard.press('Enter'); await own.waitForTimeout(1500);
     t.push(['Enter keeps it: the tile now reads Donations Received', /Donations Received/.test(await fpage(own)) && !(await own.$('.lbl-in'))]);
     // A button's words by its pencil; Esc leaves them alone.
-    await own.click('#fpSecs [data-sec="todo"] .pencil'); await own.waitForTimeout(300);
-    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/todo/.test(own.url())]);
+    await own.click('#fpSecs [data-sec="reimb"] .pencil'); await own.waitForTimeout(300);
+    t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/reimb/.test(own.url())]);
     await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
-    t.push(['Esc leaves it as it was', /To do/.test(await own.$eval('#fpSecs [data-sec="todo"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
+    t.push(['Esc leaves it as it was', /Reimbursements/.test(await own.$eval('#fpSecs [data-sec="reimb"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(500);
     /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);

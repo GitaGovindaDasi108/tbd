@@ -221,6 +221,18 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     await page.evaluate(() => { goTo('region', 'rg_it'); deliverModal('s_open3'); }); await page.waitForTimeout(300);
     t.push(['Deliver offers "Another region will fulfill it"', /Another region will fulfill it/.test(await page.textContent('#modal .opts'))]);
     await page.evaluate(() => closeModal());
+    // b292 (practice): "Fulfilled from" is a searchable drop-down, starting where you are.
+    c({ action: 'adjustStockBulk', location: 'wh_it', items: [{ bookId: B0, delta: 2 }], override: true });
+    await page.evaluate(() => pull()); await page.waitForTimeout(800);
+    await page.evaluate(() => { goTo('region', 'rg_it'); deliverPickModal('s_open3'); }); await page.waitForTimeout(300);
+    t.push(['b292: Deliver asks "Fulfilled from", starting at the warehouse you are in', /Italy — Warehouse/.test(await page.$eval('#dvFrom .pp-in', i => i.value)) && /Another region will fulfill it/.test(await page.textContent('#modal .opts'))]);
+    await page.click('#dvFrom .pp-in'); await page.fill('#dvFrom .pp-in', 'Italy'); await page.waitForTimeout(150);
+    t.push(['b292: typing narrows it, each place saying how many copies it has', await page.evaluate(() => { const r = [...document.querySelectorAll('#dvFrom .pp-row')]; return r.length > 0 && r.every(x => /Italy/.test(x.textContent) || x.classList.contains('pp-event')) && r.some(x => /in stock|none here|not enough/.test(x.textContent)); })]);
+    await page.click('#dvFrom .pp-row[data-v="wh_it"]'); await page.waitForTimeout(150);
+    const it0 = qty('wh_it', B0);
+    await page.click('#dvGo'); await page.waitForTimeout(1600);
+    const ravi = (m.call({ action: 'getState', season: SA }).state.sales || []).find(x => x.saleId === 's_open3');
+    t.push(['b292: Deliver takes the copy from the place chosen', ravi.delivered && ravi.type === 'SALE' && qty('wh_it', B0) === it0 - 1]);
 
     // 13. List view.
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b291**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b292**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,14 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b292
+Gita's next list (Live app changes, 2026-10-22), on the same PR as b291.
+- Finance To do is gone everywhere, practice too (FIN_SECS, FIN_BTNS; an old #finance/todo address opens the Overview).
+- Finance-only people (no sales side) get Send Reimbursements Link and Add an Expense on the Finance bar too, beside Leave Finance.
+- App Development › Reorganize Menu is drag and drop: drag a section by its heading or an item by its row, into any section; a dashed gap shows where it lands. Every item is listed, the place's own actions too (Change Event Order, Change Regional Order, Edit/Rename, Sub-regions, Upload Sales Spreadsheet, Close/Reopen, Delete), arranged once for every level (SN_PLACE_KEY). Change Event Order and Change Regional Order are now two menu items (they were one key, so one hid the other).
+- The menu's round ☰ no longer sits over an open window.
+- Practice: delivering a pre-order asks "Fulfilled from" in a searchable drop-down of every warehouse, store and open event, each with its copies, starting where you are (deliverPickModal); Another region and Outside the tour stay below.
 
 ## Done in b291
 Gita's list of 16 (Live app changes, 2026-10-22) and two later asks.

@@ -1490,6 +1490,7 @@ body.sn-open .sn-group:not(.shut) .sn-items{display:block}
 .sn-pinbtn{color:var(--muted);font-size:12.5px}
 .sn-scrim{position:fixed;inset:0;background:rgba(60,40,20,.18);z-index:59;display:none}
 .sn-fab{display:none}
+body:has(#overlay.show) .sn-fab{display:none !important}   /* never over an open window (b292) */
 body.has-sn{padding-left:56px}
 @media (min-width:900px){ body.has-sn.sn-pinned{padding-left:268px} }
 /* Phones and narrow windows: no column; a round ☰ at the top left slides the whole menu in. */
@@ -1600,10 +1601,13 @@ body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
 .mo-sh{font-weight:700;color:var(--plum)}
 .mo-row{padding:4px 0 4px 14px;border-top:1px dashed var(--line);font-size:13.5px}
 .mo-t{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mo-btns{display:flex;gap:4px;align-items:center;flex:none}
-.mo-btns select{max-width:130px;font-size:12.5px;padding:2px 4px}
-.mo-note{margin:2px 0 2px 14px}
-@media (max-width:560px){ .mo-btns select{max-width:96px} .mo-row{padding-left:6px} }
+.mo-grab{cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}
+.mo-h{color:var(--muted);font-size:14px;flex:none;width:14px;text-align:center}
+.mo-items{min-height:10px}
+.mo-gap{border:1.5px dashed var(--lvl-line);border-radius:8px;background:rgba(0,0,0,.03);box-sizing:border-box}
+.mo-lift{box-shadow:0 8px 24px rgba(0,0,0,.18);background:var(--paper);border-radius:8px;opacity:.96;cursor:grabbing}
+body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
+@media (max-width:560px){ .mo-row{padding-left:6px} }
 .fx-head{cursor:default;padding:0 10px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
 .fx-head .fx-h{background:none;border:0;padding:0;font:inherit;color:inherit;text-transform:inherit;letter-spacing:inherit;cursor:pointer;box-shadow:none}
 .fx-d{color:var(--muted);font-size:12.5px;text-align:left}
@@ -2261,7 +2265,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b291</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b292</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5641,8 +5645,11 @@ const SN_ITEMS = {
   salesupload:['📤','Upload Sales Spreadsheet'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
-  whoami:['👤','Profile']
+  whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations']
 };
+/* How Reorganize Menu names the items that read differently at each level (b292). */
+const MO_NAMES = {reorderevent:['↕','Change Event Order'], reorderregion:['↕','Change Regional Order'], editplace:['✎','Edit / Rename (season, region or event)'],
+  subregions:['🗺','Sub-regions'], salesupload:['📤','Upload Sales Spreadsheet'], closeplace:['🔒','Close / Reopen (season, region or event)'], deleteplace:['🗑','Delete (season, region or event)']};
 if(PRACTICE) SN_ITEMS.practice = ['🧪','Leave Practice'];
 function snTopActivity(show){
   let b = document.getElementById('actTopBtn');
@@ -5658,8 +5665,9 @@ const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','fintodo','reimbset','finplaces']},
-  {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location'},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
+  // The place's own actions (b292: arranged like the rest; anything new of its own still shows, after these).
+  {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','reorderregion','editplace','subregions','salesupload','closeplace','deleteplace']},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
@@ -5674,61 +5682,97 @@ function snOrdered(order){
   const by = {}; secs.forEach(x=>{ by[x.sec.key] = x; });
   const known = new Set(SN_SECTIONS.flatMap(x=>x.acts||[]));
   const placed = new Set(Object.values(O.items||{}).flat());
-  secs.forEach(x=>{ if(!x.sec.fam) x.acts = x.acts.filter(a=>!placed.has(a)); });
-  Object.keys(O.items||{}).forEach(k=>{ const x = by[k]; if(x && !x.sec.fam) x.acts = (O.items[k]||[]).filter(a=>known.has(a)).concat(x.acts); });
+  secs.forEach(x=>{ x.acts = x.acts.filter(a=>!placed.has(a)); });
+  Object.keys(O.items||{}).forEach(k=>{ const x = by[k]; if(x) x.acts = (O.items[k]||[]).filter(a=>known.has(a)).concat(x.acts); });
   const keys = (O.sections||[]).filter(k=>by[k]);
   return keys.map(k=>by[k]).concat(secs.filter(x=>!keys.includes(x.sec.key)));
 }
-/* App Development › Reorganize Menu (b283, Gita): move sections and their
-   items up and down, or an item into another section. Everyone's menu follows. */
+/* App Development › Reorganize Menu (b283, Gita): arrange the sections and
+   their items. b292 (Gita): by dragging, every item listed, the place's own
+   actions too. Drag a section by its heading, an item by its row (⠿), into any
+   section. Everyone's menu follows once saved. */
 function menuOrderModal(){
-  let M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, fam:!!x.sec.fam, acts:x.acts.slice()}));
-  const name = a => (SN_ITEMS[a] || ['•', a]);
+  const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.slice()}));
+  const name = a => MO_NAMES[a] || SN_ITEMS[a] || ['•', a];
   openModal(`${mHead('Reorganize Menu')}<div class="m-body">
-      <div class="hint">Move sections and the items in them with ▲ ▼, or put an item in another section. The menu changes for everyone once you save. Each person still sees only the items their access allows.</div>
-      <div id="moList" class="mo-list"></div>
+      <div class="hint">Drag a section by its heading, or an item by its row, to where it should go, into any section. The menu changes for everyone once you save. Each person still sees only the items their access allows.</div>
+      <div id="moList" class="mo-list">${M.map(sec=>`<div class="mo-sec" data-sec="${esc(sec.key)}">
+          <div class="mo-sh mo-grab" data-drag="sec"><span class="mo-h" aria-hidden="true">⠿</span><span class="mo-t">${sec.icon} ${esc(sec.label)}</span></div>
+          <div class="mo-items">${sec.acts.map(a=>`<div class="mo-row mo-grab" data-drag="row" data-a="${esc(a)}"><span class="mo-h" aria-hidden="true">⠿</span><span class="mo-t">${name(a)[0]} ${esc(name(a)[1])}</span></div>`).join('')}</div>
+        </div>`).join('')}</div>
       <div class="err" id="modalErr"></div></div>
     <div class="m-foot"><button type="button" class="btn btn-ghost btn-sm" id="moReset">Back to the original order</button>
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="moSave">Save</button></div>`, true);
-  const draw = () => {
-    const homes = M.filter(x=>!x.fam);
-    $('#moList').innerHTML = M.map((s,i)=>`<div class="mo-sec">
-        <div class="mo-sh"><span class="mo-t">${s.icon} ${esc(s.label)}</span><span class="mo-btns">
-          <button type="button" class="btn btn-ghost btn-xs" data-mo="sup" data-i="${i}" ${i ? '' : 'disabled'} title="Move this section up">▲</button>
-          <button type="button" class="btn btn-ghost btn-xs" data-mo="sdown" data-i="${i}" ${i < M.length-1 ? '' : 'disabled'} title="Move this section down">▼</button></span></div>
-        ${s.fam ? '<div class="hint mo-note">This place’s own actions, as they come.</div>' : s.acts.length ? s.acts.map((a,j)=>`<div class="mo-row">
-          <span class="mo-t">${name(a)[0]} ${esc(name(a)[1])}</span><span class="mo-btns">
-          <button type="button" class="btn btn-ghost btn-xs" data-mo="up" data-i="${i}" data-j="${j}" ${j ? '' : 'disabled'} title="Move up">▲</button>
-          <button type="button" class="btn btn-ghost btn-xs" data-mo="down" data-i="${i}" data-j="${j}" ${j < s.acts.length-1 ? '' : 'disabled'} title="Move down">▼</button>
-          <select data-mo="to" data-i="${i}" data-j="${j}" title="Section">${homes.map(h=>`<option value="${esc(h.key)}" ${h.key===s.key?'selected':''}>${esc(h.label)}</option>`).join('')}</select></span></div>`).join('')
-          : '<div class="hint mo-note">Nothing here now.</div>'}</div>`).join('');
-  };
-  draw();
-  $('#moList').addEventListener('click', e=>{
-    const b = e.target.closest('button[data-mo]'); if(!b) return;
-    const i = Number(b.dataset.i), j = Number(b.dataset.j), mv = b.dataset.mo;
-    const swap = (arr, a, c) => { [arr[a], arr[c]] = [arr[c], arr[a]]; };
-    if(mv==='sup') swap(M, i, i-1); else if(mv==='sdown') swap(M, i, i+1);
-    else if(mv==='up') swap(M[i].acts, j, j-1); else if(mv==='down') swap(M[i].acts, j, j+1);
-    draw();
-  });
-  $('#moList').addEventListener('change', e=>{
-    const sel = e.target.closest('select[data-mo="to"]'); if(!sel) return;
-    const from = M[Number(sel.dataset.i)], to = M.find(x=>x.key===sel.value);
-    if(!to || to===from) return;
-    const [a] = from.acts.splice(Number(sel.dataset.j), 1); to.acts.push(a); draw();
-  });
+  moDrag($('#moList'));
   const save = order => commit({action:'setMenuOrder', order}, st=>{ st.menuOrder = order; },
     order ? 'Menu arranged' : 'Menu back to its original order');
   $('#moSave').addEventListener('click', ()=>{
-    const items = {}; M.filter(x=>!x.fam).forEach(x=>{ items[x.key] = x.acts.slice(); });
-    save({sections: M.map(x=>x.key), items}); closeModal();
+    const secs = [...document.querySelectorAll('#moList .mo-sec')], items = {};
+    secs.forEach(x=>{ items[x.dataset.sec] = [...x.querySelectorAll('.mo-row')].map(r=>r.dataset.a); });
+    save({sections: secs.map(x=>x.dataset.sec), items}); closeModal();
   });
   $('#moReset').addEventListener('click', ()=>{
     if(!confirm('Put the menu back to the app’s own order, for everyone?')) return;
     save(null); closeModal();
   });
+}
+/* Dragging in Reorganize Menu: one pointer (mouse, finger or pen) picks the
+   section or row up, a gap the same height shows where it will land, and it
+   drops there. The window scrolls when the pointer nears its top or bottom. */
+function moDrag(list){
+  let D = null;
+  const scroller = () => list.closest('.m-body') || document.scrollingElement;
+  const place = (x, y) => {
+    D.el.style.pointerEvents = 'none';
+    const under = document.elementFromPoint(x, y);
+    D.el.style.pointerEvents = '';
+    if(!under) return;
+    if(D.kind==='sec'){
+      const sec = under.closest('#moList > .mo-sec'); if(!sec || sec===D.el) return;
+      const r = sec.getBoundingClientRect();
+      list.insertBefore(D.gap, y < r.top + r.height/2 ? sec : sec.nextSibling);
+    }else{
+      const row = under.closest('.mo-row'), box = under.closest('.mo-sec');
+      if(row && row!==D.el && list.contains(row)){ const r = row.getBoundingClientRect(); row.parentNode.insertBefore(D.gap, y < r.top + r.height/2 ? row : row.nextSibling); }
+      else if(box && !row){ const items = box.querySelector('.mo-items'); const sh = box.querySelector('.mo-sh').getBoundingClientRect();
+        if(y < sh.bottom) items.insertBefore(D.gap, items.firstChild); else if(D.gap.parentNode!==items || !D.gap.nextSibling) items.appendChild(D.gap); }
+    }
+  };
+  const scroll = () => {
+    if(!D) return;
+    const sc = scroller(), r = sc===document.scrollingElement ? {top:0, bottom:innerHeight} : sc.getBoundingClientRect();
+    const v = D.y < r.top + 40 ? -10 : D.y > r.bottom - 40 ? 10 : 0;
+    if(v){ sc.scrollTop += v; place(D.x, D.y); }
+    D.raf = requestAnimationFrame(scroll);
+  };
+  list.addEventListener('pointerdown', e=>{
+    const h = e.target.closest('.mo-grab'); if(!h || e.button>0) return;
+    const el = h.dataset.drag==='sec' ? h.closest('.mo-sec') : h;
+    const r = el.getBoundingClientRect();
+    e.preventDefault();
+    const gap = document.createElement('div'); gap.className = 'mo-gap'; gap.style.height = r.height + 'px';
+    el.parentNode.insertBefore(gap, el);
+    D = {el, gap, kind:h.dataset.drag, dy:e.clientY - r.top, x:e.clientX, y:e.clientY, id:e.pointerId};
+    Object.assign(el.style, {position:'fixed', left:r.left + 'px', top:r.top + 'px', width:r.width + 'px', zIndex:1000});
+    el.classList.add('mo-lift'); document.body.classList.add('mo-dragging');
+    try{ list.setPointerCapture(e.pointerId); }catch(err){}
+    D.raf = requestAnimationFrame(scroll);
+  });
+  list.addEventListener('pointermove', e=>{
+    if(!D || e.pointerId!==D.id) return;
+    D.x = e.clientX; D.y = e.clientY;
+    D.el.style.top = (e.clientY - D.dy) + 'px';
+    place(e.clientX, e.clientY);
+  });
+  const drop = e=>{
+    if(!D || (e && e.pointerId!==D.id)) return;
+    cancelAnimationFrame(D.raf);
+    D.gap.parentNode.insertBefore(D.el, D.gap); D.gap.remove();
+    D.el.removeAttribute('style'); D.el.classList.remove('mo-lift'); document.body.classList.remove('mo-dragging');
+    D = null;
+  };
+  list.addEventListener('pointerup', drop); list.addEventListener('pointercancel', drop);
 }
 /* One menu row from a panel button: its own attributes (so it does exactly
    what the button does) and the menu's icon and words. Any count it carried is dropped. */
@@ -5748,11 +5792,19 @@ function snRow(html, key){
   const icon = named ? named[0] : guess(text);
   return `<${m[1]} class="sn-item"${attrs}><span class="sn-ic">${icon}</span><span class="sn-t">${esc(text)}</span>${badge}</${m[1]}>`;
 }
+/* A place's own actions, by what they do at any level (b292), so they can be
+   arranged once for every level: Edit Season, Edit Region and Rename Event are
+   one item; so are Close and Reopen, and the three Deletes. */
+const SN_PLACE_KEY = {eventorder:'reorderevent', seasonedit:'editplace', editregion:'editplace', renameevent:'editplace',
+  seasonclose:'closeplace', seasonreopen:'closeplace', closehere:'closeplace', reopenhere:'closeplace',
+  seasondel:'deleteplace', deleteregion:'deleteplace', deleteevent:'deleteplace'};
 function snKey(html){
   if(/Practice Space/.test(html)) return 'practice';
-  const act = (html.match(/data-act="([^"]+)"/) || [])[1] || '';
-  if(act==='pick') return (html.match(/data-then="([^"]+)"/) || [])[1] || act;
-  return act;
+  let act = (html.match(/data-act="([^"]+)"/) || [])[1] || '';
+  if(act==='pick') act = (html.match(/data-then="([^"]+)"/) || [])[1] || act;
+  // Change Event Order and Change Regional Order are both "reorder": two items, not one (b292).
+  if(act==='reorder') return 'reorder' + ((html.match(/data-kind="([^"]+)"/) || [])[1] || '');
+  return SN_PLACE_KEY[act] || act;
 }
 function renderSideNav(fams){
   let nav = document.getElementById('sideNav');
@@ -5788,8 +5840,9 @@ function renderSideNav(fams){
   if(byKey.finoverview && !byKey.finleave) byKey.finleave = `<button class="btn" data-act="finleave">🏠 Go to Sales Portal</button>`;
   // Reorganize Menu (b283): Universal, in App Development.
   if(isAdmin() && !byKey.menuorder) byKey.menuorder = `<button class="btn" data-act="menuorder">↕ Reorganize Menu</button>`;
-  const sections = snOrdered().map(({sec, acts})=>{
-    const keys = sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam) : acts.filter(k=>byKey[k]);
+  const ordered = snOrdered(), allActs = new Set(ordered.flatMap(x=>x.acts));
+  const sections = ordered.map(({sec, acts})=>{
+    const keys = acts.filter(k=>byKey[k]).concat(sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam && !allActs.has(k)) : []);
     return {sec, rows: keys.map(k=>snRow(byKey[k], k)).filter(Boolean)};
   }).filter(x=>x.rows.length);
   const support = byKey.org ? snRow(byKey.org, 'org').replace('<span class="sn-ic">•</span><span class="sn-t">App and Sales Support</span>', '<span class="sn-ic">🛟</span><span class="sn-t">Support</span>') : '';
@@ -10301,7 +10354,7 @@ function reimbPublicDone(list){
 }
 /* ---- Finance's own To do: payments still owed, and expenses to pay back, across the system ---- */
 async function financeTodoModal(){
-  if(FIN_ON) return finGo('todo');
+  if(FIN_ON) return finGo('overview');
   if(FINP.on) $('#fpBody').innerHTML = '<div class="cash-empty">Opening…</div>'; else openModal(`${mHead('Finance To do')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
     const [todo, all, opt] = await Promise.all([post({action:'expTodo'}), post({action:'expList', scope:'all'}),
@@ -11661,7 +11714,8 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
    Reports builder's code (qb*) stays, unused, for when it comes back. */
 // To do stays in the practice space (Gita, 2026-10-21: "not needed" on live).
 /* Expenses and Reimbursements are two screens (b284, Gita: "you can just split them"). */
-const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursements']].concat(PRACTICE ? [['todo','💼','To do']] : []);
+// b292 (Gita): Finance To do is gone everywhere, practice too.
+const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursements']];
 const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings']];
 const FIN_RB_TABS = ['pending','paid','declined','links','settings'];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
@@ -11736,6 +11790,7 @@ async function finGo(sec, scope, opt){
   if(!BACKTO.finDone){ BACKTO.finDone = true; const B = BACKTO.saved;
     if(B && B.fin){ FIN.rb.tab = B.fin.rb || FIN.rb.tab; EXP.tab = B.fin.exp || EXP.tab; FIN.f.from = B.fin.from || ''; FIN.f.to = B.fin.to || ''; } }
   if(sec==='settings'){ sec = 'reimb'; FIN.rb.tab = 'settings'; }
+  if(sec==='todo') sec = 'overview';   // To do is gone (b292)
   if(sec==='reimb' && !FIN_RB_TABS.includes(FIN.rb.tab)) FIN.rb.tab = FIN.rb.tab==='done' ? 'paid' : 'pending';
   // b256: Compare is part of Reports ("Compared with").
   if(sec==='compare' || sec==='report' || sec==='visual') sec = 'overview';
@@ -11894,8 +11949,7 @@ function finNav(){
       k==='todo' && T ? ` <span class="fin-n">${T.reimb.length + T.pending.length}</span>` : k==='reimb' && T && T.reimb.length ? ` <span class="fin-n">${T.reimb.length}</span>` : ''}${
       k==='reimb' && EXP.todo && EXP.todo.asks ? ' <span class="fin-dot" title="Someone asked for a link to be reactivated"></span>' : ''}</button>`).join('') +
     `<span class="fp-gap"></span>
-     ${STATE ? `<span class="fp-acts"><button type="button" class="btn btn-ghost btn-sm" data-act="finsendlink">📨 Send Reimbursements Link</button><button type="button" class="btn btn-primary btn-sm" data-act="expenses">🧾 Add an Expense</button></span>`
-       : `<button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← Leave Finance</button>`}`;
+     <span class="fp-acts">${STATE ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← Leave Finance</button>`}<button type="button" class="btn btn-ghost btn-sm" data-act="finsendlink">📨 Send Reimbursements Link</button><button type="button" class="btn btn-primary btn-sm" data-act="expenses">🧾 Add an Expense</button></span>`;
   if(FIN.secsH !== secs){ FIN.secsH = secs; $('#fpSecs').innerHTML = secs; }
   void fin;
   // The top 📋 Report is Finance's own here, for everyone who can see Finance.
@@ -12925,7 +12979,7 @@ function finShareReport(part){
 function FIN_BTNS(fin){
   if(!fin) return [];
   const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`,
-    `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`].concat(PRACTICE ? [`<button class="btn" data-act="fintodo">💼 Finance To do</button>`] : []);
+    `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`];
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   // b288 (Gita): practice first.
   if(PRACTICE && (fin==='F' || fin==='U')) b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
@@ -15653,7 +15707,71 @@ function supUpload(){
 }
 
 /* ---- Delivering a pre-order ---- */
+/* b292 (Gita, practice first): where the copy comes from is a searchable
+   drop-down of every place (each region's warehouse, anyone storing books, its
+   open events), starting at wherever you are in the app; each says how many
+   copies it has. Then Deliver. Another region, or outside the tour, below. */
+function deliverPickModal(id, bundle){
+  const members = bundle
+    ? (STATE.sales||[]).filter(s=>s.bundle===bundle && s.type==='PREORDER' && !s.delivered)
+    : [(STATE.sales||[]).find(s=>s.saleId===id)].filter(Boolean);
+  if(!members.length) return;
+  const x = members[0], n = members.length;
+  const need = {}; members.forEach(m=>need[m.bookId]=(need[m.bookId]||0)+1);
+  const covers = loc => Object.keys(need).every(bid=>invQty(loc,bid)>=need[bid]);
+  const has = loc => Object.keys(need).reduce((t,bid)=>t+Math.min(need[bid], Math.max(0, invQty(loc,bid))), 0);
+  const tag = loc => covers(loc) ? (n>1 ? 'has all ' + n : invQty(loc, x.bookId) + ' in stock') : has(loc) ? 'not enough' : 'none here';
+  const items = [];
+  regionsList().forEach(r=>{
+    items.push({v:r.whLoc, l:r.name + ' — Warehouse', shown:r.name + ' — Warehouse', kind:'region', up:[], tag:tag(r.whLoc)});
+    holdersOf(r.regionId).forEach(h=>items.push({v:h.holderId, l:h.name + ' (storing books)', kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(h.holderId)}));
+    eventsOfRegion(r.regionId).filter(e=>!closureOf(e.eventId)).forEach(e=>items.push({v:e.eventId, l:e.name, kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(e.eventId)}));
+  });
+  // Where you are: this event, this warehouse or store; on the season page, the pre-order's own region's warehouse.
+  const here = items.some(i=>i.v===CUR_LOC) ? CUR_LOC : (regionById(regionOfLoc(x.location))||{}).whLoc || (items[0]||{}).v || '';
+  let src = here;
+  openModal(`
+    ${mHead(bundle ? 'Deliver — ' + n + ' books' : 'Deliver — ' + bookById(x.bookId).name)}
+    <div class="m-body">
+      <div class="note">Counted as sold${x.name?' to '+esc(x.name):''}${x.location!==src ? ', and stay'+(n>1?'':'s')+' on '+esc(locName(x.location))+"'s books" : ''}.</div>
+      ${bundle?`<div class="hint">The whole ${n}-book pre-order is delivered together.</div>`:''}
+      <div class="field"><label>Fulfilled from</label>${comboHTML('dvFrom', (items.find(i=>i.v===src)||{}).l || '', 'Search for a warehouse, event or person')}
+        <div class="hint" id="dvHave"></div></div>
+      <div class="err" id="modalErr"></div>
+      <div class="cash-sub">Or</div>
+      <div class="opts">
+        ${bundle ? '' : `<button class="opt" data-ask="1"><b>Another region will fulfill it</b>
+          <span>Sends them a request with the name, number and comments. They deliver it from their own stock; the sale stays here.</span></button>`}
+        <button class="opt" data-out="1"><b>From outside the tour</b>
+          <span>Sourced from beyond this system entirely. Nothing comes off a shelf, and the ${n>1?'sales':'sale'} still count${n>1?'':'s'}.</span></button>
+      </div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="dvGo">Deliver</button></div>`);
+  const show = () => {
+    const ok = !!src && covers(src);
+    $('#dvHave').textContent = !src ? '' : ok ? (n>1 ? 'Has all ' + n + ' copies.' : invQty(src, x.bookId) + ' in stock here.') : 'Not enough copies here. Choose another place, or one of the ways below.';
+    $('#dvGo').disabled = !ok;
+  };
+  comboBind('dvFrom', items, src, v=>{ src = v; $('#modalErr').textContent = ''; show(); });
+  show();
+  const send = fromStock => {
+    if(fromStock && !covers(src)){ $('#modalErr').textContent = 'Stock has changed — not enough there any more. Choose another place.'; return; }
+    const from = fromStock ? src : '';
+    commit(bundle ? {action:'markDeliveredBundle', bundle, fromStock, fromLoc:from} : {action:'markDelivered', saleId:id, fromStock, fromLoc:from}, st=>{
+      members.forEach(mm=>{
+        const t=(st.sales||[]).find(v=>v.saleId===mm.saleId);
+        if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; t.dfrom=from; }
+        if(fromStock) invAdd(st, from, mm.bookId, -1);
+      });
+    }, 'Delivered');
+  };
+  $('#dvGo').addEventListener('click', ()=>send(true));
+  $('#modal').querySelector('[data-out]').addEventListener('click', ()=>send(false));
+  const ask = $('#modal').querySelector('[data-ask]'); if(ask) ask.addEventListener('click', ()=>askRegionModal(id));
+}
 function deliverModal(id, bundle){
+  if(PRACTICE) return deliverPickModal(id, bundle);
   const members = bundle
     ? (STATE.sales||[]).filter(s=>s.bundle===bundle && s.type==='PREORDER' && !s.delivered)
     : [(STATE.sales||[]).find(s=>s.saleId===id)].filter(Boolean);
@@ -20766,7 +20884,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='xrcptdel'){ expRead(); EXP.form.receipts.splice(Number(t.dataset.i), 1); expDraw(); return; }
   if(a==='rcptopen'){ receiptOpen(t.dataset.id); return; }
-  if(a==='fintodo'){ finGo(PRACTICE ? 'todo' : 'overview'); return; }
+  if(a==='fintodo'){ finGo('overview'); return; }
   if(a==='fintab'){ EXP.tab = t.dataset.tab; finDraw(); return; }
   if(a==='exppaid'){ finMark(t.dataset.id, 'paid'); return; }
   if(a==='finsendlink'){ finSendLinkModal(); return; }

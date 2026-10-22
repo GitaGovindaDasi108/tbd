@@ -158,10 +158,10 @@ const API = 'http://api.test/';
     const fin = await open('fin@example.com', 'Madhava');
     t.push(['Finance (no rest-of-app view yet) lands on the Finance page, at its own address', await onFin(fin) && /#finance\/overview/.test(fin.url())]);
     let secs = await fin.evaluate(() => document.querySelector('#fpSecs').innerText);
-    t.push(['…with its sections: Overview, Expenses & Reimbursements, To do (settings inside Reimbursements); b259: no Reports, Compare, Visualize, Add an expense or Edit Wording up there, and a way out', /Overview/.test(secs) && !/Reports/.test(secs) && !/Compare/.test(secs) && /To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && !/Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && !/Add an expense/.test(secs) && !/Edit Wording/.test(secs) && /Go to Sales Portal|Leave Finance/.test(secs)]);
+    t.push(['…with its sections: Overview, Expenses, Reimbursements (settings inside; b292: no To do); b259: no Reports, Compare, Visualize, Add an expense or Edit Wording up there, and a way out', /Overview/.test(secs) && !/Reports/.test(secs) && !/Compare/.test(secs) && !/To do/.test(secs) && /Expenses/.test(secs) && /Reimbursements/.test(secs) && !/Visualize/.test(secs) && !/Reimbursement Settings/.test(secs) && !/Add an expense/.test(secs) && !/Edit Wording/.test(secs) && /Go to Sales Portal|Leave Finance/.test(secs)]);
     t.push(['…the masthead says Finance, in Finance\'s own colour', /Finance/.test(await fin.$eval('#whTitle', e => e.textContent)) &&
       await fin.evaluate(() => getComputedStyle(document.body).backgroundColor === 'rgb(238, 243, 250)')]);
-    await fin.click('[data-act="finsec"][data-sec="todo"]'); await fin.waitForTimeout(1200);
+    await fin.click('[data-act="finsec"][data-sec="reimb"]'); await fin.waitForTimeout(1200);
     m = await fpage(fin);
     // b260: a row per person, like the sales log: name, amount, Pay and Decline; the rest in its dropdown.
     t.push(['b260: Sita is one row: her name, ₹450, Pay and Decline, the details folded away', await fin.evaluate(() => {
@@ -169,17 +169,13 @@ const API = 'http://api.test/';
         && getComputedStyle(document.querySelector('.rb-item .li-det')).display === 'none'; })]);
     await fin.click('.rb-item [data-act="rbopen"]'); await fin.waitForTimeout(300);
     m = await fpage(fin);
-    t.push(['the To do is a section of the page (#finance/todo), not a window', /#finance\/todo/.test(fin.url()) && !(await fin.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
-    t.push(['…reimbursements pending: Sita\'s taxi, with her UPI ID', /Pending Reimbursements\s*1/.test(m) && /Taxi with the book boxes/.test(m) && /sita@okbank/.test(m)]);
+    t.push(['Reimbursements is a section of the page (#finance/reimb), not a window', /#finance\/reimb/.test(fin.url()) && !(await fin.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
+    t.push(['…reimbursements pending: Sita\'s taxi, with her UPI ID', /Taxi with the book boxes/.test(m) && /sita@okbank/.test(m)]);
     t.push(['…the record-keeping one is not on it', !/Packing tape/.test(m)]);
     t.push(['…the amount to pay back is added up', /To pay back:\s*₹450/.test(m)]);
     await fin.click('.exp-rc [data-act="rcptopen"]'); await fin.waitForTimeout(800);
     t.push(['Finance opens the receipt', await fin.evaluate(() => { const v = document.querySelector('#rcptView'); return !!v && !v.hidden && !!v.querySelector('img') && v.querySelector('img').naturalWidth > 0; })]);
     await fin.click('#rcptView [data-rcclose]');
-    await fin.click('[data-act="fintab"][data-tab="pay"]'); await fin.waitForTimeout(300);
-    m = await fpage(fin);
-    t.push(['…payments pending across the system: Arjuna owes 300 rupees, with his phone', /Pending Payments\s*1/.test(m) && /Arjuna/.test(m) && /300/.test(m) && /\+91 22 1234/.test(m) && /Chowpatty Program · Delhi · Kartika/.test(m)]);
-    await fin.click('[data-act="fintab"][data-tab="reimb"]'); await fin.waitForTimeout(300);
     // b260: Pay asks the date it was paid (today unless changed), and a note.
     await fin.click('[data-act="exppaid"]'); await fin.waitForTimeout(400);
     t.push(['b260: Pay asks the date of payment, today to start', await fin.$eval('#fpDate', i => i.value) === new Date().toISOString().slice(0, 10)]);
@@ -187,13 +183,13 @@ const API = 'http://api.test/';
     await fin.click('#fpYes'); await fin.waitForTimeout(1200);
     m = await fpage(fin);
     t.push(['Finance marks it paid back: it leaves the list', /Nothing waiting to be paid back/.test(m)]);
-    await fin.click('[data-act="fintab"][data-tab="all"]'); await fin.waitForTimeout(300);
-    m = await fpage(fin);
-    t.push(['…and every expense shows it paid back on the day given, with the reference', /Paid back by Madhava, 2026-01-01/.test(m) && /UPI ref 4471/.test(m) && /Packing tape/.test(m)]);
+    await fin.click('[data-act="finrbtab"][data-tab="paid"]'); await fin.waitForTimeout(800);
+    m = await fin.evaluate(() => document.querySelector('#fpBody').textContent);
+    t.push(['…and every expense shows it paid back on the day given, with the reference', /2026-01-01/.test(m) && /UPI ref 4471/.test(m)]);
     await fin.screenshot({ path: shot('finance') });
 
     // On Sita's behalf, found by typing part of her name.
-    await fin.click('#fpBody .m-foot [data-act="expenses"]'); await fin.waitForTimeout(1000);
+    await fin.click('#fpSecs [data-act="expenses"]'); await fin.waitForTimeout(1000);
     await fin.click('#xFor .pp-in'); await fin.fill('#xFor .pp-in', 'sit'); await fin.waitForTimeout(200);
     const rows = await fin.$$eval('#xFor .pp-row', rs => rs.map(r => r.innerText));
     t.push(['Finance\'s "Whose expense?" list narrows as a name is typed', rows.length === 1 && /Sita/.test(rows[0])]);
@@ -230,7 +226,7 @@ const API = 'http://api.test/';
     const own = await open('owner@example.com', 'The Owner');
     const snText = () => own.evaluate(() => [...document.querySelectorAll('#sideNav [data-act]')].map(b => b.dataset.act).join('|'));
     const omenu = await snText();
-    t.push(['Universal has Expenses, Finance To do and Reimbursement Settings', /\bexpenses\b/.test(omenu) && /fintodo/.test(omenu) && /reimbset/.test(omenu)]);
+    t.push(['Universal has Expenses and Reimbursement Settings, and (b292) no Finance To do', /\bexpenses\b/.test(omenu) && !/fintodo/.test(omenu) && /reimbset/.test(omenu)]);
     t.push(['…a Finance section: Overview (b259: no Reports or Compare for now)', /finoverview/.test(omenu) && !/finreport/.test(omenu) && !/fincompare/.test(omenu)]);
     t.push(['…View as in App Development', /viewas/.test(omenu)]);
     t.push(['…and no separate Record Costs (it is the Expenses form now)', !/\bcosts\b/.test(omenu)]);
