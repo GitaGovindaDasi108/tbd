@@ -225,7 +225,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b275';
+var SERVER_BUILD = 'b280';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -663,6 +663,7 @@ function handle(e) {
         case 'setEventHidden':   result = doSetEventHidden(params); break;
         case 'setRegionHidden':  result = doSetRegionHidden(params); break;
         case 'setSeasonHidden':  result = doSetSeasonHidden(params); break;
+        case 'setSubRegions':    result = doSetSubRegions(params); break;
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
@@ -4049,6 +4050,8 @@ function readState() {
     seasonBookOrder: String(getMeta_('bookOrder:' + activeSeasonId_(), '') || ''),
     // Titles hidden on the season's own page (b252).
     seasonHidden: String(getMeta_('hidden:' + activeSeasonId_(), '') || ''),
+    // Sub-regions of each region, and which one each event is in (b280).
+    subRegions: subRegionsGet_(),
     /* Wording you have rewritten in the app, keyed by the words it replaces.
        Anything not rewritten simply is not here. */
     labels: (function () {
@@ -6396,6 +6399,55 @@ function doSetEventHidden(p) {
   dbUpdate_('_events', { eventId: id }, { hidden: ids.join(',') });
   markDirty_(id);
   return ids.join(',');
+}
+
+/* ---- Sub-regions (b280, Gita: Spain -> Madrid, Barcelona) ----
+   A region can be split into sub-regions: one warehouse, one set of prices and
+   one closing, but each event belongs to one sub-region (or to none, "general"),
+   so a city's sales can be looked at on their own. Kept in one setting rather
+   than new columns: { regions: { rg_…: [{id:'sr_…', name}] }, events: { ev_…: 'sr_…' } }. */
+function subRegionsGet_() {
+  var v = {};
+  try { v = JSON.parse(String(getMeta_('subRegions', '') || '{}')) || {}; } catch (e) { v = {}; }
+  if (!v.regions || typeof v.regions !== 'object') v.regions = {};
+  if (!v.events || typeof v.events !== 'object') v.events = {};
+  return v;
+}
+/* Save a region's sub-regions (names, added, removed) and/or which sub-region
+   its events are in. A removed sub-region's events go back to "general". */
+function doSetSubRegions(p) {
+  var regionId = String(p.regionId || '');
+  if (!regionById_(regionId)) throw new Error('That region is no longer listed.');
+  var v = subRegionsGet_();
+  if (p.list !== undefined) {
+    var list = typeof p.list === 'string' ? JSON.parse(p.list || '[]') : (p.list || []);
+    var seen = {}, out = [];
+    list.forEach(function (x) {
+      var name = String((x && x.name) || '').trim().slice(0, 60);
+      var id = String((x && x.id) || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40) ||
+               ('sr_' + Utilities.getUuid().slice(0, 6));
+      if (!name || seen[id]) return;
+      seen[id] = 1; out.push({ id: id, name: name });
+    });
+    if (out.length) v.regions[regionId] = out; else delete v.regions[regionId];
+    Object.keys(v.events).forEach(function (ev) {
+      var e = eventById_(ev);
+      if (e && String(e.regionId) === regionId && !seen[v.events[ev]]) delete v.events[ev];
+    });
+  }
+  if (p.events) {
+    var evs = typeof p.events === 'string' ? JSON.parse(p.events || '{}') : p.events;
+    var mine = {}; (v.regions[regionId] || []).forEach(function (x) { mine[x.id] = 1; });
+    Object.keys(evs).forEach(function (ev) {
+      var e = eventById_(ev);
+      if (!e || String(e.regionId) !== regionId) return;
+      var sr = String(evs[ev] || '');
+      if (sr && mine[sr]) v.events[ev] = sr; else delete v.events[ev];
+    });
+  }
+  setMeta_('subRegions', JSON.stringify(v));
+  markDirtyRegions_([regionId]);
+  return { regions: v.regions[regionId] || [] };
 }
 
 function doCreateEvent(p) {
@@ -8798,6 +8850,7 @@ function describe_(action, p, result, moves, who) {
     case 'deleteEvent':  d = { text: 'Deleted an event' + (mv ? ': ' + mv : '') }; break;
     case 'setEventHidden': case 'setRegionHidden': d = { text: 'Changed what is shown for ' + (p.eventId ? locLabel_(p.eventId) : reg(p.regionId)) }; break;
     case 'setSeasonHidden': d = { text: 'Changed which titles the season page shows' }; break;
+    case 'setSubRegions': d = { text: 'Changed the sub-regions of ' + reg(p.regionId) }; break;
     case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
     case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
     case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;

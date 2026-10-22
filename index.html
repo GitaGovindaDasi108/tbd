@@ -122,6 +122,22 @@ body.lvl-event {--lvl:#1F6B5A; --lvl-soft:#E4F1EB; --lvl-line:#AFD5C7}
 /* ---- Compact breadcrumb navigation ---- */
 .navbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:2px 0 4px}
 .crumbs{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-width:0}
+.fin-share{font-size:13px;margin:8px 0 2px;padding:8px 10px;border-radius:8px;background:var(--paper);border:1px solid var(--line);overflow-wrap:anywhere}
+.subr-bar{display:flex;flex-wrap:wrap;gap:5px;align-items:center;padding:2px 0 6px;min-width:0}
+.subr-chip{border:1px solid var(--lvl-line,var(--line-d));background:var(--paper);color:var(--lvl,var(--plum));
+  border-radius:999px;padding:3px 11px;font-size:12.5px;font-weight:600;cursor:pointer;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subr-chip.on{background:var(--lvl-soft,#FBEEDA);border-color:var(--lvl,var(--plum));font-weight:800}
+.subr-note{font-size:12px;color:var(--muted);margin:-2px 0 6px}
+.subr-chip.subr-set{padding:3px 8px;color:var(--muted)}
+.sr-sec{font-weight:800;font-size:13px;margin:14px 0 6px;color:var(--ink)}
+.sr-row{display:flex;gap:8px;align-items:center;margin:0 0 6px;min-width:0}
+.sr-row input,.sr-row select{flex:1 1 auto;min-width:0}
+.sr-ev{flex:0 1 45%;min-width:0;font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sr-x{border:none;background:transparent;color:var(--muted);font-size:15px;cursor:pointer;padding:4px 6px}
+.sr-add{margin-top:2px}
+tr.cbr-sub th{font-weight:500;padding-left:18px;color:var(--muted)}
+tr.cbr-sub td{color:var(--muted)}
 .crumb-btn{border:1.5px solid var(--lvl-line,var(--line-d));background:var(--paper);
   color:var(--lvl,var(--plum));border-radius:999px;padding:5px 12px;font-weight:700;
   font-size:13px;cursor:pointer;white-space:nowrap}
@@ -2160,7 +2176,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b279</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b280</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2774,12 +2790,61 @@ function locsInRegion(regionId){
   (STATE.holders||[]).filter(h=>h.regionId===regionId).forEach(h=>out.push(h.holderId));
   return out;
 }
+/* ---- Sub-regions (b280, Gita: Spain -> Madrid, Barcelona; practice first) ----
+   One region, one warehouse, one set of prices and one closing, split into
+   sub-regions so each city's sales can be looked at on their own. Each event
+   belongs to one sub-region, or to none ("general"); what is sold from the
+   warehouse is general too. The region page shows All, or one sub-region. */
+const SUBR_ON = PRACTICE;
+function subRegionsOf(rid){
+  if(!SUBR_ON || !STATE) return [];
+  const v = STATE.subRegions || {};
+  return ((v.regions||{})[rid] || []).filter(x=>x && x.id && x.name);
+}
+function subOfEvent(evId){ const v = (STATE && STATE.subRegions) || {}; return (v.events||{})[evId] || ''; }
+function subName(rid, id){ const x = subRegionsOf(rid).find(s=>s.id===id); return x ? x.name : ''; }
+function eventsOfSub(rid, sid){ return eventsOfRegion(rid).filter(e=>subOfEvent(e.eventId)===sid); }
+/* Everything in the region that is no sub-region's own: the warehouse, devotees'
+   homes, and events not put in one. */
+function generalLocsOf(rid){
+  const subs = new Set(subRegionsOf(rid).map(x=>x.id));
+  return locsInRegion(rid).filter(l=>!subs.has(subOfEvent(l)));
+}
+/* Which sub-region this tab is showing, per region (sessionStorage, like the place). */
+const SUBR_KEY = 'tbs_subr';
+function subPicks(){ try{ return JSON.parse(sessionStorage.getItem(SUBR_KEY)||'{}') || {}; }catch(e){ return {}; } }
+function curSub(){
+  if(CUR_LEVEL!=='region' || !CUR_REGION) return '';
+  const id = subPicks()[CUR_REGION] || '';
+  return subRegionsOf(CUR_REGION).some(x=>x.id===id) ? id : '';
+}
+function setSub(id){ const m = subPicks(); if(id) m[CUR_REGION] = id; else delete m[CUR_REGION];
+  try{ sessionStorage.setItem(SUBR_KEY, JSON.stringify(m)); }catch(e){} }
+/* The region as one sub-region sees it: the other sub-regions' events, and what
+   was sold or spent there, are left out; so is the general part (warehouse sales,
+   region-wide costs). Stock stays as it is: the warehouse is shared. */
+function subState(rid, sid){
+  const keep = new Set(eventsOfSub(rid, sid).map(e=>e.eventId));
+  const drop = new Set(locsInRegion(rid).filter(l=>!keep.has(l)));
+  return Object.assign({}, STATE, {
+    events: (STATE.events||[]).filter(e=>(e.regionId||'')!==rid || keep.has(e.eventId)),
+    sales: (STATE.sales||[]).filter(x=>!drop.has(x.location)),
+    costs: (STATE.costs||[]).filter(c=>!drop.has(c.location))
+  });
+}
+let SUB_IN = false;
+function withSub(fn){
+  const sid = SUB_IN ? '' : curSub();
+  if(!sid) return fn();
+  const keep = STATE; SUB_IN = true; STATE = subState(CUR_REGION, sid);
+  try{ return fn(); } finally{ STATE = keep; SUB_IN = false; }
+}
 /** The org chart / settings scope for the page we're on. */
 /** Human name for the page whose chart/settings we're editing. */
 function scopeLabel(){
   if(CUR_LEVEL==='season') return STATE.seasonName||'Season';
   const r=currentRegion();
-  if(CUR_LEVEL==='region') return r?r.name:'Region';
+  if(CUR_LEVEL==='region'){ const sn = r ? subName(r.regionId, curSub()) : ''; return r ? r.name + (sn ? ' › ' + sn : '') : 'Region'; }
   // An event is named with its region, for clarity: "Madrid — Festival".
   return (r ? r.name+' — ' : '') + locName(CUR_LOC);
 }
@@ -4809,6 +4874,8 @@ try{ if(localStorage.getItem('tbs_view')==='list') setTimeout(()=>setViewMode('l
 function renderAll(){
   // Not while a book card is held: everything is redrawn when it is dropped.
   if(dragging()){ SHELF_DRAG.redraw = true; return; }
+  // One sub-region chosen (b280): the same page, over just its part of the region.
+  if(STATE && !SUB_IN && curSub()) return withSub(renderAll);
   practiceBanner();
   // The build number and the status light are for Universal; others see the light only when something is wrong (b234).
   document.body.classList.toggle('is-u', !!(STATE && isAdmin()));
@@ -5220,7 +5287,15 @@ function renderTabs(){
       <span class="crumb-pick">
         <select class="crumb-sel ${CUR_LEVEL==='event'?'on':''}" data-act="pickloc">
           ${opt(reg.whLoc,'🏠 Warehouse',CUR_LOC===reg.whLoc)}
-          ${eventsOfRegion(reg.regionId).map(e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId)).join('')}
+          ${(()=>{ const evOpt = e=>opt(e.eventId,e.name+mark(closureOf(e.eventId)),CUR_LOC===e.eventId);
+            const subs = subRegionsOf(reg.regionId);
+            if(!subs.length) return eventsOfRegion(reg.regionId).map(evOpt).join('');
+            // Sub-regions (b280): each one's events under its name, the rest after.
+            const known = new Set(subs.map(x=>x.id));
+            const rest = eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId)));
+            return subs.map(x=>{ const evs = eventsOfSub(reg.regionId, x.id);
+                return evs.length ? `<optgroup label="${esc(x.name)}">${evs.map(evOpt).join('')}</optgroup>` : ''; }).join('') +
+              (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(evOpt).join('')}</optgroup>` : ''); })()}
           ${opt('__new','＋ New event…',false)}
         </select>
       </span>`;
@@ -5228,6 +5303,15 @@ function renderTabs(){
   const shut = CUR_LEVEL==='event' ? closureOf(CUR_LOC)
              : CUR_LEVEL==='region' ? regionClosure(CUR_REGION) : '';
   h += `</div></div>`;
+  /* Sub-regions (b280): All, or one of them. The warehouse stays shared. */
+  const subs = CUR_LEVEL==='region' && reg ? subRegionsOf(reg.regionId) : [];
+  if(subs.length){
+    const cur = curSub();
+    h += `<div class="subr-bar">${[{id:'', name:'All of ' + reg.name}].concat(subs).map(x=>
+        `<button type="button" class="subr-chip${x.id===cur?' on':''}" data-act="subpick" data-id="${esc(x.id)}">${esc(x.name)}</button>`).join('')}${
+        isAdmin() ? `<button type="button" class="subr-chip subr-set" data-act="subregions" title="Sub-regions">⚙</button>` : ''}</div>${
+        cur ? `<div class="subr-note">Selling straight from the warehouse counts for all of ${esc(reg.name)}, not for ${esc(subName(reg.regionId, cur))} alone.</div>` : ''}`;
+  }
   if(shut){
     h += `<div class="closed-note ${shut}">
       ${shut==='complete'
@@ -5364,6 +5448,7 @@ function renderAdmin(){
     cols[3].push(`<button class="btn" data-act="seasondel" data-id="${esc(STATE.activeSeason)}">Delete Season</button>`);
   }else if(isWarehouseLoc(CUR_LOC)){
     cols[3].push(`<button class="btn" data-act="editregion">Edit Region</button>`);
+    if(SUBR_ON) cols[3].push(`<button class="btn" data-act="subregions">🗺 Sub-regions</button>`);
     cols[3].push(regionClosure(CUR_REGION)
       ? `<button class="btn" data-act="reopenhere">Reopen Region</button>`
       : `<button class="btn" data-act="closehere">Close Region</button>`);
@@ -5423,7 +5508,7 @@ function snLevelLabel(){
 /* What each action is called, and its icon, in the menu (the owner's names). */
 const SN_ITEMS = {
   addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], partners:['🤝','Consignment Books'],
-  bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'],
+  bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
   cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finoverview:['📈','Overview'], finexpenses:['🧾','Expenses & Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
@@ -6063,8 +6148,7 @@ function scopedAllCosts(){
 function renderCollectionsByRegion(target){
   const el = $(target); if(!el) return;
   const curs = curAllCurrencies();
-  const rows = regionsList().map(r=>{
-    const locs = locsInRegion(r.regionId);
+  const calc = locs=>{
     const got = {}, mine = [], spent = [];
     (STATE.sales||[]).forEach(x=>{
       if(!x || !locs.includes(x.location)) return;
@@ -6080,7 +6164,18 @@ function renderCollectionsByRegion(target){
       got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
       spent.push(c);
     });
-    return {r, got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine) - costTruthAdj(spent)};
+    return {got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine) - costTruthAdj(spent)};
+  };
+  const rows = regionsList().map(r=>{
+    const x = Object.assign({r}, calc(locsInRegion(r.regionId)));
+    /* Sub-regions (b280): each one's own takings beneath its region, then the
+       region's general part (the warehouse, events in none, region-wide costs).
+       Shown for reading; the region's line is still the one that adds up. */
+    const subs = subRegionsOf(r.regionId);
+    x.subs = !subs.length ? [] : subs.map(sr=>Object.assign({name:sr.name}, calc(eventsOfSub(r.regionId, sr.id).map(e=>e.eventId))))
+      .concat([Object.assign({name:r.name + ', general'}, calc(generalLocsOf(r.regionId)))])
+      .filter((y,i,a)=>i<a.length-1 || Object.keys(y.got).some(c=>Math.abs(y.got[c])>0.004));
+    return x;
   });
   const tot = {}; let totUsd = 0;
   rows.forEach(x=>{ Object.keys(x.got).forEach(c=>tot[c]=(tot[c]||0)+x.got[c]); totUsd += x.usd; });
@@ -6091,7 +6186,9 @@ function renderCollectionsByRegion(target){
       <tbody>${rows.map(x=>`<tr>
         <th><a href="#" data-act="${UNIT===UNIT_SEASON?'goseasonid':'cashregion'}" data-id="${esc(x.r.regionId)}" data-season="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th>
         ${curs.map(c=>`<td>${cell(x.got,c)}</td>`).join('')}
-        <td class="usd">$${fmt(x.usd)}</td></tr>`).join('') ||
+        <td class="usd">$${fmt(x.usd)}</td></tr>${(x.subs||[]).map(y=>`<tr class="cbr-sub">
+        <th>${esc(y.name)}</th>${curs.map(c=>`<td>${cell(y.got,c)}</td>`).join('')}
+        <td class="usd">$${fmt(y.usd)}</td></tr>`).join('')}`).join('') ||
         `<tr><td colspan="${curs.length+2}">No ${UNIT.words} yet.</td></tr>`}</tbody>
       <tfoot><tr><th>All ${UNIT.words}</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
         <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
@@ -10181,7 +10278,7 @@ function finIdx(){
 }
 function finFiltered(f){
   const D = FIN.D;
-  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.f || x.f===f.f) &&
+  const ok = x => (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.f || x.f===f.f) && (!f.uE || f.uE.includes(x.e)) &&
     (!f.from || x.d >= f.from) && (!f.to || x.d <= f.to);
   return { sales: D.sales.filter(ok), exps: D.expenses.filter(ok) };
 }
@@ -10206,7 +10303,12 @@ function finPlaces(){
     out.push({kind:'season', id:se.id, name:se.name, s:se.id});
     D.regions.filter(r=>r.seasonId===se.id).forEach(r=>{
       out.push({kind:'region', id:r.id, name:r.name, s:se.id, r:r.id, sName:se.name});
-      D.events.filter(e=>e.regionId===r.id).forEach(e=>out.push({kind:'event', id:e.id, name:e.name, s:se.id, r:r.id, sName:se.name, rName:r.name}));
+      const evRow = e=>out.push({kind:'event', id:e.id, name:e.name, s:se.id, r:r.id, sName:se.name, rName:r.name});
+      const subs = finSubsOf(r.id), done = new Set();
+      // Sub-regions (b280), each with its events beneath it; then the region's other events.
+      subs.forEach(sr=>{ out.push({kind:'event', sub:1, id:sr.id, name:sr.name, s:se.id, r:r.id, sName:se.name, rName:r.name});
+        D.events.filter(e=>e.regionId===r.id && subOfEvent(e.id)===sr.id).forEach(e=>{ done.add(e.id); evRow(e); }); });
+      D.events.filter(e=>e.regionId===r.id && !done.has(e.id)).forEach(evRow);
       fps.filter(x=>x.parent===r.id).forEach(x=>out.push({kind:'event', fin:1, id:x.id, name:x.name, s:se.id, r:r.id, sName:se.name, rName:r.name}));
     });
     fps.filter(x=>x.parent===se.id).forEach(x=>out.push({kind:'region', fin:1, id:x.id, name:x.name, s:se.id, sName:se.name}));
@@ -10236,7 +10338,7 @@ function finBindSearch(){
   };
   const draw = q => {
     const rows = shown(q);
-    list.innerHTML = rows.length ? rows.map(p=>`<span class="pp-row pp-${p.kind==='all'?'season':p.kind}${p.id===FINP.scope?' on':''}" data-id="${esc(p.id)}">${esc(p.name)}${p.fin ? '<span class="pp-tag">Finance only</span>' : ''}</span>`).join('')
+    list.innerHTML = rows.length ? rows.map(p=>`<span class="pp-row pp-${p.kind==='all'?'season':p.kind}${p.id===FINP.scope?' on':''}" data-id="${esc(p.id)}">${esc(p.name)}${p.fin ? '<span class="pp-tag">Finance only</span>' : p.sub ? '<span class="pp-tag">Sub-region</span>' : ''}</span>`).join('')
       : '<span class="pp-empty">Nothing matches.</span>';
     list.hidden = false;
   };
@@ -10314,6 +10416,19 @@ function finOverviewRows(){
     const rank = k => { const x = by[k][0]; return x.k==='DONATION' ? 3 : !x.t ? 4 : x.c==='aotm' ? 1 : 0; };
     Object.keys(by).sort((a,b)=>rank(a)-rank(b) || a.localeCompare(b)).forEach(k=>add(k, '', by[k], []));
     if(exps.length) add('Expenses', '', [], exps);
+  } else if(f.r && !f.u && finSubsOf(f.r).length){
+    /* Sub-regions (b280): one level down from the region is its sub-regions,
+       then what belongs to the region as a whole (the warehouse, events in
+       none, costs shared by all of it). */
+    what = 'By Sub-region';
+    const mine = new Set();
+    finSubsOf(f.r).forEach(sr=>{ const evs = eventsOfSubAny(f.r, sr.id); evs.forEach(e=>mine.add(e));
+      add(sr.name, sr.id, sales.filter(x=>evs.includes(x.e)), exps.filter(x=>evs.includes(x.e))); });
+    const gS = sales.filter(x=>!mine.has(x.e)), gE = exps.filter(x=>!mine.has(x.e));
+    if(gS.length || gE.length) add((I.r[f.r]||{}).name + ', general', '', gS, gE);
+  } else if(f.u){
+    what = 'By Event';
+    D.events.filter(ev=>f.uE.includes(ev.id)).forEach(ev=>add(ev.name, ev.id, sales.filter(x=>x.e===ev.id), exps.filter(x=>x.e===ev.id)));
   } else if(f.r){
     what = 'By Event';
     const wS = sales.filter(x=>!x.e), wE = exps.filter(x=>!x.e);
@@ -10330,6 +10445,22 @@ function finOverviewRows(){
   }
   return { what, rows, total: finAgg(sales, exps) };
 }
+/* A sub-region's share of what its region spent as a whole (b280): the region's
+   general expenses, split by books distributed. Shown beside Net, never in it. */
+function finSubShare(a){
+  const f = FIN.f; if(!f || !f.u || !f.uE) return null;
+  const all = finFiltered(Object.assign({}, f, {u:'', uE:null}));
+  const mine = new Set(); finSubsOf(f.r).forEach(sr=>eventsOfSubAny(f.r, sr.id).forEach(e=>mine.add(e)));
+  const S = finAgg([], all.exps.filter(x=>!mine.has(x.e))), shared = S.exp, est = !!S.eExp;
+  const R = finAgg(all.sales, []), dist = n => n.books + n.gifts;
+  if(shared <= 0.004 || !dist(R)) return null;
+  const pct = dist(a) / dist(R), part = shared * pct;
+  return {shared, pct, part, net:a.net - part, est, netEst: est || !!(a.eExp || a.eColl), region:(finIdx().r[f.r]||{}).name || 'the region', name:(finSubOf(f.u)||{}).name || 'This sub-region'};
+}
+function finSubShareHTML(a){
+  const x = finSubShare(a); if(!x) return '';
+  return `<div class="fin-share">Shared with all of ${esc(x.region)}: ${esc(finUsd(x.shared, x.est))} of expenses. ${esc(x.name)} distributed ${Math.round(x.pct*1000)/10}% of ${esc(x.region)}'s books, so its share is ${esc(finUsd(x.part, x.est))}. <b>Net after its share: ${esc(finUsd(x.net, x.netEst))}</b></div>`;
+}
 const finRepBtn = (part, title) => `<button type="button" class="btn btn-gold btn-sm sec-rep" data-act="finrep" data-part="${part}" title="${esc(title || 'Copy just this section for WhatsApp')}">📋</button>`;
 function finOverviewHTML(){
   const O = finOverviewRows(), a = O.total, figs = finOverviewFigs(a);
@@ -10340,6 +10471,7 @@ function finOverviewHTML(){
       ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
   return `${finFiltersHTML(FIN.f, true)}
     <div class="fin-tiles">${tiles}</div>
+    ${finSubShareHTML(a)}
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ~ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
 
@@ -11166,10 +11298,26 @@ function finParseHash(){
   const m = /^#finance(?:\/([a-z]+))?(?:\/([^/?#]+))?/.exec(location.hash || '');
   return m ? { sec: m[1] || 'overview', scope: m[2] ? decodeURIComponent(m[2]) : '' } : null;
 }
+/* Sub-regions in Finance (b280): which region a sub-region id belongs to, and
+   its events (in any season: Finance looks across them all). */
+function finSubOf(id){
+  if(!SUBR_ON || !/^sr_/.test(String(id||''))) return null;
+  const R = ((STATE && STATE.subRegions) || {}).regions || {};
+  for(const rid of Object.keys(R)){ const x = (R[rid]||[]).find(y=>y.id===id); if(x) return {rid, id, name:x.name}; }
+  return null;
+}
+function finSubsOf(rid){ if(!SUBR_ON) return []; return ((((STATE && STATE.subRegions) || {}).regions || {})[rid] || []).filter(x=>x && x.id && x.name); }
+function eventsOfSubAny(rid, sid){
+  const E = ((STATE && STATE.subRegions) || {}).events || {};
+  return (FIN.D ? FIN.D.events : []).filter(e=>e.regionId===rid && E[e.id]===sid).map(e=>e.id);
+}
 /* The place being looked at, as season / region / event ids. */
 function finScopeF(){
-  const D = FIN.D, id = FINP.scope, out = { s:'', r:'', e:'', f:'' };
+  const D = FIN.D, id = FINP.scope, out = { s:'', r:'', e:'', f:'', u:'', uE:null };
   if(!D || !id) return out;
+  // A sub-region (b280): its region, and its events to count.
+  const su = finSubOf(id);
+  if(su){ const rg = D.regions.find(x=>x.id===su.rid) || {}; out.u = id; out.r = su.rid; out.s = rg.seasonId || ''; out.uE = eventsOfSubAny(su.rid, id); return out; }
   const fp = (D.finPlaces||[]).find(x=>x.id===id);
   if(fp){ out.f = fp.id; out.s = fp.seasonId==='HQ' ? '' : fp.seasonId; out.r = fp.regionId==='rg_hq' ? '' : fp.regionId; return out; }
   const se = D.seasons.find(x=>x.id===id), rg = D.regions.find(x=>x.id===id), ev = D.events.find(x=>x.id===id);
@@ -11198,13 +11346,14 @@ function finScopeNote(){
 function finScopeName(){
   const f = finScopeF(), D = FIN.D; if(!D) return '';
   const nm = (list, id) => (list.find(x=>x.id===id)||{}).name || '';
-  return [nm(D.finPlaces||[], f.f), nm(D.events, f.e), nm(D.regions, f.r), nm(D.seasons, f.s)].filter(Boolean).join(' · ');
+  const su = f.u ? finSubOf(f.u) : null;
+  return [nm(D.finPlaces||[], f.f), nm(D.events, f.e), su ? su.name : '', nm(D.regions, f.r), nm(D.seasons, f.s)].filter(Boolean).join(' · ');
 }
 /* The To do, for the place being looked at only. */
 function finScopedTodo(){
   const T = EXP.todo, all = EXP.all || [], f = FINP.on ? finScopeF() : {s:'', r:'', e:''};
-  const okX = x => (!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e);
-  const okP = p => (!f.s || p.seasonId===f.s) && (!f.r || p.regionId===f.r) && (!f.e || p.eventId===f.e);
+  const okX = x => (!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e) && (!f.uE || f.uE.includes(x.location));
+  const okP = p => (!f.s || p.seasonId===f.s) && (!f.r || p.regionId===f.r) && (!f.e || p.eventId===f.e) && (!f.uE || f.uE.includes(p.eventId));
   return { reimb: T.reimb.filter(okX), pending: T.pending.filter(okP), all: all.filter(okX) };
 }
 async function finGo(sec, scope, opt){
@@ -11279,7 +11428,7 @@ window.addEventListener('popstate', ()=>{
 /* The bar at the top: where you are, walked down like the rest of the app. */
 function finNav(){
   const D = FIN.D, f = finScopeF(), opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
-  const lvl = f.e ? 'Event' : f.r ? 'Region' : f.s ? 'Season' : 'Everywhere';
+  const lvl = f.e ? 'Event' : f.u ? 'Sub-region' : f.r ? 'Region' : f.s ? 'Season' : 'Everywhere';
   let h = `<div class="navbar"><span class="lvl-chip">Finance · ${lvl}</span><div class="crumbs">
     <button type="button" class="crumb-btn${FINP.scope?'':' on'}" data-act="fingo" data-scope="">All seasons</button>`;
   if(D){
@@ -11291,15 +11440,21 @@ function finNav(){
         ${opt('', 'The whole season', !f.r)}${regs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.r)).join('')}</select></span>`;
     }
     if(f.r){
-      const evs = D.events.filter(e=>e.regionId===f.r);
+      // Sub-regions (b280): All, or one of them, before the events.
+      const subs = finSubsOf(f.r), rName = (D.regions.find(x=>x.id===f.r)||{}).name || '';
+      const evSub = f.e ? subOfEvent(f.e) : '', inSub = f.u || (subs.some(x=>x.id===evSub) ? evSub : '');
+      if(subs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.u?' on':''}" data-fpick="u">
+        ${opt('', 'All of ' + rName, !inSub)}${subs.map(x=>opt(x.id, x.name, x.id===inSub)).join('')}</select></span>`;
+      const evs = D.events.filter(e=>e.regionId===f.r && (!inSub || eventsOfSubAny(f.r, inSub).includes(e.id)));
       if(evs.length) h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${f.e?' on':''}" data-fpick="e">
-        ${opt('', 'The whole region', !f.e)}${evs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.e)).join('')}</select></span>`;
+        ${opt('', inSub ? 'The whole sub-region' : 'The whole region', !f.e)}${evs.map(x=>opt(x.id, x.name + (x.closed?' (closed)':''), x.id===f.e)).join('')}</select></span>`;
     }
   }
   $('#fpNav').innerHTML = h + '</div></div>';
   $('#fpNav').querySelectorAll('[data-fpick]').forEach(sel=>sel.addEventListener('change', ()=>{
     const k = sel.dataset.fpick, cur = finScopeF();
-    finGo(FINP.sec, sel.value || (k==='e' ? cur.r : k==='r' ? cur.s : ''));
+    const upSub = k==='e' && !cur.u && cur.e && finSubsOf(cur.r).some(x=>x.id===subOfEvent(cur.e)) ? subOfEvent(cur.e) : '';
+    finGo(FINP.sec, sel.value || (k==='e' ? (cur.u || upSub || cur.r) : k==='u' ? cur.r : k==='r' ? cur.s : ''));
   }));
   const fin = financeMe(ME || FINP.me), T = EXP.todo ? finScopedTodo() : null;
   $('#fpSecs').innerHTML = FIN_SECS.map(([k, ic, l])=>`<button type="button" class="fp-sec${FINP.sec===k?' on':''}" data-act="finsec" data-sec="${k}">${ic} ${esc(l)}${
@@ -11350,7 +11505,7 @@ function finExpList(){
   const f = finScopeF(), usd = {}, ff = FIN.f;
   const ux = {}; ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; ux[x.id] = x.usdExact; });
   return (EXP.all || []).filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e) && (!f.f || x.location===f.f)
-      && (!ff.from || x.date >= ff.from) && (!ff.to || x.date <= ff.to))
+      && (!f.uE || f.uE.includes(x.location)) && (!ff.from || x.date >= ff.from) && (!ff.to || x.date <= ff.to))
     .map(x=>Object.assign({}, x, { usd: usd[x.id]===undefined ? null : usd[x.id], usdExact: ux[x.id], who: x.forName || x.byName || '',
       type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other') }));
 }
@@ -12065,7 +12220,7 @@ function finChartsHTML(){
   }
   if(sec==='todo'){
     const f = finScopeF(), I = finIdx(), byE = {};
-    FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e))
+    FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.uE || f.uE.includes(x.e)))
       .forEach(x=>{ const k = x.e ? (I.e[x.e]||{}).name || 'An event' : ((I.r[x.r]||{}).name || 'Region') + ' Warehouse'; byE[k] = (byE[k]||0) + x.pu; });
     out.push(finChart('Pending Payments, by place', finDonutHTML(finTop(byE), 'Pending Payments, by place', 'Owed to the tour')));
     const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', u = (FIN.D.expenses.find(y=>y.id===x.id)||{}).usd || 0; byP[k] = (byP[k]||0) + u; });
@@ -13034,7 +13189,17 @@ const REPORT_SECTIONS = [
   ['prepeople', 'PRE-ORDERS — WHO IS WAITING'],
   ['stock',     'STOCK LEFT IN REGION'],
 ];
+/* A region's sub-regions as report parts (b280), then its general part when it has anything. */
+function subParts(rid){
+  const subs = subRegionsOf(rid);
+  if(!subs.length) return [];
+  const r = regionById(rid) || {};
+  return subs.map(x=>({name:x.name, locs:eventsOfSub(rid, x.id).map(e=>e.eventId)}))
+    .concat([{name:(r.name||'Region') + ', general', locs:generalLocsOf(rid), general:true}]);
+}
 function buildReport(part, opts){
+  // One sub-region chosen (b280): the report is that sub-region's, like the page.
+  if(!SUB_IN && !(opts && opts.locs) && curSub()) return withSub(()=>buildReport(part, opts));
   const L = [];
   const full = !part;
   const chosen = (opts && opts.sections) || null;
@@ -13122,6 +13287,23 @@ function buildReport(part, opts){
     if(con.length){
       L.push('— CONSIGNMENT —');
       group(con, 'Consignment');
+    }
+    /* Sub-regions (b280): each one's Big Books and Adventures, in the totals' own form. */
+    const parts = !combo && CUR_LEVEL==='region' && !SUB_IN ? subParts(CUR_REGION) : [];
+    const rows = parts.map(p=>({p, mine:s.filter(x=>p.locs.includes(x.location) && x.bookId && !isPartnerBook(x.bookId))}))
+      .filter(x=>x.mine.length);
+    if(rows.length){
+      gap(); L.push('— BY SUB-REGION —');
+      rows.forEach(({p, mine})=>{
+        L.push(p.name);
+        CATS.forEach(kind=>{
+          const c = bookCounts(mine.filter(x=>catOf(x.bookId)===kind));
+          if(!c.sold && !c.gift) return;
+          L.push(CAT_SHORT[kind] + ' = ' + c.sold + ' Sold' + (c.pre ? ' ' + preNote(c) : '') +
+            ' + ' + c.gift + ' Gift' + (c.gift===1?'':'s') + ' = ' + (c.sold+c.gift) + ' Distributed');
+        });
+        gap();
+      });
     }
   });
 
@@ -13273,7 +13455,8 @@ function buildReport(part, opts){
        each region's own takings less its own costs, consignment apart. */
     // Place by place: every region at season level, or each place in a Speciality Report.
     const parts = combo ? ((opts.groups||[]).length>1 ? opts.groups : [])
-      : (CUR_LEVEL==='season' ? regionsList().map(r=>({name:r.name, locs:locsInRegion(r.regionId)})) : []);
+      : (CUR_LEVEL==='season' ? regionsList().map(r=>({name:r.name, locs:locsInRegion(r.regionId)}))
+        : CUR_LEVEL==='region' && !SUB_IN ? subParts(CUR_REGION) : []);
     if(parts.length){
       const byRegion = parts.map(r=>{
         const locs = r.locs, got = {}, mine = [], spent = [];
@@ -13291,7 +13474,7 @@ function buildReport(part, opts){
       }).filter(x=>curs(x.got).length);
       if(byRegion.length){
         L.push('');
-        L.push(combo ? '— BY PLACE (after costs) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after costs) —');
+        L.push(combo ? '— BY PLACE (after costs) —' : CUR_LEVEL==='region' ? '— BY SUB-REGION (after costs) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after costs) —');
         byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got) + x.adj)));
       }
     }
@@ -15164,12 +15347,85 @@ function parseCurs(raw){
 }
 
 
+/* What setSubRegions does, done at once on this device (b280). */
+function subApply(st, rid, list, events){
+  const v = st.subRegions = JSON.parse(JSON.stringify(st.subRegions || {}));
+  v.regions = v.regions || {}; v.events = v.events || {};
+  if(list){
+    if(list.length) v.regions[rid] = list; else delete v.regions[rid];
+    const ids = new Set(list.map(x=>x.id));
+    (st.events||[]).forEach(e=>{ if((e.regionId||'')===rid && v.events[e.eventId] && !ids.has(v.events[e.eventId])) delete v.events[e.eventId]; });
+  }
+  const ids = new Set((v.regions[rid]||[]).map(x=>x.id));
+  Object.keys(events||{}).forEach(ev=>{ const sr = events[ev]; if(sr && ids.has(sr)) v.events[ev] = sr; else delete v.events[ev]; });
+}
+/* Sub-regions of this region (b280): their names, and which one each event is in. */
+function subRegionsModal(){
+  if(!isAdmin()) return;
+  const r = currentRegion(); if(!r || isHQ()) return;
+  const rid = r.regionId;
+  const all = q => [...document.querySelectorAll(q)];
+  const list = subRegionsOf(rid).map(x=>({id:x.id, name:x.name}));
+  const evs = eventsOfRegion(rid);
+  const pick = {}; evs.forEach(e=>{ pick[e.eventId] = subOfEvent(e.eventId); });
+  openModal(`
+    ${mHead('Sub-regions of ' + r.name)}
+    <div class="m-body">
+      <div class="hint">One warehouse, one set of prices and one closing for all of ${esc(r.name)}. Each event belongs to one sub-region, so its sales can be looked at on their own. What is sold from the warehouse counts for ${esc(r.name)} as a whole.</div>
+      <div class="sr-sec">Sub-regions</div>
+      <div id="srList"></div>
+      <button type="button" class="btn btn-ghost sr-add" id="srAdd">＋ Add a sub-region</button>
+      <div class="sr-sec">Which sub-region is each event in?</div>
+      <div id="srEvents"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="srSave">Save</button>
+    </div>`);
+  const read = ()=>{
+    all('#srList [data-i]').forEach(inp=>{ list[Number(inp.dataset.i)].name = inp.value; });
+    all('#srEvents select[data-ev]').forEach(sel=>{ pick[sel.dataset.ev] = sel.value; });
+  };
+  const draw = ()=>{
+    $('#srList').innerHTML = list.length ? list.map((x,i)=>`<div class="sr-row">
+        <input type="text" data-i="${i}" value="${esc(x.name)}" placeholder="e.g. Madrid" maxlength="60">
+        <button type="button" class="sr-x" data-gone="${i}" title="Remove this sub-region">✕</button></div>`).join('')
+      : `<div class="hint">None yet. Add one for each city or area.</div>`;
+    const named = list.filter(x=>x.name.trim());
+    $('#srEvents').innerHTML = evs.length ? evs.map(e=>`<div class="sr-row">
+        <span class="sr-ev">${esc(e.name)}</span>
+        <select data-ev="${esc(e.eventId)}"><option value="">${esc(r.name)}, general</option>${
+          named.map(x=>`<option value="${esc(x.id)}" ${pick[e.eventId]===x.id?'selected':''}>${esc(x.name.trim())}</option>`).join('')}</select></div>`).join('')
+      : `<div class="hint">No events here yet. New events ask which sub-region they are in.</div>`;
+    all('#srList [data-gone]').forEach(b=>b.addEventListener('click', ()=>{ read(); list.splice(Number(b.dataset.gone), 1); draw(); }));
+    all('#srList [data-i]').forEach(inp=>inp.addEventListener('change', ()=>{ read(); draw(); }));
+  };
+  draw();
+  $('#srAdd').addEventListener('click', ()=>{ read(); list.push({id:'sr_' + Math.random().toString(36).slice(2,8), name:''}); draw();
+    const last = all('#srList [data-i]').pop(); if(last) last.focus(); });
+  $('#srSave').addEventListener('click', ()=>{
+    read();
+    const clean = list.map(x=>({id:x.id, name:x.name.replace(/\s+/g,' ').trim()})).filter(x=>x.name);
+    const seen = new Set();
+    for(const x of clean){ const k = x.name.toLowerCase(); if(seen.has(k)){ $('#modalErr').textContent = 'Two sub-regions are called "' + x.name + '".'; return; } seen.add(k); }
+    const ids = new Set(clean.map(x=>x.id)), events = {};
+    evs.forEach(e=>{ events[e.eventId] = ids.has(pick[e.eventId]) ? pick[e.eventId] : ''; });
+    if(!ids.has(curSub())) setSub('');
+    commit({action:'setSubRegions', regionId:rid, list:clean, events}, st=>subApply(st, rid, clean, events), 'Sub-regions saved');
+    closeModal();
+  });
+}
 function eventModal(edit, after){
   openModal(`
     ${mHead(edit?(FIN_ON?'Edit event':'Rename event'):'New event')}
     <div class="m-body">
       <div class="field"><label>Event name</label><input id="evname" type="text" placeholder="e.g. Gurudeva's Welcome" value="${edit?esc(locName(edit)):''}"></div>
       ${placeMetaHTML('events')}
+      ${subRegionsOf(CUR_REGION).length ? `<div class="field"><label>Sub-region</label><select id="evsub">
+        <option value="">${esc((currentRegion()||{}).name||'The region')}, general</option>
+        ${subRegionsOf(CUR_REGION).map(x=>`<option value="${esc(x.id)}" ${(edit ? subOfEvent(edit) : curSub())===x.id?'selected':''}>${esc(x.name)}</option>`).join('')}
+      </select></div>` : ''}
       <div class="hint">Books reach an event by transferring stock from the warehouse.</div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -15185,7 +15441,12 @@ function eventModal(edit, after){
     if(!name){$('#modalErr').textContent='Enter a name.';return;}
     const meta = pm.read();
     if(meta.err){ $('#modalErr').textContent = meta.err; return; }
+    // Which sub-region it is in (b280), saved beside the event.
+    const subSel = $('#evsub'), sub = subSel ? subSel.value : null, subReg = CUR_REGION;
+    const saveSub = id => { if(sub===null || sub===subOfEvent(id)) return;
+      commit({action:'setSubRegions', regionId:subReg, events:{[id]:sub}}, st=>subApply(st, subReg, null, {[id]:sub}), null); };
     if(edit){
+      saveSub(edit);
       if(FIN_ON && locName(edit)===name){ await placeMetaSave('events', edit, meta); closeModal(); toast('Event saved'); return; }
       const ok = await commitSync({action:'renameEvent',eventId:edit,name},'Event renamed', ()=>locName(edit)===name);
       if(ok!==false) placeMetaSave('events', edit, meta);
@@ -15199,6 +15460,7 @@ function eventModal(edit, after){
       st=>{ (st.events=st.events||[]).push({eventId,name,regionId:CUR_REGION,closedAt:'',
               createdAt:new Date().toISOString()}); },
       'Event created', {onDone:()=>placeMetaSave('events', eventId, meta)});
+    saveSub(eventId);
     goTo('event', eventId);                 // straight to the new event
     if(after) setTimeout(()=>after(eventId), 0);
   });
@@ -19427,6 +19689,8 @@ document.addEventListener('click',e=>{
   if(a==='report'){ const part=t.dataset.part||'';
     if(t.dataset.rollup) withRollup(()=>shareReport(part)); else shareReport(part); return; }
   if(a==='specreport'){ specialityReportModal(); return; }
+  if(a==='subpick'){ setSub(t.dataset.id||''); clearLogFilters(); renderAll(); return; }
+  if(a==='subregions'){ subRegionsModal(); return; }
   if(a==='cashregion'){
     e.preventDefault();          // the name navigates; the row itself opens the list
     closeModal(); goTo('region', t.dataset.id); cashModal(); return;
