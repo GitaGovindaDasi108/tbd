@@ -186,7 +186,9 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   'soldById',
   /* Who last changed it, when that was not the seller (b258): the sale stays
      the seller's; this is only the note that someone else edited it. */
-  'editedBy'];
+  'editedBy',
+  /* Uncategorized sales (b293): the number of books is an estimate. */
+  'est'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -225,7 +227,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b292';
+var SERVER_BUILD = 'b293';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -376,6 +378,8 @@ function financeData_() {
     if (!w) return;                                   // a place since deleted
     var b = s.bookId ? bookById_(String(s.bookId)) : null;
     var type = String(s.type || 'SALE'), got = received_(s);
+    // Uncategorized sales (b293): their books are Big Books, under one title of their own.
+    if (type === 'UNCAT') b = { id: 'uncat', name: 'Uncategorized sales', cat: 'big' };
     var f = saleFactor_(s), gross = 0, cur = {}, cu = {}, pays = {}, legN = 0, giftN = 0, other = 0;
     eachLeg_(s, function (l) {
       legN++; if (l.type === 'Gift') giftN++;
@@ -389,7 +393,7 @@ function financeData_() {
     var pend = dueUsd_(s);
     sales.push({ id: String(s.saleId), d: day(s.ts), s: w.s, r: w.r, e: w.e, k: type,
       b: b ? String(b.id) : '', t: b ? String(b.name || '') : '', c: b ? String(b.cat || '') : '',
-      q: (type === 'SALE' || type === 'PREORDER') && s.bookId ? (Number(s.qty) || 1) : 0,
+      q: type === 'UNCAT' ? (Number(s.qty) || 0) : (type === 'SALE' || type === 'PREORDER') && s.bookId ? (Number(s.qty) || 1) : 0,
       g: legN > 0 && giftN === legN ? 1 : 0,          // a gift: every leg of it is Gift (as the app's isGift)
       by: String(s.soldBy || ''), pay: Object.keys(pays), con: isPartnerSale_(s) ? (partners[partnerOfBook_(String(s.bookId))] || 'Consignment') : '',
       gu: r2(got ? gross : 0), pu: r2(pend), cur: cur,
@@ -662,6 +666,7 @@ function handle(e) {
         case 'markDeliveredBundle': doMarkDeliveredBundle(params); break;
         case 'editBundle':       doEditBundle(params);       break;
         case 'donate':           doDonate(params);           break;
+        case 'uncatSale':        doUncatSale(params);        break;
         case 'importSales':      result = doImportSales(params); break;
         case 'setPayTypes':      doSetPayTypes(params);      break;
         case 'addPayType':       result = doAddPayType(params); break;
@@ -1364,7 +1369,7 @@ function isClosedLoc_(loc) { return !!closedAtOf_(loc); }
 
 /* Actions that change what happened somewhere. Reading is always allowed. */
 var MUTATING_ACTIONS = {
-  sell:1, sellBundle:1, donate:1, importSales:1, editSale:1, editBundle:1, deleteSale:1,
+  sell:1, sellBundle:1, donate:1, importSales:1, uncatSale:1, editSale:1, editBundle:1, deleteSale:1,
   settle:1, deliver:1, markPaid:1,
   transferBulk:1, transferExternal:1, adjustStockBulk:1, setStockBulk:1,
   undoStockMove:1, transferMulti:1, fulfilRemote:1
@@ -2214,6 +2219,8 @@ var COORD_EXTRA = {
   sendShipment:1, regionAddBooks:1,
   // A payment type typed into the sale form (b283), at their own region's places.
   addPayType:1,
+  // Uncategorized sales (b293): money for books whose titles aren't known.
+  uncatSale:1,
   // Books in transit: marking their own region's deliveries as arrived.
   receiveShipment:1,
   // Transfer Existing Stock: moves within the region, and its sub-warehouses.
@@ -4023,7 +4030,8 @@ function readState() {
       bundle: String(s.bundle || ''),
       fulfilBy: String(s.fulfilBy || ''), fulfilLoc: String(s.fulfilLoc || ''), fulfilAt: s.fulfilAt || '',
       fulfilDeclined: String(s.fulfilDeclined || ''),
-      pmore: pmoreRead_(s.pmore)
+      pmore: pmoreRead_(s.pmore),
+      est: s.est === true || s.est === 'true' || s.est === 'TRUE'
     };
   });
   return {
@@ -6237,6 +6245,38 @@ function doDonate(p) {
 }
 
 /**
+ * Uncategorized sales (b293, practice first; Gita): money taken for books
+ * without knowing which titles. One row of type UNCAT with no title: qty is
+ * how many books (counted as Big Books sold), est says that number is an
+ * estimate. Nothing comes off a shelf. editId replaces an earlier one in place.
+ */
+function doUncatSale(p) {
+  var loc = placeOf_(p.location);
+  var n = Math.floor(Number(p.qty) || 0);
+  if (n < 0 || n > 100000) throw new Error('How many books were sold?');
+  var legs = normalizeLegs_(p.legs);
+  if (!legs.some(function (l) { return Number(l.amt) > 0; })) throw new Error('Enter the total taken.');
+  var editId = String(p.editId || '');
+  if (editId) {
+    var old = objectsOf_('_sales').filter(function (s) { return String(s.saleId) === editId; })[0];
+    if (!old || String(old.type) !== 'UNCAT') throw new Error('That record is no longer there. Refresh to see the latest.');
+    dbAddCols_('_sales', SALES_HEADERS);
+    dbDelete_('_sales', { saleId: editId });
+    appendSale_({ saleId: editId, soldBy: old.soldBy, soldById: old.soldById, editedBy: p.by,
+      location: String(old.location), type: 'UNCAT', bookId: '', qty: n, legs: legs, est: !!p.est,
+      comments: p.comments, ts: p.ts || old.ts });
+    markDirty_(String(old.location));
+    if (String(old.location) !== loc) markDirty_(loc);
+    return;
+  }
+  if (p.saleId && (saleIdTaken_(String(p.saleId)) ||
+      (!_rebuilding && isDeleted_(String(p.saleId))))) return;   // already recorded
+  appendSale_({ saleId: p.saleId, soldBy: p.by, soldById: _meEmail, location: loc, type: 'UNCAT',
+    bookId: '', qty: n, legs: legs, est: !!p.est, comments: p.comments, ts: p.ts });
+  markDirty_(loc);
+}
+
+/**
  * A sales spreadsheet uploaded into one place (b288, practice first).
  *
  * The page has already read the file, matched its titles and payment types,
@@ -6328,7 +6368,8 @@ function appendSale_(o) {
     name: o.name || '', phone: o.phone || '', comments: o.comments || '',
     bundle: o.bundle || '',
     fulfilBy: String(o.fulfilBy || ''), fulfilLoc: '', fulfilAt: '',
-    usdActual: usdActualIn_(o.usdActual)
+    usdActual: usdActualIn_(o.usdActual),
+    est: o.est ? 'TRUE' : ''
   };
   /* Written by position, so the sheet must carry every column first. */
   dbAddCols_('_sales', SALES_HEADERS);
@@ -8987,7 +9028,7 @@ var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions
 /* Sales have their own log; these are not repeated here. */
 var ACTIVITY_SKIP = {
   sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
-  donate:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
+  donate:1, uncatSale:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
   settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1,
   handoverCash:1, handoverAnswer:1    // a record of its own, like a sale
 };

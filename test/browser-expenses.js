@@ -261,7 +261,8 @@ const API = 'http://api.test/';
     await own.click('#fpBody [data-act="fingo"][data-scope="rg_in"]'); await own.waitForTimeout(500);
     m = await fpage(own);
     t.push(['…Delhi\'s name: its events, the Chowpatty Program', /By Event/i.test(m) && /Chowpatty Program/.test(m) && /#finance\/overview\/rg_in/.test(own.url())]);
-    t.push(['…the path at the top shows Kartika › Delhi, to walk back up', await own.$eval('[data-fpick="r"]', x => x.value) === 'rg_in' && /Finance · Region/i.test(await own.$eval('#fpNav', x => x.innerText))]);
+    t.push(['…the path at the top shows Kartika › Delhi, to walk back up', await own.$eval('[data-fpick="r"]', x => x.value) === 'rg_in' && /^Region$/i.test(await own.$eval('#fpNav .lvl-chip', x => x.innerText.trim()))
+      && await own.$eval('#fpNav', x => [...x.querySelectorAll('.crumb-link')].map(l => l.textContent).join(' › ')) === '🌍 Earthly HQ › Kartika › Delhi']);
     await own.selectOption('[data-fpick="e"]', 'ev_cp'); await own.waitForTimeout(500);
     m = await fpage(own);
     t.push(['…choosing the event: its titles, and only its figures', /By title/i.test(m) && /Sri Radha/.test(m) && /#finance\/overview\/ev_cp/.test(own.url())]);

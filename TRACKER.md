@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b292**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b293**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,24 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b293
+
+Live app changes (Gita, 2026-10-22). Live unless marked practice.
+- **Upload Sales Spreadsheet is live** (`SUP_ON = true`): event menu "📤 Upload Sales Spreadsheet".
+- **Finance steps in without a flash**: changing section no longer reloads everything ("Adding everything up…"); the figures fade in over the old ones (`#fpBody.fin-in`), links refresh quietly (`finLinksQuiet`), and wording is applied before the page shows (`finRender` wraps `finRender0` + `applyLabels`).
+- **Wording edits inside a searchable drop-down stay open**: `labelInline` holds the list open (`.pp-list.lbl-hold`) and puts focus back after.
+- **Reimbursement Settings as squares**: `.rs-tiles` / `.rs-tile`, four across on a computer (two at ≤1100px), one under another on a phone (≤560px); choices listed vertically.
+- **Phone Expenses date** MM/DD/YY (`finShortDate`, `.fx-dl` / `.fx-ds`).
+- **Spanish** is deep rose, no longer green (`LANG_HUES[2]`).
+- **Reorganize Menu** lists only items the menu can show (no Finance To do, Edit Book Display, Record Costs, etc.).
+- **Closed places last, then A to Z** in every place menu (`closedSort`), Sales and Finance.
+- **The path at the top as links** (`crumbLink` / `crumbNext`): Earthly HQ › season › region › sub-region › event are links to their pages; a ▾ beside each (a transparent native select, `.crumb-more`) lists the others at that level; the last step is a drop-down of what is below ("Regions…", "Events…"). Replaces "⌂ Seasonal HQ" and "🏠 Warehouse" in the pickers. New acts: `goregion`, `gosub`, `goevent`; `setSub(id, rid)`.
+- **Finance's path is the Sales one** (`finNav`): same links, words, order and marks; the chip reads Earthly HQ / Season / Region / Event.
+- **Dollars received live**: tapping any "~$" figure (`finEstMark`), for people who may edit Finance.
+- **Practice: Deliver** offers only "Delivered from outside the system" under "Fulfilled from" (another region is a place in the list).
+- **Practice: Uncategorized Sales** (`UNCAT_ON = PRACTICE`, `uncatModal`, server `uncatSale` / `doUncatSale`): a total, books = total ÷ the usual Big Book price here, rounded down (editable), "This is an estimate" (new sales column `est`). Stored as one sales row of type `UNCAT` with no title and qty = books; nothing comes off a shelf. Counts in Big Books sold (totals, sellers, sales by region, WhatsApp, Finance via `b:'uncat'`), with an "Uncategorized Sales" card. Edit replaces it in place (`editId`); delete from the sales log.
+- Tests: `test/browser-b293.js` (new), and updates to browser-finance, browser-expenses, browser-search, browser-subregions, browser-round2.
 
 ## Done in b292
 Gita's next list (Live app changes, 2026-10-22), on the same PR as b291.
