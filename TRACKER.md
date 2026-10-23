@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b294**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b296**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,13 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b296
+
+- **Dollars received can't silently blow up a place's figures** (Gita, live emergency, 2026-10-23): she wrote down 250.13 ден fetched $253 at Macedonia (1 ден = $1.01, real ≈ $0.018), and every denar sale there counted about 55× too high. Removing the entry (🗑 in Dollars received) restores it, since `finConv` is applied at read time.
+  - Before saving, `finConvModal` asks `fxOn(date, cur, 'USD')`; if the dollars are more than double or less than half the usual amount it asks "Please check the numbers. X is usually about $Y, not $Z. Save it anyway?". No rate found: saves without asking.
+  - Activity Log Delete: `convSet` / `convDel` log `{type:'exp', op:'convSet'|'convDel', id, was}`; `expUndo` puts `finConv` back (an added one goes, a changed one goes back, a removed one returns). Finance only.
+  - Tests: browser-finance +4 (asks, Cancel saves nothing, OK saves, Activity Log Delete restores). SERVER_BUILD b296.
 
 ## Done in b294
 

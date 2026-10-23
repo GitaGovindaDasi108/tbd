@@ -569,6 +569,28 @@ const API = 'http://api.test/';
     const sale = await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1'));
     t.push(['b267: Dollars received: 35 € from the Kirtan fetched $40, and that sale now counts $40', sale && sale.gu === 40 && sale.cv === 1]);
     t.push(['…listed with its rate', /\(.*35.*\) \$40/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
+    // b296 (Gita, live): 250.13 ден for $253 made Macedonia's dollars 55 times too big. A rate far from the day's asks first.
+    const convN = async () => (await O({ action: 'finData' })).result.convs.length;
+    const n0 = await convN();
+    await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
+    await own.click('#cvPlace .pp-in'); await own.fill('#cvPlace .pp-in', 'Kirtan'); await own.waitForTimeout(150); await own.click('#cvPlace .pp-row[data-v="ev_z1"]');
+    await own.selectOption('#cvCur', 'EUR'); await own.fill('#cvAmt', '35'); await own.fill('#cvUsd', '2000');
+    await own.evaluate(() => { window._cf = window.confirm; window.confirm = m => { window._asked = m; return false; }; });
+    await own.click('#cvSave'); await own.waitForTimeout(1200);
+    const asked = await own.evaluate(() => window._asked || '');
+    t.push(['b296: 35 € for $2000 asks "Please check the numbers" first, and Cancel saves nothing' + (asked ? '' : ' (no question)'), /Please check the numbers/.test(asked) && /\$38\.50/.test(asked) && await convN() === n0]);
+    await own.evaluate(() => { window.confirm = () => true; });
+    await own.click('#cvSave'); await own.waitForTimeout(1500);
+    await own.evaluate(() => { window.confirm = window._cf; });
+    t.push(['b296: …OK saves it anyway', await convN() === n0 + 1 && (await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1').gu)) > 40]);
+    await own.evaluate(() => closeModal());
+    const slip = ((await O({ action: 'activity' })).result || []).find(e => /^Dollars received: 35 EUR .* fetched \$2000/.test(e.text));
+    t.push(['b296: the Activity Log can Delete a Dollars received entry', !!slip && slip.canUndo]);
+    if (slip) await O({ action: 'expUndo', id: slip.id });
+    t.push(['b296: …and Delete takes it away; the earlier one stays and the sale is back at $40', await convN() === n0 && await own.evaluate(async () => { await finGo('overview', '', {reload:true}); return true; })
+      && (await O({ action: 'finData' })).result.sales.find(x => x.id === 'eur1').gu === 40]);
+    await own.waitForTimeout(1200);
+    await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
     await own.evaluate(() => closeModal());
     t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);

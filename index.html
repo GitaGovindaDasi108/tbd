@@ -2297,7 +2297,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b294</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b296</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -12139,6 +12139,15 @@ function finConvModal(edit){
   const done = r => { FIN.D = r.result; finRender(); finConvModal(); };
   $('#cvSave').addEventListener('click', async ()=>{
     const b = $('#cvSave'); b.disabled = true;
+    // A rate far from the day's usual one is almost always a typing slip (b296: 250.13 ден for $253 made Macedonia's dollars 55 times too big).
+    const amt = Number($('#cvAmt').value), usd = Number($('#cvUsd').value), cur = $('#cvCur').value, day = $('#cvDate').value;
+    if(amt > 0 && usd > 0 && /^\d{4}-\d{2}-\d{2}$/.test(day)){
+      const r = await fxOn(day, cur, 'USD').catch(()=>null);
+      const usual = r && r.rate > 0 ? amt * r.rate : 0;
+      if(usual > 0 && (usd > usual * 2 || usd < usual / 2) && !confirm(`Please check the numbers. ${cashFmt(amt, cur)} is usually about ${finUsd(Math.round(usual * 100) / 100)}, not ${finUsd(usd)}.\n\nSave it anyway?`)){
+        b.disabled = false; return;
+      }
+    }
     try{ done(await post({action:'finConvSet', id:e.id||'', place, cur:$('#cvCur').value, amt:Number($('#cvAmt').value), usd:Number($('#cvUsd').value),
       date:$('#cvDate').value, note:$('#cvNote').value})); toast('Written down. Those dollars are used from now on.'); }
     catch(err){ b.disabled = false; $('#modalErr').textContent = err.message; }
