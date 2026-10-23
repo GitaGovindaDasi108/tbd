@@ -188,7 +188,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
      the seller's; this is only the note that someone else edited it. */
   'editedBy',
   /* Uncategorized sales (b293): the number of books is an estimate. */
-  'est'];
+  'est',
+  /* Uncategorized sales (b295): how many of the books were Adventures; qty
+     holds the Big Books. */
+  'aqty'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -342,7 +345,7 @@ function expUsd_(x, loc) {
    each place's own rates (a closed season's frozen ones), dollars received
    where entered, exactly as the totals elsewhere. Read-only. */
 function financeData_() {
-  var seasons = seasonsAll_().map(function (s) { return { id: s.seasonId, name: s.name, closed: !!s.closedAt }; });
+  var seasons = seasonsOrdered_().map(function (s) { return { id: s.seasonId, name: s.name, closed: !!s.closedAt }; });
   var regs = {}, evs = {}, whOf = {}, partners = {};
   /* In the app's own order (b254): each season's regions as regionsOrdered_
      puts them (their sort, then as created, closed ones last A to Z), and the
@@ -402,6 +405,8 @@ function financeData_() {
       // b269: its dollars are worked out from a rate (shown with ~), not money counted in dollars.
       ue: other && usdActualIn_(s.usdActual) === '' ? 1 : 0,
       u: w.e ? '' : String(subTag[String(s.bundle || '')] || subTag[String(s.saleId)] || '') });
+    // b295: the Adventures among uncategorized sales' books.
+    if (type === 'UNCAT' && Number(s.aqty) > 0) sales[sales.length - 1].qa = Number(s.aqty);
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
@@ -2767,6 +2772,9 @@ function appendRegion_(row) {
   dbInsert_('_regions', row);
 }
 
+/* Seasons as every list shows them (b295, Gita: closed ones last, A to Z,
+   as regions and events already are). */
+function seasonsOrdered_() { return closedLast_(seasonsAll_()); }
 function seasonsAll_() {
   /* Create the sheet if it isn't there. Without this, every request on a tour
      that hasn't been re-initialized failed at the first mention of a season —
@@ -2959,7 +2967,7 @@ function ensureHQ_() {
    dollar figures add up at HQ exactly as they do in the season itself. */
 function everywhere_(sales, inv) {
   return {
-    seasons: seasonsAll_().map(function (x) {
+    seasons: seasonsOrdered_().map(function (x) {
       var rates = null;
       if (x.closedAt && x.frozenRates) { try { rates = (JSON.parse(x.frozenRates) || {}).RATES || null; } catch (e) {} }
       return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt ? dateText_(x.closedAt) : '', rates: rates };
@@ -4031,7 +4039,8 @@ function readState() {
       fulfilBy: String(s.fulfilBy || ''), fulfilLoc: String(s.fulfilLoc || ''), fulfilAt: s.fulfilAt || '',
       fulfilDeclined: String(s.fulfilDeclined || ''),
       pmore: pmoreRead_(s.pmore),
-      est: s.est === true || s.est === 'true' || s.est === 'TRUE'
+      est: s.est === true || s.est === 'true' || s.est === 'TRUE',
+      aqty: Number(s.aqty) || 0
     };
   });
   return {
@@ -4049,7 +4058,7 @@ function readState() {
       return { perUsd: R, plnPerUsd: R.PLN || RATE_PLN_PER_USD, eurPerUsd: R.EUR || RATE_EUR_PER_USD,
                live: !!r.live, asOf: r.asOf || '', frozen: !!r.frozen }; })(),
     seasonName: isHQ_() ? 'Earthly HQ' : ((seasonById_(activeSeasonId_()) || {}).name || getSeasonName_()),
-    seasons: seasonsAll_().map(function (x) {
+    seasons: seasonsOrdered_().map(function (x) {
       return { seasonId: x.seasonId, name: x.name, closedAt: x.closedAt };
     }),
     // Every consignment group in every season, so a title is only "left over"
@@ -6253,7 +6262,8 @@ function doDonate(p) {
 function doUncatSale(p) {
   var loc = placeOf_(p.location);
   var n = Math.floor(Number(p.qty) || 0);
-  if (n < 0 || n > 100000) throw new Error('How many books were sold?');
+  var a = Math.floor(Number(p.aqty) || 0);
+  if (n < 0 || n > 100000 || a < 0 || a > 100000) throw new Error('How many books were sold?');
   var legs = normalizeLegs_(p.legs);
   if (!legs.some(function (l) { return Number(l.amt) > 0; })) throw new Error('Enter the total taken.');
   var editId = String(p.editId || '');
@@ -6263,7 +6273,7 @@ function doUncatSale(p) {
     dbAddCols_('_sales', SALES_HEADERS);
     dbDelete_('_sales', { saleId: editId });
     appendSale_({ saleId: editId, soldBy: old.soldBy, soldById: old.soldById, editedBy: p.by,
-      location: String(old.location), type: 'UNCAT', bookId: '', qty: n, legs: legs, est: !!p.est,
+      location: String(old.location), type: 'UNCAT', bookId: '', qty: n, aqty: a, legs: legs, est: !!p.est,
       comments: p.comments, ts: p.ts || old.ts });
     markDirty_(String(old.location));
     if (String(old.location) !== loc) markDirty_(loc);
@@ -6272,7 +6282,7 @@ function doUncatSale(p) {
   if (p.saleId && (saleIdTaken_(String(p.saleId)) ||
       (!_rebuilding && isDeleted_(String(p.saleId))))) return;   // already recorded
   appendSale_({ saleId: p.saleId, soldBy: p.by, soldById: _meEmail, location: loc, type: 'UNCAT',
-    bookId: '', qty: n, legs: legs, est: !!p.est, comments: p.comments, ts: p.ts });
+    bookId: '', qty: n, aqty: a, legs: legs, est: !!p.est, comments: p.comments, ts: p.ts });
   markDirty_(loc);
 }
 
@@ -6369,7 +6379,8 @@ function appendSale_(o) {
     bundle: o.bundle || '',
     fulfilBy: String(o.fulfilBy || ''), fulfilLoc: '', fulfilAt: '',
     usdActual: usdActualIn_(o.usdActual),
-    est: o.est ? 'TRUE' : ''
+    est: o.est ? 'TRUE' : '',
+    aqty: Number(o.aqty) || ''
   };
   /* Written by position, so the sheet must carry every column first. */
   dbAddCols_('_sales', SALES_HEADERS);
@@ -9027,8 +9038,10 @@ var ACTIVITY_HEADERS = ['id','ts','season','who','action','text','locs','regions
                         'parts','undoneParts'];
 /* Sales have their own log; these are not repeated here. */
 var ACTIVITY_SKIP = {
-  sell:1, sellBundle:1, deleteBundle:1, markPaidBundle:1, markDeliveredBundle:1, editBundle:1,
-  donate:1, uncatSale:1, editSale:1, deleteSale:1, markPaid:1, markDelivered:1, giveChange:1, setUsdActual:1,
+  /* Edits to a sale and marking one paid are logged since b295 (Gita: an edited
+     payment "did not show up in the activity log"); a new sale stays in the sales log only. */
+  sell:1, sellBundle:1, deleteBundle:1, markDeliveredBundle:1,
+  donate:1, uncatSale:1, deleteSale:1, markDelivered:1, giveChange:1, setUsdActual:1,
   settle:1, deliver:1, undoActivity:1, undoActivityPart:1, saveCloseDraft:1,
   handoverCash:1, handoverAnswer:1    // a record of its own, like a sale
 };
@@ -9139,8 +9152,26 @@ function activityBefore_(action, p) {
       var r = regionById_(String(p.regionId || ''));
       _activityBefore = { books: r ? (r.books || []).slice() : [] };
     }
+    if (SALE_EDITS_[action]) _activityBefore = { sale: saleSnap_(action, p) };
   } catch (e) { _activityBefore = null; }
 }
+
+/* A sale as the Activity Log words it (b295): what, for whom, where, and its payment. */
+var SALE_EDITS_ = { editSale: 1, markPaid: 1, editBundle: 1, markPaidBundle: 1, uncatSale: 1 };
+function saleSnap_(action, p) {
+  var bundle = /Bundle$/.test(action) ? String(p.bundle || '') : '';
+  var id = String(p.editId || p.saleId || '');
+  var rows = objectsOf_('_sales').filter(function (x) { return bundle ? String(x.bundle) === bundle : String(x.saleId) === id; });
+  if (!rows.length) return null;
+  var o = rows[0], legs = [];
+  rows.forEach(function (x) { eachLeg_(x, function (l) { if (l.type) legs.push((l.amt ? r2Text_(l.amt) + ' ' + l.cur + ' ' : '') + l.type); }); });
+  var type = String(o.type);
+  var what = bundle ? plural_(rows.length, 'book') : type === 'DONATION' ? 'a donation' : type === 'UNCAT' ? 'uncategorized sales'
+    : bookName_(String(o.bookId || ''));
+  return { what: what + (o.name ? ' for ' + o.name : ''), loc: String(o.location || ''),
+    pay: (legs.join(' + ') || 'no payment') + (pendingFlag_(o) ? ' (pending)' : Number(o.dueamt) > 0 ? ' (' + r2Text_(o.dueamt) + ' ' + o.duecur + ' still owed)' : '') };
+}
+function r2Text_(n) { n = Math.round(Number(n) * 100) / 100; return String(n); }
 
 /* What was done, in words; where; and how to undo it (null = not safely). */
 function describe_(action, p, result, moves, who) {
@@ -9198,6 +9229,15 @@ function describe_(action, p, result, moves, who) {
       break;
     }
     case 'editShipment':   d = { text: 'Changed a shipment’s details' }; break;
+    case 'editSale': case 'editBundle': case 'markPaid': case 'markPaidBundle': case 'uncatSale': {
+      var sb = _activityBefore && _activityBefore.sale, sa = saleSnap_(action, p) || sb;
+      if (!sa) return null;
+      var paid = /^markPaid/.test(action);
+      d = { text: (paid ? 'Marked as paid: ' : 'Edited a sale: ') + sa.what + ' at ' + locLabel_(sa.loc) +
+                  (sb && sb.pay !== sa.pay ? ' — payment ' + sb.pay + ' → ' + sa.pay : ' — ' + sa.pay) };
+      locs[sa.loc] = 1;
+      break;
+    }
     case 'importSales': {
       var cnt = { sale: 0, preorder: 0, donation: 0 };
       (p.rows || []).forEach(function (r) { if (cnt[r.kind] !== undefined) cnt[r.kind]++; });
@@ -9308,7 +9348,7 @@ function cashText_(action, p) {
 
 /* Called after every successful write. Never allowed to fail the write itself. */
 function activityRecord_(action, p, result, who) {
-  if (ACTIVITY_SKIP[action]) return;
+  if (ACTIVITY_SKIP[action] && !(action === 'uncatSale' && p.editId)) return;
   try {
     var moves = _moveBuffer.map(function (r) {
       return { id: String(r[0]), kind: String(r[2]), from: String(r[3] || ''), to: String(r[4] || ''),

@@ -9,7 +9,7 @@
 <link rel="icon" type="image/png" sizes="192x192" href="favicon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <script>
-/* The practice space has its own tab icon (b294, Gita): Gurudeva on a yellow square. */
+/* The practice space has its own tab icon (b294, Gita): Gurudeva on a deep blue square, the complement of his saffron (b295; yellow washed him out). */
 if(/[?&]practice(=|&|$)/.test(location.search)) document.querySelectorAll('link[rel~="icon"], link[rel="apple-touch-icon"]').forEach(function(l){
   l.href = l.getAttribute('href').replace(/^(favicon|apple-touch-icon)(-\d+)?\.(png|ico)$/, '$1-practice$2.$3'); });
 </script>
@@ -80,7 +80,7 @@ header.masthead{
   box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center}
 .deity img{height:84px;width:auto;display:block}
 .deity span{font-family:'Marcellus',serif;font-size:11px;line-height:1.15;color:#FCE9C6;padding:6px 10px}
-.season-line{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.2px;
+.season-line{min-height:1.25em;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.2px;
   text-transform:uppercase;color:#FDE7C2;opacity:.9;margin-bottom:2px}
 .title-block{text-align:center;min-width:0}
 .title-block h1{font-family:'Marcellus',serif;font-weight:400;letter-spacing:.5px;
@@ -230,6 +230,15 @@ tr.cbr-sub td{color:var(--muted)}
 .chip-gift{font-size:10.5px;font-weight:700;color:var(--gold);margin-left:2px}
 /* "sold" set small beside the big number in the totals bar. */
 .tcard .sub-cost{color:var(--clay);font-weight:700}
+.tcard .sub-don{color:var(--donate);font-weight:700}
+.tc-coll{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
+.tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
+.tc-q2 > div{white-space:nowrap}
+.tc-net{font-family:'Marcellus',serif;font-size:clamp(15px,1.5vw,19px);color:var(--green);line-height:1.15}
+@media (max-width:700px){
+  .tc-coll{grid-template-columns:minmax(0,1fr);grid-template-areas:"q1" "q3" "q2" "q4"}
+  .tc-q2,.tc-q4{text-align:left} .tc-q2{display:flex;gap:10px;flex-wrap:wrap} .tc-q2 .tc-w{display:none}
+}
 .tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);margin-left:6px}
 @media (max-width:560px){ .tcard .value-pre{display:block;margin-left:0;line-height:1.3} }   /* on a phone: title, number sold, then the pre-orders on a line of their own (b291, Gita) */
 .tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
@@ -237,7 +246,7 @@ tr.cbr-sub td{color:var(--muted)}
 .sc-none{font-size:10.5px;color:var(--muted)}
 .stat-card .wo-chips{margin-top:6px}
 /* Every book card in four parts (b264): name | number, small print | bottom two | full width. */
-.qcard{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;row-gap:3px;align-items:start;min-height:0}
+.qcard{display:grid;grid-template-columns:minmax(min-content,1fr) auto;column-gap:8px;row-gap:3px;align-items:start;min-height:0}
 .qcard > .q-tr, .qcard > .q-br{text-align:right;white-space:nowrap}
 .qcard > .q-tr{line-height:1.15}
 .qcard > .q-tr .sc-lbl, .qcard > .q-tr .mc-lbl{display:block;margin-top:1px}
@@ -519,6 +528,7 @@ body.busy .spin{display:inline-block}
 .spin-d{display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-2px;margin-right:5px;
   border:2px solid rgba(128,110,90,.3);border-top-color:currentColor;animation:spin .7s linear infinite}
 .sp-loading{display:flex;align-items:center;gap:4px}
+.sp-loading[hidden]{display:none}   /* b295: the flex rule kept the Activity Log's spinner turning after it loaded */
 /* A real measure of progress rather than a spinner: the bar fills as saves
    complete, so a slow burst visibly moves rather than just sitting there. */
 #busyBar{position:fixed;left:0;top:0;height:2px;width:100%;z-index:90;
@@ -1155,7 +1165,7 @@ body.has-na .overlay{z-index:10000}
 /* The selling card in four parts (b260): name, language, prices | in stock, sold
    beneath | Sell | Pre-order. As small as it can be and still read at a glance. */
 .book{padding:9px 10px;min-height:0;justify-content:flex-start}
-.book .top{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;align-items:start}
+.book .top{display:grid;grid-template-columns:minmax(min-content,1fr) auto;column-gap:8px;align-items:start}
 .book .qtyrow{display:block;margin-top:0;text-align:right}
 .bk-q2{white-space:nowrap;line-height:1.15}
 .bk-q2 .qty-chip{font-size:20px}
@@ -1231,8 +1241,10 @@ body.has-na .overlay{z-index:10000}
 .adm-col .btn:active{filter:brightness(.92)}
 
 /* Multiple-books entry point + modal */
-#invMulti{margin-top:10px}
-.multi-btn.ghost{background:var(--paper2);color:var(--plum);border:1.5px dashed var(--line-d);margin-top:8px}
+#invMulti{margin-top:10px;display:grid;gap:8px;grid-template-columns:repeat(var(--n,1),minmax(0,1fr))}
+#invMulti[data-n="2"]{--n:2} #invMulti[data-n="3"]{--n:3}
+@media (max-width:700px){ #invMulti[data-n="3"]{--n:2} #invMulti[data-n="3"] > :last-child{grid-column:1/-1} }
+.multi-btn.ghost{background:var(--paper2);color:var(--plum);border:1.5px dashed var(--line-d)}
 .multi-btn{width:100%;background:var(--plum);color:var(--gold-l);border:none;border-radius:9px;
   padding:9px;font-size:12.5px;font-weight:700;letter-spacing:.3px;cursor:pointer}
 .multi-btn:hover{filter:brightness(1.08)}
@@ -1270,8 +1282,11 @@ body.has-na .overlay{z-index:10000}
    A CSS grid, not a table. The column template is declared once on the
    container and every cell is a direct child, so all rows share identical
    column edges. There is no nested layout that can drift out of step. */
-.ptg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.ptg{display:grid;min-width:420px;align-items:stretch;font-size:13.5px}
+.ptg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+/* A table wider than its panel scrolls sideways (b295); the bar stays visible so it is plain there is more. */
+.ptg-scroll::-webkit-scrollbar{height:6px}
+.ptg-scroll::-webkit-scrollbar-thumb{background:var(--line-d);border-radius:3px}
+.ptg{display:grid;width:max-content;min-width:100%;align-items:stretch;font-size:13.5px}
 .ptg > div{padding:8px 10px;text-align:right;white-space:nowrap;
   border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:flex-end}
 /* An author `display` rule beats the browser's own styling for [hidden], so the
@@ -1320,7 +1335,10 @@ body.has-na .overlay{z-index:10000}
 /* Written as `.ptg > .ptg-split` so it actually beats the base cell rule, which
    right-aligns every cell and was winning on specificity. */
 .contog{cursor:pointer}
-.con-rows .ptg-inner{display:grid;width:100%}
+/* The consignment rows share the table's own columns (b295), so they line up
+   however wide the figures make them. */
+.ptg > .con-rows{display:grid;grid-template-columns:subgrid;padding:0;border:0}
+.con-rows .ptg-inner{display:contents}
 .ptg > .ptg-split{padding:9px 10px 4px;font-size:10px;font-weight:800;letter-spacing:.5px;
   text-transform:uppercase;border-top:2px solid var(--line-d);
   /* Reads as a heading for the rows beneath it, so it sits where their labels do. */
@@ -1647,7 +1665,9 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fx-det>div{margin:2px 0}
 .fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
 .fin-ex .fx-head{padding:0 11px 0 14px}
-@media (max-width:560px){ .fx-row{grid-template-columns:64px minmax(0,1fr) 60px 72px 10px;gap:5px;font-size:12.5px} .fin-ex .fx-item{padding:6px} .fin-ex .fx-head{padding:0 7px 0 10px} .fx-d,.fx-o{font-size:11px} }
+.fx-odet{display:none}
+/* Phone (b295, Gita): one amount, the dollars, so the description has room; the original is in the row's details. */
+@media (max-width:560px){ .fx-row{grid-template-columns:56px minmax(0,1fr) auto 10px;gap:6px;font-size:12.5px} .fx-row > .fx-o{display:none} .fx-odet{display:block} .fin-ex .fx-item{padding:6px} .fin-ex .fx-head{padding:0 7px 0 10px} .fx-d{font-size:11px} }
 .rb-item{margin:6px 0}
 .rb-item .li-btns .btn{min-width:56px}
 .rb-det .exp-gi{padding:6px 0;border-top:1px dashed var(--line)}
@@ -1701,6 +1721,11 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fp-h{display:flex;align-items:center;gap:8px}
 .fin-filters{align-items:flex-end}
 .fin-search{flex:1 1 280px;max-width:420px;position:relative}
+#fpNav > .navbar{flex:1 1 auto;min-width:0}
+#fpNav .fin-search{margin-left:auto;flex:0 1 380px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+#fpNav .fin-pp{flex:1 1 auto;min-width:0}
+#fpNav .fin-pp .pp-in{padding:6px 9px;border:1.5px solid var(--line-d);border-radius:8px;background:#fff;color:var(--ink);font-size:14px}
+@media (max-width:700px){ #fpNav .fin-search{margin-left:0;flex:1 1 100%;max-width:none} }
 .fin-pp{position:relative;display:block}
 .fin-pp .pp-in{width:100%;box-sizing:border-box}
 .fin-pp .pp-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.16);display:block}
@@ -1758,8 +1783,6 @@ body.has-va{padding-top:44px}
   display:flex;flex-direction:column;max-height:calc(100vh - 40px)}
 .modal.wide{max-width:620px}
 @keyframes pop{from{transform:translateY(8px);opacity:.6}to{transform:none;opacity:1}}
-@keyframes finIn{from{opacity:.55}to{opacity:1}}
-#fpBody.fin-in{animation:finIn .22s ease-out}
 /* A form redrawn in place (b263) doesn't pop in again: it just changes. */
 .modal.still{animation:none}
 .modal h3{font-family:'Marcellus',serif;font-weight:400;font-size:21px;color:var(--gold-l);
@@ -5072,7 +5095,9 @@ function renderAll(){
      above the title; at season level the title already names it. */
   const seasonNm = ((STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason)||{}).name || STATE.seasonName || '';
   const sl = $('#seasonLine');
-  if(sl){ sl.textContent = (CUR_LEVEL==='season' || isHQ()) ? '' : seasonNm; sl.style.display = sl.textContent ? '' : 'none'; }
+  /* Always there (b295, Gita: the heading jumped when this line came and went),
+     reading Earthly HQ at Earthly HQ. */
+  if(sl){ sl.textContent = isHQ() ? 'Earthly HQ' : seasonNm; sl.style.display = ''; }
   // On a share link, show whose name is going on the sales — and let them fix it.
   $('#reportBtn').style.display = isAdmin() ? '' : 'none';
   // Search: admins, and regional links within what they may do. Not sales links.
@@ -5141,9 +5166,30 @@ function renderAll(){
   $('#bottomRow').style.display = isSeller() ? 'none' : '';
   renderBottom();
   try{ applyFolds(); }catch(e){}
+  try{ fitCards(); }catch(e){}
   // Done last, once the page has its final width, so clipping is measured true.
   try{ addTooltipsToClipped(); }catch(e){}
 }
+/* Every card wide enough for what it says (b295, Gita: "always check to make
+   sure all data can be clearly displayed. If it cannot, please create the
+   needed space"). A grid of cards keeps its columns while every card fits;
+   when the longest title or count needs more room, the columns widen to it
+   and fewer sit side by side. Done before the page is shown, so nothing jumps. */
+function fitCards(root){
+  (root || document).querySelectorAll('.stat-grid, .mini-grid, .inv-grid').forEach(g=>{
+    g.style.gridTemplateColumns = '';
+    if(!g.offsetParent || g.closest('.list-view')) return;
+    const cards = [...g.children].filter(c=>c.offsetParent && (c.classList.contains('qcard') || c.classList.contains('book')));
+    if(!cards.length) return;
+    const have = cards[0].offsetWidth;
+    cards.forEach(c=>{ c.style.width = 'min-content'; });
+    const need = Math.ceil(Math.max(...cards.map(c=>c.offsetWidth)));
+    cards.forEach(c=>{ c.style.width = ''; });
+    if(need > have) g.style.gridTemplateColumns = `repeat(auto-fill,minmax(min(100%,${need}px),1fr))`;
+  });
+}
+let FIT_T = null;
+window.addEventListener('resize', ()=>{ clearTimeout(FIT_T); FIT_T = setTimeout(()=>{ try{ fitCards(); }catch(e){} }, 120); });
 
 /* ---- Earthly HQ: every season added up ----
    The season's own panels (titles, collections, sales, payments, warehouses)
@@ -6062,7 +6108,7 @@ function renderSalesByRegion(){
   return regions.map(r=>{
     const locs = locsInRegion(r.regionId);
     const allHere = (STATE.sales||[]).filter(x=>locs.includes(x.location) && x.bookId);
-    const uncN = uncatBooks((STATE.sales||[]).filter(x=>locs.includes(x.location)));
+    const uncHere = (STATE.sales||[]).filter(x=>locs.includes(x.location));
     const sales = allHere.filter(x=>!isPartnerSale(x));   // headline counts stay ours
     const count=(cat,type)=>sales.filter(x=>catOf(x.bookId)===cat && x.type===type && !isGift(x)).length;
     const gcount=(cat)=>sales.filter(x=>catOf(x.bookId)===cat && isGift(x)).length;
@@ -6091,7 +6137,7 @@ function renderSalesByRegion(){
           ${(function(){
             const line = (label, cat) => {
               const c = bookCounts(sales.filter(x=>catOf(x.bookId)===cat));
-              if(cat==='big') c.sold += uncN;
+              if(cat==='big' || cat==='aotm') c.sold += uncatBooks(uncHere, cat);
               if(!c.sold && !c.gift) return '';
               return `<span class="sbr-line"><b>${c.sold}</b> ${label} sold${
                 c.pre?` <span class="muted">${preNote(c)}</span>`:''}${
@@ -6163,23 +6209,26 @@ function renderTotals(){
       const big=cnt('big'), aotm=cnt('aotm'), oth=cnt('other');
       // Uncategorized sales' books are Big Books sold (b293).
       const unc = s.filter(isUncat), uncN = uncatBooks(unc);
-      big.sold += uncN;
+      big.sold += uncN; aotm.sold += uncatBooks(unc, 'aotm');
       return tile('', 'Big Books', big)
         + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '')
-        + tile('aotm', 'AoTM', aotm)
-        + (unc.length ? `<div class="tcard"><div class="label">Uncategorized Sales</div>
-            <div class="value">${uncN}<span class="value-lbl">books</span></div>
-            <div class="sub">${hideMoney() ? '&nbsp;' : '$' + fmt(unc.filter(received).reduce((t,x)=>t+saleUsd(x),0))
-              + (unc.some(x=>x.est) ? ' · estimate' : '')}</div></div>` : '');
+        + tile('aotm', 'AoTM', aotm);
     })()}
     ${hideMoney() ? '' : `
-    <div class="tcard usd"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div>
-      <div class="sub">${money(got)||'nothing collected yet'}${(function(){
-        // With costs recorded, show what was kept after them.
-        const cs = scopedCosts(); if(!cs.length) return '';
-        const cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
-        return `<br><span class="sub-cost">costs −$${fmt(cu)}</span> · <b>net $${fmt(totUsd-cu)}</b>`;
-      })()}</div></div>
+    ${(function(){
+      /* Total Collections in four parts (b295, Gita): on a computer the total top
+         left, costs and donations top right, the currencies bottom left and Net
+         Sales bottom right; on a phone total, currencies, costs and donations
+         (no words, just their colours), then Net Sales. */
+      const cs = scopedCosts(), cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
+      const du = s.filter(x=>x.type==='DONATION' && received(x)).reduce((t,x)=>t+saleUsd(x), 0);
+      return `<div class="tcard usd tc-coll">
+      <div class="tc-q1"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div></div>
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Costs </span>−$${fmt(cu)}</div>` : ''}${
+        du ? `<div class="sub-don"><span class="tc-w">Donations </span>$${fmt(du)}</div>` : ''}</div>
+      <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
+      <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">$${fmt(totUsd-cu-du)}</div></div></div>`;
+    })()}
     <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
       <div class="sub">${money(due)||'nothing outstanding'}</div></div>`}`;
 }
@@ -6284,10 +6333,13 @@ function renderInventory(){
      people ask for books that were never on the table. So is every other title
      in the catalogue that this region does not carry (b218). */
   const un = unlistedTitles(), offHere = un.hidden.length + un.other.length;
-  $('#invMulti').innerHTML =
-    `<button class="multi-btn" data-act="multi" data-mode="sale">+ Multiple Book Sale</button>`
-    + (UNCAT_ON ? `<button class="multi-btn ghost" data-act="uncat">+ Uncategorized Sales</button>` : '')
-    + (offHere ? `<button class="multi-btn ghost" data-act="hiddenpre">+ Pre-Orders (Unlisted Titles)</button>` : '');
+  /* Uncategorized Sales is for Universal and Finance only (b295, Gita). The
+     buttons share one row on a computer and go two to a line on a phone. */
+  const btns = [`<button class="multi-btn" data-act="multi" data-mode="sale">+ Multiple Book Sale</button>`]
+    .concat(offHere ? [`<button class="multi-btn ghost" data-act="hiddenpre">+ Pre-Orders (Unlisted Titles)</button>`] : [])
+    .concat(UNCAT_ON && ['U','F','FA'].includes(financeMe()) ? [`<button class="multi-btn ghost" data-act="uncat">+ Uncategorized Sales</button>`] : []);
+  $('#invMulti').dataset.n = btns.length;
+  $('#invMulti').innerHTML = btns.join('');
 }
 
 /* Sales by title as cards, echoing the warehouse shelf so the eye reads them the
@@ -6737,7 +6789,10 @@ function renderPayments(target){
      construction — there is no second layout context that can drift. */
   /* The dollar column carries the widest figures and its own left padding, so
      it is given a wider floor than the currency columns. */
-  const template = `minmax(120px,1.6fr) repeat(${curs.length}, minmax(74px,1fr)) minmax(104px,1.15fr)`;
+  /* Every column is at least as wide as its widest figure (b295, Gita: "always
+     check to make sure all data can be clearly displayed"); when that is wider
+     than the panel, the table scrolls sideways instead of overlapping. */
+  const template = `minmax(max-content,auto) repeat(${curs.length}, minmax(max-content,auto)) minmax(max-content,auto)`;
 
   $(target||'#payBody').innerHTML = `
     <div class="ptg-scroll">
@@ -6877,7 +6932,7 @@ function logItemHTML(x, opts){
   const book = x._bundle
     ? ((opts.context==='pre') ? bundlePreTitle() : (x._count+' Books'))
     : isDon ? 'Donation'
-    : isUncat(x) ? 'Uncategorized sales · ' + (Number(x.qty)||0) + ' book' + ((Number(x.qty)||0)===1?'':'s') + (x.est ? ' (estimate)' : '')
+    : isUncat(x) ? 'Uncategorized sales · ' + uncatWords(x) + (x.est ? ' (estimate)' : '')
     : bookById(x.bookId).name;
   // A delivered pre-order becomes an ordinary SALE, so without this it would be
   // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
@@ -7618,7 +7673,7 @@ function renderSellers(){
   const asks = handoversHere().filter(h=>h.status==='waiting');
   const cell = m => esc(moneyLine(m)) || '—';
   const sold = (list, cat) => list.filter(x=>x.bookId && (x.type==='SALE' || x.type==='PREORDER') && !isGift(x) && catOf(x.bookId)===cat).length
-    + (cat==='big' ? uncatBooks(list) : 0);
+    + (cat==='big' || cat==='aotm' ? uncatBooks(list, cat) : 0);
   const cashRow = (label, p) => {
     const sub = {}; add(sub, p.received); add(sub, p.waiting); add(sub, p.movedOn);
     return `<tr>${label!==null?`<td class="sb-place">${esc(label)}</td>`:''}<td>${cell(p.taken)}</td><td><b>${cell(p.withThem)}</b></td>
@@ -10679,12 +10734,16 @@ function finAgg(sales, exps){
     // Which figures hold dollars worked out from a rate (~).
     if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
-    const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0));
-    if(x.g) a.gifts += n; else a.books += n;
+    const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0)), qa = x.qa || 0;
+    if(x.g) a.gifts += n + qa; else a.books += n + qa;
     if(x.con){ a.con += x.gu; return; }          // the groups' money, never ours
     a.coll += x.gu; a.pend += x.pu;
     if(x.k==='DONATION'){ a.don += x.gu; return; }
     if(!x.b) return;
+    /* Uncategorized sales with Adventures among them (b295): the money is shared
+       between the two by the number of books. */
+    if(qa){ const sh = qa / (n + qa); a.av += qa; a.avu += x.gu * sh; a.bb += n; a.bbu += x.gu * (1 - sh);
+      if(x.ue && x.gu > 0.004) a.eAv = 1; return; }
     if(x.c==='aotm'){ if(x.g) a.avg += n; else { a.av += n; a.avu += x.gu; } }
     else { if(x.g) a.bbg += n; else { a.bb += n; a.bbu += x.gu; } }
   });
@@ -10760,7 +10819,7 @@ function finPlaces(){
   fps.filter(x=>!x.parent || x.parent==='rg_hq').forEach(x=>out.push({kind:'season', fin:1, id:x.id, name:x.name}));
   return out;
 }
-/* Edit Finance-Only Locations (b288, Gita, practice first): choose one of
+/* Edit Finance-Only Locations (b288, Gita; live in b295): choose one of
    Finance's own places from a searchable list, then rename it, move it under
    another season or region, or remove it once no expense is recorded there. */
 async function finPlacesModal(pick){
@@ -10813,8 +10872,9 @@ function finSearchHTML(){
 }
 function finBindSearch(){
   const box = $('#finPP'); if(!box) return;
-  const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list'), places = finPlaces();
+  const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
   const shown = q => {
+    const places = finPlaces();   // read each time: the nav is kept while the figures reload
     q = q.trim().toLowerCase();
     if(!q) return places;
     const hit = v => String(v||'').toLowerCase().includes(q);
@@ -10945,7 +11005,7 @@ function finOverviewHTML(){
   const cell = m => `<td data-l="${esc(m.l)}"><div>${m.v}</div>${m.sub ? `<div class="fin-cs">${finSubH(m.sub)}</div>` : ''}${finExHTML(m, 'fin-cs')}</td>`;
   const row = (r, cls) => `<tr${cls?` class="${cls}"`:''}><th class="no-edit">${r.go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(r.go)}">${esc(r.label)}</button>` : esc(r.label)}</th>
       ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
-  return `${finFiltersHTML(FIN.f, true)}
+  return `${finFiltersHTML(FIN.f)}
     <div class="fin-tiles">${tiles}</div>
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ~ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
@@ -11355,7 +11415,7 @@ function qbListHTML(ans){
   const local = x => Object.keys(x.cur||{}).map(c=>cashFmt(x.cur[c], c)).join(' · ');
   const shown = list.slice(0, 500);
   return `<div class="fin-scroll"><table class="cash-tbl fin-tbl qb-list"><thead><tr><th>Date</th><th>Where</th><th>What</th><th>Paid with</th><th>Seller</th><th>Dollars</th><th>Local</th></tr></thead>
-    <tbody>${shown.map(x=>`<tr><td>${esc(x.d)}</td><td class="no-edit">${esc(where(x))}</td><td class="no-edit">${esc(x.t ? x.t + (x.q>1 ? ' ×' + x.q : '') : type(x))}${x.t && x.k!=='SALE' ? ' · ' + esc(type(x)) : ''}${x.g ? ' · gift' : ''}</td>
+    <tbody>${shown.map(x=>`<tr><td>${esc(x.d)}</td><td class="no-edit">${esc(where(x))}</td><td class="no-edit">${esc(x.t ? x.t + (x.q>1 ? ' ×' + x.q : '') + (x.qa ? ' + ' + x.qa + ' Adventures' : '') : type(x))}${x.t && x.k!=='SALE' ? ' · ' + esc(type(x)) : ''}${x.g ? ' · gift' : ''}</td>
       <td class="no-edit">${esc(x.pay.join(' + ') || '—')}</td><td class="no-edit">${esc(x.by || '')}</td><td>${finUsd(x.gu + x.pu)}${x.pu > 0.004 ? ' <span class="muted-note">owed</span>' : ''}</td><td>${esc(local(x))}</td></tr>`).join('')
       || '<tr><td colspan="7">No payments for these choices.</td></tr>'}</tbody>
     <tfoot><tr class="fin-tot"><th colspan="5">${list.length} payment${list.length===1?'':'s'}${list.length>500 ? ' (the latest 500 shown)' : ''}</th>
@@ -11724,7 +11784,6 @@ function finBind(){
   m.querySelectorAll('[data-ff]').forEach(el=>el.addEventListener('change', ()=>{
     FIN.f[el.dataset.ff] = el.value; finDrawAll();
   }));
-  finBindSearch();
   const R = FIN.rep, save = () => { try{ localStorage.setItem('tbs_finrep', JSON.stringify(R)); }catch(e){} finDrawAll(); };
   m.querySelectorAll('[data-rf]').forEach(el=>el.addEventListener('change', ()=>{
     R.f[el.dataset.rf] = el.value; save();
@@ -12012,7 +12071,10 @@ function finNav(){
   // Unchanged, left exactly as it is (b291): the bar stays still while the figures change.
   if(FIN.navH !== h || !$('#fpNav').firstChild){
   FIN.navH = h;
-  $('#fpNav').innerHTML = h + '</div></div>';
+  /* The place search sits beside the path on every Finance section (b295, Gita:
+     "Finance needs to be able to search for locations"). */
+  $('#fpNav').innerHTML = h + '</div>' + (D ? finSearchHTML() : '') + '</div>';
+  if(D) finBindSearch();
   $('#fpNav').querySelectorAll('[data-fpick]').forEach(sel=>sel.addEventListener('change', ()=>{
     // Going up is the path's links now (b293); a drop-down only goes to a place.
     if(sel.value) finGo(FINP.sec, sel.value);
@@ -12030,7 +12092,7 @@ function finNav(){
   const rb = $('#reportBtn'); if(rb) rb.style.display = '';
   // The masthead says where you are.
   const wt = $('#whTitle'); if(wt) wt.textContent = ': Finance';
-  const sl = $('#seasonLine'); if(sl){ sl.textContent = finScopeName(); sl.style.display = sl.textContent ? '' : 'none'; }
+  const sl = $('#seasonLine'); if(sl){ sl.textContent = finScopeName() || 'Earthly HQ'; sl.style.display = ''; }
 }
 /* The wording is put on before the page is shown (b293): drawn and then
    re-worded 60ms later, every edited word flickered from the app's own wording to yours. */
@@ -12041,8 +12103,7 @@ function finRender(){
 function finRender0(){
   if(!FINP.on) return;
   finNav();
-  // New figures step in over the old ones (b293): a short fade, nothing blanked first.
-  const fb = $('#fpBody'); if(fb){ fb.classList.remove('fin-in'); void fb.offsetWidth; fb.classList.add('fin-in'); }
+  // New figures replace the old in one frame (b295: the b293 fade read as a flash), nothing blanked first.
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
   if(sec==='expenses'){
@@ -12214,8 +12275,8 @@ function finSendLinkModal(){
   const side = CUR_LEVEL==='event' ? CUR_LOC : CUR_LEVEL==='region' ? CUR_REGION : CUR_LEVEL==='season' ? STATE && STATE.activeSeason : '';
   const here = f.e || f.r || f.s || (P.some(p=>p.id===side) ? side : '');
   FIN.sendPlace = here;
-  const items = [{v:'', l:'Anywhere'}].concat(expPlaceItems(P));
-  const it = items.find(i=>i.v===here); const inp = $('#fsPlace .pp-in'); if(inp) inp.value = it ? (it.shown || it.l) : 'Anywhere';
+  const items = [{v:'', l:'General'}].concat(expPlaceItems(P));
+  const it = items.find(i=>i.v===here); const inp = $('#fsPlace .pp-in'); if(inp) inp.value = it ? (it.shown || it.l) : 'General';
   comboBind('fsPlace', items, here, v=>{ FIN.sendPlace = v; });
   finBindSend();
   const n = $('#fsName'); if(n) n.focus();
@@ -12274,6 +12335,7 @@ function finExpSecHTML(){
       <div class="li-det fx-det">
         ${x.forEmail==='*general' || x.who==='General' ? '' /* b291: a General cost is nobody's */ : `<div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>`}
         <div><span class="k">Type</span> <span class="v">${esc(x.type)}</span></div>
+        ${finExpOrig(x) ? `<div class="fx-odet"><span class="k">Original</span> <span class="v">${esc(finExpOrig(x))}</span></div>` : ''}
         <div><span class="k">Where</span> <span class="v no-edit">${esc(x.placeLabel)}</span></div>
         <div><span class="k">Status</span> ${expStatusHTML(x)}</div>
         ${x.kind==='reimburse' ? `<div><span class="k">Pay back</span> <span class="v">${esc(x.method || '')}${x.reimbCur ? ' in ' + esc(x.reimbCur) : ''}${expOtherCur(x) ? ' · ' + esc(expPayAmtLine(x)) : ''}</span></div>` : ''}
@@ -12549,7 +12611,7 @@ async function finLinksRender(focusNew){
       <div class="cash-sub">A link anyone can use</div>
       <div class="hint">To send one person a link, use Send Reimbursements Link above. This one is for sharing with a group: anyone with it can
         send in expenses to be paid back, with receipts, without signing in, and it keeps working until you turn it off. What they send lands in Pending.</div>
-      <div class="row2"><div class="field"><label>For</label>${comboHTML('finLinkPlace', 'Anywhere', 'Search for a season, region or event')}</div>
+      <div class="row2"><div class="field"><label>For</label>${comboHTML('finLinkPlace', 'General', 'Search for a season, region or event')}</div>
         <div class="field"><label>Name for it (optional)</label><input id="finLinkLabel" type="text" maxlength="80" placeholder="e.g. Kartika volunteers"></div></div>
       <div class="btn-row"><button type="button" class="btn btn-primary btn-sm" id="finLinkMake">Make the link</button></div>
     </div>
@@ -12571,7 +12633,7 @@ async function finLinksRender(focusNew){
         </div></div>`; }).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
   let place = '';
-  const P = FIN.D, items = [{v:'', l:'Anywhere'}].concat(expPlaceItems(finLinkPlaces()));
+  const P = FIN.D, items = [{v:'', l:'General'}].concat(expPlaceItems(finLinkPlaces()));
   comboBind('finLinkPlace', items, '', v=>{ place = v; });
   void P;
   $('#finLinkMake').addEventListener('click', async ()=>{
@@ -13082,7 +13144,7 @@ function FIN_BTNS(fin){
     `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`];
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   // b288 (Gita): practice first.
-  if(PRACTICE && (fin==='F' || fin==='U')) b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
+  if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
   return b;
 }
 
@@ -13577,7 +13639,7 @@ if(typeof MutationObserver!=='undefined'){
   LBL_OBS = new MutationObserver(()=>{
     if(LBL_BUSY) return;
     clearTimeout(LBL_T);
-    LBL_T = setTimeout(()=>{ try{ applyLabels(); }catch(e){} }, 60);
+    LBL_T = setTimeout(()=>{ try{ applyLabels(); }catch(e){} try{ fitCards(); }catch(e){} }, 60);
   });
   const startObs = ()=>{ if(document.body) LBL_OBS.observe(document.body, {childList:true, subtree:true, characterData:true}); };
   if(document.body) startObs(); else document.addEventListener('DOMContentLoaded', startObs);
@@ -14046,11 +14108,11 @@ function buildReport(part, opts){
     const shown = r => r.c.sold || r.c.gift;
     // Our own titles, by kind.
     // Uncategorized sales (b293) are a line of their own among the Big Books.
-    const uncN = uncatBooks(s), uncEst = s.some(x=>isUncat(x) && x.est);
-    CATS.forEach(kind=>group(
+    const uncEst = s.some(x=>isUncat(x) && x.est);
+    CATS.forEach(kind=>{ const uncN = kind==='big' || kind==='aotm' ? uncatBooks(s, kind) : 0; group(
       shelf().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown)
-        .concat(kind==='big' && uncN ? [{b:{name:'Uncategorized sales' + (uncEst ? ' (estimate)' : '')}, c:{sold:uncN, pre:0, gift:0}}] : []),
-      CAT_SHORT[kind]));
+        .concat(uncN ? [{b:{name:'Uncategorized sales' + (uncEst ? ' (estimate)' : '')}, c:{sold:uncN, pre:0, gift:0}}] : []),
+      CAT_SHORT[kind]); });
     // Then consignment, on its own.
     const con = shelf().filter(b=>isPartnerBook(b.id)).map(counted).filter(shown);
     if(con.length){
@@ -15564,11 +15626,17 @@ function donationModal(edit){
    comes off a shelf. */
 const UNCAT_ON = PRACTICE;
 function isUncat(x){ return !!x && x.type==='UNCAT'; }
-function uncatBooks(list){ return (list||[]).filter(isUncat).reduce((t,x)=>t+(Number(x.qty)||0), 0); }
+/* "27 books", or with Adventures among them "20 Big Books + 7 Adventures" (b295). */
+function uncatWords(x){
+  const n = Number(x.qty)||0, a = Number(x.aqty)||0;
+  return a ? n + ' Big Book' + (n===1?'':'s') + ' + ' + a + ' Adventure' + (a===1?'':'s') : n + ' book' + (n===1?'':'s');
+}
+/* qty holds the Big Books, aqty the Adventures (b295). */
+function uncatBooks(list, cat){ return (list||[]).filter(isUncat).reduce((t,x)=>t+(Number(cat==='aotm' ? x.aqty : x.qty)||0), 0); }
 /* The usual price of a Big Book here, in that currency: the most common one on the shelf. */
-function uncatMsrp(cur){
+function uncatMsrp(cur, cat){
   const n = {};
-  shelfBooks().filter(b=>catOfBook(b)==='big' && !isPartnerBook(b.id)).forEach(b=>{
+  shelfBooks().filter(b=>catOfBook(b)===(cat || 'big') && !isPartnerBook(b.id)).forEach(b=>{
     const p = Number(priceFor(b, cur)) || 0; if(p > 0) n[p] = (n[p]||0) + 1; });
   const ps = Object.keys(n).map(Number).sort((a,b)=>n[b]-n[a] || b-a);
   return ps[0] || 0;
@@ -15578,15 +15646,21 @@ function uncatModal(edit){
   openModal(`
     ${mHead(edit ? 'Edit Uncategorized Sales' : 'Uncategorized Sales')}
     <div class="m-body">
-      <div class="hint">Money taken for books when you don't know which titles. The books count in Big Books sold; nothing comes off a shelf.</div>
+      <div class="hint">Money taken for books when you don't know which titles. Nothing comes off a shelf.</div>
       <div class="row2">
         <div class="field"><label>Total taken</label><input id="ucAmt" type="number" step="0.01" min="0" inputmode="decimal"></div>
         <div class="field"><label>Currency</label><select id="ucCur">${curOptions(L0[0] ? L0[0].cur : defaultCur())}</select></div>
       </div>
       <div class="field"><label>Payment type</label><select id="ucType">${payTypeOptions(false,false)}</select></div>
-      <div class="field"><label>Books sold</label><input id="ucN" type="number" min="0" step="1" inputmode="numeric">
-        <div class="hint" id="ucHow"></div></div>
-      <label class="cl-check"><input type="checkbox" id="ucEst" ${!edit || edit.est ? 'checked' : ''}> This is an estimate</label>
+      <div class="row2">
+        <div class="field"><label>Big Books sold</label><input id="ucN" type="number" min="0" step="1" inputmode="numeric"></div>
+        <div class="field"><label>Adventures sold</label><input id="ucA" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      </div>
+      <div class="hint" id="ucHow"></div>
+      <div class="cl-checks uc-est">
+        <label class="cl-check"><input type="radio" name="ucEst" value="1" ${!edit || edit.est ? 'checked' : ''}> Estimated # of Books Sold</label>
+        <label class="cl-check"><input type="radio" name="ucEst" value="0" ${edit && !edit.est ? 'checked' : ''}> Confirmed # of Books Sold</label>
+      </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ucCom"></textarea></div>
       <div class="field"><label>Date &amp; Time</label>
         <input id="ucTs" type="datetime-local" value="${esc(toLocalInput(edit ? edit.ts : new Date()))}"></div>
@@ -15597,34 +15671,40 @@ function uncatModal(edit){
       <button class="btn btn-primary" id="ucSave">${edit ? 'Save changes' : 'Record'}</button>
     </div>`);
   let typed = !!edit;            // once the number is typed, the total no longer changes it
+  /* With the counts unknown, the money is all Big Books (b295, Gita); Adventures
+     typed in take their own price off first. */
   const fill = () => {
     const amt = Number($('#ucAmt').value) || 0, cur = $('#ucCur').value, m = uncatMsrp(cur);
-    if(!typed) $('#ucN').value = m > 0 && amt > 0 ? Math.floor(amt / m + 1e-9) : '';
-    $('#ucHow').textContent = m > 0 ? `At ${cashFmt(m, cur)} a Big Book, ${amt > 0 ? cashFmt(amt, cur) + ' is ' + Math.floor(amt / m + 1e-9) + ' books' : 'each book'}, rounded down.`
+    const a = Math.floor(Number($('#ucA').value) || 0), ma = uncatMsrp(cur, 'aotm'), rest = Math.max(0, amt - a * ma);
+    const nb = m > 0 && amt > 0 ? Math.floor(rest / m + 1e-9) : 0;
+    if(!typed) $('#ucN').value = m > 0 && amt > 0 ? nb : '';
+    $('#ucHow').textContent = m > 0 ? `At ${cashFmt(m, cur)} a Big Book${a && ma > 0 ? ' and ' + cashFmt(ma, cur) + ' an Adventure' : ''}, ${
+        amt > 0 ? (a && ma > 0 ? 'the rest, ' + cashFmt(rest, cur) + ',' : cashFmt(amt, cur)) + ' is ' + nb + ' Big Book' + (nb===1?'':'s') : 'each book'}, rounded down.`
       : 'No Big Book price in this currency here: type the number of books.';
   };
   if(edit){
     if(L0[0]){ $('#ucAmt').value = L0[0].amt; setSel($('#ucType'), L0[0].type); }
-    $('#ucN').value = Number(edit.qty) || 0; $('#ucCom').value = edit.comments || '';
+    $('#ucN').value = Number(edit.qty) || 0; $('#ucA').value = Number(edit.aqty) || ''; $('#ucCom').value = edit.comments || '';
   }
   $('#ucAmt').addEventListener('input', fill); $('#ucCur').addEventListener('change', fill);
+  $('#ucA').addEventListener('input', fill);
   $('#ucN').addEventListener('input', ()=>{ typed = $('#ucN').value !== ''; });
   fill();
   $('#ucSave').addEventListener('click', ()=>{
-    const amt = Number($('#ucAmt').value) || 0, n = Math.floor(Number($('#ucN').value) || 0);
+    const amt = Number($('#ucAmt').value) || 0, n = Math.floor(Number($('#ucN').value) || 0), aq = Math.floor(Number($('#ucA').value) || 0);
     if(!(amt > 0)){ $('#modalErr').textContent = 'Enter the total taken.'; return; }
-    if($('#ucN').value === '' || n < 0){ $('#modalErr').textContent = 'Enter how many books were sold.'; return; }
+    if(($('#ucN').value === '' && !aq) || n < 0 || aq < 0){ $('#modalErr').textContent = 'Enter how many books were sold.'; return; }
     const L = [{type:$('#ucType').value, cur:$('#ucCur').value, amt}];
-    const est = $('#ucEst').checked, comments = $('#ucCom').value.trim(), tsVal = fromLocalInput($('#ucTs').value);
+    const est = ($('#modal input[name="ucEst"]:checked')||{}).value !== '0', comments = $('#ucCom').value.trim(), tsVal = fromLocalInput($('#ucTs').value);
     if(edit){
-      commit({action:'uncatSale', editId:edit.saleId, location:edit.location, qty:n, est, legs:L, comments, ts:tsVal},
-        st=>{ const d = findSale(st, edit.saleId); if(d) Object.assign(d, legFields(L), {qty:n, est, comments, ts:tsVal||d.ts}); },
+      commit({action:'uncatSale', editId:edit.saleId, location:edit.location, qty:n, aqty:aq, est, legs:L, comments, ts:tsVal},
+        st=>{ const d = findSale(st, edit.saleId); if(d) Object.assign(d, legFields(L), {qty:n, aqty:aq, est, comments, ts:tsVal||d.ts}); },
         'Uncategorized sales updated');
     }else{
       const id = newSaleId(), loc = CUR_LOC;
-      commit({action:'uncatSale', saleId:id, location:loc, qty:n, est, legs:L, comments, ts:tsVal},
+      commit({action:'uncatSale', saleId:id, location:loc, qty:n, aqty:aq, est, legs:L, comments, ts:tsVal},
         st=>{ st.sales.push(Object.assign({saleId:id, ts:tsVal||new Date().toISOString(), location:loc, type:'UNCAT',
-                bookId:'', qty:n, est, pending:false, paid:true, delivered:true, name:'', phone:'', comments}, legFields(L))); },
+                bookId:'', qty:n, aqty:aq, est, pending:false, paid:true, delivered:true, name:'', phone:'', comments}, legFields(L))); },
         'Uncategorized sales recorded');
     }
   });
@@ -15909,8 +15989,12 @@ function deliverPickModal(id, bundle){
     holdersOf(r.regionId).forEach(h=>items.push({v:h.holderId, l:h.name + ' (storing books)', kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(h.holderId)}));
     eventsOfRegion(r.regionId).filter(e=>!closureOf(e.eventId)).forEach(e=>items.push({v:e.eventId, l:e.name, kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(e.eventId)}));
   });
+  /* Only places that could actually fulfil it are offered (b295, Gita). */
+  const can = items.filter(i=>covers(i.v));
+  items.length = 0; items.push(...can);
   // Where you are: this event, this warehouse or store; on the season page, the pre-order's own region's warehouse.
-  const here = items.some(i=>i.v===CUR_LOC) ? CUR_LOC : (regionById(regionOfLoc(x.location))||{}).whLoc || (items[0]||{}).v || '';
+  const home = (regionById(regionOfLoc(x.location))||{}).whLoc;
+  const here = items.some(i=>i.v===CUR_LOC) ? CUR_LOC : items.some(i=>i.v===home) ? home : (items[0]||{}).v || '';
   let src = here;
   openModal(`
     ${mHead(bundle ? 'Deliver — ' + n + ' books' : 'Deliver — ' + bookById(x.bookId).name)}
@@ -15931,7 +16015,7 @@ function deliverPickModal(id, bundle){
       <button class="btn btn-primary" id="dvGo">Deliver</button></div>`);
   const show = () => {
     const ok = !!src && covers(src);
-    $('#dvHave').textContent = !src ? '' : ok ? (n>1 ? 'Has all ' + n + ' copies.' : invQty(src, x.bookId) + ' in stock here.') : 'Not enough copies here. Choose another place, or one of the ways below.';
+    $('#dvHave').textContent = !items.length ? 'No place has enough copies. Use "Delivered from outside the system" below.' : !src ? '' : ok ? (n>1 ? 'Has all ' + n + ' copies.' : invQty(src, x.bookId) + ' in stock here.') : 'Not enough copies here. Choose another place, or one of the ways below.';
     $('#dvGo').disabled = !ok;
   };
   comboBind('dvFrom', items, src, v=>{ src = v; $('#modalErr').textContent = ''; show(); });
@@ -17895,13 +17979,12 @@ function deleteSeasonNow(x){
   commit(payload, st=>dropSeason(st, sid), 'Season deleted', {anySeason:true});
 }
 
-/* A season's name takes you to its Warehouse Overview (b291, practice; Gita
+/* A season's name takes you to its Warehouse Overview (b291, live in b295; Gita
    chose this on the card): the season's page opens scrolled to it, unfolded.
    Regions already open at their warehouse. */
 let WO_PEND = false;
 function woJump(){
-  WO_PEND = PRACTICE;
-  if(!PRACTICE) return;
+  WO_PEND = true;   // live since b295 (Gita)
   setTimeout(()=>{
     if(CUR_LEVEL!=='season' || isHQ()) return;
     const p = $('#whOverviewPanel'); if(!p || p.style.display==='none') return;
