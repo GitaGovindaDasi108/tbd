@@ -78,7 +78,7 @@ header.masthead{
 .deity{height:84px;flex:none;border-radius:10px;overflow:hidden;
   border:2px solid var(--gold-l);background:#7A3E12;
   box-shadow:0 2px 10px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;text-align:center}
-.deity img{height:84px;width:auto;display:block}
+.deity img{height:84px;width:auto;display:block;aspect-ratio:265/360;object-fit:cover}   /* both pictures at Gurudeva's shape (b297, Gita) */
 .deity span{font-family:'Marcellus',serif;font-size:11px;line-height:1.15;color:#FCE9C6;padding:6px 10px}
 .season-line{min-height:1.25em;font-family:'Inter',sans-serif;font-size:12px;font-weight:700;letter-spacing:1.2px;
   text-transform:uppercase;color:#FDE7C2;opacity:.9;margin-bottom:2px}
@@ -234,7 +234,7 @@ tr.cbr-sub td{color:var(--muted)}
 .tc-coll{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
 .tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
 .tc-q2 > div{white-space:nowrap}
-.tc-net{font-family:'Marcellus',serif;font-size:clamp(15px,1.5vw,19px);color:var(--green);line-height:1.15}
+.tc-q4 .tc-net, .tc-sm{font-family:'Marcellus',serif;font-size:clamp(15px,1.5vw,19px);color:var(--green);line-height:1.15}
 @media (max-width:700px){
   .tc-coll{grid-template-columns:minmax(0,1fr);grid-template-areas:"q1" "q3" "q2" "q4"}
   .tc-q2,.tc-q4{text-align:left} .tc-q2{display:flex;gap:10px;flex-wrap:wrap} .tc-q2 .tc-w{display:none}
@@ -885,7 +885,10 @@ body.has-na .overlay{z-index:10000}
 .btn-danger{background:var(--clay-l);color:var(--clay);border:1px solid #EEC4bd;box-shadow:none}
 
 /* ---------- Grand total bar ---------- */
-.totals{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:13px}
+/* Each card as wide as it needs, together filling the line (b297, Gita). */
+.totals{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:13px}
+.totals > .tcard{flex:1 1 auto;min-width:min-content}
+.totals > .tc-coll{flex-grow:3}
 .tcard{background:var(--paper);border:1px solid var(--line);border-radius:11px;
   padding:8px 12px 9px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
 .tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--saffron-d)}
@@ -1722,9 +1725,9 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fin-filters{align-items:flex-end}
 .fin-search{flex:1 1 280px;max-width:420px;position:relative}
 #fpNav > .navbar{flex:1 1 auto;min-width:0}
-#fpNav .fin-search{margin-left:auto;flex:0 1 380px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+#fpNav .fin-search{margin-left:auto;flex:0 1 380px;min-width:240px;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
 #fpNav .fin-pp{flex:1 1 auto;min-width:0}
-#fpNav .fin-pp .pp-in{padding:6px 9px;border:1.5px solid var(--line-d);border-radius:8px;background:#fff;color:var(--ink);font-size:14px}
+#fpNav .fin-pp .pp-in{height:28px;box-sizing:border-box;padding:0 9px;border:1.5px solid var(--line-d);border-radius:8px;background:#fff;color:var(--ink);font-size:14px}
 @media (max-width:700px){ #fpNav .fin-search{margin-left:0;flex:1 1 100%;max-width:none} }
 .fin-pp{position:relative;display:block}
 .fin-pp .pp-in{width:100%;box-sizing:border-box}
@@ -1735,20 +1738,19 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .cb .pp-row.pp-season{font-weight:700;color:var(--plum)}
 .fin-pp .pp-row.pp-season{font-weight:700;color:var(--lvl);padding-left:12px;text-transform:none;letter-spacing:0;font-size:13.5px}
 .fin-scroll{overflow-x:auto;max-width:100%;margin:6px 0}
-/* The Overview's table never scrolls sideways: where it can't fit, each place
-   becomes a block of labelled figures (Gita, 2026-10-21: no overflow, ever). */
-.fin-ovw{container-type:inline-size;overflow-x:visible}
-@container (max-width:1060px){
-  .fin-ovw table,.fin-ovw tbody,.fin-ovw tfoot{display:block;width:100%}
-  .fin-ovw thead{display:none}
-  .fin-ovw tr{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px 14px;padding:10px 2px;border-bottom:1px solid var(--line)}
-  .fin-ovw tr>th{grid-column:1/-1;text-align:left;padding:0;border:0}
-  .fin-ovw tr>td{text-align:left;padding:0;border:0;min-width:0}
-  .fin-ovw tr>td::before{content:attr(data-l);display:block;font-size:11px;color:var(--muted);font-weight:500;margin-bottom:1px}
-  .fin-ovw tfoot tr{border-top:2px solid var(--line);border-bottom:0}
-  .fin-ovw tfoot tr>td,.fin-ovw tfoot tr>th{border:0 !important}
-}
+/* The Overview's table (b297, Gita): grouped columns, scrolling sideways
+   when it cannot fit, the place names staying in view. */
+.fin-ovw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fin-ovw .fin-tbl tbody th,.fin-ovw .fin-tbl tfoot th,.fin-ovw .fin-tbl thead tr:first-child th:first-child{position:sticky;left:0;background:var(--paper);z-index:1}
+.fin-ovw .fin-tbl th.fin-g{text-align:center;border-bottom:1.5px solid var(--line-d);font-size:12px;color:var(--lvl)}
+.fin-ovw .fin-tbl .fin-gend{border-right:1.5px solid var(--line)}
+.fin-ovw .fin-tbl .fin-mg{border-left:1.5px solid var(--line)}
+.fin-ovw .fin-tbl td.fin-big{font-weight:700}
+.fin-ovw .fin-tbl tr.fin-gh th{border-bottom:0}
+.fin-neg, .fin-neg .fin-nw, .tc-net.fin-neg{color:var(--clay) !important}
 .fin-tbl{min-width:100%;white-space:nowrap}.fin-tbl td{text-align:right}.fin-tbl th{text-align:left}
+/* Column titles sit right over their figures (b297, Gita). */
+.fin-tbl thead th{text-align:right}.fin-tbl thead tr:first-child th:first-child{text-align:left}
 .fin-tbl tr.fin-l1 th{padding-left:22px}.fin-tbl tr.fin-l2 th{padding-left:44px;font-weight:400}
 .fin-tbl tr.fin-tot th,.fin-tbl tr.fin-tot td{font-weight:700;border-top:2px solid var(--line-d,#ccc)}
 .fin-open{border:0;background:none;cursor:pointer;width:20px;padding:0;font-size:13px}
@@ -2056,7 +2058,6 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
 .reimb-ok{font-size:42px;color:#2E7D4F;text-align:center;margin:6px 0}
 
 /* ---------- Responsive ---------- */
-@media (max-width:1080px){ .totals{grid-template-columns:repeat(2,1fr)} }
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
   /* One column: forty columns' gaps alone would be wider than a phone. */
@@ -2320,7 +2321,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b295</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b297</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2993,6 +2994,13 @@ function subAskApply(st, key, v){
 const SUB_ASK_ERR = 'Choose which sub-region this is for.';
 function subName(rid, id){ const x = subRegionsOf(rid).find(s=>s.id===id); return x ? x.name : ''; }
 function eventsOfSub(rid, sid){ return eventsOfRegion(rid).filter(e=>subOfEvent(e.eventId)===sid); }
+/* A sub-region brought in from a region of its own keeps that region's
+   warehouse as an event, "<name> (warehouse)" (b284). Its Summary is that
+   warehouse (b297, Gita: "have Barcelona Summary navigate to the warehouse"). */
+function subWarehouse(rid, sid){
+  const su = subRegionsOf(rid).find(x=>x.id===sid); if(!su) return null;
+  return eventsOfSub(rid, sid).find(e=>/^wh_/.test(e.eventId) && e.name===su.name + ' (warehouse)') || null;
+}
 /* Everything in the region that is no sub-region's own: the warehouse, devotees'
    homes, and events not put in one. */
 function generalLocsOf(rid){
@@ -5167,6 +5175,7 @@ function renderAll(){
   renderBottom();
   try{ applyFolds(); }catch(e){}
   try{ fitCards(); }catch(e){}
+  try{ redNegatives(); }catch(e){}
   // Done last, once the page has its final width, so clipping is measured true.
   try{ addTooltipsToClipped(); }catch(e){}
 }
@@ -5175,6 +5184,15 @@ function renderAll(){
    needed space"). A grid of cards keeps its columns while every card fits;
    when the longest title or count needs more room, the columns widen to it
    and fewer sit side by side. Done before the page is shown, so nothing jumps. */
+/* A negative net figure is red, wherever it shows (b297, Gita): the totals'
+   Net Sales, the payment table's net rows, Collections by Region (all net) and
+   Finance's Net. */
+const NET_SEL = '.tc-net, .ptg-net, table.cbr td, .fin-net .fin-tv, .fin-net .fin-nw';
+function redNegatives(root){
+  (root || document).querySelectorAll(NET_SEL).forEach(el=>{
+    el.classList.toggle('fin-neg', /^\s*(?:\$\s*)?[−-]\s*~?\$?\s*\d/.test(el.textContent) && !/^\s*[−-]\s*$/.test(el.textContent));
+  });
+}
 function fitCards(root){
   (root || document).querySelectorAll('.stat-grid, .mini-grid, .inv-grid').forEach(g=>{
     g.style.gridTemplateColumns = '';
@@ -5488,21 +5506,27 @@ function renderTabs(){
       const evOpt = (e, ind) => opt(e.eventId, (ind||'') + e.name + mark(closureOf(e.eventId)), CUR_LOC===e.eventId);
       /* A sub-region's events, or the whole region's: each sub-region (b280) as
          "<name> Summary" with its events indented beneath (b291), the rest after. */
+      const subOpt = x => { const w = subWarehouse(reg.regionId, x.id);
+        return w ? opt(w.eventId, '🗺 ' + x.name + ' Summary', false) : opt('__sub:' + x.id, '🗺 ' + x.name + ' Summary', false); };
+      const subEvs = sid => { const w = subWarehouse(reg.regionId, sid); return eventsOfSub(reg.regionId, sid).filter(e=>!w || e.eventId!==w.eventId); };
       const placeOpts = s => {
-        if(s) return evSort(eventsOfSub(reg.regionId, s)).map(e=>evOpt(e)).join('') + opt('__new','＋ New event…',false);
+        if(s){ const w = subWarehouse(reg.regionId, s);
+          return (w ? subOpt(subRegionsOf(reg.regionId).find(x=>x.id===s)) : '') + evSort(subEvs(s)).map(e=>evOpt(e)).join('') + opt('__new','＋ New event…',false); }
         if(!subs.length) return evSort(eventsOfRegion(reg.regionId)).map(e=>evOpt(e)).join('') + opt('__new','＋ New event…',false);
         const known = new Set(subs.map(x=>x.id));
         const rest = evSort(eventsOfRegion(reg.regionId).filter(e=>!known.has(subOfEvent(e.eventId))));
         const ind = '    ';
-        return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt('__sub:' + x.id, '🗺 ' + x.name + ' Summary', false)}${
-            evSort(eventsOfSub(reg.regionId, x.id)).map(e=>evOpt(e, ind)).join('')}</optgroup>`).join('') +
+        return subs.map(x=>`<optgroup label="${esc(x.name)}">${subOpt(x)}${
+            evSort(subEvs(x.id)).map(e=>evOpt(e, ind)).join('')}</optgroup>`).join('') +
           (rest.length ? `<optgroup label="${esc(reg.name)}, general">${rest.map(e=>evOpt(e)).join('')}</optgroup>` : '') +
           opt('__new','＋ New event…',false);
       };
-      if(su) h += CRUMB_SEP + crumbLink(su.name, `data-act="gosub" data-id="${esc(su.id)}"`,
-        {attrs:'data-act="pickloc"', opts: opt(reg.whLoc, reg.name + ' Summary', false) + subs.map(x=>opt('__sub:' + x.id, x.name, x.id===su.id)).join('')},
-        CUR_LEVEL==='region');
-      if(CUR_LEVEL==='event'){
+      const suWh = su && subWarehouse(reg.regionId, su.id);
+      if(su) h += CRUMB_SEP + crumbLink(su.name, suWh ? `data-act="goevent" data-id="${esc(suWh.eventId)}"` : `data-act="gosub" data-id="${esc(su.id)}"`,
+        {attrs:'data-act="pickloc"', opts: opt(reg.whLoc, reg.name + ' Summary', false) + subs.map(x=>{ const w = subWarehouse(reg.regionId, x.id);
+          return opt(w ? w.eventId : '__sub:' + x.id, x.name, x.id===su.id); }).join('')},
+        CUR_LEVEL==='region' || (!!suWh && CUR_LOC===suWh.eventId));
+      if(CUR_LEVEL==='event' && !(suWh && CUR_LOC===suWh.eventId)){
         const ev = (STATE.events||[]).find(e=>e.eventId===CUR_LOC);
         h += CRUMB_SEP + crumbLink((ev ? ev.name : locName(CUR_LOC)) + mark(closureOf(CUR_LOC)), 'data-act="goevent"',
           {attrs:'data-act="pickloc"', opts:placeOpts(su ? su.id : '')}, true);
@@ -6210,9 +6234,10 @@ function renderTotals(){
       // Uncategorized sales' books are Big Books sold (b293).
       const unc = s.filter(isUncat), uncN = uncatBooks(unc);
       big.sold += uncN; aotm.sold += uncatBooks(unc, 'aotm');
-      return tile('', 'Big Books', big)
-        + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '')
-        + tile('aotm', 'AoTM', aotm);
+      // AoTM first (b297, Gita); Other only when there is some.
+      return tile('aotm', 'AoTM', aotm)
+        + tile('', 'Big Books', big)
+        + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '');
     })()}
     ${hideMoney() ? '' : `
     ${(function(){
@@ -6222,6 +6247,15 @@ function renderTotals(){
          (no words, just their colours), then Net Sales. */
       const cs = scopedCosts(), cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
       const du = s.filter(x=>x.type==='DONATION' && received(x)).reduce((t,x)=>t+saleUsd(x), 0);
+      /* At Earthly HQ only, Net Sales is the big number and Total Collections
+         the smaller one (b297, Gita). */
+      const net = totUsd-cu-du;
+      if(isHQ()) return `<div class="tcard usd tc-coll">
+      <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">$${fmt(net)}</div></div>
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Costs </span>−$${fmt(cu)}</div>` : ''}${
+        du ? `<div class="sub-don"><span class="tc-w">Donations </span>$${fmt(du)}</div>` : ''}</div>
+      <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
+      <div class="tc-q4"><div class="label">Total Collections</div><div class="tc-sm">$${fmt(totUsd)}</div></div></div>`;
       return `<div class="tcard usd tc-coll">
       <div class="tc-q1"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div></div>
       <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Costs </span>−$${fmt(cu)}</div>` : ''}${
@@ -6229,8 +6263,8 @@ function renderTotals(){
       <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
       <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">$${fmt(totUsd-cu-du)}</div></div></div>`;
     })()}
-    <div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
-      <div class="sub">${money(due)||'nothing outstanding'}</div></div>`}`;
+    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
+      <div class="sub">${money(due)}</div></div>` : ''}`}`;
 }
 
 function renderInventory(){
@@ -10726,13 +10760,13 @@ const FIN_M = [
   {k:'net', l:'Net'}, {k:'margin', l:'Margin', pct:true}, {k:'reimb', l:'Pending Reimbursements'}];
 const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
 function finAgg(sales, exps){
-  const a = {bb:0, bbg:0, bbu:0, av:0, avg:0, avu:0, books:0, gifts:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0,
+  const a = {bb:0, bbg:0, bbu:0, av:0, avg:0, avu:0, ot:0, otg:0, otu:0, books:0, gifts:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0,
     cur:{coll:{}, don:{}, exp:{}}};
   const addCur = (o, c, v) => { if(c && v) o[c] = (o[c]||0) + v; };
   sales.forEach(x=>{
     if(!x.con) Object.keys(x.cur||{}).forEach(c=>{ addCur(a.cur.coll, c, x.cur[c]); if(x.k==='DONATION') addCur(a.cur.don, c, x.cur[c]); });
     // Which figures hold dollars worked out from a rate (~).
-    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
+    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(x.c==='other') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
     const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0)), qa = x.qa || 0;
     if(x.g) a.gifts += n + qa; else a.books += n + qa;
@@ -10745,6 +10779,7 @@ function finAgg(sales, exps){
     if(qa){ const sh = qa / (n + qa); a.av += qa; a.avu += x.gu * sh; a.bb += n; a.bbu += x.gu * (1 - sh);
       if(x.ue && x.gu > 0.004) a.eAv = 1; return; }
     if(x.c==='aotm'){ if(x.g) a.avg += n; else { a.av += n; a.avu += x.gu; } }
+    else if(x.c==='other'){ if(x.g) a.otg += n; else { a.ot += n; a.otu += x.gu; } }
     else { if(x.g) a.bbg += n; else { a.bb += n; a.bbu += x.gu; } }
   });
   a.gross = a.coll + a.pend;
@@ -10941,11 +10976,25 @@ function finCurs(o){
 /* The Overview's seven figures, in Gita's order. Each gives its heading, its
    figure and the smaller line beneath. Used by the tiles, the table and the
    WhatsApp report, so the three always say the same. */
+/* The Overview table's columns: [group, label, value of an aggregate]. */
+function finOvwCols(){
+  const n = v => ({v: fmt(v)}), cat = (g, k) => [
+    {g, l:'Sold', f:a=>n(a[k])}, {g, l:'Gifted', f:a=>n(a[k+'g'])}, {g, l:'Distributed', f:a=>n(a[k] + a[k+'g'])},
+    {g, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u'], a['e' + k[0].toUpperCase() + k[1]])})}];
+  return [...cat('Big Books', 'bb'), ...cat('Adventures', 'av'), ...cat('Other', 'ot'),
+    {l:'Total Gross', cls:'fin-big', f:a=>finGrossParts(a)},
+    {l:'Donations', f:a=>({v:finUsd(a.don, a.eDon)})},
+    {l:'Pending Payments', f:a=>({v:finUsd(a.pend, a.ePend)})},
+    {l:'Expenses', f:a=>finExpParts(a)},
+    {l:'Net', cls:'fin-big', f:a=>Object.assign(finNetParts(a), {neg: a.net < -0.004})},
+    {l:'Margin', cls:'fin-mg', f:a=>({v: a.margin===null ? '—' : finVal({pct:true}, a.margin), neg: a.margin!==null && a.margin < 0})}];
+}
 function finOverviewFigs(a){
   const g = finGrossParts(a), e = finExpParts(a), n = finNetParts(a);
   return [
     {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu, a.eBb), sub:finDist(a.bb, a.bbg)},
     {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu, a.eAv), sub:finDist(a.av, a.avg)},
+    ...(a.ot || a.otg ? [{k:'ot', l:'Other Sold', v:finUsd(a.otu, a.eOt), sub:finDist(a.ot, a.otg)}] : []),
     {k:'don',  l:'Donations',         v:finUsd(a.don, a.eDon), sub:'', cur:finCurs(a.cur.don)},
     {k:'pend', l:'Pending Payments',  v:finUsd(a.pend, a.ePend), sub:''},
     {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
@@ -11002,17 +11051,26 @@ function finOverviewHTML(){
   const O = finOverviewRows(), a = O.total, figs = finOverviewFigs(a);
   const tiles = figs.map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
     <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${finSubH(m.sub)}</div>` : ''}${m.cur ? `<div class="fin-ts fin-cur">${esc(m.cur)}</div>` : ''}${finExHTML(m, 'fin-ts')}</div>`).join('');
-  const cell = m => `<td data-l="${esc(m.l)}"><div>${m.v}</div>${m.sub ? `<div class="fin-cs">${finSubH(m.sub)}</div>` : ''}${finExHTML(m, 'fin-cs')}</td>`;
+  /* The table under the totals (b297, Gita): for Big Books, Adventures and
+     Other each Sold, Gifted, Distributed and Gross; then Total Gross, the
+     rest, and Margin in a column of its own. It scrolls sideways when it
+     cannot fit. */
+  const cols = finOvwCols();
+  const cell = c => r => { const m = c.f(r.a); return `<td class="${c.cls||''}${m.neg ? ' fin-neg' : ''}"><div>${m.v}</div>${finExHTML(m, 'fin-cs')}</td>`; };
   const row = (r, cls) => `<tr${cls?` class="${cls}"`:''}><th class="no-edit">${r.go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(r.go)}">${esc(r.label)}</button>` : esc(r.label)}</th>
-      ${finOverviewFigs(r.a).map(cell).join('')}</tr>`;
+      ${cols.map(c=>cell(c)(r)).join('')}</tr>`;
+  const groups = [];
+  cols.forEach(c=>{ const g = groups[groups.length-1]; if(g && c.g && g.g===c.g) g.n++; else groups.push({g:c.g||'', n:1, cls:c.cls||''}); });
   return `${finFiltersHTML(FIN.f)}
     <div class="fin-tiles">${tiles}</div>
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ~ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
 
     <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}</h3>
-    <div class="fin-scroll fin-ovw"><table class="cash-tbl fin-tbl"><thead><tr><th></th>${figs.map(m=>`<th>${esc(m.l)}</th>`).join('')}</tr></thead>
-      <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${figs.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
+    <div class="fin-scroll fin-ovw"><table class="cash-tbl fin-tbl"><thead>
+      <tr class="fin-gh"><th rowspan="2"></th>${groups.map(g=>g.g ? `<th colspan="${g.n}" class="fin-g">${esc(g.g)}</th>` : `<th class="${g.cls}"></th>`).join('')}</tr>
+      <tr>${cols.map(c=>`<th class="${c.cls||''}">${esc(c.l)}</th>`).join('')}</tr></thead>
+      <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${cols.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
       <tfoot>${row({label:'Total', go:'', a}, 'fin-tot')}</tfoot></table></div>`;
 }
 
@@ -11849,8 +11907,8 @@ function eventsOfSubAny(rid, sid){
   return (FIN.D ? FIN.D.events : []).filter(e=>e.regionId===rid && E[e.id]===sid).map(e=>e.id);
 }
 /* The place being looked at, as season / region / event ids. */
-function finScopeF(){
-  const D = FIN.D, id = FINP.scope, out = { s:'', r:'', e:'', f:'', u:'', uE:null };
+function finScopeF(at){
+  const D = FIN.D, id = at === undefined ? FINP.scope : at, out = { s:'', r:'', e:'', f:'', u:'', uE:null };
   if(!D || !id) return out;
   // A sub-region (b280): its region, and its events to count.
   const su = finSubOf(id);
@@ -12050,21 +12108,26 @@ function finNav(){
         const subs = finSubsOf(f.r), evSub = f.e ? subOfEvent(f.e) : '', inSub = f.u || (subs.some(x=>x.id===evSub) ? evSub : '');
         const evSort = list => closedSort(list, e=>e.closed || regShut(e.regionId));
         const evOpt = (e, ind) => opt(e.id, (ind||'') + e.name + fMark('e', e), e.id===f.e);
-        const evsOf = sid => evSort(D.events.filter(e=>e.regionId===f.r && (!sid || eventsOfSubAny(f.r, sid).includes(e.id))));
+        // A sub-region's own old warehouse is its Summary here too (b297, as on the Sales side).
+        const subWh = sid => { const x = subs.find(y=>y.id===sid); return x ? D.events.find(e=>e.regionId===f.r && /^wh_/.test(e.id) && e.name===x.name + ' (warehouse)' && eventsOfSubAny(f.r, sid).includes(e.id)) : null; };
+        const whIds = new Set(subs.map(x=>subWh(x.id)).filter(Boolean).map(e=>e.id));
+        const subOptF = (x, label) => { const w = subWh(x.id); return opt(w ? w.id : x.id, label, false); };
+        const evsOf = sid => evSort(D.events.filter(e=>e.regionId===f.r && !whIds.has(e.id) && (!sid || eventsOfSubAny(f.r, sid).includes(e.id))));
         const placeOpts = sid => {
-          if(sid || !subs.length) return evsOf(sid).map(e=>evOpt(e)).join('');
+          if(sid || !subs.length) return (sid && subWh(sid) ? subOptF(subs.find(x=>x.id===sid), '🗺 ' + subs.find(x=>x.id===sid).name + ' Summary') : '') + evsOf(sid).map(e=>evOpt(e)).join('');
           const inAny = new Set(subs.flatMap(x=>eventsOfSubAny(f.r, x.id)));
           const rest = evsOf('').filter(e=>!inAny.has(e.id)), ind = '    ';
-          return subs.map(x=>`<optgroup label="${esc(x.name)}">${opt(x.id, '🗺 ' + x.name + ' Summary', false)}${evsOf(x.id).map(e=>evOpt(e, ind)).join('')}</optgroup>`).join('') +
+          return subs.map(x=>`<optgroup label="${esc(x.name)}">${subOptF(x, '🗺 ' + x.name + ' Summary')}${evsOf(x.id).map(e=>evOpt(e, ind)).join('')}</optgroup>`).join('') +
             (rest.length ? `<optgroup label="${esc(rg.name || '')}, general">${rest.map(e=>evOpt(e)).join('')}</optgroup>` : '');
         };
         const su = subs.find(x=>x.id===inSub);
-        if(su) h += CRUMB_SEP + crumbLink(su.name, `data-act="fingo" data-scope="${esc(su.id)}"`,
-          {attrs:'data-fpick="u"', opts: opt(f.r, (rg.name || '') + ' Summary', false) + subs.map(x=>opt(x.id, x.name, x.id===su.id)).join('')}, !f.e);
-        if(f.e){
+        const suWh = su && subWh(su.id), atWh = !!suWh && f.e===suWh.id;
+        if(su) h += CRUMB_SEP + crumbLink(su.name, `data-act="fingo" data-scope="${esc(suWh ? suWh.id : su.id)}"`,
+          {attrs:'data-fpick="u"', opts: opt(f.r, (rg.name || '') + ' Summary', false) + subs.map(x=>{ const w = subWh(x.id); return opt(w ? w.id : x.id, x.name, x.id===su.id); }).join('')}, !f.e || atWh);
+        if(f.e && !atWh){
           const ev = D.events.find(x=>x.id===f.e) || {};
           h += CRUMB_SEP + crumbLink((ev.name || '') + fMark('e', ev), `data-act="fingo" data-scope="${esc(f.e)}"`, {attrs:'data-fpick="e"', opts:placeOpts(inSub)}, true);
-        }else if(evsOf(inSub).length || subs.length) h += CRUMB_SEP + crumbNext('data-fpick="e" title="Open an event"', opt('', 'Events…', true) + placeOpts(inSub));
+        }else if(evsOf(inSub).length || (subs.length && !inSub)) h += CRUMB_SEP + crumbNext('data-fpick="e" title="Open an event"', opt('', 'Events…', true) + placeOpts(inSub));
       }
     }
   }
@@ -12099,6 +12162,7 @@ function finNav(){
 function finRender(){
   finRender0();
   try{ if(FINP.on) applyLabels(); }catch(e){}
+  try{ if(FINP.on) redNegatives($('#fpBody')); }catch(e){}
 }
 function finRender0(){
   if(!FINP.on) return;
@@ -12181,7 +12245,9 @@ function finConvModal(edit){
         <div class="row2">
           <div class="field cost-amt"><label>Took</label><div class="cost-amt-row">
             <input id="cvAmt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.amt||'')}" placeholder="0.00">
-            <select id="cvCur">${curs.map(c=>`<option ${c===e.cur?'selected':''}>${esc(c)}</option>`).join('')}</select></div></div>
+            <select id="cvCur">${curs.map(c=>`<option ${c===e.cur?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+            <label class="exp-rb cv-all"><input type="checkbox" id="cvAll"> Total collections</label>
+            <div class="muted-note" id="cvAllN"></div></div>
           <div class="field"><label>Dollars received</label><input id="cvUsd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.usd||'')}" placeholder="$ 0.00"></div>
         </div>
         <div class="row2">
@@ -12196,10 +12262,31 @@ function finConvModal(edit){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   if(!may) return;
   let place = e.place || '';
-  comboBind('cvPlace', items, place, v=>{ place = v; });
+  /* "Total collections" (b297, Gita): fills in everything collected at that
+     place in that currency, ready to be converted to dollars. */
+  const totalAt = (at, cur) => { const f = finScopeF(at);
+    return Math.round(finFiltered(f).sales.filter(x=>!x.con).reduce((t,x)=>t + ((x.cur||{})[cur]||0), 0) * 100) / 100; };
+  const fillAll = () => {
+    const on = $('#cvAll').checked, cur = $('#cvCur').value;
+    $('#cvAllN').textContent = on && !place ? 'Choose where the money came from first.' : '';
+    if(on && place) $('#cvAmt').value = totalAt(place, cur) || '';
+  };
+  comboBind('cvPlace', items, place, v=>{ place = v; fillAll(); });
+  $('#cvAll').addEventListener('change', fillAll);
+  $('#cvCur').addEventListener('change', fillAll);
+  $('#cvAmt').addEventListener('input', ()=>{ $('#cvAll').checked = false; $('#cvAllN').textContent = ''; });
   const done = r => { FIN.D = r.result; finRender(); finConvModal(); };
   $('#cvSave').addEventListener('click', async ()=>{
     const b = $('#cvSave'); b.disabled = true;
+    // A rate far from the day's usual one is almost always a typing slip (b296: 250.13 ден for $253 made Macedonia's dollars 55 times too big).
+    const amt = Number($('#cvAmt').value), usd = Number($('#cvUsd').value), cur = $('#cvCur').value, day = $('#cvDate').value;
+    if(amt > 0 && usd > 0 && /^\d{4}-\d{2}-\d{2}$/.test(day)){
+      const r = await fxOn(day, cur, 'USD').catch(()=>null);
+      const usual = r && r.rate > 0 ? amt * r.rate : 0;
+      if(usual > 0 && (usd > usual * 2 || usd < usual / 2) && !confirm(`Please check the numbers. ${cashFmt(amt, cur)} is usually about ${finUsd(Math.round(usual * 100) / 100)}, not ${finUsd(usd)}.\n\nSave it anyway?`)){
+        b.disabled = false; return;
+      }
+    }
     try{ done(await post({action:'finConvSet', id:e.id||'', place, cur:$('#cvCur').value, amt:Number($('#cvAmt').value), usd:Number($('#cvUsd').value),
       date:$('#cvDate').value, note:$('#cvNote').value})); toast('Written down. Those dollars are used from now on.'); }
     catch(err){ b.disabled = false; $('#modalErr').textContent = err.message; }
@@ -12827,7 +12914,7 @@ function finWaVisual(L){
    Visualize is no longer a section of its own: under all the figures and
    lists, each screen draws what it shows as pictures. Everything comes from
    the same figures the screen uses, in dollars at each place's own rates. */
-const FIN_C = { in:'#1baf7a', out:'#eb6834', net:'#2a78d6', pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', don:'#eda100' };
+const FIN_C = { in:'#1baf7a', out:'#eb6834', net:'#2a78d6', pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', ot:'#17a2a2', don:'#eda100' };
 function finShare(rows){
   const total = rows.reduce((t,r)=>t+r.v, 0);
   rows.forEach((r,i)=>{ r.c = r.c || VIZ_COLORS[i % VIZ_COLORS.length]; r.p = total ? r.v/total*100 : 0; });
@@ -12894,7 +12981,7 @@ function finChartsHTML(){
     /* Income by Source (b284, Gita): one ring of what has come in, called
        Gross. While payments are pending, a second ring beside it with them
        added, called Expected Gross — never "Expected" when nothing is owed. */
-    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
+    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Other', v:a.otu, c:FIN_C.ot, e:a.eOt}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
     const pend = finPending(a), owe = finToRepay(a);
     if(pend){
       out.push(finChart('Income by Source (Actual)', finDonutHTML(src.map(r=>Object.assign({}, r)).filter(r=>r.v > 0.004), 'Income by Source (Actual)', 'Gross')));
@@ -13003,10 +13090,12 @@ const finMoney = v => v==null ? '' : Math.round(v*100)/100;
 function finCsvDownload(part){
   if(part==='overview'){
     const O = finOverviewRows();
-    const head = ['', 'Big Books Sold (USD)', 'Big Books Sold', 'Big Book Gifts', 'Adventures Sold (USD)', 'Adventures Sold', 'Adventure Gifts', 'Donations (USD)',
-      'Pending Payments (USD)', 'Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)'];
-    const line = (l, a) => [l, finMoney(a.bbu), a.bb, a.bbg, finMoney(a.avu), a.av, a.avg, finMoney(a.don), finMoney(a.pend), finMoney(a.coll), finMoney(a.gross),
-      finMoney(a.spent), finMoney(a.exp), finMoney(a.net), finMoney(a.netExp), a.margin==null ? '' : Math.round(a.margin*10)/10];
+    // The same columns as the table on screen (b297).
+    const kinds = [['Big Books', 'bb'], ['Adventures', 'av'], ['Other', 'ot']];
+    const head = [''].concat(...kinds.map(([g])=>[g + ' Sold', g + ' Gifted', g + ' Distributed', g + ' Gross (USD)']), ['Donations (USD)',
+      'Pending Payments (USD)', 'Total Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)']);
+    const line = (l, a) => [l].concat(...kinds.map(([, k])=>[a[k], a[k+'g'], a[k] + a[k+'g'], finMoney(a[k+'u'])]), [finMoney(a.don), finMoney(a.pend), finMoney(a.coll), finMoney(a.gross),
+      finMoney(a.spent), finMoney(a.exp), finMoney(a.net), finMoney(a.netExp), a.margin==null ? '' : Math.round(a.margin*10)/10]);
     return finCsvSave('Finance Overview', [head].concat(O.rows.map(r=>line(r.label, r.a)), [line('Total', O.total)]));
   }
   const expRow = x => [x.date, x.desc, x.who, x.type, x.placeLabel, finMoney(Number(x.amt)), x.cur, finMoney(x.usd), x.kind==='reimburse' ? 'To be paid back' : 'Record',
@@ -15964,17 +16053,22 @@ function supUpload(){
    drop-down of every place (each region's warehouse, anyone storing books, its
    open events), starting at wherever you are in the app; each says how many
    copies it has. Then Deliver. Another region, or outside the tour, below. */
-function deliverPickModal(id, bundle){
+async function deliverPickModal(id, bundle){
   const members = bundle
     ? (STATE.sales||[]).filter(s=>s.bundle===bundle && s.type==='PREORDER' && !s.delivered)
     : [(STATE.sales||[]).find(s=>s.saleId===id)].filter(Boolean);
   if(!members.length) return;
   const x = members[0], n = members.length;
   const need = {}; members.forEach(m=>need[m.bookId]=(need[m.bookId]||0)+1);
+  /* Earthly HQ's warehouse can fulfil it too (b297, Gita: "Earthly HQ has many");
+     its stock lives outside the season, so it is read from there. */
+  const hq = await hqStockMap();
+  const invQty = (loc, bid) => hq && loc===HQ_WH ? (hq[bid]||0) : window.invQty(loc, bid);
   const covers = loc => Object.keys(need).every(bid=>invQty(loc,bid)>=need[bid]);
   const has = loc => Object.keys(need).reduce((t,bid)=>t+Math.min(need[bid], Math.max(0, invQty(loc,bid))), 0);
   const tag = loc => covers(loc) ? (n>1 ? 'has all ' + n : invQty(loc, x.bookId) + ' in stock') : has(loc) ? 'not enough' : 'none here';
   const items = [];
+  if(hq) items.push({v:HQ_WH, l:'Earthly HQ — Warehouse', shown:'Earthly HQ — Warehouse', kind:'season', up:[], tag:tag(HQ_WH)});
   regionsList().forEach(r=>{
     items.push({v:r.whLoc, l:r.name + ' — Warehouse', shown:r.name + ' — Warehouse', kind:'region', up:[], tag:tag(r.whLoc)});
     holdersOf(r.regionId).forEach(h=>items.push({v:h.holderId, l:h.name + ' (storing books)', kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(h.holderId)}));
@@ -16018,12 +16112,23 @@ function deliverPickModal(id, bundle){
       members.forEach(mm=>{
         const t=(st.sales||[]).find(v=>v.saleId===mm.saleId);
         if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; t.dfrom=from; }
-        if(fromStock) invAdd(st, from, mm.bookId, -1);
+        if(fromStock && from!==HQ_WH) invAdd(st, from, mm.bookId, -1);
       });
     }, 'Delivered');
   };
   $('#dvGo').addEventListener('click', ()=>send(true));
   $('#modal').querySelector('[data-out]').addEventListener('click', ()=>send(false));
+}
+/* Earthly HQ's warehouse stock, by title, seen from a season (null at HQ itself
+   or when it cannot be read). */
+async function hqStockMap(){
+  if(isHQ()) return null;
+  try{
+    const d = await post({action:'getState', season:HQ_ID});
+    const st = d && d.state; if(!st || st.activeSeason!==HQ_ID) return null;
+    const m = {}; (st.inventory||[]).forEach(r=>{ if(r.location===HQ_WH) m[r.bookId] = (m[r.bookId]||0) + (Number(r.qty)||0); });
+    return m;
+  }catch(e){ return null; }
 }
 function deliverModal(id, bundle){
   if(PRACTICE) return deliverPickModal(id, bundle);
@@ -17970,8 +18075,8 @@ function deleteSeasonNow(x){
   commit(payload, st=>dropSeason(st, sid), 'Season deleted', {anySeason:true});
 }
 
-/* A season's name takes you to its Warehouse Overview (b291, live in b295; Gita
-   chose this on the card): the season's page opens scrolled to it, unfolded.
+/* A season's name opens its page with the Warehouse Overview unfolded (b291,
+   live in b295); since b297 (Gita) the page no longer scrolls to it.
    Regions already open at their warehouse. */
 let WO_PEND = false;
 function woJump(){
@@ -17980,7 +18085,7 @@ function woJump(){
     if(CUR_LEVEL!=='season' || isHQ()) return;
     const p = $('#whOverviewPanel'); if(!p || p.style.display==='none') return;
     if(isFolded('warehouses')){ setFolded('warehouses', false); applyFolds(); }
-    p.scrollIntoView({block:'start'});
+    // No scrolling (b297, Gita): the page stays at the height you were at.
   }, 60);
 }
 async function switchSeason(id){
@@ -21192,7 +21297,7 @@ document.addEventListener('click',e=>{
   // The path's links (b293): a region opens whole, a sub-region opens as itself.
   if(a==='goregion'){ setSub('', t.dataset.id); goTo('region', t.dataset.id); return; }
   if(a==='gosub'){ setSub(t.dataset.id, CUR_REGION); goTo('region', CUR_REGION); return; }
-  if(a==='goevent'){ renderAll(); window.scrollTo(0, 0); return; }
+  if(a==='goevent'){ if(t.dataset.id && t.dataset.id!==CUR_LOC){ goTo('event', t.dataset.id); return; } renderAll(); window.scrollTo(0, 0); return; }
   if(a==='gohq'){ if(!isHQ()) switchSeason(HQ_ID); return; }
   // From HQ's summaries: open that season (or HQ's own row: stay here).
   if(a==='goseasonid'){

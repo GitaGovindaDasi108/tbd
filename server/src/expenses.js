@@ -562,18 +562,19 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? String(p.date) : new Date(now()).toISOString().slice(0, 10);
     const all = getConvs(), id = clip(p.id, 40) || 'V' + Math.random().toString(36).slice(2, 10);
     const row = { id, place: pl.id, cur, amt, usd, date, note: clip(p.note, 200), by: w.name, at: new Date(now()).toISOString() };
-    const i = all.findIndex(c => c.id === id);
+    const i = all.findIndex(c => c.id === id), was = i >= 0 ? all[i] : null;
     if (i >= 0) all[i] = row; else all.push(row);
     kv.setProp('finConv', JSON.stringify(all.slice(-2000)));
+    // Delete in the Activity Log (b296, Gita): an added one goes, a changed one goes back to what it was.
     actLog(w, { seasonId: pl.seasonId, regionId: pl.regionId, location: pl.id }, 'finConv',
-      'Dollars received: ' + amt + ' ' + cur + ' from ' + labelOf(w.P, pl) + ' fetched $' + usd, null);
+      'Dollars received: ' + amt + ' ' + cur + ' from ' + labelOf(w.P, pl) + ' fetched $' + usd, { type: 'exp', op: 'convSet', id, was });
     return finData(w);
   }
   function convDel(w, p) {
     if (!mayPay(w)) throw new Error('Only Finance can change dollars received.');
     const id = clip(p.id, 40), all = getConvs(), gone = all.find(c => c.id === id);
     kv.setProp('finConv', JSON.stringify(all.filter(c => c.id !== id)));
-    if (gone) actLog(w, {}, 'finConv', 'Dollars received removed: ' + gone.amt + ' ' + gone.cur + ' fetched $' + gone.usd, null);
+    if (gone) actLog(w, {}, 'finConv', 'Dollars received removed: ' + gone.amt + ' ' + gone.cur + ' fetched $' + gone.usd, { type: 'exp', op: 'convDel', id, was: gone });
     return finData(w);
   }
   function cleanSeries(o) {
@@ -970,7 +971,12 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const u = parse(e.undo, null);
     if (!u || u.type !== 'exp') throw new Error('This one cannot be undone here.');
     fresh();
-    if (u.op === 'add') remove(w, { id: u.id });
+    if (u.op === 'convSet' || u.op === 'convDel') {
+      if (!mayPay(w)) throw new Error('Only Finance can change dollars received.');
+      const all = getConvs().filter(c => c.id !== u.id);
+      if (u.was && u.was.id) all.push(u.was);
+      kv.setProp('finConv', JSON.stringify(all.slice(-2000)));
+    } else if (u.op === 'add') remove(w, { id: u.id });
     else if (u.op === 'mark') mark(w, { id: u.id, status: 'pending' });
     else if (u.op === 'delete') {
       if (!mayPay(w) && !mine(w, u.row)) throw new Error('That expense is not yours to bring back.');

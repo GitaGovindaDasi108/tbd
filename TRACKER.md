@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b295**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b297**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,28 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b297
+Live app changes (Gita, 2026-10-23 09:47 IST). Folds in b296 (PR #97, Live app emergency).
+- Finance Dollars received: "Total collections" tick fills Took with the place's collections in that currency (totalAt via finScopeF(at)).
+- Negative figures red everywhere (redNegatives over NET_SEL; .fin-neg).
+- Finance table headings sit right over their figures.
+- Finance Overview table: groups Big Books / Adventures / Other (Sold, Gifted, Distributed, Gross), then Total Gross, Donations, Pending, Expenses, Net, Margin; two-row header, scrolls sideways with place names sticky. "Other" is no longer counted inside Big Books (finAgg ot/otg/otu). CSV uses the same columns.
+- Earthly HQ totals: Net Sales big, Total Collections small.
+- Totals bar: flex, each card as wide as it needs, spans the row; AoTM first; Other and Total Pending hidden at 0.
+- Switching season keeps the scroll position (woJump no longer scrolls).
+- Finance place search sits level with the path (28px).
+- Sub-regions: "<sub> Summary" opens the sub-region's warehouse event (subWarehouse); the warehouse isn't listed twice. Same in Finance.
+- Srila Prabhupada's picture is the same size as Gurudeva's (265:360, 84px high).
+- Practice: Deliver/Fulfil can take stock from Earthly HQ (hqStockMap fetches wh_hq).
+- Tests: test/browser-b297.js (16), browser-subregions (+2), browser-finance and browser-expenses updated.
+
+## Done in b296
+
+- **Dollars received can't silently blow up a place's figures** (Gita, live emergency, 2026-10-23): she wrote down 250.13 ден fetched $253 at Macedonia (1 ден = $1.01, real ≈ $0.018), and every denar sale there counted about 55× too high. Removing the entry (🗑 in Dollars received) restores it, since `finConv` is applied at read time.
+  - Before saving, `finConvModal` asks `fxOn(date, cur, 'USD')`; if the dollars are more than double or less than half the usual amount it asks "Please check the numbers. X is usually about $Y, not $Z. Save it anyway?". No rate found: saves without asking.
+  - Activity Log Delete: `convSet` / `convDel` log `{type:'exp', op:'convSet'|'convDel', id, was}`; `expUndo` puts `finConv` back (an added one goes, a changed one goes back, a removed one returns). Finance only.
+  - Tests: browser-finance +4 (asks, Cancel saves nothing, OK saves, Activity Log Delete restores). SERVER_BUILD b296.
 
 ## Done in b295
 
