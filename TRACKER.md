@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b300**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b301**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,20 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b301
+Live app changes (Gita, 2026-10-23 18:49 IST).
+- Totals bar: every card the same width on one line (`layoutTotals`): as they are, then `.tot-sq`, then the totals card's parts in fewer columns (`.tc-st1` "q1 q2/q3/q4", `.tc-st2` one column), each also with `.tot-sq`. A phone: book cards share their line(s) equally; Pending Payments takes the empty place beside the last book card (totals card `order:1`, full width beneath); otherwise totals and Pending share a line.
+- Totals cards and Finance's currency lines (`finCurs`): no .00, real cents kept (`usdT`, `cashTrim`): $11,099 and $6,283.99.
+- Book tiles: "Estimated: N" / "Known: M" (M = sold − estimated) top right on a computer; "(N Estimated)" / "(M Known)" on a phone.
+- `.value-pre` (pre-orders) back underneath the number sold, at every width; the b300 nowrap is gone.
+- Earthly HQ Q2: "Expenses"/"Donations" on a computer (`.tc-w`), "Exp:"/"Don:" on a phone (`.tc-ab`).
+- Top bar live: `hdr2 = SIDE_NAV` (was practice only): only the portal button and the Activity Log; your name above Sign Out, Report in Advanced.
+- WhatsApp Reports live (replaces Specialty Reports and Report in the menu); its Data To Include boxes start empty every time (nothing remembered).
+- Uncategorized Sales live (`UNCAT_ON = true`). Calculator: a Confirmed box with a number is the anchor, the Estimated one always follows; else the last typed; else money as Big Books. A Confirmed box and the box being typed in are never filled by the app. No "÷" sum note; only the two "Based on …" notes.
+- Closed region or event: `CLOSED_STOP` acts (sell, preorder, bundle, multi, donation, uncat, salesupload, stock, addstock, substock, transfer, xfer, externaltransfer, editsale, deletesale, delsale, editbundle) stop at the top of the click handler with "<Name> is closed. If you wish to enter information here, it must be re-opened." Delivering and marking paid still work.
+- SERVER_BUILD b301.
+- Tests: browser-b300 (53), browser-b293, b297, round7, finance updated.
 
 ## Done in b300
 Live app changes (Gita, 2026-10-23 16:20 IST).

@@ -69,15 +69,15 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   const books = cs.filter(x => !/usd|pend/.test(x.cls)), coll = cs.find(x => /tc-coll/.test(x.cls));
   t.push(['a Pending Payments card shows', cs.some(x => /Pending/.test(x.l))]);
   t.push(['computer: every card on one line, Pending Payments included (' + cs.map(x => x.l + ' ' + x.w).join(', ') + ')', new Set(cs.map(x => x.top)).size === 1]);
-  t.push(['the book cards are all one width', books.length >= 2 && Math.max(...books.map(x => x.w)) - Math.min(...books.map(x => x.w)) <= 1]);
-  t.push(['the totals card takes the rest: wider than any other', coll && cs.every(x => x === coll || x.w < coll.w)]);
+  t.push(['b301: every card the same width', Math.max(...cs.map(x => x.w)) - Math.min(...cs.map(x => x.w)) <= 1]);
   const tot = await page.$eval('#totals', e => e.innerText);
-  t.push(['whole numbers only on the totals cards (no cents)', !/\d\.\d\d\b/.test(tot) && /\$\d/.test(tot)]);
+  t.push(['b301: no .00 on the totals cards, real cents kept (10.60 € shows as 10.60 €)', !/\.00\b/.test(tot) && /10\.60/.test(tot)]);
   t.push(['≈ marks estimated dollars, not ~', /≈\$/.test(tot) && !/~/.test(tot)]);
   const big = books.find(x => /Big Books/i.test(x.l)), av = books.find(x => /AoTM/i.test(x.l));
-  t.push(['Big Books: "Estimated: 5" top right', /Estimated: 5/.test(big.txt) && await page.evaluate(() => { const e = document.querySelector('#totals .tcard.has-est .tc-est'), v = e && e.closest('.tcard').querySelector('.value');
+  t.push(['Big Books: "Estimated: 5" then "Known: N" top right', /Estimated: 5\s*Known: \d+/.test(big.txt) && await page.evaluate(() => { const e = document.querySelector('#totals .tcard.has-est .tc-est'), v = e && e.closest('.tcard').querySelector('.value');
     return !!e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().left > v.getBoundingClientRect().left && e.getBoundingClientRect().top <= v.getBoundingClientRect().top; })]);
   t.push(['Adventures confirmed: no Estimated on the AoTM card', !/Estimated/.test(av.txt)]);
+  t.push(['b301: the pre-orders sit underneath the number sold', await page.evaluate(() => { const p = document.querySelector('#totals .value-pre'); return !!p && getComputedStyle(p).display === 'block'; })]);
   for (const w of [1150, 1400, 1700]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(350);
     const c2 = await cards(); t.push(['one line at ' + w + 'px too', new Set(c2.map(x => x.top)).size === 1]);
     const s = await spill(); t.push(['no overflow at ' + w + 'px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
@@ -87,18 +87,31 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   cs = await cards();
   const pb = cs.filter(x => !/usd|pend/.test(x.cls));
   t.push(['phone: the book cards share one width (' + cs.map(x => x.l + ' ' + x.w + '@' + x.top).join(', ') + ')', Math.max(...pb.map(x => x.w)) - Math.min(...pb.map(x => x.w)) <= 1]);
+  { const pd = cs.find(x => /Pending/.test(x.l)), last = pb[pb.length - 1], rows = new Set(pb.map(x => x.top)).size;
+    t.push(['b301: phone: Pending Payments in the empty place beside the last book card, when there is one', pb.length % Math.ceil(pb.length / rows) === 0 || (pd && pd.top === last.top)]); }
   t.push(['phone: "(5 Estimated)" in small print under the sold figure, not top right', await page.evaluate(() => { const e = document.querySelector('#totals .value-est'), q = document.querySelector('#totals .tc-est');
-    return !!e && getComputedStyle(e).display === 'block' && /\(5 Estimated\)/.test(e.textContent) && getComputedStyle(q).display === 'none' && parseFloat(getComputedStyle(e).fontSize) <= 11; })]);
+    return !!e && getComputedStyle(e).display === 'block' && /\(5 Estimated\)\s*\(\d+ Known\)/.test(e.innerText) && getComputedStyle(q).display === 'none' && parseFloat(getComputedStyle(e).fontSize) <= 11; })]);
   { const s = await spill(); t.push(['no overflow at 390px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
+  // b301: three book cards two to a line leave a place beside the third: Pending Payments goes there.
+  await page.setViewportSize({ width: 330, height: 900 }); await page.waitForTimeout(300);
+  t.push(['b301: phone, three book cards two to a line: Pending Payments beside the third, the totals card beneath', await page.evaluate(() => {
+    const box = document.querySelector('#totals'), bk = box.querySelector('.tc-book.has-est') || box.querySelector('.tc-book'), x = bk.cloneNode(true), y = { remove(){} };
+    x.querySelector('.label').textContent = 'Other'; box.insertBefore(x, bk); layoutTotals();
+    const cs = [...box.querySelectorAll(':scope > .tcard')], r = c => c.getBoundingClientRect(), bks = cs.filter(c => c.classList.contains('tc-book'));
+    const pend = box.querySelector('.pend'), coll = box.querySelector('.tc-coll'), lastB = bks[bks.length - 1];
+    const ok = bks.length === 3 && new Set(bks.map(c => Math.round(r(c).top))).size === 2 && Math.abs(r(pend).top - r(lastB).top) < 2 && r(coll).top > r(pend).bottom - 1;
+    const dbg = cs.map(c => c.querySelector('.label').textContent + '@' + Math.round(r(c).left) + ',' + Math.round(r(c).top) + ' w' + Math.round(r(c).width)).join(' | ');
+    x.remove(); y.remove(); renderTotals(); return ok || dbg; }).then(v => { if (v !== true) console.log('   layout:', v); return v === true; })]);
+  await page.setViewportSize({ width: 390, height: 900 }); await page.waitForTimeout(300);
 
   /* 4. Earthly HQ: Exp: and Don: in Q2, top right, on a phone too. */
   c({ action: 'donate', saleId: 'H1', location: 'wh_hq', legs: [{ type: 'Cash', cur: 'USD', amt: 7 }], name: 'Donor' }, 'HQ');
   c({ action: 'saveCost', id: 'cost_hq', amt: 3, cur: 'USD', category: 'Other', location: 'wh_hq' }, 'HQ');
   await page.evaluate(() => switchSeason(HQ_ID)); await page.waitForTimeout(1500);
   for (const w of [390, 1150]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(350);
-    t.push(['Earthly HQ at ' + w + 'px: Q2 reads Exp: and Don:, beside Net Sales on its right', await page.evaluate(() => { const q1 = document.querySelector('#totals .tc-hq .tc-q1'), q2 = document.querySelector('#totals .tc-hq .tc-q2');
-      if(!q1 || !q2) return false; const a = q1.getBoundingClientRect(), b = q2.getBoundingClientRect();
-      return /Exp:/.test(q2.innerText) && /Don:/.test(q2.innerText) && b.left >= a.right - 1 && b.top < a.bottom; })]);
+    t.push(['Earthly HQ at ' + w + 'px: Q2 reads ' + (w < 700 ? 'Exp: and Don:' : 'Expenses and Donations, spelled out') + ', beside Net Sales on its right', await page.evaluate(ph => { const q1 = document.querySelector('#totals .tc-hq .tc-q1'), q2 = document.querySelector('#totals .tc-hq .tc-q2');
+      if(!q1 || !q2) return false; const a = q1.getBoundingClientRect(), b = q2.getBoundingClientRect(), x = q2.innerText;
+      return (ph ? /Exp:/.test(x) && /Don:/.test(x) && !/Expenses/.test(x) : /Expenses/.test(x) && /Donations/.test(x) && !/Exp:/.test(x)) && b.left >= a.right - 1 && b.top < a.bottom; }, w < 700)]);
     const s = await spill(); t.push(['no overflow at Earthly HQ at ' + w + 'px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
   await page.evaluate(id => switchSeason(id), SA); await page.waitForTimeout(1500);
   await page.setViewportSize({ width: 1150, height: 900 }); await page.waitForTimeout(200);
@@ -106,7 +119,7 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   /* 5. The menu: WhatsApp Reports in practice; no Go to Sales Portal. */
   await page.evaluate(() => { ME = { universal: true, grants: [] }; renderAll(); }); await page.waitForTimeout(300);
   const menu = await page.evaluate(() => [...document.querySelectorAll('#sideNav .sn-item')].map(b => b.dataset.act));
-  t.push(['practice menu: WhatsApp Reports, and no separate Specialty Reports or Report', menu.includes('wareports') && !menu.includes('specreport') && !menu.includes('report')]);
+  t.push(['menu: WhatsApp Reports, and no separate Specialty Reports or Report', menu.includes('wareports') && !menu.includes('specreport') && !menu.includes('report')]);
   t.push(['no Go to Sales Portal row in the menu', !menu.includes('finleave')]);
 
   /* 6. WhatsApp Reports. */
@@ -116,6 +129,8 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   await page.click('#waLoc .pp-in'); await page.fill('#waLoc .pp-in', 'Harinam'); await page.waitForTimeout(150);
   t.push(['1. the location search finds an event', (await page.$$eval('#waLoc .pp-row[data-v]', rs => rs.map(r => r.textContent))).some(x => /Harinam Fair/.test(x))]);
   await page.click('#waLoc .pp-row[data-v="e:ev_b300"]'); await page.waitForTimeout(100);
+  t.push(['b301: every Data To Include box starts empty', await page.$$eval('#modal [data-wr]', cs => cs.length > 0 && cs.every(c => !c.checked))]);
+  for (const k of ['books', 'cash', 'pending', 'preorders', 'prepeople', 'stock']) await page.check('#modal [data-wr="' + k + '"]').catch(() => {});
   await page.click('#waGo'); await page.waitForTimeout(200);
   let rep = await page.$eval('#repText', e => e.value);
   t.push(['one place: its own report ("Harinam Fair Totals")', /^\*Harinam Fair Totals\*/.test(rep)]);
@@ -159,7 +174,29 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   await page.check('input[name="ucEstB"][value="0"]'); await page.fill('#ucN', '30'); await page.waitForTimeout(100);
   await page.fill('#ucN', ''); await page.click('#ucCom'); await page.fill('#ucN', '35'); await page.waitForTimeout(100);
   t.push(['Confirmed Big Books erased and retyped: the Adventures follow (' + Math.floor((2000 - 35 * 40) / ma) + ')', await val('#ucA') === String(Math.floor((2000 - 35 * 40) / ma))]);
+  // b301 (Gita): switching the buttons back and forth never stops it.
+  const aOf = n => String(Math.floor((2000 - n * 40) / ma)), nOf = k => String(Math.floor((2000 - k * ma) / 40));
+  const aNow = Number(await val('#ucA'));
+  await page.check('input[name="ucEstB"][value="1"]'); await page.check('input[name="ucEstA"][value="0"]'); await page.waitForTimeout(100);
+  t.push(['b301: Adventures now Confirmed, Big Books Estimated: the Big Books follow the Adventures (' + nOf(aNow) + ')', await val('#ucN') === nOf(aNow) && await val('#ucA') === String(aNow)]);
+  const nNow = Number(await val('#ucN'));
+  await page.check('input[name="ucEstA"][value="1"]'); await page.check('input[name="ucEstB"][value="0"]'); await page.waitForTimeout(100);
+  t.push(['b301: and back again: the Adventures follow the Big Books (' + aOf(nNow) + ')', await val('#ucA') === aOf(nNow) && await val('#ucN') === String(nNow)]);
+  await page.fill('#ucA', '1'); await page.click('#ucCom'); await page.fill('#ucAmt', '2400'); await page.waitForTimeout(100);
+  t.push(['b301: even after typing in the Estimated one, a new total works it out again from the Confirmed one', await val('#ucA') === String(Math.floor((2400 - nNow * 40) / ma))]);
+  await page.check('input[name="ucEstB"][value="1"]'); await page.fill('#ucN', ''); await page.click('#ucCom'); await page.fill('#ucA', ''); await page.click('#ucCom'); await page.waitForTimeout(100);
+  t.push(['b301: no sum spelled out (only the two "Based on…" notes)', !/÷/.test(await page.textContent('#ucHow'))]);
   await page.evaluate(() => closeModal());
+
+  /* 8. A closed place stops you before you enter anything. */
+  c({ action: 'closeLocation', kind: 'event', id: 'ev_b300', counts: {} });
+  await page.evaluate(() => pull()); await page.waitForTimeout(1500);
+  await page.evaluate(() => goTo('event', 'ev_b300')); await page.waitForTimeout(400);
+  const tryAct = act => page.evaluate(a => { const b = document.createElement('button'); b.dataset.act = a; b.dataset.book = (STATE.books[0] || {}).id; document.body.appendChild(b); b.click(); b.remove();
+    return [document.querySelector('#toast').textContent, !!document.querySelector('#overlay.show')]; }, act);
+  for (const act of ['sell', 'donation', 'uncat']) { const [msg, open] = await tryAct(act);
+    t.push(['b301: closed event, ' + act + ': "Harinam Fair is closed. If you wish to enter information here, it must be re-opened." and no form', msg === 'Harinam Fair is closed. If you wish to enter information here, it must be re-opened.' && !open]); }
+  t.push(['b301: the top bar has only the portal button and the Activity Log (name, Report and Refresh moved)', await page.evaluate(() => document.body.classList.contains('hdr2') && getComputedStyle(document.querySelector('#whoBtn')).display === 'none')]);
 
   t.push(['no page errors' + (errors.length ? ' — ' + errors.slice(0, 2).join(' | ') : ''), !errors.length]);
   let bad = 0;

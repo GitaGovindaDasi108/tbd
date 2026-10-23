@@ -794,7 +794,7 @@ const API = 'http://api.test/';
       await lv.evaluate(k => labelSave(k, '', '\u0001'), c0.key); await lv.waitForTimeout(800);
       t.push(['b300: live: no Go to Sales Portal in the menu; the top bar has 🏠 Sales Portal while in Finance', await lv.evaluate(() => { const b = document.querySelector('#portalBtn'); return !document.querySelector('#sideNav [data-act="finleave"]') && !!b && getComputedStyle(b).display !== 'none' && /Sales Portal/.test(b.textContent); })]);
       await lv.evaluate(() => document.querySelector('#portalBtn').click()); await lv.waitForTimeout(800);
-      t.push(['b300: …which takes you to the sales side, where it reads 📈 Finance Portal', await lv.evaluate(() => !document.body.classList.contains('fin-mode') && /Finance Portal/.test(document.querySelector('#portalBtn').textContent) && !!document.querySelector('#whoBtn') && getComputedStyle(document.querySelector('#whoBtn')).display !== 'none')]);
+      t.push(['b301: …which takes you to the sales side, where it reads 📈 Finance Portal; the top bar has only it and the Activity Log', await lv.evaluate(() => !document.body.classList.contains('fin-mode') && /Finance Portal/.test(document.querySelector('#portalBtn').textContent) && document.body.classList.contains('hdr2') && getComputedStyle(document.querySelector('#whoBtn')).display === 'none')]);
       await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1500);
     }
     t.push(['b276: the Finance search reads "Search for Season, Region, or Event" when nothing is chosen', await lv.evaluate(() => {
@@ -824,7 +824,7 @@ const API = 'http://api.test/';
     t.push(['b278: on the form, Finance adds a payment type with "＋ Add", and it is chosen', await lv.evaluate(() => EXP.form.payType === 'Petty cash' && EXP.opt.payTypes.includes('Petty cash'))]);
     // b278: windows stay put and only close when asked.
     const top0 = await lv.evaluate(() => document.querySelector('#modal').getBoundingClientRect().top);
-    await lv.mouse.click(5, 300); await lv.waitForTimeout(300);
+    await lv.mouse.click(await lv.evaluate(() => innerWidth - 5), 300); await lv.waitForTimeout(300);   // beside the window, clear of the left-hand menu
     t.push(['b278: a tap outside the expense form leaves it open', await lv.evaluate(() => $('#overlay').classList.contains('show') && !!document.querySelector('#modal .exp-form'))]);
     await lv.keyboard.press('Escape'); await lv.waitForTimeout(300);
     t.push(['b278: …so does Esc', await lv.evaluate(() => $('#overlay').classList.contains('show'))]);

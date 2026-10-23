@@ -88,9 +88,9 @@ m.call({ action: 'setSeason', seasonId: SA });
   const bar = await page.$eval('#totals', e => e.getBoundingClientRect());
   t.push(['computer: the cards fill one line', new Set(cs.map(x => x.top)).size === 1 && Math.abs(Math.max(...cs.map(x => x.r)) - bar.right) < 2]);
   // b299 (Gita): the same width across the line; only a card with less in it is made smaller, and only when they would not fit.
-  // b300 (Gita): the book cards one width; the rest of the line goes to the totals card.
+  // b301 (Gita): every card the same width, on one line.
   { const bk = cs.filter(x => !/Collections|Pending|Net Sales/i.test(x.l)), tc = cs.find(x => /Collections|Net Sales/i.test(x.l));
-    t.push(['b300: the book cards one width, the totals card the widest', Math.max(...bk.map(x => x.w)) - Math.min(...bk.map(x => x.w)) < 2 && cs.every(x => x === tc || x.w < tc.w)]); }
+    t.push(['b301: every card one width', Math.max(...cs.map(x => x.w)) - Math.min(...cs.map(x => x.w)) < 2 && !!tc && bk.length > 0]); }
   c({ action: 'sell', saleId: 'P2', location: R0.whLoc, bookId: B, isPreorder: true, pending: true, legs: [{ type: 'Cash', cur: 'USD', amt: 30 }], name: 'Gopal' });
   await page.evaluate(() => pull()); await page.waitForTimeout(1500);
   cs = await cards();
