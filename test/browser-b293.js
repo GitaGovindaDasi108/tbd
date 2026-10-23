@@ -95,7 +95,7 @@ c({ action: 'closeLocation', kind: 'region', id: 'rg_ams' });
   await page.selectOption('#ucCur', 'USD'); await page.fill('#ucAmt', '1111'); await page.waitForTimeout(100);
   t.push(['1111 at $40 a Big Book fills in 27 Big Books, both "Estimated" chosen', await page.$eval('#ucN', i => i.value) === '27'
     && await page.$eval('input[name="ucEstB"][value="1"]', i => i.checked) && await page.$eval('input[name="ucEstA"][value="1"]', i => i.checked)]);
-  t.push(['…and says how it was worked out', /\$40/.test(await page.textContent('#ucHow')) && /27 Big Books/.test(await page.textContent('#ucHow'))]);
+  t.push(['b301: …with no sum spelled out', (await page.textContent('#ucHow')) === '']);
   t.push(['…the worked-out number is coloured like the currency adder\'s', await page.$eval('#ucN', i => i.classList.contains('rp-auto'))]);
   // b299 (Gita): Confirmed or Estimated for each kind, before its number.
   t.push(['b299: Confirmed/Estimated Big Books and Confirmed/Estimated Adventures, each before its number', await page.evaluate(() => {

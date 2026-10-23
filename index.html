@@ -242,6 +242,9 @@ tr.cbr-sub td{color:var(--muted)}
 .tc-coll{display:grid;grid-template-columns:minmax(min-content,1fr) minmax(min-content,max-content);grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
 .tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
 .tc-q2 > div, .tc-coll .label{white-space:nowrap}
+/* A narrow totals card on a computer (b301): its parts in fewer columns. */
+.tc-coll.tc-st1{grid-template-columns:minmax(min-content,1fr) max-content;grid-template-areas:"q1 q2" "q3 q3" "q4 q4"} .tc-coll.tc-st1 .tc-q4{text-align:left;max-width:none}
+.tc-coll.tc-st2{grid-template-columns:minmax(min-content,1fr);grid-template-areas:"q1" "q2" "q3" "q4"} .tc-coll.tc-st2 .tc-q2, .tc-coll.tc-st2 .tc-q4{text-align:left;max-width:none}
 .tc-hq .tc-q3{align-self:end} .tc-hq .tc-q4{align-self:end;max-width:52ch}
 .tc-q4 .tc-net, .tc-sm{font-family:'Marcellus',serif;font-size:clamp(15px,1.5vw,19px);color:var(--green);line-height:1.15}
 .tcard .tc-net, .tcard.usd .value.tc-net, .cbr td.usd{color:var(--net)}
@@ -251,9 +254,9 @@ tr.cbr-sub td{color:var(--muted)}
   .tc-q2,.tc-q4{text-align:left} .tc-q2{display:flex;gap:10px;flex-wrap:wrap} .tc-q2 .tc-w{display:none}
   /* Earthly HQ keeps Exp: and Don: top right, beside Net Sales (b300, Gita). */
   .tc-coll.tc-hq{grid-template-columns:minmax(min-content,1fr) max-content;grid-template-areas:"q1 q2" "q3 q3" "q4 q4"}
-  .tc-hq .tc-q2{display:block;text-align:right}
+  .tc-hq .tc-q2{display:block;text-align:right} .tc-hq .tc-q2 .tc-ab{display:inline}
 }
-.tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);margin-left:6px;white-space:nowrap;display:inline-block}
+.tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);display:block;margin-left:0;line-height:1.3}   /* the pre-orders underneath the number sold (b301, Gita) */
 @media (max-width:560px){ .tcard .value-pre{display:block;margin-left:0;line-height:1.3} }
 /* Estimated books (b300, Gita): "Estimated: N" top right on a computer; on a phone "(N Estimated)" in the gifts' small print under the pre-orders. */
 .tcard.has-est{display:grid;grid-template-columns:minmax(min-content,1fr) auto;grid-template-areas:"lab est" "val est" "sub sub";column-gap:10px;align-items:start}
@@ -261,7 +264,7 @@ tr.cbr-sub td{color:var(--muted)}
 .tcard .tc-est{grid-area:est;font-size:10.5px;color:var(--muted);font-weight:700;text-align:right;white-space:nowrap;line-height:1.3}
 .tcard .value-est{display:none;font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.4}
 @media (max-width:560px){ .tcard.has-est{display:block} .tcard .tc-est{display:none} .tcard .value-est{display:block} }
-.tcard .tc-ab{font-weight:700}   /* on a phone: title, number sold, then the pre-orders on a line of their own (b291, Gita) */
+.tcard .tc-ab{font-weight:700;display:none}   /* Exp:/Don: on a phone only; words on a computer (b301, Gita) */   /* on a phone: title, number sold, then the pre-orders on a line of their own (b291, Gita) */
 .tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
   letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-left:7px}
 .sc-none{font-size:10.5px;color:var(--muted)}
@@ -2373,7 +2376,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b300</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b301</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2716,8 +2719,9 @@ function fromLocalInput(str){
 const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
 // Money always shows its cents, .00 included (b299, Gita).
 const usd2 = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-// The totals cards show whole numbers only (b300, Gita).
-const usd0 = n => Math.round(Number(n)||0).toLocaleString('en-US');
+/* The totals cards: no .00, but real cents stay, $11,099 and $6,283.99 (b301, Gita). */
+const usdT = n => { const v = Math.round((Number(n)||0)*100)/100;
+  return v.toLocaleString('en-US', Number.isInteger(v) ? {maximumFractionDigits:0} : {minimumFractionDigits:2, maximumFractionDigits:2}); };
 const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 /* A sale's real name, chosen here and adopted by the server.
 
@@ -6035,11 +6039,12 @@ function renderSideNav(fams){
   if(!PRACTICE && isAdmin() && ME && !byKey.fincarry) byKey.fincarry = `<button class="btn" data-act="fincarry">📥 Bring Wording &amp; Settings from Practice</button>`;
   // Reorganize Menu (b283): Universal, in App Development.
   if(isAdmin() && !byKey.menuorder) byKey.menuorder = `<button class="btn" data-act="menuorder">↕ Reorganize Menu</button>`;
-  /* Practice (b299, Gita): the top bar keeps only the Activity Log and the
-     portal button; Report moves to Advanced and your name to above Sign Out. */
-  const hdr2 = PRACTICE && SIDE_NAV;
+  /* The top bar keeps only the portal button and the Activity Log (b299 in
+     practice, live since b301, Gita); Report moves to Advanced and your name
+     to above Sign Out. */
+  const hdr2 = SIDE_NAV;
   if(hdr2 && isAdmin() && !byKey.report) byKey.report = `<button class="btn" data-act="report">📋 Report</button>`;
-  /* Practice (b300, Gita): Specialty Reports and Report are one, "WhatsApp Reports". */
+  /* Specialty Reports and Report are one, "WhatsApp Reports" (b300 practice, live since b301, Gita). */
   if(hdr2 && (byKey.report || byKey.specreport)){ delete byKey.report; delete byKey.specreport;
     byKey.wareports = `<button class="btn" data-act="wareports">💬 WhatsApp Reports</button>`; }
   const meRow = hdr2 && byKey.whoami ? snRow(byKey.whoami, 'whoami').replace(/<span class="sn-t">[^<]*<\/span>/, `<span class="sn-t">${esc((ME && ME.name) || whoAmI() || 'Profile')}</span>`) : '';
@@ -6089,7 +6094,7 @@ function renderSideNav(fams){
    sales, Sales from Finance; Inventory later), live since b300. In practice
    only, the bar keeps just that and the Activity Log. */
 function hdrPortal(){
-  const on = PRACTICE && SIDE_NAV;
+  const on = SIDE_NAV;   // live since b301 (Gita: only the portal button and the Activity Log up there)
   document.body.classList.toggle('hdr2', on);
   let b = document.getElementById('portalBtn');
   const fin = SIDE_NAV && FIN_ON && financeMe(ME || FINP.me);
@@ -6334,8 +6339,8 @@ function renderTotals(){
     pendUsd+=dueUSD(x);
     dueParts(x).forEach(d=>{ if(d.amt) due[d.cur]=(due[d.cur]||0)+d.amt; });
   });
-  const money=o=>Object.keys(o).filter(c=>Math.round(o[c]))
-    .sort().map(c=>cashWhole(o[c],c)).join(' · ');
+  const money=o=>Object.keys(o).filter(c=>Math.abs(o[c]) > 0.004)
+    .sort().map(c=>cashTrim(o[c],c)).join(' · ');
 
   // A Seller sees their own sales and cash, never the event's totals (b223).
   if(plainSeller()){ $('#totals').innerHTML = sellerTilesHTML(); return; }
@@ -6348,13 +6353,13 @@ function renderTotals(){
       const cnt = cat => bookCounts(s.filter(x=>x.bookId && catOf(x.bookId)===cat));
       /* Books that are only estimated (Uncategorized Sales, b300, Gita): on a
          computer "Estimated: N" top right; on a phone "(N Estimated)" small,
-         under the pre-orders. */
+         under the pre-orders. Known (sold less estimated) beneath it (b301). */
       const tile = (cls, label, c) => `
     <div class="tcard tc-book${cls?' '+cls:''}${c.est?' has-est':''}"><div class="label">${label}</div>
-      ${c.est ? `<div class="tc-est">Estimated: ${c.est}</div>` : ''}
+      ${c.est ? `<div class="tc-est">Estimated: ${c.est}<br>Known: ${c.sold - c.est}</div>` : ''}
       <div class="value">${c.sold}<span class="value-lbl">sold</span>${
         c.pre?`<span class="value-pre">${preNote(c)}</span>`:''}${
-        c.est?`<span class="value-est">(${c.est} Estimated)</span>`:''}</div>
+        c.est?`<span class="value-est">(${c.est} Estimated)<br>(${c.sold - c.est} Known)</span>`:''}</div>
       <div class="sub">${giftNote(c) || '&nbsp;'}</div></div>`;
       const big=cnt('big'), aotm=cnt('aotm'), oth=cnt('other');
       // Uncategorized sales' books are Big Books sold (b293).
@@ -6381,11 +6386,11 @@ function renderTotals(){
       /* ~ on dollars worked out from an exchange rate, as in Finance (b299, Gita);
          none where every currency counts at what it actually fetched. */
       const eC = s.some(x=>received(x) && !usdExact(x)), eX = cs.some(c=>!usdCostExact(c)), eN = eC || eX;
-      const D = (v, e) => (Math.round(v) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usd0(Math.abs(v));
+      const D = (v, e) => (Math.round(v*100) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usdT(Math.abs(v));
       if(isHQ()) return `<div class="tcard usd tc-coll tc-hq">
       <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">${D(net, eN)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-ab">Exp: </span>${D(-cu, eX)}</div>` : ''}${
-        du ? `<div class="sub-don"><span class="tc-ab">Don: </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span><span class="tc-ab">Exp: </span>${D(-cu, eX)}</div>` : ''}${
+        du ? `<div class="sub-don"><span class="tc-w">Donations </span><span class="tc-ab">Don: </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
       <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">${D(totUsd, eC)}</div></div>
       <div class="tc-q4"><div class="label">Collections by Currency</div><div class="sub">${money(got)||'nothing collected yet'}</div></div></div>`;
       return `<div class="tcard usd tc-coll">
@@ -6395,32 +6400,32 @@ function renderTotals(){
       <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
       <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">${D(totUsd-cu-du, eN)}</div></div></div>`;
     })()}
-    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '≈' : '') + '$' + usd0(pendUsd)}</div>
+    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '≈' : '') + '$' + usdT(pendUsd)}</div>
       <div class="sub">${money(due)}</div></div>` : ''}`}`;
   try{ layoutTotals(); }catch(e){}
 }
 
-/* The totals bar (b300, Gita): the book cards all one width; the rest of the
-   line goes to the totals card. All of them on one line where they can be,
+/* The totals bar (b301, Gita): every card the same width, all on one line,
    Pending Payments included: first as they are, then with their small print
-   (gifts, pre-orders, the currencies) wrapped, then a little more compact.
-   Where they can't (a phone), the book cards share a line and the money
-   cards go beneath, the totals card taking what Pending Payments leaves. */
+   (gifts, the currencies) wrapped, then a little more compact. Where they
+   can't (a phone), the book cards share their line(s) equally, Pending
+   Payments takes the empty place beside the last of them, and the totals
+   card goes beneath. */
 function layoutTotals(){
   const box = document.getElementById('totals'); if(!box) return;
   box.classList.remove('tot-sq');
   const cards = [...box.children].filter(c=>c.classList.contains('tcard'));
-  const reset = () => cards.forEach(c=>{ c.style.width = ''; c.style.flex = ''; c.style.minWidth = ''; });
+  const reset = () => cards.forEach(c=>{ c.style.width = ''; c.style.flex = ''; c.style.minWidth = ''; c.style.order = ''; });
   reset();
   const W = box.clientWidth; if(!W || cards.length < 2) return;
   const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
   const books = cards.filter(c=>!c.classList.contains('usd') && !c.classList.contains('pend'));
-  const money = cards.filter(c=>!books.includes(c));
+  const coll = cards.find(c=>c.classList.contains('usd')), pend = cards.find(c=>c.classList.contains('pend'));
   const width = w => { cards.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = w; }); return cards.map(c=>Math.min(W, Math.ceil(c.getBoundingClientRect().width) + 1)); };
-  // What each card needs: its small print on one line ("full"), or wrapped ("tight"); no word is ever broken.
+  // What each card needs with its small print wrapped; no word is ever broken.
   const measure = () => {
     const full = width('max-content'), least = width('min-content');
-    const WRAP = ':scope > .sub, .value-pre, .tc-q3.sub, .tc-q4 > .sub';
+    const WRAP = ':scope > .sub, .tc-q3.sub, .tc-q4 > .sub';
     const parts = cards.map(c=>[...c.querySelectorAll(WRAP)]);
     const word = parts.map(ps=>Math.max(0, ...ps.map(e=>{ e.style.width = 'min-content'; const v = e.getBoundingClientRect().width; e.style.width = ''; return v; })));
     parts.flat().forEach(e=>{ e.style.display = 'none'; });
@@ -6429,34 +6434,35 @@ function layoutTotals(){
     const tight = cards.map((c,i)=>{ const cs = getComputedStyle(c), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2;
       return Math.min(full[i], Math.max(base[i], least[i], Math.ceil(word[i] + pad))); });
     reset();
-    return {full, tight};
+    return tight;
   };
-  const at = c => cards.indexOf(c);
-  const oneLine = need => {
-    const B = Math.max(...books.map(c=>need[at(c)]), 0);
-    const total = B*books.length + money.reduce((t,c)=>t+need[at(c)], 0) + gap*(cards.length-1);
-    if(total > W + 0.5) return false;
-    books.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = Math.floor(B) + 'px'; });
-    money.forEach(c=>{ const n = need[at(c)];
-      if(c.classList.contains('usd')){ c.style.flex = '1 1 0'; c.style.minWidth = n + 'px'; }
-      else { c.style.flex = '0 0 auto'; c.style.width = n + 'px'; } });
-    return true;
-  };
-  let m = measure();
-  // The book cards keep their small print on one line first, then the money cards', then neither.
-  const mix = bk => m.full.map((v,i)=>books.includes(cards[i]) === bk ? m.tight[i] : v);
-  if(oneLine(m.full) || oneLine(mix(false)) || oneLine(mix(true)) || oneLine(m.tight)) return;
-  box.classList.add('tot-sq'); m = measure();
-  if(oneLine(m.tight)) return;
-  box.classList.remove('tot-sq'); m = measure();
-  // Two lines or more: the book cards share theirs equally, two to a line when three won't fit.
-  const B = Math.max(...books.map(c=>m.tight[at(c)]), 0);
+  const eq = Math.floor((W - gap*(cards.length-1)) / cards.length);
+  const oneLine = need => { if(need.some(v=>v > eq + 0.5)) return false;
+    cards.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = eq + 'px'; }); return true; };
+  /* Then a little more compact; then the totals card's four parts in fewer
+     columns, so that a narrow card still holds them (b301). */
+  const coll0 = cards.find(c=>c.classList.contains('tc-coll'));
+  const tries = [['',''], ['sq',''], ['','tc-st1'], ['sq','tc-st1'], ['','tc-st2'], ['sq','tc-st2']];
+  for(const [sq, st] of tries){
+    box.classList.toggle('tot-sq', !!sq);
+    if(coll0){ coll0.classList.remove('tc-st1','tc-st2'); if(st) coll0.classList.add(st); }
+    if(oneLine(measure())) return;
+  }
+  box.classList.remove('tot-sq'); if(coll0) coll0.classList.remove('tc-st1','tc-st2');
+  const need = measure(), at = c => cards.indexOf(c);
+  // The book cards share their line(s) equally, two to a line when three won't fit.
+  const B = Math.max(...books.map(c=>need[at(c)]), 0);
   let per = books.length; while(per > 1 && B*per + gap*(per-1) > W + 0.5) per--;
   const bw = Math.floor((W - gap*(per-1)) / per);
   books.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = bw + 'px'; });
-  money.forEach(c=>{ const n = m.tight[at(c)];
-    c.style.minWidth = n + 'px';
-    c.style.flex = c.classList.contains('usd') ? '100 1 0' : '1 1 0'; });
+  // Pending Payments in the empty place beside the last book card, when there is one.
+  const empty = books.length % per ? per - books.length % per : 0, room = empty*bw + (empty-1)*gap;
+  if(pend && empty && need[at(pend)] <= room + 0.5){
+    pend.style.flex = '0 0 auto'; pend.style.width = room + 'px';
+    if(coll){ coll.style.order = '1'; coll.style.flex = '1 1 100%'; }
+    return;
+  }
+  [coll, pend].filter(Boolean).forEach(c=>{ c.style.minWidth = need[at(c)] + 'px'; c.style.flex = c === coll ? '100 1 0' : '1 1 0'; });
 }
 let TOT_T = 0;
 // The fonts change the widths once they arrive.
@@ -7813,7 +7819,7 @@ function sellerTilesHTML(){
       <div class="value">${c.sold}<span class="value-lbl">sold</span>${c.pre?`<span class="value-pre">${preNote(c)}</span>`:''}</div>
       <div class="sub">${giftNote(c) || (myName() ? 'by ' + esc(myName()) : '&nbsp;')}</div></div>
     <div class="tcard usd"><div class="label">My cash</div>
-      <div class="value my-cash">${withMe ? esc(Object.keys(cash.withMe).filter(c=>Math.round(cash.withMe[c])).sort().map(c=>cashWhole(cash.withMe[c],c)).join(' · ') || withMe) : '—'}</div>
+      <div class="value my-cash">${withMe ? esc(Object.keys(cash.withMe).filter(c=>Math.abs(cash.withMe[c]) > 0.004).sort().map(c=>cashTrim(cash.withMe[c],c)).join(' · ') || withMe) : '—'}</div>
       <div class="sub">${cash.waiting.length ? cash.waiting.map(h=>`${esc(moneyLine(h.amounts))} waiting for ${esc(h.toName||'the Event Lead')} to confirm`).join('<br>') : 'cash you collected and still hold'}
         ${withMe ? `<br><button class="btn btn-sm btn-primary hand-btn" data-act="handover">Hand your cash to ${esc(to)}</button>` : ''}</div></div>`;
 }
@@ -9434,6 +9440,12 @@ function regionClosure(regionId){
     owed+=o.owed; und+=o.undelivered; cnt+=(o.counts||0);
   });
   return (owed||und||cnt) ? 'pending' : 'complete';
+}
+const CLOSED_STOP = new Set(['sell','preorder','bundle','multi','donation','uncat','salesupload','stock','addstock','substock',
+  'transfer','xfer','externaltransfer','editsale','deletesale','delsale','editbundle']);
+function closedSay(){
+  const name = CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'This place');
+  toast(name + ' is closed. If you wish to enter information here, it must be re-opened.', true);
 }
 function isClosedHere(){
   return CUR_LEVEL==='event' ? !!closureOf(CUR_LOC)
@@ -11207,7 +11219,7 @@ const finExHTML = (m, cls) => m.ex ? `<div class="${cls} fin-ex-l">${esc(m.ex).r
 function finCurs(o){
   const ks = Object.keys(o||{}).filter(c=>Math.abs(o[c]) > 0.004);
   if(!ks.length || (ks.length===1 && ks[0]==='USD')) return '';
-  return ks.sort().map(c=>cashFmt(o[c], c)).join(' · ');
+  return ks.sort().map(c=>cashTrim(o[c], c)).join(' · ');   // no .00, real cents stay (b301, Gita)
 }
 /* The Overview's seven figures, in Gita's order. Each gives its heading, its
    figure and the smaller line beneath. Used by the tiles, the table and the
@@ -14834,7 +14846,6 @@ const SPEC_KEY = 'tbs_spec_report';
 /* WhatsApp Reports (b300, practice; Gita: Specialty Reports and Report made
    one). 1. a place anywhere in the season, found by typing; 2. optionally more
    places, all added together; 3. what to include; then Generate. */
-const WAR_KEY = 'tbs_wareports';
 function waPlaces(){
   const out = [{v:'season', l:(STATE.seasonName||'Season') + ' (the whole season)', shown:STATE.seasonName||'Season', kind:'season',
     name:STATE.seasonName||'Season', locs:()=>regionsList().flatMap(r=>locsInRegion(r.regionId)).concat((STATE.events||[]).filter(e=>!e.regionId).map(e=>e.eventId))}];
@@ -14850,14 +14861,12 @@ function waPlaces(){
 }
 function waReportsModal(){
   if(!isAdmin()) return;
-  let saved = {}; try{ saved = JSON.parse(localStorage.getItem(WAR_KEY)||'null') || {}; }catch(e){}
   const items = waPlaces(), byV = v => items.find(x=>x.v===v);
   const offered = REPORT_SECTIONS.filter(([k])=>!(k==='cash' && hideMoney()));
   const here = CUR_LEVEL==='event' ? 'e:'+CUR_LOC : CUR_REGION ? (curSub() ? 's:'+CUR_REGION+':'+curSub() : 'r:'+CUR_REGION) : 'season';
   let main = byV(here) ? here : 'season';
   const more = [];                               // the extra places' rows, each {id, v}
-  const picks = new Set((saved.sections||[]).filter(k=>offered.some(o=>o[0]===k)));
-  if(!picks.size) offered.forEach(([k])=>picks.add(k));
+  const picks = new Set();   // every box empty each time (b301, Gita)
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
   openModal(`
     ${mHead('WhatsApp Reports')}
@@ -14894,6 +14903,7 @@ function waReportsModal(){
   const make = () => {
     const vs = [main].concat(more.map(r=>r.v)).filter((v,i,a)=>v && byV(v) && a.indexOf(v)===i);
     if(!vs.length) return '(choose a location)';
+    if(!picks.size) return '(choose what to include)';
     const groups = vs.map(v=>{ const x = byV(v); return {name:x.name, locs:x.locs(), sale:x.sale}; });
     const locs = [...new Set(groups.flatMap(g=>g.locs))];
     const tests = groups.map(g=>g.sale || (y=>g.locs.includes(y.location)));
@@ -14901,7 +14911,6 @@ function waReportsModal(){
   };
   const box = $('#repText');
   $('#waGo').addEventListener('click', ()=>{
-    try{ localStorage.setItem(WAR_KEY, JSON.stringify({sections:[...picks]})); }catch(e){}
     try{ box.value = make(); }catch(err){ box.value = 'Could not build the report — ' + err.message; }
     $('#waOut').hidden = false; $('#modalErr').textContent = '';
     box.scrollIntoView({block:'nearest'});
@@ -15416,9 +15425,9 @@ function priceFmt(n,cur){
   const sym = CUR_SYM[cur] || cur;
   return CUR_PRE[cur] ? sym+num : num+' '+sym;
 }
-function cashWhole(n,cur){
+function cashTrim(n,cur){
   cur = String(cur||'').toUpperCase();
-  const num = Math.round(Number(n)||0).toLocaleString('en-US'), sym = CUR_SYM[cur] || cur;
+  const num = usdT(n), sym = CUR_SYM[cur] || cur;
   return CUR_PRE[cur] ? sym+num : num+'\u00a0'+sym;   // never split from its symbol
 }
 function cashFmt(n,cur){
@@ -16101,7 +16110,7 @@ function donationModal(edit){
    The number can be changed and is ticked as an estimate. The books count in
    Big Books sold, and an "Uncategorized Sales" card shows the total; nothing
    comes off a shelf. */
-const UNCAT_ON = PRACTICE;
+const UNCAT_ON = true;   // live since b301 (Gita, 2026-10-23)
 function isUncat(x){ return !!x && x.type==='UNCAT'; }
 /* "27 books", or with Adventures among them "20 Big Books + 7 Adventures" (b295). */
 function uncatWords(x){
@@ -16176,17 +16185,21 @@ function uncatModal(edit){
     const amt = Number($('#ucAmt').value) || 0, cur = $('#ucCur').value, m = uncatMsrp(cur), ma = uncatMsrp(cur, 'aotm');
     const nIn = $('#ucN'), aIn = $('#ucA'), bb = k => k + ' Big Book' + (k===1?'':'s'), av = k => k + ' Adventure' + (k===1?'':'s');
     const N = Math.floor(Number(nIn.value) || 0), A = Math.floor(Number(aIn.value) || 0);
-    // Never under your cursor: a box you are typing in is left as it is.
-    const set = (el, v) => { if(el === document.activeElement) return; el.value = v === '' ? '' : String(v); el.classList.toggle('rp-auto', v !== ''); };
+    // Never under your cursor, and never a Confirmed box (that number is yours).
+    const set = (el, v) => { if(el === document.activeElement || conf(el === nIn ? 'N' : 'A')) return; el.value = v === '' ? '' : String(v); el.classList.toggle('rp-auto', v !== ''); };
     nIn.classList.toggle('rp-auto', false); aIn.classList.toggle('rp-auto', false);
-    // Which one the other is worked out from: a Confirmed one, else the one typed last, else whichever is known.
-    let from = null;
+    /* Which one the other is worked out from (b301, Gita: "regardless of which
+       buttons are pressed and what is entered, the calculator needs to work"):
+       a Confirmed one with a number in it, so the Estimated one always follows
+       it; else the one typed last; else whichever has a number. */
+    let from = '';
+    const has = k => box(k).value !== '';
     if(conf('N') && conf('A')) from = 'both';
-    else if(conf('N') || conf('A')){ const c = conf('N') ? 'N' : 'A', o = c==='N' ? 'A' : 'N';
-      from = known(o) ? 'both' : known(c) ? c : 'none'; }
+    else if(conf('N') && has('N')) from = 'N';
+    else if(conf('A') && has('A')) from = 'A';
     else from = last && known(last) ? last : known('N') ? 'N' : known('A') ? 'A' : '';
     let how = '';
-    if(from === 'both' || from === 'none') how = '';                        // both known, or the Confirmed one still to type
+    if(from === 'both') how = '';                                           // both Confirmed: nothing to work out
     else if(from === 'N'){                                                  // Big Books known: the rest is Adventures
       const rest = amt - N * m, k = ma > 0 && m > 0 && rest > 0 ? Math.floor(rest / ma + 1e-9) : 0;
       if(k > 0){ set(aIn, k); how = `Based on ${bb(N)}, ${k} is the estimated number of Adventures sold.`; } else set(aIn, '');
@@ -16196,10 +16209,7 @@ function uncatModal(edit){
     }else{                                                                  // neither known: the money is all Big Books (b295)
       const nb = m > 0 && amt > 0 ? Math.floor(amt / m + 1e-9) : 0;
       set(nIn, m > 0 && amt > 0 ? nb : ''); set(aIn, '');
-      /* Spelled out as a sum (b298, Gita). */
-      how = !(m > 0) ? 'No Big Book price in this currency here: type the number of books.'
-        : !(amt > 0) ? `Enter the total taken, and the Big Books are worked out at ${cashFmt(m, cur)} each.`
-        : `${cashFmt(amt, cur)} ÷ ${cashFmt(m, cur)} a Big Book = ${bb(nb)} (rounded down).`;
+      // No sum spelled out (b301, Gita): only the two "Based on …" notes are shown.
     }
     $('#ucHow').textContent = how;
   };
@@ -21367,6 +21377,9 @@ document.addEventListener('click',e=>{
   if(link) e.preventDefault();
   const t=e.target.closest('[data-act]'); if(!t) return;
   const a=t.dataset.act;
+  /* A closed place is read-only: stopped before any form opens (b301, Gita).
+     Settling up (delivering, marking paid) is still allowed. */
+  if(isClosedHere() && CLOSED_STOP.has(a)){ closedSay(); return; }
   if(a==='logfilter'){
     // One panel open at a time.
     const f=t.dataset.facet;
@@ -21782,11 +21795,6 @@ document.addEventListener('click',e=>{
   /* Closed means no new business. Settling up is still allowed, so a partly
      closed place can deliver what it promised and collect what it is owed —
      which is exactly what moves it from "pending closure" to finished. */
-  if(isClosedHere() && ['sell','preorder','bundle','donation','stock','transfer',
-      'externaltransfer','editsale','deletesale'].includes(a)){
-    toast('This is closed — reopen it first if something needs changing.', true);
-    return;
-  }
   if(a==='sell'){
     if(isWarehouseLoc(CUR_LOC)){ sellFromWarehouse(t.dataset.book); return; }
     saleModal({bookId:t.dataset.book,isPreorder:false,loc:CUR_LOC}); return;

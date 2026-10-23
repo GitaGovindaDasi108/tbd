@@ -60,10 +60,10 @@ const state = () => m.call({ action: 'getState', season: SA }).state;
       const shown = Number(document.querySelector('#totals .tcard.usd .value').textContent.replace(/[^0-9.]/g, ''));
       const want = tourSales().filter(received).reduce((a, x) => a + saleUsd(x), 0);
       const est = tourSales().filter(received).reduce((a, x) => a + legsUSD(x), 0);
-      return { shown, want: Math.round(want), est: Math.round(est), estExact: est };   // whole dollars on the cards (b300)
+      return { shown, want: Math.round(want * 100) / 100, est: Math.round(est * 100) / 100 };
     });
     console.log('   totals:', tot);
-    t.push(['Total Collections uses the $30 received, not the estimate', tot.shown === tot.want && Math.abs(tot.shown - tot.estExact) > 0.5]);
+    t.push(['Total Collections uses the $30 received, not the estimate', Math.abs(tot.shown - tot.want) < 0.02 && Math.abs(tot.shown - tot.est) > 0.5]);
 
     // 2/3. SOLD OUT clear of the title; Sell is Deliver's green.
     const card = await page.evaluate(() => {
