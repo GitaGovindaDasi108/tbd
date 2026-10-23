@@ -275,7 +275,7 @@ const API = 'http://api.test/';
     // b259: Reports is gone for now; each screen downloads its own CSV and draws its charts underneath.
     const [dl] = await Promise.all([own.waitForEvent('download'), own.click('[data-act="fincsv"][data-part="overview"]')]);
     const csv = fs.readFileSync(await dl.path(), 'utf8');
-    t.push(['b259: the Overview downloads as a CSV for Excel or Sheets: a row per season and the total', /^\ufeff?,Big Books Sold \(USD\)/.test(csv) && /\nKartika,/.test(csv) && /\nTotal,/.test(csv) && /^Finance Overview Everywhere \d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename())]);
+    t.push(['b259: the Overview downloads as a CSV for Excel or Sheets: a row per season and the total', /^\ufeff?,Big Books Sold,Big Books Gifted,Big Books Distributed,Big Books Gross \(USD\)/.test(csv) && /\nKartika,/.test(csv) && /\nTotal,/.test(csv) && /^Finance Overview Everywhere \d{4}-\d\d-\d\d\.csv$/.test(dl.suggestedFilename())]);
     t.push(['b259: …and its charts sit at the bottom: the expenses include the venue', /At a glance/.test(await fpage(own)) && /Venue/.test(await own.$eval('#finCharts', e => e.innerText))]);
     await own.screenshot({ path: shot('fin-report'), fullPage: true });
     t.push(['b259: no Reports, Compare or Visualize on the Finance bar', !(await own.$('#fpSecs [data-sec="report"]')) && !(await own.$('#fpSecs [data-sec="compare"]')) && !(await own.$('#fpSecs [data-sec="visual"]'))]);

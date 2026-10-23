@@ -240,6 +240,14 @@ const API = 'http://api.test/';
     const ex = (await O({ action: 'expList', scope: 'all' })).result.find(x => x.id === 'Xmdvan01');
     t.push(['b284: its region-wide expense stays Madrid\'s (on its old warehouse), now under Spain', ex && ex.regionId === 'rg_sp' && ex.location === 'wh_md']);
     t.push(['b284: the page is on Spain afterwards', await own.evaluate(() => CUR_REGION) === 'rg_sp']);
+    // b297 (Gita): a sub-region's old warehouse is its Summary; it is not listed again.
+    await own.evaluate(() => { setSub(''); goTo('region', 'rg_sp'); }); await own.waitForTimeout(400);
+    const pk = await own.$$eval('#locTabs select[data-act="pickloc"] option', o => o.map(x => [x.value, x.textContent.trim()]));
+    t.push(['b297: "🗺 Madrid Summary" opens Madrid\'s old warehouse, which is not listed a second time',
+      pk.some(([v, l]) => v === 'wh_md' && /Madrid Summary/.test(l)) && !pk.some(([v, l]) => /Madrid \(warehouse\)/.test(l))]);
+    await own.selectOption('#locTabs select[data-act="pickloc"]', 'wh_md'); await own.waitForTimeout(400);
+    t.push(['b297: …and choosing it opens that warehouse, the path ending at Madrid', await own.evaluate(() => CUR_LOC) === 'wh_md'
+      && (await own.$$eval('#locTabs .crumb-link', l => l.map(x => x.textContent))).slice(-1)[0] === 'Madrid']);
     // Undo from the Activity Log.
     const act = (await O({ action: 'activity', season: SA })).result;
     const row = (act.rows || act || []).find(r => /^Merged Madrid into Spain/.test(r.text || ''));

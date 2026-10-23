@@ -153,6 +153,12 @@ const API = 'http://api.test/';
     for (const sec of ['expenses', 'reimb']) { await own.evaluate(s => finGo(s, 'rg_zg'), sec); await own.waitForTimeout(500);
       t.push(['b295: the place search is on ' + sec + ' too', await own.evaluate(() => !!document.querySelector('#fpNav #finPP .pp-in'))]); }
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(500);
+    // b297 (Gita): the Overview table, each kind's Sold, Gifted, Distributed and Gross, then Total Gross, the rest, and Margin last; titles right over the figures.
+    const ovh = await own.evaluate(() => { const r = document.querySelectorAll('.fin-ovw thead tr'); return { g: [...r[0].querySelectorAll('th.fin-g')].map(x => x.textContent.trim()),
+      c: [...r[1].querySelectorAll('th')].map(x => x.textContent.trim()), al: getComputedStyle(r[1].querySelector('th')).textAlign }; });
+    t.push(['b297: Overview table grouped Big Books, Adventures, Other', JSON.stringify(ovh.g) === JSON.stringify(['Big Books', 'Adventures', 'Other'])]);
+    t.push(['b297: …Sold, Gifted, Distributed, Gross under each, then Total Gross … Margin last', ovh.c.slice(0, 4).join() === 'Sold,Gifted,Distributed,Gross' && ovh.c[12] === 'Total Gross' && ovh.c[ovh.c.length - 1] === 'Margin']);
+    t.push(['b297: the column titles are right-aligned over their figures', ovh.al === 'right']);
     await own.click('#finPP .pp-in'); await own.fill('#finPP .pp-in', 'fair'); await own.waitForTimeout(200);
     const hits = await own.$$eval('#finPP .pp-row', rs => rs.map(r => r.textContent));
     t.push(['typing narrows it to the place, keeping its season and region', JSON.stringify(hits) === JSON.stringify(['Kartika', 'Zagreb', 'Zagreb Fair'])]);
@@ -168,7 +174,7 @@ const API = 'http://api.test/';
     // b259: ⬇️ CSV beside the 📋, and the charts under everything.
     csv = await csvOf('overview');
     t.push(['b259: Overview ⬇️ CSV: a row per event and the total, every figure with its Expected', csv.got && /^Finance Overview Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[0].includes('Expected Gross (USD)') &&
-      JSON.stringify(csv.rows.map(r => r[0])) === JSON.stringify(['', 'Zagreb Kirtan', 'Zagreb Fair', 'Total']) && csv.rows[3][9] === 105 && csv.rows[3][10] === 145]);
+      JSON.stringify(csv.rows.map(r => r[0])) === JSON.stringify(['', 'Zagreb Kirtan', 'Zagreb Fair', 'Total']) && csv.rows[3][15] === 105 && csv.rows[3][16] === 145 && csv.rows[0][1] === 'Big Books Sold' && csv.rows[0][15] === 'Total Gross (USD)']);
     m = await own.$eval('#finCharts', e => e.innerText);
     t.push(['b284: under the Overview, with a payment pending: Income by Source (Actual) and (Expected), money in and out (with Expected), by event, and expenses by type', /Income by Source \(Actual\)/.test(m) && /Income by Source \(Expected\)/.test(m) && /Expected Gross/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild)]);
@@ -630,7 +636,7 @@ const API = 'http://api.test/';
       document.querySelectorAll('#fpBody *').forEach(e => {
         if (!vis(e)) return;
         const cs = getComputedStyle(e);
-        if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll|hidden/.test(cs.overflowX) && cs.textOverflow !== 'ellipsis' && !e.closest('.fin-tabs')) out.push('scrolls sideways: ' + (e.className || e.tagName));
+        if (e.scrollWidth > e.clientWidth + 1 && /auto|scroll|hidden/.test(cs.overflowX) && cs.textOverflow !== 'ellipsis' && !e.closest('.fin-tabs') && !e.classList.contains('fin-ovw')) out.push('scrolls sideways: ' + (e.className || e.tagName));
         const box = e.parentElement.closest('.fc-box, .fin-tile, .exp-card, section, #fpBody') || document.querySelector('#fpBody');
         const sc = scroller(e); if (sc && box.contains(sc)) return;
         const r = e.getBoundingClientRect(), b = box.getBoundingClientRect();
