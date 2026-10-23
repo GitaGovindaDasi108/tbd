@@ -79,24 +79,38 @@ c({ action: 'closeLocation', kind: 'region', id: 'rg_ams' });
 
   /* 2. Uncategorized Sales (practice). */
   await page.evaluate(r => goTo('region', r), R0.regionId); await page.waitForTimeout(400);
-  const big0 = await page.evaluate(() => Number(document.querySelector('#totals .tcard .value').firstChild.textContent));
-  t.push(['practice: "+ Uncategorized Sales" under the shelf', await page.isVisible('[data-act="uncat"]')]);
+  const tileN = k => page.evaluate(k => Number([...document.querySelectorAll('#totals .tcard')].find(c => c.querySelector('.label').textContent.trim() === k).querySelector('.value').firstChild.textContent), k);
+  const big0 = await tileN('Big Books'), av0 = await tileN('AoTM');
+  t.push(['b295: no "+ Uncategorized Sales" for someone without Universal or Finance', !(await page.isVisible('[data-act="uncat"]'))
+    && await page.$eval('#invMulti', d => d.dataset.n) === String(await page.$$eval('#invMulti .multi-btn', b => b.length))]);
+  await page.evaluate(() => { ME = { universal: true, grants: [] }; renderAll(); }); await page.waitForTimeout(200);
+  t.push(['practice: "+ Uncategorized Sales" under the shelf for Universal', await page.isVisible('[data-act="uncat"]')]);
+  const rowsOf = () => page.$$eval('#invMulti .multi-btn', bs => { const tops = new Set(bs.map(b => Math.round(b.getBoundingClientRect().top))); return { n: bs.length, rows: tops.size, w: Math.min(...bs.map(b => b.getBoundingClientRect().width)), all: document.querySelector('#invMulti').getBoundingClientRect().width }; });
+  { const r = await rowsOf(); t.push(['b295: computer: the ' + r.n + ' buttons share one row, each a third or more', r.rows === 1 && r.w >= r.all / 3 - 8]); }
+  await page.setViewportSize({ width: 390, height: 900 }); await page.waitForTimeout(250);
+  { const r = await rowsOf(); t.push(['b295: phone: two to a line (' + r.n + ' buttons, ' + r.rows + ' lines)', r.rows === Math.ceil(r.n / 2)]);
+    const s = await spill(); t.push(['no overflow under the shelf at 390px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
+  await page.setViewportSize({ width: 1100, height: 900 }); await page.waitForTimeout(250);
   await page.click('[data-act="uncat"]'); await page.waitForTimeout(300);
   await page.selectOption('#ucCur', 'USD'); await page.fill('#ucAmt', '1111'); await page.waitForTimeout(100);
-  t.push(['1111 at $40 a Big Book fills in 27 books, ticked as an estimate', await page.$eval('#ucN', i => i.value) === '27' && await page.$eval('#ucEst', i => i.checked)]);
-  t.push(['…and says how it was worked out', /\$40/.test(await page.textContent('#ucHow')) && /27 books/.test(await page.textContent('#ucHow'))]);
+  t.push(['1111 at $40 a Big Book fills in 27 Big Books, "Estimated" chosen', await page.$eval('#ucN', i => i.value) === '27' && await page.$eval('input[name="ucEst"][value="1"]', i => i.checked)]);
+  t.push(['…and says how it was worked out', /\$40/.test(await page.textContent('#ucHow')) && /27 Big Books/.test(await page.textContent('#ucHow'))]);
+  t.push(['b295: two choices, Estimated and Confirmed # of Books Sold', /Estimated # of Books Sold/.test(await page.textContent('.uc-est')) && /Confirmed # of Books Sold/.test(await page.textContent('.uc-est'))]);
+  const ma = await page.evaluate(() => uncatMsrp('USD', 'aotm'));
+  await page.fill('#ucA', '3'); await page.waitForTimeout(100);
+  const nb = Number(await page.$eval('#ucN', i => i.value));
+  t.push(['b295: 3 Adventures take their price off first (' + nb + ' Big Books left)', nb === Math.floor((1111 - 3 * ma) / 40)]);
   for (const w of [390, 1100]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(200);
     const s = await spill(); t.push(['no overflow in the window at ' + w + 'px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.click('#ucSave'); await page.waitForTimeout(1500);
   const row = (m.call({ action: 'getState', season: SA }).state.sales || []).find(x => x.type === 'UNCAT');
-  t.push(['saved on the server: 27 books, $1111, an estimate, nothing off a shelf', row && row.qty === 27 && row.p1amt === 1111 && row.est === true && row.bookId === '']);
-  t.push(['Big Books sold goes up by 27', await page.evaluate(() => Number(document.querySelector('#totals .tcard .value').firstChild.textContent)) === big0 + 27]);
-  const card = await page.evaluate(() => { const c = [...document.querySelectorAll('#totals .tcard')].find(x => /Uncategorized Sales/.test(x.textContent)); return c ? c.textContent.replace(/\s+/g, ' ') : ''; });
-  t.push(['an Uncategorized Sales card shows 27 books, $1,111', /27\s*books/.test(card) && /\$1,111/.test(card) && /estimate/.test(card)]);
-  t.push(['the sales log names it', /Uncategorized sales · 27 books \(estimate\)/.test(await page.textContent('#log'))]);
+  t.push(['saved on the server: ' + nb + ' Big Books + 3 Adventures, $1111, an estimate, nothing off a shelf', row && row.qty === nb && row.aqty === 3 && row.p1amt === 1111 && row.est === true && row.bookId === '']);
+  t.push(['Big Books sold goes up by ' + nb + ', AoTM by 3', await tileN('Big Books') === big0 + nb && await tileN('AoTM') === av0 + 3]);
+  t.push(['b295: no Uncategorized Sales card in the totals', !(await page.evaluate(() => [...document.querySelectorAll('#totals .tcard')].some(x => /Uncategorized/.test(x.textContent))))]);
+  t.push(['the sales log names it', new RegExp('Uncategorized sales · ' + nb + ' Big Books \\+ 3 Adventures \\(estimate\\)').test(await page.textContent('#log'))]);
   const rep = await page.evaluate(() => buildReport(''));
-  t.push(['the WhatsApp report counts it among the Big Books', /Uncategorized sales \(estimate\) - 27/.test(rep)]);
+  t.push(['the WhatsApp report counts it among the Big Books and the Adventures', new RegExp('Uncategorized sales \\(estimate\\) - ' + nb).test(rep) && /Uncategorized sales \(estimate\) - 3/.test(rep)]);
   await page.setViewportSize({ width: 390, height: 900 }); await page.waitForTimeout(250);
   { const s = await spill(); t.push(['no overflow in the totals at 390px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
   await page.mouse.move(380, 890); await page.evaluate(() => { document.body.classList.remove('sn-open'); document.querySelector('#totals').scrollIntoView(); });

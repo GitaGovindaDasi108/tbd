@@ -147,9 +147,12 @@ const API = 'http://api.test/';
     await own.click('#fpNav .crumb-link[data-scope="' + SA + '"]'); await own.waitForTimeout(600);
     t.push(['b293: Kartika\'s link goes up to the season', await own.evaluate(() => !!finScopeF().s && !finScopeF().r)]);
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(600);
-    // The search, before the dates, on the same line.
+    // b295: the search sits beside the path on every section; the date line keeps just the dates.
     const line = await own.evaluate(() => { const f = document.querySelector('#fpBody .fin-filters'); return [...f.children].map(c => c.className || c.tagName); });
-    t.push(['a search field comes first on the date line', /fin-search/.test(line[0]) && line.length === 3]);
+    t.push(['b295: the place search is in the path bar, the date line has just the dates', line.length === 2 && await own.evaluate(() => !!document.querySelector('#fpNav #finPP'))]);
+    for (const sec of ['expenses', 'reimb']) { await own.evaluate(s => finGo(s, 'rg_zg'), sec); await own.waitForTimeout(500);
+      t.push(['b295: the place search is on ' + sec + ' too', await own.evaluate(() => !!document.querySelector('#fpNav #finPP .pp-in'))]); }
+    await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(500);
     await own.click('#finPP .pp-in'); await own.fill('#finPP .pp-in', 'fair'); await own.waitForTimeout(200);
     const hits = await own.$$eval('#finPP .pp-row', rs => rs.map(r => r.textContent));
     t.push(['typing narrows it to the place, keeping its season and region', JSON.stringify(hits) === JSON.stringify(['Kartika', 'Zagreb', 'Zagreb Fair'])]);

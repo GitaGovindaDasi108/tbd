@@ -214,11 +214,10 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return { id };
   }
 
-  /* Edit Finance-Only Locations (b287, Gita): rename one, move it under another
+  /* Edit Finance-Only Locations (b287, Gita; live in b295): rename one, move it under another
      place, or remove it once no expense is recorded there. */
   function finPlaceEdit(w, p) {
     if (!mayPay(w)) throw new Error('Only Finance can change a place.');
-    if (!practice) throw new Error('Changing Finance-only places is in the practice space for now.');
     const all = getFP(), id = String(p.id || ''), fp = all[id];
     if (!fp) throw new Error('There is no Finance-only place like that.');
     const used = rows().filter(r => String(r.location || '') === id).length;
@@ -897,13 +896,13 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
     const P = w.P, L = getLinks();
     return Object.keys(L).map(k => Object.assign({ key: k }, L[k], {
-      placeLabel: L[k].place && placeOf(P, L[k].place) ? labelOf(P, placeOf(P, L[k].place)) : 'Anywhere',
+      placeLabel: L[k].place && placeOf(P, L[k].place) ? labelOf(P, placeOf(P, L[k].place)) : 'General',
       sent: rows().filter(r => String(r.byLink) === k).length })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
   }
   function linkMake(w, p) {
     if (!isFin(w)) throw new Error('Reimbursement links are for Finance.');
     const place = clip(p.place, 60);
-    if (place && !placeOf(w.P, place)) throw new Error('Choose a place from the list, or Anywhere.');
+    if (place && !placeOf(w.P, place)) throw new Error('Choose a place from the list, or General.');
     const L = getLinks();
     if (Object.keys(L).length >= 500) throw new Error('There are too many reimbursement links. Turn some off first.');
     let key = '';

@@ -26,7 +26,7 @@ T.goTo('season');
 T.renderTotals();
 const tiles = store['#totals'].innerHTML;
 t.push(['Total Collections: $80 + $70 + $50 = $200', /Total Collections<\/div><div class="value">\$200(\.00)?</.test(tiles)]);
-t.push(['costs at the frozen rate: −$20, net $180', /costs −\$20(\.00)?</.test(tiles) && /net \$180(\.00)?/.test(tiles)]);
+t.push(['costs at the frozen rate: −$20, Net Sales $180', /Costs <\/span>−\$20(\.00)?</.test(tiles) && /tc-net">\$180(\.00)?</.test(tiles)]);
 
 T.renderCollectionsByRegion('#cbr');
 const cbr = store['#cbr'].innerHTML;
