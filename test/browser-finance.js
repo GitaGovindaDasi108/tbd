@@ -224,7 +224,7 @@ const API = 'http://api.test/';
     await own.click('#fpSecs [data-sec="reimb"] .pencil'); await own.waitForTimeout(300);
     t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/reimb/.test(own.url())]);
     await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
-    t.push(['Esc leaves it as it was', /Reimbursement Links/.test(await own.$eval('#fpSecs [data-sec="reimb"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
+    t.push(['Esc leaves it as it was', /Reimbursements/.test(await own.$eval('#fpSecs [data-sec="reimb"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(500);
     /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);
@@ -427,7 +427,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => { const g = [...document.querySelectorAll('#finRbS .exp-group')].find(e => /Bhima/.test(e.textContent));
       const row = [...g.querySelectorAll('[data-act="rbline"][data-on=""]')].find(b => /Parking/.test(b.closest('.exp-line, .exp-li, div').parentElement.innerText)) || g.querySelector('[data-act="rbline"][data-on=""]'); row.click(); }); await own.waitForTimeout(500);
     t.push(['b259: declining one line takes it off the total, and the row stays open', await own.evaluate(() => { const g = [...document.querySelectorAll('#finRbS .exp-group')].find(e => /Bhima/.test(e.textContent));
-      return /2 expenses · 1 declined/.test(g.querySelector('.li-row').innerText) && g.querySelector('.li-amt').textContent.trim() === '~$8.80' && g.classList.contains('open'); })]);
+      return /2 expenses · 1 declined/.test(g.querySelector('.li-row').innerText) && g.querySelector('.li-amt').textContent.trim() === '≈$8.80' && g.classList.contains('open'); })]);
     await own.evaluate(() => { FIN.rbNo.clear(); finReimbRender(); }); await own.waitForTimeout(300);
     t.push(['…with a one-tap WhatsApp confirmation, ready written', /received%20and%20will%20be%20processed/.test(await own.$eval('#fpBody a[href^="https://wa.me/385987"]', a => a.href))]);
     // b259: the charts under Expenses, and the two CSVs.
@@ -638,16 +638,16 @@ const API = 'http://api.test/';
     t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
     t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen', await own.evaluate(() => !document.querySelector('#fpBody .fin-sh-btns') && !/Dollars received/.test(document.querySelector('#fpBody').innerText))]);
-    t.push(['b291: in practice a "~$" figure is a button that opens Dollars received', await own.evaluate(() => { const b = document.querySelector('#fpBody .fin-est'); if(!b || !/^−?~\$/.test(b.textContent)) return false;
+    t.push(['b291: in practice a "≈$" figure is a button that opens Dollars received', await own.evaluate(() => { const b = document.querySelector('#fpBody .fin-est'); if(!b || !/^−?≈\$/.test(b.textContent)) return false;
       b.click(); const ok = !!document.querySelector('#cvRows .cv-amt'); closeModal(); return ok; })]);
     t.push(['b276: the Expenses screen charts expenses only (income is on the Overview)', await own.evaluate(() => /Expenses by month/.test(document.querySelector('#finCharts').innerText) && !/Gross|Net/.test(document.querySelector('#finCharts').innerText))]);
     t.push(['b269: every colour key in the charts keeps its square, even squeezed beside big figures', await own.evaluate(() => {
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });
       return [...document.querySelectorAll('#finCharts .fin-key')].every(k => k.getBoundingClientRect().width >= 10); })]);
     t.push(['b269: estimated dollars carry ~, logged ones none: (10 €) ~$11 and (10 €) $12.50', await own.evaluate(() => { const t = document.querySelector('#fpBody').innerText;
-      return /\n\$30(\.00)?\n/.test(t); }) && await fxLine(own, '10.00 €', '~$11.00') && await fxLine(own, '10.00 €', '$12.50')]);
-    t.push(['b269: what is owed reads in the person\'s currency, dollars beside: 765 zł (~$…)', await own.evaluate(() => {
-      const x = finExpList().find(y => y.id === 'Xpln0001'); return new RegExp('^' + cashFmt(765, 'PLN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\(~\\$[\\d.,]+\\)$').test(finPayText([x])); })]);
+      return /\n\$30(\.00)?\n/.test(t); }) && await fxLine(own, '10.00 €', '≈$11.00') && await fxLine(own, '10.00 €', '$12.50')]);
+    t.push(['b269: what is owed reads in the person\'s currency, dollars beside: 765 zł (≈$…)', await own.evaluate(() => {
+      const x = finExpList().find(y => y.id === 'Xpln0001'); return new RegExp('^' + cashFmt(765, 'PLN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\(≈\\$[\\d.,]+\\)$').test(finPayText([x])); })]);
     t.push(['b269: …and all in dollars, just one figure', await own.evaluate(() => finPayText([finExpList().find(y => y.id === 'Xexact01')]) === '$20.00')]);
     // The fallback is the rate nearest the day asked for.
     srv.kv.setProp('fxHist', JSON.stringify({ 'CHF>USD': { '2026-09-01': 1.1, '2026-10-01': 1.2, '2026-10-20': 1.3 } }));
@@ -792,9 +792,9 @@ const API = 'http://api.test/';
       const c2 = await cap();
       t.push(['b282: the long Overview note, once hidden, stays hidden at another place and after a refresh', c0.key.length > 300 && c1 && !c1.shown && c2 && !c2.shown]);
       await lv.evaluate(k => labelSave(k, '', '\u0001'), c0.key); await lv.waitForTimeout(800);
-      t.push(['b282: …and the left-hand menu has Go to Sales Portal while in Finance', await lv.evaluate(() => { const b = document.querySelector('#sideNav .sn-item[data-act="finleave"]'); return !!b && getComputedStyle(b).display !== 'none' && /Go to Sales Portal/.test(b.textContent); })]);
-      await lv.evaluate(() => document.querySelector('#sideNav .sn-item[data-act="finleave"]').click()); await lv.waitForTimeout(800);
-      t.push(['b282: …which takes you to the sales side, where the row is not shown', await lv.evaluate(() => !document.body.classList.contains('fin-mode') && getComputedStyle(document.querySelector('#sideNav .sn-item[data-act="finleave"]')).display === 'none')]);
+      t.push(['b300: live: no Go to Sales Portal in the menu; the top bar has 🏠 Sales Portal while in Finance', await lv.evaluate(() => { const b = document.querySelector('#portalBtn'); return !document.querySelector('#sideNav [data-act="finleave"]') && !!b && getComputedStyle(b).display !== 'none' && /Sales Portal/.test(b.textContent); })]);
+      await lv.evaluate(() => document.querySelector('#portalBtn').click()); await lv.waitForTimeout(800);
+      t.push(['b300: …which takes you to the sales side, where it reads 📈 Finance Portal', await lv.evaluate(() => !document.body.classList.contains('fin-mode') && /Finance Portal/.test(document.querySelector('#portalBtn').textContent) && !!document.querySelector('#whoBtn') && getComputedStyle(document.querySelector('#whoBtn')).display !== 'none')]);
       await lv.evaluate(() => finGo('overview', '', {reload:true})); await lv.waitForTimeout(1500);
     }
     t.push(['b276: the Finance search reads "Search for Season, Region, or Event" when nothing is chosen', await lv.evaluate(() => {

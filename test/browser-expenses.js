@@ -255,9 +255,9 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(1500);
     m = await fpage(own);
     t.push(['…the app\'s own panels are out of the way', await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display === 'none')]);
-    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected ~\$/.test(m) && /Net/.test(m)]);
-    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending Payments\s*~\$3\.75/i.test(m)]);
-    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*~?\$[\d.]+\s*(₹[\d,]+\s*)?Expected ~\$17\.63/i.test(m)]);
+    t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected ≈\$/.test(m) && /Net/.test(m)]);
+    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending Payments\s*≈\$3\.75/i.test(m)]);
+    t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*≈?\$[\d.]+\s*(₹[\d,]+\s*)?Expected ≈\$17\.63/i.test(m)]);
     t.push(['…the Overview keeps to its seven figures (no pending reimbursements)', !/Pending Reimbursements/i.test(m)]);
     t.push(['…at every level: the season row', /Kartika/.test(m)]);
     await own.click('#fpBody [data-act="fingo"]'); await own.waitForTimeout(500);       // Kartika
@@ -283,8 +283,8 @@ const API = 'http://api.test/';
     t.push(['b259: …and its charts sit at the bottom: the expenses include the venue', /At a glance/.test(await fpage(own)) && /Venue/.test(await own.$eval('#finCharts', e => e.innerText))]);
     await own.screenshot({ path: shot('fin-report'), fullPage: true });
     t.push(['b259: no Reports, Compare or Visualize on the Finance bar', !(await own.$('#fpSecs [data-sec="report"]')) && !(await own.$('#fpSecs [data-sec="compare"]')) && !(await own.$('#fpSecs [data-sec="visual"]'))]);
-    await own.evaluate(() => document.querySelector('#sideNav .sn-item[data-act="finleave"]').click()); await own.waitForTimeout(500);
-    t.push(['← Go to Sales Portal leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
+    await own.evaluate(() => document.querySelector('#portalBtn').click()); await own.waitForTimeout(500);
+    t.push(['b300: the 🏠 Sales Portal button in the top bar leaves Finance', !(await onFin(own)) && !/#finance/.test(own.url()) &&
       await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display !== 'none')]);
 
     /* View as: a Seller at the Chowpatty Program — while the owner's own tab is

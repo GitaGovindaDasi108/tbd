@@ -380,7 +380,7 @@ const API = 'http://api.test/';
     snv = await sn();
     t.push(['the pointer over it opens it out, icons and words together', snv.width > 250]);
     const adv = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="advanced"] .sn-item .sn-t')].map(x => x.textContent));
-    t.push(['Advanced: Subtract Stock (practice, b258), Spreadsheets, Specialty Reports, Sales Links, App Access, Report (practice, b299)', JSON.stringify(adv) === JSON.stringify(['Subtract Stock', 'Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access', 'Report'])]);
+    t.push(['Advanced: Subtract Stock (practice, b258), Spreadsheets, WhatsApp Reports (practice, b300: Specialty Reports and Report in one), Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Subtract Stock', 'Spreadsheets', 'WhatsApp Reports', 'Sales Links', 'App Access'])]);
     const dev = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="dev"] .sn-item .sn-t')].map(x => x.textContent));
     t.push(['App Development: Edit Wording, Reorganize Menu (b283), (Leave) Practice, Permissions, View as, Dates & Repeats (b255)', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Reorganize Menu', 'Leave Practice', 'Permissions', 'View as', 'Dates & Repeats'])]);
     t.push(['b236: every section starts folded', await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group')].every(g =>

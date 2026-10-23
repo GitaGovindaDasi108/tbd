@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b299**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b300**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,23 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b300
+Live app changes (Gita, 2026-10-23 16:20 IST).
+- Navigation drop-downs: the path's trailing drop-down (`.crumb-more select`) lists at 13px, the Events… size; every path select is 13px.
+- ≈ replaces ~ as the "approximate" mark everywhere (totals, payment table, Collections by Region, Finance's finUsd/finEstMark, notes). redNegatives accepts both.
+- Totals cards: whole numbers only (`usd0`, `cashWhole` with a no-break space before the symbol); seller "My cash" too. Elsewhere money keeps its cents.
+- Book tiles (`.tc-book`) carry Uncategorized estimates: `big.est` = qty of UNCAT rows with est, `aotm.est` = aqty of rows with uncatAEst. Computer: `.tc-est` "Estimated: N" top right (`.has-est` grid); phone (≤560px): `.value-est` "(N Estimated)" at 10.5px under the pre-orders.
+- `.value-pre` never breaks inside "(40 pre-orders)" (nowrap, inline-block).
+- `layoutTotals()` rewritten: book cards one width (the widest's need), money cards after them, the totals card `flex:1 1 0` taking the rest, Pending at its own width. Tries one line with everything unwrapped, then the money cards' small print wrapped, then the books', then all, then `.totals.tot-sq` (tighter padding/gap/figure size). Otherwise books share their own line(s) equally (two to a line if three won't fit) and the money cards go beneath (totals grows 100:1 over Pending). `.tc-coll .label` never wraps.
+- Earthly HQ card: Q2 reads "Exp:" / "Don:" (`.tc-ab`); on a phone the HQ card keeps Q2 top right beside Net Sales (grid "q1 q2" / "q3 q3" / "q4 q4").
+- Finance tabs back to Overview / Expenses / Reimbursements (FIN_SECS, SN_ITEMS.finreimb, the Finance menu button). The bar's button and its window are "Reimbursement Links".
+- Portal button live: `hdrPortal()` shows #portalBtn wherever SIDE_NAV and Finance are; `body.hdr2` (hiding name/Report/Refresh) stays practice-only. The `finleave` menu row is gone (renderSideNav deletes it); "Leave Finance" stays for Finance-only people.
+- Refresh in Finance: an inline head script adds `html.fin-boot` on a #finance address, hiding `body > *` until init() decides (removed there; 4 s safety). A frame of the sales masthead painted before init was the desktop flash.
+- Practice: Uncategorized calculator rewritten: known = Confirmed, or typed and not empty; the anchor is a Confirmed one, else the last typed, else whichever is known; an emptied box is the app's again once you leave it (blur), never filled while focused; edit opens unchanged.
+- Practice: "WhatsApp Reports" (`waReportsModal`, act `wareports`) replaces Specialty Reports and Report in the practice menu: 1. a searchable place (season, regions, sub-regions, events; `waPlaces`), 2. optional extra places (＋ Add a location, ✕ to remove), 3. sections (REPORT_SECTIONS), Generate Report, Copy / Send…. Built with buildReport's combo (locs/groups/title) plus new `opts.saleOk` so sub-regions count their warehouse sales. Sections remembered (localStorage tbs_wareports).
+- SERVER_BUILD b300.
+- Tests: new browser-b300 (42); truthclient, browser-finance, browser-expenses updated.
 
 ## Done in b299
 Live app changes (Gita, 2026-10-23 14:24 IST).
