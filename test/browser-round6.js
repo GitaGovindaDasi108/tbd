@@ -89,7 +89,7 @@ async function pickPay(page, v) {
     await page.click('#uaSave'); await page.waitForTimeout(1200);
     s1 = state().sales.find(x => x.name === 'Card One');
     t.push(['saved with the dollars received', Number(s1.usdActual) === 38.5]);
-    t.push(['the row shows "($38.5 received)"', /\(\$38\.5 received\)/.test(await page.evaluate(() => document.body.innerText))]);
+    t.push(['the row shows "($38.50 received)"', /\(\$38\.50 received\)/.test(await page.evaluate(() => document.body.innerText))]);
     // An edit of the sale keeps it.
     await page.evaluate(id => saleModal({ bookId: STATE.sales.find(x => x.saleId === id).bookId, edit: STATE.sales.find(x => x.saleId === id) }), s1.saleId);
     await page.waitForTimeout(300);
@@ -125,7 +125,7 @@ async function pickPay(page, v) {
     await dbtn.click(); await page.waitForTimeout(300);
     await page.fill('#uaVal', '25'); await page.click('#uaSave'); await page.waitForTimeout(1200);
     t.push(['…and it is saved', Number(state().sales.find(x => x.saleId === 'd_card1').usdActual) === 25]);
-    t.push(['the donation row shows "($25 received)"', /\(\$25 received\)/.test(await page.evaluate(() => document.body.innerText))]);
+    t.push(['the donation row shows "($25.00 received)"', /\(\$25\.00 received\)/.test(await page.evaluate(() => document.body.innerText))]);
     await page.evaluate(() => donationModal(STATE.sales.find(x => x.saleId === 'd_card1'))); await page.waitForTimeout(300);
     await page.fill('#ccomments', 'thank you'); await page.click('#saveDon'); await page.waitForTimeout(1200);
     t.push(['editing the donation keeps it', Number(state().sales.find(x => x.saleId === 'd_card1').usdActual) === 25]);

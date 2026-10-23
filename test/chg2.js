@@ -19,7 +19,7 @@ global.fetch=(u,o)=>{ const p=JSON.parse(o.body); ARRIVED.push(p.action+':'+(p.c
   T.goTo('region','it'); T.cashModal();
   console.log('--- 200 € of sales, with 10 € of borrowed change in the box ---');
   rows().forEach(r=>console.log('   '+r[0].padEnd(24), r[1]));
-  console.log('regions own figure is 200 €          :', rows().some(r=>/Warehouse/.test(r[0]) && /^200 €/.test(r[1].trim())));
+  console.log('regions own figure is 200 €          :', rows().some(r=>/Warehouse/.test(r[0]) && /^200(\.00)? €/.test(r[1].trim())));
   console.log('the change is shown beside the figure   :', /chg-here/.test(store['#modal'].innerHTML));
   console.log('the Global Coordinator still has its 10:', rows().some(r=>/Global Coordinator/.test(r[0])));
   // return the change

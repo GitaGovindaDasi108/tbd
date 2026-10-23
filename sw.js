@@ -13,8 +13,11 @@
    Only this site's own files and the Google fonts pass through here. The app's
    saves and reads go to the server directly and are never stored or answered
    from here. */
-const CACHE = 'tbs-shell-v1';
-const SHELL = ['./', 'index.html', 'config.js', 'favicon.ico', 'favicon.png', 'favicon-192.png',
+/* v2 (b299): v1 also kept the page under "./" from the day it was installed
+   and, on a slow signal, opened that copy (Gita saw b265 days later), so the
+   page is now kept under one name only and that copy is always the newest. */
+const CACHE = 'tbs-shell-v2';
+const SHELL = ['index.html', 'config.js', 'favicon.ico', 'favicon.png', 'favicon-192.png',
                'apple-touch-icon.png', 'Srila_Prabhupada.jpeg', 'Gurudeva.jpeg'];
 const SLOW_MS = 6000;      // a signal this slow is treated as none, for opening the page
 
@@ -45,9 +48,10 @@ self.addEventListener('fetch', e => {
 async function fresh(req, own) {
   const cache = await caches.open(CACHE);
   // The page is one file whatever follows the "?" (?practice, a share link).
-  const kept = () => cache.match(req, { ignoreSearch: own && req.mode === 'navigate' })
-    .then(r => r || (req.mode === 'navigate' ? cache.match('index.html') : undefined));
-  const net = fetch(req).then(res => {
+  const kept = () => req.mode === 'navigate' ? cache.match('index.html')
+    : cache.match(req, { ignoreSearch: false });
+  // The page itself always asks the server, past the browser's own copy.
+  const net = (own && req.mode === 'navigate' ? fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' }) : fetch(req)).then(res => {
     if (res && (res.ok || res.type === 'opaque')) {
       const copy = res.clone();
       // Keep the page under one name, so any address of it opens offline.

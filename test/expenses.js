@@ -266,6 +266,12 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   t.push(['Finance gets every sale as a row: place, title, books, dollars', r.ok && D.sales.some(x => x.id === 'sP1' && x.r === 'rg_in' && x.e === 'ev_cp' && x.q === 1 && x.pu > 0 && x.gu === 0)]);
   t.push(['…and every expense, in dollars', r.ok && D.expenses.some(x => x.id === 'Xf1aaaaa' && x.r === 'rg_pl' && x.usd > 0 && x.kind === 'reimburse')]);
   t.push(['…seasons, regions and events, each with its series', r.ok && D.seasons.some(x => x.name === 'Europe Tour' && x.series === 'Europe Tour') && D.events.some(x => x.id === 'ev_cp')]);
+  // b299 (Gita: "I put in 253 and the app put in 252.98"): the cents left by rounding each sale go to one, so the place adds up to what was written down.
+  for (const id of ['sCv1', 'sCv2', 'sCv3']) await O({ action: 'sell', saleId: id, location: 'ev_cp', bookId: book, legs: [{ type: 'Cash', cur: 'EUR', amt: 10 }], season: SA });
+  r = await Fi({ action: 'finConvSet', place: 'ev_cp', parts: [{ cur: 'EUR', amt: 30 }], usd: 10, date: '2026-10-20' });
+  r = await Fi({ action: 'finData' });
+  const cvSum = r.result.sales.filter(x => /^sCv/.test(x.id)).reduce((t, x) => t + x.gu, 0);
+  t.push(['b299: 30 € fetched $10: the three 10 € sales add up to $10.00 exactly (' + cvSum.toFixed(2) + ')', Math.round(cvSum * 100) === 1000]);
   await O({ action: 'saveSeason', name: 'Kartika 2025' }); await O({ action: 'saveSeason', name: 'Kartika 2026' });
   r = await Fi({ action: 'finData' });
   t.push(['seasons that repeat are one series (the year left out)', r.result.seasons.filter(x => x.series === 'Kartika').length === 2]);

@@ -247,12 +247,16 @@ const API = 'http://api.test/';
     t.push(['…saved: the venue expense is also a cost at the event, so net totals take it off', (st.costs || []).some(c => c.location === 'ev_cp' && Number(c.amt) === 800 && c.category === 'Venue')]);
 
     // The Finance section.
+    const salesAt = await own.evaluate(() => salesFinScope());
     await own.evaluate(() => document.querySelector('#sideNav [data-act="finoverview"]').click()); await own.waitForTimeout(1500);
-    m = await fpage(own);
     t.push(['Universal: Menu › Finance goes to the Finance page', await onFin(own) && /#finance\/overview/.test(own.url())]);
+    // b299 (Gita): it opens at the place the sales side was at.
+    t.push(['b299: …at the place the sales side was showing (' + salesAt + ')', await own.evaluate(() => FINP.scope) === salesAt]);
+    await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(1500);
+    m = await fpage(own);
     t.push(['…the app\'s own panels are out of the way', await own.evaluate(() => getComputedStyle(document.querySelector('#totals')).display === 'none')]);
     t.push(['Finance › Overview: figures in dollars', /Big Books Sold/.test(m) && /Gross/.test(m) && /Expected ~\$/.test(m) && /Net/.test(m)]);
-    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending\s*~\$3\.75/i.test(m)]);
+    t.push(['…pending payments: Arjuna\'s ₹300 is $3.75', /Pending Payments\s*~\$3\.75/i.test(m)]);
     t.push(['…expenses: ₹450 + ₹40 + ₹120 + ₹800 = $17.63', /Expenses\s*~?\$[\d.]+\s*(₹[\d,]+\s*)?Expected ~\$17\.63/i.test(m)]);
     t.push(['…the Overview keeps to its seven figures (no pending reimbursements)', !/Pending Reimbursements/i.test(m)]);
     t.push(['…at every level: the season row', /Kartika/.test(m)]);

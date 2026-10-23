@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b298**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b299**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,28 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b299
+Live app changes (Gita, 2026-10-23 14:24 IST).
+- Dollars received: $253 is recorded as $253, not $252.98. convApply rounds each sale's dollars, then gives the rounding remainder to the biggest sale of each place and currency, so the parts add up to exactly what was entered.
+- Deleting Dollars received from the Activity Log refreshes Finance (FIN.D, device cache and expense list dropped, then refetched).
+- The sales app counts at Finance's Dollars received rates: Code.gs convFxMap_() sends `convFx` (loc → {cur: amt/usd}, event → region → season) with the season state; ratesAt() lays it over the frozen rates.
+- "~" in the sales app on dollars worked out from a rate (usdExact, usdCostExact, legExact): totals cards, the payment table, Collections by Region. None where every currency is at a fixed rate (Dollars received, a closed place's) or dollars were entered.
+- Cents always shown: usd2() for dollars; cashFmt for amounts in any currency. Book prices keep their old look (priceFmt).
+- Pop-ups with the ✕: a "Close" button in the footer is removed (openModal); an emptied footer is hidden (.m-foot:empty) but kept, as some windows fill it later. Cancel stays.
+- Edit Season (and the whole menu) acts on the place Finance shows: finSyncPlace switches the sales side's season quietly when Finance is in another (FIN.syncTo), and Earthly HQ to Earthly HQ. Entering Finance from the sales side opens at the sales place (salesFinScope).
+- Phone: a little room under Report/Refresh before the yellow line.
+- Finance on a phone: the joined section tabs are live (approved). The Reimbursements tab and menu item read "Reimbursement Links".
+- "Pending Payments" back everywhere except the Overview table's column (and its CSV).
+- Totals bar: layoutTotals() sets widths in JS. Cards are equal across a line; where they don't fit, the card with the least in it shrinks to its own width, then the next. Small print (gifts, pre-orders, currencies) may wrap so fewer lines are needed; of the layouts with fewest lines, the one taking least height wins. Runs after render, on resize and once fonts load. HQ's Q4 is titled "Collections by Currency"; .tc-coll columns can no longer overlap.
+- WhatsApp report: Total Collections, Expenses, Donations and Net Sales as on the totals card ("=" hard figures, "≈" from a rate); "Net after expenses" gone.
+- Pre-order Deliver from anywhere is live (deliverModal → deliverPickModal). Its list: "Name (warehouse)" with only the name bold, the rest grey (combo items take `html`).
+- Service worker v2: the page is kept under one name and always refreshed from the server (no-cache); v1 opened a copy kept under "./" since install on a slow signal (Gita saw b265).
+- Refreshing in Finance shows Finance at once (FIN.boot), not the sales page first.
+- "Go to Sales Portal" sits first in the menu while in Finance (was inside the folded Finance group).
+- Practice only: Uncategorized Sales has Confirmed/Estimated per kind before each number (server `aest` column; est is the Big Books'). A known number makes the other an estimate from what is left, coloured like the currency adder (rp-auto), with "Based on N Big Books, M is the estimated number of Adventures sold." (and the reverse). Once typed, even emptied, a number is never refilled.
+- Practice only: the top bar has a fixed "📈 Finance Portal" / "🏠 Sales Portal" button and the Activity Log; Refresh is gone, Report is in Advanced, your name sits above Sign Out (body.hdr2, hdrPortal).
+- Tests: browser-b293 (+6 b299), browser-b297, browser-expenses (+1), browser-subregions (+2), browser-sellers, browser-round2/6, browser-finance, truthclient and chg2 updated for the wording and cents.
 
 ## Done in b298
 Live app changes (Gita, 2026-10-23 12:21 IST).
