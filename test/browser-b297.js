@@ -64,6 +64,21 @@ m.call({ action: 'setSeason', seasonId: SA });
   const sale = m.call({ action: 'getState', season: SA }).state.sales.find(x => x.saleId === 'P1');
   t.push(['…delivered: a copy came off Earthly HQ (12 → 11)', hq && hq.qty === 11 && sale && sale.type === 'SALE' && sale.delivered]);
 
+  /* b298 (Gita): anywhere in the system with the book is offered, not only Earthly HQ: here a warehouse in another season. */
+  const s2 = await page.evaluate(() => (STATE.seasons.find(x => x.name === 'Second Tour') || {}).seasonId);
+  c({ action: 'adjustStockBulk', location: 'wh_s2_0', items: [{ bookId: B, delta: 3 }], override: true }, s2);
+  c({ action: 'sell', saleId: 'P3', location: R0.whLoc, bookId: B, isPreorder: true, legs: [{ type: 'Cash', cur: 'EUR', amt: 10 }], name: 'Govinda' });
+  await page.evaluate(() => pull()); await page.waitForTimeout(1500);
+  await page.evaluate(() => deliverPickModal('P3')); await page.waitForTimeout(800);
+  await page.click('#dvFrom .pp-in'); await page.fill('#dvFrom .pp-in', ''); await page.waitForTimeout(200);
+  const rows3 = await page.$$eval('#dvFrom .pp-row', rs => rs.map(r => r.innerText.replace(/\s+/g, ' ')));
+  t.push(['b298: Deliver offers every place with the book: another season\'s warehouse and Earthly HQ (' + rows3.join(' | ') + ')', rows3.some(x => /Place 0/.test(x) && /Second Tour/.test(x)) && rows3.some(x => /Earthly HQ/.test(x))]);
+  await page.click('#dvFrom .pp-row:has-text("Place 0")'); await page.waitForTimeout(200);
+  await page.click('#dvGo'); await page.waitForTimeout(1500);
+  const q3 = m.call({ action: 'getState', season: s2 }).state.inventory.find(i => i.location === 'wh_s2_0' && i.bookId === B);
+  t.push(['b298: …and delivering from there takes the copy off that shelf (3 → 2)', q3 && q3.qty === 2]);
+  m.call({ action: 'setSeason', seasonId: SA });
+
   /* 2. The totals bar. */
   await page.evaluate(() => goTo('season')); await page.waitForTimeout(400);
   const cards = () => page.$$eval('#totals > .tcard', cs => cs.map(c => ({ l: c.querySelector('.label').textContent.trim(), w: c.getBoundingClientRect().width, top: Math.round(c.getBoundingClientRect().top), r: c.getBoundingClientRect().right })));
@@ -73,6 +88,7 @@ m.call({ action: 'setSeason', seasonId: SA });
   const bar = await page.$eval('#totals', e => e.getBoundingClientRect());
   t.push(['computer: the cards fill one line', new Set(cs.map(x => x.top)).size === 1 && Math.abs(Math.max(...cs.map(x => x.r)) - bar.right) < 2]);
   t.push(['…each as wide as it needs (AoTM narrower than Total Collections)', cs[0].w < cs[cs.length - 1].w]);
+  t.push(['b298: spare room shared equally between the cards', await page.$$eval('#totals > .tcard', cs => new Set(cs.map(c => getComputedStyle(c).flexGrow)).size === 1)]);
   c({ action: 'sell', saleId: 'P2', location: R0.whLoc, bookId: B, isPreorder: true, pending: true, legs: [{ type: 'Cash', cur: 'USD', amt: 30 }], name: 'Gopal' });
   await page.evaluate(() => pull()); await page.waitForTimeout(1500);
   cs = await cards();
@@ -85,8 +101,10 @@ m.call({ action: 'setSeason', seasonId: SA });
 
   /* 4. Earthly HQ: Net Sales is the big number. */
   await page.evaluate(() => switchSeason(HQ_ID)); await page.waitForTimeout(1500);
-  t.push(['Earthly HQ: Net Sales is the big number, Total Collections the smaller', await page.evaluate(() => { const q1 = document.querySelector('#totals .tc-q1 .label'), q4 = document.querySelector('#totals .tc-q4 .label');
-    return !!q1 && /Net Sales/i.test(q1.textContent) && /Total Collections/i.test(q4.textContent); })]);
+  // b298 (Gita): Q1 Net Sales alone, Q2 Expenses and Donations, Q3 Total Collections, Q4 the currencies.
+  t.push(['Earthly HQ: Q1 Net Sales, Q3 Total Collections, Q4 the collections by currency', await page.evaluate(() => { const q = k => document.querySelector('#totals .tc-hq .tc-q' + k);
+    return !!q(1) && /^Net Sales/i.test(q(1).innerText) && /^Total Collections/i.test(q(3).innerText) && !/Total Collections|Net Sales/i.test(q(4).innerText); })]);
+  t.push(['b298: Net Sales has the one Net colour', await page.evaluate(() => { const n = document.querySelector('#totals .tc-net'); n.classList.remove('fin-neg'); const c = getComputedStyle(n).color; redNegatives(); return c === 'rgb(42, 120, 214)'; })]);
 
   /* 5. A season switch keeps the page where it was. */
   await page.evaluate(() => switchSeason(STATE.seasons.find(s => s.seasonId !== HQ_ID).seasonId)); await page.waitForTimeout(1500);

@@ -140,7 +140,7 @@ const API = 'http://api.test/';
     let r = await own.evaluate(() => buildReport(''));
     t.push(['the report on All of Spain adds a By sub-region block, Big Books and Adventures apart', /— BY SUB-REGION —\nMadrid\nBig Books = 2 Sold \+ 1 Gift = 3 Distributed/.test(r)
       && /Barcelona\nBig Books = 1 Sold \+ 0 Gifts = 1 Distributed\nAdventures = 1 Sold \+ 0 Gifts = 1 Distributed/.test(r) && /Spain, general\nBig Books = 1 Sold/.test(r)]);
-    t.push(['…and the money by sub-region, after costs', /— BY SUB-REGION \(after costs\) —/.test(r) && /Madrid - \$70/.test(r) && /Barcelona - \$55/.test(r)]);
+    t.push(['…and the money by sub-region, after expenses', /— BY SUB-REGION \(after expenses\) —/.test(r) && /Madrid - \$70/.test(r) && /Barcelona - \$55/.test(r)]);
     for (const w of [1150, 390]) { await own.setViewportSize({ width: w, height: 900 }); await own.waitForTimeout(300); (await spill(own)).forEach(x => spills.push(w + ' region: ' + x)); }
     await own.setViewportSize({ width: 390, height: 900 }); await own.screenshot({ path: shot('region-phone') });
     await own.setViewportSize({ width: 1150, height: 900 });
@@ -248,6 +248,8 @@ const API = 'http://api.test/';
     await own.selectOption('#locTabs select[data-act="pickloc"]', 'wh_md'); await own.waitForTimeout(400);
     t.push(['b297: …and choosing it opens that warehouse, the path ending at Madrid', await own.evaluate(() => CUR_LOC) === 'wh_md'
       && (await own.$$eval('#locTabs .crumb-link', l => l.map(x => x.textContent))).slice(-1)[0] === 'Madrid']);
+    // b298 (Gita): the Summary adds up the whole sub-region, as a region's warehouse page adds up the region.
+    t.push(['b298: Madrid Summary counts every Madrid sale, not just the warehouse\'s', await own.evaluate(() => scopedSales().map(x => x.saleId).sort().join(',')) === 'm1,m2,m3,md1,md2']);
     // Undo from the Activity Log.
     const act = (await O({ action: 'activity', season: SA })).result;
     const row = (act.rows || act || []).find(r => /^Merged Madrid into Spain/.test(r.text || ''));

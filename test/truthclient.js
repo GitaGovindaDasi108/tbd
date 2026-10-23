@@ -26,7 +26,7 @@ T.goTo('season');
 T.renderTotals();
 const tiles = store['#totals'].innerHTML;
 t.push(['Total Collections: $80 + $70 + $50 = $200', /Total Collections<\/div><div class="value">\$200(\.00)?</.test(tiles)]);
-t.push(['costs at the frozen rate: −$20, Net Sales $180', /Costs <\/span>−\$20(\.00)?</.test(tiles) && /tc-net">\$180(\.00)?</.test(tiles)]);
+t.push(['expenses at the frozen rate: −$20, Net Sales $180', /Expenses <\/span>−\$20(\.00)?</.test(tiles) && /tc-net">\$180(\.00)?</.test(tiles)]);
 
 T.renderCollectionsByRegion('#cbr');
 const cbr = store['#cbr'].innerHTML;
@@ -46,7 +46,7 @@ t.push(['payments: costs −$20', costCell && /−\$20(\.00)?$/.test(costCell.te
 const rep = T.buildReport();
 t.push(['report: Total ≈ $200', /Total[^\n]*≈ \$200(\.00)?\b/.test(rep)]);
 t.push(['report: Italy after costs ≈ $130', /Italy[^\n]*≈ \$130(\.00)?\b/.test(rep)]);
-t.push(['report: Net after costs ≈ $180', /Net after costs[^\n]*≈ \$180(\.00)?\b/.test(rep)]);
+t.push(['report: Net after expenses ≈ $180', /Net after expenses[^\n]*≈ \$180(\.00)?\b/.test(rep)]);
 
 // Reopened: the rates go, and Italy counts at today's rate again.
 const open = JSON.parse(JSON.stringify(base)); open.regions[0].closedAt = ''; delete open.regions[0].rates;

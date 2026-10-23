@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b297**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b298**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,22 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b298
+Live app changes (Gita, 2026-10-23 12:21 IST).
+- Dollars received: several currencies in one entry ("85 € + 6250 ден + $5 = $253"). Server convSet takes parts[]; core looks up each currency's day rate (fxOn, nearest-day fallback) and the dollars (less any dollars in the pile) are shared out by worth, evenly if a rate is missing. Rows keep `parts`; old single-currency rows still read. Total collections fills a row per currency taken at that place.
+- Deletes of Dollars received (window and Activity Log) ask in the app's own window (askSure) instead of the browser's confirm(), which some phones and in-app browsers answer "no" silently. Finance and Universal may delete (mayPay).
+- Totals bar: every card grows by the same share of spare room (no extra grow on Total Collections).
+- Finance Overview table: only Sold and Gross per kind; tapping Sold opens Gifted and Distributed (FIN.ovwOpen, .fo-<kind>).
+- One Net colour (--net #2a78d6, the Finance charts' Net) for Net Sales on the totals cards, the payment table's net rows, Collections by Region's USD column and Finance's Net.
+- "Pending Payments" reads "Pending" in Finance and on the totals bar (the sales-side panel keeps its name beside "Pre-orders pending").
+- "Costs" reads "Expenses" everywhere: totals cards, payment table, WhatsApp report, spreadsheets' headers, the old costs window.
+- Earthly HQ card: Q1 Net Sales, Q2 Expenses and Donations, Q3 Total Collections, Q4 by currency (.tc-hq).
+- A sub-region's Summary (its old warehouse) adds up the whole sub-region (subWhHere in scopedSales/scopedAllCosts); Finance the same (finScopeF).
+- Pre-order Deliver (practice): server stockWhere lists every place in every season and Earthly HQ holding the titles; the picker names each with its region and season.
+- Finance: a line between the path and the sections on a phone and narrow window; practice only, on a phone the sections are one joined bar and the two actions sit on their own row (for Gita's approval).
+- Uncategorized Sales (practice): the hint spells the sum out.
+- Tests: browser-b297 (+6 b298), browser-finance (+7), browser-subregions (+1), wording updates in truthclient, browser-expenses.
 
 ## Done in b297
 Live app changes (Gita, 2026-10-23 09:47 IST). Folds in b296 (PR #97, Live app emergency).
