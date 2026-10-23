@@ -134,7 +134,7 @@ const API = 'http://api.test/';
     await sita.waitForTimeout(2500); await refresh(sita);
     let tl = await tiles(sita);
     t.push(['a Seller\'s top bar shows "My sales": her own 3, not the event\'s 4', /my sales\s*3\s*sold/i.test(tl)]);
-    t.push(['…and "My cash": the €70 she took in cash (the card sale is not cash)', /my cash\s*70\s*€/i.test(tl)]);
+    t.push(['…and "My cash": the €70 she took in cash (the card sale is not cash)', /my cash\s*70(\.00)?\s*€/i.test(tl)]);
     t.push(['…and no event totals (no Total Collections)', !/total collections/i.test(tl)]);
     t.push(['…the button names her Event Lead', /Hand your cash to Gita/.test(tl)]);
     const st = (await O({ action: 'getState', season: SA })).state;
@@ -219,7 +219,7 @@ const API = 'http://api.test/';
     // (this page has not heard of the moves yet: it shows who held the cash before them)
     await own.click('[data-act="cash"]'); await own.waitForTimeout(400);
     t.push(['Track Cash says who holds a place\'s cash: "held by Tulasi 35 € · Event Lead 70 €"',
-      /held by Tulasi 35 € · Event Lead 70 €/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
+      /held by Tulasi 35\.00 € · Event Lead 70\.00 €/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
     await own.evaluate(() => closeModal()); await refresh(own);
     await own.click('[data-act="cash"]'); await own.waitForTimeout(400);
     const tc = await own.evaluate(() => document.querySelector('#modal').innerText);
@@ -366,20 +366,21 @@ const API = 'http://api.test/';
       panel: document.querySelector('#adminPanel').offsetHeight,
       width: document.querySelector('#sideNav').getBoundingClientRect().width,
       secs: [...document.querySelectorAll('#sideNav .sn-gh')].map(b => b.innerText.replace(/\s+/g, ' ').replace(/[▾▸]/g, '').trim()),
-      solo: (document.querySelector('#sideNav .sn-solo') || {}).innerText || '',
+      solo: (document.querySelector('#sideNav .sn-solo:not(.sn-leave)') || {}).innerText || '',
       foot: (document.querySelector('#sideNav .sn-foot') || {}).innerText || '',
       bg: getComputedStyle(document.querySelector('#sideNav')).backgroundColor,
       cream: (() => { const x = document.createElement('div'); x.style.background = 'var(--cream)'; document.body.appendChild(x); const c = getComputedStyle(x).backgroundColor; x.remove(); return c; })() }));
     let snv = await sn();
     t.push(['practice: no App Admin panel; a slim column down the left, the page\'s own cream', snv.panel === 0 && snv.width < 70 && snv.bg === snv.cream]);
     // Money is "Laksmi" in practice (Gita, 2026-10-21).
-    t.push(['…sections in the owner\'s order: Books, Laksmi, Season Admin, Advanced, App Development, Settings', /Books.*Laksmi.*Season Admin.*Advanced.*App Development.*Settings/.test(snv.secs.join('|'))]);
-    t.push(['…then Support; Sign Out at the foot', /Support/.test(snv.solo) && /Sign Out/.test(snv.foot)]);
+    // b299: in practice your name moved to above Sign Out, so Settings has nothing left in it.
+    t.push(['…sections in the owner\'s order: Books, Laksmi, Season Admin, Advanced, App Development', /Books.*Laksmi.*Season Admin.*Advanced.*App Development$/.test(snv.secs.join('|'))]);
+    t.push(['…then Support; your name, then Sign Out at the foot (b299)', /Support/.test(snv.solo) && /Owner[\s\S]*Sign Out/.test(snv.foot)]);
     await pr.hover('#sideNav .sn-gh[data-sec="money"]'); await pr.waitForTimeout(350);
     snv = await sn();
     t.push(['the pointer over it opens it out, icons and words together', snv.width > 250]);
     const adv = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="advanced"] .sn-item .sn-t')].map(x => x.textContent));
-    t.push(['Advanced: Subtract Stock (practice, b258), Spreadsheets, Specialty Reports, Sales Links, App Access', JSON.stringify(adv) === JSON.stringify(['Subtract Stock', 'Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access'])]);
+    t.push(['Advanced: Subtract Stock (practice, b258), Spreadsheets, Specialty Reports, Sales Links, App Access, Report (practice, b299)', JSON.stringify(adv) === JSON.stringify(['Subtract Stock', 'Spreadsheets', 'Specialty Reports', 'Sales Links', 'App Access', 'Report'])]);
     const dev = await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group[data-sec="dev"] .sn-item .sn-t')].map(x => x.textContent));
     t.push(['App Development: Edit Wording, Reorganize Menu (b283), (Leave) Practice, Permissions, View as, Dates & Repeats (b255)', JSON.stringify(dev) === JSON.stringify(['Edit Wording', 'Reorganize Menu', 'Leave Practice', 'Permissions', 'View as', 'Dates & Repeats'])]);
     t.push(['b236: every section starts folded', await pr.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group')].every(g =>
@@ -419,9 +420,9 @@ const API = 'http://api.test/';
     await pr.mouse.move(900, 600); await pr.waitForTimeout(300);
     // Profile and Permissions.
     await pr.hover('#sideNav'); await pr.waitForTimeout(300);
-    await snOpen('settings');
-    await pr.click('#sideNav .sn-item[data-act="whoami"]'); await pr.waitForTimeout(300);
-    t.push(['Settings › Profile: your name, to change', /Profile/.test(await pr.evaluate(() => document.querySelector('#modal h3').textContent)) && !!(await pr.$('#myName'))]);
+    // In practice your name sits above Sign Out (b299).
+    await pr.click('#sideNav .sn-foot .sn-item[data-act="whoami"]'); await pr.waitForTimeout(300);
+    t.push(['Your name, above Sign Out › Profile: your name, to change', /Profile/.test(await pr.evaluate(() => document.querySelector('#modal h3').textContent)) && !!(await pr.$('#myName'))]);
     await pr.evaluate(() => closeModal());
     await pr.hover('#sideNav'); await pr.waitForTimeout(300);
     await snOpen('dev');

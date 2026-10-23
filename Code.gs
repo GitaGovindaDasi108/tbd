@@ -191,7 +191,10 @@ var SALES_HEADERS = ['saleId','ts','location','type','bookId','qty',
   'est',
   /* Uncategorized sales (b295): how many of the books were Adventures; qty
      holds the Big Books. */
-  'aqty'];
+  'aqty',
+  /* Uncategorized sales (b299): the Adventures' own estimate tick; est is the
+     Big Books'. Empty on older records, where est covered both. */
+  'aest'];
 
 // Sheet theme — mirrors the colors used in index.html.
 var TH = {
@@ -230,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b298';
+var SERVER_BUILD = 'b299';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -4065,7 +4068,9 @@ function readState() {
       fulfilDeclined: String(s.fulfilDeclined || ''),
       pmore: pmoreRead_(s.pmore),
       est: s.est === true || s.est === 'true' || s.est === 'TRUE',
-      aqty: Number(s.aqty) || 0
+      aqty: Number(s.aqty) || 0,
+      aest: s.aest === '' || s.aest === undefined || s.aest === null ? (s.est === true || s.est === 'true' || s.est === 'TRUE')
+        : (s.aest === true || s.aest === 'true' || s.aest === 'TRUE')
     };
   });
   return {
@@ -4127,6 +4132,8 @@ function readState() {
     seasonHidden: String(getMeta_('hidden:' + activeSeasonId_(), '') || ''),
     // Sub-regions of each region, and which one each event is in (b280).
     subRegions: subRegionsGet_(),
+    // What Finance's Dollars received fetched, place by place (b299).
+    convFx: convFxMap_(),
     /* Wording you have rewritten in the app, keyed by the words it replaces.
        Anything not rewritten simply is not here. */
     labels: (function () {
@@ -6299,7 +6306,7 @@ function doUncatSale(p) {
     dbDelete_('_sales', { saleId: editId });
     appendSale_({ saleId: editId, soldBy: old.soldBy, soldById: old.soldById, editedBy: p.by,
       location: String(old.location), type: 'UNCAT', bookId: '', qty: n, aqty: a, legs: legs, est: !!p.est,
-      comments: p.comments, ts: p.ts || old.ts });
+      aest: p.aest === undefined ? undefined : !!p.aest, comments: p.comments, ts: p.ts || old.ts });
     markDirty_(String(old.location));
     if (String(old.location) !== loc) markDirty_(loc);
     return;
@@ -6307,7 +6314,8 @@ function doUncatSale(p) {
   if (p.saleId && (saleIdTaken_(String(p.saleId)) ||
       (!_rebuilding && isDeleted_(String(p.saleId))))) return;   // already recorded
   appendSale_({ saleId: p.saleId, soldBy: p.by, soldById: _meEmail, location: loc, type: 'UNCAT',
-    bookId: '', qty: n, aqty: a, legs: legs, est: !!p.est, comments: p.comments, ts: p.ts });
+    bookId: '', qty: n, aqty: a, legs: legs, est: !!p.est,
+    aest: p.aest === undefined ? undefined : !!p.aest, comments: p.comments, ts: p.ts });
   markDirty_(loc);
 }
 
@@ -6405,7 +6413,8 @@ function appendSale_(o) {
     fulfilBy: String(o.fulfilBy || ''), fulfilLoc: '', fulfilAt: '',
     usdActual: usdActualIn_(o.usdActual),
     est: o.est ? 'TRUE' : '',
-    aqty: Number(o.aqty) || ''
+    aqty: Number(o.aqty) || '',
+    aest: o.aest === undefined ? '' : (o.aest ? 'TRUE' : 'FALSE')
   };
   /* Written by position, so the sheet must carry every column first. */
   dbAddCols_('_sales', SALES_HEADERS);
@@ -7896,6 +7905,36 @@ function locFxMap_() {
   return out;
 }
 function ratesForLoc_(loc) { return locFxMap_()[String(loc)] || null; }
+/* Dollars received, written down in Finance (b267, several currencies b298):
+   location -> {currency: units per dollar} at what the money actually fetched,
+   the nearest place's winning (an event's over its region's over its
+   season's). The sales side counts at these too (b299, Gita: "make sure those
+   two things communicate"). */
+function convFxMap_() {
+  var list = [];
+  try { list = JSON.parse(propGet_('finConv') || '[]') || []; } catch (e) { list = []; }
+  if (!list.length) return {};
+  var by = {};
+  list.forEach(function (c) {
+    (Array.isArray(c.parts) ? c.parts : [{ cur: c.cur, amt: c.amt, usd: c.usd }]).forEach(function (x) {
+      var cur = String(x.cur || '').toUpperCase(); if (!cur || cur === 'USD') return;
+      var o = by[String(c.place)] || (by[String(c.place)] = {}), q = o[cur] || (o[cur] = { amt: 0, usd: 0 });
+      q.amt += Number(x.amt) || 0; q.usd += Number(x.usd) || 0;
+    });
+  });
+  var regs = {}, out = {};
+  objectsOf_('_regions').forEach(function (r) { if (r && r.regionId) regs[String(r.regionId)] = r; });
+  var put = function (loc, ids) {
+    var m = {};
+    ids.forEach(function (id) { var o = by[id]; if (!o) return; Object.keys(o).forEach(function (cur) {
+      if (!(cur in m) && o[cur].amt > 0 && o[cur].usd > 0) m[cur] = o[cur].amt / o[cur].usd; }); });
+    if (Object.keys(m).length) out[String(loc)] = m;
+  };
+  Object.keys(regs).forEach(function (k) { var r = regs[k]; if (r.whLoc) put(r.whLoc, [k, String(r.seasonId || '')]); });
+  objectsOf_('_events').forEach(function (e) { var r = regs[String(e.regionId || '')]; if (r && e.eventId) put(e.eventId, [String(e.eventId), String(r.regionId), String(r.seasonId || '')]); });
+  objectsOf_('_holders').forEach(function (h) { var r = regs[String(h.regionId || '')]; if (r && h.holderId) put(h.holderId, [String(r.regionId), String(r.seasonId || '')]); });
+  return out;
+}
 /* Location -> a closed season's frozen rates, for every place in it. Inside a
    season getRates_ already returns them; this is for Earthly HQ, which counts
    every season at once. */

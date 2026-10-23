@@ -232,7 +232,7 @@ tr.cbr-sub td{color:var(--muted)}
 /* "sold" set small beside the big number in the totals bar. */
 .tcard .sub-cost{color:var(--clay);font-weight:700}
 .tcard .sub-don{color:var(--donate);font-weight:700}
-.tc-coll{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
+.tc-coll{display:grid;grid-template-columns:minmax(min-content,1fr) minmax(min-content,max-content);grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
 .tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
 .tc-q2 > div{white-space:nowrap}
 .tc-hq .tc-q3{align-self:end} .tc-hq .tc-q4{align-self:end;max-width:52ch}
@@ -378,7 +378,8 @@ button.sc-transit:hover{color:#1F4F86}
 .rp-fill .rp-name{font-weight:800;font-size:12px;color:var(--saffron-d)}
 .rp-all{border-style:dashed !important}
 /* Worked out from the local price — still yours to change. */
-.rp-auto{background:#F4F8F4;color:#2E6B4F}
+.rp-auto, .field input.rp-auto{background:#F4F8F4;color:#2E6B4F}
+.uc-kind .uc-est{margin-bottom:4px}
 .rp-local{color:var(--saffron-d,#8A4A12)}
 .rp-loc-tag{font-size:8.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;opacity:.75}
 .rp-cell{display:flex;flex-direction:column;gap:2px;align-items:stretch}
@@ -1540,6 +1541,8 @@ body.sn-open .sn-group:not(.shut) .sn-items{display:block}
 .side-nav .req-badge{background:#E0372F;color:#fff;border:0}
 .sn-solo{border-top:1px solid var(--line);margin-top:6px;padding-top:6px}
 .sn-solo .sn-item{font-weight:400;color:var(--plum)}
+.m-foot:empty{display:none}
+.sn-solo.sn-leave{border-top:0;margin:0 0 6px;padding:0 0 6px;border-bottom:1px solid var(--line)}
 .sn-pinbtn{color:var(--muted);font-size:12.5px}
 .sn-scrim{position:fixed;inset:0;background:rgba(60,40,20,.18);z-index:59;display:none}
 .sn-fab{display:none}
@@ -1661,7 +1664,7 @@ tr.fin-dim td,.exp-card.fin-dim{opacity:.55}
 .rb-item .li-amt{flex:0 0 78px;text-align:right;font-variant-numeric:tabular-nums}
 .rb-item .li-row > .badge{flex:0 0 126px;text-align:center;box-sizing:border-box}
 @media (max-width:560px){ .rb-item .li-orig{flex-basis:74px;font-size:11px} .rb-item .li-amt{flex-basis:64px} .rb-item .li-row > .badge{flex-basis:112px} }
-body:not(.fin-mode) .sn-item[data-act="finleave"]{display:none}
+body:not(.fin-mode) .sn-item[data-act="finleave"], body:not(.fin-mode) .sn-leave{display:none}
 .mo-list{display:flex;flex-direction:column;gap:8px}
 .mo-sec{border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:var(--paper2)}
 .mo-sh,.mo-row{display:flex;align-items:center;gap:8px;min-width:0}
@@ -1953,6 +1956,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   padding:9px 12px 4px}
 .pp-row{padding:8px 12px;font-size:13.5px;cursor:pointer;color:var(--ink);line-height:1.3}
 .pp-row.pp-region{padding-left:24px;font-weight:700;color:var(--plum)}
+.pp-row.pp-dv{font-weight:400;color:var(--ink)} .pp-row.pp-dv b{font-weight:700;color:var(--plum)} .pp-row .pp-up{color:var(--muted)}
 /* Payment types: a group's heading, and its types indented beneath (b284). */
 .pp-row.pp-head{cursor:default;font-weight:700;color:var(--muted);font-size:12px;letter-spacing:.3px;text-transform:uppercase;padding-top:9px}
 .pp-row.pp-head:hover{background:none}
@@ -2082,6 +2086,8 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
 .reimb-ok{font-size:42px;color:#2E7D4F;text-align:center;margin:6px 0}
 
 /* ---------- Responsive ---------- */
+.portal-btn{font-weight:700}
+body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"]{display:none !important}
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
   /* One column: forty columns' gaps alone would be wider than a phone. */
@@ -2090,7 +2096,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   .log{max-height:420px}
   .deity{height:62px} .deity img{height:62px}
   .masthead-inner{gap:10px;padding:4px 12px 11px}
-  .util-bar{justify-content:center;padding:8px 12px 0}
+  .util-bar{justify-content:center;padding:8px 12px 6px}   /* a touch of room above the yellow line (b299, Gita) */
   body.has-sn .util-bar{padding-left:62px}   /* room for the ☰ at the top left */
 }
 @media (max-width:560px){
@@ -2345,7 +2351,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b298</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b299</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2686,6 +2692,8 @@ function fromLocalInput(str){
 }
 
 const fmt = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:2});
+// Money always shows its cents, .00 included (b299, Gita).
+const usd2 = n => (Math.round((Number(n)||0)*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const tmpId = () => 'tmp_'+Math.random().toString(36).slice(2,10);
 /* A sale's real name, chosen here and adopted by the server.
 
@@ -2837,6 +2845,12 @@ function saleUsd(sale){
 }
 /** The frozen rates a place's dollars are counted at, or null for today's. */
 function ratesAt(loc){
+  /* What Finance's Dollars received fetched comes first, currency by currency
+     (b299, Gita: Finance's fixed dollars must show here too). */
+  const cv = (STATE.convFx||{})[loc], base = frozenAt(loc);
+  return cv ? Object.assign({}, base||{}, cv) : base;
+}
+function frozenAt(loc){
   if(STATE.locFx) return STATE.locFx[loc]||null;               // HQ: worked out per place
   let rid = regionOfLoc(loc);
   if(!rid){ const h=(STATE.holders||[]).find(x=>x.holderId===loc); rid = h ? (h.regionId||'') : ''; }
@@ -2853,6 +2867,20 @@ function toUSDAt(amt,cur,loc){
 }
 /** Is this sale's dollar figure fixed — entered, or frozen with its region? */
 function hasTruth(sale){ return hasUsdActual(sale) || (!!sale && !!ratesAt(sale.location)); }
+/* Are this sale's dollars hard figures, not an estimate (b299, Gita: the ~
+   in the sales app too)? Dollars, dollars entered on the sale, or every other
+   currency in it at a fixed rate: Dollars received, or a closed place's. */
+function usdCostExact(c){ const cur = String(c.cur||'USD').toUpperCase(); return cur==='USD' || Number((ratesAt(c.location)||{})[cur]) > 0; }
+function legExact(sale, l){
+  if(hasUsdActual(sale)) return true;
+  const c = String(l.cur||'USD').toUpperCase();
+  return c==='USD' || Number((ratesAt(sale.location)||{})[c]) > 0;
+}
+function usdExact(sale){
+  if(!sale || hasUsdActual(sale)) return true;
+  const fx = ratesAt(sale.location) || {};
+  return legs(sale).every(l=>!l.amt || l.type==='Gift' || String(l.cur||'USD').toUpperCase()==='USD' || Number(fx[String(l.cur||'').toUpperCase()]) > 0);
+}
 /** Today's estimate for a sale's legs — what the truth corrects. */
 function saleEst(sale){
   let t=0; legs(sale).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) t += toUSD(l.amt, l.cur); });
@@ -3989,6 +4017,9 @@ async function loadMe(){
   try{ ME = (await post({action:'me'})).result; renderAll(); }catch(e){}
   // Opened at a Finance address (a bookmark, a refresh, Back): go straight there.
   const fh = finParseHash(); if(fh && !FINP.on) finGo(fh.sec, fh.scope, {fromHistory:true});
+  // Not someone Finance opens for after all: back to the sales page.
+  if(FIN.boot && !FINP.on){ document.body.classList.remove('fin-mode'); $('#finPage').hidden = true; renderAll(); }
+  FIN.boot = false;
 }
 /* The role this device works in: the one chosen, else the first usable — as the server picks. */
 function actingGrant(){
@@ -5778,7 +5809,7 @@ const SN_ITEMS = {
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
   cash:['💵','Track Cash'], costs:['🧾','Record Expenses'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
-  finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
+  finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursement Links'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   salesupload:['📤','Upload Sales Spreadsheet'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
@@ -5805,7 +5836,7 @@ const SN_SECTIONS = [
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
   // The place's own actions (b292: arranged like the rest; anything new of its own still shows, after these).
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','reorderregion','editplace','subregions','salesupload','closeplace','deleteplace']},
-  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people']},
+  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','specreport','sharelinks','people','report']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
@@ -5982,6 +6013,16 @@ function renderSideNav(fams){
   if(byKey.finoverview && !byKey.finleave) byKey.finleave = `<button class="btn" data-act="finleave">🏠 Go to Sales Portal</button>`;
   // Reorganize Menu (b283): Universal, in App Development.
   if(isAdmin() && !byKey.menuorder) byKey.menuorder = `<button class="btn" data-act="menuorder">↕ Reorganize Menu</button>`;
+  /* Practice (b299, Gita): the top bar keeps only the Activity Log and the
+     portal button; Report moves to Advanced and your name to above Sign Out. */
+  const hdr2 = PRACTICE && SIDE_NAV;
+  if(hdr2 && isAdmin() && !byKey.report) byKey.report = `<button class="btn" data-act="report">📋 Report</button>`;
+  const meRow = hdr2 && byKey.whoami ? snRow(byKey.whoami, 'whoami').replace(/<span class="sn-t">[^<]*<\/span>/, `<span class="sn-t">${esc((ME && ME.name) || whoAmI() || 'Profile')}</span>`) : '';
+  if(meRow) delete byKey.whoami;
+  /* Back to sales, first in the menu while in Finance (b299, Gita: not there
+     on a phone, inside a folded group); the group no longer holds it. */
+  const leave = byKey.finleave ? snRow(byKey.finleave, 'finleave') : '';
+  delete byKey.finleave;
   const ordered = snOrdered(), allActs = new Set(ordered.flatMap(x=>x.acts));
   const sections = ordered.map(({sec, acts})=>{
     const keys = acts.filter(k=>byKey[k]).concat(sec.fam ? Object.keys(byKey).filter(k=>famOf[k]===sec.fam && !allActs.has(k)) : []);
@@ -5992,6 +6033,7 @@ function renderSideNav(fams){
   nav.innerHTML = `
     <div class="sn-scroll">
       <div class="sn-top"><span class="sn-ic">☰</span><span class="sn-t sn-title">Menu</span></div>
+      ${leave ? `<div class="sn-solo sn-leave">${leave}</div>` : ''}
       ${sections.map(({sec, rows})=>`<div class="sn-group${SN.opened[sec.key]?'':' shut'}" data-sec="${sec.key}">
           <button type="button" class="sn-gh" data-act="sngroup" data-sec="${sec.key}" title="${esc(sec.label())}">
             <span class="sn-ic">${sec.icon}</span><span class="sn-t">${esc(sec.label())}</span><span class="sn-chev">${SN.opened[sec.key]?'▾':'▸'}</span></button>
@@ -6000,7 +6042,7 @@ function renderSideNav(fams){
       ${support ? `<div class="sn-solo">${support}</div>` : ''}
     </div>
     <div class="sn-foot">
-      ${signout}
+      ${meRow}${signout}
       <button type="button" class="sn-item sn-pinbtn" data-act="snpin" title="${SN.pinned?'Let it fold away':'Keep it open beside the page'}">
         <span class="sn-ic">${SN.pinned?'⇤':'📌'}</span><span class="sn-t">${SN.pinned?'Collapse the menu':'Keep the menu open'}</span></button>
     </div>`;
@@ -6014,8 +6056,26 @@ function renderSideNav(fams){
   snFabPlace();
   // The Activity Log sits in the top bar instead, where it is always at hand (b234).
   snTopActivity(!!byKey.activity);
+  try{ hdrPortal(); }catch(e){}
   document.body.classList.add('has-sn');
   snApply();
+}
+/* The top bar in practice (b299, Gita): a fixed button to the other portal
+   (Finance from sales, Sales from Finance; Inventory later), the Activity Log,
+   and nothing else. */
+function hdrPortal(){
+  const on = PRACTICE && SIDE_NAV;
+  document.body.classList.toggle('hdr2', on);
+  let b = document.getElementById('portalBtn');
+  const fin = on && FIN_ON && financeMe(ME || FINP.me);
+  if(fin && !b){
+    b = document.createElement('button'); b.id = 'portalBtn'; b.type = 'button'; b.className = 'btn-refresh portal-btn';
+    const bar = document.querySelector('.util-bar'); bar.insertBefore(b, document.getElementById('actTopBtn') || bar.querySelector('[data-act="report"]'));
+  }
+  if(!b) return;
+  b.style.display = fin ? '' : 'none';
+  b.dataset.act = FINP.on ? 'finleave' : 'finoverview';
+  b.textContent = FINP.on ? '🏠 Sales Portal' : '📈 Finance Portal';
 }
 function snApply(){
   document.body.classList.toggle('sn-open', SN.open || SN.pinned);
@@ -6110,7 +6170,7 @@ function qCardHTML(o){
    A season or Earthly HQ has no one price list, so no prices there. */
 function qNameHTML(b, cls){
   const prices = (CUR_LEVEL==='region' || CUR_LEVEL==='event') && !isHQ()
-    ? `<div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${cashFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>` : '';
+    ? `<div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${priceFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>` : '';
   return `<div class="${cls} ${catOfBook(b)}">${bookTitleHTML(b)}${
     b.partnerId?'<span class="con-tag">consignment</span>':''}</div>${prices}`;
 }
@@ -6287,22 +6347,92 @@ function renderTotals(){
          and Donations top right, Total Collections bottom left and the
          collections by currency bottom right. */
       const net = totUsd-cu-du;
+      /* ~ on dollars worked out from an exchange rate, as in Finance (b299, Gita);
+         none where every currency counts at what it actually fetched. */
+      const eC = s.some(x=>received(x) && !usdExact(x)), eX = cs.some(c=>!usdCostExact(c)), eN = eC || eX;
+      const D = (v, e) => (v < 0 ? '−' : '') + (e ? '~' : '') + '$' + usd2(Math.abs(v));
       if(isHQ()) return `<div class="tcard usd tc-coll tc-hq">
-      <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">$${fmt(net)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>−$${fmt(cu)}</div>` : ''}${
-        du ? `<div class="sub-don"><span class="tc-w">Donations </span>$${fmt(du)}</div>` : ''}</div>
-      <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">$${fmt(totUsd)}</div></div>
-      <div class="tc-q4 sub">${money(got)||'nothing collected yet'}</div></div>`;
+      <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">${D(net, eN)}</div></div>
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
+        du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
+      <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">${D(totUsd, eC)}</div></div>
+      <div class="tc-q4"><div class="label">Collections by Currency</div><div class="sub">${money(got)||'nothing collected yet'}</div></div></div>`;
       return `<div class="tcard usd tc-coll">
-      <div class="tc-q1"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>−$${fmt(cu)}</div>` : ''}${
-        du ? `<div class="sub-don"><span class="tc-w">Donations </span>$${fmt(du)}</div>` : ''}</div>
+      <div class="tc-q1"><div class="label">Total Collections</div><div class="value">${D(totUsd, eC)}</div></div>
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
+        du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
       <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
-      <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">$${fmt(totUsd-cu-du)}</div></div></div>`;
+      <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">${D(totUsd-cu-du, eN)}</div></div></div>`;
     })()}
-    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending</div><div class="value">$${fmt(pendUsd)}</div>
+    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '~' : '') + '$' + usd2(pendUsd)}</div>
       <div class="sub">${money(due)}</div></div>` : ''}`}`;
+  try{ layoutTotals(); }catch(e){}
 }
+
+/* The totals bar (b299, Gita): cards the same width across a line, on as few
+   lines as will hold them. Only where equal cards won't fit is the card with
+   the least in it made smaller (to its own width), then the next, the others
+   staying equal. Laid out here, as CSS can't say "equal unless it won't fit". */
+function layoutTotals(){
+  const box = document.getElementById('totals'); if(!box) return;
+  const cards = [...box.children].filter(c=>c.classList.contains('tcard'));
+  const reset = () => cards.forEach(c=>{ c.style.width = ''; c.style.flex = ''; });
+  reset();
+  const W = box.clientWidth; if(!W || cards.length < 2) return;
+  const gap = parseFloat(getComputedStyle(box).columnGap) || 0;
+  // What each card needs: all on one line ("full"), or its small print wrapped ("tight"); never more than the whole width.
+  const width = w => { cards.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = w; }); return cards.map(c=>Math.min(W, Math.ceil(c.getBoundingClientRect().width) + 1)); };
+  const full = width('max-content'), least = width('min-content');
+  /* Tight: the card with its small print (gifts, pre-orders, the currencies)
+     free to wrap, so the rest of it decides; no word is ever broken. */
+  const WRAP = ':scope > .sub, .value-pre, .tc-q3.sub, .tc-q4 > .sub';
+  const parts = cards.map(c=>[...c.querySelectorAll(WRAP)]);
+  const word = parts.map(ps=>Math.max(0, ...ps.map(e=>{ e.style.width = 'min-content'; const v = e.getBoundingClientRect().width; e.style.width = ''; return v; })));
+  parts.flat().forEach(e=>{ e.style.display = 'none'; });
+  const base = width('max-content');
+  parts.flat().forEach(e=>{ e.style.display = ''; });
+  const tight = cards.map((c,i)=>{ const cs = getComputedStyle(c), pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + 2;
+    return Math.min(full[i], Math.max(base[i], least[i], Math.ceil(word[i] + pad))); });
+  reset();
+  // One line: equal widths, else the card with the least in it shrinks to its own width, then the next.
+  const fit = (idx, need) => {
+    const m = idx.length, room = W - gap*(m-1);
+    if(idx.reduce((t,i)=>t+need[i],0) > room + 0.5) return null;
+    const bySize = idx.slice().sort((a,b)=>need[a]-need[b]), small = new Set();
+    for(let j=0; j<m; j++){
+      const eq = (room - [...small].reduce((t,i)=>t+need[i],0)) / (m - small.size);
+      if(idx.every(i=>small.has(i) || need[i] <= eq + 0.5)) return {small: small.size, w: idx.map(i=>small.has(i) ? need[i] : eq)};
+      small.add(bySize[j]);
+    }
+    return null;
+  };
+  /* Every way of cutting the cards into lines, in order, with any of them
+     allowed to wrap its small print: the fewest lines win. */
+  const n = cards.length, cands = [];
+  for(let mask=0; mask < (1<<(n-1)); mask++){
+    const rows = [[0]]; for(let i=1;i<n;i++){ if(mask & (1<<(i-1))) rows.push([i]); else rows[rows.length-1].push(i); }
+    for(let tm=0; tm < (1<<n); tm++){
+      const need = full.map((v,i)=>(tm & (1<<i)) ? tight[i] : v);
+      if([...Array(n).keys()].some(i=>(tm & (1<<i)) && tight[i]===full[i])) continue;
+      const laid = rows.map(r=>fit(r, need)); if(laid.some(x=>!x)) continue;
+      const nT = [...Array(n).keys()].filter(i=>tm & (1<<i)).length;
+      cands.push({rows, laid, score:[rows.length, nT, laid.reduce((t,x)=>t+x.small,0), Math.max(...rows.map(r=>r.length)) - Math.min(...rows.map(r=>r.length))]});
+    }
+  }
+  if(!cands.length) return;
+  const cmp = (a,b) => { const k = a.score.findIndex((v,q)=>v!==b.score[q]); return k < 0 ? 0 : a.score[k] - b.score[k]; };
+  const lines = Math.min(...cands.map(c=>c.score[0]));
+  const apply = c => c.rows.forEach((r,ri)=>r.forEach((i,k)=>{ cards[i].style.flex = '0 0 auto'; cards[i].style.width = Math.floor(c.laid[ri].w[k]) + 'px'; }));
+  // Of those, the one that takes the least height on the page.
+  const top = cands.filter(c=>c.score[0]===lines).sort(cmp).slice(0, 24);
+  let best = top[0], bestH = Infinity;
+  top.forEach(c=>{ apply(c); const h = box.getBoundingClientRect().height; if(h < bestH - 0.5){ best = c; bestH = h; } });
+  apply(best);
+}
+let TOT_T = 0;
+// The fonts change the widths once they arrive.
+try{ document.fonts && document.fonts.ready.then(()=>{ try{ layoutTotals(); }catch(e){} }); }catch(e){}
+if(typeof window!=='undefined' && window.addEventListener) window.addEventListener('resize', ()=>{ clearTimeout(TOT_T); TOT_T = setTimeout(()=>{ try{ layoutTotals(); }catch(e){} }, 100); });
 
 function renderInventory(){
   // Not while a card is being dragged: it is redrawn when it is dropped.
@@ -6358,7 +6488,7 @@ function renderInventory(){
         <div class="bk-q1">
           <div class="bname ${catOfBook(b)}">${out ? bookTitleHTML(b).replace(/^([^<]*?)( <span class="lang-tag|$)/, '$1 <span class="bk-out">(Out)</span>$2') : bookTitleHTML(b)}${
             b.partnerId?'<span class="con-tag">consignment</span>':''}</div>
-          <div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${cashFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>
+          <div class="price">${curCurrencies().slice(0,2).map(c=>`<span class="bk-pr">${priceFmt(priceFor(b,c),c)}</span>`).join(' · ')}</div>
           ${note}
         </div>
         <div class="qtyrow">
@@ -6586,7 +6716,8 @@ function renderCollectionsByRegion(target){
       got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
       spent.push(c);
     });
-    return {got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine) - costTruthAdj(spent)};
+    return {got, usd: Object.keys(got).reduce((t,c)=>t+toUSD(got[c],c),0) + usdActualAdj(mine) - costTruthAdj(spent),
+      est: mine.some(x=>!usdExact(x)) || spent.some(c=>!usdCostExact(c))};
   };
   const rows = regionsList().map(r=>{
     const x = Object.assign({r}, calc(locsInRegion(r.regionId)));
@@ -6607,12 +6738,12 @@ function renderCollectionsByRegion(target){
       <tbody>${rows.map(x=>`<tr>
         <th><a href="#" data-act="${UNIT===UNIT_SEASON?'goseasonid':'cashregion'}" data-id="${esc(x.r.regionId)}" data-season="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th>
         ${curs.map(c=>`<td>${cell(x.got,c)}</td>`).join('')}
-        <td class="usd">$${fmt(x.usd)}</td></tr>${(x.subs||[]).map(y=>`<tr class="cbr-sub">
+        <td class="usd">${x.est?'~':''}$${usd2(x.usd)}</td></tr>${(x.subs||[]).map(y=>`<tr class="cbr-sub">
         <th>${esc(y.name)}</th>${curs.map(c=>`<td>${cell(y.got,c)}</td>`).join('')}
-        <td class="usd">$${fmt(y.usd)}</td></tr>`).join('')}`).join('') ||
+        <td class="usd">${y.est?'~':''}$${usd2(y.usd)}</td></tr>`).join('')}`).join('') ||
         `<tr><td colspan="${curs.length+2}">No ${UNIT.words} yet.</td></tr>`}</tbody>
       <tfoot><tr><th>All ${UNIT.words}</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
-        <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
+        <td class="usd">${rows.some(x=>x.est)?'~':''}$${usd2(totUsd)}</td></tr></tfoot>
     </table></div>
     <div class="hint">*net sales = gross sales - (consignment + expenses)</div>`;
 }
@@ -6649,6 +6780,8 @@ function renderPayments(target){
   const conType={}, conTypeGroup={}, conGrand={};
   // And the donation share, shown the same way.
   const donType={}, donTypeGroup={};
+  // Which dollar figures are estimates (b299): the ~ before them.
+  const estK={}, E = k => estK[k] ? '~' : '';
   sales.forEach(x=>{
     if(!received(x)) return;
     const g = groups.find(gr=>gr.locs.includes(x.location));
@@ -6693,6 +6826,8 @@ function renderPayments(target){
 
     legs(x).forEach(l=>{
       if(!l.type || !l.amt) return;
+      if(l.type!=='Gift' && !legExact(x, l)){ const k = l.type; estK[k] = 1; estK['*'] = 1;
+        if(isDonation) estK[k+'|don'] = 1; if(isCon) estK[k+'|con'] = estK['*con'] = 1; else if(g) estK[k+'|g:'+g.id] = 1; }
       (byType[l.type] = byType[l.type]||{})[l.cur] = (byType[l.type][l.cur]||0) + l.amt;
       if(g){
         const t = byTypeGroup[l.type] = byTypeGroup[l.type]||{};
@@ -6763,7 +6898,7 @@ function renderPayments(target){
     let out = `<div class="ptg-r ptg-first ${extraClass||''}" data-act="paytoggle" data-target="${rowId}"
         ><span class="tw">▸</span> <span class="ptg-label" title="${esc(label)}">${esc(label)}</span></div>`
       + curs.map(c=>`<div class="ptg-r ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">${num(totals,c)}</div>`).join('')
-      + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">$${fmt(usdOfType(label, totals))}</div>`;
+      + `<div class="ptg-r usd ${extraClass||''}" data-act="paytoggle" data-target="${rowId}">${E(label)}$${usd2(usdOfType(label, totals))}</div>`;
     /* A place's line shows what was ours there — the consignment share has its
        own line below. Otherwise the two lines double-count the same notes and
        the breakdown adds up to more than the row above it. */
@@ -6780,14 +6915,14 @@ function renderPayments(target){
       if(!Object.keys(mine).some(c=>Math.abs(mine[c])>0.005)) return '';
       return `<div class="ptg-s ptg-first ${rowId}" hidden>${esc(g.name)}</div>`
         + curs.map(c=>`<div class="ptg-s ${rowId}" hidden>${num(mine,c)}</div>`).join('')
-        + `<div class="ptg-s usd ${rowId}" hidden>$${fmt(usdOf(mine) + adj('g:'+g.id))}</div>`;
+        + `<div class="ptg-s usd ${rowId}" hidden>${E(label+'|g:'+g.id)}$${usd2(usdOf(mine) + adj('g:'+g.id))}</div>`;
     }).filter(Boolean).join('');
 
     const donRow = donOf ? donOf[label] : null;
     const donKids = (donRow && Object.keys(donRow).some(c=>Math.abs(donRow[c])>0.005))
       ? `<div class="ptg-s ptg-first ptg-don ${rowId}" hidden>Donations</div>`
         + curs.map(c=>`<div class="ptg-s ptg-don ${rowId}" hidden>${num(donRow,c)}</div>`).join('')
-        + `<div class="ptg-s usd ptg-don ${rowId}" hidden>$${fmt(usdOf(donRow) + adj('don'))}</div>`
+        + `<div class="ptg-s usd ptg-don ${rowId}" hidden>${E(label+'|don')}$${usd2(usdOf(donRow) + adj('don'))}</div>`
       : '';
     /* How much of this row is consignment, in blue beneath its places — so the
        figure above is the true amount that came through this payment type, and
@@ -6796,7 +6931,7 @@ function renderPayments(target){
     const conKids = (conRow && Object.keys(conRow).length)
       ? `<div class="ptg-s ptg-first ptg-con ${rowId}" hidden>Consignment</div>`
         + curs.map(c=>`<div class="ptg-s ptg-con ${rowId}" hidden>${num(conRow,c)}</div>`).join('')
-        + `<div class="ptg-s usd ptg-con ${rowId}" hidden>$${fmt(usdOf(conRow) + adj('con'))}</div>`
+        + `<div class="ptg-s usd ptg-con ${rowId}" hidden>${E(label+'|con')}$${usd2(usdOf(conRow) + adj('con'))}</div>`
       : '';
     return out + kids + donKids + conKids;
   }
@@ -6818,6 +6953,7 @@ function renderPayments(target){
       const g=groups.find(gr=>gr.locs.includes(x.location));
       legs(x).forEach(l=>{
         if(!l.type||!l.amt) return;
+        if(l.type!=='Gift' && !legExact(x, l)) estK[pt.name] = 1;
         tot[l.cur]=(tot[l.cur]||0)+l.amt;
         if(g) (perGroup[g.id]=perGroup[g.id]||{})[l.cur]=(perGroup[g.id][l.cur]||0)+l.amt;
       });
@@ -6837,7 +6973,7 @@ function renderPayments(target){
   const conCostRow = Object.keys(conCostByCur).length ? `
         <div class="ptg-t ptg-first ptg-cost">Consignment expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${conCostByCur[c] ? '−'+fmt(conCostByCur[c]) : num({},c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(conCostByCur) + costTruthAdj(scopedAllCosts().filter(c=>c.partnerId)))}</div>` : '';
+        <div class="ptg-t usd ptg-cost">−$${usd2(usdOf(conCostByCur) + costTruthAdj(scopedAllCosts().filter(c=>c.partnerId)))}</div>` : '';
   /* Figures that come off the total are written as negatives, so the column
      reads as a subtraction rather than a second pile of money. */
   const minus = (o,c) => o[c] ? '−'+fmt(o[c]) : num({},c);
@@ -6847,14 +6983,15 @@ function renderPayments(target){
   const costTotal = Object.keys(costByCur).some(c=>costByCur[c]);
   // Costs in dollars, at the rates their places count in (see toUSDAt).
   const costUsd = usdOf(costByCur) + costTruthAdj(costs);
+  const eCost = costs.some(c=>!usdCostExact(c)) ? '~' : '';
   const kept = conBody ? netOf(grand, conGrand) : grand;
   const costRows = costs.length ? `
         <div class="ptg-t ptg-first ptg-cost">Expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${costByCur[c] ? '−'+fmt(costByCur[c]) : num({},c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost">−$${fmt(costUsd)}</div>
+        <div class="ptg-t usd ptg-cost">−${eCost}$${usd2(costUsd)}</div>
         <div class="ptg-t ptg-first ptg-net">Net after expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(kept,costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>` : '';
+        <div class="ptg-t usd ptg-net">${(E('*')||eCost)}$${usd2(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>` : '';
 
   /* Rendered as a CSS grid rather than a table. One column definition lives on
      the container and every row is a direct child of it, so the header, the type
@@ -6878,23 +7015,23 @@ function renderPayments(target){
               twice, so only the net is shown. */''}
         ${(conBody || costTotal) ? `<div class="ptg-t ptg-first">Gross Sales</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
-        <div class="ptg-t usd">$${fmt(usdWhole(grand))}</div>` : ''}
+        <div class="ptg-t usd">${E('*')}$${usd2(usdWhole(grand))}</div>` : ''}
 
         ${/* Two things come off the gross: the groups' money and our costs.
               Both read as what they are — amounts taken away. */''}
         ${conBody ? `<div class="ptg-t ptg-first ptg-con ptg-sub contog" data-act="contog">▸ Consignment</div>
         ${curs.map(c=>`<div class="ptg-t ptg-con ptg-sub">${minus(conGrand,c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-con ptg-sub">−$${fmt(usdCon(conGrand))}</div>
+        <div class="ptg-t usd ptg-con ptg-sub">−${E('*con')}$${usd2(usdCon(conGrand))}</div>
         <div class="con-rows" style="display:none;grid-column:1/-1">
           <div class="ptg ptg-inner" style="grid-template-columns:${template}">${conBody}${conCostRow}</div></div>` : ''}
 
         ${costTotal ? `<div class="ptg-t ptg-first ptg-cost ptg-sub">Expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost ptg-sub">${minus(costByCur,c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost ptg-sub">−$${fmt(costUsd)}</div>` : ''}
+        <div class="ptg-t usd ptg-cost ptg-sub">−${eCost}$${usd2(costUsd)}</div>` : ''}
 
         <div class="ptg-t ptg-first ptg-net">Net Sales</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(netOf(grand,conGrand),costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>
+        <div class="ptg-t usd ptg-net">${(E('*')||eCost)}$${usd2(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>
       </div>
     </div>`;
 }
@@ -6967,7 +7104,7 @@ function usdActualModal(saleId, bundle){
       <div class="field"><label>Dollars received</label>
         <input id="uaVal" type="number" step="0.01" min="0" inputmode="decimal" value="${esc(cur)}"
           placeholder="${fmt(est)}"></div>
-      <div class="muted-note">At today's rate this would be about $${fmt(est)}. Leave it empty to go back
+      <div class="muted-note">At today's rate this would be about $${usd2(est)}. Leave it empty to go back
         to using that estimate.</div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -7005,7 +7142,7 @@ function logItemHTML(x, opts){
   const book = x._bundle
     ? ((opts.context==='pre') ? bundlePreTitle() : (x._count+' Books'))
     : isDon ? 'Donation'
-    : isUncat(x) ? 'Uncategorized sales · ' + uncatWords(x) + (x.est ? ' (estimate)' : '')
+    : isUncat(x) ? 'Uncategorized sales · ' + uncatWords(x) + (uncatAnyEst(x) ? ' (estimate)' : '')
     : bookById(x.bookId).name;
   // A delivered pre-order becomes an ordinary SALE, so without this it would be
   // indistinguishable from a walk-up sale. dsource is only ever set by a delivery.
@@ -7068,8 +7205,8 @@ function logItemHTML(x, opts){
   // What actually arrived, beside the sale's own figure.
   if(x._bundle){
     const had = (x._members||[]).filter(hasUsdActual);
-    if(had.length) bits.push(`<span class="usd-actual">($${fmt(had.reduce((t,m)=>t+Number(m.usdActual),0))} received)</span>`);
-  } else if(hasUsdActual(x)) bits.push(`<span class="usd-actual">($${fmt(Number(x.usdActual))} received)</span>`);
+    if(had.length) bits.push(`<span class="usd-actual">($${usd2(had.reduce((t,m)=>t+Number(m.usdActual),0))} received)</span>`);
+  } else if(hasUsdActual(x)) bits.push(`<span class="usd-actual">($${usd2(Number(x.usdActual))} received)</span>`);
 
   /* Paid by card or transfer: once the money has landed, what actually arrived
      in dollars is entered right here on the sale or donation — one figure for a
@@ -7117,7 +7254,7 @@ function logItemHTML(x, opts){
   if(!x._bundle && (digitalSale(x) || hasUsdActual(x))){
     det.push(['Dollars received',
       hasUsdActual(x)
-        ? `$${fmt(Number(x.usdActual))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Change</button>`
+        ? `$${usd2(Number(x.usdActual))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Change</button>`
         : `<button class="btn btn-ghost btn-sm" data-act="usdactual" data-id="${esc(x.saleId)}">Enter what arrived</button>`]);
   }
   // A multi-book transaction: one figure for the whole of it, as for one book.
@@ -7125,7 +7262,7 @@ function logItemHTML(x, opts){
     const had = x._members.filter(hasUsdActual);
     det.push(['Dollars received',
       had.length
-        ? `$${fmt(had.reduce((t,m)=>t+Number(m.usdActual),0))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-bundle="${esc(x.bundle||x._members[0].bundle)}">Change</button>`
+        ? `$${usd2(had.reduce((t,m)=>t+Number(m.usdActual),0))} <button class="btn btn-ghost btn-sm" data-act="usdactual" data-bundle="${esc(x.bundle||x._members[0].bundle)}">Change</button>`
         : `<button class="btn btn-ghost btn-sm" data-act="usdactual" data-bundle="${esc(x.bundle||x._members[0].bundle)}">Enter what arrived</button>`]);
   }
   if(pending){
@@ -7890,6 +8027,12 @@ function openModal(html,wide){
   // Every window has its ✕ (it only closes when you ask it to: ✕, Cancel or the button that finishes it).
   if(!m.querySelector('.x')){ const h = m.querySelector('h3');
     if(h) h.insertAdjacentHTML('beforeend', '<button class="x" onclick="closeModal()" aria-label="Close">×</button>'); }
+  /* The ✕ is the way out (b299, Gita): a "Close" button at the bottom as well
+     is one too many, so it goes, and an empty footer is hidden. Cancel stays. */
+  if(m.querySelector('.x')) m.querySelectorAll('.m-foot').forEach(f=>{
+    f.querySelectorAll('button').forEach(b=>{ if(b.textContent.trim()==='Close') b.remove(); });
+    if(!f.children.length && !f.textContent.trim()) f.textContent = '';   // kept (some windows fill it in later); hidden while empty
+  });
   if(!$('#overlay').classList.contains('show')) BACKTO.page = BACKTO.clicked && Date.now() - BACKTO.clicked.t < 8000 ? BACKTO.clicked : null;
   BACKTO.clicked = null;
   $('#overlay').classList.add('show');
@@ -8358,7 +8501,7 @@ function saleModal(opts){
   openModal(`
     ${mHead(title+' — '+book.name)}
     <div class="m-body">
-      ${curCurrencies().length>1 ? `<div class="sale-prices">Price: ${curCurrencies().map(c=>esc(cashFmt(priceFor(book,c),c))).join(' · ')}</div>` : ''}
+      ${curCurrencies().length>1 ? `<div class="sale-prices">Price: ${curCurrencies().map(c=>esc(priceFmt(priceFor(book,c),c))).join(' · ')}</div>` : ''}
       ${(!isPre && !edit && onHand<=0) ? `<div class="err-box" id="noStock">There are no copies of <b>${esc(book.name)}</b> at
         ${esc(locName(loc))} to sell. <button type="button" class="btn btn-ghost btn-sm" id="preInstead">Pre-order it instead</button></div>` : ''}
       ${lastCopy?`<div class="warn">⚠ This is the last free copy at ${esc(locName(loc))}.</div>`:''}
@@ -9804,7 +9947,7 @@ function comboBind(id, items, cur, onPick, add){
     const rows = items.filter(x=>keep.has(x));
     const typed = inp.value.trim(), addRow = add && q && !items.some(x=>String(x.l).toLowerCase()===q)
       ? `<div class="pp-row pp-add" data-add="1">＋ Add “${esc(typed)}”</div>` : '';
-    list.innerHTML = rows.length || addRow ? rows.map(x=>x.kind==='head' ? `<div class="pp-row pp-head">${esc(x.l)}</div>` : `<div class="pp-row${x.kind?' pp-'+x.kind:''}${x.v===cur?' on':''}" data-v="${esc(x.v)}">${esc(x.l)}${
+    list.innerHTML = rows.length || addRow ? rows.map(x=>x.kind==='head' ? `<div class="pp-row pp-head">${esc(x.l)}</div>` : `<div class="pp-row${x.kind?' pp-'+x.kind:''}${x.v===cur?' on':''}" data-v="${esc(x.v)}">${x.html || esc(x.l)}${
         x.tag?`<span class="pp-tag">${esc(x.tag)}</span>`:''}</div>`).join('') + addRow : '<div class="pp-empty">Nothing matches.</div>';
     list.hidden = false;
   };
@@ -10819,7 +10962,7 @@ const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open
 const FIN_M = [
   {k:'bbu', l:'Big Books Sold'}, {k:'avu', l:'Adventures Sold'}, {k:'bb', l:'Big Books (count)', n:true}, {k:'av', l:'Adventures (count)', n:true},
   {k:'books', l:'Books sold (count)', n:true}, {k:'gifts', l:'Gifts (count)', n:true}, {k:'sales', l:'Sales (count)', n:true},
-  {k:'don', l:'Donations'}, {k:'pend', l:'Pending'}, {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'},
+  {k:'don', l:'Donations'}, {k:'pend', l:'Pending Payments'}, {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'},
   {k:'con', l:'Consignment'}, {k:'exp', l:'Expenses'},
   {k:'net', l:'Net'}, {k:'margin', l:'Margin', pct:true}, {k:'reimb', l:'Pending Reimbursements'}];
 const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
@@ -10863,9 +11006,9 @@ function finAgg(sales, exps){
 /* Dollars worked out from an exchange rate carry ~ (Gita, 2026-10-21);
    dollars counted or logged as dollars don't. */
 const finUsd = (n, est) => { const a = Math.abs(Math.round(n*100)/100);
-  // Cents always in two places ($50.80, not $50.8); whole dollars as they are.
+  // Cents always in two places, $50.80 and $50.00 (b299, Gita: "even if there are .00 cents").
   // A minus goes first, "−~$61.55": after the ~ it looked like a second ~.
-  return (n<0?'−':'') + (est && a ? '~' : '') + '$' + (a % 1 ? a.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}) : fmt(a)); };
+  return (n<0?'−':'') + (est && a ? '~' : '') + '$' + usd2(a); };
 function finVal(m, v){
   if(v===null || v===undefined) return '—';
   if(m.pct) return Math.round(v*10)/10 + '%';
@@ -11060,7 +11203,7 @@ function finOverviewFigs(a){
     {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu, a.eAv), sub:finDist(a.av, a.avg)},
     ...(a.ot || a.otg ? [{k:'ot', l:'Other Sold', v:finUsd(a.otu, a.eOt), sub:finDist(a.ot, a.otg)}] : []),
     {k:'don',  l:'Donations',         v:finUsd(a.don, a.eDon), sub:'', cur:finCurs(a.cur.don)},
-    {k:'pend', l:'Pending',           v:finUsd(a.pend, a.ePend), sub:''},
+    {k:'pend', l:'Pending Payments',  v:finUsd(a.pend, a.ePend), sub:''},
     {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
     {k:'exp',  l:e.l,                 v:e.v, sub:'', ex:e.ex, cur:finCurs(a.cur.exp)},
     {k:'net',  l:n.l,                 v:n.v, sub:a.margin===null ? '' : 'Margin ' + finVal({pct:true}, a.margin), ex:n.ex}];
@@ -11153,7 +11296,7 @@ function finOverviewHTML(){
    counts keep Big Books and Adventures apart, in the app's one form. */
 const QB_SHOW = [
   {k:'books', l:'Books'}, {k:'bb', l:'Big Books'}, {k:'av', l:'Adventures'}, {k:'pre', l:'Pre-orders'}, {k:'gifts', l:'Gifts'},
-  {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'}, {k:'pend', l:'Pending'}, {k:'don', l:'Donations'},
+  {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'}, {k:'pend', l:'Pending Payments'}, {k:'don', l:'Donations'},
   {k:'exp', l:'Expenses'}, {k:'net', l:'Net'}, {k:'margin', l:'Margin'},
   {k:'npay', l:'Number of payments'}, {k:'days', l:'Days it ran'}, {k:'tail', l:'Last event to region end'}];
 const QB_DURING = [
@@ -11950,7 +12093,7 @@ var FINP = { on:false, sec:'overview', scope:'', me:null };
 // To do stays in the practice space (Gita, 2026-10-21: "not needed" on live).
 /* Expenses and Reimbursements are two screens (b284, Gita: "you can just split them"). */
 // b292 (Gita): Finance To do is gone everywhere, practice too.
-const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursements']];
+const FIN_SECS = [['overview','📈','Overview'], ['expenses','🧾','Expenses'], ['reimb','💸','Reimbursement Links']];
 const FIN_SEC_ALSO = [['settings','⚙️','Reimbursement Settings']];
 const FIN_RB_TABS = ['pending','paid','declined','links','settings'];
 const finRoot = () => FINP.on ? $('#fpBody') : $('#modal');
@@ -12034,12 +12177,14 @@ async function finGo(sec, scope, opt){
   // b256: Compare is part of Reports ("Compared with").
   if(sec==='compare' || sec==='report' || sec==='visual') sec = 'overview';
   if(!FIN_SECS.some(x=>x[0]===sec)) sec = 'overview';
-  if(scope===undefined) scope = FINP.scope;
+  // Coming in from the sales side: the place you were at there (b299, Gita).
+  if(scope===undefined) scope = FINP.on ? FINP.scope : salesFinScope();
   const fresh = !FINP.on || opt.reload, sameSec = FINP.on && FINP.sec === sec;
   if(!opt.fromHistory && location.hash !== finHash(sec, scope)) history.pushState(null, '', finHash(sec, scope));
   try{ closeModal(); }catch(e){}
   FINP.on = true; FINP.sec = sec; FINP.scope = scope;
   document.body.classList.add('fin-mode'); $('#finPage').hidden = false;
+  try{ hdrPortal(); }catch(e){}
   /* Opened before on this device (b284, "slow for finances to load"): the
      figures it last saw show at once, and the latest replace them by
      themselves a moment later. */
@@ -12079,13 +12224,37 @@ async function finGo(sec, scope, opt){
    section (Season / Region / Event Admin) used to stay wherever the sales
    pages were left. Only within the season this tab has open; a place in
    another season leaves it as it was. Going back to the sales pages lands there too. */
+/* Where the sales side is, as a Finance place (b299, Gita: going between
+   Finance and the Book Sales app stays in the same place). */
+function salesFinScope(){
+  if(!STATE) return FINP.scope;
+  if(isHQ()) return '';
+  if(CUR_LEVEL==='event' && CUR_LOC) return CUR_LOC;
+  if(CUR_LEVEL==='region' && CUR_REGION) return curSub() || CUR_REGION;
+  return STATE.activeSeason || '';
+}
 function finSyncPlace(){
   if(!STATE || !FINP.on) return;
   const f = finScopeF();
   let lvl = 'season', reg = '', loc = SEASON;
-  if(f.e && (STATE.events||[]).some(e=>e.eventId===f.e)){ lvl = 'event'; loc = f.e; reg = regionOfLoc(f.e); }
+  // Earthly HQ in Finance is Earthly HQ on the sales side (b299).
+  if(!f.s && !f.r && !f.e && STATE.activeSeason!==HQ_ID){ const want = HQ_ID;
+    if(FIN.syncTo!==want){ FIN.syncTo = want; switchSeason(want, {quiet:true}).then(()=>{ FIN.syncTo = ''; if(isHQ()) finSyncPlace(); }); }
+    return; }
+  if(!f.s && !f.r && !f.e){ lvl = 'region'; reg = HQ_REGION; loc = HQ_WH; }
+  else if(f.e && (STATE.events||[]).some(e=>e.eventId===f.e)){ lvl = 'event'; loc = f.e; reg = regionOfLoc(f.e); }
   else if(f.r && regionById(f.r)){ lvl = 'region'; reg = f.r; loc = regionById(f.r).whLoc; }
-  else if(f.r || (f.s && f.s!==STATE.activeSeason)) return;
+  else if(f.r || (f.s && f.s!==STATE.activeSeason)){
+    /* Finance is in another season (b299, Gita: in US Tour 2026, Edit Season
+       showed Europe Tour): the sales side moves there too, quietly, so the menu
+       acts on the place Finance shows and going back lands in the same place. */
+    const want = f.s || HQ_ID;
+    if(want!==STATE.activeSeason && (want===HQ_ID || (STATE.seasons||[]).some(x=>x.seasonId===want)) && FIN.syncTo!==want){
+      FIN.syncTo = want;
+      switchSeason(want, {quiet:true}).then(()=>{ FIN.syncTo = ''; if(STATE.activeSeason===want) finSyncPlace(); });
+    }
+    return;
+  }
   const moved = lvl!==CUR_LEVEL || reg!==CUR_REGION || loc!==CUR_LOC;
   /* No colour change while in Finance (b291, Gita: "the top menus should be
      purely still and only the data should change"): the page takes the place's
@@ -12140,7 +12309,7 @@ function finLeave(opt){
   opt = opt || {};
   if(!FINP.on) return;
   FINP.on = false; document.body.classList.remove('fin-mode'); $('#finPage').hidden = true; FIN.menuOnce = false; FIN.navH = ''; FIN.secsH = '';
-  applyLevelTheme();
+  applyLevelTheme(); try{ hdrPortal(); }catch(e){}
   if(!opt.fromHistory && /^#finance/.test(location.hash)) history.pushState(null, '', location.pathname + location.search);
   if(!opt.quiet) renderAll();
 }
@@ -12221,7 +12390,7 @@ function finNav(){
     `<span class="fp-gap"></span>
      <span class="fp-acts">${STATE ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← Leave Finance</button>`}<button type="button" class="btn btn-ghost btn-sm" data-act="finsendlink">📨 Send Reimbursements Link</button><button type="button" class="btn btn-primary btn-sm" data-act="expenses">🧾 Add an Expense</button></span>`;
   if(FIN.secsH !== secs){ FIN.secsH = secs; $('#fpSecs').innerHTML = secs; }
-  $('#fpSecs').classList.toggle('fp-seg', PRACTICE);
+  $('#fpSecs').classList.add('fp-seg');   // approved for live (b299, Gita: "looks better")
   void fin;
   // The top 📋 Report is Finance's own here, for everyone who can see Finance.
   const rb = $('#reportBtn'); if(rb) rb.style.display = '';
@@ -13071,7 +13240,7 @@ function finChartsHTML(){
     const pend = finPending(a), owe = finToRepay(a);
     if(pend){
       out.push(finChart('Income by Source (Actual)', finDonutHTML(src.map(r=>Object.assign({}, r)).filter(r=>r.v > 0.004), 'Income by Source (Actual)', 'Gross')));
-      out.push(finChart('Income by Source (Expected)', finDonutHTML(src.map(r=>Object.assign({}, r)).concat([{k:'Pending', v:a.pend, c:FIN_C.pend, e:a.ePend}])
+      out.push(finChart('Income by Source (Expected)', finDonutHTML(src.map(r=>Object.assign({}, r)).concat([{k:'Pending Payments', v:a.pend, c:FIN_C.pend, e:a.ePend}])
         .filter(r=>r.v > 0.004), 'Income by Source (Expected)', 'Expected Gross')));
     } else out.push(finChart('Income by Source', finDonutHTML(src.filter(r=>r.v > 0.004), 'Income by Source', 'Gross')));
     out.push(finChart('Money in and out', finHBarsHTML([
@@ -13121,7 +13290,7 @@ function finChartsHTML(){
     const f = finScopeF(), I = finIdx(), byE = {};
     FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.uE || f.uE.includes(x.e) || (f.u && !x.e && x.u===f.u)))
       .forEach(x=>{ const k = x.e ? (I.e[x.e]||{}).name || 'An event' : ((I.r[x.r]||{}).name || 'Region') + ' Warehouse'; byE[k] = (byE[k]||0) + x.pu; });
-    out.push(finChart('Pending, by place', finDonutHTML(finTop(byE), 'Pending, by place', 'Owed to the tour')));
+    out.push(finChart('Pending Payments, by place', finDonutHTML(finTop(byE), 'Pending Payments, by place', 'Owed to the tour')));
     const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', u = (FIN.D.expenses.find(y=>y.id===x.id)||{}).usd || 0; byP[k] = (byP[k]||0) + u; });
     out.push(finChart('Pending Reimbursements, by person', finDonutHTML(finTop(byP), 'Pending Reimbursements, by person', 'To pay back')));
   }
@@ -13307,7 +13476,7 @@ function finShareReport(part){
 function FIN_BTNS(fin){
   if(!fin) return [];
   const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`,
-    `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`];
+    `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursement Links</button>`];
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   // b288 (Gita): practice first.
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
@@ -14274,7 +14443,7 @@ function buildReport(part, opts){
     const shown = r => r.c.sold || r.c.gift;
     // Our own titles, by kind.
     // Uncategorized sales (b293) are a line of their own among the Big Books.
-    const uncEst = s.some(x=>isUncat(x) && x.est);
+    const uncEst = s.some(x=>isUncat(x) && uncatAnyEst(x));
     CATS.forEach(kind=>{ const uncN = kind==='big' || kind==='aotm' ? uncatBooks(s, kind) : 0; group(
       shelf().filter(b=>catOfBook(b)===kind && !isPartnerBook(b.id)).map(counted).filter(shown)
         .concat(uncN ? [{b:{name:'Uncategorized sales' + (uncEst ? ' (estimate)' : '')}, c:{sold:uncN, pre:0, gift:0}}] : []),
@@ -14446,7 +14615,13 @@ function buildReport(part, opts){
     const types = bag => Object.keys(bag).filter(t=>t!=='Gift').sort();
 
     types(ours).forEach(t=>{ if(curs(ours[t]).length) line(t, text(ours[t])); });
-    if(curs(ourGrand).length) line('Total', text(ourGrand) + ' ≈ $' + nf(usd(ourGrand) + usdActualAdj(s.filter(x=>!isPartnerSale(x)))));
+    /* The dollars as the totals card shows them (b299, Gita: the report always
+       says what the section shows): "=" where they are hard figures, "≈" where
+       they come from an exchange rate, like the ~ in the app. */
+    const ourSales = s.filter(x=>received(x) && !isPartnerSale(x));
+    const eq = (e, v) => (e ? ' ≈ ' : ' = ') + (v < 0 ? '−' : '') + '$' + usd2(Math.abs(v));
+    const totUsd = ourSales.reduce((t,x)=>t+saleUsd(x), 0), eTot = ourSales.some(x=>!usdExact(x));
+    if(curs(ourGrand).length) line('Total Collections', text(ourGrand) + eq(eTot, totUsd));
 
     /* At season level, the same picture region by region as the dashboard:
        each region's own takings less its own costs, consignment apart. */
@@ -14472,31 +14647,39 @@ function buildReport(part, opts){
       if(byRegion.length){
         L.push('');
         L.push(combo ? '— BY PLACE (after expenses) —' : CUR_LEVEL==='region' ? '— BY SUB-REGION (after expenses) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after expenses) —');
-        byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got) + x.adj)));
+        byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + usd2(usd(x.got) + x.adj)));
       }
     }
 
     // Costs come off our own takings; a group's costs come off what it is owed.
     const costs = combo ? (STATE.costs||[]).filter(c=>c && !c.partnerId && combo.has(c.location)) : scopedCosts();
-    if(costs.length){
-      const cost = {};
-      costs.forEach(c=>{ cost[c.cur]=(cost[c.cur]||0)+(Number(c.amt)||0); });
-      const minus = o => curs(o).map(c=>'−'+cashFmt(o[c],c)).join(' + ');
+    /* Then Expenses, Donations and Net Sales, as on the totals card:
+       Net Sales = Total Collections − Expenses − Donations. */
+    const cost = {}, dons = {};
+    costs.forEach(c=>{ cost[c.cur]=(cost[c.cur]||0)+(Number(c.amt)||0); });
+    const donSales = ourSales.filter(x=>x.type==='DONATION');
+    donSales.forEach(x=>legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) dons[l.cur]=(dons[l.cur]||0)+l.amt; }));
+    const costUsd = costs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0), eCost = costs.some(c=>!usdCostExact(c));
+    const donUsd = donSales.reduce((t,x)=>t+saleUsd(x), 0), eDon = donSales.some(x=>!usdExact(x));
+    const minus = o => curs(o).map(c=>'−'+cashFmt(o[c],c)).join(' + ');
+    if(costs.length) line('Expenses', minus(cost) + eq(eCost, -costUsd));
+    if(donSales.length) line('Donations', text(dons) + eq(eDon, donUsd));
+    if(curs(ourGrand).length || costs.length){
       const net = {};
-      new Set([...Object.keys(ourGrand),...Object.keys(cost)]).forEach(c=>{
-        net[c] = (ourGrand[c]||0) - (cost[c]||0);
+      new Set([...Object.keys(ourGrand),...Object.keys(cost),...Object.keys(dons)]).forEach(c=>{
+        net[c] = (ourGrand[c]||0) - (cost[c]||0) - (dons[c]||0);
       });
-      line('Expenses', minus(cost));
       const netText = Object.keys(net).filter(c=>Math.abs(net[c])>0.005).sort()
         .map(c=>cashFmt(net[c],c)).join(' + ') || '0';
-      line('Net after expenses', netText + ' ≈ $' + nf(usd(net) + usdActualAdj(s.filter(x=>!isPartnerSale(x))) - costTruthAdj(costs)));
+      const nu = totUsd - costUsd - donUsd;
+      line('Net Sales', netText + eq(eTot || eCost, nu));
     }
 
     if(curs(conGrand).length){
       L.push('');
       L.push('— CONSIGNMENT —');
       types(theirs).forEach(t=>{ if(curs(theirs[t]).length) line(t, text(theirs[t])); });
-      line('Consignment Total', text(conGrand) + ' ≈ $' + nf(usd(conGrand) + usdActualAdj(s.filter(x=>isPartnerSale(x)))));
+      line('Consignment Total', text(conGrand) + ' ≈ $' + usd2(usd(conGrand) + usdActualAdj(s.filter(x=>isPartnerSale(x)))));
       const conCosts = (combo ? (STATE.costs||[]).filter(c=>c && combo.has(c.location)) : scopedAllCosts()).filter(c=>c.partnerId);
       if(conCosts.length){
         const cc={}; conCosts.forEach(c=>{ cc[c.cur]=(cc[c.cur]||0)+(Number(c.amt)||0); });
@@ -15110,10 +15293,17 @@ function cashPhysical(acct,cur){
 /* Money for any currency the tour picks up. Known symbols get their glyph;
    anything else falls back to the ISO code, so MKD/GBP/INR all read sensibly
    without needing the app to be taught about them first. */
+/* A book's price, as before: "35 €", "$12.50" (b299: the .00 is for amounts of money, not price tags). */
+function priceFmt(n,cur){
+  cur = String(cur||'').toUpperCase();
+  const v = Math.round((Number(n)||0)*100)/100, num = Number.isInteger(v) ? String(v) : v.toFixed(2);
+  const sym = CUR_SYM[cur] || cur;
+  return CUR_PRE[cur] ? sym+num : num+' '+sym;
+}
 function cashFmt(n,cur){
   cur = String(cur||'').toUpperCase();
   const v = Math.round((Number(n)||0)*100)/100;
-  const num = Number.isInteger(v)?String(v):v.toFixed(2);
+  const num = v.toFixed(2);                    // .00 shown too (b299, Gita)
   const sym = CUR_SYM[cur] || cur;             // unknown currency: show its code
   return CUR_PRE[cur] ? sym+num : num+' '+sym;
 }
@@ -15797,6 +15987,10 @@ function uncatWords(x){
   const n = Number(x.qty)||0, a = Number(x.aqty)||0;
   return a ? n + ' Big Book' + (n===1?'':'s') + ' + ' + a + ' Adventure' + (a===1?'':'s') : n + ' book' + (n===1?'':'s');
 }
+/* Whether the Adventures are an estimate (b299); before, one tick covered both. */
+function uncatAEst(x){ return x.aest === undefined || x.aest === null ? !!x.est : !!x.aest; }
+/* Is any number in it an estimate? */
+function uncatAnyEst(x){ return !!x.est || (Number(x.aqty) > 0 && uncatAEst(x)); }
 /* qty holds the Big Books, aqty the Adventures (b295). */
 function uncatBooks(list, cat){ return (list||[]).filter(isUncat).reduce((t,x)=>t+(Number(cat==='aotm' ? x.aqty : x.qty)||0), 0); }
 /* The usual price of a Big Book here, in that currency: the most common one on the shelf. */
@@ -15818,15 +16012,25 @@ function uncatModal(edit){
         <div class="field"><label>Currency</label><select id="ucCur">${curOptions(L0[0] ? L0[0].cur : defaultCur())}</select></div>
       </div>
       <div class="field"><label>Payment type</label><select id="ucType">${payTypeOptions(false,false)}</select></div>
-      <div class="row2">
-        <div class="field"><label>Big Books sold</label><input id="ucN" type="number" min="0" step="1" inputmode="numeric"></div>
-        <div class="field"><label>Adventures sold</label><input id="ucA" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+      ${/* Confirmed or Estimated first, for each kind (b299, Gita): a number
+            that is known is never worked out. */''}
+      <div class="row2 uc-kinds">
+        <div class="uc-kind">
+          <div class="cl-checks uc-est">
+            <label class="cl-check"><input type="radio" name="ucEstB" value="0" ${edit && !edit.est ? 'checked' : ''}> Confirmed Big Books</label>
+            <label class="cl-check"><input type="radio" name="ucEstB" value="1" ${!edit || edit.est ? 'checked' : ''}> Estimated Big Books</label>
+          </div>
+          <div class="field"><label>Big Books sold</label><input id="ucN" type="number" min="0" step="1" inputmode="numeric"></div>
+        </div>
+        <div class="uc-kind">
+          <div class="cl-checks uc-est">
+            <label class="cl-check"><input type="radio" name="ucEstA" value="0" ${edit && !uncatAEst(edit) ? 'checked' : ''}> Confirmed Adventures</label>
+            <label class="cl-check"><input type="radio" name="ucEstA" value="1" ${!edit || uncatAEst(edit) ? 'checked' : ''}> Estimated Adventures</label>
+          </div>
+          <div class="field"><label>Adventures sold</label><input id="ucA" type="number" min="0" step="1" inputmode="numeric" placeholder="0"></div>
+        </div>
       </div>
       <div class="hint" id="ucHow"></div>
-      <div class="cl-checks uc-est">
-        <label class="cl-check"><input type="radio" name="ucEst" value="1" ${!edit || edit.est ? 'checked' : ''}> Estimated # of Books Sold</label>
-        <label class="cl-check"><input type="radio" name="ucEst" value="0" ${edit && !edit.est ? 'checked' : ''}> Confirmed # of Books Sold</label>
-      </div>
       <div class="field"><label>Comments (optional)</label><textarea id="ucCom"></textarea></div>
       <div class="field"><label>Date &amp; Time</label>
         <input id="ucTs" type="datetime-local" value="${esc(toLocalInput(edit ? edit.ts : new Date()))}"></div>
@@ -15836,47 +16040,60 @@ function uncatModal(edit){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="ucSave">${edit ? 'Save changes' : 'Record'}</button>
     </div>`);
-  let typed = !!edit;            // once the number is typed, the total no longer changes it
-  /* With the counts unknown, the money is all Big Books (b295, Gita); Adventures
-     typed in take their own price off first. */
+  /* Each number is the app's to work out only while it is Estimated and you
+     haven't typed in it (b299, Gita): once you type, even clearing it to type
+     again, it stays yours, so it never fills itself back in under you. */
+  const typed = {N: !!edit, A: !!edit};
+  const conf = k => ($(`#modal input[name="ucEst${k==='N'?'B':'A'}"]:checked`)||{}).value === '0';
+  const mine = k => typed[k] || conf(k);
   const fill = () => {
-    const amt = Number($('#ucAmt').value) || 0, cur = $('#ucCur').value, m = uncatMsrp(cur);
-    const a = Math.floor(Number($('#ucA').value) || 0), ma = uncatMsrp(cur, 'aotm'), rest = Math.max(0, amt - a * ma);
-    const nb = m > 0 && amt > 0 ? Math.floor(rest / m + 1e-9) : 0;
-    if(!typed) $('#ucN').value = m > 0 && amt > 0 ? nb : '';
-    /* Spelled out as a sum (b298, Gita found the old sentence confusing):
-       "7 Adventures × 15 € = 105 €. 300 € − 105 € = 195 € left for Big Books.
-       195 € ÷ 40 € = 4 Big Books (rounded down)." */
-    const bb = k => k + ' Big Book' + (k===1?'':'s');
-    $('#ucHow').textContent = !(m > 0) ? 'No Big Book price in this currency here: type the number of books.'
-      : typed ? 'You typed the number of Big Books, so it is not worked out from the total.'
-      : !(amt > 0) ? `Enter the total taken, and the Big Books are worked out at ${cashFmt(m, cur)} each.`
-      : a && ma > 0 ? `${a} Adventure${a===1?'':'s'} × ${cashFmt(ma, cur)} = ${cashFmt(a * ma, cur)}. ${cashFmt(amt, cur)} − ${cashFmt(a * ma, cur)} = ${cashFmt(rest, cur)} left for Big Books. ${cashFmt(rest, cur)} ÷ ${cashFmt(m, cur)} = ${bb(nb)} (rounded down).`
-      : `${cashFmt(amt, cur)} ÷ ${cashFmt(m, cur)} a Big Book = ${bb(nb)} (rounded down).`;
+    const amt = Number($('#ucAmt').value) || 0, cur = $('#ucCur').value, m = uncatMsrp(cur), ma = uncatMsrp(cur, 'aotm');
+    const nIn = $('#ucN'), aIn = $('#ucA'), bb = k => k + ' Big Book' + (k===1?'':'s'), av = k => k + ' Adventure' + (k===1?'':'s');
+    const N = Math.floor(Number(nIn.value) || 0), A = Math.floor(Number(aIn.value) || 0);
+    const set = (el, v) => { el.value = v === '' ? '' : String(v); el.classList.toggle('rp-auto', v !== ''); };
+    nIn.classList.toggle('rp-auto', false); aIn.classList.toggle('rp-auto', false);
+    let how = '';
+    if(mine('N') && mine('A')) how = '';                                   // both known: nothing to work out
+    else if(mine('N') && nIn.value !== ''){                                // Big Books known: the rest is Adventures
+      const rest = amt - N * m, k = ma > 0 && m > 0 && rest > 0 ? Math.floor(rest / ma + 1e-9) : 0;
+      if(k > 0){ set(aIn, k); how = `Based on ${bb(N)}, ${k} is the estimated number of Adventures sold.`; } else set(aIn, '');
+    }else if(mine('A') && aIn.value !== ''){                               // Adventures known: the rest is Big Books
+      const rest = amt - A * ma, k = m > 0 && ma > 0 && rest > 0 ? Math.floor(rest / m + 1e-9) : 0;
+      if(k > 0){ set(nIn, k); how = `Based on ${av(A)}, ${k} is the estimated number of Big Books Sold.`; } else set(nIn, '');
+    }else if(!mine('N') && !mine('A')){                                    // neither known: the money is all Big Books (b295)
+      const nb = m > 0 && amt > 0 ? Math.floor(amt / m + 1e-9) : 0;
+      set(nIn, m > 0 && amt > 0 ? nb : '');
+      /* Spelled out as a sum (b298, Gita). */
+      how = !(m > 0) ? 'No Big Book price in this currency here: type the number of books.'
+        : !(amt > 0) ? `Enter the total taken, and the Big Books are worked out at ${cashFmt(m, cur)} each.`
+        : `${cashFmt(amt, cur)} ÷ ${cashFmt(m, cur)} a Big Book = ${bb(nb)} (rounded down).`;
+    }
+    $('#ucHow').textContent = how;
   };
   if(edit){
     if(L0[0]){ $('#ucAmt').value = L0[0].amt; setSel($('#ucType'), L0[0].type); }
     $('#ucN').value = Number(edit.qty) || 0; $('#ucA').value = Number(edit.aqty) || ''; $('#ucCom').value = edit.comments || '';
   }
   $('#ucAmt').addEventListener('input', fill); $('#ucCur').addEventListener('change', fill);
-  $('#ucA').addEventListener('input', fill);
-  $('#ucN').addEventListener('input', ()=>{ typed = $('#ucN').value !== ''; fill(); });
+  $('#ucN').addEventListener('input', ()=>{ typed.N = true; if(!typed.A && !conf('A')) $('#ucA').value = ''; fill(); });
+  $('#ucA').addEventListener('input', ()=>{ typed.A = true; if(!typed.N && !conf('N')) $('#ucN').value = ''; fill(); });
+  $('#modal').querySelectorAll('input[name="ucEstB"], input[name="ucEstA"]').forEach(r=>r.addEventListener('change', fill));
   fill();
   $('#ucSave').addEventListener('click', ()=>{
     const amt = Number($('#ucAmt').value) || 0, n = Math.floor(Number($('#ucN').value) || 0), aq = Math.floor(Number($('#ucA').value) || 0);
     if(!(amt > 0)){ $('#modalErr').textContent = 'Enter the total taken.'; return; }
     if(($('#ucN').value === '' && !aq) || n < 0 || aq < 0){ $('#modalErr').textContent = 'Enter how many books were sold.'; return; }
     const L = [{type:$('#ucType').value, cur:$('#ucCur').value, amt}];
-    const est = ($('#modal input[name="ucEst"]:checked')||{}).value !== '0', comments = $('#ucCom').value.trim(), tsVal = fromLocalInput($('#ucTs').value);
+    const est = !conf('N'), aest = !conf('A'), comments = $('#ucCom').value.trim(), tsVal = fromLocalInput($('#ucTs').value);
     if(edit){
-      commit({action:'uncatSale', editId:edit.saleId, location:edit.location, qty:n, aqty:aq, est, legs:L, comments, ts:tsVal},
-        st=>{ const d = findSale(st, edit.saleId); if(d) Object.assign(d, legFields(L), {qty:n, aqty:aq, est, comments, ts:tsVal||d.ts}); },
+      commit({action:'uncatSale', editId:edit.saleId, location:edit.location, qty:n, aqty:aq, est, aest, legs:L, comments, ts:tsVal},
+        st=>{ const d = findSale(st, edit.saleId); if(d) Object.assign(d, legFields(L), {qty:n, aqty:aq, est, aest, comments, ts:tsVal||d.ts}); },
         'Uncategorized sales updated');
     }else{
       const id = newSaleId(), loc = CUR_LOC;
-      commit({action:'uncatSale', saleId:id, location:loc, qty:n, aqty:aq, est, legs:L, comments, ts:tsVal},
+      commit({action:'uncatSale', saleId:id, location:loc, qty:n, aqty:aq, est, aest, legs:L, comments, ts:tsVal},
         st=>{ st.sales.push(Object.assign({saleId:id, ts:tsVal||new Date().toISOString(), location:loc, type:'UNCAT',
-                bookId:'', qty:n, aqty:aq, est, pending:false, paid:true, delivered:true, name:'', phone:'', comments}, legFields(L))); },
+                bookId:'', qty:n, aqty:aq, est, aest, pending:false, paid:true, delivered:true, name:'', phone:'', comments}, legFields(L))); },
         'Uncategorized sales recorded');
     }
   });
@@ -16169,13 +16386,16 @@ async function deliverPickModal(id, bundle){
         || (a.kind==='warehouse' ? -1 : b.kind==='warehouse' ? 1 : String(a.name).localeCompare(String(b.name))))
       .forEach(p=>{
         const up = p.seasonId==='HQ' ? ['Earthly HQ'] : p.kind==='warehouse' ? [p.season] : [p.region, p.season];
-        const nm = p.seasonId==='HQ' && p.kind==='warehouse' ? 'Earthly HQ — Warehouse' : p.name;
+        /* "Spain (warehouse)", the name alone in bold and the rest grey (b299, Gita: too much bold). */
+        const wh = p.kind==='warehouse', nm = wh ? (p.seasonId==='HQ' ? 'Earthly HQ' : String(p.region || p.name).replace(/ — Warehouse$/, '')) : p.name;
         // Named with its region and season, so two places of the same name in different seasons can be told apart.
-        const full = [nm].concat(up).filter(Boolean).join(' · ');
-        items.push({v:p.loc, l:full, shown:full, kind:p.kind==='warehouse' ? 'region' : 'event', up:up.filter(Boolean), tag:tag(p.loc)});
+        const full = [nm + (wh ? ' (warehouse)' : '')].concat(up).filter(Boolean).join(' · ');
+        items.push({v:p.loc, l:full, shown:full, kind:(wh ? 'region' : 'event') + ' pp-dv', up:up.filter(Boolean), tag:tag(p.loc),
+          html: (wh ? `<b>${esc(nm)}</b> <span class="pp-up">(warehouse)</span>` : esc(nm)) + (up.filter(Boolean).length ? ` <span class="pp-up">· ${esc(up.filter(Boolean).join(' · '))}</span>` : '')});
       });
   } else regionsList().forEach(r=>{
-    items.push({v:r.whLoc, l:r.name + ' — Warehouse', shown:r.name + ' — Warehouse', kind:'region', up:[], tag:tag(r.whLoc)});
+    items.push({v:r.whLoc, l:r.name + ' (warehouse)', shown:r.name + ' (warehouse)', kind:'region pp-dv', up:[], tag:tag(r.whLoc),
+      html:`<b>${esc(r.name)}</b> <span class="pp-up">(warehouse)</span>`});
     holdersOf(r.regionId).forEach(h=>items.push({v:h.holderId, l:h.name + ' (storing books)', kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(h.holderId)}));
     eventsOfRegion(r.regionId).filter(e=>!closureOf(e.eventId)).forEach(e=>items.push({v:e.eventId, l:e.name, kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(e.eventId)}));
   });
@@ -16235,7 +16455,7 @@ async function stockWhereMap(bookIds){
   }catch(e){ return null; }
 }
 function deliverModal(id, bundle){
-  if(PRACTICE) return deliverPickModal(id, bundle);
+  return deliverPickModal(id, bundle);   // live since b299 (Gita: "bring pre-orders to the live")
   const members = bundle
     ? (STATE.sales||[]).filter(s=>s.bundle===bundle && s.type==='PREORDER' && !s.delivered)
     : [(STATE.sales||[]).find(s=>s.saleId===id)].filter(Boolean);
@@ -18192,7 +18412,8 @@ function woJump(){
     // No scrolling (b297, Gita): the page stays at the height you were at.
   }, 60);
 }
-async function switchSeason(id){
+async function switchSeason(id, so){
+  so = so || {};
   if(!id || id===STATE.activeSeason) return;
   SEASON_EPOCH++;                 // anything already in flight is now out of date
   clearLogFilters();              // a new season starts unfiltered (b212)
@@ -18219,7 +18440,7 @@ async function switchSeason(id){
       if(WO_PEND && !cached) woJump();
       WO_PEND = false;
       setStatus('ok','Saved · '+clock());
-      if(!cached) toast('Now showing ' + (id===HQ_ID ? 'Earthly HQ'
+      if(!cached && !so.quiet) toast('Now showing ' + (id===HQ_ID ? 'Earthly HQ'
         : ((STATE.seasons||[]).find(x=>x.seasonId===id)||{}).name));
     }
   }catch(err){
@@ -20293,7 +20514,9 @@ function activityModal(){
     // A Finance entry (b260): undone by Finance's own records, then the log is read again.
     if(entry.undoType==='exp'){
       if(!await askSure('Delete this entry? This undoes it:\n\n' + entry.text, 'Delete')) return;
-      try{ await post({action:'expUndo', id:entry.id}); toast('Undone'); await refetch(); }catch(err){ toast(err.message, true); }
+      // Finance's own figures are read again too (b299, Gita: a Dollars received deleted here stayed in its window).
+      try{ await post({action:'expUndo', id:entry.id}); FIN.D = null; finCacheDrop(); EXP.all = null; toast('Undone'); await refetch();
+        if(FINP.on) finGo(FINP.sec, FINP.scope, {reload:true}); }catch(err){ toast(err.message, true); }
       return;
     }
     const book = entry.undoType==='book' ? entry.undoBook : '';
@@ -21541,6 +21764,11 @@ document.addEventListener('click',e=>{
   // Pick up where you left off — before the first paint, so the page never
   // flashes the wrong region on the way to the right one.
   loadPos();
+  /* Refreshed in Finance (b299, Gita: "on the refresh, the app should never
+     flash to another screen"): Finance's page shows at once, not the sales
+     page first while who you are is checked. */
+  if(FIN_ON && finParseHash() && signedInHere()){ document.body.classList.add('fin-mode'); $('#finPage').hidden = false;
+    $('#fpBody').innerHTML = '<div class="cash-empty">Opening Finance…</div>'; FIN.boot = true; }
   pendingLoad(); pendingPrune(); outboxRecover(); fxRestore(); showPending();
   // The page itself is kept on the device, so it opens with no internet (b242, sw.js).
   try{

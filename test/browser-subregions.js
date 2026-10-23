@@ -195,8 +195,13 @@ const API = 'http://api.test/';
     t.push(['b281: the left-hand menu follows Finance to Spain (Region Admin)', await navLvl() === 'Region Admin']);
     await own.evaluate(() => finGo('overview', 'ev_b1')); await own.waitForTimeout(800);
     t.push(['b281: …and to an event (Event Admin)', await navLvl() === 'Event Admin']);
-    await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(800);
+    await own.evaluate(() => finGo('overview', STATE.activeSeason)); await own.waitForTimeout(800);
     t.push(['b281: …and back up to the season', await navLvl() === 'Season Admin']);
+    // b299: Finance's Earthly HQ is Earthly HQ on the sales side too.
+    await own.evaluate(() => finGo('overview', '')); await own.waitForTimeout(2500);
+    t.push(['b299: …and Finance at Earthly HQ takes the sales side to Earthly HQ', await own.evaluate(() => isHQ())]);
+    await own.evaluate(() => finGo('overview', 'rg_sp')); await own.waitForTimeout(2500);
+    t.push(['b299: …and back into the season, at Spain', await own.evaluate(() => !isHQ() && CUR_REGION === 'rg_sp')]);
     await own.evaluate(() => finGo('overview', 'rg_sp')); await own.waitForTimeout(800);
     t.push(['…the Events… drop-down lists each sub-region, as on the Sales side', (await own.$$eval('[data-fpick="e"] option', o => o.map(x => x.textContent))).filter(x => /Summary$/.test(x)).join('|') === '🗺 Madrid Summary|🗺 Barcelona Summary|🗺 Valencia Summary']);
     await own.evaluate(() => finGo('overview', 'sr_m')); await own.waitForTimeout(1200);

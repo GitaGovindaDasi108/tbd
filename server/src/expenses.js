@@ -544,17 +544,26 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const by = {};
     list.forEach(c => { if (!c.kind) return; convParts(c).forEach(x => { if (x.cur === 'USD') return;
       const k = c.place + '|' + x.cur; const o = by[k] || (by[k] = { amt: 0, usd: 0 }); o.amt += Number(x.amt) || 0; o.usd += Number(x.usd) || 0; }); });
-    const rateFor = (x, cur) => { for (const id of [x.e, x.r, x.s]) { const o = id && by[id + '|' + cur]; if (o && o.amt > 0) return o.usd / o.amt; } return null; };
+    const keyFor = (x, cur) => { for (const id of [x.e, x.r, x.s]) { const o = id && by[id + '|' + cur]; if (o && o.amt > 0) return id + '|' + cur; } return null; };
+    /* Each sale's share is rounded to the cent, so the cents left over go to
+       the biggest one: the place's figure is then exactly what was written
+       down (b299, Gita: $253 showed as $252.98). */
+    const grp = {};
     D.sales.forEach(x => {
       if (x.con || x.ua || !x.cu) return;
       Object.keys(x.cur || {}).forEach(c => {
-        const r = rateFor(x, c); if (r === null || !(c in x.cu)) return;
-        x.gu = Math.round((x.gu - x.cu[c] + x.cur[c] * r) * 100) / 100; x.cv = 1; (x.cvd = x.cvd || {})[c] = 1;
+        const k = keyFor(x, c); if (k === null || !(c in x.cu)) return;
+        const o = by[k], exact = x.cur[c] * o.usd / o.amt, cents = Math.round(exact * 100) / 100;
+        x.gu = Math.round((x.gu - x.cu[c] + cents) * 100) / 100; x.cv = 1; (x.cvd = x.cvd || {})[c] = 1;
+        const g = grp[k] || (grp[k] = { exact: 0, got: 0, big: null, bigV: -1 }); g.exact += exact; g.got += cents;
+        if (cents > g.bigV) { g.big = x; g.bigV = cents; }
       });
       // Every other currency in it counted at a real exchange: its dollars are no longer an estimate.
       if (x.cv && !(x.pu > 0) && Object.keys(x.cur || {}).every(c => c === 'USD' || x.cvd[c])) x.ue = 0;
       delete x.cvd;
     });
+    Object.keys(grp).forEach(k => { const g = grp[k], d = Math.round((Math.round(g.exact * 100) / 100 - g.got) * 100) / 100;
+      if (d && g.big) g.big.gu = Math.round((g.big.gu + d) * 100) / 100; });
     return list;
   }
   function convSet(w, p) {

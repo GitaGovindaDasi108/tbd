@@ -220,13 +220,14 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     await page.evaluate(() => pull()); await page.waitForTimeout(800);
     await page.evaluate(() => { goTo('region', 'rg_it'); deliverModal('s_open3'); }); await page.waitForTimeout(300);
     // b293: practice's Deliver no longer offers it (another region is a place in "Fulfilled from"); live's still does.
-    t.push(['Deliver offers "Another region will fulfill it" on live only', (await page.evaluate(() => PRACTICE)) !== /Another region will fulfill it/.test(await page.textContent('#modal .opts'))]);
+    // b299: live has practice's Deliver too, so neither offers it.
+    t.push(['Deliver no longer offers "Another region will fulfill it" (b299: live too)', !/Another region will fulfill it/.test(await page.textContent('#modal .opts'))]);
     await page.evaluate(() => closeModal());
     // b292 (practice): "Fulfilled from" is a searchable drop-down, starting where you are.
     c({ action: 'adjustStockBulk', location: 'wh_it', items: [{ bookId: B0, delta: 2 }], override: true });
     await page.evaluate(() => pull()); await page.waitForTimeout(800);
     await page.evaluate(() => { goTo('region', 'rg_it'); deliverPickModal('s_open3'); }); await page.waitForTimeout(300);
-    t.push(['b292: Deliver asks "Fulfilled from", starting at the warehouse you are in', /Italy — Warehouse/.test(await page.$eval('#dvFrom .pp-in', i => i.value))]);
+    t.push(['b292: Deliver asks "Fulfilled from", starting at the warehouse you are in', /^Italy \(warehouse\)/.test(await page.$eval('#dvFrom .pp-in', i => i.value))]);
     t.push(['b293: the only other way is "Delivered from outside the system"', await page.evaluate(() => { const o = document.querySelector('#modal .opts').textContent; return /Delivered from outside the system/.test(o) && !/Another region/.test(o); })]);
     await page.click('#dvFrom .pp-in'); await page.fill('#dvFrom .pp-in', 'Italy'); await page.waitForTimeout(150);
     t.push(['b292: typing narrows it, each place saying how many copies it has', await page.evaluate(() => { const r = [...document.querySelectorAll('#dvFrom .pp-row')]; return r.length > 0 && r.every(x => /Italy/.test(x.textContent) || x.classList.contains('pp-event')) && r.some(x => /in stock|none here|not enough/.test(x.textContent)); })]);

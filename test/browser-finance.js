@@ -124,17 +124,17 @@ const API = 'http://api.test/';
     t.push(['…the region dropdown too', regs.indexOf('Athens') === 1 && regs.indexOf('Zagreb') === 2]);
     // The seven tiles.
     const tiles = await own.$$eval('.fin-tile .fin-tl', ts => ts.map(x => x.textContent.trim()));
-    t.push(['the Overview shows only the seven figures, in order', JSON.stringify(tiles) === JSON.stringify(['Big Books Sold', 'Adventures Sold', 'Donations', 'Pending', 'Gross', 'Expenses', 'Net'])]);
+    t.push(['the Overview shows only the seven figures, in order', JSON.stringify(tiles) === JSON.stringify(['Big Books Sold', 'Adventures Sold', 'Donations', 'Pending Payments', 'Gross', 'Expenses', 'Net'])]);
     const tile = (i) => own.$eval(`.fin-tile:nth-child(${i})`, e => e.innerText.replace(/\s+/g, ' '));
     t.push(['Big Books: $120 in hand, 4 Sold + 1 Gift = 5 Distributed', /\$120/.test(await tile(1)) && /4 Sold \+ 1 Gift = 5 Distributed/.test(await tile(1))]);
     t.push(['Adventures: $15, 1 Sold', /\$15/.test(await tile(2)) && /1 Sold/.test(await tile(2)) && !/Gift/.test(await tile(2))]);
-    t.push(['b259: the title stays Gross, showing what is in hand ($145), with a blue Expected Gross $185 beneath', /^Gross \$145 Expected \$185$/.test((await tile(5)).trim())]);
+    t.push(['b259: the title stays Gross, showing what is in hand ($145), with a blue Expected Gross $185 beneath', /^Gross \$145\.00 Expected \$185\.00$/.test((await tile(5)).trim())]);
     t.push(['…the Expected line is blue', await own.$eval('.fin-tile:nth-child(5) .fin-ex-l', e => getComputedStyle(e).color) === 'rgb(47, 111, 176)']);
-    t.push(['b259: Expenses shows what was spent ($20), Expected Expenses $50 while Lunch is owed', /^Expenses \$20 Expected \$50$/.test((await tile(6)).trim())]);
-    t.push(['Net is what came in less what went out, margin beneath, then Expected Net', /^Net \$125 Margin 86\.2% Expected \$135$/.test((await tile(7)).trim())]);
+    t.push(['b259: Expenses shows what was spent ($20), Expected Expenses $50 while Lunch is owed', /^Expenses \$20\.00 Expected \$50\.00$/.test((await tile(6)).trim())]);
+    t.push(['Net is what came in less what went out, margin beneath, then Expected Net', /^Net \$125\.00 Margin 86\.2% Expected \$135\.00$/.test((await tile(7)).trim())]);
     // Athens has nothing owed: plain Gross, no subtitle.
     await own.click('#fpBody [data-act="fingo"][data-scope="rg_at"]'); await own.waitForTimeout(600);
-    t.push(['nothing pending: the title is Gross and the subtitle goes', /^Gross \$40$/.test((await tile(5)).trim())]);
+    t.push(['nothing pending: the title is Gross and the subtitle goes', /^Gross \$40\.00$/.test((await tile(5)).trim())]);
     // Zagreb's events, in the app's order.
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(600);
     m = await fpage(own);
@@ -177,21 +177,21 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(600);
     await own.click('.fp-h [data-act="finrep"]'); await own.waitForTimeout(400);
     let r = await repText(own);
-    t.push(['the Overview\'s 📋: its figures, in the same words', /^Big Books Sold - \$80\n   3 Sold \+ 1 Gift = 4 Distributed\nAdventures Sold - \$15\n   1 Sold\nDonations - \$10\nPending - \$40\nGross - \$105\n   Expected - \$145\nExpenses - \$20\n   Expected - \$50\nNet - \$85\n   Margin 81%\n   Expected - \$95$/.test(r)]);
+    t.push(['the Overview\'s 📋: its figures, in the same words', /^Big Books Sold - \$80\.00\n   3 Sold \+ 1 Gift = 4 Distributed\nAdventures Sold - \$15\.00\n   1 Sold\nDonations - \$10\.00\nPending Payments - \$40\.00\nGross - \$105\.00\n   Expected - \$145\.00\nExpenses - \$20\.00\n   Expected - \$50\.00\nNet - \$85\.00\n   Margin 81%\n   Expected - \$95\.00$/.test(r)]);
     await own.evaluate(() => closeModal());
     // b259: ⬇️ CSV beside the 📋, and the charts under everything.
     csv = await csvOf('overview');
     t.push(['b259: Overview ⬇️ CSV: a row per event and the total, every figure with its Expected', csv.got && /^Finance Overview Zagreb - Kartika \d{4}-\d\d-\d\d\.csv$/.test(csv.name) && csv.rows[0].includes('Expected Gross (USD)') &&
       JSON.stringify(csv.rows.map(r => r[0])) === JSON.stringify(['', 'Zagreb Kirtan', 'Zagreb Fair', 'Total']) && csv.rows[3][15] === 105 && csv.rows[3][16] === 145 && csv.rows[0][1] === 'Big Books Sold' && csv.rows[0][15] === 'Total Gross (USD)']);
     m = await own.$eval('#finCharts', e => e.innerText);
-    t.push(['b284: under the Overview, with a payment pending: Income by Source (Actual) and (Expected), money in and out (with Expected), by event, and expenses by type', /Income by Source \(Actual\)/.test(m) && /Income by Source \(Expected\)/.test(m) && /Expected Gross/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\s*Expected \$145/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
+    t.push(['b284: under the Overview, with a payment pending: Income by Source (Actual) and (Expected), money in and out (with Expected), by event, and expenses by type', /Income by Source \(Actual\)/.test(m) && /Income by Source \(Expected\)/.test(m) && /Expected Gross/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\.00\s*Expected \$145\.00/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild)]);
     await own.screenshot({ path: shot('overview-charts'), fullPage: true });
     await own.click('.fin-h3 [data-act="finrep"]'); await own.waitForTimeout(400);
     r = await repText(own);
     t.push(['the By Event 📋: each event, as the table', /^\*Zagreb Kirtan\*\nBig Books Sold - \$80/.test(r) && /\*Zagreb Fair\*/.test(r) && !/\*Total\*/.test(r)]);
     await own.evaluate(() => closeModal());
-    await own.click('#reportBtn'); await own.waitForTimeout(400);
+    await own.evaluate(() => document.querySelector('#reportBtn').click()); await own.waitForTimeout(400);   // in practice it sits in the menu (b299)
     r = await repText(own);
     t.push(['📋 Report at the top: the whole section, with headings', /^\*Zagreb · Kartika — Finance Overview\*\n\n\*OVERVIEW\*\nBig Books Sold/.test(r) && /\*BY EVENT\*/.test(r) && !/SALES BY TITLE/.test(r)]);
     await own.evaluate(() => closeModal());
@@ -224,12 +224,12 @@ const API = 'http://api.test/';
     await own.click('#fpSecs [data-sec="reimb"] .pencil'); await own.waitForTimeout(300);
     t.push(['a button\'s pencil opens the same box, and the button does not fire', !!(await own.$('.lbl-in-box')) && !/#finance\/reimb/.test(own.url())]);
     await own.keyboard.type('Nope'); await own.keyboard.press('Escape'); await own.waitForTimeout(400);
-    t.push(['Esc leaves it as it was', /Reimbursements/.test(await own.$eval('#fpSecs [data-sec="reimb"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
+    t.push(['Esc leaves it as it was', /Reimbursement Links/.test(await own.$eval('#fpSecs [data-sec="reimb"]', b => b.textContent)) && !(await own.$('.lbl-in'))]);
     await own.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'editwording'; document.body.appendChild(b); b.click(); b.remove(); }); await own.waitForTimeout(500);
     /* ---- b254 round two: Expenses, Reimbursements, Visualize, the link ---- */
     await own.evaluate(() => finGo('expenses', 'rg_zg', {reload:true})); await own.waitForTimeout(1500);
     m = await fpage(own);
-    t.push(['Expenses: the bar says Expenses $20 with Expected Expenses $50, while Lunch is owed', /Expenses\s*\$20\s*Expected \$50/.test(m)]);
+    t.push(['Expenses: the bar says Expenses $20 with Expected Expenses $50, while Lunch is owed', /Expenses\s*\$20\.00\s*Expected \$50\.00/.test(m)]);
     const btnRight = (sel, btn) => own.evaluate(([sel, btn]) => { const h = document.querySelector(sel + ' .fin-sh'), b = h && h.querySelector(btn); if(!b) return false;
         const hr = h.getBoundingClientRect(), br = b.getBoundingClientRect(); return Math.abs(hr.right - br.right) < 4 && br.top < hr.bottom && br.height < 34; }, [sel, btn]);
     const exBtn = !(await own.$('#finExS [data-act="expenses"]')) && !!(await own.$('#fpSecs [data-act="expenses"]'));
@@ -376,7 +376,7 @@ const API = 'http://api.test/';
     t.push(['b267: the rate is asked for while the form is filled in, before Save', await pub.evaluate(() => Object.keys(FX).some(k => /\|EUR\|USD$/.test(k)))]);
     await pub.click('#xSave'); await pub.waitForTimeout(500);
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
-    t.push(['the review shows both, with the total, before anything is sent', /Check your expenses/i.test(m) && /Parking at the fair/.test(m) && /Tea for the volunteers/.test(m) && /\$12/.test(m) && /8 €|€8/.test(m)]);
+    t.push(['the review shows both, with the total, before anything is sent', /Check your expenses/i.test(m) && /Parking at the fair/.test(m) && /Tea for the volunteers/.test(m) && /\$12/.test(m) && /8(\.00)? €|€8/.test(m)]);
     t.push(['b260: euros paid back in dollars: the server finds that day\'s rate, and the review shows what to pay', fxAsked.length > 0 && /To pay back: \$8\.80 \(1 EUR = 1\.1 USD on \d{4}-\d\d-\d\d\)/.test(m)]);
     t.push(['b267: so the check page comes straight up, no "Checking" page first', !/Checking the exchange rate/.test(m)]);
     t.push(['b267: it says the rate is an estimate', /This is an estimate - reimbursement rate may change based on current exchange rates\./.test(m)]);
@@ -509,7 +509,8 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal());
     t.push(['b260: every Gmail button opens in the one Gmail tab', await own.evaluate(() => typeof GMAIL_TAB === 'string' && GMAIL_TAB === 'tbsGmail')]);
     // b265: the form starts at Earthly HQ; titles have room above them; a quiet tick; exact dollars; dollars last.
-    await own.evaluate(() => { CUR_REGION = 'rg_zg'; goTo('event', 'ev_z1'); }).catch(() => {});
+    // b299: Finance at Earthly HQ takes the sales side there too, so come back into the season first.
+    await own.evaluate(async () => { if (isHQ()) await switchSeason((STATE.seasons || []).find(s => s.seasonId !== HQ_ID).seasonId); CUR_REGION = 'rg_zg'; goTo('event', 'ev_z1'); }).catch(() => {});
     await own.evaluate(() => expensesModal()); await own.waitForTimeout(1500);
     t.push(['b265: a new expense starts at Earthly HQ, even opened at an event', await own.evaluate(() => EXP.form.location === 'rg_hq' && /Earthly HQ/.test(document.querySelector('#xLocC .pp-in').value))]);
     t.push(['…and the event can still be chosen', await own.evaluate(() => EXP.opt.places.some(p => p.id === 'ev_z1'))]);
@@ -518,6 +519,7 @@ const API = 'http://api.test/';
       const box = document.querySelector('#xAmt').getBoundingClientRect(), lab = l.getBoundingClientRect();
       return lab.top - box.bottom >= 10 && a; })]);
     t.push(['b265: "Check to receive reimbursement" is plain text with a box', await own.$eval('.exp-rb', e => getComputedStyle(e).fontWeight === '400' && getComputedStyle(e).borderTopStyle === 'none' && /^ ?Check to receive reimbursement$/.test(e.textContent.trim()) )]);
+    await own.selectOption('#xCur', 'USD'); await own.waitForTimeout(300);   // (Earthly HQ's own currency comes first once it has been opened)
     t.push(['b265: no exact-dollars box for dollars', !(await own.$('#xUsd'))]);
     await own.selectOption('#xCur', 'EUR'); await own.waitForTimeout(300);
     await own.$eval('#modal', m => m.scrollIntoView()); await own.screenshot({ path: shot('b265-form') });
@@ -560,7 +562,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => { FIN.rb.tab = 'pending'; finGo('reimb', '', {reload:true}); }); await own.waitForTimeout(1800);
     m = await fpage(own);
     t.push(['b267: Reimbursements Due shows each currency it will be paid in, dollars first', new RegExp('\\$[\\d,.]+ \\+ ' + (await own.evaluate(() => cashFmt(765, 'PLN'))).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).test(m)]);
-    t.push(['b267: an exact amount well above the day\'s rate is flagged', /⚠ 82% more than that day's rate \(\$11\)/.test(await own.$eval('#finRbS', e => e.textContent)) && /⚠ 1 above the day's rate/.test(m)]);
+    t.push(['b267: an exact amount well above the day\'s rate is flagged', /⚠ 82% more than that day's rate \(\$11\.00\)/.test(await own.$eval('#finRbS', e => e.textContent)) && /⚠ 1 above the day's rate/.test(m)]);
     t.push(['b267: totals put dollars first: $169.05 + 765 zł', await own.evaluate(() => finMix({ PLN: 765, USD: 169.05 }) === '$169.05 + ' + cashFmt(765, 'PLN') && finTotals([1], () => [[765, 'PLN'], [169.05, 'USD']]) === cashFmt(169.05, 'USD') + ' + ' + cashFmt(765, 'PLN'))]);
     // b284: waiting to be paid back somewhere else than the place being looked at: said, with where.
     await O({ action: 'expSave', id: 'Xaway001', kind: 'reimburse', date: '2026-10-12', desc: 'Taxi', amt: 5, cur: 'USD', location: 'rg_at', category: 'Travel', method: 'Cash', reimbCur: 'USD', payTo: { phone: '+30 1' } });
@@ -625,7 +627,7 @@ const API = 'http://api.test/';
     const multi = (await O({ action: 'finData' })).result.convs.find(c => Array.isArray(c.parts));
     const pe = multi && multi.parts.find(x => x.cur === 'EUR'), pm = multi && multi.parts.find(x => x.cur === 'MKD'), pu = multi && multi.parts.find(x => x.cur === 'USD');
     t.push(['b298: one entry, 85 € + 6250 ден + $5 = $253; the $248 shared out between euros and denars', !!multi && multi.usd === 253 && pu && pu.usd === 5 && pe && pm && Math.round((pe.usd + pm.usd) * 100) === 24800 && pe.usd > 0 && pm.usd > 0]);
-    t.push(['b298: …listed as one line', /85 € \+ 6[,.]?250 ден \+ \$5 fetched \$253/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
+    t.push(['b298: …listed as one line', /85(\.00)? € \+ 6[,.]?250(\.00)? ден \+ \$5(\.00)? fetched \$253(\.00)?/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
     const nM = await convN();
     await own.evaluate(id => document.querySelector('#modal [data-cvdel="' + id + '"]').click(), multi.id); await own.waitForTimeout(300);
     t.push(['b298: Remove asks in the app\'s own window', !!(await own.$('.sure-ov'))]);
@@ -643,10 +645,10 @@ const API = 'http://api.test/';
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });
       return [...document.querySelectorAll('#finCharts .fin-key')].every(k => k.getBoundingClientRect().width >= 10); })]);
     t.push(['b269: estimated dollars carry ~, logged ones none: (10 €) ~$11 and (10 €) $12.50', await own.evaluate(() => { const t = document.querySelector('#fpBody').innerText;
-      return /\n\$30\n/.test(t); }) && await fxLine(own, '10 €', '~$11') && await fxLine(own, '10 €', '$12.50')]);
+      return /\n\$30(\.00)?\n/.test(t); }) && await fxLine(own, '10.00 €', '~$11.00') && await fxLine(own, '10.00 €', '$12.50')]);
     t.push(['b269: what is owed reads in the person\'s currency, dollars beside: 765 zł (~$…)', await own.evaluate(() => {
       const x = finExpList().find(y => y.id === 'Xpln0001'); return new RegExp('^' + cashFmt(765, 'PLN').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ' \\(~\\$[\\d.,]+\\)$').test(finPayText([x])); })]);
-    t.push(['b269: …and all in dollars, just one figure', await own.evaluate(() => finPayText([finExpList().find(y => y.id === 'Xexact01')]) === '$20')]);
+    t.push(['b269: …and all in dollars, just one figure', await own.evaluate(() => finPayText([finExpList().find(y => y.id === 'Xexact01')]) === '$20.00')]);
     // The fallback is the rate nearest the day asked for.
     srv.kv.setProp('fxHist', JSON.stringify({ 'CHF>USD': { '2026-09-01': 1.1, '2026-10-01': 1.2, '2026-10-20': 1.3 } }));
     t.push(['b269: no rate for the day: the nearest day\'s rate is used', srv.rateNow('CHF', 'USD', '2026-10-05').rate === 1.2 && srv.rateNow('CHF', 'USD', '2026-10-15').rate === 1.3 && srv.rateNow('CHF', 'USD', '2026-08-01').rate === 1.1]);

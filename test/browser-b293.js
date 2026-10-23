@@ -93,19 +93,43 @@ c({ action: 'closeLocation', kind: 'region', id: 'rg_ams' });
   await page.setViewportSize({ width: 1100, height: 900 }); await page.waitForTimeout(250);
   await page.click('[data-act="uncat"]'); await page.waitForTimeout(300);
   await page.selectOption('#ucCur', 'USD'); await page.fill('#ucAmt', '1111'); await page.waitForTimeout(100);
-  t.push(['1111 at $40 a Big Book fills in 27 Big Books, "Estimated" chosen', await page.$eval('#ucN', i => i.value) === '27' && await page.$eval('input[name="ucEst"][value="1"]', i => i.checked)]);
+  t.push(['1111 at $40 a Big Book fills in 27 Big Books, both "Estimated" chosen', await page.$eval('#ucN', i => i.value) === '27'
+    && await page.$eval('input[name="ucEstB"][value="1"]', i => i.checked) && await page.$eval('input[name="ucEstA"][value="1"]', i => i.checked)]);
   t.push(['…and says how it was worked out', /\$40/.test(await page.textContent('#ucHow')) && /27 Big Books/.test(await page.textContent('#ucHow'))]);
-  t.push(['b295: two choices, Estimated and Confirmed # of Books Sold', /Estimated # of Books Sold/.test(await page.textContent('.uc-est')) && /Confirmed # of Books Sold/.test(await page.textContent('.uc-est'))]);
+  t.push(['…the worked-out number is coloured like the currency adder\'s', await page.$eval('#ucN', i => i.classList.contains('rp-auto'))]);
+  // b299 (Gita): Confirmed or Estimated for each kind, before its number.
+  t.push(['b299: Confirmed/Estimated Big Books and Confirmed/Estimated Adventures, each before its number', await page.evaluate(() => {
+    const txt = [...document.querySelectorAll('#modal .uc-est')].map(x => x.textContent.replace(/\s+/g, ' ').trim());
+    const before = (r, f) => !!(document.querySelector(r).compareDocumentPosition(document.querySelector(f)) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return txt.length === 2 && /Confirmed Big Books.*Estimated Big Books/.test(txt[0]) && /Confirmed Adventures.*Estimated Adventures/.test(txt[1])
+      && before('input[name="ucEstB"]', '#ucN') && before('input[name="ucEstA"]', '#ucA'); })]);
   const ma = await page.evaluate(() => uncatMsrp('USD', 'aotm'));
-  await page.fill('#ucA', '3'); await page.waitForTimeout(100);
+  // Big Books confirmed and typed: the Adventures are worked out from what is left.
+  await page.check('input[name="ucEstB"][value="0"]'); await page.fill('#ucN', '20'); await page.waitForTimeout(100);
+  const ka = Math.floor((1111 - 20 * 40) / ma);
+  t.push(['b299: 20 Big Books confirmed: the money left makes ' + ka + ' Adventures, coloured, with the note',
+    await page.$eval('#ucA', i => i.value) === String(ka) && await page.$eval('#ucA', i => i.classList.contains('rp-auto'))
+    && (await page.textContent('#ucHow')) === 'Based on 20 Big Books, ' + ka + ' is the estimated number of Adventures sold.']);
+  // The phone bug: clearing a number to type it again no longer fills it straight back in.
+  await page.fill('#ucN', ''); await page.waitForTimeout(100);
+  t.push(['b299: clearing the Big Books to retype leaves it empty', await page.$eval('#ucN', i => i.value) === '']);
+  await page.fill('#ucN', '25'); await page.waitForTimeout(100);
+  t.push(['…and the new number stays', await page.$eval('#ucN', i => i.value) === '25']);
+  // Both confirmed: nothing is worked out.
+  await page.check('input[name="ucEstA"][value="0"]'); await page.fill('#ucA', '1'); await page.waitForTimeout(100);
+  t.push(['b299: both confirmed: no calculator', await page.$eval('#ucN', i => i.value) === '25' && (await page.textContent('#ucHow')) === '']);
+  // Back to estimates, Adventures typed first: the Big Books are worked out.
+  await page.evaluate(() => closeModal()); await page.click('[data-act="uncat"]'); await page.waitForTimeout(300);
+  await page.selectOption('#ucCur', 'USD'); await page.fill('#ucAmt', '1111'); await page.fill('#ucA', '3'); await page.waitForTimeout(100);
   const nb = Number(await page.$eval('#ucN', i => i.value));
   t.push(['b295: 3 Adventures take their price off first (' + nb + ' Big Books left)', nb === Math.floor((1111 - 3 * ma) / 40)]);
+  t.push(['b299: …with the note', (await page.textContent('#ucHow')) === 'Based on 3 Adventures, ' + nb + ' is the estimated number of Big Books Sold.']);
   for (const w of [390, 1100]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(200);
     const s = await spill(); t.push(['no overflow in the window at ' + w + 'px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
   await page.setViewportSize({ width: 1100, height: 900 });
   await page.click('#ucSave'); await page.waitForTimeout(1500);
   const row = (m.call({ action: 'getState', season: SA }).state.sales || []).find(x => x.type === 'UNCAT');
-  t.push(['saved on the server: ' + nb + ' Big Books + 3 Adventures, $1111, an estimate, nothing off a shelf', row && row.qty === nb && row.aqty === 3 && row.p1amt === 1111 && row.est === true && row.bookId === '']);
+  t.push(['saved on the server: ' + nb + ' Big Books + 3 Adventures, $1111, an estimate, nothing off a shelf', row && row.qty === nb && row.aqty === 3 && row.p1amt === 1111 && row.est === true && row.aest === true && row.bookId === '']);
   t.push(['Big Books sold goes up by ' + nb + ', AoTM by 3', await tileN('Big Books') === big0 + nb && await tileN('AoTM') === av0 + 3]);
   t.push(['b295: no Uncategorized Sales card in the totals', !(await page.evaluate(() => [...document.querySelectorAll('#totals .tcard')].some(x => /Uncategorized/.test(x.textContent))))]);
   t.push(['the sales log names it', new RegExp('Uncategorized sales · ' + nb + ' Big Books \\+ 3 Adventures \\(estimate\\)').test(await page.textContent('#log'))]);

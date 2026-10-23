@@ -87,7 +87,8 @@ m.call({ action: 'setSeason', seasonId: SA });
   t.push(['no Total Pending card when nothing is pending', !cs.some(x => /Pending/.test(x.l))]);
   const bar = await page.$eval('#totals', e => e.getBoundingClientRect());
   t.push(['computer: the cards fill one line', new Set(cs.map(x => x.top)).size === 1 && Math.abs(Math.max(...cs.map(x => x.r)) - bar.right) < 2]);
-  t.push(['…each as wide as it needs (AoTM narrower than Total Collections)', cs[0].w < cs[cs.length - 1].w]);
+  // b299 (Gita): the same width across the line; only a card with less in it is made smaller, and only when they would not fit.
+  { const big = Math.max(...cs.map(x => x.w)); t.push(['b299: cards the same width across the line, unless one with less in it had to be smaller', cs.filter(x => Math.abs(x.w - big) < 2).length >= 2 || cs.length < 2]); }
   t.push(['b298: spare room shared equally between the cards', await page.$$eval('#totals > .tcard', cs => new Set(cs.map(c => getComputedStyle(c).flexGrow)).size === 1)]);
   c({ action: 'sell', saleId: 'P2', location: R0.whLoc, bookId: B, isPreorder: true, pending: true, legs: [{ type: 'Cash', cur: 'USD', amt: 30 }], name: 'Gopal' });
   await page.evaluate(() => pull()); await page.waitForTimeout(1500);
@@ -97,7 +98,7 @@ m.call({ action: 'setSeason', seasonId: SA });
   /* 3. A negative Net Sales is red. */
   c({ action: 'saveCost', id: 'cost_big1', amt: 5000, cur: 'USD', category: 'Other', location: R0.whLoc });
   await page.evaluate(() => pull()); await page.waitForTimeout(1500);
-  t.push(['a negative Net Sales is red', await page.evaluate(() => { const n = document.querySelector('#totals .tc-net'); return !!n && /^\s*\$-/.test(n.textContent) && n.classList.contains('fin-neg') && getComputedStyle(n).color !== getComputedStyle(document.querySelector('#totals .tc-q1 .value')).color; })]);
+  t.push(['a negative Net Sales is red', await page.evaluate(() => { const n = document.querySelector('#totals .tc-net'); return !!n && /^\s*[−-]~?\$/.test(n.textContent) && n.classList.contains('fin-neg') && getComputedStyle(n).color !== getComputedStyle(document.querySelector('#totals .tc-q1 .value')).color; })]);
 
   /* 4. Earthly HQ: Net Sales is the big number. */
   await page.evaluate(() => switchSeason(HQ_ID)); await page.waitForTimeout(1500);
