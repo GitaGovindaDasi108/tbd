@@ -124,7 +124,7 @@ const API = 'http://api.test/';
     t.push(['…the region dropdown too', regs.indexOf('Athens') === 1 && regs.indexOf('Zagreb') === 2]);
     // The seven tiles.
     const tiles = await own.$$eval('.fin-tile .fin-tl', ts => ts.map(x => x.textContent.trim()));
-    t.push(['the Overview shows only the seven figures, in order', JSON.stringify(tiles) === JSON.stringify(['Big Books Sold', 'Adventures Sold', 'Donations', 'Pending Payments', 'Gross', 'Expenses', 'Net'])]);
+    t.push(['the Overview shows only the seven figures, in order', JSON.stringify(tiles) === JSON.stringify(['Big Books Sold', 'Adventures Sold', 'Donations', 'Pending', 'Gross', 'Expenses', 'Net'])]);
     const tile = (i) => own.$eval(`.fin-tile:nth-child(${i})`, e => e.innerText.replace(/\s+/g, ' '));
     t.push(['Big Books: $120 in hand, 4 Sold + 1 Gift = 5 Distributed', /\$120/.test(await tile(1)) && /4 Sold \+ 1 Gift = 5 Distributed/.test(await tile(1))]);
     t.push(['Adventures: $15, 1 Sold', /\$15/.test(await tile(2)) && /1 Sold/.test(await tile(2)) && !/Gift/.test(await tile(2))]);
@@ -155,7 +155,15 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(500);
     // b297 (Gita): the Overview table, each kind's Sold, Gifted, Distributed and Gross, then Total Gross, the rest, and Margin last; titles right over the figures.
     const ovh = await own.evaluate(() => { const r = document.querySelectorAll('.fin-ovw thead tr'); return { g: [...r[0].querySelectorAll('th.fin-g')].map(x => x.textContent.trim()),
-      c: [...r[1].querySelectorAll('th')].map(x => x.textContent.trim()), al: getComputedStyle(r[1].querySelector('th')).textAlign }; });
+      c: [...r[1].querySelectorAll('th')].map(x => x.textContent.replace(/[▸◂]/g, '').trim()), al: getComputedStyle(r[1].querySelector('th')).textAlign }; });
+    // b298 (Gita): just Sold shows; a tap on it opens Gifted and Distributed, another folds them.
+    const vis = () => own.evaluate(() => [...document.querySelectorAll('.fin-ovw thead tr')[1].querySelectorAll('th')].filter(x => x.offsetParent).map(x => x.textContent.replace(/[▸◂]/g, '').trim()).slice(0, 4).join());
+    const v0 = await vis();
+    await own.click('.fin-ovw thead th[data-fsold="bb"]'); await own.waitForTimeout(200);
+    const v1 = await vis(), span = await own.$eval('.fin-ovw [data-fg="bb"]', x => x.colSpan);
+    await own.click('.fin-ovw tbody td[data-fsold="bb"]'); await own.waitForTimeout(200);
+    t.push(['b298: the Overview table shows just Sold and Gross for each kind', v0 === 'Sold,Gross,Sold,Gross']);
+    t.push(['b298: …tapping Sold opens Gifted and Distributed, tapping again folds them', v1 === 'Sold,Gifted,Distributed,Gross' && span === 4 && await vis() === v0]);
     t.push(['b297: Overview table grouped Big Books, Adventures, Other', JSON.stringify(ovh.g) === JSON.stringify(['Big Books', 'Adventures', 'Other'])]);
     t.push(['b297: …Sold, Gifted, Distributed, Gross under each, then Total Gross … Margin last', ovh.c.slice(0, 4).join() === 'Sold,Gifted,Distributed,Gross' && ovh.c[12] === 'Total Gross' && ovh.c[ovh.c.length - 1] === 'Margin']);
     t.push(['b297: the column titles are right-aligned over their figures', ovh.al === 'right']);
@@ -169,7 +177,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', 'rg_zg')); await own.waitForTimeout(600);
     await own.click('.fp-h [data-act="finrep"]'); await own.waitForTimeout(400);
     let r = await repText(own);
-    t.push(['the Overview\'s 📋: its figures, in the same words', /^Big Books Sold - \$80\n   3 Sold \+ 1 Gift = 4 Distributed\nAdventures Sold - \$15\n   1 Sold\nDonations - \$10\nPending Payments - \$40\nGross - \$105\n   Expected - \$145\nExpenses - \$20\n   Expected - \$50\nNet - \$85\n   Margin 81%\n   Expected - \$95$/.test(r)]);
+    t.push(['the Overview\'s 📋: its figures, in the same words', /^Big Books Sold - \$80\n   3 Sold \+ 1 Gift = 4 Distributed\nAdventures Sold - \$15\n   1 Sold\nDonations - \$10\nPending - \$40\nGross - \$105\n   Expected - \$145\nExpenses - \$20\n   Expected - \$50\nNet - \$85\n   Margin 81%\n   Expected - \$95$/.test(r)]);
     await own.evaluate(() => closeModal());
     // b259: ⬇️ CSV beside the 📋, and the charts under everything.
     csv = await csvOf('overview');
@@ -484,6 +492,8 @@ const API = 'http://api.test/';
     await own.evaluate(() => { finLeave({quiet:true}); goTo('season'); activityModal(); }); await own.waitForTimeout(1800);
     t.push(['b260: …and on the Activity Log page itself', /Expense added: Van hire/.test(await own.evaluate(() => document.querySelector('#alList').innerText))]);
     await own.evaluate(() => { const r = [...document.querySelectorAll('#alList .al-row')].find(x => /Expense added: Van hire/.test(x.innerText)); r.querySelector('[data-alundo]').click(); });
+    // b298: asked in the app's own window, not the browser's.
+    await own.waitForTimeout(300); await own.click('.sure-ov [data-sure="1"]');
     await own.waitForTimeout(2000);
     const exps = (await O({ action: 'expList', scope: 'all' })).result;
     t.push(['b260: Delete on "Expense added" takes the expense away again, and the log says so', !exps.some(x => x.desc === 'Van hire') && /Undid: Expense added: Van hire/.test(await own.evaluate(() => document.querySelector('#alList').innerText))]);
@@ -573,7 +583,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => finGo('overview', '', {reload:true})); await own.waitForTimeout(1800);
     await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
     await own.click('#cvPlace .pp-in'); await own.fill('#cvPlace .pp-in', 'Kirtan'); await own.waitForTimeout(150); await own.click('#cvPlace .pp-row[data-v="ev_z1"]');
-    await own.selectOption('#cvCur', 'EUR'); await own.fill('#cvAmt', '35'); await own.fill('#cvUsd', '40');
+    await own.selectOption('#cvRows .cv-cur', 'EUR'); await own.fill('#cvRows .cv-amt', '35'); await own.fill('#cvUsd', '40');
     await own.click('#cvSave'); await own.waitForTimeout(1500);
     const sale = await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1'));
     t.push(['b267: Dollars received: 35 € from the Kirtan fetched $40, and that sale now counts $40', sale && sale.gu === 40 && sale.cv === 1]);
@@ -583,14 +593,13 @@ const API = 'http://api.test/';
     const n0 = await convN();
     await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
     await own.click('#cvPlace .pp-in'); await own.fill('#cvPlace .pp-in', 'Kirtan'); await own.waitForTimeout(150); await own.click('#cvPlace .pp-row[data-v="ev_z1"]');
-    await own.selectOption('#cvCur', 'EUR'); await own.fill('#cvAmt', '35'); await own.fill('#cvUsd', '2000');
-    await own.evaluate(() => { window._cf = window.confirm; window.confirm = m => { window._asked = m; return false; }; });
+    await own.selectOption('#cvRows .cv-cur', 'EUR'); await own.fill('#cvRows .cv-amt', '35'); await own.fill('#cvUsd', '2000');
     await own.click('#cvSave'); await own.waitForTimeout(1200);
-    const asked = await own.evaluate(() => window._asked || '');
+    // b298: asked in the app's own window.
+    const asked = await own.evaluate(() => { const o = document.querySelector('.sure-ov'); return o ? o.innerText : ''; });
+    if (asked) await own.click('.sure-ov [data-sure="0"]');
     t.push(['b296: 35 € for $2000 asks "Please check the numbers" first, and Cancel saves nothing' + (asked ? '' : ' (no question)'), /Please check the numbers/.test(asked) && /\$38\.50/.test(asked) && await convN() === n0]);
-    await own.evaluate(() => { window.confirm = () => true; });
-    await own.click('#cvSave'); await own.waitForTimeout(1500);
-    await own.evaluate(() => { window.confirm = window._cf; });
+    await own.click('#cvSave'); await own.waitForTimeout(1200); await own.click('.sure-ov [data-sure="1"]'); await own.waitForTimeout(1500);
     t.push(['b296: …OK saves it anyway', await convN() === n0 + 1 && (await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1').gu)) > 40]);
     await own.evaluate(() => closeModal());
     const slip = ((await O({ action: 'activity' })).result || []).find(e => /^Dollars received: 35 EUR .* fetched \$2000/.test(e.text));
@@ -599,13 +608,36 @@ const API = 'http://api.test/';
     t.push(['b296: …and Delete takes it away; the earlier one stays and the sale is back at $40', await convN() === n0 && await own.evaluate(async () => { await finGo('overview', '', {reload:true}); return true; })
       && (await O({ action: 'finData' })).result.sales.find(x => x.id === 'eur1').gu === 40]);
     await own.waitForTimeout(1200);
+    /* b298 (Gita): several currencies exchanged together for one dollar figure,
+       "85 euros + 6250 den + $5 = $253"; and Total collections fills in every currency. */
+    await sell('mkd1', 'ev_z1', 'sr_en', { legs: [{ type: 'Cash', cur: 'MKD', amt: 6250 }] });
+    await sell('usd5', 'ev_z1', 'sr_en', { legs: [{ type: 'Cash', cur: 'USD', amt: 5 }] });
+    await own.evaluate(() => finGo('overview', '', {reload:true})); await own.waitForTimeout(1800);
+    await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
+    await own.click('#cvPlace .pp-in'); await own.fill('#cvPlace .pp-in', 'Kirtan'); await own.waitForTimeout(150); await own.click('#cvPlace .pp-row[data-v="ev_z1"]');
+    await own.check('#cvAll'); await own.waitForTimeout(200);
+    const rowsAll = await own.$$eval('#cvRows .cv-row', rs => rs.map(r => r.querySelector('.cv-cur').value + ' ' + r.querySelector('.cv-amt').value));
+    t.push(['b298: Total collections fills in every currency taken there (' + rowsAll.join(', ') + ')', rowsAll.includes('MKD 6250') && rowsAll.some(x => /^USD /.test(x)) && rowsAll.some(x => /^EUR /.test(x))]);
+    await own.evaluate(() => { const rs = [...document.querySelectorAll('#cvRows .cv-row')]; rs.forEach(r => { const k = r.querySelector('.cv-cur').value; if (k === 'EUR') r.querySelector('.cv-amt').value = '85'; if (k === 'USD') r.querySelector('.cv-amt').value = '5'; }); });
+    await own.fill('#cvUsd', '253');
+    await own.click('#cvSave'); await own.waitForTimeout(1500);
+    if (await own.$('.sure-ov')) { await own.click('.sure-ov [data-sure="1"]'); await own.waitForTimeout(1500); }
+    const multi = (await O({ action: 'finData' })).result.convs.find(c => Array.isArray(c.parts));
+    const pe = multi && multi.parts.find(x => x.cur === 'EUR'), pm = multi && multi.parts.find(x => x.cur === 'MKD'), pu = multi && multi.parts.find(x => x.cur === 'USD');
+    t.push(['b298: one entry, 85 € + 6250 ден + $5 = $253; the $248 shared out between euros and denars', !!multi && multi.usd === 253 && pu && pu.usd === 5 && pe && pm && Math.round((pe.usd + pm.usd) * 100) === 24800 && pe.usd > 0 && pm.usd > 0]);
+    t.push(['b298: …listed as one line', /85 € \+ 6[,.]?250 ден \+ \$5 fetched \$253/.test(await own.evaluate(() => document.querySelector('#modal').innerText))]);
+    const nM = await convN();
+    await own.evaluate(id => document.querySelector('#modal [data-cvdel="' + id + '"]').click(), multi.id); await own.waitForTimeout(300);
+    t.push(['b298: Remove asks in the app\'s own window', !!(await own.$('.sure-ov'))]);
+    await own.click('.sure-ov [data-sure="1"]'); await own.waitForTimeout(1500);
+    t.push(['b298: …and Remove takes it away', await convN() === nM - 1]);
     await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
     await own.evaluate(() => closeModal());
     t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
     t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen', await own.evaluate(() => !document.querySelector('#fpBody .fin-sh-btns') && !/Dollars received/.test(document.querySelector('#fpBody').innerText))]);
     t.push(['b291: in practice a "~$" figure is a button that opens Dollars received', await own.evaluate(() => { const b = document.querySelector('#fpBody .fin-est'); if(!b || !/^−?~\$/.test(b.textContent)) return false;
-      b.click(); const ok = !!document.querySelector('#cvAmt'); closeModal(); return ok; })]);
+      b.click(); const ok = !!document.querySelector('#cvRows .cv-amt'); closeModal(); return ok; })]);
     t.push(['b276: the Expenses screen charts expenses only (income is on the Overview)', await own.evaluate(() => /Expenses by month/.test(document.querySelector('#finCharts').innerText) && !/Gross|Net/.test(document.querySelector('#finCharts').innerText))]);
     t.push(['b269: every colour key in the charts keeps its square, even squeezed beside big figures', await own.evaluate(() => {
       document.querySelectorAll('#finCharts .fc-legend').forEach(l => { l.style.flex = 'none'; l.style.width = '170px'; l.querySelectorAll('b').forEach(b => { b.textContent = '$12,345.67'; }); });

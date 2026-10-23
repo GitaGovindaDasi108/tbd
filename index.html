@@ -28,6 +28,7 @@ if(/[?&]practice(=|&|$)/.test(location.search)) document.querySelectorAll('link[
   --green:#2E7D4F; --green-l:#E3F1E8;
   --clay:#C0392B; --clay-l:#FBE7E4;
   --blue:#2F5D8A;
+  --net:#2a78d6;   /* Net Sales and Net, one colour everywhere (b298, Gita): the Finance charts' Net */
   /* Consignment reads in the tour's own blue, donations in its gold, and the
      third book category in its teal — so nothing new is introduced and the two
      money categories are never the same color. */
@@ -234,9 +235,12 @@ tr.cbr-sub td{color:var(--muted)}
 .tc-coll{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
 .tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
 .tc-q2 > div{white-space:nowrap}
+.tc-hq .tc-q3{align-self:end} .tc-hq .tc-q4{align-self:end;max-width:52ch}
 .tc-q4 .tc-net, .tc-sm{font-family:'Marcellus',serif;font-size:clamp(15px,1.5vw,19px);color:var(--green);line-height:1.15}
+.tcard .tc-net, .tcard.usd .value.tc-net, .cbr td.usd{color:var(--net)}
 @media (max-width:700px){
   .tc-coll{grid-template-columns:minmax(0,1fr);grid-template-areas:"q1" "q3" "q2" "q4"}
+  .tc-coll.tc-hq{grid-template-areas:"q1" "q2" "q3" "q4"} .tc-hq .tc-q4{max-width:none}
   .tc-q2,.tc-q4{text-align:left} .tc-q2{display:flex;gap:10px;flex-wrap:wrap} .tc-q2 .tc-w{display:none}
 }
 .tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);margin-left:6px}
@@ -888,7 +892,7 @@ body.has-na .overlay{z-index:10000}
 /* Each card as wide as it needs, together filling the line (b297, Gita). */
 .totals{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:13px}
 .totals > .tcard{flex:1 1 auto;min-width:min-content}
-.totals > .tc-coll{flex-grow:3}
+
 .tcard{background:var(--paper);border:1px solid var(--line);border-radius:11px;
   padding:8px 12px 9px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
 .tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--saffron-d)}
@@ -1332,9 +1336,9 @@ body.has-na .overlay{z-index:10000}
 .ptg-t.ptg-first,.ptg-s.ptg-first{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ptg-s.ptg-don{color:var(--donate)}
 /* The one figure that answers the question — what the tour actually took — so
-   it carries the green. Declared last so nothing above it wins on order. */
+   it carries the Net colour (b298). Declared last so nothing above it wins on order. */
 .ptg-t.ptg-net,
-.ptg-t.ptg-net.usd{border-top:2px solid var(--line-d);color:var(--green);font-weight:800}
+.ptg-t.ptg-net.usd{border-top:2px solid var(--line-d);color:var(--net);font-weight:800}
 /* Written as `.ptg > .ptg-split` so it actually beats the base cell rule, which
    right-aligns every cell and was winning on specificity. */
 .contog{cursor:pointer}
@@ -1574,6 +1578,19 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fp-sub{color:var(--muted);font-size:13px;margin-bottom:8px}
 .fin-go{border:0;background:none;padding:0;font:inherit;font-weight:700;color:var(--lvl);cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:2px}
 @media (max-width:600px){ .fp-body{padding:10px} .fp-sec{padding:6px 10px;font-size:12.5px} }
+/* A line between where you are (the path and search) and the sections (b298, Gita), on a phone and a narrow window. */
+@media (max-width:1100px){ .fp-secs{border-top:1.5px solid var(--lvl-line);padding-top:10px;margin-top:8px} }
+/* On a phone, sections and actions look different (b298, Gita; practice first, for her approval):
+   the three sections are one joined bar, like tabs, and the two actions sit on a row of their own. */
+@media (max-width:600px){
+  .fp-secs.fp-seg{gap:0}
+  .fp-seg .fp-sec{flex:1 1 auto;border-radius:0;margin-left:-1.5px;padding:8px 6px;font-size:12.5px;text-align:center;white-space:nowrap}
+  .fp-seg .fp-sec:first-child{border-radius:10px 0 0 10px;margin-left:0}
+  .fp-seg .fp-sec:nth-last-child(3){border-radius:0 10px 10px 0}
+  .fp-seg .fp-gap{flex:1 1 100%;height:10px}
+  .fp-seg .fp-acts{flex:1 1 100%;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fp-seg .fp-acts .btn{border-radius:999px;justify-content:center;white-space:normal}
+}
 /* Finance section and View as (b238, practice) */
 #modal.fin-wide{max-width:1180px;width:100%}
 @media (min-width:700px){ #modal.fin-wide{max-width:min(1180px,calc(100vw - 150px))} }
@@ -1583,6 +1600,7 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fin-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:8px;margin:10px 0}
 .fin-tile{border:1px solid var(--line-d,#ddd);border-radius:10px;padding:8px 10px;background:var(--cream,#fff)}
 .fin-tile.fin-net{border-width:2px}
+.fin-net .fin-tv, .fin-tbl td.fin-netc{color:var(--net)}
 .fin-tl{font-size:12px;opacity:.75}.fin-tv{font-size:18px;font-weight:600;margin-top:2px}
 .fin-ts{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.3}
 .fin-ex-l{color:#2F6FB0 !important;font-weight:600}
@@ -1747,6 +1765,11 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fin-ovw .fin-tbl .fin-mg{border-left:1.5px solid var(--line)}
 .fin-ovw .fin-tbl td.fin-big{font-weight:700}
 .fin-ovw .fin-tbl tr.fin-gh th{border-bottom:0}
+.fin-ovw .fin-tbl .fin-more{display:none}
+.fin-ovw .fin-tbl.fo-bb .fin-more.fk-bb,.fin-ovw .fin-tbl.fo-av .fin-more.fk-av,.fin-ovw .fin-tbl.fo-ot .fin-more.fk-ot{display:table-cell}
+.fin-ovw .fin-tbl [data-fsold]{cursor:pointer}
+.fin-ovw .fin-tbl td[data-fsold] > div{text-decoration:underline dotted;text-underline-offset:3px}
+.fin-caret{font-size:10px;color:var(--lvl)}
 .fin-neg, .fin-neg .fin-nw, .tc-net.fin-neg{color:var(--clay) !important}
 .fin-tbl{min-width:100%;white-space:nowrap}.fin-tbl td{text-align:right}.fin-tbl th{text-align:left}
 /* Column titles sit right over their figures (b297, Gita). */
@@ -1778,6 +1801,7 @@ body.has-va{padding-top:44px}
 .overlay{position:fixed;inset:0;background:rgba(43,34,48,.55);backdrop-filter:blur(2px);
   display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .overlay.show{display:flex}
+.sure-ov{z-index:10001}#cvRows{display:grid;gap:6px;margin-bottom:6px}.cv-row .cv-rm{flex:0 0 auto}.sure-ov .modal{max-width:380px}.sure-ov .m-body{white-space:pre-line}
 .modal{background:var(--paper);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
   /* Pinned to the top, not centred (b278, Gita: "not squirrelly"): a window
      whose contents grow or shrink stays where it is instead of sliding. */
@@ -2321,7 +2345,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b297</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b298</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3550,7 +3574,19 @@ function scopedSales(){
   const s=STATE.sales||[];
   if(CUR_LEVEL==='season') return s;                       // whole tour
   if(CUR_LEVEL==='region'){ const inR=locsInRegion(CUR_REGION); return s.filter(x=>inR.includes(x.location)); }
+  const sw = subWhHere();
+  if(sw){ const inR = new Set(locsInRegion(sw.rid)); return s.filter(x=>inR.has(x.location) && saleSub(x)===sw.sid); }
   return s.filter(x=>x.location===CUR_LOC);                // one event
+}
+/* A sub-region's Summary (its old warehouse, b297) adds up the whole
+   sub-region, as a region's warehouse page adds up the region (b298, Gita).
+   Its shelf is still the warehouse's own stock. */
+function subWhHere(){
+  if(CUR_LEVEL!=='event' || !/^wh_/.test(CUR_LOC||'')) return null;
+  const rid = regionOfLoc(CUR_LOC), sid = rid && subOfEvent(CUR_LOC);
+  if(!sid) return null;
+  const w = subWarehouse(rid, sid);
+  return w && w.eventId===CUR_LOC ? {rid, sid} : null;
 }
 function invQty(loc,bookId){ idx(); const v=_invIdx[loc+'||'+bookId]; return v===undefined?0:v; }
 /* Every unsold physical copy anywhere in the region: the warehouse plus every
@@ -5640,7 +5676,7 @@ function renderAdmin(){
   if(!hideMoney()){
     cols[1].push(`<button class="btn" data-act="cash">💵 Track Cash</button>`);
     // No count on Record Costs or Consignment Books: the owner found it noise (b236).
-    cols[1].push(`<button class="btn" data-act="costs">🧾 Record Costs</button>`);
+    cols[1].push(`<button class="btn" data-act="costs">🧾 Record Expenses</button>`);
     if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
   }
   /* Expenses for everyone, one with Record Costs; Finance's own section (b238).
@@ -5740,7 +5776,7 @@ function snLevelLabel(){
 const SN_ITEMS = {
   addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], partners:['🤝','Consignment Books'],
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
-  cash:['💵','Track Cash'], costs:['🧾','Record Costs'], paytypes:['💳','Edit Payment Types'],
+  cash:['💵','Track Cash'], costs:['🧾','Record Expenses'], paytypes:['💳','Edit Payment Types'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   salesupload:['📤','Upload Sales Spreadsheet'],
@@ -6247,23 +6283,24 @@ function renderTotals(){
          (no words, just their colours), then Net Sales. */
       const cs = scopedCosts(), cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
       const du = s.filter(x=>x.type==='DONATION' && received(x)).reduce((t,x)=>t+saleUsd(x), 0);
-      /* At Earthly HQ only, Net Sales is the big number and Total Collections
-         the smaller one (b297, Gita). */
+      /* At Earthly HQ only (b298, Gita): Net Sales alone top left, Expenses
+         and Donations top right, Total Collections bottom left and the
+         collections by currency bottom right. */
       const net = totUsd-cu-du;
-      if(isHQ()) return `<div class="tcard usd tc-coll">
+      if(isHQ()) return `<div class="tcard usd tc-coll tc-hq">
       <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">$${fmt(net)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Costs </span>−$${fmt(cu)}</div>` : ''}${
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>−$${fmt(cu)}</div>` : ''}${
         du ? `<div class="sub-don"><span class="tc-w">Donations </span>$${fmt(du)}</div>` : ''}</div>
-      <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
-      <div class="tc-q4"><div class="label">Total Collections</div><div class="tc-sm">$${fmt(totUsd)}</div></div></div>`;
+      <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">$${fmt(totUsd)}</div></div>
+      <div class="tc-q4 sub">${money(got)||'nothing collected yet'}</div></div>`;
       return `<div class="tcard usd tc-coll">
       <div class="tc-q1"><div class="label">Total Collections</div><div class="value">$${fmt(totUsd)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Costs </span>−$${fmt(cu)}</div>` : ''}${
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>−$${fmt(cu)}</div>` : ''}${
         du ? `<div class="sub-don"><span class="tc-w">Donations </span>$${fmt(du)}</div>` : ''}</div>
       <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
       <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">$${fmt(totUsd-cu-du)}</div></div></div>`;
     })()}
-    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Total Pending</div><div class="value">$${fmt(pendUsd)}</div>
+    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending</div><div class="value">$${fmt(pendUsd)}</div>
       <div class="sub">${money(due)}</div></div>` : ''}`}`;
 }
 
@@ -6518,6 +6555,8 @@ function scopedCosts(){ return scopedAllCosts().filter(c=>!c.partnerId); }
 function scopedAllCosts(){
   const all = STATE.costs || [];
   if(CUR_LEVEL==='season') return all;
+  const sw = subWhHere();
+  if(sw){ const locs = new Set(eventsOfSub(sw.rid, sw.sid).map(e=>e.eventId)); return all.filter(c=>locs.has(c.location)); }
   if(CUR_LEVEL==='event') return all.filter(c=>c.location===CUR_LOC);
   const locs = locsInRegion(CUR_REGION);
   return all.filter(c=>locs.includes(c.location));
@@ -6575,7 +6614,7 @@ function renderCollectionsByRegion(target){
       <tfoot><tr><th>All ${UNIT.words}</th>${curs.map(c=>`<td>${cell(tot,c)}</td>`).join('')}
         <td class="usd">$${fmt(totUsd)}</td></tr></tfoot>
     </table></div>
-    <div class="hint">*net sales = gross sales - (consignment + costs)</div>`;
+    <div class="hint">*net sales = gross sales - (consignment + expenses)</div>`;
 }
 
 function renderPayments(target){
@@ -6796,7 +6835,7 @@ function renderPayments(target){
   scopedAllCosts().filter(c=>c.partnerId).forEach(c=>{
     conCostByCur[c.cur]=(conCostByCur[c.cur]||0)+(Number(c.amt)||0); });
   const conCostRow = Object.keys(conCostByCur).length ? `
-        <div class="ptg-t ptg-first ptg-cost">Consignment costs</div>
+        <div class="ptg-t ptg-first ptg-cost">Consignment expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${conCostByCur[c] ? '−'+fmt(conCostByCur[c]) : num({},c)}</div>`).join('')}
         <div class="ptg-t usd ptg-cost">−$${fmt(usdOf(conCostByCur) + costTruthAdj(scopedAllCosts().filter(c=>c.partnerId)))}</div>` : '';
   /* Figures that come off the total are written as negatives, so the column
@@ -6810,10 +6849,10 @@ function renderPayments(target){
   const costUsd = usdOf(costByCur) + costTruthAdj(costs);
   const kept = conBody ? netOf(grand, conGrand) : grand;
   const costRows = costs.length ? `
-        <div class="ptg-t ptg-first ptg-cost">Costs</div>
+        <div class="ptg-t ptg-first ptg-cost">Expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${costByCur[c] ? '−'+fmt(costByCur[c]) : num({},c)}</div>`).join('')}
         <div class="ptg-t usd ptg-cost">−$${fmt(costUsd)}</div>
-        <div class="ptg-t ptg-first ptg-net">Net after costs</div>
+        <div class="ptg-t ptg-first ptg-net">Net after expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(kept,costByCur),c)}</div>`).join('')}
         <div class="ptg-t usd ptg-net">$${fmt(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>` : '';
 
@@ -6849,7 +6888,7 @@ function renderPayments(target){
         <div class="con-rows" style="display:none;grid-column:1/-1">
           <div class="ptg ptg-inner" style="grid-template-columns:${template}">${conBody}${conCostRow}</div></div>` : ''}
 
-        ${costTotal ? `<div class="ptg-t ptg-first ptg-cost ptg-sub">Costs</div>
+        ${costTotal ? `<div class="ptg-t ptg-first ptg-cost ptg-sub">Expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost ptg-sub">${minus(costByCur,c)}</div>`).join('')}
         <div class="ptg-t usd ptg-cost ptg-sub">−$${fmt(costUsd)}</div>` : ''}
 
@@ -7858,6 +7897,31 @@ function openModal(html,wide){
   try{ applyLabels(m); }catch(e){}
   // Dialogs clip too, so they get the same treatment once laid out.
   try{ addTooltipsToClipped(); }catch(e){}
+}
+/* The Overview's Sold opens that kind's Gifted and Distributed (b298). */
+document.addEventListener('click', e=>{
+  const c = e.target.closest('.fin-ovw [data-fsold]'); if(!c) return;
+  const k = c.dataset.fsold, open = FIN.ovwOpen || (FIN.ovwOpen = new Set()), t = c.closest('table');
+  if(open.has(k)) open.delete(k); else open.add(k);
+  t.classList.toggle('fo-' + k, open.has(k));
+  const g = t.querySelector(`[data-fg="${k}"]`); if(g) g.colSpan = open.has(k) ? Number(g.dataset.n) : Number(g.dataset.n) - 2;
+  t.querySelectorAll(`th[data-fsold="${k}"] .fin-caret`).forEach(x=>{ x.textContent = open.has(k) ? '◂' : '▸'; });
+});
+/* "Are you sure?" in the app's own window (b298): some phones and in-app
+   browsers answer the browser's own confirm() with "no" without showing it,
+   so a delete there did nothing (Gita: Dollars received would not delete).
+   It sits above any open window and closes only on its buttons. */
+function askSure(msg, yes){
+  return new Promise(res=>{
+    const ov = document.createElement('div'); ov.className = 'overlay show sure-ov';
+    ov.innerHTML = `<div class="modal" role="dialog">${mHead('Please confirm')}<div class="m-body"></div>
+      <div class="m-foot"><button class="btn btn-ghost" data-sure="0">Cancel</button><button class="btn btn-primary" data-sure="1"></button></div></div>`;
+    ov.querySelector('.m-body').textContent = msg;
+    ov.querySelector('[data-sure="1"]').textContent = yes || 'Yes';
+    const x = ov.querySelector('h3 .x'); if(x){ x.removeAttribute('onclick'); x.dataset.sure = '0'; }
+    ov.addEventListener('click', e=>{ const b = e.target.closest('[data-sure]'); if(!b) return; ov.remove(); res(b.dataset.sure==='1'); });
+    document.body.appendChild(ov);
+  });
 }
 function closeModal(){
   if((()=>{ try{ return REIMB_KEY; }catch(e){ return ''; } })()) return;   // a reimbursement link's page is its form (b254)
@@ -9215,14 +9279,14 @@ const CLOSE_CHECKS = {
     'Does cash in hand match cash on record?',
     'Have all digital payment totals been verified?',
     'Has all physical cash been handed to the regional coordinator?',
-    'Have all costs been logged?',
+    'Have all expenses been logged?',
     'Do we know the destination for all books leaving the event?',
     'Has that destination been logged in the system?'
   ],
   region: [
     'Does the current stock listed in the warehouse match the physical inventory?',
     'Has all physical cash been handed to the global coordinator?',
-    'Have all costs been logged?',
+    'Have all expenses been logged?',
     'Has all consignment cash/card payment been delivered?',
     'Do we know the destination for all books left in this region?',
     'Has that destination been logged in the system?'
@@ -9557,9 +9621,9 @@ function costsModal(editId, presetPartner){
   const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
 
   openModal(`
-    ${mHead(edit ? 'Edit cost' : 'Costs')}
+    ${mHead(edit ? 'Edit expense' : 'Expenses')}
     <div class="m-body">
-      <div class="hint">Enter any costs associated with book distribution here.</div>
+      <div class="hint">Enter any expenses associated with book distribution here.</div>
       <div class="cost-form">
         ${groups.length ? `<div class="field"><label>Belongs to</label>
           <select id="cOwner">${opt('','Our own sales',!owner)}${groups.map(g=>opt(g.partnerId,
@@ -9586,7 +9650,7 @@ function costsModal(editId, presetPartner){
         </div>
       </div>
       ${edit ? '' : `
-      <div class="cash-sub">Cost Log</div>
+      <div class="cash-sub">Expense Log</div>
       ${list.length ? list.map(c=>`
         <div class="cost-row">
           <div class="cost-main"><b>${esc(c.category)}</b>${c.payType?` · ${esc(c.payType)}`:''}${
@@ -9596,7 +9660,7 @@ function costsModal(editId, presetPartner){
           <span class="cost-btns">
             <button class="btn btn-ghost btn-xs" data-act="costedit" data-id="${esc(c.id)}">Edit</button>
             <button class="btn btn-danger btn-xs" data-act="costdel" data-id="${esc(c.id)}">Delete</button></span>
-        </div>`).join('') : '<div class="cash-empty">No costs recorded here yet.</div>'}`}
+        </div>`).join('') : '<div class="cash-empty">No expenses recorded here yet.</div>'}`}
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 
@@ -9613,7 +9677,7 @@ function costsModal(editId, presetPartner){
         st.costs = st.costs || [];
         const i = st.costs.findIndex(c=>c.id===cost.id);
         if(i>=0) st.costs[i]=Object.assign({}, st.costs[i], cost); else st.costs.push(cost);
-      }, edit ? 'Cost updated' : 'Cost added', {keepOpen:true});
+      }, edit ? 'Expense updated' : 'Expense added', {keepOpen:true});
     costsModal();
   });
 }
@@ -10755,7 +10819,7 @@ const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open
 const FIN_M = [
   {k:'bbu', l:'Big Books Sold'}, {k:'avu', l:'Adventures Sold'}, {k:'bb', l:'Big Books (count)', n:true}, {k:'av', l:'Adventures (count)', n:true},
   {k:'books', l:'Books sold (count)', n:true}, {k:'gifts', l:'Gifts (count)', n:true}, {k:'sales', l:'Sales (count)', n:true},
-  {k:'don', l:'Donations'}, {k:'pend', l:'Pending Payments'}, {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'},
+  {k:'don', l:'Donations'}, {k:'pend', l:'Pending'}, {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'},
   {k:'con', l:'Consignment'}, {k:'exp', l:'Expenses'},
   {k:'net', l:'Net'}, {k:'margin', l:'Margin', pct:true}, {k:'reimb', l:'Pending Reimbursements'}];
 const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
@@ -10979,14 +11043,14 @@ function finCurs(o){
 /* The Overview table's columns: [group, label, value of an aggregate]. */
 function finOvwCols(){
   const n = v => ({v: fmt(v)}), cat = (g, k) => [
-    {g, l:'Sold', f:a=>n(a[k])}, {g, l:'Gifted', f:a=>n(a[k+'g'])}, {g, l:'Distributed', f:a=>n(a[k] + a[k+'g'])},
-    {g, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u'], a['e' + k[0].toUpperCase() + k[1]])})}];
+    {g, k, l:'Sold', cls:'fin-sold', f:a=>n(a[k])}, {g, k, l:'Gifted', cls:'fin-more', f:a=>n(a[k+'g'])}, {g, k, l:'Distributed', cls:'fin-more', f:a=>n(a[k] + a[k+'g'])},
+    {g, k, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u'], a['e' + k[0].toUpperCase() + k[1]])})}];
   return [...cat('Big Books', 'bb'), ...cat('Adventures', 'av'), ...cat('Other', 'ot'),
     {l:'Total Gross', cls:'fin-big', f:a=>finGrossParts(a)},
     {l:'Donations', f:a=>({v:finUsd(a.don, a.eDon)})},
-    {l:'Pending Payments', f:a=>({v:finUsd(a.pend, a.ePend)})},
+    {l:'Pending', f:a=>({v:finUsd(a.pend, a.ePend)})},
     {l:'Expenses', f:a=>finExpParts(a)},
-    {l:'Net', cls:'fin-big', f:a=>Object.assign(finNetParts(a), {neg: a.net < -0.004})},
+    {l:'Net', cls:'fin-big fin-netc', f:a=>Object.assign(finNetParts(a), {neg: a.net < -0.004})},
     {l:'Margin', cls:'fin-mg', f:a=>({v: a.margin===null ? '—' : finVal({pct:true}, a.margin), neg: a.margin!==null && a.margin < 0})}];
 }
 function finOverviewFigs(a){
@@ -10996,7 +11060,7 @@ function finOverviewFigs(a){
     {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu, a.eAv), sub:finDist(a.av, a.avg)},
     ...(a.ot || a.otg ? [{k:'ot', l:'Other Sold', v:finUsd(a.otu, a.eOt), sub:finDist(a.ot, a.otg)}] : []),
     {k:'don',  l:'Donations',         v:finUsd(a.don, a.eDon), sub:'', cur:finCurs(a.cur.don)},
-    {k:'pend', l:'Pending Payments',  v:finUsd(a.pend, a.ePend), sub:''},
+    {k:'pend', l:'Pending',           v:finUsd(a.pend, a.ePend), sub:''},
     {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
     {k:'exp',  l:e.l,                 v:e.v, sub:'', ex:e.ex, cur:finCurs(a.cur.exp)},
     {k:'net',  l:n.l,                 v:n.v, sub:a.margin===null ? '' : 'Margin ' + finVal({pct:true}, a.margin), ex:n.ex}];
@@ -11056,20 +11120,23 @@ function finOverviewHTML(){
      rest, and Margin in a column of its own. It scrolls sideways when it
      cannot fit. */
   const cols = finOvwCols();
-  const cell = c => r => { const m = c.f(r.a); return `<td class="${c.cls||''}${m.neg ? ' fin-neg' : ''}"><div>${m.v}</div>${finExHTML(m, 'fin-cs')}</td>`; };
+  /* Just Sold for each kind (b298, Gita); a tap on it opens that kind's
+     Gifted and Distributed beside it, and another tap folds them away. */
+  const cell = c => r => { const m = c.f(r.a); return `<td class="${c.cls||''}${c.k ? ' fk-' + c.k : ''}${m.neg ? ' fin-neg' : ''}"${c.cls==='fin-sold' ? ` data-fsold="${c.k}" title="Show gifts and distributed"` : ''}><div>${m.v}</div>${finExHTML(m, 'fin-cs')}</td>`; };
   const row = (r, cls) => `<tr${cls?` class="${cls}"`:''}><th class="no-edit">${r.go ? `<button type="button" class="fin-go" data-act="fingo" data-scope="${esc(r.go)}">${esc(r.label)}</button>` : esc(r.label)}</th>
       ${cols.map(c=>cell(c)(r)).join('')}</tr>`;
   const groups = [];
-  cols.forEach(c=>{ const g = groups[groups.length-1]; if(g && c.g && g.g===c.g) g.n++; else groups.push({g:c.g||'', n:1, cls:c.cls||''}); });
+  cols.forEach(c=>{ const g = groups[groups.length-1]; if(g && c.g && g.g===c.g) g.n++; else groups.push({g:c.g||'', k:c.k||'', n:1, cls:c.cls||''}); });
+  const open = FIN.ovwOpen || (FIN.ovwOpen = new Set());
   return `${finFiltersHTML(FIN.f)}
     <div class="fin-tiles">${tiles}</div>
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ~ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
 
     <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}</h3>
-    <div class="fin-scroll fin-ovw"><table class="cash-tbl fin-tbl"><thead>
-      <tr class="fin-gh"><th rowspan="2"></th>${groups.map(g=>g.g ? `<th colspan="${g.n}" class="fin-g">${esc(g.g)}</th>` : `<th class="${g.cls}"></th>`).join('')}</tr>
-      <tr>${cols.map(c=>`<th class="${c.cls||''}">${esc(c.l)}</th>`).join('')}</tr></thead>
+    <div class="fin-scroll fin-ovw"><table class="cash-tbl fin-tbl${[...open].map(k=>' fo-' + k).join('')}"><thead>
+      <tr class="fin-gh"><th rowspan="2"></th>${groups.map(g=>g.g ? `<th colspan="${open.has(g.k) ? g.n : g.n - 2}" class="fin-g" data-fg="${g.k}" data-n="${g.n}">${esc(g.g)}</th>` : `<th class="${g.cls}"></th>`).join('')}</tr>
+      <tr>${cols.map(c=>`<th class="${c.cls||''}${c.k ? ' fk-' + c.k : ''}"${c.cls==='fin-sold' ? ` data-fsold="${c.k}"` : ''}>${esc(c.l)}${c.cls==='fin-sold' ? ` <span class="fin-caret">${open.has(c.k) ? '◂' : '▸'}</span>` : ''}</th>`).join('')}</tr></thead>
       <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${cols.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
       <tfoot>${row({label:'Total', go:'', a}, 'fin-tot')}</tfoot></table></div>`;
 }
@@ -11086,7 +11153,7 @@ function finOverviewHTML(){
    counts keep Big Books and Adventures apart, in the app's one form. */
 const QB_SHOW = [
   {k:'books', l:'Books'}, {k:'bb', l:'Big Books'}, {k:'av', l:'Adventures'}, {k:'pre', l:'Pre-orders'}, {k:'gifts', l:'Gifts'},
-  {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'}, {k:'pend', l:'Pending Payments'}, {k:'don', l:'Donations'},
+  {k:'coll', l:'Gross'}, {k:'gross', l:'Expected Gross'}, {k:'pend', l:'Pending'}, {k:'don', l:'Donations'},
   {k:'exp', l:'Expenses'}, {k:'net', l:'Net'}, {k:'margin', l:'Margin'},
   {k:'npay', l:'Number of payments'}, {k:'days', l:'Days it ran'}, {k:'tail', l:'Last event to region end'}];
 const QB_DURING = [
@@ -11918,7 +11985,11 @@ function finScopeF(at){
   const se = D.seasons.find(x=>x.id===id), rg = D.regions.find(x=>x.id===id), ev = D.events.find(x=>x.id===id);
   if(se) out.s = se.id;
   else if(rg){ out.r = rg.id; out.s = rg.seasonId; }
-  else if(ev){ const r = D.regions.find(x=>x.id===ev.regionId) || {}; out.e = ev.id; out.r = r.id || ''; out.s = r.seasonId || ''; }
+  else if(ev){ const r = D.regions.find(x=>x.id===ev.regionId) || {};
+    // A sub-region's Summary, its old warehouse (b297), counts the whole sub-region (b298, Gita).
+    const sw = /^wh_/.test(ev.id) && finSubsOf(r.id).find(x=>ev.name===x.name + ' (warehouse)' && eventsOfSubAny(r.id, x.id).includes(ev.id));
+    if(sw){ out.u = sw.id; out.r = r.id; out.s = r.seasonId || ''; out.uE = eventsOfSubAny(r.id, sw.id); return out; }
+    out.e = ev.id; out.r = r.id || ''; out.s = r.seasonId || ''; }
   return out;
 }
 /* Write a section into the page, or (outside the page) into a window. */
@@ -12150,6 +12221,7 @@ function finNav(){
     `<span class="fp-gap"></span>
      <span class="fp-acts">${STATE ? '' : `<button type="button" class="btn btn-ghost btn-sm" data-act="finleave">← Leave Finance</button>`}<button type="button" class="btn btn-ghost btn-sm" data-act="finsendlink">📨 Send Reimbursements Link</button><button type="button" class="btn btn-primary btn-sm" data-act="expenses">🧾 Add an Expense</button></span>`;
   if(FIN.secsH !== secs){ FIN.secsH = secs; $('#fpSecs').innerHTML = secs; }
+  $('#fpSecs').classList.toggle('fp-seg', PRACTICE);
   void fin;
   // The top 📋 Report is Finance's own here, for everyone who can see Finance.
   const rb = $('#reportBtn'); if(rb) rb.style.display = '';
@@ -12226,16 +12298,25 @@ function finExpTotals(list){
    for that money (server: expenses.js convApply). ---- */
 function finConvModal(edit){
   const D = FIN.D, may = D.mayEdit, list = (D.convs||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  const curs = [...new Set(D.sales.flatMap(x=>Object.keys(x.cur||{})).concat(['EUR','PLN','GBP','INR']))].filter(c=>c!=='USD').sort();
+  const curs = [...new Set(D.sales.flatMap(x=>Object.keys(x.cur||{})).concat(['EUR','PLN','GBP','INR']))].filter(c=>c!=='USD').sort().concat(['USD']);
   const e = edit || {};
   const items = finPlaces().filter(p=>p.kind!=='all').map(p=>({v:p.id, l:p.name, shown:[p.name, p.rName, p.sName].filter(Boolean).join(' · '), kind:p.kind,
     up:[p.rName, p.sName].filter(Boolean), upIds:[p.r, p.s].filter(x=>x && x!==p.id)}));
   const shown = (items.find(i=>i.v===e.place)||{}).shown || '';
+  // Several currencies can go in one exchange (b298): "85 € + 6250 ден + $5 fetched $253".
+  const partsOf = c => Array.isArray(c.parts) ? c.parts : [{cur:c.cur, amt:c.amt, usd:c.usd}];
+  const took = c => partsOf(c).map(x=>cashFmt(x.amt, x.cur)).join(' + ');
+  const rates = c => partsOf(c).filter(x=>x.cur!=='USD' && x.amt > 0).map(x=>'1 ' + x.cur + ' = $' + (Math.round(x.usd / x.amt * 10000) / 10000)).join(' · ');
+  const rowHTML = (x, i) => `<div class="cost-amt-row cv-row" data-i="${i}">
+      <input class="cv-amt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(x.amt||'')}" placeholder="0.00">
+      <select class="cv-cur">${curs.map(c=>`<option ${c===x.cur?'selected':''}>${esc(c)}</option>`).join('')}</select>
+      ${i ? `<button type="button" class="btn btn-ghost btn-xs cv-rm" title="Take this currency out">✕</button>` : ''}</div>`;
+  const startRows = e.id ? partsOf(e) : [{amt:'', cur:curs[0]}];
   openModal(`${mHead('Dollars received')}<div class="m-body">
-      <div class="hint">When money in another currency is exchanged, write down what it fetched. That place's money in that currency then counts at this rate instead of the estimate. An event's own exchange wins over its region's, and a region's over its season's.</div>
+      <div class="hint">When money in another currency is exchanged, write down what it fetched. That place's money in that currency then counts at this rate instead of the estimate. An event's own exchange wins over its region's, and a region's over its season's. Several currencies exchanged together can go in one entry: their dollars are shared out by what each was worth that day.</div>
       ${list.length ? `<div class="exp-batch">${list.map(c=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(c.label)}</b>
-          <span class="muted-note">${esc(c.date)} · ${esc(cashFmt(c.amt, c.cur))} fetched ${esc(finUsd(c.usd))} · 1 ${esc(c.cur)} = $${esc(Math.round(c.usd / c.amt * 10000) / 10000)}${c.by ? ' · ' + esc(c.by) : ''}${c.note ? ' · ' + esc(c.note) : ''}</span></span>
-          <b class="exp-bi-a">(${esc(cashFmt(c.amt, c.cur))}) ${esc(finUsd(c.usd))}</b>
+          <span class="muted-note">${esc(c.date)} · ${esc(took(c))} fetched ${esc(finUsd(c.usd))} · ${esc(rates(c))}${c.by ? ' · ' + esc(c.by) : ''}${c.note ? ' · ' + esc(c.note) : ''}</span></span>
+          <b class="exp-bi-a">(${esc(took(c))}) ${esc(finUsd(c.usd))}</b>
           ${may ? `<span class="exp-btns"><button type="button" class="btn btn-ghost btn-xs" data-cvedit="${esc(c.id)}">Edit</button>
             <button type="button" class="btn btn-ghost btn-xs" data-cvdel="${esc(c.id)}" title="Remove">🗑</button></span>` : ''}</div>`).join('')}</div>`
         : '<div class="cash-empty">None written down yet.</div>'}
@@ -12243,9 +12324,8 @@ function finConvModal(edit){
         <div class="cash-sub">${e.id ? 'Change this exchange' : 'Write one down'}</div>
         <div class="field"><label>Where the money came from</label>${comboHTML('cvPlace', shown, 'Search for an event, region or season')}</div>
         <div class="row2">
-          <div class="field cost-amt"><label>Took</label><div class="cost-amt-row">
-            <input id="cvAmt" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.amt||'')}" placeholder="0.00">
-            <select id="cvCur">${curs.map(c=>`<option ${c===e.cur?'selected':''}>${esc(c)}</option>`).join('')}</select></div>
+          <div class="field cost-amt"><label>Took</label><div id="cvRows">${startRows.map(rowHTML).join('')}</div>
+            <button type="button" class="btn btn-ghost btn-xs" id="cvMore">＋ Add another currency</button>
             <label class="exp-rb cv-all"><input type="checkbox" id="cvAll"> Total collections</label>
             <div class="muted-note" id="cvAllN"></div></div>
           <div class="field"><label>Dollars received</label><input id="cvUsd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.usd||'')}" placeholder="$ 0.00"></div>
@@ -12262,39 +12342,45 @@ function finConvModal(edit){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   if(!may) return;
   let place = e.place || '';
-  /* "Total collections" (b297, Gita): fills in everything collected at that
-     place in that currency, ready to be converted to dollars. */
-  const totalAt = (at, cur) => { const f = finScopeF(at);
-    return Math.round(finFiltered(f).sales.filter(x=>!x.con).reduce((t,x)=>t + ((x.cur||{})[cur]||0), 0) * 100) / 100; };
+  const rowsNow = () => [...document.querySelectorAll('#cvRows .cv-row')].map(r=>({amt:Number(r.querySelector('.cv-amt').value)||0, cur:r.querySelector('.cv-cur').value}));
+  const drawRows = rs => { $('#cvRows').innerHTML = (rs.length ? rs : [{amt:'', cur:curs[0]}]).map(rowHTML).join(''); };
+  /* "Total collections" (b297, Gita): everything collected at that place, in
+     every currency it was collected in (b298), ready to be turned into dollars. */
+  const totalsAt = at => { const t = {};
+    finFiltered(finScopeF(at)).sales.filter(x=>!x.con).forEach(x=>Object.entries(x.cur||{}).forEach(([c,v])=>{ t[c] = (t[c]||0) + (v||0); }));
+    return Object.keys(t).filter(c=>t[c] > 0.004).sort((a,b)=>(a==='USD')-(b==='USD') || a.localeCompare(b)).map(c=>({cur:c, amt:Math.round(t[c]*100)/100})); };
   const fillAll = () => {
-    const on = $('#cvAll').checked, cur = $('#cvCur').value;
+    const on = $('#cvAll').checked;
     $('#cvAllN').textContent = on && !place ? 'Choose where the money came from first.' : '';
-    if(on && place) $('#cvAmt').value = totalAt(place, cur) || '';
+    if(on && place){ const t = totalsAt(place); drawRows(t); if(!t.length) $('#cvAllN').textContent = 'Nothing collected there yet.'; }
   };
   comboBind('cvPlace', items, place, v=>{ place = v; fillAll(); });
   $('#cvAll').addEventListener('change', fillAll);
-  $('#cvCur').addEventListener('change', fillAll);
-  $('#cvAmt').addEventListener('input', ()=>{ $('#cvAll').checked = false; $('#cvAllN').textContent = ''; });
+  $('#cvMore').addEventListener('click', ()=>{ const rs = rowsNow(); const used = new Set(rs.map(r=>r.cur));
+    rs.push({amt:'', cur:curs.find(c=>!used.has(c)) || curs[0]}); drawRows(rs); });
+  $('#cvRows').addEventListener('click', ev=>{ const b = ev.target.closest('.cv-rm'); if(!b) return;
+    const i = Number(b.closest('.cv-row').dataset.i); drawRows(rowsNow().filter((_,j)=>j!==i)); });
+  $('#cvRows').addEventListener('input', ()=>{ $('#cvAll').checked = false; $('#cvAllN').textContent = ''; });
   const done = r => { FIN.D = r.result; finRender(); finConvModal(); };
   $('#cvSave').addEventListener('click', async ()=>{
     const b = $('#cvSave'); b.disabled = true;
+    const parts = rowsNow().filter(x=>x.amt > 0), usd = Number($('#cvUsd').value), day = $('#cvDate').value;
     // A rate far from the day's usual one is almost always a typing slip (b296: 250.13 ден for $253 made Macedonia's dollars 55 times too big).
-    const amt = Number($('#cvAmt').value), usd = Number($('#cvUsd').value), cur = $('#cvCur').value, day = $('#cvDate').value;
-    if(amt > 0 && usd > 0 && /^\d{4}-\d{2}-\d{2}$/.test(day)){
-      const r = await fxOn(day, cur, 'USD').catch(()=>null);
-      const usual = r && r.rate > 0 ? amt * r.rate : 0;
-      if(usual > 0 && (usd > usual * 2 || usd < usual / 2) && !confirm(`Please check the numbers. ${cashFmt(amt, cur)} is usually about ${finUsd(Math.round(usual * 100) / 100)}, not ${finUsd(usd)}.\n\nSave it anyway?`)){
+    if(parts.length && usd > 0 && /^\d{4}-\d{2}-\d{2}$/.test(day)){
+      const rs = await Promise.all(parts.map(x=>x.cur==='USD' ? Promise.resolve({rate:1}) : fxOn(day, x.cur, 'USD').catch(()=>null)));
+      const usual = rs.every(r=>r && r.rate > 0) ? parts.reduce((t,x,i)=>t + x.amt * rs[i].rate, 0) : 0;
+      if(usual > 0 && (usd > usual * 2 || usd < usual / 2) && !await askSure(`Please check the numbers. ${parts.map(x=>cashFmt(x.amt, x.cur)).join(' + ')} is usually about ${finUsd(Math.round(usual * 100) / 100)}, not ${finUsd(usd)}.\n\nSave it anyway?`, 'Save anyway')){
         b.disabled = false; return;
       }
     }
-    try{ done(await post({action:'finConvSet', id:e.id||'', place, cur:$('#cvCur').value, amt:Number($('#cvAmt').value), usd:Number($('#cvUsd').value),
-      date:$('#cvDate').value, note:$('#cvNote').value})); toast('Written down. Those dollars are used from now on.'); }
+    try{ done(await post({action:'finConvSet', id:e.id||'', place, parts, usd, date:day, note:$('#cvNote').value}));
+      toast('Written down. Those dollars are used from now on.'); }
     catch(err){ b.disabled = false; $('#modalErr').textContent = err.message; }
   });
   const c = $('#cvCancel'); if(c) c.addEventListener('click', ()=>finConvModal());
   document.querySelectorAll('#modal [data-cvedit]').forEach(b=>b.addEventListener('click', ()=>finConvModal(list.find(x=>x.id===b.dataset.cvedit))));
   document.querySelectorAll('#modal [data-cvdel]').forEach(b=>b.addEventListener('click', async ()=>{
-    if(!confirm('Remove this exchange? That money goes back to the estimated dollars.')) return;
+    if(!await askSure('Remove this exchange? That money goes back to the estimated dollars.', 'Remove')) return;
     try{ done(await post({action:'finConvDel', id:b.dataset.cvdel})); }catch(err){ toast(err.message, true); }
   }));
 }
@@ -12914,7 +13000,7 @@ function finWaVisual(L){
    Visualize is no longer a section of its own: under all the figures and
    lists, each screen draws what it shows as pictures. Everything comes from
    the same figures the screen uses, in dollars at each place's own rates. */
-const FIN_C = { in:'#1baf7a', out:'#eb6834', net:'#2a78d6', pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', ot:'#17a2a2', don:'#eda100' };
+const FIN_C = { in:'#1baf7a', out:'#eb6834', net:'#2a78d6' /* = --net */, pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', ot:'#17a2a2', don:'#eda100' };
 function finShare(rows){
   const total = rows.reduce((t,r)=>t+r.v, 0);
   rows.forEach((r,i)=>{ r.c = r.c || VIZ_COLORS[i % VIZ_COLORS.length]; r.p = total ? r.v/total*100 : 0; });
@@ -12985,7 +13071,7 @@ function finChartsHTML(){
     const pend = finPending(a), owe = finToRepay(a);
     if(pend){
       out.push(finChart('Income by Source (Actual)', finDonutHTML(src.map(r=>Object.assign({}, r)).filter(r=>r.v > 0.004), 'Income by Source (Actual)', 'Gross')));
-      out.push(finChart('Income by Source (Expected)', finDonutHTML(src.map(r=>Object.assign({}, r)).concat([{k:'Pending Payments', v:a.pend, c:FIN_C.pend, e:a.ePend}])
+      out.push(finChart('Income by Source (Expected)', finDonutHTML(src.map(r=>Object.assign({}, r)).concat([{k:'Pending', v:a.pend, c:FIN_C.pend, e:a.ePend}])
         .filter(r=>r.v > 0.004), 'Income by Source (Expected)', 'Expected Gross')));
     } else out.push(finChart('Income by Source', finDonutHTML(src.filter(r=>r.v > 0.004), 'Income by Source', 'Gross')));
     out.push(finChart('Money in and out', finHBarsHTML([
@@ -13035,7 +13121,7 @@ function finChartsHTML(){
     const f = finScopeF(), I = finIdx(), byE = {};
     FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.uE || f.uE.includes(x.e) || (f.u && !x.e && x.u===f.u)))
       .forEach(x=>{ const k = x.e ? (I.e[x.e]||{}).name || 'An event' : ((I.r[x.r]||{}).name || 'Region') + ' Warehouse'; byE[k] = (byE[k]||0) + x.pu; });
-    out.push(finChart('Pending Payments, by place', finDonutHTML(finTop(byE), 'Pending Payments, by place', 'Owed to the tour')));
+    out.push(finChart('Pending, by place', finDonutHTML(finTop(byE), 'Pending, by place', 'Owed to the tour')));
     const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', u = (FIN.D.expenses.find(y=>y.id===x.id)||{}).usd || 0; byP[k] = (byP[k]||0) + u; });
     out.push(finChart('Pending Reimbursements, by person', finDonutHTML(finTop(byP), 'Pending Reimbursements, by person', 'To pay back')));
   }
@@ -13093,7 +13179,7 @@ function finCsvDownload(part){
     // The same columns as the table on screen (b297).
     const kinds = [['Big Books', 'bb'], ['Adventures', 'av'], ['Other', 'ot']];
     const head = [''].concat(...kinds.map(([g])=>[g + ' Sold', g + ' Gifted', g + ' Distributed', g + ' Gross (USD)']), ['Donations (USD)',
-      'Pending Payments (USD)', 'Total Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)']);
+      'Pending (USD)', 'Total Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)']);
     const line = (l, a) => [l].concat(...kinds.map(([, k])=>[a[k], a[k+'g'], a[k] + a[k+'g'], finMoney(a[k+'u'])]), [finMoney(a.don), finMoney(a.pend), finMoney(a.coll), finMoney(a.gross),
       finMoney(a.spent), finMoney(a.exp), finMoney(a.net), finMoney(a.netExp), a.margin==null ? '' : Math.round(a.margin*10)/10]);
     return finCsvSave('Finance Overview', [head].concat(O.rows.map(r=>line(r.label, r.a)), [line('Total', O.total)]));
@@ -13902,7 +13988,7 @@ function collectDescriptions(){
   // Which dialog or panel the wording belongs to, from the function it sits in.
   const NAMES = {
     cashModal:'Cash tracking', seasonCashModal:'Cash tracking (season)', changeModal:'Withdraw change',
-    moveAllChangeModal:'Move all cash — change', costsModal:'Costs', driveFolderModal:'Spreadsheet folders',
+    moveAllChangeModal:'Move all cash — change', costsModal:'Expenses', driveFolderModal:'Spreadsheet folders',
     shareReport:'Reports', shareLinksModal:'Share links', hideBooksModal:'Titles offered here',
     hiddenPreorderModal:'Pre-order another title', saleModal:'Record a sale', bundleModal:'Multiple books',
     eventModal:'New event', regionModal:'Region settings', partnersModal:'Consignment',
@@ -14385,7 +14471,7 @@ function buildReport(part, opts){
       }).filter(x=>curs(x.got).length);
       if(byRegion.length){
         L.push('');
-        L.push(combo ? '— BY PLACE (after costs) —' : CUR_LEVEL==='region' ? '— BY SUB-REGION (after costs) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after costs) —');
+        L.push(combo ? '— BY PLACE (after expenses) —' : CUR_LEVEL==='region' ? '— BY SUB-REGION (after expenses) —' : '— BY ' + UNIT.Word.toUpperCase() + ' (after expenses) —');
         byRegion.forEach(x=>line(x.name, text(x.got) + ' ≈ $' + nf(usd(x.got) + x.adj)));
       }
     }
@@ -14400,10 +14486,10 @@ function buildReport(part, opts){
       new Set([...Object.keys(ourGrand),...Object.keys(cost)]).forEach(c=>{
         net[c] = (ourGrand[c]||0) - (cost[c]||0);
       });
-      line('Costs', minus(cost));
+      line('Expenses', minus(cost));
       const netText = Object.keys(net).filter(c=>Math.abs(net[c])>0.005).sort()
         .map(c=>cashFmt(net[c],c)).join(' + ') || '0';
-      line('Net after costs', netText + ' ≈ $' + nf(usd(net) + usdActualAdj(s.filter(x=>!isPartnerSale(x))) - costTruthAdj(costs)));
+      line('Net after expenses', netText + ' ≈ $' + nf(usd(net) + usdActualAdj(s.filter(x=>!isPartnerSale(x))) - costTruthAdj(costs)));
     }
 
     if(curs(conGrand).length){
@@ -14414,7 +14500,7 @@ function buildReport(part, opts){
       const conCosts = (combo ? (STATE.costs||[]).filter(c=>c && combo.has(c.location)) : scopedAllCosts()).filter(c=>c.partnerId);
       if(conCosts.length){
         const cc={}; conCosts.forEach(c=>{ cc[c.cur]=(cc[c.cur]||0)+(Number(c.amt)||0); });
-        line('Consignment costs', curs(cc).map(c=>'−'+cashFmt(cc[c],c)).join(' + '));
+        line('Consignment expenses', curs(cc).map(c=>'−'+cashFmt(cc[c],c)).join(' + '));
       }
     }
     gap();
@@ -15758,9 +15844,15 @@ function uncatModal(edit){
     const a = Math.floor(Number($('#ucA').value) || 0), ma = uncatMsrp(cur, 'aotm'), rest = Math.max(0, amt - a * ma);
     const nb = m > 0 && amt > 0 ? Math.floor(rest / m + 1e-9) : 0;
     if(!typed) $('#ucN').value = m > 0 && amt > 0 ? nb : '';
-    $('#ucHow').textContent = m > 0 ? `At ${cashFmt(m, cur)} a Big Book${a && ma > 0 ? ' and ' + cashFmt(ma, cur) + ' an Adventure' : ''}, ${
-        amt > 0 ? (a && ma > 0 ? 'the rest, ' + cashFmt(rest, cur) + ',' : cashFmt(amt, cur)) + ' is ' + nb + ' Big Book' + (nb===1?'':'s') : 'each book'}, rounded down.`
-      : 'No Big Book price in this currency here: type the number of books.';
+    /* Spelled out as a sum (b298, Gita found the old sentence confusing):
+       "7 Adventures × 15 € = 105 €. 300 € − 105 € = 195 € left for Big Books.
+       195 € ÷ 40 € = 4 Big Books (rounded down)." */
+    const bb = k => k + ' Big Book' + (k===1?'':'s');
+    $('#ucHow').textContent = !(m > 0) ? 'No Big Book price in this currency here: type the number of books.'
+      : typed ? 'You typed the number of Big Books, so it is not worked out from the total.'
+      : !(amt > 0) ? `Enter the total taken, and the Big Books are worked out at ${cashFmt(m, cur)} each.`
+      : a && ma > 0 ? `${a} Adventure${a===1?'':'s'} × ${cashFmt(ma, cur)} = ${cashFmt(a * ma, cur)}. ${cashFmt(amt, cur)} − ${cashFmt(a * ma, cur)} = ${cashFmt(rest, cur)} left for Big Books. ${cashFmt(rest, cur)} ÷ ${cashFmt(m, cur)} = ${bb(nb)} (rounded down).`
+      : `${cashFmt(amt, cur)} ÷ ${cashFmt(m, cur)} a Big Book = ${bb(nb)} (rounded down).`;
   };
   if(edit){
     if(L0[0]){ $('#ucAmt').value = L0[0].amt; setSel($('#ucType'), L0[0].type); }
@@ -15768,7 +15860,7 @@ function uncatModal(edit){
   }
   $('#ucAmt').addEventListener('input', fill); $('#ucCur').addEventListener('change', fill);
   $('#ucA').addEventListener('input', fill);
-  $('#ucN').addEventListener('input', ()=>{ typed = $('#ucN').value !== ''; });
+  $('#ucN').addEventListener('input', ()=>{ typed = $('#ucN').value !== ''; fill(); });
   fill();
   $('#ucSave').addEventListener('click', ()=>{
     const amt = Number($('#ucAmt').value) || 0, n = Math.floor(Number($('#ucN').value) || 0), aq = Math.floor(Number($('#ucA').value) || 0);
@@ -16060,16 +16152,29 @@ async function deliverPickModal(id, bundle){
   if(!members.length) return;
   const x = members[0], n = members.length;
   const need = {}; members.forEach(m=>need[m.bookId]=(need[m.bookId]||0)+1);
-  /* Earthly HQ's warehouse can fulfil it too (b297, Gita: "Earthly HQ has many");
-     its stock lives outside the season, so it is read from there. */
-  const hq = await hqStockMap();
-  const invQty = (loc, bid) => hq && loc===HQ_WH ? (hq[bid]||0) : window.invQty(loc, bid);
+  /* Anywhere in the whole system that holds the titles (b298, Gita: "anywhere
+     in the system that shows a book of that kind"): every season, region,
+     event, person storing books, and Earthly HQ. Read from the server, which
+     sees them all; this season's own shelves if it cannot be reached. */
+  const far = await stockWhereMap(Object.keys(need));
+  const invQty = (loc, bid) => far ? ((far[loc]||{}).qty||{})[bid]||0 : window.invQty(loc, bid);
   const covers = loc => Object.keys(need).every(bid=>invQty(loc,bid)>=need[bid]);
   const has = loc => Object.keys(need).reduce((t,bid)=>t+Math.min(need[bid], Math.max(0, invQty(loc,bid))), 0);
   const tag = loc => covers(loc) ? (n>1 ? 'has all ' + n : invQty(loc, x.bookId) + ' in stock') : has(loc) ? 'not enough' : 'none here';
   const items = [];
-  if(hq) items.push({v:HQ_WH, l:'Earthly HQ — Warehouse', shown:'Earthly HQ — Warehouse', kind:'season', up:[], tag:tag(HQ_WH)});
-  regionsList().forEach(r=>{
+  if(far){
+    const homeR = regionOfLoc(x.location), sid = STATE.activeSeason;
+    const rank = p => p.regionId===homeR ? 0 : p.seasonId===sid ? 1 : p.seasonId==='HQ' ? 3 : 2;
+    Object.values(far).sort((a,b)=>rank(a)-rank(b) || String(a.season).localeCompare(String(b.season)) || String(a.region).localeCompare(String(b.region))
+        || (a.kind==='warehouse' ? -1 : b.kind==='warehouse' ? 1 : String(a.name).localeCompare(String(b.name))))
+      .forEach(p=>{
+        const up = p.seasonId==='HQ' ? ['Earthly HQ'] : p.kind==='warehouse' ? [p.season] : [p.region, p.season];
+        const nm = p.seasonId==='HQ' && p.kind==='warehouse' ? 'Earthly HQ — Warehouse' : p.name;
+        // Named with its region and season, so two places of the same name in different seasons can be told apart.
+        const full = [nm].concat(up).filter(Boolean).join(' · ');
+        items.push({v:p.loc, l:full, shown:full, kind:p.kind==='warehouse' ? 'region' : 'event', up:up.filter(Boolean), tag:tag(p.loc)});
+      });
+  } else regionsList().forEach(r=>{
     items.push({v:r.whLoc, l:r.name + ' — Warehouse', shown:r.name + ' — Warehouse', kind:'region', up:[], tag:tag(r.whLoc)});
     holdersOf(r.regionId).forEach(h=>items.push({v:h.holderId, l:h.name + ' (storing books)', kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(h.holderId)}));
     eventsOfRegion(r.regionId).filter(e=>!closureOf(e.eventId)).forEach(e=>items.push({v:e.eventId, l:e.name, kind:'event', up:[r.name], upIds:[r.whLoc], tag:tag(e.eventId)}));
@@ -16112,22 +16217,21 @@ async function deliverPickModal(id, bundle){
       members.forEach(mm=>{
         const t=(st.sales||[]).find(v=>v.saleId===mm.saleId);
         if(t){ t.type='SALE'; t.delivered=true; t.dsource=fromStock?DSRC_WAREHOUSE:DSRC_OUTSIDE; t.dfrom=from; }
-        if(fromStock && from!==HQ_WH) invAdd(st, from, mm.bookId, -1);
+        // Only a shelf in this season is in the page's own records (another season's or HQ's is the server's).
+        if(fromStock && (holderById(from) || regionsList().some(r=>r.whLoc===from || r.regionId===regionOfLoc(from)))) invAdd(st, from, mm.bookId, -1);
       });
     }, 'Delivered');
   };
   $('#dvGo').addEventListener('click', ()=>send(true));
   $('#modal').querySelector('[data-out]').addEventListener('click', ()=>send(false));
 }
-/* Earthly HQ's warehouse stock, by title, seen from a season (null at HQ itself
-   or when it cannot be read). */
-async function hqStockMap(){
-  if(isHQ()) return null;
+/* Every place holding these titles, anywhere: { loc: {name, kind, region,
+   season, seasonId, regionId, qty:{bookId:n}} }, or null when the server
+   cannot be reached (b298). */
+async function stockWhereMap(bookIds){
   try{
-    const d = await post({action:'getState', season:HQ_ID});
-    const st = d && d.state; if(!st || st.activeSeason!==HQ_ID) return null;
-    const m = {}; (st.inventory||[]).forEach(r=>{ if(r.location===HQ_WH) m[r.bookId] = (m[r.bookId]||0) + (Number(r.qty)||0); });
-    return m;
+    const r = await post({action:'stockWhere', bookIds});
+    const m = {}; (r.result||[]).forEach(p=>{ m[p.loc] = p; }); return m;
   }catch(e){ return null; }
 }
 function deliverModal(id, bundle){
@@ -18855,7 +18959,7 @@ function partnersModal(){
         // Costs that belong to this group come off what it is owed.
         const mine = (STATE.costs||[]).filter(c=>c.partnerId===p.partnerId);
         if(!mine.length) return '';
-        return `<div class="sh-meta" style="margin-top:6px">Costs taken off what is owed</div>` +
+        return `<div class="sh-meta" style="margin-top:6px">Expenses taken off what is owed</div>` +
           mine.map(c=>`<div class="sh-top" style="font-size:12px">
             <span>−${cashFmt(c.amt,c.cur)} · ${esc(c.category)}${c.payType?' · '+esc(c.payType):''}${c.note?' · '+esc(c.note):''}</span>
             <button class="cash-mini" data-act="costedit" data-id="${esc(c.id)}" title="Edit this cost">✎</button></div>`).join('');
@@ -20188,7 +20292,7 @@ function activityModal(){
     const entry = list.concat(looseMoveEntries(list)).find(x=>x.id===b.dataset.alundo); if(!entry) return;
     // A Finance entry (b260): undone by Finance's own records, then the log is read again.
     if(entry.undoType==='exp'){
-      if(!confirm('Delete this entry? This undoes it:\n\n' + entry.text)) return;
+      if(!await askSure('Delete this entry? This undoes it:\n\n' + entry.text, 'Delete')) return;
       try{ await post({action:'expUndo', id:entry.id}); toast('Undone'); await refetch(); }catch(err){ toast(err.message, true); }
       return;
     }
@@ -21287,7 +21391,7 @@ document.addEventListener('click',e=>{
     if(!confirm('Delete this cost?')) return;
     const id=t.dataset.id;
     commit({action:'deleteCost', id}, st=>{ st.costs=(st.costs||[]).filter(c=>c.id!==id); },
-      'Cost deleted', {keepOpen:true});
+      'Expense deleted', {keepOpen:true});
     costsModal();
     return;
   }

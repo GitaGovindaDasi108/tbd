@@ -230,7 +230,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b297';
+var SERVER_BUILD = 'b298';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -589,6 +589,13 @@ function handle(e) {
     if (action === 'openPreorders') {
       if (who.role === 'seller') throw new Error('That action is not available on this link.');
       return raw(JSON.stringify({ ok: true, result: openPreorders_() }));
+    }
+    /* Every place in the whole system holding the titles a pre-order needs,
+       in any season and Earthly HQ (b298, Gita: "anywhere in the system that
+       shows a book of that kind"). */
+    if (action === 'stockWhere') {
+      if (who.role === 'seller') throw new Error('That action is not available on this link.');
+      return raw(JSON.stringify({ ok: true, result: stockWhere_(params.bookIds) }));
     }
     // The activity log, fetched when it is opened rather than with every refresh.
     if (action === 'activity') {
@@ -1820,6 +1827,24 @@ function doSeasonTransfer(p) {
 function dateText_(v) {
   if (v instanceof Date) return isNaN(v) ? '' : v.toISOString();
   return String(v);
+}
+
+function stockWhere_(ids) {
+  var want = {}; (Array.isArray(ids) ? ids : []).slice(0, 50).forEach(function (b) { want[String(b)] = 1; });
+  var regs = {}; allRegionsEverywhere_().forEach(function (r) { regs[r.regionId] = r; });
+  var where = {};
+  Object.keys(regs).forEach(function (k) { var r = regs[k]; if (r.whLoc) where[r.whLoc] = { kind: 'warehouse', name: r.name + ' — Warehouse', r: r }; });
+  objectsOf_('_events').forEach(function (e) { var r = regs[String(e.regionId || '')]; if (e && e.eventId && r) where[String(e.eventId)] = { kind: 'event', name: String(e.name), r: r }; });
+  objectsOf_('_holders').forEach(function (h) { var r = regs[String(h.regionId || '')]; if (h && h.holderId && r) where[String(h.holderId)] = { kind: 'holder', name: String(h.name) + ' (storing books)', r: r }; });
+  var out = {};
+  objectsOf_('_inventory').forEach(function (row) {
+    var loc = String(row.location), b = String(row.bookId), q = Number(row.qty) || 0, w = where[loc];
+    if (!want[b] || q <= 0 || !w) return;
+    var o = out[loc] || (out[loc] = { loc: loc, kind: w.kind, name: w.name, region: w.r.name, regionId: w.r.regionId,
+      whLoc: w.r.whLoc, season: w.r.seasonName, seasonId: w.r.seasonId, qty: {} });
+    o.qty[b] = (o.qty[b] || 0) + q;
+  });
+  return Object.keys(out).map(function (k) { return out[k]; });
 }
 
 function allRegionsEverywhere_() {
@@ -8176,7 +8201,7 @@ function renderPartnerSheet_(partnerId) {
   var curs = allCurrencies_();
   band.push(put(['MONEY']));
   // Costs taken off before handing over (their share of card fees and the like).
-  head.push(put(['Currency', 'Taken in', 'Costs', 'Handed over', 'Still to hand over']));
+  head.push(put(['Currency', 'Taken in', 'Expenses', 'Handed over', 'Still to hand over']));
   var mStart = rows.length + 1;
   curs.forEach(function (c) {
     var cst = (t.costs || {})[c] || 0;
@@ -8415,7 +8440,7 @@ function renderHQSheet_() {
   });
   costs.forEach(function (c) { costUsd += costUsd_(c); });
   band.push(put(['SUMMARY']));
-  head.push(put(['Total collections (USD)', 'Donations (USD)', 'Pending (USD)', 'Costs (USD)', 'Net (USD)']));
+  head.push(put(['Total collections (USD)', 'Donations (USD)', 'Pending (USD)', 'Expenses (USD)', 'Net (USD)']));
   var r0 = put([round2_(totUsd), round2_(donUsd), round2_(pendUsd), round2_(costUsd), round2_(totUsd - costUsd)]);
   tot.push(r0);
   money.push('A' + r0 + ':E' + r0);
@@ -8465,7 +8490,7 @@ function renderHQSheet_() {
   });
   costs.forEach(function (c) { usdCost[col[unitOf[String(c.location)]]] += costUsd_(c); });
   tot.push(put(['Collected (USD)'].concat(usdIn.map(round2_)).concat([round2_(sum(usdIn))])));
-  put(['Costs (USD)'].concat(usdCost.map(function (n) { return round2_(-n); })).concat([round2_(-sum(usdCost))]));
+  put(['Expenses (USD)'].concat(usdCost.map(function (n) { return round2_(-n); })).concat([round2_(-sum(usdCost))]));
   var net = usdIn.map(function (n, i) { return n - usdCost[i]; });
   tot.push(put(['Net (USD)'].concat(net.map(round2_)).concat([round2_(sum(net))])));
   money.push('B' + cStart + ':' + colLetter_(W) + rows.length);
@@ -8866,7 +8891,7 @@ function renderView_(loc, regionId, ssOverride) {
       head.push(put([''].concat(costCurs).concat(['USD equivalent'])));
       var netStart = rows.length + 1;
       put(['Collected'].concat(costCurs.map(function (k) { return round2_(got[k]); })).concat([round2_(gotUsd)]));
-      put(['Costs'].concat(costCurs.map(function (k) { return round2_(-costTotal[k]); })).concat([round2_(-costUsd)]));
+      put(['Expenses'].concat(costCurs.map(function (k) { return round2_(-costTotal[k]); })).concat([round2_(-costUsd)]));
       put(['Net'].concat(costCurs.map(function (k) { return round2_(got[k] - costTotal[k]); }))
         .concat([round2_(gotUsd - costUsd)]));
       money.push('B' + netStart + ':' + colLetter_(2 + costCurs.length) + (netStart + 2));

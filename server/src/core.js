@@ -173,6 +173,15 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
         [p.usdDay, p.payDay] = await Promise.all([ask('USD', !cur || cur === 'USD' || Number(p.usdAmt) > 0),
           ask(rc, p.kind !== 'reimburse' || !rc || rc === cur || !/^[A-Z]{3}$/.test(rc))]);
       }
+      // Dollars received for several currencies at once (b298): each one's worth that day splits the dollars between them.
+      if (action === 'finConvSet') {
+        const day = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? p.date : new Date().toISOString().slice(0, 10);
+        const curs = [...new Set((Array.isArray(p.parts) ? p.parts : []).map(x => String((x && x.cur) || '').toUpperCase()).filter(c => /^[A-Z]{3}$/.test(c) && c !== 'USD'))].slice(0, 12);
+        p.rates = {};
+        if (curs.length > 1) (await Promise.all(curs.map(c => fxOn(day, c, 'USD').catch(() => null)))).forEach((r, i) => {
+          const x = r && r.rate > 0 ? r : rateNow(curs[i], 'USD', day);       // the nearest day's rate when that day has none
+          if (x && x.rate > 0) p.rates[curs[i]] = x.rate; });
+      }
       try { return reply({ ok: true, result: expenses.handle(action, p, me, linkKey) }); }
       catch (err) { return reply({ ok: false, error: String(err && err.message || err) }); }
     }

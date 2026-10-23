@@ -530,13 +530,20 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      event's over its region's over its season's). A sale whose dollars were
      entered by hand keeps them. Kept in the setting `finConv`. */
   const getConvs = () => { const a = parse(kv.getProp('finConv'), []); return Array.isArray(a) ? a : []; };
+  /* Several currencies exchanged together for one dollar figure (b298, Gita:
+     "85 euros + 6250 den + $5 = $253"). Each currency keeps its share of the
+     dollars, split by what it was worth that day; dollars in the pile count as
+     themselves. A row from before has just the one currency. */
+  const convParts = c => Array.isArray(c.parts) ? c.parts : [{ cur: c.cur, amt: c.amt, usd: c.usd }];
+  const convText = c => convParts(c).map(x => x.amt + ' ' + x.cur).join(' + ') + ' fetched $' + c.usd;
   function convApply(D) {
     const P = places(), list = getConvs().map(c => {
       const pl = placeOf(P, c.place);
       return Object.assign({}, c, { label: pl ? labelOf(P, pl) : '(a place since removed)', kind: pl ? pl.kind : '' });
     });
     const by = {};
-    list.forEach(c => { if (!c.kind) return; const k = c.place + '|' + c.cur; const o = by[k] || (by[k] = { amt: 0, usd: 0 }); o.amt += Number(c.amt) || 0; o.usd += Number(c.usd) || 0; });
+    list.forEach(c => { if (!c.kind) return; convParts(c).forEach(x => { if (x.cur === 'USD') return;
+      const k = c.place + '|' + x.cur; const o = by[k] || (by[k] = { amt: 0, usd: 0 }); o.amt += Number(x.amt) || 0; o.usd += Number(x.usd) || 0; }); });
     const rateFor = (x, cur) => { for (const id of [x.e, x.r, x.s]) { const o = id && by[id + '|' + cur]; if (o && o.amt > 0) return o.usd / o.amt; } return null; };
     D.sales.forEach(x => {
       if (x.con || x.ua || !x.cu) return;
@@ -554,27 +561,45 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (!mayPay(w)) throw new Error('Only Finance can write down dollars received.');
     const pl = placeOf(w.P, clip(p.place, 60));
     if (!pl) throw new Error('Choose the event, region or season the money came from.');
-    const cur = String(p.cur || '').toUpperCase();
-    if (!CUR.test(cur) || cur === 'USD') throw new Error('Choose the currency that was exchanged.');
-    const amt = Math.round((Number(p.amt) || 0) * 100) / 100, usd = Math.round((Number(p.usd) || 0) * 100) / 100;
-    if (!(amt > 0)) throw new Error('How much ' + cur + ' was exchanged?');
+    const got = {};
+    (Array.isArray(p.parts) ? p.parts : [{ cur: p.cur, amt: p.amt }]).slice(0, 12).forEach(x => {
+      const cur = String((x && x.cur) || '').toUpperCase(), amt = Math.round((Number(x && x.amt) || 0) * 100) / 100;
+      if (!CUR.test(cur)) throw new Error('Choose the currency that was exchanged.');
+      if (amt > 0) got[cur] = Math.round(((got[cur] || 0) + amt) * 100) / 100;
+    });
+    const usd = Math.round((Number(p.usd) || 0) * 100) / 100, cash = got.USD || 0;
+    const curs = Object.keys(got).filter(c => c !== 'USD');
+    if (!curs.length) throw new Error('How much of which currency was exchanged?');
     if (!(usd > 0)) throw new Error('How many dollars were received?');
+    if (!(usd > cash)) throw new Error('The dollars received should be more than the $' + cash + ' that was already in dollars.');
+    // Each currency's share of what the exchange fetched, by its worth that day (core looks the rates up); evenly with none.
+    // Without a rate for every one of them, they share it evenly rather than one getting nothing.
+    const rates = p.rates || {}, worth = curs.map(c => got[c] * (Number(rates[c]) > 0 ? Number(rates[c]) : 0));
+    const all0 = worth.some(v => !(v > 0)), W = all0 ? curs.length : worth.reduce((a, b) => a + b, 0);
+    let left = Math.round((usd - cash) * 100) / 100;
+    const parts = curs.map((c, i) => {
+      const share = i === curs.length - 1 ? left : Math.round((usd - cash) * (all0 ? 1 : worth[i]) / W * 100) / 100;
+      left = Math.round((left - share) * 100) / 100;
+      return { cur: c, amt: got[c], usd: share };
+    });
+    if (cash) parts.push({ cur: 'USD', amt: cash, usd: cash });
     const date = /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? String(p.date) : new Date(now()).toISOString().slice(0, 10);
     const all = getConvs(), id = clip(p.id, 40) || 'V' + Math.random().toString(36).slice(2, 10);
-    const row = { id, place: pl.id, cur, amt, usd, date, note: clip(p.note, 200), by: w.name, at: new Date(now()).toISOString() };
+    const row = { id, place: pl.id, usd, date, note: clip(p.note, 200), by: w.name, at: new Date(now()).toISOString() };
+    if (parts.length === 1) Object.assign(row, { cur: parts[0].cur, amt: parts[0].amt }); else row.parts = parts;
     const i = all.findIndex(c => c.id === id), was = i >= 0 ? all[i] : null;
     if (i >= 0) all[i] = row; else all.push(row);
     kv.setProp('finConv', JSON.stringify(all.slice(-2000)));
     // Delete in the Activity Log (b296, Gita): an added one goes, a changed one goes back to what it was.
     actLog(w, { seasonId: pl.seasonId, regionId: pl.regionId, location: pl.id }, 'finConv',
-      'Dollars received: ' + amt + ' ' + cur + ' from ' + labelOf(w.P, pl) + ' fetched $' + usd, { type: 'exp', op: 'convSet', id, was });
+      'Dollars received: ' + convText(row).replace(' fetched', ' from ' + labelOf(w.P, pl) + ' fetched'), { type: 'exp', op: 'convSet', id, was });
     return finData(w);
   }
   function convDel(w, p) {
     if (!mayPay(w)) throw new Error('Only Finance can change dollars received.');
     const id = clip(p.id, 40), all = getConvs(), gone = all.find(c => c.id === id);
     kv.setProp('finConv', JSON.stringify(all.filter(c => c.id !== id)));
-    if (gone) actLog(w, {}, 'finConv', 'Dollars received removed: ' + gone.amt + ' ' + gone.cur + ' fetched $' + gone.usd, { type: 'exp', op: 'convDel', id, was: gone });
+    if (gone) actLog(w, {}, 'finConv', 'Dollars received removed: ' + convText(gone), { type: 'exp', op: 'convDel', id, was: gone });
     return finData(w);
   }
   function cleanSeries(o) {
