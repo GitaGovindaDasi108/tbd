@@ -89,10 +89,19 @@ const qty = (loc, b) => { const r = (m.call({ action: 'getState', season: SA }).
     t.push(['stock added, with its note', r.some(x => /25 Books Added to Poland \(Warehouse\) — “carton from the printer”/.test(x.text))]);
     t.push(['a cost is recorded', r.some(x => /Recorded a cost: 12 PLN/.test(x.text))]);
     t.push(['creating an event is recorded', r.some(x => /Created event “Festival”/.test(x.text))]);
-    t.push(['sales are not in it (they keep their own log)', !r.some(x => /sale|Sold/i.test(x.text))]);
+    t.push(['new sales are not in it (they keep their own log)', !r.some(x => /sale|Sold/i.test(x.text))]);
     t.push(['b284: Universal sees every place\'s activity wherever the log is opened, Italy included', r.some(x => /Italy/.test(x.text))]);
     t.push(['a rename cannot be undone here, so it has no Delete', r.some(x => /Renamed an event/.test(x.text) && !x.undo)]);
     t.push(['a transfer can be undone, so it has Delete', !!moved && moved.undo]);
+    t.push(['b295: the loading wheel stops once the log is in', !(await page.isVisible('#alState'))]);
+    // b295 (Gita): editing a sale's payment is recorded.
+    const sale = (m.call({ action: 'getState', season: SA }).state.sales || []).find(x => x.type === 'SALE' && x.location === pl.whLoc);
+    c({ action: 'editSale', saleId: sale.saleId, legs: [{ type: 'Card', cur: 'PLN', amt: 140 }] });
+    await page.click('#modal .x'); await page.waitForTimeout(200);
+    await openLog(page);
+    const ed = (await rows(page)).find(x => /Edited a sale/.test(x.text));
+    console.log('   edit: ' + (ed && ed.text));
+    t.push(['b295: an edited payment shows, before and after', !!ed && /150 PLN Cash → 140 PLN Card/.test(ed.text) && /Poland/.test(ed.text) && !ed.undo]);
     await page.screenshot({ path: shot('1-log') });
 
     await page.fill('#alSearch', 'cost'); await page.waitForTimeout(150);

@@ -121,7 +121,9 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   const fpa = await P({ action: 'finPlaceAdd', name: 'Airport', parent: '' });
   t.push(['b288: a Finance-only place can be renamed in practice', fpa.ok && (await P({ action: 'finPlaceEdit', id: fpa.result.id, name: 'Airport store' })).ok]);
   t.push(['b288: …and removed when nothing is recorded there', (await P({ action: 'finPlaceEdit', id: fpa.result.id, remove: true })).ok]);
-  t.push(['b288: not on the live app yet', !(await L({ action: 'finPlaceEdit', id: 'fp_x', name: 'y' })).ok]);
+  // Live since b295: the live app answers it (an unknown place is refused for that reason, not for being live).
+  const lfe = await L({ action: 'finPlaceEdit', id: 'fp_x', name: 'y' });
+  t.push(['b295: on the live app too', !lfe.ok && /no Finance-only place/.test(lfe.error || '')]);
 
   let bad = 0;
   t.forEach(([n, okk]) => { if (!okk) bad++; console.log((okk ? 'PASS' : 'FAIL'), n); });

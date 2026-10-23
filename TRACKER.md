@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b294**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b295**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,25 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b295
+
+Live app changes (Gita, 2026-10-23). Live unless marked practice.
+- **Every figure has room** (Gita's standing rule: make the space, scroll left to right when needed): the payment table (`.ptg`) sizes its columns to their contents (`minmax(max-content,auto)`) inside `.ptg-scroll`; `fitCards` widens a card grid's columns to its widest card (cards no longer squeeze their names), run after `renderAll`, on wording changes and on resize. On a phone some card grids go one per row as a result.
+- **Same heading everywhere**: the season line always shows, reading "Earthly HQ" at Earthly HQ (and in Finance with no place chosen), so nothing jumps.
+- **Seasons closed last, A to Z** (`seasonsOrdered_` in Code.gs: getState, everywhere_, financeData_).
+- **Finance section switch**: the b293 fade (`#fpBody.fin-in`) is gone; new figures replace the old in one frame.
+- **Phone Expenses**: one amount on the line (the dollars); the original currency moves into the details (`.fx-odet`).
+- **Reimbursement links**: "Anywhere" reads "General" (client combos, server `placeLabel`, error text).
+- **Finance place search on every section**: `finSearchHTML` sits in the nav beside the path (`#fpNav .fin-search`), no longer in the Overview's date filters.
+- **Buttons under the shelf** (`#invMulti`, `data-n`): one row on a computer, two to a line on a phone (a third takes the full line). Uncategorized Sales shows only for Universal and Finance (`financeMe` U/F/FA).
+- **Total Collections tile in four parts** (`.tc-coll`, `tc-q1..q4`): total; costs (red) and donations (donation colour); currencies; Net Sales = collections − costs − donations. Phone: total, currencies, costs and donations without words, Net Sales.
+- **Live now**: Edit Finance-Only Locations (`finPlaceEdit` gate removed; menu button for F/U), and a season's name opening at its Warehouse Overview (`woJump`).
+- **Activity Log: edited sales are logged** (Gita): `editSale`, `editBundle`, `markPaid`, `markPaidBundle` and an Uncategorized edit leave `ACTIVITY_SKIP`; `saleSnap_` words the sale and its payment before and after ("payment 150 PLN Cash → 140 PLN Card"). No Delete on these. New sales still stay out.
+- **Activity Log's loading wheel stops**: `.sp-loading{display:flex}` beat `[hidden]`, so the spinner never went away; `.sp-loading[hidden]{display:none}`.
+- **Practice favicon** on deep blue #1F5F8B, the complement of the saffron robe.
+- **Practice: Deliver**: "Fulfilled from" lists only places that hold every copy needed (`covers`).
+- **Practice: Uncategorized Sales**: Big Books sold and Adventures sold (new sales column `aqty`; `qty` stays Big Books); Big Books fill in from the total (less any Adventures at their usual price) until typed; radios "Estimated # of Books Sold" / "Confirmed # of Books Sold" (`est`). Books add into the Big Books and AoTM tiles, no card of their own; Finance gets `qa` and shares the money by count (`finAgg`).
 
 ## Done in b294
 
