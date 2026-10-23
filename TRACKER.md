@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b293**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b294**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,10 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b294
+
+- **Practice has its own tab icon** (Gita, 2026-10-23): Gurudeva on a yellow square (`favicon-practice*.png/.ico`, `apple-touch-icon-practice.png`); a small script in `<head>` swaps the icon links when the address has `?practice`. Live keeps the plain icon. Gurudeva's robe stays as it is.
 
 ## Done in b293
 
