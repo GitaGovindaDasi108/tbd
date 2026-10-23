@@ -25,8 +25,8 @@ const t = [];
 T.goTo('season');
 T.renderTotals();
 const tiles = store['#totals'].innerHTML;
-t.push(['Total Collections: $80 + $70 + $50 = $200', /Total Collections<\/div><div class="value">~\$200\.00</.test(tiles)]);
-t.push(['expenses at the frozen rate: −$20, Net Sales $180', /Expenses <\/span>−\$20(\.00)?</.test(tiles) && /tc-net">~\$180\.00</.test(tiles)]);
+t.push(['Total Collections: $80 + $70 + $50 = $200', /Total Collections<\/div><div class="value">≈\$200</.test(tiles)]);
+t.push(['expenses at the frozen rate: −$20, Net Sales $180', /Expenses <\/span>−\$20</.test(tiles) && /tc-net">≈\$180</.test(tiles)]);
 
 T.renderCollectionsByRegion('#cbr');
 const cbr = store['#cbr'].innerHTML;
@@ -52,7 +52,7 @@ t.push(['report: Expenses = −$20 (a frozen rate is a hard figure)', /Expenses[
 // Reopened: the rates go, and Italy counts at today's rate again.
 const open = JSON.parse(JSON.stringify(base)); open.regions[0].closedAt = ''; delete open.regions[0].rates;
 T.setUp(open); T.goTo('season'); T.renderTotals();
-t.push(['open again: $50 + $70 + $50 = $170', /Total Collections<\/div><div class="value">~\$170\.00</.test(store['#totals'].innerHTML)]);
+t.push(['open again: $50 + $70 + $50 = $170', /Total Collections<\/div><div class="value">≈\$170</.test(store['#totals'].innerHTML)]);
 
 // At HQ: a closed region's rates come before its closed season's.
 T.setUp({ seasonName: 'Earthly HQ', activeSeason: 'HQ', role: 'admin', books: [{ id: 'b', name: 'Gita', cat: 'big' }],
