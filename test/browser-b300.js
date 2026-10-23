@@ -2,7 +2,7 @@
    b300 (Live app changes): one font size in the navigation drop-downs; the
    totals bar (book cards one width, the rest to the totals, all five on one
    line with Pending Payments, whole numbers, ≈, "Estimated: N"); Earthly HQ's
-   Exp: and Don:; the portal button in the top bar and no Go to Sales Portal in
+   Expenses and Donations (spelled out on a phone too since b302); the portal button in the top bar and no Go to Sales Portal in
    the menu; and in practice WhatsApp Reports and an Uncategorized calculator
    that keeps working when a number is erased. Finance's tab names are in
    browser-finance.js. */
@@ -104,14 +104,14 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
     x.remove(); y.remove(); renderTotals(); return ok || dbg; }).then(v => { if (v !== true) console.log('   layout:', v); return v === true; })]);
   await page.setViewportSize({ width: 390, height: 900 }); await page.waitForTimeout(300);
 
-  /* 4. Earthly HQ: Exp: and Don: in Q2, top right, on a phone too. */
+  /* 4. Earthly HQ: Expenses and Donations in Q2, top right, on a phone too (words everywhere, b302). */
   c({ action: 'donate', saleId: 'H1', location: 'wh_hq', legs: [{ type: 'Cash', cur: 'USD', amt: 7 }], name: 'Donor' }, 'HQ');
   c({ action: 'saveCost', id: 'cost_hq', amt: 3, cur: 'USD', category: 'Other', location: 'wh_hq' }, 'HQ');
   await page.evaluate(() => switchSeason(HQ_ID)); await page.waitForTimeout(1500);
   for (const w of [390, 1150]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(350);
-    t.push(['Earthly HQ at ' + w + 'px: Q2 reads ' + (w < 700 ? 'Exp: and Don:' : 'Expenses and Donations, spelled out') + ', beside Net Sales on its right', await page.evaluate(ph => { const q1 = document.querySelector('#totals .tc-hq .tc-q1'), q2 = document.querySelector('#totals .tc-hq .tc-q2');
+    t.push(['b302: Earthly HQ at ' + w + 'px: Q2 reads Expenses and Donations, spelled out, beside Net Sales on its right', await page.evaluate(() => { const q1 = document.querySelector('#totals .tc-hq .tc-q1'), q2 = document.querySelector('#totals .tc-hq .tc-q2');
       if(!q1 || !q2) return false; const a = q1.getBoundingClientRect(), b = q2.getBoundingClientRect(), x = q2.innerText;
-      return (ph ? /Exp:/.test(x) && /Don:/.test(x) && !/Expenses/.test(x) : /Expenses/.test(x) && /Donations/.test(x) && !/Exp:/.test(x)) && b.left >= a.right - 1 && b.top < a.bottom; }, w < 700)]);
+      return /Expenses/.test(x) && /Donations/.test(x) && !/Exp:|Don:/.test(x) && b.left >= a.right - 1 && b.top < a.bottom; })]);
     const s = await spill(); t.push(['no overflow at Earthly HQ at ' + w + 'px' + (s.length ? ' — ' + s.join(' | ') : ''), !s.length]); }
   await page.evaluate(id => switchSeason(id), SA); await page.waitForTimeout(1500);
   await page.setViewportSize({ width: 1150, height: 900 }); await page.waitForTimeout(200);
@@ -123,12 +123,15 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   t.push(['no Go to Sales Portal row in the menu', !menu.includes('finleave')]);
 
   /* 6. WhatsApp Reports. */
-  await page.evaluate(() => document.querySelector('#sideNav [data-act="wareports"]').click()); await page.waitForTimeout(300);
+  await page.evaluate(() => document.querySelector('#sideNav [data-act="wareports"]').click()); await page.waitForTimeout(1200);
+  // b302: every place you can see, in every season and Earthly HQ.
+  await page.click('#waLoc .pp-in'); await page.fill('#waLoc .pp-in', 'Earthly'); await page.waitForTimeout(150);
+  t.push(['b302: WhatsApp Reports lists Earthly HQ too', (await page.$$eval('#waLoc .pp-row[data-v]', rs => rs.map(r => r.dataset.v))).includes('HQ|season')]);
   t.push(['WhatsApp Reports: three numbered sections and Generate Report', await page.evaluate(() => { const h = [...document.querySelectorAll('#modal .wa-h')].map(e => e.textContent);
     return /^1\. Choose Location/.test(h[0]) && /^2\. Add Two or More Locations Totals/.test(h[1]) && /^3\. Data To Include/.test(h[2]) && /Generate Report/.test(document.querySelector('#waGo').textContent); })]);
   await page.click('#waLoc .pp-in'); await page.fill('#waLoc .pp-in', 'Harinam'); await page.waitForTimeout(150);
   t.push(['1. the location search finds an event', (await page.$$eval('#waLoc .pp-row[data-v]', rs => rs.map(r => r.textContent))).some(x => /Harinam Fair/.test(x))]);
-  await page.click('#waLoc .pp-row[data-v="e:ev_b300"]'); await page.waitForTimeout(100);
+  await page.click('#waLoc .pp-row[data-v="' + SA + '|e:ev_b300"]'); await page.waitForTimeout(100);
   t.push(['b301: every Data To Include box starts empty', await page.$$eval('#modal [data-wr]', cs => cs.length > 0 && cs.every(c => !c.checked))]);
   for (const k of ['books', 'cash', 'pending', 'preorders', 'prepeople', 'stock']) await page.check('#modal [data-wr="' + k + '"]').catch(() => {});
   await page.click('#waGo'); await page.waitForTimeout(200);
@@ -136,7 +139,7 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   t.push(['one place: its own report ("Harinam Fair Totals")', /^\*Harinam Fair Totals\*/.test(rep)]);
   await page.click('#waAdd'); await page.waitForTimeout(150);
   await page.fill('#waMore .wa-row:last-child .pp-in', R0.name); await page.waitForTimeout(150);
-  await page.click('#waMore .wa-row:last-child .pp-row[data-v="r:' + R0.regionId + '"]'); await page.waitForTimeout(100);
+  await page.click('#waMore .wa-row:last-child .pp-row[data-v="' + SA + '|r:' + R0.regionId + '"]'); await page.waitForTimeout(100);
   await page.uncheck('#modal [data-wr="books"]');
   await page.click('#waGo'); await page.waitForTimeout(200);
   rep = await page.$eval('#repText', e => e.value);
@@ -186,6 +189,24 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   t.push(['b301: even after typing in the Estimated one, a new total works it out again from the Confirmed one', await val('#ucA') === String(Math.floor((2400 - nNow * 40) / ma))]);
   await page.check('input[name="ucEstB"][value="1"]'); await page.fill('#ucN', ''); await page.click('#ucCom'); await page.fill('#ucA', ''); await page.click('#ucCom'); await page.waitForTimeout(100);
   t.push(['b301: no sum spelled out (only the two "Based on…" notes)', !/÷/.test(await page.textContent('#ucHow'))]);
+  await page.evaluate(() => closeModal());
+
+  /* b302: three cards on a full computer screen, 372 / 372 / 492 (kept in
+     proportion in the room there is); narrower, the usual equal widths. */
+  const three = async w => { await page.setViewportSize({ width: w, height: 900 }); await page.evaluate(() => goTo('season')); await page.waitForTimeout(400);
+    return page.evaluate(() => { document.querySelectorAll('#totals > .pend, #totals > .other').forEach(e => e.remove()); layoutTotals();
+      return [...document.querySelectorAll('#totals > .tcard')].map(c => c.getBoundingClientRect().width); }); };
+  let ws = await three(1400);
+  t.push(['b302: three cards at 1400px keep 372 : 372 : 492 (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && ws.every((v, i) => Math.abs(v / ws[2] - [372, 372, 492][i] / 492) < 0.01) && ws[2] >= 480]);
+  ws = await three(1150);
+  t.push(['b302: narrower (1150px), the three are one width again (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && Math.max(...ws) - Math.min(...ws) < 2]);
+  await page.setViewportSize({ width: 1150, height: 900 }); await page.evaluate(() => renderAll()); await page.waitForTimeout(300);
+
+  /* b302: Transfer Existing Stock at an event starts "Transfer From" at the region's warehouse. */
+  await page.evaluate(() => goTo('event', 'ev_b300')); await page.waitForTimeout(400);
+  await page.evaluate(() => transferStockModal()); await page.waitForTimeout(400);
+  const xf = await page.$eval('#xfFrom .pp-in', e => e.value);
+  t.push(['b302: Transfer at an event: "Transfer From" starts at ' + R0.name + ' (' + xf + ')', xf.startsWith(R0.name) && !/Harinam/.test(xf)]);
   await page.evaluate(() => closeModal());
 
   /* 8. A closed place stops you before you enter anything. */

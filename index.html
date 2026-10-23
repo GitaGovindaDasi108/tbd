@@ -251,10 +251,10 @@ tr.cbr-sub td{color:var(--muted)}
 @media (max-width:700px){
   .tc-coll{grid-template-columns:minmax(0,1fr);grid-template-areas:"q1" "q3" "q2" "q4"}
   .tc-coll.tc-hq{grid-template-areas:"q1" "q2" "q3" "q4"} .tc-hq .tc-q4{max-width:none}
-  .tc-q2,.tc-q4{text-align:left} .tc-q2{display:flex;gap:10px;flex-wrap:wrap} .tc-q2 .tc-w{display:none}
-  /* Earthly HQ keeps Exp: and Don: top right, beside Net Sales (b300, Gita). */
+  .tc-q2,.tc-q4{text-align:left} .tc-q2{display:flex;gap:10px;flex-wrap:wrap}
+  /* Earthly HQ keeps Expenses and Donations top right, beside Net Sales (b300, Gita); full words on a phone too (b302, Gita). */
   .tc-coll.tc-hq{grid-template-columns:minmax(min-content,1fr) max-content;grid-template-areas:"q1 q2" "q3 q3" "q4 q4"}
-  .tc-hq .tc-q2{display:block;text-align:right} .tc-hq .tc-q2 .tc-ab{display:inline}
+  .tc-hq .tc-q2{display:block;text-align:right}
 }
 .tcard .value-pre{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;color:var(--muted);display:block;margin-left:0;line-height:1.3}   /* the pre-orders underneath the number sold (b301, Gita) */
 @media (max-width:560px){ .tcard .value-pre{display:block;margin-left:0;line-height:1.3} }
@@ -264,7 +264,7 @@ tr.cbr-sub td{color:var(--muted)}
 .tcard .tc-est{grid-area:est;font-size:10.5px;color:var(--muted);font-weight:700;text-align:right;white-space:nowrap;line-height:1.3}
 .tcard .value-est{display:none;font-family:'Inter',sans-serif;font-size:10.5px;font-weight:600;color:var(--muted);line-height:1.4}
 @media (max-width:560px){ .tcard.has-est{display:block} .tcard .tc-est{display:none} .tcard .value-est{display:block} }
-.tcard .tc-ab{font-weight:700;display:none}   /* Exp:/Don: on a phone only; words on a computer (b301, Gita) */   /* on a phone: title, number sold, then the pre-orders on a line of their own (b291, Gita) */
+/* on a phone: title, number sold, then the pre-orders on a line of their own (b291, Gita) */
 .tcard .value-lbl{font-family:'Inter',sans-serif;font-size:12px;font-weight:700;
   letter-spacing:.4px;text-transform:uppercase;color:var(--muted);margin-left:7px}
 .sc-none{font-size:10.5px;color:var(--muted)}
@@ -2376,7 +2376,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b301</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b302</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -6376,7 +6376,7 @@ function renderTotals(){
       /* Total Collections in four parts (b295, Gita): on a computer the total top
          left, costs and donations top right, the currencies bottom left and Net
          Sales bottom right; on a phone total, currencies, costs and donations
-         (no words, just their colours), then Net Sales. */
+         with their words (b302, Gita), then Net Sales. */
       const cs = scopedCosts(), cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
       const du = s.filter(x=>x.type==='DONATION' && received(x)).reduce((t,x)=>t+saleUsd(x), 0);
       /* At Earthly HQ only (b298, Gita): Net Sales alone top left, Expenses
@@ -6389,8 +6389,8 @@ function renderTotals(){
       const D = (v, e) => (Math.round(v*100) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usdT(Math.abs(v));
       if(isHQ()) return `<div class="tcard usd tc-coll tc-hq">
       <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">${D(net, eN)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span><span class="tc-ab">Exp: </span>${D(-cu, eX)}</div>` : ''}${
-        du ? `<div class="sub-don"><span class="tc-w">Donations </span><span class="tc-ab">Don: </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
+        du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
       <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">${D(totUsd, eC)}</div></div>
       <div class="tc-q4"><div class="label">Collections by Currency</div><div class="sub">${money(got)||'nothing collected yet'}</div></div></div>`;
       return `<div class="tcard usd tc-coll">
@@ -6436,9 +6436,17 @@ function layoutTotals(){
     reset();
     return tight;
   };
+  /* Three cards on a full-width computer screen (b302, Gita): the two book
+     cards 372px each and the totals card 492px. The bar is a few pixels short
+     of 372+372+492 plus its two gaps, so the three keep those proportions in
+     the room there is. Any narrower and the widths below take over. */
+  const PX = [372, 372, 492], PXS = PX.reduce((a,b)=>a+b, 0), room3 = W - gap*2;
+  const three = cards.length === 3 && books.length === 2 && coll && !pend && room3 >= PXS*0.98;
+  const ws3 = three ? PX.map(v=>Math.floor(v*Math.min(1, room3/PXS))) : [];
   const eq = Math.floor((W - gap*(cards.length-1)) / cards.length);
-  const oneLine = need => { if(need.some(v=>v > eq + 0.5)) return false;
-    cards.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = eq + 'px'; }); return true; };
+  const oneLine = need => { const ws = three ? ws3 : cards.map(()=>eq);
+    if(need.some((v,i)=>v > ws[i] + 0.5)) return false;
+    cards.forEach((c,i)=>{ c.style.flex = '0 0 auto'; c.style.width = ws[i] + 'px'; }); return true; };
   /* Then a little more compact; then the totals card's four parts in fewer
      columns, so that a narrow card still holds them (b301). */
   const coll0 = cards.find(c=>c.classList.contains('tc-coll'));
@@ -9888,6 +9896,8 @@ function financeMe(me){
 }
 /* Where the person is standing, as a place the server knows. */
 function expHere(){
+  // In Finance, the place Finance is looking at (b302).
+  if(document.body.classList.contains('fin-mode') && FINP.scope) return FINP.scope;
   if(!STATE || isHQ()) return '';
   if(CUR_LEVEL==='event') return CUR_LOC;
   if(CUR_LEVEL==='region') return CUR_REGION;
@@ -12506,13 +12516,24 @@ function finExpTotals(list){
 /* ---- Dollars received (b267, Gita): "took X in Y currency from this event,
    season, region, and received V dollars" — it replaces the estimated dollars
    for that money (server: expenses.js convApply). ---- */
+/* Where you are, for a Finance place menu: the place Finance is looking at,
+   or with none the place open on the sales side (b291; every Finance place
+   menu starts here, b302, Gita). '' when it is not in the list. */
+function finHere(list){
+  const has = id => (list||[]).some(p=>(p.id||p.v)===id);
+  if(FINP.scope && has(FINP.scope)) return FINP.scope;
+  const f = finScopeF();
+  const side = CUR_LEVEL==='event' ? CUR_LOC : CUR_LEVEL==='region' ? CUR_REGION : CUR_LEVEL==='season' ? STATE && STATE.activeSeason : '';
+  return f.e || f.r || f.s || (has(side) ? side : '');
+}
 function finConvModal(edit){
   const D = FIN.D, may = D.mayEdit, list = (D.convs||[]).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   const curs = [...new Set(D.sales.flatMap(x=>Object.keys(x.cur||{})).concat(['EUR','PLN','GBP','INR']))].filter(c=>c!=='USD').sort().concat(['USD']);
   const e = edit || {};
   const items = finPlaces().filter(p=>p.kind!=='all').map(p=>({v:p.id, l:p.name, shown:[p.name, p.rName, p.sName].filter(Boolean).join(' · '), kind:p.kind,
     up:[p.rName, p.sName].filter(Boolean), upIds:[p.r, p.s].filter(x=>x && x!==p.id)}));
-  const shown = (items.find(i=>i.v===e.place)||{}).shown || '';
+  const at0 = edit ? e.place || '' : (h => items.some(i=>i.v===h) ? h : '')(finHere(items));
+  const shown = (items.find(i=>i.v===at0)||{}).shown || '';
   // Several currencies can go in one exchange (b298): "85 € + 6250 ден + $5 fetched $253".
   const partsOf = c => Array.isArray(c.parts) ? c.parts : [{cur:c.cur, amt:c.amt, usd:c.usd}];
   const took = c => partsOf(c).map(x=>cashFmt(x.amt, x.cur)).join(' + ');
@@ -12551,7 +12572,7 @@ function finConvModal(edit){
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   if(!may) return;
-  let place = e.place || '';
+  let place = at0;
   const rowsNow = () => [...document.querySelectorAll('#cvRows .cv-row')].map(r=>({amt:Number(r.querySelector('.cv-amt').value)||0, cur:r.querySelector('.cv-cur').value}));
   const drawRows = rs => { $('#cvRows').innerHTML = (rs.length ? rs : [{amt:'', cur:curs[0]}]).map(rowHTML).join(''); };
   /* "Total collections" (b297, Gita): everything collected at that place, in
@@ -12645,9 +12666,7 @@ function finSendLinkModal(){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button><button type="button" class="btn btn-primary" id="fsGo">Send</button></div>`, true);
   /* Where the link is for (b291, Gita): chosen here, starting where you are:
      the place Finance is looking at, or with none the place open on the sales side. */
-  const f = finScopeF(), P = finLinkPlaces();
-  const side = CUR_LEVEL==='event' ? CUR_LOC : CUR_LEVEL==='region' ? CUR_REGION : CUR_LEVEL==='season' ? STATE && STATE.activeSeason : '';
-  const here = f.e || f.r || f.s || (P.some(p=>p.id===side) ? side : '');
+  const P = finLinkPlaces(), here = finHere(P);
   FIN.sendPlace = here;
   const items = [{v:'', l:'General'}].concat(expPlaceItems(P));
   const it = items.find(i=>i.v===here); const inp = $('#fsPlace .pp-in'); if(inp) inp.value = it ? (it.shown || it.l) : 'General';
@@ -13006,9 +13025,10 @@ async function finLinksRender(focusNew){
           <div class="exp-btns">${off ? '' : send(l)}<button type="button" class="btn btn-ghost btn-xs" data-act="finlinkdel" data-k="${esc(l.key)}">🗑 Delete link</button></div>
         </div></div>`; }).join('') : '<div class="cash-empty">No links yet.</div>'}` + FIN_EXP_END;
   finBindExpTop(); finChartsMount();
-  let place = '';
-  const P = FIN.D, items = [{v:'', l:'General'}].concat(expPlaceItems(finLinkPlaces()));
-  comboBind('finLinkPlace', items, '', v=>{ place = v; });
+  const LP = finLinkPlaces(); let place = finHere(LP);
+  const P = FIN.D, items = [{v:'', l:'General'}].concat(expPlaceItems(LP));
+  { const it = items.find(i=>i.v===place), inp = $('#finLinkPlace .pp-in'); if(it && place && inp) inp.value = it.shown || it.l; }
+  comboBind('finLinkPlace', items, place, v=>{ place = v; });
   void P;
   $('#finLinkMake').addEventListener('click', async ()=>{
     try{
@@ -14846,25 +14866,67 @@ const SPEC_KEY = 'tbs_spec_report';
 /* WhatsApp Reports (b300, practice; Gita: Specialty Reports and Report made
    one). 1. a place anywhere in the season, found by typing; 2. optionally more
    places, all added together; 3. what to include; then Generate. */
-function waPlaces(){
-  const out = [{v:'season', l:(STATE.seasonName||'Season') + ' (the whole season)', shown:STATE.seasonName||'Season', kind:'season',
-    name:STATE.seasonName||'Season', locs:()=>regionsList().flatMap(r=>locsInRegion(r.regionId)).concat((STATE.events||[]).filter(e=>!e.regionId).map(e=>e.eventId))}];
-  regionsList().forEach(r=>{
-    out.push({v:'r:'+r.regionId, l:r.name, shown:r.name, kind:'region', up:[STATE.seasonName], upIds:['season'], name:r.name, locs:()=>locsInRegion(r.regionId)});
-    const inReg = new Set(locsInRegion(r.regionId));
-    subRegionsOf(r.regionId).forEach(su=>out.push({v:'s:'+r.regionId+':'+su.id, l:su.name, shown:su.name + ' · ' + r.name, kind:'event', up:[r.name], upIds:['r:'+r.regionId, 'season'],
-      tag:'Sub-region', name:su.name, locs:()=>eventsOfSub(r.regionId, su.id).map(e=>e.eventId), sale:y=>inReg.has(y.location) && saleSub(y)===su.id}));
-    eventsOfRegion(r.regionId).forEach(e=>out.push({v:'e:'+e.eventId, l:e.name, shown:e.name + ' · ' + r.name, kind:'event', up:[r.name], upIds:['r:'+r.regionId, 'season'],
-      name:e.name, locs:()=>[e.eventId]}));
-  });
+/* Every place you can see, in every season and at Earthly HQ (b302, Gita:
+   "If I have access to see something, any searchable menu will allow me to
+   see it anywhere in the app"). Each season's records come from the server,
+   which sends only what you may see; this device's copy if it can't. */
+async function waStates(){
+  const ids = (STATE.seasons||[]).map(x=>x.seasonId).filter(Boolean);
+  if(!ids.includes(HQ_ID)) ids.push(HQ_ID);
+  const out = {}; out[STATE.activeSeason] = STATE;
+  await Promise.all(ids.filter(id=>!out[id]).map(async id=>{
+    try{ const d = await post({action:'getState', season:id}, {timeoutMs:30000});
+      if(d && d.state && d.state.activeSeason===id){ out[id] = d.state; seasonCacheSave(id, d.state, d.rev); return; } }catch(e){}
+    const c = seasonCacheLoad(id); if(c) out[id] = c.state;
+  }));
   return out;
 }
-function waReportsModal(){
+function inState(st, fn){ const keep = STATE; STATE = st; try{ return fn(); } finally{ STATE = keep; } }
+function waPlaces(states){
+  const out = [], cur = STATE.activeSeason;
+  const ids = Object.keys(states).sort((a,b)=>(a===cur ? -1 : b===cur ? 1 : 0) || (a===HQ_ID ? 1 : b===HQ_ID ? -1 : 0));
+  ids.forEach(sid=>inState(states[sid], ()=>{
+    const sName = sid===HQ_ID ? 'Earthly HQ' : (STATE.seasonName || ((STATE.seasons||[]).find(x=>x.seasonId===sid)||{}).name || 'Season'), S = sid + '|';
+    if(sid===HQ_ID){ out.push({v:S+'season', l:sName, shown:sName, kind:'season', sid, name:sName, locs:locsInRegion(HQ_REGION)}); return; }
+    out.push({v:S+'season', l:sName + ' (the whole season)', shown:sName, kind:'season', sid, name:sName,
+      locs:regionsList().flatMap(r=>locsInRegion(r.regionId)).concat((STATE.events||[]).filter(e=>!e.regionId).map(e=>e.eventId))});
+    regionsList().forEach(r=>{
+      out.push({v:S+'r:'+r.regionId, l:r.name, shown:r.name + ' · ' + sName, kind:'region', up:[sName], upIds:[S+'season'], sid, name:r.name, locs:locsInRegion(r.regionId)});
+      const inReg = new Set(locsInRegion(r.regionId));
+      subRegionsOf(r.regionId).forEach(su=>out.push({v:S+'s:'+r.regionId+':'+su.id, l:su.name, shown:su.name + ' · ' + r.name, kind:'event', up:[r.name, sName], upIds:[S+'r:'+r.regionId, S+'season'],
+        tag:'Sub-region', sid, name:su.name, locs:eventsOfSub(r.regionId, su.id).map(e=>e.eventId), sale:y=>inReg.has(y.location) && saleSub(y)===su.id}));
+      eventsOfRegion(r.regionId).forEach(e=>out.push({v:S+'e:'+e.eventId, l:e.name, shown:e.name + ' · ' + r.name, kind:'event', up:[r.name, sName], upIds:[S+'r:'+r.regionId, S+'season'],
+        sid, name:e.name, locs:[e.eventId]}));
+    });
+  }));
+  return out;
+}
+/* Places from different seasons added together: one set of records, each
+   place keeping the rates it counts at in its own season. */
+function waMerge(list){
+  const locFx = {}, convFx = {}, sub = {regions:{}, events:{}, sales:{}};
+  list.forEach(st=>inState(st, ()=>{
+    (st.regions||[]).map(r=>r.whLoc).concat((st.events||[]).map(e=>e.eventId), (st.holders||[]).map(h=>h.holderId)).filter(Boolean)
+      .forEach(l=>{ const f = frozenAt(l); if(f) locFx[l] = f; });
+    Object.assign(convFx, st.convFx||{});
+    const v = st.subRegions||{}; ['regions','events','sales'].forEach(k=>Object.assign(sub[k], v[k]||{}));
+  }));
+  const cat = k => list.flatMap(st=>st[k]||[]), seen = new Set();
+  const books = cat('books').filter(b=>!seen.has(b.id) && seen.add(b.id));
+  return Object.assign({}, list[0], {sales:cat('sales'), inventory:cat('inventory'), regions:cat('regions'), events:cat('events'),
+    holders:cat('holders'), partners:cat('partners'), books, locFx, convFx, subRegions:sub});
+}
+async function waReportsModal(){
   if(!isAdmin()) return;
-  const items = waPlaces(), byV = v => items.find(x=>x.v===v);
+  openModal(`${mHead('WhatsApp Reports')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  const states = await waStates();
+  if(!document.querySelector('#overlay.show')) return;     // closed while it opened
+  const items = waPlaces(states), byV = v => items.find(x=>x.v===v);
   const offered = REPORT_SECTIONS.filter(([k])=>!(k==='cash' && hideMoney()));
-  const here = CUR_LEVEL==='event' ? 'e:'+CUR_LOC : CUR_REGION ? (curSub() ? 's:'+CUR_REGION+':'+curSub() : 'r:'+CUR_REGION) : 'season';
-  let main = byV(here) ? here : 'season';
+  // Where you are in the app.
+  const S = STATE.activeSeason + '|';
+  const here = S + (isHQ() ? 'season' : CUR_LEVEL==='event' ? 'e:'+CUR_LOC : CUR_REGION ? (curSub() ? 's:'+CUR_REGION+':'+curSub() : 'r:'+CUR_REGION) : 'season');
+  let main = byV(here) ? here : S + 'season';
   const more = [];                               // the extra places' rows, each {id, v}
   const picks = new Set();   // every box empty each time (b301, Gita)
   const canShare = typeof navigator !== 'undefined' && !!navigator.share;
@@ -14904,10 +14966,13 @@ function waReportsModal(){
     const vs = [main].concat(more.map(r=>r.v)).filter((v,i,a)=>v && byV(v) && a.indexOf(v)===i);
     if(!vs.length) return '(choose a location)';
     if(!picks.size) return '(choose what to include)';
-    const groups = vs.map(v=>{ const x = byV(v); return {name:x.name, locs:x.locs(), sale:x.sale}; });
+    const groups = vs.map(v=>{ const x = byV(v); return {name:x.name, locs:x.locs, sale:x.sale, sid:x.sid}; });
     const locs = [...new Set(groups.flatMap(g=>g.locs))];
     const tests = groups.map(g=>g.sale || (y=>g.locs.includes(y.location)));
-    return buildReport('', {sections:picks, locs, groups, saleOk:y=>tests.some(f=>f(y)), title:groups.map(g=>g.name).join(' + ')}) || '(nothing to report for this)';
+    // One season: its own records; several: added together.
+    const sids = [...new Set(groups.map(g=>g.sid))];
+    const st = sids.length===1 ? states[sids[0]] : waMerge(sids.map(id=>states[id]));
+    return inState(st, ()=>buildReport('', {sections:picks, locs, groups, saleOk:y=>tests.some(f=>f(y)), title:groups.map(g=>g.name).join(' + ')})) || '(nothing to report for this)';
   };
   const box = $('#repText');
   $('#waGo').addEventListener('click', ()=>{
@@ -20025,7 +20090,9 @@ function transferStockModal(opts){
   if(isSeller()) return;
   const places = stockPlaces();
   const reg = currentRegion();
-  const here = CUR_LEVEL==='event' ? CUR_LOC : (CUR_LEVEL==='region' && reg ? reg.whLoc : '');
+  /* At an event, the lowest level, "Transfer From" starts at the region's
+     warehouse (b302, Gita); the one menu that doesn't start where you are. */
+  const here = (CUR_LEVEL==='event' || CUR_LEVEL==='region') && reg ? reg.whLoc : '';
   let fromCtx = null, cancelLoad = ()=>{};
   let storage = '', travel = '';
   let sws = null;                      // sub-warehouses chosen for an event's books

@@ -508,11 +508,12 @@ const API = 'http://api.test/';
     t.push(['…which shows more', (await rowsN()) > 50]);
     await own.evaluate(() => closeModal());
     t.push(['b260: every Gmail button opens in the one Gmail tab', await own.evaluate(() => typeof GMAIL_TAB === 'string' && GMAIL_TAB === 'tbsGmail')]);
-    // b265: the form starts at Earthly HQ; titles have room above them; a quiet tick; exact dollars; dollars last.
+    // b265: titles have room above them; a quiet tick; exact dollars; dollars last.
     // b299: Finance at Earthly HQ takes the sales side there too, so come back into the season first.
     await own.evaluate(async () => { if (isHQ()) await switchSeason((STATE.seasons || []).find(s => s.seasonId !== HQ_ID).seasonId); CUR_REGION = 'rg_zg'; goTo('event', 'ev_z1'); }).catch(() => {});
     await own.evaluate(() => expensesModal()); await own.waitForTimeout(1500);
-    t.push(['b265: a new expense starts at Earthly HQ, even opened at an event', await own.evaluate(() => EXP.form.location === 'rg_hq' && /Earthly HQ/.test(document.querySelector('#xLocC .pp-in').value))]);
+    // b302 (Gita): every searchable menu starts where you are, so the event (b265 started it at Earthly HQ).
+    t.push(['b302: a new expense starts where you are: the event (' + await own.evaluate(() => EXP.form.location) + ')', await own.evaluate(() => EXP.form.location === 'ev_z1')]);
     t.push(['…and the event can still be chosen', await own.evaluate(() => EXP.opt.places.some(p => p.id === 'ev_z1'))]);
     t.push(['b265: each title has room between it and the box above', await own.evaluate(() => {
       const a = document.querySelector('#xDate'), l = [...document.querySelectorAll('#modal .exp-form .field > label')].find(x => /What was it for/.test(x.textContent));

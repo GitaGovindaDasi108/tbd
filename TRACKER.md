@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b301**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b302**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,23 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b302
+Live app changes (Gita, 2026-10-23 20:42 IST).
+- Totals cards: "Expenses" and "Donations" spelled out everywhere, phone included (the `.tc-ab` Exp:/Don: spans are gone).
+- Totals bar, three cards (two book cards and the totals card, no Other or Pending): 372 / 372 / 492px, kept in proportion
+  in the room there is, when the bar is at least 98% of 1,236px plus its gaps (`layoutTotals`, `PX`). Narrower, the b301
+  equal widths and phone layout take over.
+- Static rule (Gita): every searchable menu lists everything you can see, anywhere in the app, and starts where you are.
+  - WhatsApp Reports lists every season, its regions, sub-regions and events, and Earthly HQ (`waStates` fetches each
+    season's state, `waPlaces(states)`, item values `seasonId|season`, `|r:`, `|s:`, `|e:`). Places from different
+    seasons in one report are merged (`waMerge`), each keeping its own season's rates (`locFx` from `frozenAt`).
+  - Finance place menus start at the place Finance is looking at (`finHere`): Reimbursement Links "For", Dollars received
+    (new entries), Send Reimbursements Link.
+  - Add an Expense starts where you are (`expHere`, Finance's own place in Finance); the server only falls back to Earthly
+    HQ when that place isn't in your list (`expOptions`).
+- Transfer Existing Stock: "Transfer From" starts at the region's warehouse at an event (the one exception to the rule).
+- Tests: browser-b300 covers the words, the three-card widths, WhatsApp listing Earthly HQ and the Transfer default.
 
 ## Done in b301
 Live app changes (Gita, 2026-10-23 18:49 IST).
