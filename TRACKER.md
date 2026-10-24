@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b305**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b306**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,33 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b306
+
+Live app changes (Gita, 24 Oct):
+- Reimbursement Links: "Send by" WhatsApp or Email ticks (one at a time); the box fills from the person picked (`finSendLinkModal`).
+- Pay-back fields that ask for a phone (any method, not only Zelle/PayPal) fill from the Profile or the link's own details (`expPayFit`), on the public link form too.
+- Auto-filled fields refill whenever they are left blank (pay-back fields, the price calculator). Rule kept in team memory.
+- "To pay back: $X (1 INR = …)" gone everywhere (`expPayAmtLine` returns '').
+- Refresh shows no old layout: who you are is kept on the device (`ME_CACHE`, key tbs_me, cleared with the session) and `html.app-boot` hides the page until the first full draw (4s safety).
+- Earthly HQ: "Net Sales by Season" replaces Collections by Season: currencies, Total Collections, Expenses, Donations, Net Sales (`seasonNetRows` / `renderNetBySeason`; same sums as the HQ totals card). Its 📋 report is part `netseason`.
+- Earthly HQ Distribution by Title: three to a row again (tighter spacing on `#hqTitleList`).
+- Totals cards sized to what they hold, now live (`layoutTotals`; `window.TOT_EVEN` keeps the older even layout for tests).
+- Tables that scroll sideways fade on the edge with more and get a round ‹ › arrow there (`sxCue`, `SX_SEL`).
+- Finance Overview table: no dotted underline under books sold.
+- Gross, Expenses and Net charts: a colour key box by each figure, and ≈ on estimated figures (`finPairsHTML`).
+- Hidden at Earthly HQ is hidden in its summaries too (rollup `seasonHidden` = HQ's hidden list; Sales by Season drop-downs skip titles hidden on the page).
+- ⇅ Arrange opens only that section (`ARRANGE` holds the panel's key; `arrKey` / `arrOn`).
+- Region price calculator (`priceGrid`, shared): a price saved or typed by hand (`data-hand`) is never changed or emptied by the calculator or the "fill all" row; an emptied box is filled back in when you leave it.
+- Uncategorized Sales: with nothing known, the money left after the estimated Big Books is worked out as Adventures.
+- In transit: the sending warehouse shows "In transit (sent): N" on its cards and in its region's Warehouse Overview (`outTransitQty`).
+
+Practice:
+- Dollars Received: no records inside the pop-up (they are on the Overview); the button reads "💵 Enter Dollars Received", on the right.
+- Transfer log: moves between a warehouse and its devotee storage are listed as sub-warehouse moves (⇄, blue).
+- Laksmi › 💲 Change Prices (`pricesModal`): Region / Event tabs, Season / Region / Event menus like Change Location Order (`placePickModal`); a region's currencies, titles and prices with the calculator; an event's own prices. Event Prices left the Books menu.
+- ✎ Edit Location (`placeEditModal`) replaces Edit Season / Edit Region / Rename Event: name and dates for any season, region or event. Edit region (from elsewhere) shows only name and dates; currencies and prices stay as they are.
+- Tests: new browser-b306.js; browser-arrange, -b293, -b300, -finance and -hq updated.
 
 ## Done in b305
 

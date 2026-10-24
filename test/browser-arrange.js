@@ -185,6 +185,9 @@ const API = 'http://api.test/';
     t.push(['season: Distribution by Title has the ⇅ too', await own.evaluate(() => { const g = document.querySelector('#seasonTitleList'); const h = g && g.closest('.panel').querySelector(':scope > h2'); return !!(h && h.querySelector('.arr-tg') && h.querySelector('.arr-tg').offsetParent); })]);
     t.push(['…and the Warehouse Overview', await own.evaluate(() => { const g = document.querySelector('#whOverview'); const h = g && g.closest('.panel').querySelector(':scope > h2'); return !!(h && h.querySelector('.arr-tg')); })]);
     await own.evaluate(() => document.querySelector('#seasonTitleList').closest('.panel').querySelector('.arr-tg').click()); await own.waitForTimeout(300);
+    // b306 (Gita): only that section opens for arranging, not every section on the page.
+    t.push(['b306: arranging Distribution by Title leaves the Warehouse Overview closed', await own.evaluate(() =>
+      !!document.querySelector('#seasonTitleList .arranging, #seasonTitleList.arranging') && !document.querySelector('#whOverview .arranging, #whOverview.arranging'))]);
     // b271: titles nothing was distributed of only show while arranging.
     const sOrder = await titles();
     await own.$eval(ST, g => g.scrollIntoView({ block: 'center' })); await own.waitForTimeout(200);
@@ -214,7 +217,7 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal()); await own.waitForTimeout(300);
     t.push(['"Hidden here" › Show puts it back', (await shelf(own)).includes(ev[1])]);
     await own.click('#arrDock [data-act="arrange"]'); await own.waitForTimeout(200);
-    t.push(['Sita (not Universal) gets no "Hide here"', await sita.evaluate(() => { ARRANGE = true; renderAll(); const n = document.querySelectorAll('#invGrid .arr-hide').length; ARRANGE = false; renderAll(); return n; }) === 0]);
+    t.push(['Sita (not Universal) gets no "Hide here"', await sita.evaluate(() => { ARRANGE = arrKey(document.querySelector('#invGrid')); renderAll(); const n = document.querySelectorAll('#invGrid .arr-hide').length; ARRANGE = ''; renderAll(); return n; }) === 0]);
 
     /* ---- Sita on her phone: an order of its own; arranges by finger ---- */
     const ph = await open('sita@example.com', 'Sita', 390, { phone: true, height: 760 });
