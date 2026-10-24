@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b303**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b304**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,20 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b304
+Live app changes (Gita, 2026-10-24):
+- Totals bar: every card the same width on one line (b302/b303 set widths gone); Collections by Currency wraps into balanced lines, a figure never split (`moneyBal`, `.tc-bal` text-wrap:balance, `.tc-cur` nowrap).
+- Profile: WhatsApp Number and Email (pref `contact`, server auth `contactOf`); Send Reimbursements Link suggests people and fills their number or email; Add an Expense fills empty pay-back fields from the contact.
+- Transfer Existing Stock opens with From and To blank; ⬇ Transfer In / ⬆ Transfer Out / ↩ Return fill them.
+- Finance pie charts: figures only on parts of 8% or more (`finDonutSVG`).
+- Expense estimate note only while an amount is still worked out from a rate (`expIsEst`: exact dollars or an exact pay-back amount means no note).
+- Change Location Order: one menu item (key `reorderevent`, so it keeps its menu place; `reorderregion` gone) opening a pop-up with Season / Region / Event tabs by role (`locOrderKinds`: U all three, SL region+event, RL event). Server `reorder` takes kind `season` (`_seasons.sort`).
+- Add Stock: a new title is named on the device (`bk_` + 8) and queued with its stock (`commit` addBook with `id`), so Save is instant and works offline. Server `doAddBook` keeps a valid unused `p.id`; when the name already exists it records `bookAlias:<id>` and `unaliasBooks_` points later writes' book ids at the existing title. The new line shows its category.
+- Books in Transit: each batch is one line (name, WhatsApp number, number of books) with the rest under the arrow (`shipCardHTML` is a `details.sh-line`, open state kept in `SH_OPEN`).
+- Arrange in list view: drag and drop into place (rows make room); card view still swaps.
+- A little more room under the top bar's buttons (`body.hdr2 .util-bar`).
+- Practice: Dollars Received section has a 💵 Dollars received button, search, Currency filter, sort (Date/Place/Dollars), From/To dates and the date on each line; shelf Name and Language filters (`invFilterDraw`, `INV_F`); Multiple Book Sale filled book by book like Add Stock (`MB_LINES`, `#mbLines`).
 
 ## Done in b303
 Live app changes (Gita, 2026-10-24 07:15 IST).

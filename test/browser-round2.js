@@ -38,6 +38,8 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
   const t = [], errors = [];
   async function open(query, width, tweak) {
     const page = await browser.newPage({ viewport: { width: width || 1100, height: 950 } });
+    // b304: a batch in transit is one line with a drop-down; these tests work inside it, so it opens.
+    await page.addInitScript(() => new MutationObserver(() => document.querySelectorAll('details.sh-line:not([open])').forEach(d => { d.open = true; })).observe(document, { subtree: true, childList: true }));
     page.on('pageerror', e => errors.push(e.message));
     page.on('dialog', d => { page.__dialogs = (page.__dialogs || []).concat(d.message()); d.accept(); });
     await page.route('**/*', async route => {
@@ -101,6 +103,7 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     // 2. Transfer pop-ups.
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(300);
     await page.evaluate(() => transferStockModal()); await page.waitForTimeout(300);
+    await page.click('#xfOut'); await page.waitForTimeout(300);   // b304: opens blank; Transfer Out fills From
     await pick(page, 'xfTo', 'Festival', 'Festival');
     page.__dialogs = [];
     await page.click('#xfAll'); await page.waitForTimeout(200);

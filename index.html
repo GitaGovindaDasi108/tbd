@@ -69,6 +69,7 @@ header.masthead{
 }
 /* Kept in normal flow so it stays put at any window width, full screen included. */
 .util-bar{max-width:1280px;margin:0 auto;padding:7px 18px 0;
+  /* b304 (Gita): a touch more room between the top bar's buttons and the gold line. */
   display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
 .status{display:flex;align-items:center;gap:6px;background:rgba(0,0,0,.18);
   padding:4px 10px;border-radius:999px;font-size:11.5px;color:#FFF3DE;white-space:nowrap}
@@ -242,6 +243,7 @@ tr.cbr-sub td{color:var(--muted)}
 .tc-coll{display:grid;grid-template-columns:minmax(min-content,1fr) minmax(min-content,max-content);grid-template-areas:"q1 q2" "q3 q4";column-gap:10px;row-gap:2px;align-items:start}
 .tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
 .tc-q2 > div, .tc-coll .label{white-space:nowrap}
+.tc-bal{text-wrap:balance} .tc-bal .tc-cur{white-space:nowrap}
 /* A narrow totals card on a computer (b301): its parts in fewer columns. */
 .tc-coll.tc-st1{grid-template-columns:minmax(min-content,1fr) max-content;grid-template-areas:"q1 q2" "q3 q3" "q4 q4"} .tc-coll.tc-st1 .tc-q4{text-align:left;max-width:none}
 .tc-coll.tc-st2{grid-template-columns:minmax(min-content,1fr);grid-template-areas:"q1" "q2" "q3" "q4"} .tc-coll.tc-st2 .tc-q2, .tc-coll.tc-st2 .tc-q4{text-align:left;max-width:none}
@@ -499,6 +501,15 @@ svg.qb-chart{width:100%;height:auto;max-width:720px;display:block}
 /* Shipments and devotee storage */
 .sh-card{border:1px solid var(--line-d);border-radius:11px;padding:10px 12px;margin-bottom:9px;background:var(--paper)}
 .sh-card.part{border-left:4px solid #2F6FB5}
+.sh-line{padding:8px 12px}
+.sh-sum{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;min-width:0}
+.sh-sum::-webkit-details-marker{display:none}
+.sh-nm{flex:1 1 auto;min-width:0;font-weight:800;font-size:13.5px;color:var(--plum);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sh-ph{flex:0 1 auto;min-width:0;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sh-car{flex:0 0 auto;color:var(--muted);font-size:11px;transition:transform .15s}
+.sh-line[open] .sh-car{transform:rotate(90deg)}
+@media (max-width:640px){ .sh-sum{gap:6px} .sh-line{padding:8px 10px} .sh-ph{font-size:11.5px} .sh-ph .wa{padding-left:5px;padding-right:5px} }
+.sh-line .sh-in{display:block;margin-top:8px}
 .sh-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}
 .sh-route{font-weight:800;font-size:13.5px;color:var(--plum)}
 .sh-count{font-weight:800;font-size:13px;color:#2F6FB5;white-space:nowrap}
@@ -1088,6 +1099,28 @@ body.has-na .overlay{z-index:10000}
 .arranging > .arr-lift, .arranging > .arr-lift *{pointer-events:none !important}
 .arranging > .arr-lift{position:fixed;z-index:60;margin:0;cursor:grabbing;
   box-shadow:0 12px 28px rgba(0,0,0,.25);border-color:var(--saffron)}
+.mbl{display:flex;flex-direction:column;gap:8px;margin:4px 0 8px}
+/* Title and language on top, how many underneath (b304). */
+.mbl-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 22px;grid-template-areas:"t l x" "q q q";gap:6px 8px;align-items:center;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.mbl-t{grid-area:t} .mbl-l{grid-area:l} .mbl-x{grid-area:x} .mbl-qs{grid-area:q}
+.mbl-row select{min-width:0;width:100%;font-family:'Inter',sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid var(--line-d);border-radius:8px;background:#fff;color:var(--ink)}
+.mbl-row select:disabled{opacity:.55}
+.mbl-qs{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.mbl-q{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;letter-spacing:.3px;text-transform:uppercase;color:var(--muted)}
+.mbl-q input{width:64px;box-sizing:border-box;text-align:center;padding:6px 4px;border:1.5px solid var(--line-d);border-radius:8px;background:#fff;color:var(--ink);font-size:14px}
+.mbl-q input:disabled{opacity:.55}
+.mbl-st{font-size:12px;color:var(--muted);white-space:nowrap;margin-left:auto}
+.mbl-st.none{color:var(--red,#C0392B)}
+.mbl-x{border:none;background:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0}
+.mbl-add{margin-bottom:6px}
+@media (max-width:640px){
+  .mbl-row{grid-template-columns:minmax(0,1fr) 22px;grid-template-areas:"t x" "l l" "q q"}
+}
+.inv-filter{display:flex;flex-wrap:wrap;gap:8px 12px;margin:0 0 10px}
+.inv-filter[hidden]{display:none}
+.inv-filter .field{flex:1 1 160px;min-width:0;margin:0}
+.inv-filter input,.inv-filter select{width:100%;min-width:0;box-sizing:border-box}
+#invGrid > [data-id][hidden]{display:none !important}
 .arranging > .arr-gap{border:2px dashed var(--saffron);background:#FBF6EC;box-shadow:none;min-height:0}
 /* The book it will swap with (b248). */
 .arranging > .arr-target{outline:3px solid var(--saffron);outline-offset:2px;opacity:.75}
@@ -1711,11 +1744,12 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fx-w{font-weight:600;color:var(--plum);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fx-a{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
 /* Dollars Received lines (b303): where | the exchange | Edit, Delete | arrow. */
-.dr-row{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr) auto 14px;grid-template-areas:"w x b c";gap:10px;align-items:center;cursor:pointer;font-size:13.5px}
+.dr-row{display:grid;grid-template-columns:auto minmax(0,max-content) minmax(0,1fr) auto 14px;grid-template-areas:"d w x b c";gap:10px;align-items:center;cursor:pointer;font-size:13.5px}
 .dr-w{grid-area:w;font-weight:600;color:var(--plum);overflow-wrap:anywhere}
 .dr-x{grid-area:x;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
-.dr-btns{grid-area:b;display:flex;gap:4px} .dr-row .li-chev{grid-area:c}
-@media (max-width:560px){ .dr-row{grid-template-columns:minmax(0,1fr) 14px;grid-template-areas:"w c" "x c" "b c";row-gap:4px} .dr-x{text-align:left} .dr-btns{justify-content:flex-end} }
+.dr-btns{grid-area:b;display:flex;gap:4px} .dr-row .li-chev{grid-area:c} .dr-row .dr-d{grid-area:d}
+.dr-top{margin:0 0 6px}
+@media (max-width:560px){ .dr-row{grid-template-columns:auto minmax(0,1fr) 14px;grid-template-areas:"d w c" "x x c" "b b c";row-gap:4px} .dr-x{text-align:left} .dr-btns{justify-content:flex-end} }
 .fx-item{padding:7px 10px}
 .fx-det>div{margin:2px 0}
 .fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
@@ -1915,6 +1949,7 @@ body.has-va{padding-top:44px}
 .seg{display:flex;border:1.5px solid var(--line-d);border-radius:10px;overflow:hidden}
 .seg button{flex:1;background:var(--paper);color:var(--muted);border:none;padding:9px 8px;font-size:12.5px;font-weight:700;letter-spacing:.3px}
 .seg button.on{background:var(--plum);color:var(--gold-l)}
+.ro-tabs{margin:0 0 10px}.ro-tabs:empty{display:none}
 .bulk{display:flex;flex-direction:column}
 .bulk-head,.bulk-row{display:grid;grid-template-columns:1fr 58px 148px 58px;gap:10px;align-items:center}
 /* Five columns where adding and setting are separate things. */
@@ -2126,6 +2161,7 @@ body.reimb-mode #overlay .modal h3 button.x{display:none}
 
 /* ---------- Responsive ---------- */
 .portal-btn{font-weight:700}
+body.hdr2 .util-bar{padding-bottom:7px}
 body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"]{display:none !important}
 @media (max-width:900px){
   .cols{grid-template-columns:1fr} .cols-2{grid-template-columns:1fr}
@@ -2136,6 +2172,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   .deity{height:62px} .deity img{height:62px}
   .masthead-inner{gap:10px;padding:4px 12px 11px}
   .util-bar{justify-content:center;padding:8px 12px 6px}   /* a touch of room above the yellow line (b299, Gita) */
+  body.hdr2 .util-bar{padding-bottom:10px}   /* and a touch more (b304, Gita) */
   body.has-sn .util-bar{padding-left:62px}   /* room for the ☰ at the top left */
 }
 @media (max-width:560px){
@@ -2390,7 +2427,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b303</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b304</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2464,7 +2501,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
           title="Copy the shelf for WhatsApp">📋</button></h2>
-      <div class="body"><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
+      <div class="body"><div class="inv-filter no-edit" id="invFilter" hidden></div><div class="inv-grid" id="invGrid"></div><div id="invMulti"></div></div>
     </section>
     <div class="log-col">
       <section class="panel" data-fold="log">
@@ -4118,6 +4155,12 @@ function youModal(){
         <div class="rp-add"><input id="myName" type="text" maxlength="40" value="${esc(ME.name)}">
           <button type="button" class="btn btn-primary btn-sm" id="myNameSave">Save</button></div>
         <div class="hint">Signed in as ${esc(ME.email)}. Your name goes on the sales, cash and changes you record.</div></div>
+      <div class="row2">
+        <div class="field"><label>WhatsApp Number</label><input id="myWa" type="tel" maxlength="40" autocomplete="tel" placeholder="+48 600 000 000" value="${esc(((ME.prefs||{}).contact||{}).whatsapp||'')}"></div>
+        <div class="field"><label>Email</label><input id="myMail" type="email" maxlength="120" autocomplete="email" placeholder="you@example.com" value="${esc(((ME.prefs||{}).contact||{}).email||'')}"></div>
+      </div>
+      <div class="cost-acts"><button type="button" class="btn btn-primary btn-sm" id="myContactSave">Save</button></div>
+      <div class="hint">When a form is sent to you, or you fill one in, these are filled in for you.</div>
       ${usable.length > 1 ? `<div class="cash-sub">Working as</div>
         ${usable.map(g=>`<label class="ppl-pick"><input type="radio" name="actAs" value="${esc(g.id)}" ${cur && cur.id===g.id?'checked':''}>
           <span>${grantLine(g)}</span></label>`).join('')}
@@ -4131,6 +4174,12 @@ function youModal(){
       <button class="btn btn-primary" onclick="closeModal()">Done</button></div>`);
   $('#myNameSave').addEventListener('click', async ()=>{
     try{ ME = (await post({action:'setMyName', name: $('#myName').value})).result; renderAll(); toast('Your name is now ' + ME.name); }
+    catch(e){ $('#modalErr').textContent = e.message; }
+  });
+  $('#myContactSave').addEventListener('click', async ()=>{
+    const v = {whatsapp: $('#myWa').value.trim(), email: $('#myMail').value.trim()};
+    try{ const r = await post({action:'setMyPref', key:'contact', value: v.whatsapp || v.email ? v : null}); if(r && r.result) ME = r.result;
+      $('#modalErr').textContent = ''; toast('Saved'); }
     catch(e){ $('#modalErr').textContent = e.message; }
   });
   document.querySelectorAll('#modal input[name="actAs"]').forEach(r=>r.addEventListener('change', ()=>{
@@ -5773,10 +5822,7 @@ function renderAdmin(){
     // HQ is always there: no events, nothing to reorder, never closed or deleted.
     cols[3].push(`<button class="btn" data-act="editregion">Edit Earthly HQ</button>`);
   }else{
-  cols[3].push(season
-    ? `<button class="btn" data-act="pick" data-then="eventorder">↕ Change Event Order…</button>`
-    : `<button class="btn" data-act="reorder" data-kind="event">↕ Change Event Order</button>`);
-  cols[3].push(`<button class="btn" data-act="reorder" data-kind="region">↕ Change Regional Order</button>`);
+  if(locOrderKinds().length) cols[3].push(`<button class="btn" data-act="reorder">↕ Change Location Order</button>`);
   if(season){
     const sn = (STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason) || {};
     cols[3].push(`<button class="btn" data-act="seasonedit" data-id="${esc(STATE.activeSeason)}">Edit Season</button>`);
@@ -5858,7 +5904,7 @@ const SN_ITEMS = {
   whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations']
 };
 /* How Reorganize Menu names the items that read differently at each level (b292). */
-const MO_NAMES = {reorderevent:['↕','Change Event Order'], reorderregion:['↕','Change Regional Order'], editplace:['✎','Edit / Rename (season, region or event)'],
+const MO_NAMES = {reorderevent:['↕','Change Location Order'], editplace:['✎','Edit / Rename (season, region or event)'],
   subregions:['🗺','Sub-regions'], salesupload:['📤','Upload Sales Spreadsheet'], closeplace:['🔒','Close / Reopen (season, region or event)'], deleteplace:['🗑','Delete (season, region or event)']};
 if(PRACTICE) SN_ITEMS.practice = ['🧪','Leave Practice'];
 function snTopActivity(show){
@@ -5877,7 +5923,7 @@ const SN_SECTIONS = [
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','expenses']},
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
   // The place's own actions (b292: arranged like the rest; anything new of its own still shows, after these).
-  {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','reorderregion','editplace','subregions','salesupload','closeplace','deleteplace']},
+  {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','editplace','subregions','salesupload','closeplace','deleteplace']},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','wareports','specreport','sharelinks','people','report']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
@@ -6020,8 +6066,10 @@ function snKey(html){
   if(/Practice Space/.test(html)) return 'practice';
   let act = (html.match(/data-act="([^"]+)"/) || [])[1] || '';
   if(act==='pick') act = (html.match(/data-then="([^"]+)"/) || [])[1] || act;
-  // Change Event Order and Change Regional Order are both "reorder": two items, not one (b292).
-  if(act==='reorder') return 'reorder' + ((html.match(/data-kind="([^"]+)"/) || [])[1] || '');
+  /* b304 (Gita): Change Event Order and Change Regional Order became one item,
+     Change Location Order. It keeps the event order's key, so it stays where the
+     menu had it; the regional one is gone from the menu and Reorganize Menu. */
+  if(act==='reorder') return 'reorderevent';
   return SN_PLACE_KEY[act] || act;
 }
 function renderSideNav(fams){
@@ -6358,6 +6406,10 @@ function renderTotals(){
   });
   const money=o=>Object.keys(o).filter(c=>Math.abs(o[c]) > 0.004)
     .sort().map(c=>cashTrim(o[c],c)).join(' · ');
+  /* Collections by currency in lines of about the same length, never split
+     inside a figure (b304, Gita): each figure keeps its " ·" with it. */
+  const moneyBal=o=>{ const xs = Object.keys(o).filter(c=>Math.abs(o[c]) > 0.004).sort().map(c=>cashTrim(o[c],c));
+    return xs.map((x,i)=>`<span class="tc-cur">${esc(x)}${i < xs.length-1 ? ' ·' : ''}</span>`).join(' '); };
 
   // A Seller sees their own sales and cash, never the event's totals (b223).
   if(plainSeller()){ $('#totals').innerHTML = sellerTilesHTML(); return; }
@@ -6412,12 +6464,12 @@ function renderTotals(){
       <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
         du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
       <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">${D(totUsd, eC)}</div></div>
-      <div class="tc-q4"><div class="label">Collections by Currency</div><div class="sub">${money(got)||'nothing collected yet'}</div></div></div>`;
+      <div class="tc-q4"><div class="label">Collections by Currency</div><div class="sub tc-bal">${moneyBal(got)||'nothing collected yet'}</div></div></div>`;
       return `<div class="tcard usd tc-coll">
       <div class="tc-q1"><div class="label">Total Collections</div><div class="value">${D(totUsd, eC)}</div></div>
       <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
         du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
-      <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
+      <div class="tc-q3 sub tc-bal">${moneyBal(got)||'nothing collected yet'}</div>
       <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">${D(totUsd-cu-du, eN)}</div></div></div>`;
     })()}
 `}`;
@@ -6455,20 +6507,11 @@ function layoutTotals(){
     reset();
     return tight;
   };
-  /* On a full-width computer screen (Gita): with three cards the two book
-     cards 372px each and the totals card 492px (b302); with four, the totals
-     card 465px and the other three 258.33px each (b303). The bar is a few
-     pixels short of those plus its gaps, so the cards keep those proportions
-     in the room there is. Any narrower and the widths below take over. */
-  const PXN = {3:[372, 492], 4:[258.33, 465]}[cards.length];
-  const PX = PXN && coll ? cards.map(c=>c === coll ? PXN[1] : PXN[0]) : null;
-  const PXS = PX ? PX.reduce((a,b)=>a+b, 0) : 0, room3 = W - gap*(cards.length-1);
-  const three = !!PX && room3 >= PXS*0.98;
-  const ws3 = three ? PX.map(v=>Math.floor(v*Math.min(1, room3/PXS))) : [];
   const eq = Math.floor((W - gap*(cards.length-1)) / cards.length);
-  const oneLine = need => { const ws = three ? ws3 : cards.map(()=>eq);
-    if(need.some((v,i)=>v > ws[i] + 0.5)) return false;
-    cards.forEach((c,i)=>{ c.style.flex = '0 0 auto'; c.style.width = ws[i] + 'px'; }); return true; };
+  /* Every card the same width, all on one line (b304, Gita: "just make
+     everything even"; b302/b303's set widths are gone). */
+  const oneLine = need => { if(need.some(v=>v > eq + 0.5)) return false;
+    cards.forEach(c=>{ c.style.flex = '0 0 auto'; c.style.width = eq + 'px'; }); return true; };
   /* Then a little more compact; then the totals card's four parts in fewer
      columns, so that a narrow card still holds them (b301). */
   const coll0 = cards.find(c=>c.classList.contains('tc-coll'));
@@ -6594,6 +6637,7 @@ function renderInventory(){
   </div>`;
   h = donSlot >= 0 ? h.slice(0, donSlot) + donHtml + h.slice(donSlot) : h + donHtml;
   $('#invGrid').innerHTML=h;
+  invFilterDraw();
   // One-line entry point for a multi-book transaction, under the grid.
   /* Titles kept off this event's shelf are still one tap away to pre-order —
      people ask for books that were never on the table. So is every other title
@@ -8961,7 +9005,10 @@ function bundleModal(edit){
   const stockAt = id => invQty(loc,id) + (backIn[id]||0);
   // As for one book: the rest waits under "Specialized Sales" unless this sale already uses it.
   const bSpecOpen = !!edit;          // an edit shows everything the transaction holds
-  const rows = bundleBooks().map(b=>{
+  /* Book by book, like Add Stock (b304, practice; Gita): type the title, then
+     the language, then how many; "Add another book" for the next. */
+  const MB_LINES = PRACTICE;
+  const rows = MB_LINES ? '' : bundleBooks().map(b=>{
     const stock = stockAt(b.id);
     return `<div class="mb-row" data-book="${b.id}"
         data-pln="${b.pln}" data-eur="${b.eur}" data-usd="${b.usd}">
@@ -8993,7 +9040,8 @@ function bundleModal(edit){
       ${swChoices.length ? `<div class="field mb-from"><label>Selling from</label>
         <select id="mbFrom"><option value="${esc(CUR_LOC)}">Warehouse</option>
           ${swChoices.map(x=>`<option value="${esc(x.id)}">${esc(x.label)} — ${esc(x.name)}</option>`).join('')}</select></div>` : ''}
-      <div class="mb-list">${rows}</div>
+      ${MB_LINES ? `<div class="mbl" id="mbLines"></div>
+        <button type="button" class="btn btn-ghost btn-sm mbl-add" id="mbAddLine">＋ Add another book</button>` : `<div class="mb-list">${rows}</div>`}
       <div id="mbWarn" class="warn" hidden></div>
       <div id="preWarn"></div>
       <div class="mb-count" id="mbCount">Nothing selected yet.</div>
@@ -9202,6 +9250,81 @@ function bundleModal(edit){
     [...$('#paySeg').children].forEach(x=>x.classList.toggle('on',x===b));
     applyPayMode();
   });
+  if(MB_LINES){
+    const mbl = [];
+    bundleBooks().forEach(b=>{ const c = counts[b.id]; if(c && c.buy + c.pre) mbl.push({t:bookLang(b).base, b:b.id, buy:c.buy, pre:c.pre}); });
+    if(!mbl.length) mbl.push({t:'', b:'', buy:0, pre:0});
+    const CAT_NM = [['big','Big Books'],['aotm','Adventures'],['other','Other']];
+    const titles = () => { const seen = new Map(); bundleBooks().forEach(b=>{ const k = bookLang(b).base; if(!seen.has(k)) seen.set(k, {base:k, cat:catOfBook(b), books:[]}); seen.get(k).books.push(b); }); return [...seen.values()]; };
+    const sync = () => {
+      Object.keys(counts).forEach(id=>{ counts[id].buy = 0; counts[id].pre = 0; });
+      mbl.forEach(l=>{ if(l.b && counts[l.b]){ counts[l.b].buy += l.buy; counts[l.b].pre += l.pre; } });
+      pamt.dataset.touched = ''; fillTotal(); updateCount();
+    };
+    const drawLines = () => {
+      const T = titles(), used = new Set(mbl.map(l=>l.b).filter(Boolean));
+      $('#mbLines').innerHTML = mbl.map((l,i)=>{
+        const g = T.find(x=>x.base===l.t);
+        const tOpts = `<option value="">Choose a title…</option>` + CAT_NM.map(([c,nm])=>{ const mine = T.filter(x=>x.cat===c);
+          return mine.length ? `<optgroup label="${nm}">${mine.map(x=>`<option value="${esc(x.base)}"${x.base===l.t?' selected':''}>${esc(x.base)}</option>`).join('')}</optgroup>` : ''; }).join('');
+        const lOpts = `<option value="">Choose the language…</option>` + (g ? g.books.map(b=>{ const taken = used.has(b.id) && b.id!==l.b;
+          return `<option value="${esc(b.id)}"${b.id===l.b?' selected':''}${taken?' disabled':''}>${esc(bookLang(b).lang || '(no language given)')}${taken?' — already above':''}</option>`; }).join('') : '');
+        return `<div class="mbl-row" data-i="${i}">
+          <select class="mbl-t" data-i="${i}" aria-label="Title">${tOpts}</select>
+          <select class="mbl-l" data-i="${i}" aria-label="Language"${g?'':' disabled'}>${lOpts}</select>
+          ${mbl.length > 1 || l.t ? `<button type="button" class="mbl-x" data-i="${i}" title="Take this book off">✕</button>` : '<span class="mbl-x"></span>'}
+          <div class="mbl-qs">
+            <label class="mbl-q"><span>Buy</span><input type="number" min="0" step="1" inputmode="numeric" class="mbl-buy" data-i="${i}" value="${l.buy||''}" placeholder="0"${l.b?'':' disabled'}></label>
+            <label class="mbl-q"><span>Pre-order</span><input type="number" min="0" step="1" inputmode="numeric" class="mbl-pre" data-i="${i}" value="${l.pre||''}" placeholder="0"${l.b?'':' disabled'}></label>
+            <span class="mbl-st${l.b && stockAt(l.b)<=0?' none':''}">${l.b ? stockAt(l.b) + ' in stock' : ''}</span>
+          </div>
+        </div>`; }).join('');
+    };
+    const box = $('#mbLines');
+    box.addEventListener('change', e=>{
+      const el = e.target, l = mbl[Number(el.dataset.i)]; if(!l) return;
+      if(el.classList.contains('mbl-t')){
+        l.t = el.value; l.b = ''; l.buy = 0; l.pre = 0;
+        const g = titles().find(x=>x.base===l.t), used = new Set(mbl.map(z=>z.b));
+        const free = g ? g.books.filter(b=>!used.has(b.id)) : [];
+        if(g && g.books.length===1 && free.length===1) l.b = free[0].id;   // one language: chosen for you
+        drawLines(); sync();
+        const q = box.querySelector(`.mbl-buy[data-i="${el.dataset.i}"]`); if(l.b && q) q.focus();
+        return;
+      }
+      if(el.classList.contains('mbl-l')){
+        l.b = el.value; l.buy = 0; l.pre = 0; drawLines(); sync();
+        const q = box.querySelector(`.mbl-buy[data-i="${el.dataset.i}"]`); if(l.b && q) q.focus();
+      }
+    });
+    box.addEventListener('input', e=>{
+      const el = e.target, l = mbl[Number(el.dataset.i)]; if(!l || !l.b) return;
+      const n = Math.max(0, Math.floor(Number(el.value) || 0));
+      if(el.classList.contains('mbl-buy')){
+        // Buying takes copies off this shelf, so it cannot go past what is here.
+        const have = stockAt(l.b) - mbl.reduce((t,z)=>t + (z!==l && z.b===l.b ? z.buy : 0), 0), w = $('#mbWarn');
+        if(n > have){
+          w.innerHTML = `${have > 0 ? 'Only <b>'+have+'</b>' : '<b>No</b>'} × ${esc((bookById(l.b)||{}).name||'')} at ${esc(locName(loc))}.
+            ${swChoices.length ? 'Choose where it is being sold from above, or pre-order it.' : 'Pre-order the rest instead.'}`;
+          w.hidden = false; l.buy = Math.max(0, have); el.value = l.buy || '';
+        } else { w.hidden = true; l.buy = n; }
+      }
+      if(el.classList.contains('mbl-pre')) l.pre = n;
+      sync();
+    });
+    box.addEventListener('click', e=>{
+      const x = e.target.closest('.mbl-x'); if(!x) return;
+      mbl.splice(Number(x.dataset.i), 1);
+      if(!mbl.length) mbl.push({t:'', b:'', buy:0, pre:0});
+      $('#mbWarn').hidden = true; drawLines(); sync();
+    });
+    $('#mbAddLine').addEventListener('click', ()=>{
+      mbl.push({t:'', b:'', buy:0, pre:0}); drawLines();
+      const sel = box.querySelector(`.mbl-t[data-i="${mbl.length-1}"]`); if(sel) sel.focus();
+    });
+    if($('#mbFrom')) $('#mbFrom').addEventListener('change', ()=>drawLines());
+    drawLines();
+  }
   applyPayMode(); updateCount(); refreshAll();
 
   if(edit){
@@ -10243,6 +10366,15 @@ function expDraw(){
     : o.me.link && !o.me.name ? `<div class="field"><label>Your name</label>
       <input id="xWho" type="text" maxlength="40" placeholder="So Finance knows who it was"></div>` : '';
   f.same = f.same || {};
+  /* From the person's Profile (b304, Gita): their WhatsApp number or email
+     fills the payment details it fits, where nothing is typed yet. */
+  if(method && !edit && !P){
+    const who = f.forEmail ? (o.people||[]).find(x=>x.email===f.forEmail) : null;
+    const c = f.forEmail ? (who ? {whatsapp: who.whatsapp, email: who.cemail} : null) : o.me.contact;
+    const fit = k => !c ? '' : k==='phone' || k==='revolut' ? c.whatsapp : k==='wise' ? c.email : k==='zelle' || k==='paypal' ? c.email || c.whatsapp : k==='name' || k==='holder' ? (f.forEmail ? (who||{}).name : o.me.name) || '' : '';
+    f.prof = f.prof || {};
+    method.fields.forEach(fl=>{ const v = fit(fl.k); if(v && (!f.payTo[fl.k] || f.payTo[fl.k]===f.prof[fl.k])){ f.payTo[fl.k] = v; f.prof[fl.k] = v; } });
+  }
   const fields = method ? method.fields.map(fl=>{
     const src = expSameHas(fl.k), same = src && f.same[fl.k];
     return `<div class="field"><label>${esc(fl.label)}${fl.req?'':' (optional)'}</label>
@@ -10649,6 +10781,9 @@ async function expPayAmt(x){
 // Typed on the check page (b267): "I have the exact numbers for reimbursement".
 const expExactOf = x => EXP.revExact && Number(x.payExact) > 0 ? Math.round(Number(x.payExact) * 100) / 100 : 0;
 const EXP_EST_NOTE = 'This is an estimate - reimbursement rate may change based on current exchange rates.';
+/* The estimate warning only for an amount still worked out from a rate (b304,
+   Gita): exact dollars typed in, or an exact amount to pay back, is no estimate. */
+const expIsEst = x => expOtherCur(x) && !expExactOf(x) && !(Number(x.usdAmt) > 0);
 // "≈ ₹3,040 (1 € = ₹89.43 on 2026-10-17)", or that the rate could not be found.
 function expPayAmtLine(x){
   if(!expOtherCur(x)) return '';
@@ -10688,7 +10823,7 @@ async function expReview(all){
           <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b></div>`).join('')}
         <div class="exp-bi exp-tot"><span class="exp-bi-t"><b>Total</b></span><b class="exp-bi-a">${esc(tot)}</b></div>
         ${pay ? `<div class="exp-bi exp-tot"><span class="exp-bi-t"><b>To be paid back</b></span><b class="exp-bi-a" id="xrPay">${esc(pay)}</b></div>` : ''}</div>
-      ${fx.length ? `<div class="exp-est">${esc(EXP_EST_NOTE)}</div>
+      ${fx.length ? `<div class="exp-est" id="xrEst"${fx.some(expIsEst) ? '' : ' hidden'}>${esc(EXP_EST_NOTE)}</div>
         <label class="exp-rb"><input type="checkbox" id="xrExact" ${EXP.revExact ? 'checked' : ''}> I have the exact numbers for reimbursement</label>` : ''}
       ${all.some(x=>x.kind==='reimburse') ? `<div class="hint">To be paid back by <b>${esc([...new Set(all.filter(x=>x.kind==='reimburse').map(x=>x.method))].join(', '))}</b>.</div>` : ''}
       <div class="err" id="modalErr"></div>
@@ -10702,7 +10837,8 @@ async function expReview(all){
     document.querySelectorAll('#modal [data-xex]').forEach(inp=>inp.addEventListener('input', ()=>{
       const x = all[Number(inp.dataset.xex)]; x.payExact = inp.value;
       const l = document.querySelector('#modal [data-fxline="' + inp.dataset.xex + '"]'); if(l) l.textContent = expPayAmtLine(x);
-      const pe = $('#xrPay'); if(pe && back.every(out)) pe.textContent = finTotals(back, y=>[out(y)]); }));
+      const pe = $('#xrPay'); if(pe && back.every(out)) pe.textContent = finTotals(back, y=>[out(y)]);
+      const en = $('#xrEst'); if(en) en.hidden = !fx.some(expIsEst); }));
     bind();
   };
   const bind = () => {
@@ -10818,7 +10954,7 @@ function reimbPublicDone(list){
     <div class="m-body">
       <div class="reimb-ok">✓</div>
       <div class="cash-lede">${list.length > 1 ? 'Your ' + list.length + ' expenses have' : 'Your expense has'} been received and will be processed at the earliest convenience.</div>
-      ${list.some(expOtherCur) ? `<div class="exp-est">${esc(EXP_EST_NOTE)}</div>` : ''}
+      ${list.some(expIsEst) ? `<div class="exp-est">${esc(EXP_EST_NOTE)}</div>` : ''}
       <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>${expOtherCur(x) ? `<br><span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
         Finance will be in touch${P.phone ? ' on ' + esc(P.phone) : P.email ? ' at ' + esc(P.email) : ''} if anything is needed.</div>
     </div>
@@ -12546,7 +12682,7 @@ function finRender0(){
       ${PRACTICE ? `<div class="fin-two"><section class="fin-col" id="finExS">${finExpSecHTML()}</section>
         <section class="fin-col" id="finDrS">${finDrSecHTML()}</section></div>`
       : `<div class="fin-one"><section class="fin-col" id="finExS">${finExpSecHTML()}</section></div>`}`;
-    finBindExpSec(); finChartsMount(); return;
+    finBindExpSec(); finDrBind(); finChartsMount(); return;
   }
   if(sec==='reimb' && !FIN_RB_TABS.includes(FIN.rb.tab)) FIN.rb.tab = FIN.rb.tab==='done' ? 'paid' : 'pending';
   if(sec==='reimb' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
@@ -12738,7 +12874,7 @@ function finExpBarHTML(T, only){
 function finSendLinkModal(){
   openModal(`${mHead('Reimbursement Links')}<div class="m-body">
       <div class="fin-send-row">
-        <div class="field"><label for="fsName">Name</label><input id="fsName" type="text" maxlength="60" autocomplete="off" placeholder="Who it is for"></div>
+        <div class="field"><label for="fsName">Name</label><div class="pp"><input id="fsName" type="text" maxlength="60" autocomplete="off" placeholder="Who it is for"><div class="pp-list" id="fsPeople" hidden></div></div></div>
         <div class="field"><label for="fsTo">Email or WhatsApp number</label><input id="fsTo" type="text" maxlength="120" autocomplete="off" placeholder="name@mail.com or +48 600 000 000"></div>
       </div>
       <div class="field"><label>For</label>${comboHTML('fsPlace', '', 'Search for a season, region or event')}</div>
@@ -12753,7 +12889,22 @@ function finSendLinkModal(){
   const it = items.find(i=>i.v===here); const inp = $('#fsPlace .pp-in'); if(inp) inp.value = it ? (it.shown || it.l) : 'General';
   comboBind('fsPlace', items, here, v=>{ FIN.sendPlace = v; });
   finBindSend();
-  const n = $('#fsName'); if(n) n.focus();
+  /* Someone with a Profile (b304, Gita): pick their name and their WhatsApp
+     number (or, with none, their email) fills itself in. */
+  const n = $('#fsName'), lst = $('#fsPeople');
+  const people = () => ((EXP.opt && EXP.opt.people) || []).filter(p=>p.whatsapp || p.cemail || p.email);
+  if(!EXP.opt) post({action:'expOptions'}).then(r=>{ EXP.opt = EXP.opt || r.result; }).catch(()=>{});
+  const show = () => { const q = n.value.trim().toLowerCase();
+    const rs = q ? people().filter(p=>p.name.toLowerCase().includes(q)).slice(0, 8) : [];
+    lst.innerHTML = rs.map(p=>`<div class="pp-row" data-em="${esc(p.email)}"><span class="no-edit">${esc(p.name)}</span></div>`).join('');
+    lst.hidden = !rs.length; };
+  n.addEventListener('input', show);
+  n.addEventListener('blur', ()=>setTimeout(()=>{ lst.hidden = true; }, 150));
+  lst.addEventListener('mousedown', e=>e.preventDefault());
+  lst.addEventListener('click', e=>{ const r = e.target.closest('.pp-row'); if(!r) return;
+    const p = people().find(x=>x.email===r.dataset.em); if(!p) return;
+    n.value = p.name; $('#fsTo').value = p.whatsapp || p.cemail || p.email; lst.hidden = true; });
+  if(n) n.focus();
 }
 function finWaExpBar(T, L){
   finExpFigs(T).forEach(m=>{ L.push(m.l + ' - ' + m.v); if(m.sub) L.push('   ' + m.sub); if(m.ex) L.push('   ' + m.ex.replace(/^(Expected \w+) /, '$1 - ')); });
@@ -12848,12 +12999,31 @@ function finDrPlace(id){ const p = finPlaces().find(x=>x.id===id); return p ? [p
 function finDrList(){ return ((FIN.D && FIN.D.convs) || []).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))); }
 function finDrSwap(c){ return finDrParts(c).map(x=>cashTrim(x.amt, x.cur)).join(' + ') + ' → ' + finUsd(c.usd); }
 function finDrRate(c){ return finDrParts(c).filter(x=>x.cur!=='USD' && x.amt > 0).map(x=>'1 ' + x.cur + ' = $' + (Math.round(x.usd / x.amt * 10000) / 10000)).join(' · '); }
+/* What Dollars Received shows, searched, filtered and sorted (b304). */
+function finDrShown(){
+  const R = FIN.dr = FIN.dr || {q:'', sort:'date', dir:-1, curs:new Set(), open:'', from:'', to:''};
+  const curOf = c => finDrParts(c).map(x=>x.cur).filter(c=>c!=='USD'), q = R.q.trim().toLowerCase();
+  return finDrList().filter(c=>(!q || [finDrPlace(c.place), c.label, c.note, finDrSwap(c), c.date].join(' ').toLowerCase().includes(q))
+      && (!R.curs.size || curOf(c).some(x=>R.curs.has(x))) && (!R.from || String(c.date) >= R.from) && (!R.to || String(c.date) <= R.to))
+    .sort((x,y)=>R.dir * (R.sort==='amount' ? (x.usd||0)-(y.usd||0) : R.sort==='name' ? String(x.label||finDrPlace(x.place)).localeCompare(String(y.label||finDrPlace(y.place))) : String(x.date).localeCompare(String(y.date))));
+}
 function finDrSecHTML(){
-  const list = finDrList(), may = FIN.D && FIN.D.mayEdit;
+  const all = finDrList(), may = FIN.D && FIN.D.mayEdit;
   FIN.drOpen = FIN.drOpen || new Set();
+  const R = FIN.dr = FIN.dr || {q:'', sort:'date', dir:-1, curs:new Set(), open:'', from:'', to:''};
+  const curOf = c => finDrParts(c).map(x=>x.cur).filter(c=>c!=='USD');
+  const curs = [...new Set(all.flatMap(curOf))].sort();
+  [...R.curs].forEach(c=>{ if(!curs.includes(c)) R.curs.delete(c); });
+  /* Search, filter and sort as the expenses beside it (b304, Gita). */
+  const list = finDrShown();
+  const facet = `<span class="log-filter-wrap"><button type="button" class="flt-btn${R.curs.size?' on':''}" data-act="drflt">Currency${R.curs.size ? ' (' + R.curs.size + ')' : ''} ▾</button>
+      <div class="log-filter" ${R.open ? '' : 'hidden'}>${curs.length ? curs.map(c=>`<label class="lf-row"><input type="checkbox" data-drc="${esc(c)}" value="${esc(c)}" ${R.curs.has(c)?'checked':''}> <span>${esc(c)}</span> <span class="fin-n">${all.filter(x=>curOf(x).includes(c)).length}</span></label>`).join('') : '<div class="muted-note">None yet.</div>'}
+        <div class="lf-foot"><button type="button" class="btn btn-ghost btn-sm" data-act="drclr" ${R.curs.size?'':'disabled'}>Clear</button>
+          <button type="button" class="btn btn-primary btn-sm" data-act="drflt">Done</button></div></div></span>`;
   const row = c => { const open = FIN.drOpen.has(c.id), where = finDrPlace(c.place) || c.label || '';
     return `<div class="log-item fx-item dr-item${open?' open':''}" data-drid="${esc(c.id)}">
-      <div class="dr-row" data-act="dropen" data-id="${esc(c.id)}"><span class="dr-w no-edit">${esc(c.label || where)}</span>
+      <div class="dr-row" data-act="dropen" data-id="${esc(c.id)}"><span class="fx-d dr-d"><span class="fx-dl">${esc(c.date||'')}</span><span class="fx-ds">${esc(finShortDate(c.date||''))}</span></span>
+        <span class="dr-w no-edit">${esc(c.label || where)}</span>
         <span class="dr-x">${esc(finDrSwap(c))}</span>
         ${may ? `<span class="dr-btns"><button type="button" class="btn btn-ghost btn-xs" data-act="dredit" data-id="${esc(c.id)}">✏️ Edit</button><button type="button" class="btn btn-ghost btn-xs" data-act="drdel" data-id="${esc(c.id)}" title="Delete">🗑 Delete</button></span>` : ''}
         <span class="li-chev">▶</span></div>
@@ -12863,7 +13033,30 @@ function finDrSecHTML(){
         <div><span class="k">Notes</span> <span class="v no-edit">${esc(c.note || '—')}</span></div>
       </div></div>`; };
   return `<div class="fin-sh"><h3 class="fin-h3">Dollars Received</h3></div>
-    <div class="fin-ex fin-dr">${list.map(row).join('') || '<div class="cash-empty">None written down yet.</div>'}</div>`;
+    ${may ? `<div class="dr-top"><button type="button" class="btn btn-primary btn-sm" data-act="drnew">💵 Dollars received</button></div>` : ''}
+    <div class="fin-filters">
+      <label class="fin-search">Search<input type="search" id="finDrQ" value="${esc(R.q)}" placeholder="Places, currencies, notes…"></label>
+      <label>Sort by<select id="finDrSort">${[['date','Date'],['name','Place'],['amount','Dollars']].map(([k,l])=>`<option value="${k}" ${R.sort===k?'selected':''}>${l}</option>`).join('')}</select></label>
+      <label>Order<select id="finDrDir"><option value="-1" ${R.dir<0?'selected':''}>${R.sort==='date'?'Newest first':R.sort==='amount'?'Largest first':'Z to A'}</option>
+        <option value="1" ${R.dir>0?'selected':''}>${R.sort==='date'?'Oldest first':R.sort==='amount'?'Smallest first':'A to Z'}</option></select></label>
+      <label>From<input type="date" data-drd="from" value="${esc(R.from)}"></label>
+      <label>To<input type="date" data-drd="to" value="${esc(R.to)}"></label>
+    </div>
+    <div class="fin-flt"><span class="sortbar">Filter ${facet}</span></div>
+    <div class="fin-ex fin-dr">${list.map(row).join('') || `<div class="cash-empty">${all.length ? 'Nothing matches.' : 'None written down yet.'}</div>`}</div>`;
+}
+function finDrRender(){
+  const box = $('#finDrS'); if(!box) return;
+  box.innerHTML = finDrSecHTML(); finDrBind();
+}
+function finDrBind(){
+  const R = FIN.dr, root = $('#finDrS'); if(!root || !R) return;
+  const q = $('#finDrQ');
+  q.addEventListener('input', ()=>{ R.q = q.value; const pos = q.selectionStart; finDrRender(); const n = $('#finDrQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
+  $('#finDrSort').addEventListener('change', e=>{ R.sort = e.target.value; R.dir = R.sort==='name' ? 1 : -1; finDrRender(); });
+  $('#finDrDir').addEventListener('change', e=>{ R.dir = Number(e.target.value); finDrRender(); });
+  root.querySelectorAll('[data-drc]').forEach(c=>c.addEventListener('change', ()=>{ if(c.checked) R.curs.add(c.value); else R.curs.delete(c.value); finDrRender(); }));
+  root.querySelectorAll('[data-drd]').forEach(el=>el.addEventListener('change', ()=>{ R[el.dataset.drd] = el.value; finDrRender(); }));
 }
 function finBindExpSec(){
   const E = FIN.ex, root = $('#finExS'); if(!root) return;
@@ -12887,8 +13080,8 @@ function finWaExpenses(L, noBar){
   if(list.length) L.push('');
   list.forEach(x=>L.push(x.date + ' ' + x.who + ': ' + x.desc + ' (' + x.type + ') - ' + finExpAmt(x) + (x.status==='recorded' ? '' : ' · ' + (EXP_STATUS[x.status]||x.status))));
   // Dollars Received, as the page shows it (b303, practice).
-  const dr = PRACTICE && FINP.sec==='expenses' ? finDrList() : [];
-  if(dr.length){ L.push('', '*DOLLARS RECEIVED*'); dr.forEach(c=>L.push((c.label || finDrPlace(c.place)) + ': ' + finDrSwap(c))); }
+  const dr = PRACTICE && FINP.sec==='expenses' ? finDrShown() : [];
+  if(dr.length){ L.push('', '*DOLLARS RECEIVED*'); dr.forEach(c=>L.push(c.date + ' ' + (c.label || finDrPlace(c.place)) + ': ' + finDrSwap(c))); }
 }
 
 /* Reimbursements: everything still to be paid back, those done, the links
@@ -13353,8 +13546,8 @@ function finTop(by, max){
   if(rows.length > max){ const rest = rows.slice(max-1); rows = rows.slice(0, max-1).concat([{k:'Everything else', v:rest.reduce((t,r)=>t+r.v, 0)}]); }
   return rows;
 }
-/* The ring itself, with each part's figure beside it (b303, Gita), just
-   outside the ring, a line apart where parts are small. */
+/* The ring itself, with each large part's figure beside it (b303, b304
+   Gita: 8% of the ring or more), just outside the ring. */
 function finDonutSVG(rows, total, label){
   const R = 110, r0 = 78, F = 15, cw = F * 0.6, PX = 170 / 240;
   const pt = (r, a) => [120 + r*Math.cos(a), 120 + r*Math.sin(a)];
@@ -13365,7 +13558,7 @@ function finDonutSVG(rows, total, label){
     const da = total ? x.v/total*Math.PI*2 : 0, a2 = a + da, mid = a + da/2, txt = finUsd(x.v, x.e);
     const d = da >= Math.PI*2 - 1e-6 ? arc(a, a + Math.PI) + ' ' + arc(a + Math.PI, a2 - 1e-4) : arc(a, a2);
     paths.push(`<path d="${d}" fill="${x.c}" stroke="#fff" stroke-width="2" stroke-linejoin="round" data-k="${esc(x.k)}"><title>${esc(x.k)}: ${esc(txt)} (${finPct(x.p)})</title></path>`);
-    if(da > 0) outs.push({txt, mid});
+    if(da >= Math.PI*2*0.08) outs.push({txt, mid});   // only the large parts carry their figure (b304, Gita); the key has them all
     a = a2;
   });
   // Outside labels a line apart on each side.
@@ -18055,7 +18248,8 @@ function addStockModal(opts){
       if(l.mode==='newlang') pick += `<div class="ln-new">
           <input type="text" class="ln-nllang" placeholder="Language, e.g. Hindi">
           <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="lang">Add ${esc(g?g.base:'')} in this language</button></div>`;
-      if(b && b.staged) pick += ` <span class="sp-new-tag" title="Not in the catalogue yet: Save adds it. Take the line off (✕) and it is never added.">new title, added when you save</span>`;
+      // Its kind shows on the line too (b304, Gita).
+      if(b && b.staged) pick += ` <span class="sp-new-tag" title="Not in the catalogue yet: Save adds it. Take the line off (✕) and it is never added.">${({big:'Big Book',aotm:'Adventures',other:'Other'})[b.cat]||'Big Book'} · new title, added when you save</span>`;
       else if(b && !carriedHere(b)) pick += ` <span class="sp-new-tag" title="Saving switches it on for ${esc(ctx.region.name||'the region')}">new here</span>`;
       const x = (l.t || l.mode) ? `<button type="button" class="sp-x" data-unline="${i}" title="Take this line off">✕</button>` : '';
       const c = b ? cols(b) : null;
@@ -18231,19 +18425,20 @@ function addStockModal(opts){
      The server answers with the id of a title that already exists, too, so a
      screen behind the catalogue never makes a second copy (b245). Only what
      the save carries is added; a line taken off is never added. */
-  async function addStaged(ids){
+  /* b304 (Gita: "very slow ... have it be instant"): the device names the new
+     title itself and queues it, so the stock is saved straight behind it, both
+     shown at once, without waiting for the server's answer. A title another
+     device added meanwhile is matched by its name on the server. */
+  function addStaged(ids){
     const map = {};
     for(const nb of staged){
       if(!ids.includes(nb.id)) continue;
       if(!nb.realId){
-        let id = '';
-        try{ id = (await postWrite({action:'addBook', name:nb.name, cat:nb.cat, orExisting:true}) || {}).result || ''; }
-        catch(e){ throw new Error('Could not add ' + nb.name + ' to the catalogue (' + (e.message||'no answer') + '). Nothing was saved; press Save again.'); }
-        if(!id) throw new Error('Could not add ' + nb.name + ' to the catalogue. Nothing was saved; press Save again.');
+        const id = 'bk_' + Math.random().toString(36).slice(2,10).padEnd(8,'0');
         nb.realId = id;
         const row = {id, name:nb.name, cat:nb.cat, usd:0, pln:0, eur:0, partnerId:''};
-        [BASE, STATE].forEach(st=>{ if(st && !(st.books||[]).some(b=>b.id===id)) (st.books=st.books||[]).push(row); });
-        cacheSave();
+        commit({action:'addBook', id, name:nb.name, cat:nb.cat, orExisting:true},
+          st=>{ if(!(st.books||[]).some(b=>b.id===id)) (st.books=st.books||[]).push(Object.assign({}, row)); }, null, {keepOpen:true, anySeason:true});
       }
       map[nb.id] = nb.realId;
     }
@@ -18267,15 +18462,13 @@ function addStockModal(opts){
     const btn = $('#spSave');
     const realise = async used => {
       if(!used.some(id=>staged.some(nb=>nb.id===id))) return true;
-      btn.disabled = true;
       try{
-        const map = await addStaged(used), rid = id => map[id] || id;
+        const map = addStaged(used), rid = id => map[id] || id;
         extras = extras.map(rid);
         lines.forEach(l=>{ if(map[l.b]) l.b = map[l.b]; });
         for(let k=staged.length-1; k>=0; k--) if(map[staged[k].id]) staged.splice(k, 1);
         return rid;
       }catch(e){ err(e.message); return false; }
-      finally{ btn.disabled = false; }
     };
     const applyOn = st=>{
       const r=(st.regions||[]).find(x=>x.regionId===ctx.regionId);
@@ -19217,6 +19410,44 @@ function makeSortable(container, onDrop){
 }
 
 
+/* Name and Language filters over the shelf (b304, practice; Gita: "For Kartika
+   we have way too many books to just have it be a scan and tap"). Typed once,
+   they stay as the shelf is drawn again. The donation card always shows. */
+const INV_F = {q:'', lang:''};
+function invFilterDraw(){
+  const box = document.getElementById('invFilter'), grid = document.getElementById('invGrid');
+  if(!box || !grid) return;
+  box.hidden = !PRACTICE;
+  if(!PRACTICE) return;
+  const cards = [...grid.querySelectorAll(':scope > [data-id]')].filter(c=>c.dataset.id!==DONATION_ID);
+  const langs = [...new Set(cards.map(c=>bookLang(bookById(c.dataset.id)||{}).lang).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  if(INV_F.lang && !langs.includes(INV_F.lang)) INV_F.lang = '';
+  if(!box.querySelector('#invFq')){
+    box.innerHTML = `<div class="field"><label for="invFq">Name</label><input id="invFq" type="search" placeholder="Search by title" autocomplete="off"></div>
+      <div class="field"><label for="invFl">Language</label><select id="invFl"></select></div>`;
+    $('#invFq').addEventListener('input', e=>{ INV_F.q = e.target.value; invFilterApply(); });
+    $('#invFl').addEventListener('change', e=>{ INV_F.lang = e.target.value; invFilterApply(); });
+  }
+  const sel = $('#invFl'), opts = `<option value="">All languages</option>` + langs.map(l=>`<option value="${esc(l)}"${l===INV_F.lang?' selected':''}>${esc(l)}</option>`).join('');
+  if(sel.innerHTML !== opts) sel.innerHTML = opts;
+  if($('#invFq').value !== INV_F.q) $('#invFq').value = INV_F.q;
+  invFilterApply();
+}
+function invFilterApply(){
+  const grid = document.getElementById('invGrid'); if(!grid) return;
+  const q = INV_F.q.trim().toLowerCase(), lang = INV_F.lang;
+  let shown = 0;
+  grid.querySelectorAll(':scope > [data-id]').forEach(c=>{
+    if(c.dataset.id===DONATION_ID){ c.hidden = false; return; }
+    const bl = bookLang(bookById(c.dataset.id)||{});
+    const ok = (!q || (bl.base + ' ' + bl.lang).toLowerCase().includes(q)) && (!lang || bl.lang===lang);
+    c.hidden = !ok; if(ok) shown++;
+  });
+  let none = grid.querySelector(':scope > .inv-none');
+  if((q || lang) && !shown){ if(!none){ none = document.createElement('div'); none.className = 'cash-empty inv-none'; none.textContent = 'No titles match.'; grid.prepend(none); } }
+  else if(none) none.remove();
+}
+
 /* ---- Arranging the books (b243 in practice; live from b250) ----
    A small ⇅ beside the list/cards switch, on every panel of book cards (the
    shelf, Distribution by Title, the Warehouse Overview, at every level; b244),
@@ -19275,7 +19506,7 @@ function arrangeUI(){
   if(!ARRANGE) return;
   const phone = isPhoneView();
   d.innerHTML = `<span class="arr-msg"><b>Arranging your books ${phone?'for phones':'for computers'}.</b>
-      ${phone ? 'Drag a book by its ⠿ bar onto another to swap them.' : 'Drag a book onto another to swap them.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
+      ${phone ? 'Drag a book by its ⠿ bar onto another to swap them' : 'Drag a book onto another to swap them'}${document.querySelector('.list-view .arranging, body.list-view .arranging') ? '; in a list, drag it to where it should go.' : '.'} ${phone?'Your computer':'Your phone'} keeps its own order${signedInHere() ? '' : ' (on this device)'}.</span>
     ${canHideHere() ? `<button type="button" class="btn btn-ghost btn-sm" data-act="arrhidden">Hidden here${hiddenHere().size?' ('+hiddenHere().size+')':''}</button>` : ''}
     ${MY_ORDER.get().length ? '<button type="button" class="btn btn-ghost btn-sm" data-act="arrreset">Use the shared order</button>' : ''}
     <button type="button" class="btn btn-primary btn-sm" data-act="arrange">Done</button>`;
@@ -19319,7 +19550,9 @@ function makeShelfSortable(grid){
     document.addEventListener('pointercancel', onUp);
     if(onGrip) lift(c); else pending = c;
   }
+  let before = '';
   function lift(c){
+    before = [...grid.querySelectorAll(':scope > [data-id]')].map(z=>z.dataset.id).join();
     pending = null; card = c; moved = false;
     SHELF_DRAG.on = true; SHELF_DRAG.redraw = false;
     const r = c.getBoundingClientRect();
@@ -19337,8 +19570,21 @@ function makeShelfSortable(grid){
      under it is outlined, and dropping there swaps the two. Every other book
      stays exactly where it was. */
   let target = null;
+  /* In a list (b304, Gita): the usual drag and drop. The rows make room as the
+     book passes, and it clicks into the place where it is dropped. Cards keep
+     swapping. */
+  const asList = () => !!grid.closest('.list-view');
   function follow(){
     card.style.left = (x - dx) + 'px'; card.style.top = (y - dy) + 'px';
+    if(asList()){
+      let row = document.elementFromPoint(x, y);
+      while(row && row.parentNode!==grid) row = row.parentNode;
+      if(!row || row===gap || row===card || !row.dataset.id) return;
+      const r = row.getBoundingClientRect();
+      if(y < r.top + r.height/2){ if(gap.nextSibling!==row) grid.insertBefore(gap, row); }
+      else if(gap.previousSibling!==row) grid.insertBefore(gap, row.nextSibling);
+      return;
+    }
     let over = document.elementFromPoint(x, y);
     while(over && over.parentNode!==grid) over = over.parentNode;
     if(over===gap) over = null;
@@ -19374,6 +19620,7 @@ function makeShelfSortable(grid){
     pid = null; pending = null;
     if(!card) return;
     cancelAnimationFrame(raf);
+    const list = asList();
     card.classList.remove('arr-lift');
     ['left','top','width','height'].forEach(p=>card.style[p]='');
     if(gap.parentNode){ grid.insertBefore(card, gap); gap.remove(); }
@@ -19385,7 +19632,8 @@ function makeShelfSortable(grid){
     if(moved){ noClick = true; setTimeout(()=>{ noClick = false; }, 0); }
     const ids = [...grid.querySelectorAll(':scope > [data-id]')].map(c=>c.dataset.id);
     const i = ids.indexOf(from), j = ids.indexOf(to);
-    if(moved && i>=0 && j>=0){ ids[i] = to; ids[j] = from; saveShelfOrder(ids); }
+    if(moved && list){ if(ids.join()!==before) saveShelfOrder(ids); else if(SHELF_DRAG.redraw) renderAll(); }
+    else if(moved && i>=0 && j>=0){ ids[i] = to; ids[j] = from; saveShelfOrder(ids); }
     else if(SHELF_DRAG.redraw) renderAll();
   }
   grid.addEventListener('pointerdown', onDown);
@@ -19394,15 +19642,35 @@ function makeShelfSortable(grid){
     if(noClick || ARRANGE){ ev.stopPropagation(); ev.preventDefault(); } }, true);
 }
 
+/* Change Location Order (b304, Gita: "one item in the menu ... a pop up. At
+   the top, you can click Season, Region or Event ... depends on permissions"):
+   Universal arranges seasons, regions and events; a Seasonal Lead regions and
+   events; a Regional Lead events. Each tab saves on its own. */
+function locOrderKinds(){
+  const r = (ME && ME.universal) ? 'U' : actingRole();
+  return r==='U' ? ['season','region','event'] : r==='SL' ? ['region','event'] : r==='RL' ? ['event'] : [];
+}
 function reorderModal(kind){
-  const isEvent = kind==='event';
-  let list = isEvent
-    ? eventsOfRegion(CUR_REGION).map(e=>({id:e.eventId, name:e.name, st:closureOf(e.eventId)}))
-    : regionsList().map(r=>({id:r.regionId, name:r.name, st:regionClosure(r.regionId)}));
-  if(!list.length){ toast('Nothing to arrange yet.', true); return; }
+  const kinds = locOrderKinds();
+  if(!kinds.length){ toast('Changing the order is not part of your role.', true); return; }
+  if(!kinds.includes(kind)) kind = kinds[0];
+  const NM = {season:'Season', region:'Region', event:'Event'};
+  const regs = regionsList();
+  let evReg = CUR_REGION || ((regs.find(r=>!r.closedAt)||regs[0]||{}).regionId) || '';
+  let list = [];
+  function load(){
+    list = kind==='season' ? (STATE.seasons||[]).map(x=>({id:x.seasonId, name:x.name, st:x.closedAt?'complete':''}))
+      : kind==='event' ? eventsOfRegion(evReg).map(e=>({id:e.eventId, name:e.name, st:closureOf(e.eventId)}))
+      : regs.map(r=>({id:r.regionId, name:r.name, st:regionClosure(r.regionId)}));
+  }
 
   function draw(){
-    $('#roList').innerHTML = list.map((x,i)=>`
+    $('#roTabs').innerHTML = kinds.length > 1 ? kinds.map(k=>
+      `<button type="button" class="seg-b${k===kind?' on':''}" data-ro-k="${k}">${NM[k]}</button>`).join('') : '';
+    $('#roReg').innerHTML = kind==='event' ? `<div class="field"><label>Region</label><select id="roRegSel">${
+      closedSort(regs, r=>!!r.closedAt).map(r=>`<option value="${esc(r.regionId)}"${r.regionId===evReg?' selected':''}>${esc(r.name)}</option>`).join('')}</select></div>` : '';
+    $('#roHint').textContent = 'Shift the order of ' + kind + 's for efficiency of access.';
+    $('#roList').innerHTML = list.length ? list.map((x,i)=>`
       <div class="ro-row" data-id="${esc(x.id)}">
         <span class="ro-grip" title="Drag to move">⠿</span>
         <span class="ro-name">${esc(x.name)}
@@ -19412,23 +19680,28 @@ function reorderModal(kind){
           <button class="cash-mini" data-ro-up="${i}" ${i===0?'disabled':''}>↑</button>
           <button class="cash-mini" data-ro-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
         </span>
-      </div>`).join('');
+      </div>`).join('') : `<div class="hint">Nothing to arrange here yet.</div>`;
+    $('#roSave').disabled = list.length < 2;
+    [...document.querySelectorAll('#modal [data-ro-k]')].forEach(b=>b.onclick=()=>{ kind = b.dataset.roK; load(); draw(); });
+    const rs = $('#roRegSel'); if(rs) rs.onchange = ()=>{ evReg = rs.value; load(); draw(); };
     [...document.querySelectorAll('#modal [data-ro-up]')].forEach(b=>b.onclick=()=>{
       const i=+b.dataset.roUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw();
     });
     [...document.querySelectorAll('#modal [data-ro-dn]')].forEach(b=>b.onclick=()=>{
       const i=+b.dataset.roDn; [list[i+1],list[i]]=[list[i],list[i+1]]; draw();
     });
-    makeSortable($('#roList'), order=>{
+    if(list.length) makeSortable($('#roList'), order=>{
       list = order.map(id=>list.find(x=>x.id===id)).filter(Boolean);
       draw();
     });
   }
 
   openModal(`
-    ${mHead('Change the ' + (isEvent?'event':'region') + ' order')}
+    ${mHead('Change Location Order')}
     <div class="m-body">
-      <div class="hint">Shift the order of ${isEvent?'events':'regions'} for efficiency of access.</div>
+      <div class="seg ro-tabs" id="roTabs"></div>
+      <div id="roReg"></div>
+      <div class="hint" id="roHint"></div>
       <div id="roList"></div>
       <div class="err" id="modalErr"></div>
     </div>
@@ -19436,16 +19709,16 @@ function reorderModal(kind){
       <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="roSave">Save order</button>
     </div>`);
-  draw();
+  load(); draw();
   $('#roSave').addEventListener('click',()=>{
     /* Applied on screen at once and saved behind. There is nothing to wait for:
        the new order is already known here, and the server has no answer we
        need. */
-    const ids = list.map(x=>x.id);
-    commit({action:'reorder', kind, ids},
+    const ids = list.map(x=>x.id), k = kind;
+    commit({action:'reorder', kind:k, ids},
       st=>{
-        const bag = kind==='region' ? (st.regions||[]) : (st.events||[]);
-        const key = kind==='region' ? 'regionId' : 'eventId';
+        const bag = k==='season' ? (st.seasons||[]) : k==='region' ? (st.regions||[]) : (st.events||[]);
+        const key = k + 'Id';
         ids.forEach((id,i)=>{ const row=bag.find(x=>x[key]===id); if(row) row.sort=i; });
         bag.sort((a,b)=>(Number(a.sort)||0)-(Number(b.sort)||0));
       }, 'Order saved');
@@ -19793,18 +20066,23 @@ function partnerEditModal(id){
 /* One batch on the road, as a card. Used in the Books in transit dialog and in
    the Books in Transit section on the main screen, so both read the same.
    Where it is heading, the two arrival buttons: all of it came, or only some. */
+// Which batches are open stays put when the screen is drawn again.
+const SH_OPEN = new Set();
+document.addEventListener('toggle', e=>{ const d = e.target; if(d && d.dataset && d.dataset.sh){ if(d.open) SH_OPEN.add(d.dataset.sh); else SH_OPEN.delete(d.dataset.sh); } }, true);
 function shipCardHTML(x, incoming, readOnly){
   const books = shipBooks(x);
   const eta = x.eta ? new Date(x.eta).toLocaleDateString(LOCALE,{day:'numeric',month:'short'}) : '';
   const admin = isAdmin() && !readOnly;
   if(readOnly) incoming = false;
-  return `<div class="sh-card ${x.status==='PARTIAL'?'part':''}">
-    <div class="sh-top">
-      <span class="sh-route">${esc(shipLabel(x))}</span>
-      <span class="sh-count">${shipTotal(x)} in transit${
-        shipSentTotal(x)>shipTotal(x) ? ` <span class="sh-of">of ${shipSentTotal(x)}</span>` : ''}</span>
-    </div>
-    <div class="sh-who">${esc(shipWho(x))}${x.phone?` · ${waLink(x.phone)}`:''}</div>
+  /* One line (b304, Gita): the name, the phone and how many books; the rest
+     under the arrow. */
+  const nm = x.carrier || (x.mode==='shipping' ? 'Courier' : 'A devotee');
+  return `<details class="sh-card sh-line ${x.status==='PARTIAL'?'part':''}" data-sh="${esc(x.shipId)}"${SH_OPEN.has(x.shipId)?' open':''}>
+    <summary class="sh-sum"><span class="sh-nm">${esc(nm)}</span>${x.phone?`<span class="sh-ph">${waLink(x.phone)}</span>`:''}
+      <span class="sh-count">${shipTotal(x)} book${shipTotal(x)===1?'':'s'}${
+        shipSentTotal(x)>shipTotal(x) ? ` <span class="sh-of">of ${shipSentTotal(x)}</span>` : ''}</span><span class="sh-car" aria-hidden="true">▸</span></summary>
+    <div class="sh-route sh-in">${esc(shipLabel(x))}</div>
+    ${x.mode==='shipping' && x.tracking ? `<div class="sh-who">${esc(shipWho(x))}</div>` : ''}
     ${x.trackingUrl?`<div class="sh-who"><a href="${esc(x.trackingUrl)}" target="_blank" rel="noopener">Track it</a></div>`:''}
     <div class="sh-meta">${eta?`Expected ${esc(eta)}`:'No arrival date yet'}
       ${x.status==='PARTIAL'?'<span class="sh-tag">partly delivered</span>':''}
@@ -19820,7 +20098,7 @@ function shipCardHTML(x, incoming, readOnly){
       <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct Contents</button>
       <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>`:''}
     </div>
-  </div>`;
+  </details>`;
 }
 
 /* Where a batch lands when all of it has come: the place it was aimed at, or
@@ -20227,9 +20505,8 @@ function transferStockModal(opts){
   if(isSeller()) return;
   const places = stockPlaces();
   const reg = currentRegion();
-  /* At an event, the lowest level, "Transfer From" starts at the region's
-     warehouse (b302, Gita); the one menu that doesn't start where you are. */
-  const here = (CUR_LEVEL==='event' || CUR_LEVEL==='region') && reg ? reg.whLoc : '';
+  /* From and To start blank (b304, Gita): ⬇ Transfer In and ⬆ Transfer Out
+     fill them. A caller can still name them (e.g. after adding a new place). */
   let fromCtx = null, cancelLoad = ()=>{};
   let storage = '', travel = '';
   let sws = null;                      // sub-warehouses chosen for an event's books
@@ -20256,9 +20533,8 @@ function transferStockModal(opts){
       <button class="btn btn-primary" id="xfGo" disabled>Transfer</button>
     </div>`, true);
 
-  const fromPick = bindPlacePicker('xfFrom', places, opts.fromLoc || here, p=>{ loadFrom(p); });
-  // …and "Transfer To" at the event you are in (b303, Gita).
-  const toPick   = bindPlacePicker('xfTo', places, opts.toLoc || (CUR_LEVEL==='event' ? CUR_LOC : ''), ()=>{ sws = null; draw(); });
+  const fromPick = bindPlacePicker('xfFrom', places, opts.fromLoc || '', p=>{ loadFrom(p); });
+  const toPick   = bindPlacePicker('xfTo', places, opts.toLoc || '', ()=>{ sws = null; draw(); });
   warmSeasons();
 
   function loadFrom(p){
@@ -21368,7 +21644,7 @@ const GS_ALSO = {
   cash:'cash money tracker tracking track', costs:'costs expenses spending bills', paytypes:'payment types upi zelle paypal',
   addstock:'add stock books printer new', xfer:'transfer move stock books send',
   partners:'consignment partner group', bookdisplay:'books titles display show hide order',
-  reorder:'order sort arrange', seasonedit:'rename season', editregion:'rename region prices currencies',
+  reorder:'order sort arrange location seasons regions events', seasonedit:'rename season', editregion:'rename region prices currencies',
   closehere:'close finish', reopenhere:'reopen open', seasonclose:'close season', seasonreopen:'reopen season',
   renameevent:'rename event', viewmode:'list view cards', refresh:'refresh reload', syncsheet:'sync sheet spreadsheet'
 };
@@ -21764,7 +22040,7 @@ document.addEventListener('click',e=>{
     commitSync({action:'reopenSeason', seasonId:STATE.activeSeason}, 'Season reopened').then(ok=>{ if(ok) pull(); });
     return;
   }
-  if(a==='reorder'){ reorderModal(t.dataset.kind); return; }
+  if(a==='reorder'){ reorderModal(t.dataset.kind || (CUR_LEVEL==='season' ? 'region' : 'event')); return; }
   if(a==='partners'){ partnersModal(); return; }
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
   if(a==='conbook'){ partnerBookModal(t.dataset.id, t.dataset.book||''); return; }
@@ -21949,6 +22225,9 @@ document.addEventListener('click',e=>{
   if(a==='finexclr'){ (t.dataset.f==='type' ? FIN.ex.types : FIN.ex.sts).clear(); finExpensesRender(); return; }
   if(a==='dropen'){ if(t.closest('button')) return; const id = t.dataset.id; FIN.drOpen = FIN.drOpen || new Set(); if(FIN.drOpen.has(id)) FIN.drOpen.delete(id); else FIN.drOpen.add(id);
     const it = t.closest('.log-item'); if(it) it.classList.toggle('open', FIN.drOpen.has(id)); return; }
+  if(a==='drflt'){ FIN.dr.open = FIN.dr.open ? '' : 'cur'; finDrRender(); return; }
+  if(a==='drclr'){ FIN.dr.curs.clear(); finDrRender(); return; }
+  if(a==='drnew'){ finConvModal(); return; }
   if(a==='dredit'){ const c = finDrList().find(x=>x.id===t.dataset.id); if(c) finConvModal(c); return; }
   if(a==='drdel'){ const id = t.dataset.id;
     askSure('Remove this exchange? That money goes back to the estimated dollars.', 'Remove').then(async ok=>{ if(!ok) return;

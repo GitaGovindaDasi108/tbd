@@ -43,6 +43,8 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
   const t = [], errors = [];
   async function open(query, width) {
     const page = await browser.newPage({ viewport: { width: width || 1100, height: 950 } });
+    // b304: a batch in transit is one line with a drop-down; these tests work inside it, so it opens.
+    await page.addInitScript(() => new MutationObserver(() => document.querySelectorAll('details.sh-line:not([open])').forEach(d => { d.open = true; })).observe(document, { subtree: true, childList: true }));
     page.on('pageerror', e => errors.push(e.message));
     page.on('dialog', d => { page.__dialogs = (page.__dialogs || []).concat(d.message()); d.accept(); });
     await page.route('**/*', async route => {
@@ -69,7 +71,10 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     await page.click(`#${which} .pp-in`); await page.fill(`#${which} .pp-in`, search);
     await page.click(`#${which} .pp-row:has-text("${text}")`); await page.waitForTimeout(400);
   };
-  const openXfer = async page => { await page.click('#adminActions button:has-text("Transfer Existing Stock")'); await page.waitForTimeout(300); };
+  // b304: the form opens with From and To blank; ⬆ Transfer Out puts this warehouse in From.
+  const openXfer = async page => { await page.click('#adminActions button:has-text("Transfer Existing Stock")'); await page.waitForTimeout(300);
+    page.__blank = !(await page.inputValue('#xfFrom .pp-in')) && !(await page.inputValue('#xfTo .pp-in'));
+    await page.click('#xfOut'); await page.waitForTimeout(300); };
   const head = page => page.evaluate(() => [...document.querySelectorAll('#xfBody .xf-head span')].map(s => s.textContent.trim()));
   const setMove = (page, src, book, n) => page.fill(`#xfBody .xf-in[data-src="${src}"][data-book="${book}"]`, String(n));
   const go = async page => { page.__dialogs = []; await page.click('#xfGo'); await page.waitForTimeout(1500); return page.__dialogs || []; };
@@ -96,7 +101,8 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
 
     // 1. Warehouse (spread over sub-warehouses) -> event.
     await openXfer(page);
-    t.push(['From is already this warehouse', /Poland/.test(await page.inputValue('#xfFrom .pp-in'))]);
+    t.push(['b304: opens with From and To blank', page.__blank === true]);
+    t.push(['Transfer Out: From is this warehouse', /Poland/.test(await page.inputValue('#xfFrom .pp-in'))]);
     await pick(page, 'xfTo', 'Festival', 'Festival');
     const h1 = await head(page);
     t.push(['columns: Title · Total · WH · Move · SW1 · Move · SW2 · Move · Left',

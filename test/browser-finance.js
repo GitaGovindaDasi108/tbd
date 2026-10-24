@@ -638,7 +638,9 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal());
     t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
-    t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen', await own.evaluate(() => !document.querySelector('#fpBody .fin-sh-btns') && !/Dollars received/.test(document.querySelector('#fpBody').innerText))]);
+    // b304 (Gita): Dollars received is back as a button at the top of its own section (practice), and only there.
+    t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen (b304: Dollars received only at the top of its section)', await own.evaluate(() => { const fb = document.querySelector('#fpBody'), c = fb.cloneNode(true);
+      c.querySelectorAll('.dr-top').forEach(e => e.remove()); return !fb.querySelector('.fin-sh-btns') && !/Dollars received/.test(c.textContent); })]);
     t.push(['b291: in practice a "≈$" figure is a button that opens Dollars received', await own.evaluate(() => { const b = document.querySelector('#fpBody .fin-est'); if(!b || !/^−?≈\$/.test(b.textContent)) return false;
       b.click(); const ok = !!document.querySelector('#cvRows .cv-amt'); closeModal(); return ok; })]);
     t.push(['b276: the Expenses screen charts expenses only (income is on the Overview)', await own.evaluate(() => /Expenses by month/.test(document.querySelector('#finCharts').innerText) && !/Gross|Net/.test(document.querySelector('#finCharts').innerText))]);

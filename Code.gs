@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b303';
+var SERVER_BUILD = 'b304';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -668,6 +668,7 @@ function handle(e) {
       retireBuiltInLabels_();
       // Leftovers of deleted seasons and regions, cleared on the next save too.
       if (!MIRROR_ && !tempGet_('orphan_sweep')) { tempPut_('orphan_sweep', '1', 3600); try { purgeOrphans_(); } catch (e) {} }
+      unaliasBooks_(params);
       activityBefore_(action, params);
       switch (action) {
         case 'undoActivity':     result = doUndoActivity(params, who); break;
@@ -1438,8 +1439,9 @@ function outstandingAt_(locs) {
 }
 
 function setClosed_(kind, id, when) {
-  var sheetName = kind === 'event' ? '_events' : '_regions';
-  var idCol = kind === 'event' ? 'eventId' : 'regionId';
+  // Seasons too (b304, Change Location Order).
+  var sheetName = kind === 'event' ? '_events' : kind === 'season' ? '_seasons' : '_regions';
+  var idCol = kind === 'event' ? 'eventId' : kind === 'season' ? 'seasonId' : 'regionId';
   if (dbCols_(sheetName).indexOf('closedAt') < 0) throw new Error('That sheet has not been upgraded — run initialize.');
   var match = {}; match[idCol] = String(id);
   if (!dbUpdate_(sheetName, match, { closedAt: when })) throw new Error('That no longer exists.');
@@ -1687,8 +1689,9 @@ function doReorder(p) {
   var kind = String(p.kind || 'region');
   var ids = (p.ids || []).map(String);
   if (!ids.length) return;
-  var sheetName = kind === 'event' ? '_events' : '_regions';
-  var idCol = kind === 'event' ? 'eventId' : 'regionId';
+  // Seasons too (b304, Change Location Order).
+  var sheetName = kind === 'event' ? '_events' : kind === 'season' ? '_seasons' : '_regions';
+  var idCol = kind === 'event' ? 'eventId' : kind === 'season' ? 'seasonId' : 'regionId';
   if (dbCols_(sheetName).indexOf('sort') < 0) throw new Error('That sheet has not been upgraded — run initialize.');
   dbUpdate_(sheetName, function (o) { return ids.indexOf(String(o[idCol])) >= 0; },
     function (o) { return { sort: ids.indexOf(String(o[idCol])) }; });
@@ -2767,8 +2770,9 @@ function doSetKey(p) {
   var id = String(p.id || '');
   var key = String(p.clear) === 'true' ? ''
     : (suppliedKey_(p.key, 'k') || ('k' + Utilities.getUuid().replace(/-/g, '').slice(0, 10)));
-  var sheetName = kind === 'event' ? '_events' : '_regions';
-  var idCol = kind === 'event' ? 'eventId' : 'regionId';
+  // Seasons too (b304, Change Location Order).
+  var sheetName = kind === 'event' ? '_events' : kind === 'season' ? '_seasons' : '_regions';
+  var idCol = kind === 'event' ? 'eventId' : kind === 'season' ? 'seasonId' : 'regionId';
   if (dbCols_(sheetName).indexOf('key') < 0) throw new Error('This sheet has not been upgraded yet — run initialize.');
   var match = {}; match[idCol] = id;
   if (!dbUpdate_(sheetName, match, { key: key })) throw new Error('That no longer exists.');
@@ -7778,10 +7782,18 @@ function doAddBook(p) {
        copy of the catalogue is behind cannot see a title added elsewhere, and
        being told only that it "already exists" left it with no way to choose
        it. The existing one's id is the answer it needs. */
-    if (p.orExisting) return existing[i].id;
+    if (p.orExisting) {
+      /* The device named it already (b304) and its stock is queued under that
+         name: point the device's id at the title that exists. */
+      if (p.id && String(p.id) !== existing[i].id) setMeta_('bookAlias:' + String(p.id), existing[i].id);
+      return existing[i].id;
+    }
     throw new Error('A book called "' + name + '" already exists.');
   }
-  var id = 'bk_' + Utilities.getUuid().slice(0, 6);
+  /* Add Stock names the new title itself (b304), so its stock is saved straight
+     behind it without waiting for this answer. */
+  var want = String(p.id || '');
+  var id = /^bk_[a-z0-9]{6,12}$/.test(want) && !bookById_(want) ? want : 'bk_' + Utilities.getUuid().slice(0, 6);
   dbAddCols_('_custombooks', ['id','name','cat','createdAt','partnerId','sort']);
   var rowB = { id: id, name: name, cat: cat, createdAt: new Date(),
                partnerId: String(p.partnerId || ''), sort: '' };
@@ -7792,6 +7804,20 @@ function doAddBook(p) {
 }
 
 function bookById_(id) { return bookIndex_()[id] || null; }
+/* A title a device named while another device added the same one (b304): the
+   stock saved under the device's id goes to the title that exists. Only ids
+   the catalogue does not know are looked up. */
+function unaliasBooks_(p) {
+  if (!p) return;
+  var fix = function (id) {
+    id = String(id || '');
+    if (!/^bk_/.test(id) || bookById_(id)) return id;
+    return String(getMeta_('bookAlias:' + id, '') || id);
+  };
+  if (p.bookId) p.bookId = fix(p.bookId);
+  if (p.items && p.items.forEach) p.items.forEach(function (it) { if (it && it.bookId) it.bookId = fix(it.bookId); });
+  if (typeof p.bookIds === 'string' && p.bookIds) p.bookIds = p.bookIds.split(',').map(fix).join(',');
+}
 /* The tour's own catalog. A consignment title is left out of these, so it
    never appears in our stock tables or sales blocks — it has its own sheet.
    allBooks_() still carries everything, so lookups by id always resolve. */
@@ -9338,7 +9364,7 @@ function describe_(action, p, result, moves, who) {
     case 'deleteSeason': d = { text: 'Deleted a season' }; break;
     case 'closeLocation':  d = { text: 'Closed ' + (p.kind === 'region' ? reg(p.id) : locLabel_(p.id)) + (mv ? ' — ' + mv : '') }; break;
     case 'reopenLocation': d = { text: 'Reopened ' + (p.kind === 'region' ? reg(p.id) : locLabel_(p.id)) }; break;
-    case 'reorder':      d = { text: 'Changed the order of ' + (p.kind === 'event' ? 'events' : 'regions') }; break;
+    case 'reorder':      d = { text: 'Changed the order of ' + (p.kind === 'event' ? 'events' : p.kind === 'season' ? 'seasons' : 'regions') }; break;
     case 'reorderBooks': d = { text: 'Changed the order of the titles' }; break;
     case 'setPrices':    d = { text: 'Changed prices' + (p.regionId ? ' in ' + reg(p.regionId) : '') }; break;
     case 'setEventPrices': d = { text: 'Changed the prices at ' + locLabel_(p.eventId) }; locs[String(p.eventId)] = 1; break;

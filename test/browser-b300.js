@@ -191,28 +191,28 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   t.push(['b301: no sum spelled out (only the two "Based on…" notes)', !/÷/.test(await page.textContent('#ucHow'))]);
   await page.evaluate(() => closeModal());
 
-  /* b302: three cards on a full computer screen, 372 / 372 / 492 (kept in
-     proportion in the room there is); narrower, the usual equal widths. */
+  /* b304 (Gita): every card one width on one line (b302/b303's set widths are gone;
+     every screen width). */
   const three = async w => { await page.setViewportSize({ width: w, height: 900 }); await page.evaluate(() => goTo('season')); await page.waitForTimeout(400);
     return page.evaluate(() => { document.querySelectorAll('#totals > .pend, #totals > .other').forEach(e => e.remove()); layoutTotals();
       return [...document.querySelectorAll('#totals > .tcard')].map(c => c.getBoundingClientRect().width); }); };
   let ws = await three(1400);
-  t.push(['b302: three cards at 1400px keep 372 : 372 : 492 (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && ws.every((v, i) => Math.abs(v / ws[2] - [372, 372, 492][i] / 492) < 0.01) && ws[2] >= 480]);
-  // b303: four cards, the totals card 465px and the other three 258.33px each (in proportion).
+  t.push(['b304: three cards at 1400px are one width, on one line (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && Math.max(...ws) - Math.min(...ws) < 2]);
+  // b304: four cards too.
   ws = await page.evaluate(() => { const b = document.querySelector('#totals'), x = b.querySelector('.tc-book').cloneNode(true); x.classList.add('other'); b.insertBefore(x, b.querySelector('.tc-coll')); layoutTotals();
     return [...b.querySelectorAll(':scope > .tcard')].map(c => c.getBoundingClientRect().width); });
-  t.push(['b303: four cards at 1400px keep 258.33 : 258.33 : 258.33 : 465 (' + ws.map(Math.round).join(' / ') + ')', ws.length === 4 && ws.every((v, i) => Math.abs(v / ws[3] - (i === 3 ? 1 : 258.33 / 465)) < 0.01) && ws[3] >= 450]);
+  t.push(['b304: four cards at 1400px are one width, on one line (' + ws.map(Math.round).join(' / ') + ')', ws.length === 4 && Math.max(...ws) - Math.min(...ws) < 2]);
   ws = await three(1150);
   t.push(['b302: narrower (1150px), the three are one width again (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && Math.max(...ws) - Math.min(...ws) < 2]);
   await page.setViewportSize({ width: 1150, height: 900 }); await page.evaluate(() => renderAll()); await page.waitForTimeout(300);
 
-  /* b302: Transfer Existing Stock at an event starts "Transfer From" at the region's warehouse. */
+  /* b304: Transfer Existing Stock opens with From and To blank; Transfer In and Out fill them. */
   await page.evaluate(() => goTo('event', 'ev_b300')); await page.waitForTimeout(400);
   await page.evaluate(() => transferStockModal()); await page.waitForTimeout(400);
   const xf = await page.$eval('#xfFrom .pp-in', e => e.value);
-  t.push(['b302: Transfer at an event: "Transfer From" starts at ' + R0.name + ' (' + xf + ')', xf.startsWith(R0.name) && !/Harinam/.test(xf)]);
+  t.push(['b304: Transfer opens with "Transfer From" blank (' + xf + ')', xf === '']);
   const xt = await page.$eval('#xfTo .pp-in', e => e.value);
-  t.push(['b303: …and "Transfer To" starts at the event you are in (' + xt + ')', /^Harinam Fair/.test(xt)]);
+  t.push(['b304: …and "Transfer To" blank (' + xt + ')', xt === '']);
   // b303: Transfer In and Transfer Out.
   await page.evaluate(() => { closeModal(); goTo('event', 'ev_b300'); transferStockModal(); }); await page.waitForTimeout(400);
   await page.click('#xfOut'); await page.waitForTimeout(300);
@@ -240,6 +240,9 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
     t.push(['b303: a date set by the app shows as 11/05/2026', await page.$eval('.dt-wrap:has(#pmTo) .dt-txt', e => e.value) === '11/05/2026']);
   } else t.push(['b303: the region form has its date boxes', false]);
   await page.evaluate(() => closeModal());
+  // b304: Collections by Currency in lines of about the same length, a figure never split.
+  await page.evaluate(() => { closeModal(); renderAll(); });
+  t.push(['b304: currency figures each kept whole (' + await page.$$eval('#totals .tc-bal .tc-cur', es => es.length) + ')', await page.$$eval('#totals .tc-bal .tc-cur', es => es.length > 0 && es.every(e => getComputedStyle(e).whiteSpace === 'nowrap'))]);
   // b303: the order Big Books, Adventures, Other, Pending Payments, Totals.
   await page.evaluate(() => { closeModal(); renderAll(); });
   const ord = await page.$$eval('#totals > .tcard', cs => cs.map(c => c.classList.contains('tc-coll') ? 'T' : c.classList.contains('pend') ? 'P' : c.querySelector('.label').textContent));
@@ -249,6 +252,63 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   const mo = await page.$$eval('#moList .mo-row', rs => rs.map(r => r.dataset.a));
   t.push(['b303: Reorganize Menu has no Specialty Reports, Report or Go to Sales Portal', mo.length > 5 && !mo.some(a => ['specreport', 'report', 'finleave', 'fintodo', 'bookdisplay'].includes(a))]);
   await page.evaluate(() => closeModal());
+
+  // b304: one Change Location Order item; its pop-up has Season, Region and Event tabs.
+  c({ action: 'saveSeason', name: 'Spring Tour' });
+  await page.evaluate(() => pull()); await page.waitForTimeout(1500);
+  await page.evaluate(() => { closeModal(); goTo('region', STATE.regions[0].regionId); }); await page.waitForTimeout(300);
+  const locBtns = await page.$$eval('#sideNav [data-act="reorder"], #adminPanel [data-act="reorder"]', bs => bs.map(b => b.textContent.trim()));
+  t.push(['b304: the menu has one Change Location Order (' + locBtns.join(' | ') + ')', locBtns.length >= 1 && locBtns.every(x => /Change Location Order/.test(x))]);
+  await page.evaluate(() => { const b = document.createElement('button'); b.dataset.act = 'reorder'; document.body.appendChild(b); b.click(); b.remove(); });
+  await page.waitForTimeout(200);
+  const tabs = await page.$$eval('#roTabs [data-ro-k]', bs => bs.map(b => b.textContent + (b.classList.contains('on') ? '*' : '')));
+  t.push(['b304: tabs Season, Region, Event; Event chosen at a region (' + tabs.join(', ') + ')', tabs.join(',') === 'Season,Region,Event*' && !!(await page.$('#roRegSel'))]);
+  await page.click('#roTabs [data-ro-k="season"]'); await page.waitForTimeout(100);
+  const sn0 = await page.$$eval('#roList .ro-row', rs => rs.map(r => r.dataset.id));
+  await page.click('#roList [data-ro-dn="0"]'); await page.click('#roSave'); await page.waitForTimeout(1500);
+  const snSrv = m.call({ action: 'getState', season: SA }).state.seasons.map(x => x.seasonId);
+  t.push(['b304: the Season tab moves a season down and saves it (' + sn0.length + ' seasons)', sn0.length === 2 && snSrv[0] === sn0[1] && snSrv[1] === sn0[0]]);
+  t.push(['b304: Reorganize Menu shows Change Location Order once and no Change Regional Order', await page.evaluate(() => { menuOrderModal(); const a = [...document.querySelectorAll('#moList .mo-row')].map(r => r.textContent); closeModal();
+    return a.filter(x => /Change Location Order/.test(x)).length === 1 && !a.some(x => /Change Regional Order|Change Event Order/.test(x)); })]);
+
+  // b304 (practice): Name and Language filters over the shelf.
+  await page.evaluate(id => { closeModal(); goTo('region', id); }, R0.regionId); await page.waitForTimeout(400);
+  const shelfN = () => page.$$eval('#invGrid > [data-id]:not([hidden]):not(.don-card)', c => c.length);
+  const allN = await shelfN();
+  t.push(['b304: the shelf has Name and Language filters (' + allN + ' titles)', await page.isVisible('#invFq') && await page.isVisible('#invFl') && allN > 1]);
+  await page.fill('#invFq', 'radha'); await page.waitForTimeout(150);
+  const rN = await page.$$eval('#invGrid > [data-id]:not([hidden]):not(.don-card) .bname', c => c.map(x => x.textContent));
+  t.push(['b304: Name "radha" leaves only Sri Radha (' + rN.length + ')', rN.length >= 1 && rN.length < allN && rN.every(x => /Radha/i.test(x))]);
+  const langs = await page.$$eval('#invFl option', o => o.map(x => x.value).filter(Boolean));
+  await page.fill('#invFq', ''); await page.selectOption('#invFl', langs[0]); await page.waitForTimeout(150);
+  t.push(['b304: Language ' + langs[0] + ' leaves only its titles', await page.$$eval('#invGrid > [data-id]:not([hidden]):not(.don-card) .lang-tag', (c, l) => c.length > 0 && c.every(x => x.textContent.trim() === l), langs[0])]);
+  await page.evaluate(() => renderAll()); await page.waitForTimeout(200);
+  t.push(['b304: the filter stays when the shelf is drawn again', await page.$eval('#invFl', e => e.value) === langs[0]]);
+  await page.selectOption('#invFl', ''); await page.waitForTimeout(150);
+  t.push(['b304: All languages shows every title again', await shelfN() === allN]);
+
+  // b304 (practice): Multiple Book Sale, book by book.
+  await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
+  t.push(['b304: Multiple Book Sale starts with one line (title, language, Buy, Pre-order)', await page.$$eval('#mbLines .mbl-row', r => r.length) === 1 && !(await page.$('#modal .mb-list'))]);
+  const bkB = await page.evaluate(() => { const b = shelfBooks().find(x => invQty(CUR_LOC, x.id) >= 2); return { base: bookLang(b).base, id: b.id }; });
+  await page.selectOption('#mbLines .mbl-t', bkB.base); await page.waitForTimeout(150);
+  if (!(await page.$eval('#mbLines .mbl-l', e => e.value))) await page.selectOption('#mbLines .mbl-l', bkB.id);
+  await page.fill('#mbLines .mbl-buy', '2'); await page.waitForTimeout(150);
+  await page.click('#mbAddLine'); await page.waitForTimeout(150);
+  t.push(['b304: "Add another book" adds a line', await page.$$eval('#mbLines .mbl-row', r => r.length) === 2]);
+  t.push(['b304: the count reads 2 books (' + await page.textContent('#mbCount') + ')', /^2 books/.test(await page.textContent('#mbCount'))]);
+  await page.fill('#mbLines .mbl-buy', '999'); await page.waitForTimeout(150);
+  t.push(['b304: Buy cannot pass what is in stock', !(await page.$eval('#mbWarn', e => e.hidden)) && Number(await page.$eval('#mbLines .mbl-buy', e => e.value)) < 999]);
+  await page.fill('#mbLines .mbl-buy', '2'); await page.waitForTimeout(150);
+  const sales0 = m.call({ action: 'getState', season: SA }).state.sales.length;
+  await page.click('#saveBundle'); await page.waitForTimeout(1500);
+  t.push(['b304: Record saves the 2 books as one sale', m.call({ action: 'getState', season: SA }).state.sales.length === sales0 + 2]);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
+  await page.selectOption('#mbLines .mbl-t', bkB.base); await page.waitForTimeout(150);
+  t.push(['b304: phone: the line fits the window', await page.evaluate(() => { const m = document.querySelector('#modal .m-body'); return m.scrollWidth <= m.clientWidth + 1
+    && [...document.querySelectorAll('#mbLines *')].every(e => { const r = e.getBoundingClientRect(), b = m.getBoundingClientRect(); return !e.offsetParent || r.right <= b.right + 1; }); })]);
+  await page.evaluate(() => closeModal()); await page.setViewportSize({ width: 1150, height: 900 });
 
   /* 8. A closed place stops you before you enter anything. */
   c({ action: 'closeLocation', kind: 'event', id: 'ev_b300', counts: {} });

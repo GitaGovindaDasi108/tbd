@@ -80,19 +80,23 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     await page.evaluate(() => closeModal()); await page.waitForTimeout(300);
     t.push(['a new book, closed without saving, is not added', named('Test Book (English)').length === 0]);
 
-    // No connection at Save: nothing is added, the line stays to try again.
+    // b304: Save is instant. With no connection the title and its stock show at
+    // once and wait on the device, then go in when the connection is back.
     await openStock();
     await newLang('Hindi');
     let id = await lastInput();
     await page.fill(`#spBody input.d-delta[data-book="${id}"]`, '3');
     down = true;
-    await page.click('#spSave'); await page.waitForTimeout(2500);
-    t.push(['no connection: Save says the title could not be added', /Could not add Sri Radha \(Hindi\)/.test(await page.textContent('#modalErr'))]);
-    t.push(['…the line and its number are still there', await page.inputValue(`#spBody input.d-delta[data-book="${id}"]`).catch(() => '') === '3']);
+    const t0 = Date.now();
+    await page.click('#spSave'); await page.waitForTimeout(300);
+    t.push(['b304: Save closes at once, even with no connection (' + (Date.now() - t0) + 'ms)', !(await page.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
+    t.push(['b304: …the new title and its 3 copies show straight away', await page.evaluate(([l]) => {
+      const b = (STATE.books || []).find(x => x.name === 'Sri Radha (Hindi)'); const r = b && (STATE.inventory || []).find(i => i.location === l && i.bookId === b.id); return r ? r.qty : 0; }, [WH]) === 3]);
+    t.push(['…not on the server yet', named('Sri Radha (Hindi)').length === 0]);
     down = false;
+    await page.evaluate(() => flushPending()); await page.waitForTimeout(2500);
 
     // Saved: added once, with its stock.
-    await page.click('#spSave'); await page.waitForTimeout(2000);
     const hi = named('Sri Radha (Hindi)');
     t.push(['Save adds Sri Radha (Hindi) once', hi.length === 1]);
     t.push(['…with its 3 copies', hi.length === 1 && qty(WH, hi[0].id) === 3]);
