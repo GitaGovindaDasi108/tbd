@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b302**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b303**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,23 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b303
+Live app changes (Gita, 2026-10-24 07:15 IST).
+- Totals bar order: Big Books, AoTM, Other, Pending Payments, then the totals card (Pending now before the totals in the page).
+- Full-width computer screen, four cards: the totals card 465px, the others 258.33px each, in proportion (`layoutTotals`, `PXN`).
+- Estimated dollars in Finance (`.fin-est`): no underline, still a button.
+- Transfer Existing Stock at an event: "Transfer To" starts at that event. New ⬇ Transfer In (From one step up: an event's
+  region warehouse, a region's Earthly HQ warehouse; To the place you are in) and ⬆ Transfer Out (From the place you are
+  in, To blank) buttons beside ↩ Return all to warehouse (unchanged). Place pickers gained `clear()`.
+- Date boxes app-wide (`dtUpgrade`, a MutationObserver): every `input[type=date]` gets a typed MM/DD/YYYY box (slashes
+  added as you type) and a 📅 button (`showPicker`). The real date input stays behind it, unseen, holding YYYY-MM-DD; its
+  `value` setter is wrapped so dates set by code show in the typed box. Cause: a device's own date box reads month first
+  and turns a typed "2" into "02" (no month starts with 2).
+- Finance charts (`finDonutSVG`): every part's figure printed just outside the ring, a line apart where parts are small; the ring is drawn in the SVG (no CSS mask).
+- Reorganize Menu: Specialty Reports, Report and Go to Sales Portal no longer listed (`gone` in `menuOrderModal`). Rule: anything taken out of the menu goes there too.
+- Practice: Finance › Expenses gets a Dollars Received section beside the expenses (`fin-two`, `finDrSecHTML`): every exchange in the system, newest first, a line each (place, exchange, Edit, Delete); the arrow opens Location, Exchange rate, Notes. In the Expenses WhatsApp report too.
+- Tests: browser-b300 (four-card widths, order, Transfer To, Reorganize Menu), browser-b297 (order).
 
 ## Done in b302
 Live app changes (Gita, 2026-10-23 20:42 IST).
