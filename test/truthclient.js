@@ -26,7 +26,7 @@ T.goTo('season');
 T.renderTotals();
 const tiles = store['#totals'].innerHTML;
 t.push(['Total Collections: $80 + $70 + $50 = $200', /Total Collections<\/div><div class="value">≈\$200</.test(tiles)]);
-t.push(['expenses at the frozen rate: −$20, Net Sales $180', /Expenses <\/span>−\$20</.test(tiles) && /tc-net">≈\$180</.test(tiles)]);
+t.push(['expenses at the frozen rate: −≈$20 (b308: a closing-day rate is an estimate), Net Sales $180', /Expenses <\/span>−≈\$20</.test(tiles) && /tc-net">≈\$180</.test(tiles)]);
 
 T.renderCollectionsByRegion('#cbr');
 const cbr = store['#cbr'].innerHTML;
@@ -41,13 +41,13 @@ t.push(['payments: the Cash row is $200', cashUsd && Number(cashUsd.text.replace
 const italyKid = (() => { const i = cells.findIndex(c => c.text === 'Italy' && /ptg-s/.test(c.cls)); return i < 0 ? null : cells.slice(i + 1).find(c => /\busd\b/.test(c.cls)); })();
 t.push(['payments: its Italy line is $150, and adds up', italyKid && Number(italyKid.text.replace(/[^0-9.\-]/g, '')) === 150]);
 const costCell = cells.find(c => /usd ptg-cost/.test(c.cls));
-t.push(['payments: costs −$20', costCell && /−\$20(\.00)?$/.test(costCell.text)]);
+t.push(['payments: costs −≈$20 (b308)', costCell && /−≈\$20(\.00)?$/.test(costCell.text)]);
 
 const rep = T.buildReport();
 t.push(['report: Total ≈ $200', /Total[^\n]*≈ \$200(\.00)?\b/.test(rep)]);
 t.push(['report: Italy after costs ≈ $130', /Italy[^\n]*≈ \$130(\.00)?\b/.test(rep)]);
 t.push(['report: Net Sales ≈ $180 (France is at today\'s rate)', /Net Sales[^\n]*≈ \$180\.00\b/.test(rep)]);
-t.push(['report: Expenses = −$20 (a frozen rate is a hard figure)', /Expenses[^\n]*= −\$20\.00\b/.test(rep)]);
+t.push(['report: Expenses ≈ −$20 (b308: a frozen rate is still an estimate)', /Expenses[^\n]*≈ −\$20\.00\b/.test(rep)]);
 
 // Reopened: the rates go, and Italy counts at today's rate again.
 const open = JSON.parse(JSON.stringify(base)); open.regions[0].closedAt = ''; delete open.regions[0].rates;
