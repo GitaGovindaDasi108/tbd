@@ -35,7 +35,7 @@
 const DAY = 24 * 3600 * 1000;
 export const SESSION_DAYS = 90;
 // The settings a person may keep with their login (b243): their book order on a computer, and on a phone (b244).
-const PREF_KEYS = ['bookOrder', 'bookOrderPhone', 'finSaved'];
+const PREF_KEYS = ['bookOrder', 'bookOrderPhone', 'finSaved', 'contact'];   // contact (b304): { whatsapp, email } from their Profile
 const GOOGLE_KEYS = 'https://www.googleapis.com/oauth2/v3/certs';
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 
@@ -198,7 +198,14 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       exec('UPDATE person SET name = ? WHERE email = ?', name, email);
       return name;
     },
-    /* Their own settings (b243): { key: value }. Only the person themself reads or sets them. */
+    /* Their WhatsApp number and email from their Profile (b304, Gita), so a
+       form sent to them or filled in by them starts with them. */
+    contactOf(email) {
+      const r = exec("SELECT value FROM pref WHERE email = ? AND key = 'contact'", String(email || '').toLowerCase())[0];
+      let c = {}; try { c = r ? JSON.parse(r.value) || {} : {}; } catch (e) {}
+      return { whatsapp: String(c.whatsapp || ''), email: String(c.email || '') };
+    },
+    /* Their own settings (b243): { key: value }. Only the person themself reads or sets them (contact aside, above). */
     prefsOf(email) {
       const out = {};
       exec('SELECT key, value FROM pref WHERE email = ?', String(email || '').toLowerCase()).forEach(r => {
@@ -210,6 +217,12 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       email = String(email || '').toLowerCase(); key = String(key || '');
       if (!email) throw new Error('Sign in to keep your own settings.');
       if (PREF_KEYS.indexOf(key) < 0) throw new Error('That setting cannot be kept.');
+      if (key === 'contact' && value) {   // b304: just the two, kept short
+        const w = String(value.whatsapp || '').trim().slice(0, 40), m = String(value.email || '').trim().toLowerCase().slice(0, 120);
+        if (m && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(m)) throw new Error('That email address does not look right.');
+        if (w && w.replace(/\D/g, '').length < 7) throw new Error('That WhatsApp number looks too short. Include the country code, e.g. +48.');
+        value = (w || m) ? { whatsapp: w, email: m } : null;
+      }
       if (value === null || value === undefined) { exec('DELETE FROM pref WHERE email = ? AND key = ?', email, key); return; }
       const text = JSON.stringify(value);
       if (text.length > 20000) throw new Error('That setting is too long to keep.');

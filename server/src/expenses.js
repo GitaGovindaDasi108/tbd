@@ -367,6 +367,8 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const by = {};
     auth.ownerList().forEach(e => { by[e] = { email: e, name: auth.nameOf(e) }; });
     auth.allGrants().forEach(g => { if (!by[g.email]) by[g.email] = { email: g.email, name: g.name || g.googleName || g.email.split('@')[0] }; });
+    // Their WhatsApp number and email from their Profile (b304).
+    Object.values(by).forEach(x => { const c = auth.contactOf(x.email); x.whatsapp = c.whatsapp; x.cemail = c.email; });
     return Object.values(by).sort((a, b) => a.name.localeCompare(b.name));
   }
 
@@ -396,7 +398,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       // The consignment groups of the place's region (and only the place's own event's, for an event group).
       partners: pl && pl.regionId ? F.partners.filter(g => g.regionId === pl.regionId && (!g.eventId || g.eventId === pl.eventId))
         .map(g => ({ id: g.id, name: g.name })) : [],
-      me: { name: w.name, email: w.email, link: !!w.link }, fin: w.fin, mayPay: mayPay(w),
+      me: { name: w.name, email: w.email, link: !!w.link, contact: w.email && !w.link ? auth.contactOf(w.email) : null }, fin: w.fin, mayPay: mayPay(w),
       people: isFin(w) ? peopleList() : []
     };
   }

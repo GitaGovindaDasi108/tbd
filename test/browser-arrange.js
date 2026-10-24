@@ -148,6 +148,24 @@ const API = 'http://api.test/';
     t.push(['her computer order is kept with her login', (me.result.prefs.bookOrder || [])[0] === shared[n - 1] && !me.result.prefs.bookOrderPhone]);
     await sita.click('#arrDock [data-act="arrange"]'); await sita.waitForTimeout(300);
     t.push(['Done: the Drag bars go and the shelf sells again', !(await sita.$('#invGrid .arr-grip')) && !(await sita.isVisible('#arrDock'))]);
+    /* b304 (Gita): in a list it is the usual drag and drop: the book goes in
+       where it is dropped, and the rest move along. */
+    await sita.click('#invHeading .view-tg:not(.arr-tg)'); await sita.waitForTimeout(400);
+    await sita.click(tg); await sita.waitForTimeout(300);
+    const L0 = await shelf(sita), m0 = L0.length;
+    const lf = await centre(sita, `#invGrid > .book[data-id="${L0[m0 - 1]}"] .bname`);
+    const lb = await (await sita.$(`#invGrid > .book[data-id="${L0[1]}"]`)).boundingBox();
+    await sita.mouse.move(lf.x, lf.y); await sita.mouse.down();
+    await sita.mouse.move(lb.x + lb.width / 2, lb.y + lb.height * 0.25, { steps: 25 });
+    t.push(['list: mid-drag the rows make room, nothing is outlined', await sita.evaluate(() => !document.querySelector('#invGrid .arr-target') && !!document.querySelector('#invGrid > .arr-gap'))]);
+    await sita.mouse.up(); await sita.waitForTimeout(700);
+    const L1 = await shelf(sita);
+    t.push(['list: the last title dropped above the second goes in second, the rest move along (' + L1.slice(0, 3).join(',') + ')',
+      JSON.stringify(L1) === JSON.stringify([L0[0], L0[m0 - 1]].concat(L0.slice(1, m0 - 1)))]);
+    // Back as it was: cards, not arranging.
+    await sita.click('#arrDock [data-act="arrange"]'); await sita.waitForTimeout(300);
+    await sita.click('#invHeading .view-tg:not(.arr-tg)'); await sita.waitForTimeout(400);
+    await sita.evaluate(o => { MY_ORDER.set(o); renderAll(); }, mine); await sita.waitForTimeout(500);
     await sita.click(`#invGrid > .book[data-id="${mine[0]}"] .sell-btn`); await sita.waitForTimeout(400);
     t.push(['…(Sell opens the sale as usual)', await anyModal(sita)]);
     await sita.evaluate(() => closeModal());

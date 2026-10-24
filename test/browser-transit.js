@@ -32,6 +32,8 @@ const ship = id => (m.call({ action: 'getState', season: SA }).state.shipments |
   const t = [], errors = [];
   async function open(query, width) {
     const page = await browser.newPage({ viewport: { width: width || 1100, height: 1000 } });
+    // b304: a batch in transit is one line with a drop-down; these tests work inside it, so it opens.
+    await page.addInitScript(() => new MutationObserver(() => document.querySelectorAll('details.sh-line:not([open])').forEach(d => { d.open = true; })).observe(document, { subtree: true, childList: true }));
     page.on('pageerror', e => errors.push(e.message));
     page.on('dialog', d => { page.__dialogs = (page.__dialogs || []).concat(d.message()); d.accept(); });
     await page.route('**/*', async route => {
@@ -84,7 +86,7 @@ const ship = id => (m.call({ action: 'getState', season: SA }).state.shipments |
     t.push(['the rest stays in transit (partly delivered)', ship('sh_beta22').status === 'PARTIAL']);
     t.push(['back on the main screen, not a dialog', !(await page.evaluate(() => document.querySelector('#overlay').classList.contains('show')))]);
     c = await cards(page);
-    t.push(['the card now reads "1 of 2" still coming', c.length === 1 && /1 in transit/.test(c[0]) && /partly delivered/.test(c[0])]);
+    t.push(['the card now reads "1 of 2" still coming', c.length === 1 && /1 book/.test(c[0]) && /partly delivered/.test(c[0])]);
 
     await page.evaluate(() => goTo('season')); await page.waitForTimeout(400);
     c = await cards(page);
