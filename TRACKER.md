@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b307**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b308**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,14 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b308
+Live app changes (Gita, 24 Oct). Live:
+- Partial Delivery Arrived: the "# Arrived" boxes start empty (placeholder 0).
+- A partly delivered batch has "📋 Remaining to Be Delivered" (data-act shremain, shipRemainReport): each title still to come, what has arrived of it, and the total.
+- Net Sales by Season: "Show Currencies ▸" keeps to two lines; only Net Sales is blue (Gross, Expenses, Donations plain, negatives still red); the season names stay in view while the figures scroll sideways (sticky first column, no left fade, the ‹ sits past the column: sxCue sets --sx-lx).
+- Estimates (≈) everywhere: a closed region's closing-day rates are an estimate now. Only Dollars received (convFx) and dollars entered on a sale count as hard figures (exactFx in usdExact / legExact / usdCostExact). Consignment expenses in the payments table get ≈ too. The dollar values themselves are unchanged.
+Tests: test/browser-b308.js; truthclient.js updated for the new rule.
 
 ## Done in b307
 Live app changes (Gita, 24 Oct). Live:

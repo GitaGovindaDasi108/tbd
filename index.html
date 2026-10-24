@@ -607,6 +607,13 @@ body.busy #busyBar{opacity:1}
 /* Net Sales by Season (b307, Gita): "Seasons" on the left; the currencies open sideways. */
 .cbr-ns thead th:first-child{text-align:left}
 .cbr-ns .cbr-tg{text-align:left;padding-left:4px;padding-right:4px}
+.cbr-tgb .nw{white-space:nowrap}
+/* Only Net Sales is blue here (b308, Gita); the other totals are plain. */
+.cbr-ns td.usd{color:var(--ink)} .cbr-ns td.usd.cbr-net{color:var(--net)}
+/* The season names stay in view while the figures scroll sideways (b308, Gita),
+   so that edge does not fade. */
+.cbr-ns tbody th,.cbr-ns tfoot th,.cbr-ns thead th:first-child{position:sticky;left:0;z-index:1;background:var(--paper)}
+.sx-l:has(> .cbr-ns){--sx-fl:0px}   /* two lines, the arrow with "Currencies" (b308, Gita) */
 .cbr-tgb{border:0;background:none;padding:0;font:inherit;color:var(--lvl);text-transform:inherit;letter-spacing:inherit;cursor:pointer;text-align:left}
 /* Season aggregator: each region as a heading row, its places indented beneath. */
 .cash-agg .cash-reg-row>th,.cash-agg .cash-reg-row>td{font-weight:800;border-top:1.5px solid var(--line-d);padding-top:9px}
@@ -1373,7 +1380,7 @@ body.has-na .overlay{z-index:10000}
 .sx-bar{position:relative;height:0;margin:0}
 .sx-btn{position:absolute;bottom:calc(var(--sx-h,40px)/2 - 15px);width:30px;height:30px;border-radius:50%;border:1.5px solid var(--line-d);
   background:#fff;color:var(--ink);font-size:20px;line-height:1;padding:0 0 3px;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.18);display:none;z-index:2}
-.sx-prev{left:2px} .sx-next{right:2px}
+.sx-prev{left:var(--sx-lx,2px)} .sx-next{right:2px}
 .sx-bar.on-l .sx-prev, .sx-bar.on-r .sx-next{display:flex;align-items:center;justify-content:center}
 .ptg-scroll::-webkit-scrollbar{height:6px}
 .ptg-scroll::-webkit-scrollbar-thumb{background:var(--line-d);border-radius:3px}
@@ -2483,7 +2490,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b307</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b308</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3006,16 +3013,21 @@ function toUSDAt(amt,cur,loc){
 function hasTruth(sale){ return hasUsdActual(sale) || (!!sale && !!ratesAt(sale.location)); }
 /* Are this sale's dollars hard figures, not an estimate (b299, Gita: the ~
    in the sales app too)? Dollars, dollars entered on the sale, or every other
-   currency in it at a fixed rate: Dollars received, or a closed place's. */
-function usdCostExact(c){ const cur = String(c.cur||'USD').toUpperCase(); return cur==='USD' || Number((ratesAt(c.location)||{})[cur]) > 0; }
+   currency in it at what Dollars received fetched. */
+/* b308 (Gita: "Europe tour is showing as an absolute collection instead of an
+   estimate"): a closed place's rates are the day it closed, still an
+   estimate. Only money actually changed (Dollars received) or dollars entered
+   on the sale count as hard figures. */
+const exactFx = loc => (STATE.convFx||{})[loc] || {};
+function usdCostExact(c){ const cur = String(c.cur||'USD').toUpperCase(); return cur==='USD' || Number(exactFx(c.location)[cur]) > 0; }
 function legExact(sale, l){
   if(hasUsdActual(sale)) return true;
   const c = String(l.cur||'USD').toUpperCase();
-  return c==='USD' || Number((ratesAt(sale.location)||{})[c]) > 0;
+  return c==='USD' || Number(exactFx(sale.location)[c]) > 0;
 }
 function usdExact(sale){
   if(!sale || hasUsdActual(sale)) return true;
-  const fx = ratesAt(sale.location) || {};
+  const fx = exactFx(sale.location);
   return legs(sale).every(l=>!l.amt || l.type==='Gift' || String(l.cur||'USD').toUpperCase()==='USD' || Number(fx[String(l.cur||'').toUpperCase()]) > 0);
 }
 /** Today's estimate for a sale's legs — what the truth corrects. */
@@ -6692,6 +6704,10 @@ function sxCue(el){
   el.classList.toggle('sx-l', l); el.classList.toggle('sx-r', r);
   bar.classList.toggle('on-l', l); bar.classList.toggle('on-r', r);
   bar.style.setProperty('--sx-h', el.offsetHeight + 'px');
+  // A column that stays in view (b308): the ‹ sits just past it, not over the names.
+  const st = el.querySelector(':scope > table thead tr:last-child th:first-child, :scope > table thead th:first-child');
+  const stick = st && getComputedStyle(st).position==='sticky' ? st.offsetWidth : 0;
+  if(stick) bar.style.setProperty('--sx-lx', (stick + 4) + 'px'); else bar.style.removeProperty('--sx-lx');
 }
 let SX_T = 0;
 function sxAll(){ if(SX_T) return; SX_T = requestAnimationFrame(()=>{ SX_T = 0; document.querySelectorAll(SX_SEL).forEach(el=>{ try{ sxCue(el); }catch(e){} }); }); }
@@ -7014,7 +7030,7 @@ function renderNetBySeason(el){
     + `<td class="usd">${x.don ? D(x.don, x.eD) : '<span class="zero">—</span>'}</td><td class="usd cbr-net">${D(x.net, x.eN)}</td>`;
   el.innerHTML = `
     <div class="ptg-scroll"><table class="cash-tbl cbr cbr-ns">
-      <thead><tr><th>${UNIT.Word}</th><th class="cbr-tg"><button type="button" class="cbr-tgb" data-act="netcurs" aria-expanded="${NET_CURS}">${NET_CURS ? 'Hide Currencies <span class="fin-caret">◂</span>' : 'Show Currencies <span class="fin-caret">▸</span>'}</button></th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>Gross Collections</th><th>Expenses</th><th>Donations</th><th>Net Sales</th></tr></thead>
+      <thead><tr><th>${UNIT.Word}</th><th class="cbr-tg"><button type="button" class="cbr-tgb" data-act="netcurs" aria-expanded="${NET_CURS}">${NET_CURS ? 'Hide <span class="nw">Currencies&nbsp;<span class="fin-caret">◂</span></span>' : 'Show <span class="nw">Currencies&nbsp;<span class="fin-caret">▸</span></span>'}</button></th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>Gross Collections</th><th>Expenses</th><th>Donations</th><th>Net Sales</th></tr></thead>
       <tbody>${rows.map(x=>`<tr>
         <th><a href="#" data-act="goseasonid" data-id="${esc(x.r.regionId)}" data-season="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th><td class="cbr-tg"></td>
         ${curs.map(c=>`<td>${cell(x.got,c)}</td>`).join('')}${nums(x)}</tr>`).join('') ||
@@ -7300,7 +7316,7 @@ function renderPayments(target){
   const conCostRow = Object.keys(conCostByCur).length ? `
         <div class="ptg-t ptg-first ptg-cost">Consignment expenses</div>
         ${curs.map(c=>`<div class="ptg-t ptg-cost">${conCostByCur[c] ? '−'+fmt(conCostByCur[c]) : num({},c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-cost">−$${usd2(usdOf(conCostByCur) + costTruthAdj(scopedAllCosts().filter(c=>c.partnerId)))}</div>` : '';
+        <div class="ptg-t usd ptg-cost">−${scopedAllCosts().some(c=>c.partnerId && !usdCostExact(c)) ? '≈' : ''}$${usd2(usdOf(conCostByCur) + costTruthAdj(scopedAllCosts().filter(c=>c.partnerId)))}</div>` : '';
   /* Figures that come off the total are written as negatives, so the column
      reads as a subtraction rather than a second pile of money. */
   const minus = (o,c) => o[c] ? '−'+fmt(o[c]) : num({},c);
@@ -20800,6 +20816,7 @@ function shipCardHTML(x, incoming, readOnly){
     <div class="sh-acts">
       ${incoming?`<button class="btn btn-green btn-sm" data-act="sharriveall" data-id="${esc(x.shipId)}">Full Delivery Arrived</button>
       <button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Partial Delivery Arrived</button>`:''}
+      ${x.status==='PARTIAL' && shipTotal(x) > 0 ? `<button class="btn btn-gold btn-sm" data-act="shremain" data-id="${esc(x.shipId)}" title="Copy what is still to come, for WhatsApp">📋 Remaining to Be Delivered</button>` : ''}
       ${admin?`<button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit Details</button>
       <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct Contents</button>
       <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>`:''}
@@ -21040,6 +21057,17 @@ function shipCountModal(id){
   });
 }
 
+/* What a partly delivered batch still has to bring, for WhatsApp (b308, Gita). */
+function shipRemainReport(x){
+  const rows = shipBooks(x).filter(r=>r.left>0);
+  const L = ['— REMAINING TO BE DELIVERED —', shipLabel(x), shipWho(x) + (x.phone ? ' · ' + x.phone : '')];
+  if(x.eta) L.push('Expected ' + new Date(x.eta).toLocaleDateString(LOCALE,{day:'numeric',month:'short'}));
+  L.push('');
+  rows.forEach(r=>L.push(r.b.name + ' - ' + r.left + (r.arrived ? ' (' + r.arrived + ' of ' + r.sent + ' arrived)' : '')));
+  const left = rows.reduce((t,r)=>t+r.left,0), sent = shipBooks(x).reduce((t,r)=>t+r.sent,0);
+  L.push('', 'Total - ' + left + ' of ' + sent + ' still to come');
+  return L.join('\n');
+}
 function shipReceiveModal(id, fromPanel){
   const x = (STATE.shipments||[]).find(v=>v.shipId===id);
   if(!x) return;
@@ -21063,7 +21091,7 @@ function shipReceiveModal(id, fromPanel){
           ${r.arrived?`<span class="cl-loc">${r.arrived} of ${r.sent} already arrived</span>`:''}</div>
         <div class="cl-exp">${r.left} in transit</div>
         <input class="cl-in rc-q" type="number" min="0" max="${r.left}" inputmode="numeric"
-          data-book="${esc(r.b.id)}" data-max="${r.left}" value="${r.left}">
+          data-book="${esc(r.b.id)}" data-max="${r.left}" value="" placeholder="0">
         <div></div>
       </div>`).join('') || `<div class="cash-empty">Everything in this batch has arrived.</div>`}
       <div class="field"><label>Note (optional)</label><input id="rcNote" type="text"></div>
@@ -22856,6 +22884,7 @@ document.addEventListener('click',e=>{
     commitSync({action:'deletePayout', id:t.dataset.id}, 'Removed').then(ok=>{ if(ok) partnersModal(); });
     return;
   }
+  if(a==='shremain'){ const x = (STATE.shipments||[]).find(v=>v.shipId===t.dataset.id); if(x) reportDialog({title:'Remaining to Be Delivered', make:()=>shipRemainReport(x)}); return; }
   if(a==='shreceive'){ shipReceiveModal(t.dataset.id, !!t.closest('#transitPanel')); return; }
   if(a==='sharriveall'){ shipArriveAll(t.dataset.id); return; }
   if(a==='holders'){ holdersModal(); return; }
