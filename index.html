@@ -244,6 +244,7 @@ tr.cbr-sub td{color:var(--muted)}
 .tc-q1{grid-area:q1;min-width:0} .tc-q2{grid-area:q2;text-align:right;margin-top:0} .tc-q3{grid-area:q3;min-width:0} .tc-q4{grid-area:q4;text-align:right;align-self:end}
 .tc-q2 > div, .tc-coll .label{white-space:nowrap}
 .tc-bal{text-wrap:balance} .tc-bal .tc-cur{white-space:nowrap}
+.bal{text-wrap:balance} .bal-i{white-space:nowrap} .bal-i.bal-long{white-space:normal}
 /* A narrow totals card on a computer (b301): its parts in fewer columns. */
 .tc-coll.tc-st1{grid-template-columns:minmax(min-content,1fr) max-content;grid-template-areas:"q1 q2" "q3 q3" "q4 q4"} .tc-coll.tc-st1 .tc-q4{text-align:left;max-width:none}
 .tc-coll.tc-st2{grid-template-columns:minmax(min-content,1fr);grid-template-areas:"q1" "q2" "q3" "q4"} .tc-coll.tc-st2 .tc-q2, .tc-coll.tc-st2 .tc-q4{text-align:left;max-width:none}
@@ -752,6 +753,7 @@ body.editing-words [data-key]:not(button):not(a):not(.btn):not(label):not(input)
 .exp-form .exp-usd{margin-top:-6px}
 .exp-same{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--ink);text-transform:none;letter-spacing:0;font-weight:400;margin:2px 0 4px}
 .exp-same input{width:auto !important}
+.exp-fx[hidden]{display:none}
 .exp-fx{display:block;font-size:12.5px;color:#2F6FB0;font-weight:600;margin-top:2px}
 .fin-conv-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 4px}
 .exp-est{font-size:13px;color:var(--muted);font-style:italic;margin:2px 0 8px}
@@ -1749,6 +1751,9 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .dr-x{grid-area:x;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 .dr-btns{grid-area:b;display:flex;gap:4px} .dr-row .li-chev{grid-area:c} .dr-row .dr-d{grid-area:d}
 .dr-top{margin:0 0 6px}
+.fin-sh.dr-head{justify-content:flex-start}
+.fin-dr-ov{margin-top:18px}
+.fin-ovw-tg{vertical-align:middle;margin-left:4px}
 @media (max-width:560px){ .dr-row{grid-template-columns:auto minmax(0,1fr) 14px;grid-template-areas:"d w c" "x x c" "b b c";row-gap:4px} .dr-x{text-align:left} .dr-btns{justify-content:flex-end} }
 .fx-item{padding:7px 10px}
 .fx-det>div{margin:2px 0}
@@ -1770,7 +1775,11 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px;margin:8px 0}
 .fc-box{border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;background:var(--paper);min-width:0;container-type:inline-size;overflow:hidden}
 .fc-wide{}
-.fc-h{margin:0 0 10px;font-size:14px;color:var(--ink)}
+.fc-h{margin:0 0 10px;font-size:14px;color:var(--ink);display:flex;align-items:flex-start;gap:8px}
+.fc-h > span:first-child{flex:1 1 auto;min-width:0}
+.fc-tools{display:flex;gap:4px;flex:0 0 auto}.fc-tools .cash-mini{min-width:26px}
+.fcz-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.fcz-scroll{overflow:auto;max-height:70vh}.fcz-box{min-width:0}
 .fc-donut{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
 .fc-ring{position:relative;flex:0 0 170px;width:170px}.fc-ring .fin-pie{width:170px}
 .fc-ring .fin-pie{-webkit-mask:radial-gradient(circle,transparent 46%,#000 47%);mask:radial-gradient(circle,transparent 46%,#000 47%)}
@@ -2053,6 +2062,25 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
 .ln-pick select{font-family:'Inter',sans-serif;font-size:13px;padding:6px 8px;border:1.5px solid var(--line-d);
   border-radius:8px;background:#fff;color:var(--ink);max-width:100%;flex:1 1 140px}
 .ln-pick .ln-lang{flex:0 1 150px}
+.ln-pick .ln-cat{flex:0 1 120px}
+.tl-btn[hidden]{display:none}
+.tl-key{display:flex;gap:14px;font-size:12px;font-weight:700;margin:0 0 8px}
+.tl-in{color:#1F6B43} .tl-out{color:#B5462F}
+.tl-row{border:1px solid var(--line-d);border-left:4px solid #1F6B43;border-radius:9px;padding:8px 11px;margin-bottom:7px;background:var(--paper)}
+.tl-row.out{border-left-color:#B5462F}
+.tl-row summary{display:flex;align-items:center;gap:10px;cursor:pointer;list-style:none;min-width:0}
+.tl-row summary::-webkit-details-marker{display:none}
+.tl-d{flex:0 0 auto;font-size:12px;color:var(--muted);white-space:nowrap}
+.tl-w{flex:1 1 auto;min-width:0;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tl-row.in .tl-w,.tl-row.in .tl-n{color:#1F6B43} .tl-row.out .tl-w,.tl-row.out .tl-n{color:#B5462F}
+.tl-n{flex:0 0 auto;font-weight:800;font-size:13px;white-space:nowrap}
+.tl-car{flex:0 0 auto;color:var(--muted);font-size:11px;transition:transform .15s}
+.tl-row[open] .tl-car{transform:rotate(90deg)}
+.tl-det{margin-top:7px;font-size:13px}
+.tl-it{display:flex;justify-content:space-between;gap:10px;padding:2px 0;border-bottom:1px dotted var(--line)}
+.sc-new{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.sc-new[hidden]{display:none}
+.sc-new input,.sc-new select{flex:1 1 120px;min-width:0;font-size:13px;padding:6px 8px;border:1.5px solid var(--line-d);border-radius:8px;background:#fff}
 .ln-new{display:flex;flex-wrap:wrap;gap:5px;width:100%;font-family:'Inter',sans-serif}
 .ln-new input,.ln-new select{flex:1 1 120px;text-align:left;width:auto;font-size:13px;padding:6px 8px;border:1.5px solid var(--line-d);border-radius:8px}
 .bulk-row .sp-x{border:none;background:none;color:var(--muted);font-size:12px;padding:0 3px;margin-left:2px;
@@ -2427,7 +2455,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b304</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b305</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2492,12 +2520,45 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
 
   <!-- Region + event working area. At Earthly HQ this is the Sales Portal, and
        folds as one; elsewhere its wrapper is invisible (display: contents). -->
+  <!-- EARTHLY HQ SUMMARIES — every season added up, one level above the season.
+       Above Earthly HQ's own Sales Portal (b305, Gita: "Summaries should be on top"). -->
+  <div class="portal on" id="summaryPortal" data-fold="summaryPortal" style="display:none">
+    <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
+    <div class="flow" id="summaryFlow">
+    <div class="cols-2">
+      <section class="panel" id="hqTitlePanel" data-fold="sumTitles">
+        <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+        <div class="body"><div class="title-list" id="hqTitleList"></div></div>
+      </section>
+      <section class="panel" data-fold="sumCollBy">
+        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+        <div class="body" id="hqCollBy"></div>
+      </section>
+    </div>
+    <div class="cols-2">
+      <section class="panel" data-fold="sumSalesBy">
+        <h2 class="sec-h2">Sales by Season <span class="hint">drop down = sales by title</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+        <div class="body"><div id="hqSalesBy"></div></div>
+      </section>
+      <section class="panel" data-fold="sumPayments">
+        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+        <div class="body" id="hqPayBody"></div>
+      </section>
+    </div>
+    <section class="panel" data-fold="sumWarehouses">
+      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body"><div id="hqWhOverview"></div></div>
+    </section>
+    </div>
+  </div>
+
   <div class="portal" id="salesPortal" data-fold="salesPortal">
   <h2 class="portal-h">Sales Portal <span class="hint">(Earthly HQ's own warehouse, sales and money)</span></h2>
   <div class="flow" id="salesFlow">
   <div class="cols" id="regionCols">
     <section class="panel" data-fold="inventory">
       <h2 id="invHeading" class="inv-h2">Inventory
+        <button class="btn btn-ghost btn-xs tl-btn no-edit" data-act="xferlog" hidden title="Books transferred in and out of here">⇄ Transfer log</button>
         <button class="btn btn-gold btn-sm qr-btn" data-act="qr">📱 Digital Payment QRs</button>
         <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="inventory"
           title="Copy the shelf for WhatsApp">📋</button></h2>
@@ -2582,37 +2643,6 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
     <div class="body"><div id="sellerList"></div></div>
   </section>
   </div>
-  </div>
-
-  <!-- EARTHLY HQ SUMMARIES — every season added up, one level above the season -->
-  <div class="portal on" id="summaryPortal" data-fold="summaryPortal" style="display:none">
-    <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
-    <div class="flow" id="summaryFlow">
-    <div class="cols-2">
-      <section class="panel" id="hqTitlePanel" data-fold="sumTitles">
-        <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
-        <div class="body"><div class="title-list" id="hqTitleList"></div></div>
-      </section>
-      <section class="panel" data-fold="sumCollBy">
-        <h2 class="sec-h2">Collections by Season <span class="hint">(what each season has taken)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
-        <div class="body" id="hqCollBy"></div>
-      </section>
-    </div>
-    <div class="cols-2">
-      <section class="panel" data-fold="sumSalesBy">
-        <h2 class="sec-h2">Sales by Season <span class="hint">drop down = sales by title</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
-        <div class="body"><div id="hqSalesBy"></div></div>
-      </section>
-      <section class="panel" data-fold="sumPayments">
-        <h2 class="sec-h2">Total Collections by Payment <span class="hint">(tap a type for the seasonal split)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="cash" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
-        <div class="body" id="hqPayBody"></div>
-      </section>
-    </div>
-    <section class="panel" data-fold="sumWarehouses">
-      <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
-      <div class="body"><div id="hqWhOverview"></div></div>
-    </section>
-    </div>
   </div>
 
   <section class="panel admin-panel" id="adminPanel" data-fold="admin">
@@ -3035,6 +3065,9 @@ function amountLabel(s){
 /* ---- Hierarchy helpers ----
    A "warehouse" is no longer one place: every region has one. These resolve a
    location back to its region so the rest of the app can stay level-agnostic. */
+/* Every name search ignores accents (b305, Gita): typing "i" finds "ī". */
+const FOLD_RE = /[\u0300-\u036f]/g;
+const fold = t => String(t||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'');
 function regionsList(){ return STATE.regions||[]; }
 /* Closed places below the open ones, A to Z (b228) — as the server sends them;
    this shows a close at once, before the server's answer. */
@@ -5819,7 +5852,9 @@ function renderAdmin(){
 
   // Location
   if(isHQ()){
-    // HQ is always there: no events, nothing to reorder, never closed or deleted.
+    // HQ is always there: never closed or deleted. From here Change Location
+    // Order arranges every season's places (b305, Gita).
+    if(locOrderKinds().length) cols[3].push(`<button class="btn" data-act="reorder">↕ Change Location Order</button>`);
     cols[3].push(`<button class="btn" data-act="editregion">Edit Earthly HQ</button>`);
   }else{
   if(locOrderKinds().length) cols[3].push(`<button class="btn" data-act="reorder">↕ Change Location Order</button>`);
@@ -6443,7 +6478,7 @@ function renderTotals(){
     })()}
     ${hideMoney() ? '' : `
     ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '≈' : '') + '$' + usdT(pendUsd)}</div>
-      <div class="sub">${money(due)}</div></div>` : ''}
+      <div class="sub tc-bal">${moneyBal(due)}</div></div>` : ''}
     ${(function(){
       /* Total Collections in four parts (b295, Gita): on a computer the total top
          left, costs and donations top right, the currencies bottom left and Net
@@ -6507,6 +6542,20 @@ function layoutTotals(){
     reset();
     return tight;
   };
+  /* Practice (b305, Gita): each card only as wide as it needs, and any room
+     left over stays empty at the end of the line. */
+  if(PRACTICE && !window.TOT_EVEN){   // TOT_EVEN: the live layout, for the tests
+    const coll1 = cards.find(c=>c.classList.contains('tc-coll'));
+    const fit = need => need.reduce((t,v)=>t+v, 0) + gap*(cards.length-1) <= W + 0.5;
+    const put = need => cards.forEach((c,i)=>{ c.style.flex = '0 0 auto'; c.style.width = Math.min(W, need[i]) + 'px'; });
+    for(const [sq, st] of [['',''], ['sq',''], ['sq','tc-st1'], ['sq','tc-st2']]){
+      box.classList.toggle('tot-sq', !!sq);
+      if(coll1){ coll1.classList.remove('tc-st1','tc-st2'); if(st) coll1.classList.add(st); }
+      const need = measure(); if(fit(need)){ put(need); return; }
+    }
+    box.classList.remove('tot-sq'); if(coll1) coll1.classList.remove('tc-st1','tc-st2');
+    put(measure()); return;
+  }
   const eq = Math.floor((W - gap*(cards.length-1)) / cards.length);
   /* Every card the same width, all on one line (b304, Gita: "just make
      everything even"; b302/b303's set widths are gone). */
@@ -6538,6 +6587,40 @@ function layoutTotals(){
   [coll, pend].filter(Boolean).forEach(c=>{ c.style.minWidth = need[at(c)] + 'px'; c.style.flex = c === coll ? '100 1 0' : '1 1 0'; });
 }
 let TOT_T = 0;
+/* Long lines of figures (b305, Gita: "create balance anywhere there are long
+   strings of data that break across two lines"). Wherever the app lists
+   things as "a · b · c", each short item stays whole and the lines come out
+   about the same length. The words are unchanged; each item gets its own span. */
+const BAL_SKIP = 'script,style,textarea,select,option,svg,pre,[contenteditable="true"],.no-bal';
+function balData(root){
+  if(!root || (root.nodeType!==1 && root.nodeType!==3) || !root.isConnected) return;
+  const nodes = [];
+  if(root.nodeType===3){ if(root.nodeValue.includes(' · ')) nodes.push(root); }
+  else{ const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {acceptNode:n=>n.nodeValue.includes(' · ') ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT});
+    while(w.nextNode()) nodes.push(w.currentNode); }
+  nodes.forEach(n=>{
+    const p = n.parentElement; if(!p || p.closest(BAL_SKIP) || p.classList.contains('bal-i')) return;
+    const parts = n.nodeValue.split(' · '), frag = document.createDocumentFragment();
+    parts.forEach((t,i)=>{ const last = i===parts.length-1, sp = document.createElement('span');
+      // A long item (a sentence) may still wrap inside itself, so it never sticks out.
+      sp.className = t.trim().length <= 28 ? 'bal-i' : 'bal-i bal-long'; sp.textContent = t + (last ? '' : ' ·');
+      frag.append(sp); if(!last) frag.append(' '); });
+    // Straight inside a flex or grid box, the items stay together in one span.
+    if(/flex|grid/.test(getComputedStyle(p).display)){ const w = document.createElement('span'); w.className = 'bal'; w.append(frag); n.replaceWith(w); return; }
+    n.replaceWith(frag);
+    let b = p; while(b && b!==document.body && /^inline/.test(getComputedStyle(b).display)) b = b.parentElement;
+    if(b && b!==document.body) b.classList.add('bal');
+  });
+}
+const BAL_Q = new Set(); let BAL_T = 0;
+try{
+  const mo = new MutationObserver(ms=>{
+    ms.forEach(m=>{ if(m.type==='characterData') BAL_Q.add(m.target); else m.addedNodes.forEach(n=>BAL_Q.add(n)); });
+    if(!BAL_T) BAL_T = setTimeout(()=>{ BAL_T = 0; const q = [...BAL_Q]; BAL_Q.clear(); q.forEach(n=>{ try{ balData(n); }catch(e){} }); mo.takeRecords(); }, 0);
+  });
+  mo.observe(document.body, {childList:true, subtree:true, characterData:true});
+  balData(document.body);
+}catch(e){}
 // The fonts change the widths once they arrive.
 try{ document.fonts && document.fonts.ready.then(()=>{ try{ layoutTotals(); }catch(e){} }); }catch(e){}
 if(typeof window!=='undefined' && window.addEventListener) window.addEventListener('resize', ()=>{ clearTimeout(TOT_T); TOT_T = setTimeout(()=>{ try{ layoutTotals(); }catch(e){} }, 100); });
@@ -6547,6 +6630,7 @@ function renderInventory(){
   if(dragging()){ SHELF_DRAG.redraw = true; return; }
   $('#invHeading').firstChild.textContent = isHQ() ? 'Earthly HQ Warehouse '
     : (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
+  { const tl = $('#invHeading .tl-btn'); if(tl) tl.hidden = !PRACTICE; }   // b305, practice first
   const s=scopedSales();
   const allSales=STATE.sales||[];
   let h='';
@@ -9005,9 +9089,9 @@ function bundleModal(edit){
   const stockAt = id => invQty(loc,id) + (backIn[id]||0);
   // As for one book: the rest waits under "Specialized Sales" unless this sale already uses it.
   const bSpecOpen = !!edit;          // an edit shows everything the transaction holds
-  /* Book by book, like Add Stock (b304, practice; Gita): type the title, then
-     the language, then how many; "Add another book" for the next. */
-  const MB_LINES = PRACTICE;
+  /* Book by book, like Add Stock (b304 practice, live b305; Gita): type the
+     title, then the language, then how many; "Add another book" for the next. */
+  const MB_LINES = true;
   const rows = MB_LINES ? '' : bundleBooks().map(b=>{
     const stock = stockAt(b.id);
     return `<div class="mb-row" data-book="${b.id}"
@@ -9471,6 +9555,41 @@ function bundleModal(edit){
    corrected at) a location, and transfers between the warehouse and events.
    Mirrors the cash ledger's shape and look. */
 function stockLocName(id){ return cashAcctName(id); }   // same lookup, different name for clarity here
+
+/* Transfer log (b305, practice; Gita): the books that came into this shelf and
+   went out of it, one line per transfer (date, where from or to, how many),
+   the titles under the arrow. In and out each have their own colour. A
+   warehouse's devotee storage counts as the warehouse, so moves between them
+   are not listed. */
+function transferLogModal(){
+  const mine = new Set(isWarehouseLoc(CUR_LOC) && !isHQ() ? [CUR_LOC].concat(holdersOf(CUR_REGION).map(h=>h.holderId)) : [CUR_LOC]);
+  const groups = new Map();
+  (STATE.stockMoves||[]).filter(m=>m && m.kind==='TRANSFER' && m.bookId && Number(m.qty) > 0 && mine.has(m.fromLoc)!==mine.has(m.toLoc)).forEach(m=>{
+    const out = mine.has(m.fromLoc), other = out ? m.toLoc : m.fromLoc;
+    const t = new Date(m.ts || 0), key = (out ? 'o|' : 'i|') + other + '|' + Math.floor(t.getTime() / 60000);
+    if(!groups.has(key)) groups.set(key, {out, other, ts:t, items:{}, notes:new Set()});
+    const g = groups.get(key); g.items[m.bookId] = (g.items[m.bookId]||0) + Number(m.qty);
+    if(m.note) g.notes.add(m.note);
+  });
+  const list = [...groups.values()].sort((a,b)=>b.ts - a.ts);
+  const day = t => { try{ return t.toLocaleDateString(LOCALE, {month:'short', day:'numeric', year:'numeric'}); }catch(e){ return ''; } };
+  const time = t => { try{ return t.toLocaleTimeString(LOCALE, {hour:'2-digit', minute:'2-digit'}); }catch(e){ return ''; } };
+  const n = g => Object.values(g.items).reduce((a,b)=>a+b, 0);
+  // Books sent in transit name where the batch is going, or where it came from.
+  const where = g => { const sh = (STATE.shipments||[]).find(x=>x.shipId===g.other);
+    if(!sh) return /^sh_/.test(g.other) ? 'a batch in transit' : stockLocName(g.other);
+    return g.out ? stockLocName(sh.toLoc) + ' (in transit)' : (sh.origin || ((regionById(sh.fromRegion)||{}).name || 'outside the tour')) + ' (in transit)'; };
+  openModal(`${mHead('Transfer log — ' + esc(locName(CUR_LOC)))}
+    <div class="m-body">
+      <div class="tl-key"><span class="tl-in">⬇ In</span><span class="tl-out">⬆ Out</span></div>
+      ${list.length ? list.map(g=>`<details class="tl-row ${g.out ? 'out' : 'in'}">
+        <summary><span class="tl-d">${esc(day(g.ts))}</span><span class="tl-w">${g.out ? '⬆ To' : '⬇ From'} ${esc(where(g))}</span><span class="tl-n">${n(g)} book${n(g)===1?'':'s'}</span><span class="tl-car" aria-hidden="true">▸</span></summary>
+        <div class="tl-det">${Object.keys(g.items).map(id=>`<div class="tl-it"><span>${esc((bookById(id)||{}).name || id)}</span><b>${g.items[id]}</b></div>`).join('')}
+          <div class="muted-note">${esc(time(g.ts))}${g.notes.size ? ' · ' + esc([...g.notes].join(' · ')) : ''}</div></div>
+      </details>`).join('') : '<div class="cash-empty">No transfers in or out yet.</div>'}
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+}
 
 /* Undo one movement, keeping the button honest about what is happening. */
 /* Undoing a movement, at the speed of a sale.
@@ -10190,8 +10309,8 @@ function comboBind(id, items, cur, onPick, add){
   const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
   const label = v => { const it = items.find(x=>x.v===v); return it ? (it.shown || it.l) : ''; };
   const draw = q => {
-    q = q.trim().toLowerCase();
-    const hit = x => !q || [x.l].concat(x.up||[]).some(t=>String(t||'').toLowerCase().includes(q));
+    q = fold(q.trim());
+    const hit = x => !q || [x.l].concat(x.up||[]).some(t=>String(t||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
     const keep = new Set(items.filter(hit));
     // A season or region stays while anything beneath it is shown.
     items.forEach(x=>{ if(keep.has(x)) (x.upIds||[]).forEach(u=>{ const p = items.find(y=>y.v===u); if(p) keep.add(p); }); });
@@ -10367,11 +10486,12 @@ function expDraw(){
       <input id="xWho" type="text" maxlength="40" placeholder="So Finance knows who it was"></div>` : '';
   f.same = f.same || {};
   /* From the person's Profile (b304, Gita): their WhatsApp number or email
-     fills the payment details it fits, where nothing is typed yet. */
+     fills the payment details it fits, where nothing is typed yet. A field
+     taking a phone or an email gets the phone number (b305, Gita). */
   if(method && !edit && !P){
     const who = f.forEmail ? (o.people||[]).find(x=>x.email===f.forEmail) : null;
     const c = f.forEmail ? (who ? {whatsapp: who.whatsapp, email: who.cemail} : null) : o.me.contact;
-    const fit = k => !c ? '' : k==='phone' || k==='revolut' ? c.whatsapp : k==='wise' ? c.email : k==='zelle' || k==='paypal' ? c.email || c.whatsapp : k==='name' || k==='holder' ? (f.forEmail ? (who||{}).name : o.me.name) || '' : '';
+    const fit = k => !c ? '' : k==='phone' || k==='revolut' ? c.whatsapp : k==='wise' ? c.email : k==='zelle' || k==='paypal' ? c.whatsapp || c.email : k==='name' || k==='holder' ? (f.forEmail ? (who||{}).name : o.me.name) || '' : '';
     f.prof = f.prof || {};
     method.fields.forEach(fl=>{ const v = fit(fl.k); if(v && (!f.payTo[fl.k] || f.payTo[fl.k]===f.prof[fl.k])){ f.payTo[fl.k] = v; f.prof[fl.k] = v; } });
   }
@@ -10580,10 +10700,10 @@ function expBindFor(){
   const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
   const mineLabel = 'Mine (' + o.me.name + ')';
   const draw = q => {
-    q = q.trim().toLowerCase();
+    q = fold(q.trim());
     // General (b276, Gita): the tour's own expense, nobody's to pay back.
     const rows = [{email:'', name:mineLabel}, {email:'*general', name:'General'}].concat(o.people.filter(p=>p.email!==o.me.email))
-      .filter(p=>!q || p.name.toLowerCase().includes(q) || p.email.includes(q));
+      .filter(p=>!q || p.name.toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q) || p.email.includes(q));
     list.innerHTML = rows.map(p=>`<div class="pp-row${p.email===f.forEmail?' on':''}" data-email="${esc(p.email)}">${esc(p.name)}${
       p.email?` <span class="pp-tag">${esc(p.email)}</span>`:''}</div>`).join('') || '<div class="pp-empty">Nobody by that name.</div>';
     list.hidden = false;
@@ -10786,9 +10906,9 @@ const EXP_EST_NOTE = 'This is an estimate - reimbursement rate may change based 
 const expIsEst = x => expOtherCur(x) && !expExactOf(x) && !(Number(x.usdAmt) > 0);
 // "≈ ₹3,040 (1 € = ₹89.43 on 2026-10-17)", or that the rate could not be found.
 function expPayAmtLine(x){
-  if(!expOtherCur(x)) return '';
+  // Not needed once an exact amount is given (b305, Gita).
+  if(!expOtherCur(x) || expExactOf(x) || Number(x.usdAmt) > 0) return '';
   const p = x.payAmt;
-  if(expExactOf(x)) return 'To pay back: ' + cashFmt(expExactOf(x), x.reimbCur) + ' (the exact amount given)';
   if(p===undefined) return 'Checking the exchange rate…';
   if(p && p.fallback && p.amt!=null) return 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (1 ' + x.cur + ' = ' + (Math.round(p.rate*10000)/10000) + ' ' + p.cur + ', the latest rate' + (p.on ? ', ' + p.on : '') + ')';
   if(p && p.exact) return 'To pay back: ' + cashFmt(p.amt, p.cur) + ' (the exact dollar amount given)';
@@ -10817,7 +10937,7 @@ async function expReview(all){
       <div class="exp-batch exp-rev">${all.map((x,i)=>`<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(x.desc)}</b>
           <span class="muted-note">${esc([x.date, x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : x.category, expPlaceName(x.location)].filter(Boolean).join(' · '))}${
             x.kind==='reimburse' && !P ? ' · to pay back' : ''} · ${x.receipts.length ? '🧾 ' + x.receipts.length : 'no receipt'}</span>${
-            expOtherCur(x) ? `<span class="exp-fx" data-fxline="${i}">${esc(expPayAmtLine(x))}</span>` : ''}${
+            expOtherCur(x) ? `<span class="exp-fx" data-fxline="${i}"${expPayAmtLine(x) ? '' : ' hidden'}>${esc(expPayAmtLine(x))}</span>` : ''}${
             expOtherCur(x) && EXP.revExact ? `<label class="exp-exact">Exact amount to pay back in ${esc(x.reimbCur)}
               <input type="number" min="0" step="0.01" inputmode="decimal" data-xex="${i}" value="${esc(x.payExact||'')}" placeholder="0.00"></label>` : ''}</span>
           <b class="exp-bi-a">${esc(cashFmt(Number(x.amt), x.cur))}</b></div>`).join('')}
@@ -10836,7 +10956,7 @@ async function expReview(all){
       if(ex.checked){ const first = $('#modal [data-xex]'); if(first) first.focus({preventScroll:true}); } });
     document.querySelectorAll('#modal [data-xex]').forEach(inp=>inp.addEventListener('input', ()=>{
       const x = all[Number(inp.dataset.xex)]; x.payExact = inp.value;
-      const l = document.querySelector('#modal [data-fxline="' + inp.dataset.xex + '"]'); if(l) l.textContent = expPayAmtLine(x);
+      const l = document.querySelector('#modal [data-fxline="' + inp.dataset.xex + '"]'); if(l){ l.textContent = expPayAmtLine(x); l.hidden = !l.textContent; }
       const pe = $('#xrPay'); if(pe && back.every(out)) pe.textContent = finTotals(back, y=>[out(y)]);
       const en = $('#xrEst'); if(en) en.hidden = !fx.some(expIsEst); }));
     bind();
@@ -10870,7 +10990,7 @@ async function expReview(all){
     if(!$('#xrGo') || $('#xrGo').disabled) return;
     // Someone typing an exact amount keeps their place: just the lines change.
     if(document.activeElement && document.activeElement.dataset && document.activeElement.dataset.xex!==undefined){
-      document.querySelectorAll('#modal [data-fxline]').forEach(l=>{ l.textContent = expPayAmtLine(all[Number(l.dataset.fxline)]); }); return; }
+      document.querySelectorAll('#modal [data-fxline]').forEach(l=>{ l.textContent = expPayAmtLine(all[Number(l.dataset.fxline)]); l.hidden = !l.textContent; }); return; }
     const b = $('#modal .m-body'), top = b ? b.scrollTop : 0; draw(); const b2 = $('#modal .m-body'); if(b2) b2.scrollTop = top;
   }
 }
@@ -10955,7 +11075,7 @@ function reimbPublicDone(list){
       <div class="reimb-ok">✓</div>
       <div class="cash-lede">${list.length > 1 ? 'Your ' + list.length + ' expenses have' : 'Your expense has'} been received and will be processed at the earliest convenience.</div>
       ${list.some(expIsEst) ? `<div class="exp-est">${esc(EXP_EST_NOTE)}</div>` : ''}
-      <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>${expOtherCur(x) ? `<br><span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
+      <div class="hint">${list.map(x=>`${esc(x.desc)}: <b>${esc(cashFmt(Number(x.amt), x.cur))}</b>${expPayAmtLine(x) ? `<br><span class="exp-fx">${esc(expPayAmtLine(x))}</span>` : ''}`).join('<br>')}<br>To be paid back by ${esc([...new Set(list.map(x=>x.method))].join(', '))}.
         Finance will be in touch${P.phone ? ' on ' + esc(P.phone) : P.email ? ' at ' + esc(P.email) : ''} if anything is needed.</div>
     </div>
     <div class="m-foot">${P.once ? '' : `<button class="btn btn-ghost" id="rpAnother">Send in another</button>`}<a class="btn btn-primary" href="${REIMB_EXIT}">Done</a></div>`);
@@ -10982,8 +11102,8 @@ function finTotals(list, amt){
   return Object.keys(by).sort((a,b)=>(a==='USD'?-1:b==='USD'?1:a.localeCompare(b))).map(c=>cashFmt(by[c], c)).join(' + ');
 }
 function finDraw(){
-  const T = finScopedTodo(), q = EXP.q.trim().toLowerCase();
-  const hit = (...xs) => !q || xs.some(s=>String(s||'').toLowerCase().includes(q));
+  const T = finScopedTodo(), q = fold(EXP.q.trim());
+  const hit = (...xs) => !q || xs.some(s=>String(s||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
   const reimb = T.reimb.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method));
   const pend = T.pending.filter(p=>hit(p.name, p.phone, p.book, p.place, p.region, p.season, p.soldBy));
   const all = T.all.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, EXP_STATUS[x.status]));
@@ -11381,9 +11501,9 @@ function finBindSearch(){
   const inp = box.querySelector('.pp-in'), list = box.querySelector('.pp-list');
   const shown = q => {
     const places = finPlaces();   // read each time: the nav is kept while the figures reload
-    q = q.trim().toLowerCase();
+    q = fold(q.trim());
     if(!q) return places;
-    const hit = v => String(v||'').toLowerCase().includes(q);
+    const hit = v => String(v||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q);
     const me = p => hit(p.name) || hit(p.rName) || hit(p.sName);
     return places.filter(p=>p.kind==='all' ? hit(p.name)
       : p.fin ? me(p)
@@ -11540,8 +11660,8 @@ function finOverviewHTML(){
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ≈ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
       Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
 
-    <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}</h3>
-    <div class="fin-scroll fin-ovw"><table class="cash-tbl fin-tbl${[...open].map(k=>' fo-' + k).join('')}"><thead>
+    <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')}${PRACTICE ? ` <button type="button" class="btn btn-ghost btn-xs fin-ovw-tg no-edit" data-act="finovwhide" aria-expanded="${FIN.ovwHide?'false':'true'}">${FIN.ovwHide ? '▸ Show table' : '▾ Hide table'}</button>` : ''}</h3>
+    <div class="fin-scroll fin-ovw"${PRACTICE && FIN.ovwHide ? ' hidden' : ''}><table class="cash-tbl fin-tbl${[...open].map(k=>' fo-' + k).join('')}"><thead>
       <tr class="fin-gh"><th rowspan="2"></th>${groups.map(g=>g.g ? `<th colspan="${open.has(g.k) ? g.n : g.n - 2}" class="fin-g" data-fg="${g.k}" data-n="${g.n}">${esc(g.g)}</th>` : `<th class="${g.cls}"></th>`).join('')}</tr>
       <tr>${cols.map(c=>`<th class="${c.cls||''}${c.k ? ' fk-' + c.k : ''}"${c.cls==='fin-sold' ? ` data-fsold="${c.k}"` : ''}>${esc(c.l)}${c.cls==='fin-sold' ? ` <span class="fin-caret">${open.has(c.k) ? '◂' : '▸'}</span>` : ''}</th>`).join('')}</tr></thead>
       <tbody>${O.rows.map(r=>row(r)).join('') || `<tr><td colspan="${cols.length+1}">Nothing recorded here yet.</td></tr>`}</tbody>
@@ -12201,9 +12321,9 @@ function finRepDefault(){
 }
 function finReportRows(){
   const R = FIN.rep, {sales, exps} = finFiltered(Object.assign({}, R.f, finScopeF())), dims = R.rows.filter(Boolean);
-  const q = R.q.trim().toLowerCase();
-  const sOk = x => !q || [x.t, x.by, x.pay.join(' '), x.con].some(v=>String(v||'').toLowerCase().includes(q));
-  const eOk = x => !q || [x.cat, x.who, x.con].some(v=>String(v||'').toLowerCase().includes(q));
+  const q = fold(R.q.trim());
+  const sOk = x => !q || [x.t, x.by, x.pay.join(' '), x.con].some(v=>String(v||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
+  const eOk = x => !q || [x.cat, x.who, x.con].some(v=>String(v||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
   const S = sales.filter(sOk), E = exps.filter(eOk);
   const groups = new Map(), key = vals => vals.join(' › ');
   const put = (x, isExp) => {
@@ -12676,13 +12796,10 @@ function finRender0(){
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
   if(sec==='expenses'){
-    /* Practice (b303, Gita): Dollars Received beside the expenses, as the
-       sales log sits beside the warehouses in the sales portal. */
+    /* Expenses on their own again (b305, Gita): Dollars Received moved to the Overview. */
     $('#fpBody').innerHTML = `<h2 class="fp-h">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h2>${finScopeNote()}
-      ${PRACTICE ? `<div class="fin-two"><section class="fin-col" id="finExS">${finExpSecHTML()}</section>
-        <section class="fin-col" id="finDrS">${finDrSecHTML()}</section></div>`
-      : `<div class="fin-one"><section class="fin-col" id="finExS">${finExpSecHTML()}</section></div>`}`;
-    finBindExpSec(); finDrBind(); finChartsMount(); return;
+      <div class="fin-one"><section class="fin-col" id="finExS">${finExpSecHTML()}</section></div>`;
+    finBindExpSec(); finChartsMount(); return;
   }
   if(sec==='reimb' && !FIN_RB_TABS.includes(FIN.rb.tab)) FIN.rb.tab = FIN.rb.tab==='done' ? 'paid' : 'pending';
   if(sec==='reimb' && FIN.rb.tab!=='settings'){ finReimbRender(); return; }
@@ -12698,8 +12815,10 @@ function finRender0(){
   }
   FIN.f = Object.assign({}, FIN.f, f);
   const title = finSecName(sec);
-  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn('figures')} ${finCsvBtn('overview')}</h2>${finScopeNote()}${finOverviewHTML()}`;
-  finBind();
+  /* Practice (b305, Gita): Dollars Received under the table. */
+  $('#fpBody').innerHTML = `<h2 class="fp-h">${title} ${finRepBtn('figures')} ${finCsvBtn('overview')}</h2>${finScopeNote()}${finOverviewHTML()}${
+    PRACTICE ? `<section class="fin-dr-ov" id="finDrS">${finDrSecHTML()}</section>` : ''}`;
+  finBind(); finDrBind();
   finChartsMount();
 }
 
@@ -12894,8 +13013,8 @@ function finSendLinkModal(){
   const n = $('#fsName'), lst = $('#fsPeople');
   const people = () => ((EXP.opt && EXP.opt.people) || []).filter(p=>p.whatsapp || p.cemail || p.email);
   if(!EXP.opt) post({action:'expOptions'}).then(r=>{ EXP.opt = EXP.opt || r.result; }).catch(()=>{});
-  const show = () => { const q = n.value.trim().toLowerCase();
-    const rs = q ? people().filter(p=>p.name.toLowerCase().includes(q)).slice(0, 8) : [];
+  const show = () => { const q = fold(n.value.trim());
+    const rs = q ? people().filter(p=>p.name.toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q)).slice(0, 8) : [];
     lst.innerHTML = rs.map(p=>`<div class="pp-row" data-em="${esc(p.email)}"><span class="no-edit">${esc(p.name)}</span></div>`).join('');
     lst.hidden = !rs.length; };
   n.addEventListener('input', show);
@@ -12926,9 +13045,9 @@ function finPaySplit(xs){
 /* Expenses: sort by date, name, amount or type; filter with checklists that
    drop down, as the sales log's do (Gita, 2026-10-20). */
 function finExpShown(){
-  const E = FIN.ex, q = E.q.trim().toLowerCase();
+  const E = FIN.ex, q = fold(E.q.trim());
   const list = finExpList().filter(x=>(!E.types.size || E.types.has(x.type)) && (!E.sts.size || E.sts.has(x.status)) &&
-    (!q || [x.desc, x.who, x.type, x.placeLabel, x.notes, x.payType, EXP_STATUS[x.status]].some(v=>String(v||'').toLowerCase().includes(q))));
+    (!q || [x.desc, x.who, x.type, x.placeLabel, x.notes, x.payType, EXP_STATUS[x.status]].some(v=>String(v||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q))));
   const key = {date: x=>x.date + (x.ts||''), name: x=>x.who.toLowerCase(), amount: x=>x.usd===null ? -1 : x.usd, type: x=>x.type.toLowerCase()}[E.sort];
   return list.sort((a,b)=>{ const va = key(a), vb = key(b);
     return (typeof va==='number' ? va - vb : String(va).localeCompare(String(vb))) * E.dir || String(b.date).localeCompare(String(a.date)); });
@@ -12963,7 +13082,7 @@ function finExpSecHTML(){
         ${finExpOrig(x) ? `<div class="fx-odet"><span class="k">Original</span> <span class="v">${esc(finExpOrig(x))}</span></div>` : ''}
         <div><span class="k">Where</span> <span class="v no-edit">${esc(x.placeLabel)}</span></div>
         <div><span class="k">Status</span> ${expStatusHTML(x)}</div>
-        ${x.kind==='reimburse' ? `<div><span class="k">Pay back</span> <span class="v">${esc(x.method || '')}${x.reimbCur ? ' in ' + esc(x.reimbCur) : ''}${expOtherCur(x) ? ' · ' + esc(expPayAmtLine(x)) : ''}</span></div>` : ''}
+        ${x.kind==='reimburse' ? `<div><span class="k">Pay back</span> <span class="v">${esc(x.method || '')}${x.reimbCur ? ' in ' + esc(x.reimbCur) : ''}${expPayAmtLine(x) ? ' · ' + esc(expPayAmtLine(x)) : ''}</span></div>` : ''}
         ${x.payType ? `<div><span class="k">Paid with</span> <span class="v">${esc(x.payType)}</span></div>` : ''}
         ${x.notes ? `<div><span class="k">Notes</span> <span class="v no-edit">${esc(x.notes)}</span></div>` : ''}
         ${x.doneAt && x.status!=='pending' ? `<div><span class="k">${esc(EXP_STATUS[x.status]||x.status)}</span> <span class="v">${esc(x.status==='paid' && x.paidOn ? x.paidOn : String(x.doneAt).slice(0,10))}${x.doneBy ? ' by ' + esc(x.doneBy) : ''}${x.doneNote ? ' · ' + esc(x.doneNote) : ''}</span></div>` : ''}
@@ -13002,8 +13121,12 @@ function finDrRate(c){ return finDrParts(c).filter(x=>x.cur!=='USD' && x.amt > 0
 /* What Dollars Received shows, searched, filtered and sorted (b304). */
 function finDrShown(){
   const R = FIN.dr = FIN.dr || {q:'', sort:'date', dir:-1, curs:new Set(), open:'', from:'', to:''};
-  const curOf = c => finDrParts(c).map(x=>x.cur).filter(c=>c!=='USD'), q = R.q.trim().toLowerCase();
-  return finDrList().filter(c=>(!q || [finDrPlace(c.place), c.label, c.note, finDrSwap(c), c.date].join(' ').toLowerCase().includes(q))
+  const curOf = c => finDrParts(c).map(x=>x.cur).filter(c=>c!=='USD');
+  /* No search of its own (b305, Gita): it follows the place chosen for the table above. */
+  const f = finScopeF(), P = {}; finPlaces().forEach(x=>{ P[x.id] = x; });
+  const inScope = c => { const p = P[c.place] || {};
+    return (!f.s || p.s===f.s) && (!f.r || p.r===f.r) && (!f.e || c.place===f.e) && (!f.f || c.place===f.f) && (!f.uE || c.place===f.u || f.uE.includes(c.place)); };
+  return finDrList().filter(c=>inScope(c)
       && (!R.curs.size || curOf(c).some(x=>R.curs.has(x))) && (!R.from || String(c.date) >= R.from) && (!R.to || String(c.date) <= R.to))
     .sort((x,y)=>R.dir * (R.sort==='amount' ? (x.usd||0)-(y.usd||0) : R.sort==='name' ? String(x.label||finDrPlace(x.place)).localeCompare(String(y.label||finDrPlace(y.place))) : String(x.date).localeCompare(String(y.date))));
 }
@@ -13032,10 +13155,9 @@ function finDrSecHTML(){
         <div><span class="k">Exchange rate</span> <span class="v">${esc(finDrRate(c) || '—')}</span></div>
         <div><span class="k">Notes</span> <span class="v no-edit">${esc(c.note || '—')}</span></div>
       </div></div>`; };
-  return `<div class="fin-sh"><h3 class="fin-h3">Dollars Received</h3></div>
-    ${may ? `<div class="dr-top"><button type="button" class="btn btn-primary btn-sm" data-act="drnew">💵 Dollars received</button></div>` : ''}
+  // The 💵 button on the title's line (b305, Gita).
+  return `<div class="fin-sh dr-head"><h3 class="fin-h3">Dollars Received</h3>${may ? `<button type="button" class="btn btn-primary btn-sm" data-act="drnew">💵 Dollars received</button>` : ''}</div>
     <div class="fin-filters">
-      <label class="fin-search">Search<input type="search" id="finDrQ" value="${esc(R.q)}" placeholder="Places, currencies, notes…"></label>
       <label>Sort by<select id="finDrSort">${[['date','Date'],['name','Place'],['amount','Dollars']].map(([k,l])=>`<option value="${k}" ${R.sort===k?'selected':''}>${l}</option>`).join('')}</select></label>
       <label>Order<select id="finDrDir"><option value="-1" ${R.dir<0?'selected':''}>${R.sort==='date'?'Newest first':R.sort==='amount'?'Largest first':'Z to A'}</option>
         <option value="1" ${R.dir>0?'selected':''}>${R.sort==='date'?'Oldest first':R.sort==='amount'?'Smallest first':'A to Z'}</option></select></label>
@@ -13051,8 +13173,6 @@ function finDrRender(){
 }
 function finDrBind(){
   const R = FIN.dr, root = $('#finDrS'); if(!root || !R) return;
-  const q = $('#finDrQ');
-  q.addEventListener('input', ()=>{ R.q = q.value; const pos = q.selectionStart; finDrRender(); const n = $('#finDrQ'); n.focus(); try{ n.setSelectionRange(pos, pos); }catch(e){} });
   $('#finDrSort').addEventListener('change', e=>{ R.sort = e.target.value; R.dir = R.sort==='name' ? 1 : -1; finDrRender(); });
   $('#finDrDir').addEventListener('change', e=>{ R.dir = Number(e.target.value); finDrRender(); });
   root.querySelectorAll('[data-drc]').forEach(c=>c.addEventListener('change', ()=>{ if(c.checked) R.curs.add(c.value); else R.curs.delete(c.value); finDrRender(); }));
@@ -13079,10 +13199,9 @@ function finWaExpenses(L, noBar){
   const list = finExpShown();
   if(list.length) L.push('');
   list.forEach(x=>L.push(x.date + ' ' + x.who + ': ' + x.desc + ' (' + x.type + ') - ' + finExpAmt(x) + (x.status==='recorded' ? '' : ' · ' + (EXP_STATUS[x.status]||x.status))));
-  // Dollars Received, as the page shows it (b303, practice).
-  const dr = PRACTICE && FINP.sec==='expenses' ? finDrShown() : [];
-  if(dr.length){ L.push('', '*DOLLARS RECEIVED*'); dr.forEach(c=>L.push(c.date + ' ' + (c.label || finDrPlace(c.place)) + ': ' + finDrSwap(c))); }
 }
+// Dollars Received, as the Overview shows it (b305, practice).
+function finWaDr(L){ (PRACTICE ? finDrShown() : []).forEach(c=>L.push(c.date + ' ' + (c.label || finDrPlace(c.place)) + ': ' + finDrSwap(c))); }
 
 /* Reimbursements: everything still to be paid back, those done, the links
    that let anyone send one in, and the settings for how people are paid. */
@@ -13167,7 +13286,7 @@ function expGroupHTML(xs){
         ways.length > 1 ? ' · by ' + esc(y.method) + ' in ' + esc(y.reimbCur) : ''}</span></span>
         <span class="exp-amt">${expOtherCur(y) && out && String(out[1]).toUpperCase()==='USD' ? esc(finDual(y.amt, y.cur, out[0]))
           : esc(cashFmt(y.amt, y.cur)) + (expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : '')}</span></div>
-      ${expOtherCur(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}${expOver(y) ? `<span class="exp-flag">${esc(expOver(y))}</span>` : ''}
+      ${expPayAmtLine(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}${expOver(y) ? `<span class="exp-flag">${esc(expOver(y))}</span>` : ''}
       ${y.notes ? `<div class="exp-note">💬 ${esc(y.notes)}</div>` : ''}${expReceiptsHTML(y)}
       ${may ? `<div class="exp-btns exp-line">${xs.length > 1 ? `
         <button type="button" class="btn btn-xs ${off ? 'btn-ghost' : 'btn-ok'}" data-act="rbline" data-id="${esc(y.id)}" data-on="1" aria-pressed="${!off}">✓ Accept</button>
@@ -13587,19 +13706,21 @@ function finHBarsHTML(rows){
   const max = Math.max(1, ...rows.map(r=>Math.max(Math.abs(r.v), Math.abs(r.ex==null ? 0 : r.ex))));
   return `<div class="fc-hbars">${rows.map(r=>{
     const w = v => Math.max(v ? 1 : 0, Math.abs(v)/max*100);
-    return `<div class="fc-hrow" title="${esc(r.k)}: ${finUsd(r.v)}${r.ex!=null ? ' (expected ' + finUsd(r.ex) + ')' : ''}">
+    /* Each bar names only its own figure (b305, Gita: "hovering over specific
+       things shows you specific numbers"). */
+    return `<div class="fc-hrow">
       <span class="fc-hl no-edit">${esc(r.k)}</span>
-      <span class="fc-ht">${r.ex!=null ? `<span class="fc-hb fc-exp" style="width:${w(r.ex)}%;border-color:${r.c}"></span>` : ''}
-        <span class="fc-hb" style="width:${w(r.v)}%;background:${r.v < 0 ? '#e34948' : r.c}"></span></span>
+      <span class="fc-ht">${r.ex!=null ? `<span class="fc-hb fc-exp" style="width:${w(r.ex)}%;border-color:${r.c}" title="${esc(r.k)}, expected: ${finUsd(r.ex, r.e)}"></span>` : ''}
+        <span class="fc-hb" style="width:${w(r.v)}%;background:${r.v < 0 ? '#e34948' : r.c}" title="${esc(r.k)}: ${finUsd(r.v, r.e)}"></span></span>
       <span class="fc-hv">${finUsd(r.v, r.e)}${r.ex!=null ? `<span class="fin-ex-l">Expected ${finUsd(r.ex, r.e)}</span>` : ''}</span></div>`; }).join('')}</div>`;
 }
 /* A few bars a row (Gross, Expenses, Net), one row a place. */
 function finPairsHTML(rows, ser){
   const max = Math.max(1, ...rows.flatMap(r=>ser.map(x=>Math.abs(r[x.f]||0))));
   return `<div class="fc-keys">${ser.map(x=>`<span><span class="fin-key" style="background:${x.c}"></span>${esc(x.l)}</span>`).join('')}</div>
-    <div class="fc-hbars">${rows.map(r=>`<div class="fc-hrow fc-pair" style="--n:${ser.length}" title="${esc(r.k)}: ${ser.map(x=>esc(x.l) + ' ' + finUsd(r[x.f]||0)).join(', ')}">
+    <div class="fc-hbars">${rows.map(r=>`<div class="fc-hrow fc-pair" style="--n:${ser.length}">
       <span class="fc-hl no-edit">${esc(r.k)}</span>
-      <span class="fc-ht">${ser.map((x,i)=>{ const v = r[x.f]||0; return `<span class="fc-hb" style="top:${i*12}px;width:${v ? Math.max(1, Math.abs(v)/max*100) : 0}%;background:${v < 0 ? '#e34948' : x.c}"></span>`; }).join('')}</span>
+      <span class="fc-ht">${ser.map((x,i)=>{ const v = r[x.f]||0; return `<span class="fc-hb" style="top:${i*12}px;width:${v ? Math.max(1, Math.abs(v)/max*100) : 0}%;background:${v < 0 ? '#e34948' : x.c}" title="${esc(r.k)}, ${esc(x.l)}: ${finUsd(v)}"></span>`; }).join('')}</span>
       <span class="fc-hv">${ser.map((x,i)=>i ? `<span class="muted-note">${finUsd(r[x.f]||0)}</span>` : finUsd(r[x.f]||0)).join('')}</span></div>`).join('')}</div>`;
 }
 /* Month by month, as columns. */
@@ -13619,7 +13740,62 @@ function finMonthsHTML(series){
 const finByMonth = (list, d, v) => { const by = {}; list.forEach(x=>{ const k = String(d(x)||'').slice(0,7), n = v(x); if(/^\d{4}-\d\d$/.test(k) && n) by[k] = (by[k]||0) + n; }); return by; };
 // Dollars for an expense; one with no rate at its place but paid back in dollars uses that.
 const finUsdOf = x => x.usd || (x.payAmt && x.payAmt.amt!=null && String(x.payAmt.cur).toUpperCase()==='USD' ? x.payAmt.amt : 0);
-const finChart = (title, inner, wide) => inner ? `<div class="fc-box${wide ? ' fc-wide' : ''}"><h4 class="fc-h">${esc(title)}</h4>${inner}</div>` : '';
+/* Every chart can be zoomed into and saved as a picture (b305, Gita). */
+const FC_TOOLS = `<span class="fc-tools no-edit"><button type="button" class="cash-mini" data-act="fczoom" title="Zoom in" aria-label="Zoom in">⤢</button><button type="button" class="cash-mini" data-act="fcpng" title="Download as an image" aria-label="Download as an image">⬇</button></span>`;
+const finChart = (title, inner, wide) => inner ? `<div class="fc-box${wide ? ' fc-wide' : ''}"><h4 class="fc-h"><span>${esc(title)}</span>${FC_TOOLS}</h4>${inner}</div>` : '';
+function fcZoomModal(box){
+  const title = (box.querySelector('.fc-h > span')||{}).textContent || 'Chart';
+  const body = box.cloneNode(true); body.querySelectorAll('.fc-tools').forEach(e=>e.remove());
+  const h = body.querySelector('.fc-h'); if(h) h.remove();
+  let z = 1;
+  openModal(`${mHead(title)}
+    <div class="m-body">
+      <div class="fcz-bar no-edit"><button type="button" class="cash-mini" id="fczOut" aria-label="Zoom out">−</button>
+        <span id="fczPct">100%</span><button type="button" class="cash-mini" id="fczIn" aria-label="Zoom in">＋</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="fczPng">⬇ Download as an image</button></div>
+      <div class="fcz-scroll"><div class="fc-box fcz-box" id="fczBox"><h4 class="fc-h"><span>${esc(title)}</span></h4>${body.innerHTML}</div></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
+  const zb = $('#fczBox'), w0 = zb.getBoundingClientRect().width;
+  // The chart keeps its layout and simply grows, scrolling inside the window.
+  const set = v => { z = Math.max(1, Math.min(3, Math.round(v*4)/4)); zb.style.width = z > 1 ? w0 + 'px' : ''; zb.style.zoom = z; $('#fczPct').textContent = Math.round(z*100) + '%';
+    $('#fczOut').disabled = z <= 1; $('#fczIn').disabled = z >= 3; };
+  set(1);
+  $('#fczIn').onclick = ()=>set(z + .25); $('#fczOut').onclick = ()=>set(z - .25);
+  $('#fczPng').onclick = ()=>{ const was = z; set(1); fcPng(zb, title).finally(()=>set(was)); };
+}
+/* The chart as it looks on screen, drawn into a picture: each part keeps its
+   own look, so the copy needs no page around it. */
+function fcPng(box, title){
+  const r = box.getBoundingClientRect(), w = Math.ceil(r.width), h = Math.ceil(r.height);
+  const clone = box.cloneNode(true);
+  const src = [box, ...box.querySelectorAll('*')], dst = [clone, ...clone.querySelectorAll('*')];
+  src.forEach((el,i)=>{ const cs = getComputedStyle(el); let t = '';
+    for(let j=0;j<cs.length;j++){ const p = cs[j]; if(p==='zoom') continue; t += p + ':' + cs.getPropertyValue(p) + ';'; }
+    dst[i].setAttribute('style', t); dst[i].removeAttribute('title'); });
+  clone.querySelectorAll('.fc-tools').forEach(e=>e.remove());
+  clone.style.margin = '0';
+  const xml = new XMLSerializer().serializeToString(clone);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%">${xml}</foreignObject></svg>`;
+  const name = String(title).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^\w ,()-]+/g, ' ').trim() || 'Chart';
+  const save = (href, ext) => { const a = document.createElement('a'); a.href = href; a.download = name + '.' + ext;
+    document.body.appendChild(a); a.click(); a.remove(); FIN.lastImg = a.download; };
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  return new Promise(done=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const k = 2, c = document.createElement('canvas'); c.width = w*k; c.height = h*k;
+        const g = c.getContext('2d'); g.fillStyle = getComputedStyle(document.body).backgroundColor || '#fff';
+        g.fillRect(0, 0, c.width, c.height); g.scale(k, k); g.drawImage(img, 0, 0);
+        save(c.toDataURL('image/png'), 'png');
+      }catch(e){ save(url, 'svg'); }   // a browser that will not turn it into a PNG still gets the picture
+      done();
+    };
+    img.onerror = ()=>{ save(url, 'svg'); done(); };
+    img.src = url;
+  });
+}
 function finChartsHTML(){
   const sec = FINP.sec, out = [];
   if(sec==='overview'){
@@ -13846,6 +14022,7 @@ function finReportText(part){
   const O = sec==='overview' ? finOverviewRows() : null;
   if(part==='figures' || (!part && sec==='overview')) run('Overview', L=>finWaFigs(O.total, L));
   if(part==='rows' || (!part && sec==='overview')) run(O.what, finWaRows);
+  if(!part && sec==='overview') run('Dollars Received', finWaDr);
   if(part==='report') run('', finWaReport);
   if(part==='qb' || (!part && sec==='report')) run('', finWaQb);
   if(part==='compare' || (!part && sec==='compare')) run('', finWaCompare);
@@ -13894,10 +14071,10 @@ function vaPlaces(kind){
   return [];
 }
 function vaDraw(){
-  const D = VA.D, q = VA.q.trim().toLowerCase();
+  const D = VA.D, q = fold(VA.q.trim());
   const role = D.roles.find(r=>r.role===VA.role) || D.roles[0], places = vaPlaces(role.kind);
   if(places.length && !places.some(p=>p.id===VA.placeId)) VA.placeId = places[0].id;
-  const ppl = D.people.filter(p=>!q || (p.name + ' ' + p.email + ' ' + p.roles.join(' ')).toLowerCase().includes(q));
+  const ppl = D.people.filter(p=>!q || (p.name + ' ' + p.email + ' ' + p.roles.join(' ')).toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
   const opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
   openModal(`
     ${mHead('View as')}
@@ -17813,9 +17990,9 @@ function bindPlacePicker(id, places, value, onPick){
   inp.value = placeLabel(cur);
 
   function shown(q){
-    q = q.trim().toLowerCase();
+    q = fold(q.trim());
     if(!q) return places;
-    const hit = s => String(s||'').toLowerCase().includes(q);
+    const hit = s => String(s||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q);
     return places.filter(p=>{
       if(p.kind==='season') return places.some(c=>c.seasonId===p.seasonId && c.kind!=='season'
         && (hit(p.name) || hit(c.name) || hit(c.regionName)));
@@ -18240,16 +18417,18 @@ function addStockModal(opts){
             esc(bookLang(x).lang||'(no language given)')}${used.has(x.id)&&x.id!==l.b?' — already above':''}</option>`).join('')}
           ${admin && !g.partnerId ? `<option value="__newlang" ${l.mode==='newlang'?'selected':''}>＋ A new language…</option>` : ''}
         </select>`;
+      /* The kind first (b305, Gita): Adventures needs only its language. */
       if(l.mode==='newbook') pick += `<div class="ln-new">
-          <input type="text" class="ln-nbname" placeholder="Title, e.g. Bhagavad Gita">
+          <select class="ln-nbcat" data-i="${i}" aria-label="Kind of book">${[['big','Big Book'],['aotm','Adventures'],['other','Other']].map(([v,t])=>`<option value="${v}"${(l.nbcat||'big')===v?' selected':''}>${t}</option>`).join('')}</select>
+          ${(l.nbcat||'big')==='aotm' ? '' : '<input type="text" class="ln-nbname" placeholder="Title, e.g. Bhagavad Gita">'}
           <input type="text" class="ln-nblang" placeholder="Language, e.g. Spanish">
-          <select class="ln-nbcat"><option value="big">Big Book</option><option value="aotm">Adventures</option><option value="other">Other</option></select>
           <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="book">Add this book</button></div>`;
       if(l.mode==='newlang') pick += `<div class="ln-new">
           <input type="text" class="ln-nllang" placeholder="Language, e.g. Hindi">
           <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="lang">Add ${esc(g?g.base:'')} in this language</button></div>`;
-      // Its kind shows on the line too (b304, Gita).
-      if(b && b.staged) pick += ` <span class="sp-new-tag" title="Not in the catalogue yet: Save adds it. Take the line off (✕) and it is never added.">${({big:'Big Book',aotm:'Adventures',other:'Other'})[b.cat]||'Big Book'} · new title, added when you save</span>`;
+      // Its kind shows on the line, as a drop-down to change it (b304, b305 Gita).
+      if(b && b.staged) pick += `<select class="ln-cat" data-i="${i}" aria-label="Kind of book" title="Not in the catalogue yet: Save adds it. Take the line off (✕) and it is never added.">${
+          [['big','Big Book'],['aotm','Adventures'],['other','Other']].map(([v,t])=>`<option value="${v}"${b.cat===v?' selected':''}>${t}</option>`).join('')}</select>`;
       else if(b && !carriedHere(b)) pick += ` <span class="sp-new-tag" title="Saving switches it on for ${esc(ctx.region.name||'the region')}">new here</span>`;
       const x = (l.t || l.mode) ? `<button type="button" class="sp-x" data-unline="${i}" title="Take this line off">✕</button>` : '';
       const c = b ? cols(b) : null;
@@ -18369,6 +18548,23 @@ function addStockModal(opts){
       draw(); focusLine(l);
       return;
     }
+    // The kind of a new book (b305): Adventures drops the title box.
+    const nc = e.target.closest('.ln-nbcat');
+    if(nc){
+      const l = lines[Number(nc.dataset.i)]; if(!l) return;
+      const box = nc.closest('.ln-new'), lang = (box.querySelector('.ln-nblang')||{}).value || '', t = (box.querySelector('.ln-nbname')||{}).value || '';
+      l.nbcat = nc.value; draw();
+      const nb2 = document.querySelector(`#spBody .ln-nbcat[data-i="${nc.dataset.i}"]`), box2 = nb2 && nb2.closest('.ln-new');
+      if(box2){ const L = box2.querySelector('.ln-nblang'), T = box2.querySelector('.ln-nbname'); if(L) L.value = lang; if(T) T.value = t; (T || L).focus(); }
+      return;
+    }
+    // A new title's kind can be changed until Save.
+    const kc = e.target.closest('.ln-cat');
+    if(kc){
+      const l = lines[Number(kc.dataset.i)], nb = l && staged.find(x=>x.id===l.b);
+      if(nb){ nb.cat = kc.value; draw(); }
+      return;
+    }
     const lg = e.target.closest('.ln-lang');
     if(lg){
       const l = lines[Number(lg.dataset.i)]; if(!l) return;
@@ -18391,9 +18587,11 @@ function addStockModal(opts){
     const cap = w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
     let name, cat;
     if(kind==='book'){
-      const t = val('.ln-nbname'), lang = cap(val('.ln-nblang'));
+      cat = val('.ln-nbcat') || 'big';
+      const t = cat==='aotm' ? 'Adventures' : val('.ln-nbname'), lang = cap(val('.ln-nblang'));
+      if(cat==='aotm' && !lang){ $('#modalErr').textContent='Type the language first.'; return; }
       if(!t){ $('#modalErr').textContent='Type the title first.'; return; }
-      name = lang ? `${t} (${lang})` : t; cat = val('.ln-nbcat') || 'big';
+      name = lang ? `${t} (${lang})` : t;
     }else{
       const g = stockTitles(ctx).find(x=>x.key===l.t), lang = cap(val('.ln-nllang'));
       if(!g || !lang){ $('#modalErr').textContent='Type the language first.'; return; }
@@ -19410,15 +19608,15 @@ function makeSortable(container, onDrop){
 }
 
 
-/* Name and Language filters over the shelf (b304, practice; Gita: "For Kartika
-   we have way too many books to just have it be a scan and tap"). Typed once,
-   they stay as the shelf is drawn again. The donation card always shows. */
+/* Name and Language filters over the shelf (b304 practice, live b305; Gita:
+   "For Kartika we have way too many books to just have it be a scan and tap").
+   Typed once, they stay as the shelf is drawn again. The donation card always
+   shows. */
 const INV_F = {q:'', lang:''};
 function invFilterDraw(){
   const box = document.getElementById('invFilter'), grid = document.getElementById('invGrid');
   if(!box || !grid) return;
-  box.hidden = !PRACTICE;
-  if(!PRACTICE) return;
+  box.hidden = false;
   const cards = [...grid.querySelectorAll(':scope > [data-id]')].filter(c=>c.dataset.id!==DONATION_ID);
   const langs = [...new Set(cards.map(c=>bookLang(bookById(c.dataset.id)||{}).lang).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   if(INV_F.lang && !langs.includes(INV_F.lang)) INV_F.lang = '';
@@ -19435,12 +19633,12 @@ function invFilterDraw(){
 }
 function invFilterApply(){
   const grid = document.getElementById('invGrid'); if(!grid) return;
-  const q = INV_F.q.trim().toLowerCase(), lang = INV_F.lang;
+  const q = fold(INV_F.q.trim()), lang = INV_F.lang;
   let shown = 0;
   grid.querySelectorAll(':scope > [data-id]').forEach(c=>{
     if(c.dataset.id===DONATION_ID){ c.hidden = false; return; }
     const bl = bookLang(bookById(c.dataset.id)||{});
-    const ok = (!q || (bl.base + ' ' + bl.lang).toLowerCase().includes(q)) && (!lang || bl.lang===lang);
+    const ok = (!q || (bl.base + ' ' + bl.lang).toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q)) && (!lang || bl.lang===lang);
     c.hidden = !ok; if(ok) shown++;
   });
   let none = grid.querySelector(':scope > .inv-none');
@@ -19655,20 +19853,50 @@ function reorderModal(kind){
   if(!kinds.length){ toast('Changing the order is not part of your role.', true); return; }
   if(!kinds.includes(kind)) kind = kinds[0];
   const NM = {season:'Season', region:'Region', event:'Event'};
-  const regs = regionsList();
-  let evReg = CUR_REGION || ((regs.find(r=>!r.closedAt)||regs[0]||{}).regionId) || '';
+  /* b305 (Gita): also at Earthly HQ, with a way to go from season to season,
+     and within a season from region to region. Universal picks the season;
+     another season's regions and events come from the copy on this device,
+     then fresh from the server. */
+  const pickSn = (ME && ME.universal) || actingRole()==='U';
+  const snList = (STATE.seasons||[]).filter(x=>x.seasonId!==HQ_ID);
+  let snSel = isHQ() ? ((snList.find(x=>!x.closedAt)||snList[0]||{}).seasonId || '') : STATE.activeSeason;
+  let snState = null, snLoading = false, snGen = 0;
+  const stOf = () => snSel===STATE.activeSeason ? STATE : snState;
+  const regsOf = () => ((stOf()||{}).regions||[]).filter(r=>r.regionId!==HQ_REGION);
+  const firstReg = () => { const rs = regsOf(); return (rs.find(r=>!r.closedAt)||rs[0]||{}).regionId || ''; };
+  let evReg = (!isHQ() && CUR_REGION) || firstReg();
   let list = [];
-  function load(){
-    list = kind==='season' ? (STATE.seasons||[]).map(x=>({id:x.seasonId, name:x.name, st:x.closedAt?'complete':''}))
-      : kind==='event' ? eventsOfRegion(evReg).map(e=>({id:e.eventId, name:e.name, st:closureOf(e.eventId)}))
-      : regs.map(r=>({id:r.regionId, name:r.name, st:regionClosure(r.regionId)}));
+  function fetchSeason(){
+    snState = null; snLoading = false;
+    if(snSel===STATE.activeSeason || !snSel) return;
+    const gen = ++snGen;
+    const c = seasonCacheLoad(snSel); if(c) snState = c.state;
+    snLoading = !snState;
+    post({action:'getState', season:snSel}).then(d=>{
+      if(gen!==snGen || !d || !d.state) return;
+      seasonCacheSave(snSel, d.state, d.rev); snState = d.state; snLoading = false;
+      if(!regsOf().some(r=>r.regionId===evReg)) evReg = firstReg();
+      if(document.getElementById('roList')){ load(); draw(); }
+    }).catch(()=>{ if(gen===snGen && snLoading){ snLoading = false; if(document.getElementById('roList')){ load(); draw(); } } });
   }
+  function load(){
+    const st = stOf() || {}, other = st!==STATE;
+    const regs = regsOf();
+    list = kind==='season' ? snList.map(x=>({id:x.seasonId, name:x.name, st:x.closedAt?'complete':''}))
+      : kind==='event' ? (st.events||[]).filter(e=>(e.regionId||'')===evReg).map(e=>({id:e.eventId, name:e.name,
+          st: other ? ((e.closedAt || (regs.find(r=>r.regionId===evReg)||{}).closedAt) ? 'complete' : '') : closureOf(e.eventId)}))
+      : regs.map(r=>({id:r.regionId, name:r.name, st: other ? (r.closedAt?'complete':'') : regionClosure(r.regionId)}));
+  }
+  fetchSeason();
 
   function draw(){
     $('#roTabs').innerHTML = kinds.length > 1 ? kinds.map(k=>
       `<button type="button" class="seg-b${k===kind?' on':''}" data-ro-k="${k}">${NM[k]}</button>`).join('') : '';
-    $('#roReg').innerHTML = kind==='event' ? `<div class="field"><label>Region</label><select id="roRegSel">${
-      closedSort(regs, r=>!!r.closedAt).map(r=>`<option value="${esc(r.regionId)}"${r.regionId===evReg?' selected':''}>${esc(r.name)}</option>`).join('')}</select></div>` : '';
+    const regs = regsOf();
+    $('#roReg').innerHTML = (pickSn && kind!=='season' ? `<div class="field"><label>Season</label><select id="roSnSel">${
+      closedSort(snList, x=>!!x.closedAt).map(x=>`<option value="${esc(x.seasonId)}"${x.seasonId===snSel?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>` : '')
+      + (kind==='event' ? `<div class="field"><label>Region</label><select id="roRegSel">${
+      closedSort(regs, r=>!!r.closedAt).map(r=>`<option value="${esc(r.regionId)}"${r.regionId===evReg?' selected':''}>${esc(r.name)}</option>`).join('')}</select></div>` : '');
     $('#roHint').textContent = 'Shift the order of ' + kind + 's for efficiency of access.';
     $('#roList').innerHTML = list.length ? list.map((x,i)=>`
       <div class="ro-row" data-id="${esc(x.id)}">
@@ -19680,10 +19908,11 @@ function reorderModal(kind){
           <button class="cash-mini" data-ro-up="${i}" ${i===0?'disabled':''}>↑</button>
           <button class="cash-mini" data-ro-dn="${i}" ${i===list.length-1?'disabled':''}>↓</button>
         </span>
-      </div>`).join('') : `<div class="hint">Nothing to arrange here yet.</div>`;
+      </div>`).join('') : `<div class="hint">${snLoading ? 'Opening that season…' : 'Nothing to arrange here yet.'}</div>`;
     $('#roSave').disabled = list.length < 2;
     [...document.querySelectorAll('#modal [data-ro-k]')].forEach(b=>b.onclick=()=>{ kind = b.dataset.roK; load(); draw(); });
     const rs = $('#roRegSel'); if(rs) rs.onchange = ()=>{ evReg = rs.value; load(); draw(); };
+    const ss = $('#roSnSel'); if(ss) ss.onchange = ()=>{ snSel = ss.value; fetchSeason(); evReg = firstReg(); load(); draw(); };
     [...document.querySelectorAll('#modal [data-ro-up]')].forEach(b=>b.onclick=()=>{
       const i=+b.dataset.roUp; [list[i-1],list[i]]=[list[i],list[i-1]]; draw();
     });
@@ -19715,6 +19944,14 @@ function reorderModal(kind){
        the new order is already known here, and the server has no answer we
        need. */
     const ids = list.map(x=>x.id), k = kind;
+    const sortIn = st=>{
+      const bag = k==='season' ? (st.seasons||[]) : k==='region' ? (st.regions||[]) : (st.events||[]);
+      ids.forEach((id,i)=>{ const row=bag.find(x=>x[k+'Id']===id); if(row) row.sort=i; });
+      bag.sort((a,b)=>(Number(a.sort)||0)-(Number(b.sort)||0));
+    };
+    if(k!=='season' && snSel!==STATE.activeSeason && snState){
+      sortIn(snState); const c = seasonCacheLoad(snSel); if(c) seasonCacheSave(snSel, snState, c.rev);
+    }
     commit({action:'reorder', kind:k, ids},
       st=>{
         const bag = k==='season' ? (st.seasons||[]) : k==='region' ? (st.regions||[]) : (st.events||[]);
@@ -20089,8 +20326,8 @@ function shipCardHTML(x, incoming, readOnly){
       ${x.note?' · '+esc(x.note):''}</div>
     <div class="sh-books">${books.map(r=>
       `<span class="sh-chip ${r.left?'':'done'}">${esc(r.b.name)}:
-        ${r.arrived?`<b>${r.arrived} of ${r.sent}</b> arrived${r.left?` · ${r.left} coming`:''}`
-                   : `<b>${r.left}</b> coming`}</span>`).join('')}</div>
+        ${r.arrived?`<b>${r.arrived} of ${r.sent}</b> arrived${r.left?` · ${r.left}`:''}`
+                   : `<b>${r.left}</b>`}</span>`).join('')}</div>
     <div class="sh-acts">
       ${incoming?`<button class="btn btn-green btn-sm" data-act="sharriveall" data-id="${esc(x.shipId)}">Full Delivery Arrived</button>
       <button class="btn btn-primary btn-sm" data-act="shreceive" data-id="${esc(x.shipId)}">Partial Delivery Arrived</button>`:''}
@@ -20227,6 +20464,14 @@ function shipCountModal(id){
           data-book="${esc(r.b.id)}" data-was="${r.n}" value="${r.n}">
         <div class="cl-diff" data-for="${esc(r.b.id)}"></div>
       </div>`).join('')}
+      <div id="scNewRows"></div>
+      <div class="sc-new" id="scNewBox" hidden>
+        <select id="scNcat" aria-label="Kind of book"><option value="big">Big Book</option><option value="aotm">Adventures</option><option value="other">Other</option></select>
+        <input id="scNname" type="text" placeholder="Title, e.g. Bhagavad Gita">
+        <input id="scNlang" type="text" placeholder="Language, e.g. Spanish">
+        <button type="button" class="btn btn-ghost btn-sm" id="scNadd">Add this book</button>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="scNew">＋ A new book…</button>
       <div id="scSummary" class="cl-sum"></div>
       <div class="field"><label>Note (optional)</label>
         <input id="scNote" type="text" placeholder="e.g. split across bags at the airport"></div>
@@ -20255,6 +20500,38 @@ function shipCountModal(id){
   onModal('input','count',e=>{ if(e.target.closest('.sc-q')) recount(); });
   recount();
 
+  /* A title not in the catalogue yet (b305, Gita: "like the add book protocol
+     in stock"): the kind first, Adventures needs only its language. It is added
+     to the catalogue with the save, and its copies count as found in the batch,
+     not taken from the sender. */
+  const fresh = [];
+  const cap = w => w ? w.charAt(0).toUpperCase() + w.slice(1) : w;
+  $('#scNew').addEventListener('click', ()=>{ $('#scNewBox').hidden = false; $('#scNew').hidden = true; $('#scNcat').focus(); });
+  $('#scNcat').addEventListener('change', ()=>{ $('#scNname').hidden = $('#scNcat').value==='aotm'; });
+  $('#scNadd').addEventListener('click', ()=>{
+    const cat = $('#scNcat').value, lang = cap($('#scNlang').value.trim());
+    const t = cat==='aotm' ? 'Adventures' : $('#scNname').value.trim();
+    if(!t){ $('#modalErr').textContent = 'Type the title first.'; return; }
+    if(cat==='aotm' && !lang){ $('#modalErr').textContent = 'Type the language first.'; return; }
+    const name = lang ? `${t} (${lang})` : t;
+    const have = (STATE.books||[]).find(b=>fold(b.name)===fold(name));
+    if(have){ const i = document.querySelector(`#modal .sc-q[data-book="${have.id}"]`);
+      $('#modalErr').textContent = have.name + ' is already in the catalogue' + (i ? ': it is in the list above.' : '.'); if(i) i.focus(); return; }
+    if(fresh.some(f=>fold(f.name)===fold(name))){ $('#modalErr').textContent = name + ' is already added below.'; return; }
+    $('#modalErr').textContent = '';
+    const nb = {id:'bk_' + Math.random().toString(36).slice(2,10).padEnd(8,'0'), name, cat};
+    fresh.push(nb);
+    const row = document.createElement('div'); row.className = 'cl-row';
+    row.innerHTML = `<div class="cl-name ${cat==='aotm'?'aotm':''}">${esc(name)} <span class="sp-new-tag">${({big:'Big Book',aotm:'Adventures',other:'Other'})[cat]} · new</span></div>
+      <div class="cl-exp">0 in transit</div>
+      <input class="cl-in sc-q" type="number" min="0" inputmode="numeric" data-book="${esc(nb.id)}" data-was="0" value="">
+      <div class="cl-diff" data-for="${esc(nb.id)}"></div>`;
+    $('#scNewRows').appendChild(row);
+    $('#scNname').value = ''; $('#scNlang').value = '';
+    $('#scNewBox').hidden = true; $('#scNew').hidden = false;
+    row.querySelector('.sc-q').focus(); recount();
+  });
+
   $('#scGo').addEventListener('click',()=>{
     const counts={};
     [...document.querySelectorAll('#modal .sc-q')].forEach(i=>{
@@ -20262,13 +20539,22 @@ function shipCountModal(id){
         : Math.max(0,Math.round(Number(i.value)||0));
     });
     const backTo=(from||{}).whLoc;
-    commit({action:'adjustShipment', shipId:id, counts, note:$('#scNote').value.trim()},
+    // New titles go into the catalogue first, saved in order just ahead of the contents.
+    const newIds = fresh.filter(nb=>counts[nb.id] > 0).map(nb=>{
+      const row = {id:nb.id, name:nb.name, cat:nb.cat, usd:0, pln:0, eur:0, partnerId:''};
+      commit({action:'addBook', id:nb.id, name:nb.name, cat:nb.cat, orExisting:true},
+        st=>{ if(!(st.books||[]).some(b=>b.id===nb.id)) (st.books=st.books||[]).push(Object.assign({}, row)); }, null, {keepOpen:true, anySeason:true});
+      return nb.id; });
+    fresh.forEach(nb=>{ if(!(counts[nb.id] > 0)) delete counts[nb.id]; });
+    commit({action:'adjustShipment', shipId:id, counts, fresh:newIds, note:$('#scNote').value.trim()},
       st=>{
         Object.keys(counts).forEach(bid=>{
           const cur=(st.inventory||[]).find(i=>i.location===id && i.bookId===bid);
           const have=cur?cur.qty:0, want=counts[bid];
           if(want===have) return;
           invSet(st, id, bid, want);
+          if(newIds.includes(bid)){ const ship=(st.shipments||[]).find(v=>v.shipId===id);
+            if(ship){ ship.manifest = ship.manifest || {}; ship.manifest[bid] = want; } return; }
           if(backTo && want<have){
             // Back to the shelves they left, most recent first — as the server does.
             let left = have-want;
@@ -20519,7 +20805,7 @@ function transferStockModal(opts){
       <div class="xf-return"><button type="button" class="btn btn-ghost btn-sm" id="xfIn">⬇ Transfer In</button>
         <button type="button" class="btn btn-ghost btn-sm" id="xfOut">⬆ Transfer Out</button>
         <button type="button" class="btn btn-gold btn-sm" id="xfReturn">↩ Return all to warehouse</button>
-        <span class="muted-note">Everything at an event, back to its own warehouse.</span></div>
+        <span class="muted-note">Everything at an event back to its region’s warehouse, or at a region back to Earthly HQ.</span></div>
       <div class="field"><label>Transfer From</label>${placePickerHTML('xfFrom')}</div>
       <div class="field"><label>Transfer To</label>${placePickerHTML('xfTo')}
         <div class="sp-addnew">Can’t find your destination?
@@ -20567,15 +20853,19 @@ function transferStockModal(opts){
   $('#xfOut').addEventListener('click', ()=>{ $('#modalErr').textContent = ''; returnAll = false; mark('#xfOut');
     if(self) fromPick.set(self); else { fromPick.clear(); cancelLoad(); fromCtx = null; }
     toPick.clear(); sws = null; draw(); });
-  $('#xfReturn').addEventListener('click', ()=>{ mark('');
+  /* b305 (Gita): a region's books go back to Earthly HQ too, as an event's go
+     back to its region's warehouse. */
+  $('#xfReturn').addEventListener('click', ()=>{ mark(''); $('#modalErr').textContent = '';
     let f = fromPick.value;
     if((!f || f.kind==='region') && CUR_LEVEL==='event'){ fromPick.set(CUR_LOC); f = fromPick.value; }
-    if(!f || f.kind==='region'){
-      $('#modalErr').textContent = 'Choose the event the books are coming back from in “Transfer From”, then press this again.';
+    if(!f && CUR_LEVEL==='region' && reg && !isHQ()){ fromPick.set(reg.whLoc); f = fromPick.value; }
+    if(!f){
+      $('#modalErr').textContent = 'Choose the event or region the books are coming back from in “Transfer From”, then press this again.';
       return;
     }
-    const wh = places.find(p=>p.kind==='region' && p.regionId===f.regionId && p.seasonId===f.seasonId);
-    if(!wh){ $('#modalErr').textContent = 'Could not find that event’s warehouse.'; return; }
+    if(f.kind==='region' && f.seasonId===HQ_ID){ $('#modalErr').textContent = 'Earthly HQ’s warehouse is the top warehouse: there is nowhere further back.'; return; }
+    const wh = f.kind==='region' ? hqWh : places.find(p=>p.kind==='region' && p.regionId===f.regionId && p.seasonId===f.seasonId);
+    if(!wh){ $('#modalErr').textContent = f.kind==='region' ? 'Could not find Earthly HQ’s warehouse.' : 'Could not find that event’s warehouse.'; return; }
     storage = 'one'; returnAll = true;
     toPick.set(wh.loc);
   });
@@ -20667,7 +20957,7 @@ function transferStockModal(opts){
     restoreTyped();
     bindTop();
     if(travel==='travel' && (k==='region'||k==='season')) syncCourier();
-    if(returnAll && k==='store'){
+    if(returnAll && (k==='store' || k==='season') && document.querySelector('#xfBody .xf-in[data-src]')){
       returnAll = false;
       document.querySelectorAll('#xfBody .xf-in[data-src]').forEach(i=>{ i.value = fromCtx.qty(i.dataset.src, i.dataset.book) || ''; });
     }
@@ -21083,9 +21373,9 @@ function activityModal(){
   const time = d => d.toLocaleTimeString(LOCALE, {hour:'2-digit', minute:'2-digit'});
   function draw(){
     if(!$('#alList')) return;
-    const q = ($('#alSearch').value||'').trim().toLowerCase();
+    const q = fold(($('#alSearch').value||'').trim());
     const all = activityHere(list.concat(looseMoveEntries(list)))
-      .filter(e=>!q || (e.text+' '+(e.who||'')).toLowerCase().includes(q))
+      .filter(e=>!q || (e.text+' '+(e.who||'')).toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q))
       .sort((a,b)=>new Date(b.ts)-new Date(a.ts));
     /* The most recent first, a page at a time (Gita, 2026-10-20: the list
        scrolled on for ever). A search looks through everything. */
@@ -21336,9 +21626,9 @@ function fulfilOtherModal(){
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   function draw(){
     if(!list || !$('#foList')) return;
-    const q = ($('#foSearch').value||'').trim().toLowerCase();
+    const q = fold(($('#foSearch').value||'').trim());
     const rows = list.filter(x=>x.originRegion!==reg.regionId)
-      .filter(x=>!q || [x.bookName, x.name, x.origin, x.comments].join(' ').toLowerCase().includes(q));
+      .filter(x=>!q || [x.bookName, x.name, x.origin, x.comments].join(' ').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
     $('#foList').innerHTML = rows.length ? rows.map(x=>`<div class="sh-card rq-card">
         <div class="sh-top"><span class="sh-route">${esc(x.bookName)}</span><span class="sh-count">${x.name?'for '+esc(x.name):''}</span></div>
         <div class="sh-meta">Ordered at ${esc(x.origin)}${x.ts?' · '+esc(new Date(x.ts).toLocaleDateString(LOCALE,{day:'numeric',month:'short'})):''}${
@@ -22040,7 +22330,7 @@ document.addEventListener('click',e=>{
     commitSync({action:'reopenSeason', seasonId:STATE.activeSeason}, 'Season reopened').then(ok=>{ if(ok) pull(); });
     return;
   }
-  if(a==='reorder'){ reorderModal(t.dataset.kind || (CUR_LEVEL==='season' ? 'region' : 'event')); return; }
+  if(a==='reorder'){ reorderModal(t.dataset.kind || (CUR_LEVEL==='season' || isHQ() ? 'region' : 'event')); return; }
   if(a==='partners'){ partnersModal(); return; }
   if(a==='conpay'){ partnerPayModal(t.dataset.id, t.dataset.method); return; }
   if(a==='conbook'){ partnerBookModal(t.dataset.id, t.dataset.book||''); return; }
@@ -22074,6 +22364,7 @@ document.addEventListener('click',e=>{
   if(a==='shipments'){ shipmentsModal(); return; }
   if(a==='shedit'){ shipEditModal(t.dataset.id); return; }
   if(a==='shcount'){ shipCountModal(t.dataset.id); return; }
+  if(a==='xferlog'){ transferLogModal(); return; }
   if(a==='shdel'){
     const x=(STATE.shipments||[]).find(v=>v.shipId===t.dataset.id); if(!x) return;
     const left=shipTotal(x);
@@ -22113,6 +22404,8 @@ document.addEventListener('click',e=>{
   if(a==='finrbtab'){ FIN.rb.tab = t.dataset.tab; finRender(); if(t.dataset.tab==='links' && FIN_LINKS) finLinksQuiet(); return; }
   if(a==='finrbsend'){ const go = ()=>{ const n = $('#fsName'); if(n){ n.scrollIntoView({block:'center'}); n.focus(); } };
     if(FINP.sec!=='reimb') finGo('reimb').then(go); else go(); return; }
+  if(a==='fczoom'){ const b = t.closest('.fc-box'); if(b) fcZoomModal(b); return; }
+  if(a==='fcpng'){ const b = t.closest('.fc-box'); if(b) fcPng(b, (b.querySelector('.fc-h > span')||{}).textContent || 'Chart'); return; }
   if(a==='finest'){ const f = finScopeF(); finConvModal({place: f.e || f.r || f.s || ''}); return; }
   if(a==='finlinktog'){ const k = t.dataset.k; FIN_LINK_OPEN.has(k) ? FIN_LINK_OPEN.delete(k) : FIN_LINK_OPEN.add(k); finLinksRender(); return; }
   if(a==='finlinkoff'){ post({action:'expLinkOff', key:t.dataset.k, on:!!t.dataset.on}).then(d=>{ FIN_LINKS = d.result;
@@ -22225,6 +22518,8 @@ document.addEventListener('click',e=>{
   if(a==='finexclr'){ (t.dataset.f==='type' ? FIN.ex.types : FIN.ex.sts).clear(); finExpensesRender(); return; }
   if(a==='dropen'){ if(t.closest('button')) return; const id = t.dataset.id; FIN.drOpen = FIN.drOpen || new Set(); if(FIN.drOpen.has(id)) FIN.drOpen.delete(id); else FIN.drOpen.add(id);
     const it = t.closest('.log-item'); if(it) it.classList.toggle('open', FIN.drOpen.has(id)); return; }
+  if(a==='finovwhide'){ FIN.ovwHide = !FIN.ovwHide; const w = $('#fpBody .fin-ovw'); if(w) w.hidden = FIN.ovwHide;
+    t.textContent = FIN.ovwHide ? '▸ Show table' : '▾ Hide table'; t.setAttribute('aria-expanded', FIN.ovwHide ? 'false' : 'true'); return; }
   if(a==='drflt'){ FIN.dr.open = FIN.dr.open ? '' : 'cur'; finDrRender(); return; }
   if(a==='drclr'){ FIN.dr.curs.clear(); finDrRender(); return; }
   if(a==='drnew'){ finConvModal(); return; }

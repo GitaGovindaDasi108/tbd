@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b304**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b305**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,28 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b305
+
+Live app changes (Gita, 24 Oct):
+- Reimbursement forms: a pay-back field that takes a phone or an email (Zelle, PayPal) is filled with the person's WhatsApp number from their Profile.
+- Every name finder ignores accents (`fold()` / `FOLD_RE`): "sri" finds "Śrī".
+- Expense forms and Finance: the blue "To pay back" line is gone once exact dollars are given (`expPayAmtLine`).
+- Return all at a region sends the region warehouse's books to Earthly HQ's warehouse (events still go to their region's warehouse).
+- Add Stock, new book: the kind of book first; Adventures asks only the language (titled "Adventures (Language)"); the staged line shows its category as a drop-down (`.ln-cat`), no "added when you save".
+- Books in transit drop-down: just the number, no "coming".
+- Correct Contents: "＋ A new book…" adds a title not in the app; the server (`doAdjustShipment` `fresh`) adds it to the batch as found, not taken from the sender.
+- Earthly HQ: Summaries above Sales; Change Location Order at HQ, with Season (Universal) and Region menus (`reorderModal`, other seasons from the device copy then `getState`).
+- Live now: Name and Language filters over the shelf; Multiple Book Sale book by book (`MB_LINES`).
+- Every Finance chart: each bar or slice names only its own figure on hover; ⤢ zoom (`fcZoomModal`) and ⬇ download as an image (`fcPng`, PNG via SVG foreignObject; SVG if a browser refuses).
+- Long "a · b · c" lists anywhere balance their lines, each short item whole (`balData`, MutationObserver); Pending Payments on the totals card too.
+
+Practice:
+- Totals bar: each card only as wide as it needs; the leftover room stays empty (`layoutTotals`, `TOT_EVEN` gives tests the live layout).
+- Transfer log button by every shelf's title (`transferLogModal`): one line per transfer (date, from/to, books), titles in the drop-down; green in, red out.
+- Finance: Dollars Received under the Overview table (follows the place chosen, no search of its own; 💵 on the title line); the table folds away (▾ Hide table); Expenses its own section again.
+
+Tests: new test/browser-b305.js; finance, newtitle, b297, b300, round4, round6, transfer updated.
 
 ## Done in b304
 Live app changes (Gita, 2026-10-24):

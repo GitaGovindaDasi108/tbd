@@ -45,6 +45,8 @@ m.call({ action: 'setSeason', seasonId: SA });
     }
     return route.fulfill({ status: 204, body: '' });
   });
+  // The live totals bar (every card one width); practice sizes each card to its contents (b305).
+  await page.addInitScript(() => { window.TOT_EVEN = true; });
   await page.goto('http://app.test/index.html?practice');
   await page.waitForTimeout(2500);
   const t = [];

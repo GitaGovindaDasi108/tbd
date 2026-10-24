@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b304';
+var SERVER_BUILD = 'b305';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -2027,6 +2027,9 @@ function doAdjustShipment(p) {
 
   var map = loadInvMap_();
   var counts = p.counts || {};
+  // Titles first added to the catalogue with this correction (b305): found in
+  // the batch, so nothing is taken from the sender for them.
+  var fresh = (p.fresh || []).map(String);
   var changes = [];
   Object.keys(counts).forEach(function (bookId) {
     if (!bookById_(bookId)) return;
@@ -2036,6 +2039,13 @@ function doAdjustShipment(p) {
     if (want === have) return;
     var delta = want - have;
     setQty_(map, id, bookId, want);
+    if (fresh.indexOf(bookId) >= 0) {
+      stockMoveAppend_({ kind: 'ADJUST', toLoc: id, bookId: bookId, qty: delta,
+        note: 'Shipment contents corrected — a new title' + (p.note ? ' — ' + p.note : ''),
+        toBefore: have, toAfter: want });
+      changes.push({ bookId: bookId, was: have, now: want });
+      return;
+    }
     // Copies that never traveled go back where they came from; extras that
     // turned up are taken from there, so the sending region stays truthful.
     if (backTo && delta < 0) {
@@ -7817,6 +7827,12 @@ function unaliasBooks_(p) {
   if (p.bookId) p.bookId = fix(p.bookId);
   if (p.items && p.items.forEach) p.items.forEach(function (it) { if (it && it.bookId) it.bookId = fix(it.bookId); });
   if (typeof p.bookIds === 'string' && p.bookIds) p.bookIds = p.bookIds.split(',').map(fix).join(',');
+  if (p.fresh && p.fresh.map) p.fresh = p.fresh.map(fix);
+  if (p.counts && typeof p.counts === 'object') {
+    var c = {};
+    Object.keys(p.counts).forEach(function (k) { c[fix(k)] = p.counts[k]; });
+    p.counts = c;
+  }
 }
 /* The tour's own catalog. A consignment title is left out of these, so it
    never appears in our stock tables or sales blocks — it has its own sheet.

@@ -38,6 +38,21 @@ const inv = () => (m.call({ action: 'getState', season: SA }).state.inventory ||
   .concat(m.call({ action: 'getState', season: SB }).state.inventory || []);
 const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.bookId === b); return r ? Number(r.qty) : 0; };
 
+/* Multiple Book Sale, book by book (live since b305): the line for a title (a new one if needed), Buy set to n. */
+const mbBuy = (pg, id, n) => pg.evaluate(([id, n]) => {
+  const box = document.querySelector('#mbLines'), rowAt = i => box.querySelectorAll('.mbl-row')[i];
+  const fire = (el, ev) => el.dispatchEvent(new Event(ev, { bubbles: true }));
+  let rows = [...box.querySelectorAll('.mbl-row')], i = rows.findIndex(x => x.querySelector('.mbl-l').value === id);
+  if (i < 0) {
+    i = rows.length - 1;
+    if (rows[i].querySelector('.mbl-t').value) { document.querySelector('#mbAddLine').click(); i = box.querySelectorAll('.mbl-row').length - 1; }
+    const t = rowAt(i).querySelector('.mbl-t'); t.value = bookLang(bookById(id)).base; fire(t, 'change');
+    const l = rowAt(i).querySelector('.mbl-l'); if (l.value !== id) { l.value = id; fire(l, 'change'); }
+  }
+  const q = rowAt(i).querySelector('.mbl-buy'); q.value = String(n); fire(q, 'input');
+  return q.value || '0';
+}, [id, n]);
+
 (async () => {
   const browser = await chromium.launch();
   const t = [], errors = [];
@@ -220,12 +235,11 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     // Multiple books at the warehouse: where they are sold from is chosen up front.
     await page.evaluate(() => pull()); await page.waitForTimeout(800);
     await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
-    await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
+    await mbBuy(page, B1, 1);
     const warnWh = await page.evaluate(() => document.querySelector('#mbWarn').hidden ? '' : document.querySelector('#mbWarn').textContent);
     t.push(['Multiple Books: a title not on the warehouse shelf warns at once', /No/.test(warnWh) && /Choose where it is being sold from/.test(warnWh)]);
     await page.selectOption('#mbFrom', 'hd_gopal1'); await page.waitForTimeout(100);
-    await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
-    await page.click(`#modal .mb-plus[data-book="${B1}"][data-kind="buy"]`);
+    await mbBuy(page, B1, 2);
     await page.screenshot({ path: shot('7-bundle-from') });
     await page.click('#saveBundle'); await page.waitForTimeout(1500);
     t.push(['…sold from SW2: 2 leave SW2 and the 2-book sale is recorded there', qty('hd_gopal1', B1) === 1 &&

@@ -48,6 +48,8 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
     }
     return route.fulfill({ status: 204, body: '' });
   });
+  // The live totals bar (every card one width); practice sizes each card to its contents (b305).
+  await page.addInitScript(() => { window.TOT_EVEN = true; });
   await page.goto('http://app.test/index.html?practice');
   await page.waitForTimeout(2500);
   const t = [];
@@ -204,6 +206,17 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   t.push(['b304: four cards at 1400px are one width, on one line (' + ws.map(Math.round).join(' / ') + ')', ws.length === 4 && Math.max(...ws) - Math.min(...ws) < 2]);
   ws = await three(1150);
   t.push(['b302: narrower (1150px), the three are one width again (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && Math.max(...ws) - Math.min(...ws) < 2]);
+  /* b305 (Gita, practice): each card only as wide as it needs; the room left over stays empty. */
+  for (const w of [1400, 1150]) {
+    await page.setViewportSize({ width: w, height: 900 }); await page.evaluate(() => { window.TOT_EVEN = false; goTo('season'); }); await page.waitForTimeout(400);
+    const r = await page.evaluate(() => { layoutTotals(); const b = document.querySelector('#totals'), cs = [...b.querySelectorAll(':scope > .tcard')];
+      const need = cs.map(c => { const was = c.style.width; c.style.width = 'max-content'; const v = c.getBoundingClientRect().width; c.style.width = was; return v; });
+      const rr = cs.map(c => c.getBoundingClientRect());
+      return { n: cs.length, tops: new Set(rr.map(x => Math.round(x.top))).size, right: Math.max(...rr.map(x => x.right)), bar: b.getBoundingClientRect().right,
+        ws: rr.map(x => Math.round(x.width)), fit: cs.every((c, i) => rr[i].width <= need[i] + 2 && c.scrollWidth <= c.clientWidth + 1) }; });
+    t.push(['b305 practice ' + w + 'px: cards sized to what they hold, on one line, room left over (' + r.ws.join(' / ') + ')', r.n >= 3 && r.tops === 1 && r.fit && r.right < r.bar - 20]);
+  }
+  await page.evaluate(() => { window.TOT_EVEN = true; });
   await page.setViewportSize({ width: 1150, height: 900 }); await page.evaluate(() => renderAll()); await page.waitForTimeout(300);
 
   /* b304: Transfer Existing Stock opens with From and To blank; Transfer In and Out fill them. */
