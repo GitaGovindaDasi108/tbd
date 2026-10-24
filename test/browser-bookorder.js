@@ -19,11 +19,12 @@ const shown = n => n.replace(/\s*\(([^()]+)\)\s*$/, ' $1');
 const first = shown(books[0].name), last = shown(books[books.length - 1].name);
 m.call({ action: 'setStockBulk', season: st.activeSeason, location: pl.whLoc, items: [{ bookId: books[0].id, qty: 5 }], override: true });
 // b271: Distribution by Title shows only what was distributed, so give every title one gift.
-books.forEach(b => m.call({ action: 'adjustStockBulk', season: st.activeSeason, location: pl.whLoc, items: [{ bookId: b.id, delta: 1 }], override: true }));
+// b307: and keep one of each in stock, as the Warehouse Overview leaves out titles with none.
+books.forEach(b => m.call({ action: 'adjustStockBulk', season: st.activeSeason, location: pl.whLoc, items: [{ bookId: b.id, delta: 2 }], override: true }));
 books.forEach(b => m.call({ action: 'sell', season: st.activeSeason, location: pl.whLoc, bookId: b.id, legs: [{ type: 'Gift', cur: 'USD', amt: 0 }], override: true }));
 // …at Earthly HQ's own warehouse too, for HQ's own Distribution by Title.
 { const hq = (m.call({ action: 'getState', season: 'HQ' }).state.regions || []).find(r => r.regionId === 'rg_hq');
-  if (hq) books.forEach(b => { m.call({ action: 'adjustStockBulk', season: 'HQ', location: hq.whLoc, items: [{ bookId: b.id, delta: 1 }], override: true });
+  if (hq) books.forEach(b => { m.call({ action: 'adjustStockBulk', season: 'HQ', location: hq.whLoc, items: [{ bookId: b.id, delta: 2 }], override: true });
     m.call({ action: 'sell', season: 'HQ', location: hq.whLoc, bookId: b.id, legs: [{ type: 'Gift', cur: 'USD', amt: 0 }], override: true }); }); }
 
 (async () => {

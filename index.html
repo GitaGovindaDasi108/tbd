@@ -604,6 +604,10 @@ body.busy #busyBar{opacity:1}
 .cbr tbody th a:hover{text-decoration:underline}
 .cbr td{text-align:right}
 .cbr td.usd{font-weight:800}
+/* Net Sales by Season (b307, Gita): "Seasons" on the left; the currencies open sideways. */
+.cbr-ns thead th:first-child{text-align:left}
+.cbr-ns .cbr-tg{text-align:left;padding-left:4px;padding-right:4px}
+.cbr-tgb{border:0;background:none;padding:0;font:inherit;color:var(--lvl);text-transform:inherit;letter-spacing:inherit;cursor:pointer;text-align:left}
 /* Season aggregator: each region as a heading row, its places indented beneath. */
 .cash-agg .cash-reg-row>th,.cash-agg .cash-reg-row>td{font-weight:800;border-top:1.5px solid var(--line-d);padding-top:9px}
 .cash-agg .cash-sub-row>th{padding-left:20px;font-weight:600;color:var(--ink);font-size:12.5px}
@@ -1770,7 +1774,7 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .dr-x{grid-area:x;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 .dr-btns{grid-area:b;display:flex;gap:4px} .dr-row .li-chev{grid-area:c} .dr-row .dr-d{grid-area:d}
 .dr-top{margin:0 0 6px}
-.fin-sh.dr-head{justify-content:space-between}   /* the button on the right (b306, Gita) */
+.fin-sh.dr-head{flex-direction:column;align-items:flex-start;gap:6px}   /* the button directly under the title (b307, Gita) */
 .fin-dr-ov{margin-top:18px}
 .fin-ovw-tg{vertical-align:middle;margin-left:4px}
 @media (max-width:560px){ .dr-row{grid-template-columns:auto minmax(0,1fr) 14px;grid-template-areas:"d w c" "x x c" "b b c";row-gap:4px} .dr-x{text-align:left} .dr-btns{justify-content:flex-end} }
@@ -2055,6 +2059,9 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
    be clipped by the dialog's own scrolling. */
 .pp{display:flex;flex-direction:column;gap:6px}
 .pp-list{border:1.5px solid var(--line-d);border-radius:9px;background:#fff;max-height:250px;overflow:auto;padding:4px 0}
+/* A list that drops down covers what is under it; the form stays still (b307, Gita). */
+.pp{position:relative}
+.pp > .pp-list{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.16)}
 .pp-season{font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--muted);
   padding:9px 12px 4px}
 .pp-row{padding:8px 12px;font-size:13.5px;cursor:pointer;color:var(--ink);line-height:1.3}
@@ -2476,7 +2483,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b306</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b307</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5356,7 +5363,7 @@ function renderAll(){
     renderCollectionsByRegion('#hqCollBy');
     $('#hqSalesBy').innerHTML  = renderSalesByRegion();
     renderPayments('#hqPayBody');
-    $('#hqWhOverview').innerHTML = renderWarehouseOverview();
+    $('#hqWhOverview').innerHTML = renderWarehouseOverview($('#hqWhOverview'));
   });
 
   const season = CUR_LEVEL==='season';
@@ -5381,7 +5388,7 @@ function renderAll(){
   if(season){
     renderTitleList('#seasonTitleList');
     $('#salesByRegion').innerHTML = renderSalesByRegion();
-    $('#whOverview').innerHTML    = renderWarehouseOverview();
+    $('#whOverview').innerHTML    = renderWarehouseOverview($('#whOverview'));
     renderPayments('#seasonPayBody');
     // Same numbers, grouped by region — the season's "collections by region".
     renderCollectionsByRegion('#collByRegion');
@@ -5389,7 +5396,7 @@ function renderAll(){
     renderInventory(); renderTitleList('#titleList'); renderLog();
     const regWh = CUR_LEVEL==='region' && !isHQ();
     $('#whRegionPanel').style.display = regWh ? '' : 'none';
-    if(regWh) $('#whRegion').innerHTML = renderWarehouseOverview();
+    if(regWh) $('#whRegion').innerHTML = renderWarehouseOverview($('#whRegion'));
     if(money) renderPayments('#payBody');
   }
   // A seller works from the sales log alone; the pending and pre-order panels
@@ -5892,7 +5899,7 @@ function renderAdmin(){
     // HQ is always there: never closed or deleted. From here Change Location
     // Order arranges every season's places (b305, Gita).
     if(locOrderKinds().length) cols[3].push(`<button class="btn" data-act="reorder">↕ Change Location Order</button>`);
-    cols[3].push(`<button class="btn" data-act="editregion">Edit Earthly HQ</button>`);
+    cols[3].push(PRACTICE ? EDIT_LOC_BTN : `<button class="btn" data-act="editregion">Edit Earthly HQ</button>`);   // practice: Earthly HQ is in Edit Location (b307)
   }else{
   if(locOrderKinds().length) cols[3].push(`<button class="btn" data-act="reorder">↕ Change Location Order</button>`);
   if(season){
@@ -6343,7 +6350,7 @@ function qNameHTML(b, cls){
   return `<div class="${cls} ${catOfBook(b)}">${bookTitleHTML(b)}${
     b.partnerId?'<span class="con-tag">consignment</span>':''}</div>${prices}`;
 }
-function renderWarehouseOverview(){
+function renderWarehouseOverview(el){
   /* Locations, one level down from where you are (b264): at Earthly HQ the
      seasons, at a season its regions, at a region its warehouse, events and
      devotees' homes. */
@@ -6358,7 +6365,7 @@ function renderWarehouseOverview(){
   /* In the order set in Edit Book Display — the season's, or at Earthly HQ its
      own (b219). This panel used to list the catalogue's order whatever was set. */
   // Leaving out what is hidden where you are: the season's page, or Earthly HQ (b252).
-  const off = hiddenHere();
+  const off = hiddenHere(), arrHere = arrOn(el);
   const cards = inRegionOrder((STATE.books||[]).filter(b=>!b.partnerId && !off.has(b.id))).map(b=>{
     const per = units.map(u=>({u, n:stockAt(u, b.id)})).filter(x=>x.n>0);
     const total = per.reduce((t,x)=>t+x.n,0);
@@ -6371,6 +6378,9 @@ function renderWarehouseOverview(){
       .reduce((t,x)=>t+invQty(x.shipId,b.id),0);
     // In a region, what it has sent and is still on the way too (b306, Gita).
     const sent = inRegion ? outTransitQty(b.id, CUR_REGION) : 0;
+    /* A title with none here and none on the way stays out (b307, Gita: hide
+       titles that aren't there), except while arranging this section. */
+    if(!(total+transit+sent) && !arrHere) return '';
     const chips = per.map(x=> inRegion
       ? `<button class="wo-chip" data-act="loc" data-loc="${esc(x.u.id)}" title="Go to ${esc(x.u.name)}"><b>${x.n}</b> ${esc(x.u.name)}</button>`
       : `<button class="wo-chip" data-act="${UNIT.act}" data-${UNIT.attr}="${esc(x.u.id)}"
@@ -6391,7 +6401,7 @@ function renderWarehouseOverview(){
         title="Where these are going">${sent} in transit (sent) ›</button>`:''}`,
       full: where});
   }).join('');
-  return `<div class="stat-grid" data-books="1">${cards}</div>`;
+  return cards ? `<div class="stat-grid" data-books="1">${cards}</div>` : '<div class="cash-empty">No books here yet.</div>';
 }
 
 /* ---- FE12: Sales by Region, expandable to per-title ---- */
@@ -6411,7 +6421,8 @@ function renderSalesByRegion(){
 
     // Mini cards — same language as the shelf, sized to sit inside a dropdown.
     // A title hidden on this page stays out of the drop-down too (b306); the counts above still hold its sales.
-    const perBook = (STATE.books||[]).filter(b=>bookBelongsIn(b, r.regionId) && !offHere.has(b.id)).map(b=>{
+    // In the page's order (b307, Gita: a new card order applies to the whole page).
+    const perBook = inRegionOrder((STATE.books||[]).filter(b=>bookBelongsIn(b, r.regionId) && !offHere.has(b.id))).map(b=>{
       const {sold, pre, gift} = bookCounts(allHere.filter(x=>x.bookId===b.id));
       if(!sold && !pre && !gift) return '';
       return qCardHTML({cls:`mini-card${b.partnerId?' consign':''}`,
@@ -6705,7 +6716,7 @@ function renderInventory(){
   if(dragging()){ SHELF_DRAG.redraw = true; return; }
   $('#invHeading').firstChild.textContent = isHQ() ? 'Earthly HQ Warehouse '
     : (isWarehouseLoc(CUR_LOC)?'Warehouse Inventory ':'Event Inventory ');
-  { const tl = $('#invHeading .tl-btn'); if(tl) tl.hidden = !PRACTICE; }   // b305, practice first
+  { const tl = $('#invHeading .tl-btn'); if(tl) tl.hidden = false; }   // b305 practice; live since b307 (Gita)
   const s=scopedSales();
   const allSales=STATE.sales||[];
   let h='';
@@ -6992,22 +7003,25 @@ function seasonNetRows(){
     ['coll','exp','don','net'].forEach(k=>tot[k]+=x[k]); ['eC','eX','eD','eN'].forEach(k=>{ if(x[k]) tot[k]=true; }); });
   return {rows, tot};
 }
+/* The currencies fold away sideways (b307, Gita): closed, the table starts
+   with Gross Collections; "Show Currencies" opens every currency beside it. */
+var NET_CURS = false;
 function renderNetBySeason(el){
-  const curs = curAllCurrencies(), {rows, tot} = seasonNetRows();
+  const curs = NET_CURS ? curAllCurrencies() : [], {rows, tot} = seasonNetRows();
   const cell = (o,c) => o[c] ? fmt(o[c]) : '<span class="zero">—</span>';
   const D = (v, e) => (Math.round(v*100) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usd2(Math.abs(v));
   const nums = x => `<td class="usd">${D(x.coll, x.eC)}</td><td class="usd">${x.exp ? D(-x.exp, x.eX) : '<span class="zero">—</span>'}</td>`
     + `<td class="usd">${x.don ? D(x.don, x.eD) : '<span class="zero">—</span>'}</td><td class="usd cbr-net">${D(x.net, x.eN)}</td>`;
   el.innerHTML = `
-    <div class="ptg-scroll"><table class="cash-tbl cbr">
-      <thead><tr><th>${UNIT.Word}</th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>Total Collections</th><th>Expenses</th><th>Donations</th><th>Net Sales</th></tr></thead>
+    <div class="ptg-scroll"><table class="cash-tbl cbr cbr-ns">
+      <thead><tr><th>${UNIT.Word}</th><th class="cbr-tg"><button type="button" class="cbr-tgb" data-act="netcurs" aria-expanded="${NET_CURS}">${NET_CURS ? 'Hide Currencies <span class="fin-caret">◂</span>' : 'Show Currencies <span class="fin-caret">▸</span>'}</button></th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>Gross Collections</th><th>Expenses</th><th>Donations</th><th>Net Sales</th></tr></thead>
       <tbody>${rows.map(x=>`<tr>
-        <th><a href="#" data-act="goseasonid" data-id="${esc(x.r.regionId)}" data-season="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th>
+        <th><a href="#" data-act="goseasonid" data-id="${esc(x.r.regionId)}" data-season="${esc(x.r.regionId)}">${esc(x.r.name)}</a></th><td class="cbr-tg"></td>
         ${curs.map(c=>`<td>${cell(x.got,c)}</td>`).join('')}${nums(x)}</tr>`).join('') ||
-        `<tr><td colspan="${curs.length+5}">No ${UNIT.words} yet.</td></tr>`}</tbody>
-      <tfoot><tr><th>All ${UNIT.words}</th>${curs.map(c=>`<td>${cell(tot.got,c)}</td>`).join('')}${nums(tot)}</tr></tfoot>
+        `<tr><td colspan="${curs.length+6}">No ${UNIT.words} yet.</td></tr>`}</tbody>
+      <tfoot><tr><th>All ${UNIT.words}</th><td class="cbr-tg"></td>${curs.map(c=>`<td>${cell(tot.got,c)}</td>`).join('')}${nums(tot)}</tr></tfoot>
     </table></div>
-    <div class="hint">*net sales = total collections - (expenses + donations)</div>`;
+    <div class="hint">*net sales = gross collections - (expenses + donations)</div>`;
 }
 function renderCollectionsByRegion(target){
   const el = $(target); if(!el) return;
@@ -8620,11 +8634,12 @@ if(typeof MutationObserver!=='undefined' && document.getElementById('modal'))
    as before (YYYY-MM-DD), so everything that reads or sets it still works. */
 const DT_VAL = typeof HTMLInputElement==='undefined' ? null : Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
 function dtShow(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||''); return m ? m[2] + '/' + m[3] + '/' + m[1] : ''; }
-function dtIso(txt){
+/* loose (b307): when leaving the box, a two-figure year counts too: 3/5/26 is 03/05/2026. */
+function dtIso(txt, loose){
   let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(txt.trim());
   if(m) return txt.trim();
-  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(txt.trim()); if(!m) return null;
-  const mo = Number(m[1]), d = Number(m[2]), y = Number(m[3]), t = new Date(Date.UTC(y, mo-1, d));
+  m = (loose ? /^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2}|\d{4})$/ : /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/).exec(txt.trim()); if(!m) return null;
+  const mo = Number(m[1]), d = Number(m[2]), y = m[3].length===2 ? 2000 + Number(m[3]) : Number(m[3]), t = new Date(Date.UTC(y, mo-1, d));
   if(mo < 1 || mo > 12 || t.getUTCDate() !== d) return null;
   return y + '-' + String(mo).padStart(2,'0') + '-' + String(d).padStart(2,'0');
 }
@@ -8646,6 +8661,13 @@ function dtUpgrade(real){
   const send = () => { real.dispatchEvent(new Event('input', {bubbles:true})); real.dispatchEvent(new Event('change', {bubbles:true})); };
   txt.addEventListener('input', e=>{
     let v = txt.value;
+    /* One figure then a slash (b307, Gita): 3/ becomes 03/, and 10/5/ becomes
+       10/05/. Only once the slash is typed, so a 1 can still become 12. A dash
+       or a dot works as a slash. */
+    if(e.inputType !== 'deleteContentBackward' && e.inputType !== 'deleteContentForward'){
+      const w = v.replace(/[-.]/g, '/').replace(/^(\d)\//, '0$1/').replace(/^(\d{2}\/)(\d)\//, (a, b, c) => b + '0' + c + '/').replace(/\/{2,}/g, '/');
+      if(w !== v){ v = w; txt.value = v; }
+    }
     if(e.inputType !== 'deleteContentBackward' && /^(\d*|\d{2}\/\d{0,2}|\d{2}\/\d{2}\/\d*)$/.test(v)){
       const d = v.replace(/\D/g,'').slice(0,8);
       v = d.length > 4 ? d.slice(0,2) + '/' + d.slice(2,4) + '/' + d.slice(4) : d.length > 2 ? d.slice(0,2) + '/' + d.slice(2) : d;
@@ -8657,7 +8679,8 @@ function dtUpgrade(real){
     if(iso && iso !== DT_VAL.get.call(real)){ DT_VAL.set.call(real, iso); send(); }
     if(!txt.value && DT_VAL.get.call(real)){ DT_VAL.set.call(real, ''); send(); }
   });
-  txt.addEventListener('blur', ()=>{ const iso = dtIso(txt.value); if(iso) txt.value = dtShow(iso); });
+  txt.addEventListener('blur', ()=>{ const iso = dtIso(txt.value, true); if(!iso) return; txt.value = dtShow(iso); txt.classList.remove('dt-bad');
+    if(iso !== DT_VAL.get.call(real)){ DT_VAL.set.call(real, iso); send(); } });
   real.addEventListener('change', ()=>{ if(document.activeElement !== txt) txt.value = dtShow(DT_VAL.get.call(real)); });
   cal.addEventListener('click', ()=>{ try{ real.showPicker(); }catch(e){ real.focus(); real.click(); } });
 }
@@ -13157,15 +13180,20 @@ function finSendLinkModal(){
   const via = () => em.checked ? 'em' : 'wa';
   const auto = () => !who ? '' : via()==='em' ? (who.cemail || who.email || '') : (who.whatsapp || '');
   const fill = force => { const v = auto(); if(v && (force || !to.value.trim() || to.value === to.dataset.auto)){ to.value = v; } to.dataset.auto = v; };
-  const setVia = k => { wa.checked = k==='wa'; em.checked = k==='em';
+  const setVia = k => { if(!who) who = match(); wa.checked = k==='wa'; em.checked = k==='em';
     to.type = k==='em' ? 'email' : 'tel'; to.placeholder = k==='em' ? 'name@mail.com' : '+48 600 000 000';
     to.setAttribute('aria-label', k==='em' ? 'Email' : 'WhatsApp number');
     if(to.value === to.dataset.auto || !to.value.trim()) to.value = ''; fill(); };
   wa.addEventListener('change', ()=>setVia(wa.checked ? 'wa' : 'em'));
   em.addEventListener('change', ()=>setVia(em.checked ? 'em' : 'wa'));
   to.addEventListener('blur', ()=>{ if(!to.value.trim()) fill(true); });
-  n.addEventListener('input', ()=>{ if(who && n.value.trim() !== who.name){ who = null; if(to.value === to.dataset.auto) to.value = ''; to.dataset.auto = ''; } });
   const people = () => ((EXP.opt && EXP.opt.people) || []).filter(p=>p.whatsapp || p.cemail || p.email);
+  /* A name typed in full, not picked from the list, counts as picking that
+     person too (b307, Gita: the WhatsApp number was not filling in). */
+  const match = () => { const q = n.value.trim().toLowerCase(); return q ? people().find(p=>p.name.trim().toLowerCase()===q) || null : null; };
+  n.addEventListener('input', ()=>{ const p = match();
+    if(p && p!==who){ who = p; fill(true); return; }
+    if(who && !p){ who = null; if(to.value === to.dataset.auto) to.value = ''; to.dataset.auto = ''; } });
   if(!EXP.opt) post({action:'expOptions'}).then(r=>{ EXP.opt = EXP.opt || r.result; }).catch(()=>{});
   const show = () => { const q = fold(n.value.trim());
     const rs = q ? people().filter(p=>p.name.toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q)).slice(0, 8) : [];
@@ -15330,8 +15358,8 @@ function buildReport(part, opts){
     rows.concat([Object.assign({r:{name:'All seasons'}}, tot)]).forEach((x,i)=>{
       if(i===rows.length) L.push('');
       L.push('*' + x.r.name + '*');
-      if(cur(x.got)) line('Collections', cur(x.got));
-      line('Total Collections', eq(x.coll, x.eC));
+      if(NET_CURS && cur(x.got)) line('Collections', cur(x.got));
+      line('Gross Collections', eq(x.coll, x.eC));
       if(x.exp) line('Expenses', eq(-x.exp, x.eX));
       if(x.don) line('Donations', eq(x.don, x.eD));
       line('Net Sales', eq(x.net, x.eN));
@@ -17739,45 +17767,61 @@ function priceGrid(edit, st){
     const list = $('#rgCur').value.split(',').map(x=>x.trim().toUpperCase()).filter(Boolean);
     return list[0] || '';
   }
-  /* b306 (Gita: the calculator broke after editing; "don't erase prices lower
-     in the hierarchy"; a price stands only once typed by hand). A price that
-     was saved or typed by hand (data-hand) is never changed or emptied by the
-     calculator. Everything else is the calculator's: it fills, follows and
-     empties with the box it comes from, and a box you empty is the
-     calculator's again once you leave it. */
-  const autoSet = (box, v) => { if(box.dataset.hand) return; box.value = v; box.classList.toggle('rp-auto', v !== ''); };
-  function spreadFrom(bookId, from, value){
+  /* b306/b307 (Gita). A price typed by hand or saved before (data-hand) is
+     never changed by working out from another price. The "fill all" row at
+     the top is different: "that is the top row's job", so typing there
+     overwrites every price of that kind below it, in that currency, and from
+     the local currency every other currency too. An empty price box always
+     holds the calculation from the local price: when the form opens, when a
+     currency is added, when you go to fill one in and when you leave one
+     empty. */
+  const conv2 = (amt, from, to) => { const c = convertCur(amt, from, to); return c ? String(Math.round(c*100)/100) : ''; };
+  const autoSet = (box, v, force) => { if(box.dataset.hand && !force) return; if(force) delete box.dataset.hand; box.value = v; box.classList.toggle('rp-auto', v !== ''); };
+  function spreadFrom(bookId, from, value, force){
     const amt = Number(value);
     const others = [...document.querySelectorAll(`#modal .rp[data-book="${bookId}"]`)]
       .filter(x=>x.dataset.cur !== from);
     others.forEach(box=>{
-      if(value==='' || !(amt>0)){ autoSet(box, ''); return; }
-      const conv = convertCur(amt, from, box.dataset.cur);
+      if(value==='' || !(amt>0)){ if(!force) autoSet(box, ''); return; }
       // Two decimals, but whole numbers stay whole rather than reading 30.00.
-      autoSet(box, conv ? String(Math.round(conv*100)/100) : '');
+      // No rate to work it out with: the box is left as it is, never emptied.
+      const v = conv2(amt, from, box.dataset.cur); if(v !== '') autoSet(box, v, force);
     });
   }
   const bookCat = id => { const b = (STATE.books||[]).find(x=>x.id===id); return b ? catOfBook(b) : ''; };
+  const topBox = (cat, cur) => document.querySelector(`#modal .rp-all[data-cat="${cat}"][data-cur="${cur}"]`);
   // What the calculator would put in an empty box: from the local price, or the row above it.
   function refill(cell){
     const id = cell.dataset.book, cur = cell.dataset.cur, loc = localCur();
     if(cur !== loc){
       const lb = document.querySelector(`#modal .rp[data-book="${id}"][data-cur="${loc}"]`);
-      if(lb && Number(lb.value) > 0){ const conv = convertCur(Number(lb.value), loc, cur); autoSet(cell, conv ? String(Math.round(conv*100)/100) : ''); }
+      if(lb && Number(lb.value) > 0) autoSet(cell, conv2(Number(lb.value), loc, cur));
       return;
     }
-    const all = document.querySelector(`#modal .rp-all[data-cat="${bookCat(id)}"][data-cur="${cur}"]`);
+    const all = topBox(bookCat(id), cur);
     if(all && all.value !== ''){ autoSet(cell, all.value); spreadFrom(id, cur, cell.value); }
-    else spreadFrom(id, cur, '');
+  }
+  // The top row in another currency follows the top row's local price, unless typed by hand.
+  function refillTop(box){
+    const loc = localCur(); if(box.dataset.cur === loc) return;
+    const lt = topBox(box.dataset.cat, loc);
+    if(lt && Number(lt.value) > 0) autoSet(box, conv2(Number(lt.value), loc, box.dataset.cur));
   }
   function fillAll(all){
     const cat=all.dataset.cat, cur=all.dataset.cur, v=all.value;
+    if(v==='') return;   // emptying the top box leaves the prices below as they are
     (STATE.books||[]).forEach(b=>{
       if(catOfBook(b)!==cat || !bookBelongsIn(b, isEdit ? edit.regionId : '')) return;
       const box=document.querySelector(`#modal .rp[data-book="${b.id}"][data-cur="${cur}"]`);
-      if(!box || box.dataset.hand) return;
-      autoSet(box, v); if(cur===localCur()) spreadFrom(b.id, cur, v);
+      if(!box) return;
+      autoSet(box, v, true); if(cur===localCur()) spreadFrom(b.id, cur, v, true);
     });
+  }
+  // Every empty box gets its calculation (on opening, and when a currency is added).
+  function calcEmpty(){
+    document.querySelectorAll('#modal .rp-all').forEach(i=>{ if(i.value==='' && !i.dataset.hand) refillTop(i); });
+    const loc = localCur();
+    document.querySelectorAll('#modal .rp[data-book]').forEach(i=>{ if(i.value==='' && !i.dataset.hand && i.dataset.cur!==loc) refill(i); });
   }
 
   // Every box's figure, and whether it was typed by hand or worked out, across a redraw.
@@ -17785,11 +17829,23 @@ function priceGrid(edit, st){
   function rpKeep(){ const k={}; [...document.querySelectorAll('#modal .rp')].forEach(i=>{
     if(i.value!=='') k[rpKey(i)] = {v:i.value, hand:!!i.dataset.hand, auto:i.classList.contains('rp-auto')}; }); return k; }
   function rpPut(k){ [...document.querySelectorAll('#modal .rp')].forEach(i=>{ const x = k[rpKey(i)]; if(!x) return;
-    i.value = x.v; if(x.hand) i.dataset.hand = '1'; else delete i.dataset.hand; i.classList.toggle('rp-auto', x.auto); }); }
+    i.value = x.v; if(x.hand) i.dataset.hand = '1'; else delete i.dataset.hand; i.classList.toggle('rp-auto', x.auto); });
+    calcEmpty(); }
   function bind(){
     $('#rgPrices').addEventListener('input',e=>{
       const all=e.target.closest('.rp-all');
-      if(all){ fillAll(all); return; }
+      if(all){
+        all.classList.remove('rp-auto');
+        if(all.value !== '') all.dataset.hand = '1'; else delete all.dataset.hand;
+        if(all.dataset.cur === localCur()){
+          // The top row's other currencies follow, then each one fills its column.
+          document.querySelectorAll(`#modal .rp-all[data-cat="${all.dataset.cat}"]`).forEach(o=>{
+            if(o===all || o.dataset.hand) return; if(all.value==='') autoSet(o, ''); else refillTop(o); });
+          fillAll(all);
+          document.querySelectorAll(`#modal .rp-all[data-cat="${all.dataset.cat}"]`).forEach(o=>{ if(o!==all && o.dataset.hand) fillAll(o); });
+        } else fillAll(all);
+        return;
+      }
       const cell=e.target.closest('.rp[data-book]');
       if(!cell) return;
       cell.classList.remove('rp-auto');
@@ -17797,19 +17853,24 @@ function priceGrid(edit, st){
       if(cell.value !== '') cell.dataset.hand = '1'; else delete cell.dataset.hand;
       if(cell.dataset.cur === localCur()) spreadFrom(cell.dataset.book, cell.dataset.cur, cell.value);
     });
-    // Left empty: the calculator fills it back in.
-    $('#rgPrices').addEventListener('focusout',e=>{
+    // Going to fill in an empty box, or leaving one empty: the calculation is there.
+    const fillEmpty = e => {
+      const top = e.target.closest('.rp-all');
+      if(top){ if(top.value === '' && !top.dataset.hand) refillTop(top); return; }
       const cell=e.target.closest('.rp[data-book]');
       if(cell && cell.value === '' && !cell.dataset.hand) refill(cell);
-    });
+    };
+    $('#rgPrices').addEventListener('focusin', fillEmpty);
+    $('#rgPrices').addEventListener('focusout', fillEmpty);
 
     // Dim a title the moment it's unticked, so the choice reads at a glance.
     $('#rgPrices').addEventListener('change',e=>{
       const cb=e.target.closest('.bk-cb'); if(!cb) return;
       cb.closest('.bk-row').classList.toggle('off', !cb.checked);
     });
+    calcEmpty();
   }
-  return {rows:priceRows, keep:rpKeep, put:rpPut, bind, local:localCur};
+  return {rows:priceRows, keep:rpKeep, put:rpPut, bind, local:localCur, calc:calcEmpty};
 }
 function regionModal(edit, after){
   const isEdit = !!edit;
@@ -20198,13 +20259,24 @@ function reorderModal(kind){
    #ppBody; save(kind, place, st) saves it. ---- */
 function placePickModal({title, kinds, drawBody, save, saveLabel}){
   if(!kinds.length){ toast('That is not part of your role.', true); return; }
-  const NM = {season:'Season', region:'Region', event:'Event'};
-  let kind = kinds.includes(CUR_LEVEL==='event' ? 'event' : CUR_LEVEL==='region' && !isHQ() ? 'region' : 'season') ? (CUR_LEVEL==='event' ? 'event' : CUR_LEVEL==='region' && !isHQ() ? 'region' : 'season') : kinds[0];
+  const NM = {hq:'Earthly HQ', season:'Season', region:'Region', event:'Event'};
+  /* Earthly HQ is a location too (b307, Gita: "include it in changes to
+     locations unless otherwise specified"): its own tab, opened at HQ. */
+  let kind = isHQ() && kinds.includes('hq') ? 'hq' : kinds.includes(CUR_LEVEL==='event' ? 'event' : CUR_LEVEL==='region' && !isHQ() ? 'region' : 'season') ? (CUR_LEVEL==='event' ? 'event' : CUR_LEVEL==='region' && !isHQ() ? 'region' : 'season') : kinds[0];
   const pickSn = (ME && ME.universal) || actingRole()==='U';
   const snList = (STATE.seasons||[]).filter(x=>x.seasonId!==HQ_ID);
   let snSel = isHQ() ? ((snList.find(x=>!x.closedAt)||snList[0]||{}).seasonId || '') : STATE.activeSeason;
-  let snState = null, snLoading = false, snGen = 0;
-  const stOf = () => snSel===STATE.activeSeason ? STATE : snState;
+  let snState = null, snLoading = false, snGen = 0, hqState = isHQ() ? STATE : null, hqLoading = false;
+  const stOf = () => kind==='hq' ? hqState : snSel===STATE.activeSeason ? STATE : snState;
+  function fetchHQ(){
+    if(hqState || hqLoading || !kinds.includes('hq')) return;
+    const c = seasonCacheLoad(HQ_ID); if(c) hqState = c.state;
+    hqLoading = !hqState;
+    post({action:'getState', season:HQ_ID}).then(d=>{
+      if(!d || !d.state) return;
+      seasonCacheSave(HQ_ID, d.state, d.rev); hqState = d.state; hqLoading = false; if($('#ppBody') && kind==='hq') draw();
+    }).catch(()=>{ if(hqLoading){ hqLoading = false; if($('#ppBody') && kind==='hq') draw(); } });
+  }
   const regsOf = () => ((stOf()||{}).regions||[]).filter(r=>r.regionId!==HQ_REGION);
   const firstOpen = list => (list.find(x=>!x.closedAt)||list[0]||{});
   let reg = (!isHQ() && CUR_REGION) || firstOpen(regsOf()).regionId || '';
@@ -20225,20 +20297,21 @@ function placePickModal({title, kinds, drawBody, save, saveLabel}){
     if(!regsOf().some(r=>r.regionId===reg)) reg = firstOpen(regsOf()).regionId || '';
     if(!evsOf().some(e=>e.eventId===ev)) ev = firstOpen(evsOf()).eventId || '';
   }
-  const place = () => kind==='season' ? (snList.find(x=>x.seasonId===snSel) || null)
+  const place = () => kind==='hq' ? (((hqState||{}).regions||[]).find(r=>r.regionId===HQ_REGION) || null)
+    : kind==='season' ? (snList.find(x=>x.seasonId===snSel) || null)
     : kind==='region' ? (regsOf().find(r=>r.regionId===reg) || null) : (evsOf().find(e=>e.eventId===ev) || null);
   function draw(){
     $('#ppTabs').innerHTML = kinds.length > 1 ? kinds.map(k=>`<button type="button" class="seg-b${k===kind?' on':''}" data-pp-k="${k}">${NM[k]}</button>`).join('') : '';
     const sel = (id, label, list, at, key) => `<div class="field"><label>${label}</label><select id="${id}">${
       closedSort(list, x=>!!x.closedAt).map(x=>`<option value="${esc(x[key])}"${x[key]===at?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`;
-    $('#ppPick').innerHTML = (pickSn || kind==='season' ? sel('ppSn', 'Season', snList, snSel, 'seasonId') : '')
+    $('#ppPick').innerHTML = kind==='hq' ? '' : (pickSn || kind==='season' ? sel('ppSn', 'Season', snList, snSel, 'seasonId') : '')
       + (kind!=='season' ? sel('ppReg', 'Region', regsOf(), reg, 'regionId') : '')
       + (kind==='event' ? sel('ppEv', 'Event', evsOf(), ev, 'eventId') : '');
-    const p = place();
-    if(snLoading) $('#ppBody').innerHTML = '<div class="hint">Opening that season…</div>';
+    const p = place(), busy = kind==='hq' ? hqLoading : snLoading;
+    if(busy) $('#ppBody').innerHTML = `<div class="hint">Opening ${kind==='hq' ? 'Earthly HQ' : 'that season'}…</div>`;
     else if(!p) $('#ppBody').innerHTML = `<div class="hint">No ${kind}s here yet.</div>`;
     else drawBody(kind, p, stOf());
-    $('#ppSave').disabled = !p || snLoading;
+    $('#ppSave').disabled = !p || busy;
     $('#modalErr').textContent = '';
     document.querySelectorAll('#modal [data-pp-k]').forEach(b=>b.onclick = ()=>{ kind = b.dataset.ppK; draw(); });
     const ss = $('#ppSn'); if(ss) ss.onchange = ()=>{ snSel = ss.value; fetchSeason(); fix(); draw(); };
@@ -20254,11 +20327,11 @@ function placePickModal({title, kinds, drawBody, save, saveLabel}){
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" id="ppSave">${saveLabel || 'Save'}</button></div>`, true);
-  fetchSeason(); fix(); draw();
-  $('#ppSave').addEventListener('click', ()=>{ const p = place(); if(p) save(kind, p, stOf(), snSel); });
+  fetchSeason(); fetchHQ(); fix(); draw();
+  $('#ppSave').addEventListener('click', ()=>{ const p = place(); if(p) save(kind, p, stOf(), kind==='hq' ? HQ_ID : snSel); });
 }
 const placeKinds = () => { const r = (ME && ME.universal) ? 'U' : actingRole();
-  return r==='U' ? ['season','region','event'] : r==='SL' ? ['region','event'] : r==='RL' ? ['event'] : []; };
+  return r==='U' ? ['hq','season','region','event'] : r==='SL' ? ['region','event'] : r==='RL' ? ['event'] : []; };
 
 /* Edit Location (practice, b306, Gita: "edit region should just be name and
    dates", picked like Change Location Order). */
@@ -20268,8 +20341,9 @@ function placeEditModal(){
   placePickModal({title:'Edit Location', kinds:placeKinds(),
     drawBody(kind, p){
       const id = p.seasonId || p.regionId || p.eventId;
-      $('#ppBody').innerHTML = `<div class="field"><label>Name</label><input id="ppName" type="text" value="${esc(p.name||'')}"></div>${placeMetaHTML(K[kind])}`;
-      pm = placeMetaBind(K[kind], '#ppName', id, ()=>'');
+      // Earthly HQ has a name and no dates, as in Edit Earthly HQ (b307).
+      $('#ppBody').innerHTML = `<div class="field"><label>Name</label><input id="ppName" type="text" value="${esc(p.name||'')}"></div>${kind==='hq' ? '' : placeMetaHTML(K[kind])}`;
+      pm = kind==='hq' ? null : placeMetaBind(K[kind], '#ppName', id, ()=>'');
     },
     async save(kind, p, st, sn){
       const id = p.seasonId || p.regionId || p.eventId, name = $('#ppName').value.trim();
@@ -20280,13 +20354,13 @@ function placeEditModal(){
       if(name!==p.name){
         if(kind==='season') commit({action:'saveSeason', seasonId:id, name},
           s2=>{ const x=(s2.seasons||[]).find(y=>y.seasonId===id); if(x) x.name=name; }, null, {anySeason:true});
-        else if(kind==='region') commit({action:'editRegion', regionId:id, name, currencies:(p.currencies||['USD']).join(',')},
+        else if(kind==='region' || kind==='hq') commit({action:'editRegion', regionId:id, name, currencies:(p.currencies||['USD']).join(','), season:sn},
           s2=>{ if(!here) return; const r=(s2.regions||[]).find(x=>x.regionId===id); if(r) r.name=name; }, null);
-        else commit({action:'renameEvent', eventId:id, name},
+        else commit({action:'renameEvent', eventId:id, name, season:sn},
           s2=>{ if(!here) return; const e=(s2.events||[]).find(x=>x.eventId===id); if(e) e.name=name; }, null);
         p.name = name;
       }
-      if(FIN_ON) placeMetaSave(K[kind], id, meta);
+      if(FIN_ON && K[kind]) placeMetaSave(K[kind], id, meta);
       closeModal(); toast('Saved');
     }});
 }
@@ -20303,7 +20377,7 @@ function pricesModal(){
     : (!b.partnerId && (!(r.books||[]).length || (r.books||[]).includes(b.id))));
   placePickModal({title:'Change Prices', kinds,
     drawBody(kind, p, st){
-      if(kind==='region'){
+      if(kind==='region' || kind==='hq'){
         G = priceGrid(p, st===STATE ? null : st);
         $('#ppBody').innerHTML = `<div class="field"><label>Enter all accepted currencies by their official abbreviation. <span class="muted-note">(Separate currencies with a comma.)</span></label>
             <input id="rgCur" type="text" value="${esc((p.currencies||['USD']).join(', '))}"></div>
@@ -20328,14 +20402,14 @@ function pricesModal(){
     },
     save(kind, p, st, sn){
       const here = sn===STATE.activeSeason;
-      if(kind==='region'){
+      if(kind==='region' || kind==='hq'){
         const curList = parseCurs($('#rgCur').value);
         const all = [...document.querySelectorAll('#modal .bk-cb')], picked = all.filter(c=>c.checked).map(c=>c.value);
         if(!picked.length){ $('#modalErr').textContent = 'Keep at least one title.'; return; }
         const books = picked.length===all.length ? '' : picked.join(','), prices = {};
         document.querySelectorAll('#modal .rp[data-book]').forEach(i=>{ const v = Number(i.value);
           if(i.value==='' || isNaN(v)) return; (prices[i.dataset.book] = prices[i.dataset.book] || {})[i.dataset.cur] = v; });
-        commit({action:'editRegion', regionId:p.regionId, name:p.name, currencies:curList.join(','), books, prices},
+        commit({action:'editRegion', regionId:p.regionId, name:p.name, currencies:curList.join(','), books, prices, season:sn},
           s2=>{ if(!here) return; const r = (s2.regions||[]).find(x=>x.regionId===p.regionId);
             if(r){ r.currencies = curList; r.books = books ? books.split(',') : []; }
             const bag = (s2.prices = s2.prices || {})[p.regionId] = {};
@@ -20349,7 +20423,7 @@ function pricesModal(){
       if(bad){ $('#modalErr').textContent = 'A price must be a number.'; return; }
       if(!Object.keys(prices).length){ closeModal(); return; }
       const evId = p.eventId;
-      commit({action:'setEventPrices', eventId:evId, prices}, s2=>{
+      commit({action:'setEventPrices', eventId:evId, prices, season:sn}, s2=>{
         if(!here) return;
         const bag = (s2.eventPrices = s2.eventPrices || {})[evId] = (s2.eventPrices||{})[evId] || {};
         Object.keys(prices).forEach(b=>Object.keys(prices[b]).forEach(c=>{ const v = prices[b][c];
@@ -22713,6 +22787,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='reorderbooks' || a==='bookdisplay'){ bookDisplayModal(); return; }
+  if(a==='netcurs'){ NET_CURS = !NET_CURS; const el = t.closest('#hqCollBy'); if(el) withRollup(()=>renderNetBySeason(el)); return; }
   if(a==='arrange'){ const k = arrKey(t); ARRANGE = (k && ARRANGE!==k) ? k : ''; renderAll(); return; }
   if(a==='arrhide'){ const b = bookById(t.dataset.id); hideTitle(t.dataset.id); toast((b?b.name:'Title') + ' hidden here — "Hidden here" shows it again'); return; }
   if(a==='arrhidden'){ hiddenTitlesModal(); return; }
