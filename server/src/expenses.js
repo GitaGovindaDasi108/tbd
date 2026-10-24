@@ -378,11 +378,12 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       if (lp) list.unshift(Object.assign(lp, { closed: false, label: labelOf(w.P, lp) }));
     }
     const want = String(p.location || '') || (w.open ? w.linkPlace || '' : '');
-    /* A new expense starts at Earthly HQ for whoever reaches it (Gita,
-       2026-10-20), and can be moved to its event. Anyone else starts where they
-       are (or their only place). */
+    /* A new expense starts where you are (b302, Gita: every searchable menu
+       starts where you are); at Earthly HQ, or anywhere not in the list, it
+       starts at Earthly HQ for whoever reaches it (2026-10-20). Anyone else
+       starts at their only place. */
     const hq = p.start && list.find(x => x.kind === 'hq');
-    const pl = hq || list.find(x => x.id === want) || (isFin(w) && list.length > 1 ? null : list[0]) || null;
+    const pl = list.find(x => x.id === want) || hq || (isFin(w) && list.length > 1 ? null : list[0]) || null;
     const forEmail = isFin(w) && p.forEmail ? String(p.forEmail).toLowerCase() : w.email;
     const eff = effective(F, rules, pl, forEmail);
     const spend = new Set(regionCurs(F, pl));
