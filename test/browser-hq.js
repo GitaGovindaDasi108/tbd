@@ -58,8 +58,8 @@ c({ action: 'setSeason', seasonId: SA });
     t.push(['the shelf is the "Earthly HQ Warehouse"', /Earthly HQ Warehouse/.test(await text('#invHeading'))]);
     const heads = await page.evaluate(() => [...document.querySelectorAll('#summaryPortal .panel > h2')].map(h => h.childNodes[0].textContent.trim()));
     console.log('   summaries: ' + heads.join(' | '));
-    t.push(['summaries: titles, collections by season, sales by season, payments, seasonal warehouses',
-      JSON.stringify(heads) === JSON.stringify(['Distribution by Title', 'Collections by Season', 'Sales by Season',
+    t.push(['summaries: titles, net sales by season (b306), sales by season, payments, seasonal warehouses',
+      JSON.stringify(heads) === JSON.stringify(['Distribution by Title', 'Net Sales by Season', 'Sales by Season',
         'Total Collections by Payment', 'Seasonal Warehouse Overview'])]);
     const coll = await text('#hqCollBy');
     t.push(['collections by season: one row per season, and HQ', /Europe Tour/.test(coll) && /Year-Round/.test(coll) && /Earthly HQ/.test(coll) && /All seasons/.test(coll)]);

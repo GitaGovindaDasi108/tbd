@@ -164,7 +164,9 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   await page.fill('#ucN', ''); await page.waitForTimeout(100);
   t.push(['Big Books erased: left empty while you are in it', await val('#ucN') === '']);
   await page.click('#ucCom'); await page.waitForTimeout(150);
-  t.push(['…and once you leave it, worked out again from the money (27), the Adventures cleared', await val('#ucN') === '27' && await val('#ucA') === '']);
+  // b306 (Gita): the money left after those Big Books is worked out as Adventures.
+  { const a27 = Math.floor((1111 - 27 * 40) / ma);
+    t.push(['…and once you leave it, worked out again from the money (27), the rest as ' + a27 + ' Adventures', await val('#ucN') === '27' && await val('#ucA') === (a27 > 0 ? String(a27) : '')]); }
   await page.fill('#ucA', '3'); await page.waitForTimeout(100);
   const n3 = Math.floor((1111 - 3 * ma) / 40);
   t.push(['3 Adventures typed: ' + n3 + ' Big Books worked out', await val('#ucN') === String(n3)]);
@@ -214,7 +216,7 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
       const rr = cs.map(c => c.getBoundingClientRect());
       return { n: cs.length, tops: new Set(rr.map(x => Math.round(x.top))).size, right: Math.max(...rr.map(x => x.right)), bar: b.getBoundingClientRect().right,
         ws: rr.map(x => Math.round(x.width)), fit: cs.every((c, i) => rr[i].width <= need[i] + 2 && c.scrollWidth <= c.clientWidth + 1) }; });
-    t.push(['b305 practice ' + w + 'px: cards sized to what they hold, on one line, room left over (' + r.ws.join(' / ') + ')', r.n >= 3 && r.tops === 1 && r.fit && r.right < r.bar - 20]);
+    t.push(['b305/b306 (live too) ' + w + 'px: cards sized to what they hold, on one line, room left over (' + r.ws.join(' / ') + ')', r.n >= 3 && r.tops === 1 && r.fit && r.right < r.bar - 20]);
   }
   await page.evaluate(() => { window.TOT_EVEN = true; });
   await page.setViewportSize({ width: 1150, height: 900 }); await page.evaluate(() => renderAll()); await page.waitForTimeout(300);

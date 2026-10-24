@@ -104,6 +104,8 @@ c({ action: 'closeLocation', kind: 'region', id: 'rg_ams' });
     return txt.length === 2 && /Confirmed Big Books.*Estimated Big Books/.test(txt[0]) && /Confirmed Adventures.*Estimated Adventures/.test(txt[1])
       && before('input[name="ucEstB"]', '#ucN') && before('input[name="ucEstA"]', '#ucA'); })]);
   const ma = await page.evaluate(() => uncatMsrp('USD', 'aotm'));
+  { const k0 = Math.floor((1111 - 27 * 40) / ma);
+    t.push(['b306: …and the money left after them makes ' + k0 + ' estimated Adventures', await page.$eval('#ucA', i => i.value) === (k0 > 0 ? String(k0) : '')]); }
   // Big Books confirmed and typed: the Adventures are worked out from what is left.
   await page.check('input[name="ucEstB"][value="0"]'); await page.fill('#ucN', '20'); await page.waitForTimeout(100);
   const ka = Math.floor((1111 - 20 * 40) / ma);
