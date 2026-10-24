@@ -83,7 +83,7 @@ m.call({ action: 'setSeason', seasonId: SA });
   await page.evaluate(() => goTo('season')); await page.waitForTimeout(400);
   const cards = () => page.$$eval('#totals > .tcard', cs => cs.map(c => ({ l: c.querySelector('.label').textContent.trim(), w: c.getBoundingClientRect().width, top: Math.round(c.getBoundingClientRect().top), r: c.getBoundingClientRect().right })));
   let cs = await cards();
-  t.push(['AoTM comes first, then Big Books', cs[0].l === 'AoTM' && cs[1].l === 'Big Books']);
+  t.push(['b303: Big Books comes first, then AoTM (Adventures)', cs[0].l === 'Big Books' && cs[1].l === 'AoTM']);
   t.push(['no Total Pending card when nothing is pending', !cs.some(x => /Pending/.test(x.l))]);
   const bar = await page.$eval('#totals', e => e.getBoundingClientRect());
   t.push(['computer: the cards fill one line', new Set(cs.map(x => x.top)).size === 1 && Math.abs(Math.max(...cs.map(x => x.r)) - bar.right) < 2]);

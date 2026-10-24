@@ -1648,7 +1648,7 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fc-ctx{display:inline-block;margin-right:6px;font-weight:700}
 .fc-opt{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;margin:4px 0;cursor:pointer;overflow-wrap:anywhere;min-width:0}
 .fc-opt input{margin-top:3px;flex:none}
-.fin-est{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.fin-est{background:none;border:0;padding:0;font:inherit;color:inherit;cursor:pointer;text-decoration:none}   /* no underline, still a button (b303, Gita) */
 .fin-away{margin:8px 0;padding:8px 10px;border:1.5px solid #d93025;border-radius:10px;background:#fff6f5;font-size:13px;line-height:1.5}
 .fin-away .btn{margin-left:4px}
 /* Links, one line each (b284). */
@@ -1710,6 +1710,12 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fx-d{color:var(--muted);font-size:12.5px;text-align:left}
 .fx-w{font-weight:600;color:var(--plum);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fx-a{text-align:right;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
+/* Dollars Received lines (b303): where | the exchange | Edit, Delete | arrow. */
+.dr-row{display:grid;grid-template-columns:minmax(0,max-content) minmax(0,1fr) auto 14px;grid-template-areas:"w x b c";gap:10px;align-items:center;cursor:pointer;font-size:13.5px}
+.dr-w{grid-area:w;font-weight:600;color:var(--plum);overflow-wrap:anywhere}
+.dr-x{grid-area:x;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.dr-btns{grid-area:b;display:flex;gap:4px} .dr-row .li-chev{grid-area:c}
+@media (max-width:560px){ .dr-row{grid-template-columns:minmax(0,1fr) 14px;grid-template-areas:"w c" "x c" "b c";row-gap:4px} .dr-x{text-align:left} .dr-btns{justify-content:flex-end} }
 .fx-item{padding:7px 10px}
 .fx-det>div{margin:2px 0}
 .fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
@@ -1734,6 +1740,8 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fc-donut{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center}
 .fc-ring{position:relative;flex:0 0 170px;width:170px}.fc-ring .fin-pie{width:170px}
 .fc-ring .fin-pie{-webkit-mask:radial-gradient(circle,transparent 46%,#000 47%);mask:radial-gradient(circle,transparent 46%,#000 47%)}
+.fc-ring.fc-ring2{flex:0 0 auto;width:auto;max-width:100%} .fc-ring .fc-pie2{-webkit-mask:none;mask:none;max-width:100%;height:auto;display:block}
+.fc-pie2 text{font-family:'Inter',sans-serif;font-weight:700;pointer-events:none} .fc-pie2 .fc-lout{fill:var(--ink)}
 .fc-mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
 .fc-mid b{font-size:17px}.fc-mid span{font-size:11px;color:var(--muted);max-width:80px;line-height:1.2}
 .fc-legend{flex:1 1 230px;min-width:0;display:flex;flex-direction:column;gap:5px;font-size:13px}
@@ -1895,6 +1903,12 @@ body.has-va{padding-top:44px}
 .err-box .btn{margin-top:8px;display:block}
 .mb-from{margin:4px 0 10px}
 .sp-grp{grid-column:1/-1;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.dt-wrap{position:relative;display:flex;align-items:center;gap:4px;min-width:0;width:100%}
+.dt-wrap .dt-txt{flex:1 1 auto;min-width:calc(10ch + 26px);width:auto;font-variant-numeric:tabular-nums}
+.fin-col .fin-filters .dt-wrap .dt-txt{min-width:0;padding-left:7px;padding-right:4px}
+.dt-wrap .dt-txt.dt-bad{border-color:var(--clay)}
+.dt-cal{flex:0 0 auto;border:0;background:none;padding:2px 4px;cursor:pointer;font-size:15px;line-height:1}
+.dt-wrap .dt-real{position:absolute;right:0;bottom:0;width:1px;height:1px;opacity:0;padding:0;border:0;pointer-events:none}
 .xf-return{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 
 /* ---------- Bulk grid ---------- */
@@ -2376,7 +2390,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b302</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b303</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5891,7 +5905,10 @@ function menuOrderModal(){
   /* Only items the menu can really show (b293, Gita: "remnants of menu items that
      no longer exist"): Record Costs went into Add an Expense, Edit Book Display
      onto the shelf (⇅ Arrange); View as is practice only, Bring Wording live only. */
-  const gone = a => a==='bookdisplay' || a==='fintodo' || (a==='costs' && FIN_ON) || (a==='viewas' && !PRACTICE)
+  /* b303 (Gita): Specialty Reports and Report became WhatsApp Reports, and
+     Go to Sales Portal became the top bar's portal button. Whenever a menu item
+     is taken out of the app, it goes here too. */
+  const gone = a => a==='bookdisplay' || a==='fintodo' || a==='specreport' || a==='report' || a==='finleave' || (a==='costs' && FIN_ON) || (a==='viewas' && !PRACTICE)
     || (a==='fincarry' && PRACTICE) || (a==='subregions' && !SUBR_ON) || !(MO_NAMES[a] || SN_ITEMS[a]);
   const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.filter(a=>!gone(a))}));
   const name = a => MO_NAMES[a] || SN_ITEMS[a] || ['•', a];
@@ -6367,11 +6384,14 @@ function renderTotals(){
       big.sold += uncN; aotm.sold += uncatBooks(unc, 'aotm');
       big.est = uncatBooks(unc.filter(x=>x.est)); aotm.est = uncatBooks(unc.filter(uncatAEst), 'aotm');
       // AoTM first (b297, Gita); Other only when there is some.
-      return tile('aotm', 'AoTM', aotm)
-        + tile('', 'Big Books', big)
+      // Big Books, Adventures, Other, Pending Payments, then the totals (b303, Gita).
+      return tile('', 'Big Books', big)
+        + tile('aotm', 'AoTM', aotm)
         + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '');
     })()}
     ${hideMoney() ? '' : `
+    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '≈' : '') + '$' + usdT(pendUsd)}</div>
+      <div class="sub">${money(due)}</div></div>` : ''}
     ${(function(){
       /* Total Collections in four parts (b295, Gita): on a computer the total top
          left, costs and donations top right, the currencies bottom left and Net
@@ -6400,8 +6420,7 @@ function renderTotals(){
       <div class="tc-q3 sub">${money(got)||'nothing collected yet'}</div>
       <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">${D(totUsd-cu-du, eN)}</div></div></div>`;
     })()}
-    ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '≈' : '') + '$' + usdT(pendUsd)}</div>
-      <div class="sub">${money(due)}</div></div>` : ''}`}`;
+`}`;
   try{ layoutTotals(); }catch(e){}
 }
 
@@ -6436,12 +6455,15 @@ function layoutTotals(){
     reset();
     return tight;
   };
-  /* Three cards on a full-width computer screen (b302, Gita): the two book
-     cards 372px each and the totals card 492px. The bar is a few pixels short
-     of 372+372+492 plus its two gaps, so the three keep those proportions in
-     the room there is. Any narrower and the widths below take over. */
-  const PX = [372, 372, 492], PXS = PX.reduce((a,b)=>a+b, 0), room3 = W - gap*2;
-  const three = cards.length === 3 && books.length === 2 && coll && !pend && room3 >= PXS*0.98;
+  /* On a full-width computer screen (Gita): with three cards the two book
+     cards 372px each and the totals card 492px (b302); with four, the totals
+     card 465px and the other three 258.33px each (b303). The bar is a few
+     pixels short of those plus its gaps, so the cards keep those proportions
+     in the room there is. Any narrower and the widths below take over. */
+  const PXN = {3:[372, 492], 4:[258.33, 465]}[cards.length];
+  const PX = PXN && coll ? cards.map(c=>c === coll ? PXN[1] : PXN[0]) : null;
+  const PXS = PX ? PX.reduce((a,b)=>a+b, 0) : 0, room3 = W - gap*(cards.length-1);
+  const three = !!PX && room3 >= PXS*0.98;
   const ws3 = three ? PX.map(v=>Math.floor(v*Math.min(1, room3/PXS))) : [];
   const eq = Math.floor((W - gap*(cards.length-1)) / cards.length);
   const oneLine = need => { const ws = three ? ws3 : cards.map(()=>eq);
@@ -8341,6 +8363,61 @@ function ptSearchable(sel){
 if(typeof MutationObserver!=='undefined' && document.getElementById('modal'))
   new MutationObserver(()=>{ document.querySelectorAll('#modal select#ptype, #modal select[data-mix="type"]').forEach(ptSearchable); })
     .observe(document.getElementById('modal'), {childList:true, subtree:true});
+
+/* ---- Date boxes: typed MM/DD/YYYY, with a 📅 calendar (b303, Gita) ----
+   A device's own date box can read month first and turn a typed "2" into
+   "02" at once. Every date box in the app becomes a plain box that takes
+   the digits as typed (the slashes go in by themselves) and a 📅 button for
+   the calendar. The real date box stays behind it, unseen, holding the date
+   as before (YYYY-MM-DD), so everything that reads or sets it still works. */
+const DT_VAL = typeof HTMLInputElement==='undefined' ? null : Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+function dtShow(iso){ const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso||''); return m ? m[2] + '/' + m[3] + '/' + m[1] : ''; }
+function dtIso(txt){
+  let m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(txt.trim());
+  if(m) return txt.trim();
+  m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(txt.trim()); if(!m) return null;
+  const mo = Number(m[1]), d = Number(m[2]), y = Number(m[3]), t = new Date(Date.UTC(y, mo-1, d));
+  if(mo < 1 || mo > 12 || t.getUTCDate() !== d) return null;
+  return y + '-' + String(mo).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+}
+function dtUpgrade(real){
+  if(real._dt || real.type !== 'date') return;
+  const wrap = document.createElement('span'); wrap.className = 'dt-wrap';
+  const txt = document.createElement('input');
+  txt.type = 'text'; txt.className = 'dt-txt ' + (real.className||''); txt.placeholder = 'MM/DD/YYYY'; txt.inputMode = 'numeric'; txt.autocomplete = 'off';
+  txt.maxLength = 10; txt.setAttribute('aria-label', real.getAttribute('aria-label') || 'Date (MM/DD/YYYY)');
+  if(real.disabled) txt.disabled = true;
+  const cal = document.createElement('button'); cal.type = 'button'; cal.className = 'dt-cal no-edit'; cal.textContent = '📅'; cal.title = 'Choose on a calendar'; cal.tabIndex = -1;
+  real.parentNode.insertBefore(wrap, real);
+  wrap.appendChild(txt); wrap.appendChild(cal); wrap.appendChild(real);
+  real.classList.add('dt-real'); real.tabIndex = -1; real._dt = txt;
+  txt.value = dtShow(DT_VAL.get.call(real));
+  // Whatever sets the real box shows in the typed one.
+  Object.defineProperty(real, 'value', { configurable:true, get(){ return DT_VAL.get.call(real); },
+    set(v){ DT_VAL.set.call(real, v); if(document.activeElement !== txt) txt.value = dtShow(DT_VAL.get.call(real)); } });
+  const send = () => { real.dispatchEvent(new Event('input', {bubbles:true})); real.dispatchEvent(new Event('change', {bubbles:true})); };
+  txt.addEventListener('input', e=>{
+    let v = txt.value;
+    if(e.inputType !== 'deleteContentBackward' && /^(\d*|\d{2}\/\d{0,2}|\d{2}\/\d{2}\/\d*)$/.test(v)){
+      const d = v.replace(/\D/g,'').slice(0,8);
+      v = d.length > 4 ? d.slice(0,2) + '/' + d.slice(2,4) + '/' + d.slice(4) : d.length > 2 ? d.slice(0,2) + '/' + d.slice(2) : d;
+      if(/^\d{2}$/.test(v) || /^\d{2}\/\d{2}$/.test(v)) v += '/';
+      txt.value = v;
+    }
+    const iso = dtIso(txt.value);
+    txt.classList.toggle('dt-bad', !!txt.value && !iso && txt.value.length >= 10);
+    if(iso && iso !== DT_VAL.get.call(real)){ DT_VAL.set.call(real, iso); send(); }
+    if(!txt.value && DT_VAL.get.call(real)){ DT_VAL.set.call(real, ''); send(); }
+  });
+  txt.addEventListener('blur', ()=>{ const iso = dtIso(txt.value); if(iso) txt.value = dtShow(iso); });
+  real.addEventListener('change', ()=>{ if(document.activeElement !== txt) txt.value = dtShow(DT_VAL.get.call(real)); });
+  cal.addEventListener('click', ()=>{ try{ real.showPicker(); }catch(e){ real.focus(); real.click(); } });
+}
+if(DT_VAL && typeof MutationObserver!=='undefined'){
+  const dtAll = () => document.querySelectorAll('input[type="date"]:not(.dt-real)').forEach(dtUpgrade);
+  new MutationObserver(dtAll).observe(document.documentElement, {childList:true, subtree:true});
+  document.addEventListener('DOMContentLoaded', dtAll);
+}
 
 /* ---- Mixed payments: as many as it takes, and the rest fills itself ----
    Type one payment and the next one still blank fills with what is left of the
@@ -12463,8 +12540,12 @@ function finRender0(){
   const sec = FINP.sec, f = finScopeF();
   if(sec==='todo'){ finDraw(); return; }
   if(sec==='expenses'){
+    /* Practice (b303, Gita): Dollars Received beside the expenses, as the
+       sales log sits beside the warehouses in the sales portal. */
     $('#fpBody').innerHTML = `<h2 class="fp-h">Expenses ${finRepBtn('expenses')} ${finCsvBtn('expenses')}</h2>${finScopeNote()}
-      <div class="fin-one"><section class="fin-col" id="finExS">${finExpSecHTML()}</section></div>`;
+      ${PRACTICE ? `<div class="fin-two"><section class="fin-col" id="finExS">${finExpSecHTML()}</section>
+        <section class="fin-col" id="finDrS">${finDrSecHTML()}</section></div>`
+      : `<div class="fin-one"><section class="fin-col" id="finExS">${finExpSecHTML()}</section></div>`}`;
     finBindExpSec(); finChartsMount(); return;
   }
   if(sec==='reimb' && !FIN_RB_TABS.includes(FIN.rb.tab)) FIN.rb.tab = FIN.rb.tab==='done' ? 'paid' : 'pending';
@@ -12758,6 +12839,32 @@ function finExpSecHTML(){
       <div class="fx-row fx-head">${head('date','Date','fx-d')}<span class="fx-w">What for</span><span class="fx-o">Original</span>${head('amount','Dollars','fx-a')}<span class="li-chev"></span></div>
       ${list.map(row).join('') || `<div class="cash-empty">${all.length ? 'Nothing matches.' : 'No expenses here yet.'}</div>`}</div>`;
 }
+/* Dollars Received (b303, practice, Gita): every exchange written down,
+   anywhere in the system, a line each like the sales log: where, and what
+   was exchanged for what, with Edit and Delete. The arrow opens where in
+   full, the rate and the note. */
+function finDrParts(c){ return Array.isArray(c.parts) ? c.parts : [{cur:c.cur, amt:c.amt, usd:c.usd}]; }
+function finDrPlace(id){ const p = finPlaces().find(x=>x.id===id); return p ? [p.name, p.rName, p.sName].filter(Boolean).join(' · ') : ''; }
+function finDrList(){ return ((FIN.D && FIN.D.convs) || []).slice().sort((a,b)=>String(b.date).localeCompare(String(a.date))); }
+function finDrSwap(c){ return finDrParts(c).map(x=>cashTrim(x.amt, x.cur)).join(' + ') + ' → ' + finUsd(c.usd); }
+function finDrRate(c){ return finDrParts(c).filter(x=>x.cur!=='USD' && x.amt > 0).map(x=>'1 ' + x.cur + ' = $' + (Math.round(x.usd / x.amt * 10000) / 10000)).join(' · '); }
+function finDrSecHTML(){
+  const list = finDrList(), may = FIN.D && FIN.D.mayEdit;
+  FIN.drOpen = FIN.drOpen || new Set();
+  const row = c => { const open = FIN.drOpen.has(c.id), where = finDrPlace(c.place) || c.label || '';
+    return `<div class="log-item fx-item dr-item${open?' open':''}" data-drid="${esc(c.id)}">
+      <div class="dr-row" data-act="dropen" data-id="${esc(c.id)}"><span class="dr-w no-edit">${esc(c.label || where)}</span>
+        <span class="dr-x">${esc(finDrSwap(c))}</span>
+        ${may ? `<span class="dr-btns"><button type="button" class="btn btn-ghost btn-xs" data-act="dredit" data-id="${esc(c.id)}">✏️ Edit</button><button type="button" class="btn btn-ghost btn-xs" data-act="drdel" data-id="${esc(c.id)}" title="Delete">🗑 Delete</button></span>` : ''}
+        <span class="li-chev">▶</span></div>
+      <div class="li-det fx-det">
+        <div><span class="k">Location</span> <span class="v no-edit">${esc(where)}</span></div>
+        <div><span class="k">Exchange rate</span> <span class="v">${esc(finDrRate(c) || '—')}</span></div>
+        <div><span class="k">Notes</span> <span class="v no-edit">${esc(c.note || '—')}</span></div>
+      </div></div>`; };
+  return `<div class="fin-sh"><h3 class="fin-h3">Dollars Received</h3></div>
+    <div class="fin-ex fin-dr">${list.map(row).join('') || '<div class="cash-empty">None written down yet.</div>'}</div>`;
+}
 function finBindExpSec(){
   const E = FIN.ex, root = $('#finExS'); if(!root) return;
   const q = $('#finExQ');
@@ -12779,6 +12886,9 @@ function finWaExpenses(L, noBar){
   const list = finExpShown();
   if(list.length) L.push('');
   list.forEach(x=>L.push(x.date + ' ' + x.who + ': ' + x.desc + ' (' + x.type + ') - ' + finExpAmt(x) + (x.status==='recorded' ? '' : ' · ' + (EXP_STATUS[x.status]||x.status))));
+  // Dollars Received, as the page shows it (b303, practice).
+  const dr = PRACTICE && FINP.sec==='expenses' ? finDrList() : [];
+  if(dr.length){ L.push('', '*DOLLARS RECEIVED*'); dr.forEach(c=>L.push((c.label || finDrPlace(c.place)) + ': ' + finDrSwap(c))); }
 }
 
 /* Reimbursements: everything still to be paid back, those done, the links
@@ -13243,12 +13353,39 @@ function finTop(by, max){
   if(rows.length > max){ const rest = rows.slice(max-1); rows = rows.slice(0, max-1).concat([{k:'Everything else', v:rest.reduce((t,r)=>t+r.v, 0)}]); }
   return rows;
 }
+/* The ring itself, with each part's figure beside it (b303, Gita), just
+   outside the ring, a line apart where parts are small. */
+function finDonutSVG(rows, total, label){
+  const R = 110, r0 = 78, F = 15, cw = F * 0.6, PX = 170 / 240;
+  const pt = (r, a) => [120 + r*Math.cos(a), 120 + r*Math.sin(a)];
+  const arc = (a1, a2) => { const big = a2 - a1 > Math.PI ? 1 : 0, [x1,y1] = pt(R,a1), [x2,y2] = pt(R,a2), [x3,y3] = pt(r0,a2), [x4,y4] = pt(r0,a1);
+    return `M${x1},${y1} A${R},${R} 0 ${big} 1 ${x2},${y2} L${x3},${y3} A${r0},${r0} 0 ${big} 0 ${x4},${y4} Z`; };
+  let a = -Math.PI/2; const paths = [], outs = [];
+  rows.forEach(x=>{
+    const da = total ? x.v/total*Math.PI*2 : 0, a2 = a + da, mid = a + da/2, txt = finUsd(x.v, x.e);
+    const d = da >= Math.PI*2 - 1e-6 ? arc(a, a + Math.PI) + ' ' + arc(a + Math.PI, a2 - 1e-4) : arc(a, a2);
+    paths.push(`<path d="${d}" fill="${x.c}" stroke="#fff" stroke-width="2" stroke-linejoin="round" data-k="${esc(x.k)}"><title>${esc(x.k)}: ${esc(txt)} (${finPct(x.p)})</title></path>`);
+    if(da > 0) outs.push({txt, mid});
+    a = a2;
+  });
+  // Outside labels a line apart on each side.
+  const side = right => { const L = outs.filter(o=>(Math.cos(o.mid) >= 0) === right).map(o=>{ const [x,y] = pt(R + 8, o.mid); return Object.assign(o, {x, y}); })
+      .sort((p,q)=>p.y-q.y);
+    L.forEach((o,i)=>{ if(i && o.y < L[i-1].y + F + 2) o.y = L[i-1].y + F + 2; }); return L; };
+  const lab = side(true).concat(side(false));
+  const P = lab.length ? Math.ceil(Math.max(...lab.map(o=>o.txt.length * cw)) + 14) : 4;
+  const top = Math.min(0, ...lab.map(o=>o.y - F)) - 4, bot = Math.max(240, ...lab.map(o=>o.y + 4)) + 4;
+  const E = Math.max(-top, bot - 240), vb = [-P, -E, 240 + 2*P, 240 + 2*E];   // even on every side, so the middle stays the middle
+  const T = (x, y, t, anchor, cls) => `<text x="${x}" y="${y}" text-anchor="${anchor}" dominant-baseline="central" class="${cls}" font-size="${F}">${esc(t)}</text>`;
+  const outer = lab.map(o=>T(o.x, o.y, o.txt, Math.cos(o.mid) >= 0 ? 'start' : 'end', 'fc-lout')).join('');
+  return `<svg viewBox="${vb.join(' ')}" class="fin-pie fc-pie2" style="width:${Math.round(vb[2]*PX)}px" role="img" aria-label="${esc(label)}">${paths.join('')}${outer}</svg>`;
+}
 function finDonutHTML(rows, label, totalLabel){
   const total = finShare(rows);
   if(!rows.length) return '';
   const legend = rows.map(r=>`<div class="fc-key"><span class="fin-key" style="background:${r.c}"></span><span class="no-edit">${esc(r.k)}</span>
       <b>${finUsd(r.v, r.e)}</b> <span class="muted-note">${finPct(r.p)}</span></div>`).join('');
-  return `<div class="fc-donut"><div class="fc-ring">${finPieSVG(rows, total).replace('aria-label="Expenses by type"', `aria-label="${esc(label)}"`)}
+  return `<div class="fc-donut"><div class="fc-ring fc-ring2">${finDonutSVG(rows, total, label)}
       <div class="fc-mid"><b>${finUsd(total, rows.some(r=>r.e))}</b><span>${esc(totalLabel || 'Total')}</span></div></div>
     <div class="fc-legend">${legend}</div></div>`;
 }
@@ -17524,7 +17661,7 @@ function bindPlacePicker(id, places, value, onPick){
     if(document.activeElement===inp) return;
     list.hidden = true; inp.value = placeLabel(cur);
   }, 150));
-  return { get value(){ return cur; }, set(loc){ pick(loc); } };
+  return { get value(){ return cur; }, set(loc){ pick(loc); }, clear(){ cur = null; inp.value = ''; list.hidden = true; } };
 }
 
 /* The place's season, as data. The season on screen is used as it stands.
@@ -20102,7 +20239,9 @@ function transferStockModal(opts){
   openModal(`
     ${mHead('Transfer Existing Stock')}
     <div class="m-body sp">
-      <div class="xf-return"><button type="button" class="btn btn-gold btn-sm" id="xfReturn">↩ Return all to warehouse</button>
+      <div class="xf-return"><button type="button" class="btn btn-ghost btn-sm" id="xfIn">⬇ Transfer In</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="xfOut">⬆ Transfer Out</button>
+        <button type="button" class="btn btn-gold btn-sm" id="xfReturn">↩ Return all to warehouse</button>
         <span class="muted-note">Everything at an event, back to its own warehouse.</span></div>
       <div class="field"><label>Transfer From</label>${placePickerHTML('xfFrom')}</div>
       <div class="field"><label>Transfer To</label>${placePickerHTML('xfTo')}
@@ -20118,7 +20257,8 @@ function transferStockModal(opts){
     </div>`, true);
 
   const fromPick = bindPlacePicker('xfFrom', places, opts.fromLoc || here, p=>{ loadFrom(p); });
-  const toPick   = bindPlacePicker('xfTo', places, opts.toLoc || '', ()=>{ sws = null; draw(); });
+  // …and "Transfer To" at the event you are in (b303, Gita).
+  const toPick   = bindPlacePicker('xfTo', places, opts.toLoc || (CUR_LEVEL==='event' ? CUR_LOC : ''), ()=>{ sws = null; draw(); });
   warmSeasons();
 
   function loadFrom(p){
@@ -20137,7 +20277,21 @@ function transferStockModal(opts){
      back to its own warehouse, as one destination, with every copy filled in —
      ready to check and send. */
   let returnAll = false;
-  $('#xfReturn').addEventListener('click', ()=>{
+  /* Transfer In and Transfer Out (b303, Gita). In: from one step up (an
+     event's region, a region's Earthly HQ), to the place you are in. Out: from
+     the place you are in, and "To" left for you to choose. */
+  const hqWh = places.find(p=>p.seasonId===HQ_ID && p.kind==='region');
+  const self = CUR_LEVEL==='event' ? CUR_LOC : CUR_LEVEL==='region' && reg ? reg.whLoc : isHQ() && hqWh ? hqWh.loc : '';
+  const up = CUR_LEVEL==='event' && reg ? reg.whLoc : CUR_LEVEL==='region' && !isHQ() && hqWh ? hqWh.loc : '';
+  const mark = id => ['#xfIn','#xfOut'].forEach(b=>{ const e = $(b); e.classList.toggle('btn-primary', b===id); e.classList.toggle('btn-ghost', b!==id); });
+  $('#xfIn').addEventListener('click', ()=>{ $('#modalErr').textContent = ''; returnAll = false; mark('#xfIn');
+    if(up) fromPick.set(up); else { fromPick.clear(); cancelLoad(); fromCtx = null; }
+    if(self) toPick.set(self); else toPick.clear();
+    sws = null; draw(); });
+  $('#xfOut').addEventListener('click', ()=>{ $('#modalErr').textContent = ''; returnAll = false; mark('#xfOut');
+    if(self) fromPick.set(self); else { fromPick.clear(); cancelLoad(); fromCtx = null; }
+    toPick.clear(); sws = null; draw(); });
+  $('#xfReturn').addEventListener('click', ()=>{ mark('');
     let f = fromPick.value;
     if((!f || f.kind==='region') && CUR_LEVEL==='event'){ fromPick.set(CUR_LOC); f = fromPick.value; }
     if(!f || f.kind==='region'){
@@ -21793,6 +21947,12 @@ document.addEventListener('click',e=>{
   if(a==='finsendlink'){ finSendLinkModal(); return; }
   if(a==='finexflt'){ FIN.ex.open = FIN.ex.open===t.dataset.f ? '' : t.dataset.f; finExpensesRender(); return; }
   if(a==='finexclr'){ (t.dataset.f==='type' ? FIN.ex.types : FIN.ex.sts).clear(); finExpensesRender(); return; }
+  if(a==='dropen'){ if(t.closest('button')) return; const id = t.dataset.id; FIN.drOpen = FIN.drOpen || new Set(); if(FIN.drOpen.has(id)) FIN.drOpen.delete(id); else FIN.drOpen.add(id);
+    const it = t.closest('.log-item'); if(it) it.classList.toggle('open', FIN.drOpen.has(id)); return; }
+  if(a==='dredit'){ const c = finDrList().find(x=>x.id===t.dataset.id); if(c) finConvModal(c); return; }
+  if(a==='drdel'){ const id = t.dataset.id;
+    askSure('Remove this exchange? That money goes back to the estimated dollars.', 'Remove').then(async ok=>{ if(!ok) return;
+      try{ FIN.D = (await post({action:'finConvDel', id})).result; finRender(); }catch(err){ toast(err.message, true); } }); return; }
   if(a==='exopen'){ const id = t.dataset.id; if(FIN.exOpen.has(id)) FIN.exOpen.delete(id); else FIN.exOpen.add(id);
     const it = t.closest('.log-item'); if(it) it.classList.toggle('open', FIN.exOpen.has(id)); return; }
   if(a==='rbopen'){ const g = t.dataset.g; if(FIN.rbOpen.has(g)) FIN.rbOpen.delete(g); else FIN.rbOpen.add(g);

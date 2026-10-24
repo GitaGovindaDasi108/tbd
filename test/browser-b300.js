@@ -198,6 +198,10 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
       return [...document.querySelectorAll('#totals > .tcard')].map(c => c.getBoundingClientRect().width); }); };
   let ws = await three(1400);
   t.push(['b302: three cards at 1400px keep 372 : 372 : 492 (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && ws.every((v, i) => Math.abs(v / ws[2] - [372, 372, 492][i] / 492) < 0.01) && ws[2] >= 480]);
+  // b303: four cards, the totals card 465px and the other three 258.33px each (in proportion).
+  ws = await page.evaluate(() => { const b = document.querySelector('#totals'), x = b.querySelector('.tc-book').cloneNode(true); x.classList.add('other'); b.insertBefore(x, b.querySelector('.tc-coll')); layoutTotals();
+    return [...b.querySelectorAll(':scope > .tcard')].map(c => c.getBoundingClientRect().width); });
+  t.push(['b303: four cards at 1400px keep 258.33 : 258.33 : 258.33 : 465 (' + ws.map(Math.round).join(' / ') + ')', ws.length === 4 && ws.every((v, i) => Math.abs(v / ws[3] - (i === 3 ? 1 : 258.33 / 465)) < 0.01) && ws[3] >= 450]);
   ws = await three(1150);
   t.push(['b302: narrower (1150px), the three are one width again (' + ws.map(Math.round).join(' / ') + ')', ws.length === 3 && Math.max(...ws) - Math.min(...ws) < 2]);
   await page.setViewportSize({ width: 1150, height: 900 }); await page.evaluate(() => renderAll()); await page.waitForTimeout(300);
@@ -207,6 +211,43 @@ c({ action: 'saveCost', id: 'cost_b300', amt: 12.3, cur: 'USD', category: 'Other
   await page.evaluate(() => transferStockModal()); await page.waitForTimeout(400);
   const xf = await page.$eval('#xfFrom .pp-in', e => e.value);
   t.push(['b302: Transfer at an event: "Transfer From" starts at ' + R0.name + ' (' + xf + ')', xf.startsWith(R0.name) && !/Harinam/.test(xf)]);
+  const xt = await page.$eval('#xfTo .pp-in', e => e.value);
+  t.push(['b303: …and "Transfer To" starts at the event you are in (' + xt + ')', /^Harinam Fair/.test(xt)]);
+  // b303: Transfer In and Transfer Out.
+  await page.evaluate(() => { closeModal(); goTo('event', 'ev_b300'); transferStockModal(); }); await page.waitForTimeout(400);
+  await page.click('#xfOut'); await page.waitForTimeout(300);
+  const outV = [await page.$eval('#xfFrom .pp-in', e => e.value), await page.$eval('#xfTo .pp-in', e => e.value)];
+  t.push(['b303: Transfer Out at an event: From is the event, To is blank (' + outV.join(' / ') + ')', /^Harinam Fair/.test(outV[0]) && outV[1] === '']);
+  await page.click('#xfIn'); await page.waitForTimeout(300);
+  const inV = [await page.$eval('#xfFrom .pp-in', e => e.value), await page.$eval('#xfTo .pp-in', e => e.value)];
+  t.push(['b303: Transfer In at an event: From is ' + R0.name + ', To is the event (' + inV.join(' / ') + ')', inV[0].startsWith(R0.name) && /^Harinam Fair/.test(inV[1])]);
+  await page.click('#xfReturn'); await page.waitForTimeout(300);
+  const rtV = [await page.$eval('#xfFrom .pp-in', e => e.value), await page.$eval('#xfTo .pp-in', e => e.value)];
+  t.push(['Return all to warehouse still: From the event, To ' + R0.name + ' (' + rtV.join(' / ') + ')', /^Harinam Fair/.test(rtV[0]) && rtV[1].startsWith(R0.name)]);
+  for (const w of [390, 1150]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(200);
+    const s2 = await spill(); t.push(['no overflow in Transfer at ' + w + 'px' + (s2.length ? ' — ' + s2.join(' | ') : ''), !s2.length]); }
+  await page.evaluate(() => closeModal());
+  // b303 (Gita): typed MM/DD/YYYY date boxes; a "2" stays a 2 until the next digit.
+  await page.evaluate(() => regionModal()); await page.waitForTimeout(400);
+  const dbox = '.dt-wrap:has(#pmFrom) .dt-txt';
+  if (await page.$(dbox)) {
+    await page.click(dbox); await page.keyboard.type('102', { delay: 120 });
+    const mid = await page.$eval(dbox, e => e.value);
+    await page.keyboard.type('32026', { delay: 120 });
+    const full = await page.evaluate(() => [document.querySelector('.dt-wrap:has(#pmFrom) .dt-txt').value, document.querySelector('#pmFrom').value]);
+    t.push(['b303: date box: "102" reads 10/2 (' + mid + '), then 10/23/2026 = 2026-10-23 (' + full.join(' = ') + ')', mid === '10/2' && full[0] === '10/23/2026' && full[1] === '2026-10-23']);
+    await page.evaluate(() => { document.querySelector('#pmTo').value = '2026-11-05'; });
+    t.push(['b303: a date set by the app shows as 11/05/2026', await page.$eval('.dt-wrap:has(#pmTo) .dt-txt', e => e.value) === '11/05/2026']);
+  } else t.push(['b303: the region form has its date boxes', false]);
+  await page.evaluate(() => closeModal());
+  // b303: the order Big Books, Adventures, Other, Pending Payments, Totals.
+  await page.evaluate(() => { closeModal(); renderAll(); });
+  const ord = await page.$$eval('#totals > .tcard', cs => cs.map(c => c.classList.contains('tc-coll') ? 'T' : c.classList.contains('pend') ? 'P' : c.querySelector('.label').textContent));
+  t.push(['b303: totals bar order Big Books, AoTM, Other, Pending, Totals (' + ord.join(', ') + ')', ord[0] === 'Big Books' && ord[1] === 'AoTM' && ord[ord.length - 1] === 'T' && (!ord.includes('P') || ord[ord.length - 2] === 'P')]);
+  // b303: Reorganize Menu lists no item the app no longer has.
+  await page.evaluate(() => { closeModal(); menuOrderModal(); });
+  const mo = await page.$$eval('#moList .mo-row', rs => rs.map(r => r.dataset.a));
+  t.push(['b303: Reorganize Menu has no Specialty Reports, Report or Go to Sales Portal', mo.length > 5 && !mo.some(a => ['specreport', 'report', 'finleave', 'fintodo', 'bookdisplay'].includes(a))]);
   await page.evaluate(() => closeModal());
 
   /* 8. A closed place stops you before you enter anything. */
