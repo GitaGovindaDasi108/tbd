@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b308**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b309**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,11 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b309
+Live app changes (Gita, 2026-10-24: "Uncategorized sales calculator is still broken").
+- Uncategorized Sales calculator: uncatMsrp now takes the usual price from every title of that kind priced here (shelf + catalogue), not only titles in stock. Live events with no Adventures (or no books) in stock had no Adventure price, so typing Adventures emptied the Big Books and the money worked nothing out. With no price in the chosen currency, the local-currency price is converted (convertCur).
+- Test: test/browser-b309.js (9 checks).
 
 ## Done in b308
 Live app changes (Gita, 24 Oct). Live:
