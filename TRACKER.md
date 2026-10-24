@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b306**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b307**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,21 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b307
+Live app changes (Gita, 24 Oct). Live:
+- Reimbursement Links: a name typed in full (not picked from the list) counts as picking that person, so their WhatsApp number or email fills in; the tick boxes look the person up too.
+- Every searchable list (`.pp > .pp-list`) drops down over the form (absolute) instead of pushing it down.
+- Dates (dtUpgrade): one figure then a slash pads it (3/ → 03/, 10/5/ → 10/05/); a dash or dot works as a slash; on leaving the box a two-figure year counts (3/5/26 → 03/05/2026; dtIso(txt, loose)).
+- Earthly HQ, Net Sales by Season: "Total Collections" → "Gross Collections"; the currencies fold away behind a "Show Currencies ▸" column (NET_CURS, data-act netcurs), closed by default; "Season" heading on the left (.cbr-ns). The 📋 report lists the currencies only while they are shown.
+- Warehouse Overview leaves out titles with none in stock and none in transit (sent or coming), except while arranging that section; with nothing to show it says "No books here yet."
+- Price calculator (priceGrid): the top "fill all" row overwrites every price of its kind below it, saved ones too (and from the local currency, every other currency); the top row's other currencies follow its local price unless typed; a currency added later is worked out at once; an empty box always holds the calculation from the local price (on opening, on adding a currency, on focus and on leaving it). A missing exchange rate never empties a box.
+- Sales by Region / Season drop-down cards follow the page's card order (inRegionOrder), like every other section.
+- Transfer log button live.
+Practice:
+- Dollars Received: the 💵 button directly under the title.
+- Edit Location and Change Prices have an Earthly HQ tab (placeKinds 'hq'; fetches the HQ state from a season); at HQ Edit Location replaces Edit Earthly HQ. Saves from another season's place now carry that season (payload season).
+Tests: test/browser-b307.js; browser-b305/b306/bookorder/finance updated.
 
 ## Done in b306
 

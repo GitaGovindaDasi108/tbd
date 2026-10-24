@@ -551,6 +551,19 @@ const API = 'http://api.test/';
     await own.evaluate(() => closeModal());
     // b305 (Gita): a pay-back field that takes a phone or an email gets the phone number from your Profile.
     await O({ action: 'setMyPref', key: 'contact', value: { whatsapp: '+48 600 111 222', email: 'own@example.com' } });
+    // b307 (Gita): the name typed in full, not picked from the list, fills in the WhatsApp number too.
+    await own.evaluate(async () => { await finGo('reimb', ''); EXP.opt.people = (await post({ action: 'expOptions' })).result.people; finSendLinkModal(); }); await own.waitForTimeout(600);
+    await own.type('#fsName', 'The Owner'); await own.waitForTimeout(200);
+    const fsTyped = await own.$eval('#fsTo', e => e.value);
+    await own.click('#fsViaEm'); const fsEm = await own.$eval('#fsTo', e => e.value);
+    await own.click('#fsViaWa'); const fsWa = await own.$eval('#fsTo', e => e.value);
+    t.push(['b307: Reimbursement Links: a name typed in full fills the WhatsApp number (' + [fsTyped, fsEm, fsWa].join(' / ') + ')', fsTyped === '+48 600 111 222' && fsEm === 'own@example.com' && fsWa === '+48 600 111 222']);
+    await own.fill('#fsName', ''); await own.waitForTimeout(200);
+    const fsTop = await own.$eval('#fsPlace', e => e.getBoundingClientRect().top);
+    await own.type('#fsName', 'The'); await own.waitForTimeout(200);
+    const fsStill = await own.evaluate(y => !document.querySelector('#fsPeople').hidden && document.querySelector('#fsPlace').getBoundingClientRect().top === y, fsTop);
+    t.push(['b307: …and its list of names drops down over the form without moving it', fsStill]);
+    await own.evaluate(() => { closeModal(); finLeave({ quiet: true }); FIN.D = null; });
     await own.evaluate(() => expensesModal()); await own.waitForTimeout(1500);
     await own.check('#xReimb'); await own.waitForTimeout(300);
     const pmK = await own.$$eval('#xMethod option', o => o.map(x => x.value).filter(v => v === 'Zelle' || v === 'PayPal'));
@@ -677,10 +690,10 @@ const API = 'http://api.test/';
     // b305 (Gita, practice): Dollars Received back on the Overview, under the table; Expenses on its own again.
     const dro = await own.evaluate(() => { FINP.sec = 'overview'; finRender(); const s = document.querySelector('#fpBody #finDrS'), tb = document.querySelector('#fpBody .fin-ovw');
       const hd = s && s.querySelector('.dr-head'), btn = hd && hd.querySelector('[data-act="drnew"]');
-      return { under: !!(s && tb && (tb.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING)), oneLine: !!(btn && Math.abs(btn.getBoundingClientRect().top - hd.querySelector('h3').getBoundingClientRect().top) < 12),
+      return { under: !!(s && tb && (tb.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING)), below: !!(btn && btn.getBoundingClientRect().top >= hd.querySelector('h3').getBoundingClientRect().bottom - 1 && Math.abs(btn.getBoundingClientRect().left - hd.querySelector('h3').getBoundingClientRect().left) < 4),
         noSearch: !document.querySelector('#finDrQ') }; });
     t.push(['b305: Dollars Received is on the Overview, under the table', dro.under]);
-    t.push(['b305: …its 💵 button on the same line as its title', dro.oneLine]);
+    t.push(['b307: …its 💵 button directly under its title', dro.below]);
     t.push(['b305: …with no search of its own', dro.noSearch]);
     await own.click('#fpBody [data-act="finovwhide"]'); await own.waitForTimeout(150);
     const hid = await own.evaluate(() => document.querySelector('#fpBody .fin-ovw').hidden && !document.querySelector('#finDrS').hidden);

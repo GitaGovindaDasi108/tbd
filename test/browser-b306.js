@@ -57,7 +57,7 @@ c({ action: 'sendShipment', shipId: 'sh_b306', mode: 'devotee', fromRegion: R0.r
       return { h: p.querySelector('h2').innerText, th: [...p.querySelectorAll('thead th')].map(x => x.innerText.trim()), part: p.querySelector('.sec-rep').dataset.part,
         foot: [...p.querySelectorAll('tfoot td')].slice(-1)[0].innerText, card: (document.querySelector('.tc-hq .tc-net')||{}).innerText }; });
     t.push(['HQ: "Net Sales by Season" (' + ns.h.replace(/\s+/g, ' ') + ')', /^Net Sales by Season/.test(ns.h)]);
-    t.push(['…columns end Total Collections, Expenses, Donations, Net Sales (' + ns.th.slice(-4).join(', ') + ')', ns.th.slice(-4).join('|').toUpperCase() === 'TOTAL COLLECTIONS|EXPENSES|DONATIONS|NET SALES']);
+    t.push(['…columns end Gross Collections, Expenses, Donations, Net Sales (b307) (' + ns.th.slice(-4).join(', ') + ')', ns.th.slice(-4).join('|').toUpperCase() === 'GROSS COLLECTIONS|EXPENSES|DONATIONS|NET SALES']);
     t.push(['…all seasons\' Net Sales matches the totals card (' + ns.foot + ' / ' + ns.card + ')', Math.abs(parseFloat(ns.foot.replace(/[^\d.]/g, '')) - parseFloat(ns.card.replace(/[^\d.]/g, ''))) < 0.01]);
     const rep = await page.evaluate(() => { let out = ''; withRollup(() => { out = buildReport('netseason'); }); return out; });
     t.push(['…its WhatsApp report lists Net Sales by season', /NET SALES BY SEASON/.test(rep) && /Net Sales - /.test(rep)]);
@@ -117,14 +117,14 @@ c({ action: 'sendShipment', shipId: 'sh_b306', mode: 'devotee', fromRegion: R0.r
     t.push(['practice: Edit Location replaces Edit Region' + (el.er.length ? ' — ' + el.er.join(' | ') : ''), el.pe && !el.er.length]);
     t.push(['practice: Change Prices in Laksmi', await page.evaluate(() => /data-act="prices"/.test(document.body.innerHTML))]);
     await page.evaluate(() => placeEditModal()); await page.waitForTimeout(400);
-    t.push(['Edit Location: Season, Region and Event tabs', (await page.$$eval('#ppTabs [data-pp-k]', b => b.map(x => x.dataset.ppK))).join() === 'season,region,event']);
+    t.push(['Edit Location: Earthly HQ (b307), Season, Region and Event tabs', (await page.$$eval('#ppTabs [data-pp-k]', b => b.map(x => x.dataset.ppK))).join() === 'hq,season,region,event']);
     await page.evaluate(() => document.querySelector('#ppTabs [data-pp-k="region"]').click()); await page.waitForTimeout(200);
     await page.selectOption('#ppReg', R0.regionId); await page.waitForTimeout(200);
     t.push(['…a region is its name and dates only', await page.evaluate(() => !!document.querySelector('#ppName') && !document.querySelector('#modal #rgCur'))]);
     await page.fill('#ppName', R0.name + ' Renamed'); await page.click('#ppSave'); await page.waitForTimeout(1500);
     t.push(['…and saves the new name', state().regions.some(r => r.regionId === R0.regionId && r.name === R0.name + ' Renamed')]);
     await page.evaluate(() => pricesModal()); await page.waitForTimeout(400);
-    t.push(['Change Prices: Region and Event tabs', (await page.$$eval('#ppTabs [data-pp-k]', b => b.map(x => x.dataset.ppK))).join() === 'region,event']);
+    t.push(['Change Prices: Earthly HQ (b307), Region and Event tabs', (await page.$$eval('#ppTabs [data-pp-k]', b => b.map(x => x.dataset.ppK))).join() === 'hq,region,event']);
     await page.evaluate(() => document.querySelector('#ppTabs [data-pp-k="region"]').click()); await page.waitForTimeout(200);
     await page.selectOption('#ppReg', R0.regionId); await page.waitForTimeout(200);
     const cur0 = await page.$eval('#rgCur', i => i.value.split(',')[0].trim());

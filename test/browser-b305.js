@@ -67,7 +67,7 @@ const SHIP = m.call({ action: 'getState', season: SA }).state.shipments.find(x =
     await page.click('#xfTo .pp-in'); await page.fill('#xfTo .pp-in', 'sri vrndavana'); await page.waitForTimeout(200);
     const hits = await page.$$eval('#xfTo .pp-row', rs => rs.filter(r => r.offsetParent).map(r => r.textContent));
     t.push(['accents: "sri vrndavana" finds Śrī Vṛndāvana Fair (' + hits.join(' | ') + ')', hits.some(h => /Śrī Vṛndāvana Fair/.test(h))]);
-    t.push(['the Transfer log button is practice-only', await page.evaluate(() => { const b = document.querySelector('#invHeading .tl-btn'); return !b || b.hidden; })]);
+    t.push(['b307: the Transfer log button is live too', await page.evaluate(() => { const b = document.querySelector('#invHeading .tl-btn'); return !!b && !b.hidden; })]);
     t.push(['accents: the shared search folds them too', await page.evaluate(() => fold('Śrī Vṛndāvana') === 'sri vrndavana')]);
 
     /* 2. Return all at a region: from its warehouse back to Earthly HQ's. */
