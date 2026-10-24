@@ -26,6 +26,21 @@ async function pickPay(page, v) {
   await page.click(inp); await page.fill(inp, v); await page.waitForTimeout(100);
   await page.click('.field:has(#ptype) .pt-search .pp-row[data-v="' + v + '"]'); await page.waitForTimeout(100);
 }
+/* Multiple Book Sale, book by book (live since b305): the line for a title (a new one if needed), Buy set to n. */
+const mbBuy = (pg, id, n) => pg.evaluate(([id, n]) => {
+  const box = document.querySelector('#mbLines'), rowAt = i => box.querySelectorAll('.mbl-row')[i];
+  const fire = (el, ev) => el.dispatchEvent(new Event(ev, { bubbles: true }));
+  let rows = [...box.querySelectorAll('.mbl-row')], i = rows.findIndex(x => x.querySelector('.mbl-l').value === id);
+  if (i < 0) {
+    i = rows.length - 1;
+    if (rows[i].querySelector('.mbl-t').value) { document.querySelector('#mbAddLine').click(); i = box.querySelectorAll('.mbl-row').length - 1; }
+    const t = rowAt(i).querySelector('.mbl-t'); t.value = bookLang(bookById(id)).base; fire(t, 'change');
+    const l = rowAt(i).querySelector('.mbl-l'); if (l.value !== id) { l.value = id; fire(l, 'change'); }
+  }
+  const q = rowAt(i).querySelector('.mbl-buy'); q.value = String(n); fire(q, 'input');
+  return q.value || '0';
+}, [id, n]);
+
 (async () => {
   const browser = await chromium.launch();
   const t = [], errors = [];
@@ -100,7 +115,7 @@ async function pickPay(page, v) {
 
     // 3. Multiple books: the same button, one figure shared out over the books.
     await page.evaluate(() => bundleModal()); await page.waitForTimeout(300);
-    await page.click(`.mb-plus[data-book="${B0}"][data-kind="buy"]`); await page.click(`.mb-plus[data-book="${B1}"][data-kind="buy"]`);
+    await mbBuy(page, B0, 1); await mbBuy(page, B1, 1);
     await pickPay(page, 'Zelle');
     await page.click('#specBox > summary'); await page.fill('#cname', 'Two Books');
     await page.click('#saveBundle'); await page.waitForTimeout(1500);

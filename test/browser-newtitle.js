@@ -64,8 +64,9 @@ const qty = (loc, bookId) => { const r = (m.call({ action: 'getState', season: S
     // A slip, typed and then taken off: the catalogue never sees it.
     await openStock();
     await newLang('Hindii');
-    t.push(['the new language is on the line, marked "added when you save"',
-      !!(await lastInput()) && /added when you save/.test(await page.textContent('#spBody'))]);
+    // b305 (Gita): the line shows just its category, in a drop-down that can change it.
+    t.push(['the new language is on the line, with its category in a drop-down',
+      !!(await lastInput()) && !/added when you save/.test(await page.textContent('#spBody')) && !!(await page.$('#spBody select.ln-cat'))]);
     t.push(['…but it is not in the catalogue yet', named('Sri Radha (Hindii)').length === 0]);
     await page.click('#spBody [data-unline="0"]'); await page.waitForTimeout(200);
     await page.click('#modal .btn-ghost:has-text("Cancel")').catch(() => page.evaluate(() => closeModal()));

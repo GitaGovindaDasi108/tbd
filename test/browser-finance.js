@@ -187,6 +187,27 @@ const API = 'http://api.test/';
     t.push(['b284: under the Overview, with a payment pending: Income by Source (Actual) and (Expected), money in and out (with Expected), by event, and expenses by type', /Income by Source \(Actual\)/.test(m) && /Income by Source \(Expected\)/.test(m) && /Expected Gross/.test(m) && /Money in and out/.test(m) && /Gross\s*\$105\.00\s*Expected \$145\.00/.test(m) && /Gross, Expenses and Net by Event/.test(m) && /Expenses by type/.test(m)
       && await own.evaluate(() => document.querySelector('#finCharts') === document.querySelector('#fpBody').lastElementChild)]);
     await own.screenshot({ path: shot('overview-charts'), fullPage: true });
+    // b305 (Gita): hovering names only the part under the pointer, in every chart.
+    t.push(['b305: in every chart, a hover shows only that bar or slice\'s figure', await own.evaluate(() => {
+      const box = document.querySelector('#finCharts'), rowsTitled = box.querySelectorAll('.fc-hrow[title]').length;
+      const bars = [...box.querySelectorAll('.fc-hb, .fc-cb')].filter(b => !b.classList.contains('fc-exp') || b.title);
+      return rowsTitled === 0 && bars.length > 0 && bars.every(b => b.title && (b.title.match(/\$/g) || []).length === 1); })]);
+    // b305 (Gita): every chart can be zoomed into and downloaded as a picture.
+    t.push(['b305: every chart has ⤢ zoom and ⬇ download', await own.evaluate(() => [...document.querySelectorAll('#finCharts .fc-box')].every(b => b.querySelector('[data-act="fczoom"]') && b.querySelector('[data-act="fcpng"]')))]);
+    await own.click('#finCharts .fc-box [data-act="fczoom"]'); await own.waitForTimeout(300);
+    const z0 = await own.evaluate(() => document.querySelector('#fczBox').getBoundingClientRect().width);
+    await own.click('#fczIn'); await own.click('#fczIn'); await own.waitForTimeout(150);
+    const z1 = await own.evaluate(() => ({ w: document.querySelector('#fczBox').getBoundingClientRect().width, pct: document.querySelector('#fczPct').textContent,
+      scroll: document.querySelector('.fcz-scroll').scrollWidth > document.querySelector('.fcz-scroll').clientWidth }));
+    t.push(['b305: ⤢ opens the chart large; ＋ zooms in further, scrolling inside the window (' + z1.pct + ')', z1.pct === '150%' && z1.w > z0 * 1.4 && z1.scroll]);
+    const dl = own.waitForEvent('download', { timeout: 8000 }).catch(() => null);
+    await own.click('#fczPng'); const d1 = await dl;
+    t.push(['b305: ⬇ Download as an image saves a PNG (' + (d1 && d1.suggestedFilename()) + ')', !!d1 && /^Income by Source.*\.png$/.test(d1.suggestedFilename())]);
+    await own.evaluate(() => closeModal());
+    const dl2 = own.waitForEvent('download', { timeout: 8000 }).catch(() => null);
+    await own.click('#finCharts .fc-box:nth-child(2) [data-act="fcpng"]'); const d2 = await dl2;
+    let png = false; if (d2) { const p = await d2.path(); const buf = fs.readFileSync(p); png = buf.slice(1, 4).toString() === 'PNG' && buf.length > 2000; }
+    t.push(['b305: …straight from the chart too, a real picture', png]);
     await own.click('.fin-h3 [data-act="finrep"]'); await own.waitForTimeout(400);
     r = await repText(own);
     t.push(['the By Event 📋: each event, as the table', /^\*Zagreb Kirtan\*\nBig Books Sold - \$80/.test(r) && /\*Zagreb Fair\*/.test(r) && !/\*Total\*/.test(r)]);
@@ -383,7 +404,8 @@ const API = 'http://api.test/';
     await pub.check('#xrExact'); await pub.waitForTimeout(200);
     await pub.fill('[data-xex="1"]', '9.5'); await pub.waitForTimeout(150);
     m = await pub.evaluate(() => document.querySelector('#modal').innerText);
-    t.push(['b267: "I have the exact numbers for reimbursement" gives each expense its own box, and the total follows', /To pay back: \$9\.50 \(the exact amount given\)/.test(m) && /\$21\.50/.test(await pub.$eval('#xrPay', e => e.textContent))]);
+    t.push(['b267: "I have the exact numbers for reimbursement" gives each expense its own box, and the total follows', /\$21\.50/.test(await pub.$eval('#xrPay', e => e.textContent))]);
+    t.push(['b305: …and the blue "To pay back" line goes once the exact dollars are in', !/To pay back: \$9\.50/.test(m)]);
     await pub.uncheck('#xrExact'); await pub.waitForTimeout(200);
     t.push(['…and unticked, it goes back to the rate', /To pay back: \$8\.80 \(1 EUR/.test(await pub.evaluate(() => document.querySelector('#modal').innerText))]);
     await pub.screenshot({ path: shot('review') });
@@ -526,6 +548,16 @@ const API = 'http://api.test/';
     await own.$eval('#modal', m => m.scrollIntoView()); await own.screenshot({ path: shot('b265-form') });
     t.push(['…but one for another currency', !!(await own.$('#xUsd'))]);
     await own.evaluate(() => closeModal());
+    // b305 (Gita): a pay-back field that takes a phone or an email gets the phone number from your Profile.
+    await O({ action: 'setMyPref', key: 'contact', value: { whatsapp: '+48 600 111 222', email: 'own@example.com' } });
+    await own.evaluate(() => expensesModal()); await own.waitForTimeout(1500);
+    await own.check('#xReimb'); await own.waitForTimeout(300);
+    const pmK = await own.$$eval('#xMethod option', o => o.map(x => x.value).filter(v => v === 'Zelle' || v === 'PayPal'));
+    let pvK = [];
+    for (const k of pmK) { await own.selectOption('#xMethod', k); await own.waitForTimeout(300);
+      pvK.push(await own.evaluate(k => { const i = document.querySelector('#modal [data-payto="' + k.toLowerCase() + '"]'); return i ? i.value : '?'; }, k)); }
+    t.push(['b305: Zelle / PayPal ("email or phone") fill in the phone number (' + pmK.join(', ') + ': ' + pvK.join(', ') + ')', pmK.length > 0 && pvK.every(v => v === '+48 600 111 222')]);
+    await own.evaluate(() => closeModal());
     fxAsked.length = 0;
     await O({ action: 'expSave', id: 'Xeur0001', kind: 'record', date: '2026-10-15', desc: 'Stall fee', amt: 10, cur: 'EUR', location: 'rg_hq', category: 'Other' });
     await O({ action: 'expSave', id: 'Xeur0002', kind: 'record', date: '2026-10-15', desc: 'Printing', amt: 10, cur: 'EUR', usdAmt: 12.5, location: 'ev_z1', category: 'Other',
@@ -636,7 +668,19 @@ const API = 'http://api.test/';
     t.push(['b298: …and Remove takes it away', await convN() === nM - 1]);
     await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
     await own.evaluate(() => closeModal());
-    t.push(['b269: Dollars received is no longer on the Overview', !/Dollars received/.test(await fpage(own))]);
+    // b305 (Gita, practice): Dollars Received back on the Overview, under the table; Expenses on its own again.
+    const dro = await own.evaluate(() => { FINP.sec = 'overview'; finRender(); const s = document.querySelector('#fpBody #finDrS'), tb = document.querySelector('#fpBody .fin-ovw');
+      const hd = s && s.querySelector('.dr-head'), btn = hd && hd.querySelector('[data-act="drnew"]');
+      return { under: !!(s && tb && (tb.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING)), oneLine: !!(btn && Math.abs(btn.getBoundingClientRect().top - hd.querySelector('h3').getBoundingClientRect().top) < 12),
+        noSearch: !document.querySelector('#finDrQ') }; });
+    t.push(['b305: Dollars Received is on the Overview, under the table', dro.under]);
+    t.push(['b305: …its 💵 button on the same line as its title', dro.oneLine]);
+    t.push(['b305: …with no search of its own', dro.noSearch]);
+    await own.click('#fpBody [data-act="finovwhide"]'); await own.waitForTimeout(150);
+    const hid = await own.evaluate(() => document.querySelector('#fpBody .fin-ovw').hidden && !document.querySelector('#finDrS').hidden);
+    await own.click('#fpBody [data-act="finovwhide"]'); await own.waitForTimeout(150);
+    t.push(['b305: the whole table folds away and comes back', hid && await own.evaluate(() => !document.querySelector('#fpBody .fin-ovw').hidden)]);
+    t.push(['b305: Expenses is its own section again', await own.evaluate(() => { FINP.sec = 'expenses'; finRender(); const r = !document.querySelector('#finDrS') && !!document.querySelector('#finExS'); FINP.sec = 'overview'; finRender(); return r; })]);
     await own.evaluate(() => finGo('expenses', '', {reload:true})); await own.waitForTimeout(1500);
     // b304 (Gita): Dollars received is back as a button at the top of its own section (practice), and only there.
     t.push(['b291: Dollars received and Add an expense are no longer on the Expenses screen (b304: Dollars received only at the top of its section)', await own.evaluate(() => { const fb = document.querySelector('#fpBody'), c = fb.cloneNode(true);
