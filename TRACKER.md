@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b311**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b312**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,16 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b312
+
+Live app changes (Gita, 25 Oct):
+- Totals bar only: "+N gifts =" then "N distributed" on the next line (`giftNote(c, true)`).
+- ⇅ Stock Title Order (Books menu, `stockOrderModal`): the titles' order in Add Stock, Transfer and Subtract Stock, per person (pref `stockOrder`, server PREF_KEYS), by title key; `stockBooks`/`stockTitles` use `inStockOrder`, no longer the shelf's ⇅ Arrange order.
+- Change Prices: no tick boxes, only the titles the region sells (`priceGrid(.., {onlyHere})`); saving keeps the region's titles and the prices of titles not shown. Event tab also lists only the region's titles.
+- Dollars Received: "＋ Add another" opens another blank exchange (`.cv-blk`, own place, amount, dollars, date, note), each saved as its own entry.
+- Expense form: the button counts only filled-in expenses (`expSaveLabel`; a blank form after "Add another" made it say 3 for two) and says "Submit"; the check page's button says "Submit". Locked pay-back line: "You will receive METHOD in CURRENCY. If you require re-payment by another method and/or currency, please fill out another form." (no-edit).
+- Saved wording "Expenses and Reimbursements" (Dialog: Expenses › Expenses) no longer applies (`LBL_RETIRED`), so "Expenses" reads "Expenses" everywhere again.
 
 ## Done in b311
 

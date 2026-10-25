@@ -62,10 +62,11 @@ c({ action: 'createEvent', eventId: 'ev_b311', name: 'Book Fair', regionId: R0.r
     /* 2. Add Stock's titles follow your own ⇅ Arrange order. */
     const order = await page.evaluate(async R0id => {
       const ids = () => { const ctx = makeStockCtx({kind:'region', seasonId:STATE.activeSeason, regionId:R0id, loc:STATE.regions.find(r=>r.regionId===R0id).whLoc}, ''); return stockBooks(Object.assign(ctx, {staged:[]})).map(b => b.id); };
-      const before = ids(); await MY_ORDER.set(before.slice().reverse()); const after = ids(); await MY_ORDER.set([]);
+      // b312: its own order (Stock Title Order), no longer the shelf's.
+      const before = ids(); await STOCK_ORDER.set([...new Set(before.map(id => stockTitleKey(bookById(id))))].reverse()); const after = ids(); await STOCK_ORDER.set([]);
       return { before, after };
     }, R0id).catch(e => ({ err: e.message }));
-    t.push(['Add Stock titles follow your own order' + (order.err ? ' — ' + order.err : ''), !order.err && order.before.length > 1 && order.after[0] === order.before[order.before.length - 1]]);
+    t.push(['Add Stock titles follow your own order (b312: Stock Title Order)' + (order.err ? ' — ' + order.err : ''), !order.err && order.before.length > 1 && order.after[0] === order.before[order.before.length - 1]]);
 
     /* 3. Totals cards: Big Books gold, AoTM blue; gifts and distributed on their own lines. */
     await page.evaluate(() => goTo('region', STATE.regions.find(r => r.regionId !== HQ_REGION).regionId)); await page.waitForTimeout(300);
@@ -73,7 +74,7 @@ c({ action: 'createEvent', eventId: 'ev_b311', name: 'Book Fair', regionId: R0.r
       return { big: v('#totals .tc-book:not(.aotm):not(.other) .value'), aotm: v('#totals .tc-book.aotm .value') }; });
     t.push(['Big Books number gold (' + col.big + ')', col.big === 'rgb(184, 134, 47)']);
     t.push(['AoTM number blue (' + col.aotm + ')', col.aotm === 'rgb(47, 93, 138)']);
-    t.push(['"+2 gifts = 5", then "distributed" on the next line (totals bar only)', await page.evaluate(() => giftNote({ gift: 2, sold: 3 }, true).includes('gifts = <b class="dist-n">5<br>distributed') && !giftNote({ gift: 2, sold: 3 }).includes('<br>'))]);
+    t.push(['"+2 gifts =", then "5 distributed" on the next line (totals bar only, b312)', await page.evaluate(() => giftNote({ gift: 2, sold: 3 }, true).includes('gifts =<br><b class="dist-n">5 distributed') && !giftNote({ gift: 2, sold: 3 }).includes('<br>'))]);
 
     /* 4. The transfer log lists stock added. */
     await page.evaluate(() => { transferLogModal(); }); await page.waitForTimeout(300);

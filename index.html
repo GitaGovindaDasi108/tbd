@@ -1918,7 +1918,7 @@ body.has-va{padding-top:44px}
 .overlay{position:fixed;inset:0;background:rgba(43,34,48,.55);backdrop-filter:blur(2px);
   display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .overlay.show{display:flex}
-.sure-ov{z-index:10001}#cvRows{display:grid;gap:6px;margin-bottom:6px}.cv-row .cv-rm{flex:0 0 auto}.sure-ov .modal{max-width:380px}.sure-ov .m-body{white-space:pre-line}
+.sure-ov{z-index:10001}.cv-rows{display:grid;gap:6px;margin-bottom:6px}.cv-blk + .cv-blk{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}.cv-bh{display:flex;align-items:center;justify-content:space-between;gap:8px}.cv-row .cv-rm{flex:0 0 auto}.sure-ov .modal{max-width:380px}.sure-ov .m-body{white-space:pre-line}
 .modal{background:var(--paper);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
   /* Pinned to the top, not centred (b278, Gita: "not squirrelly"): a window
      whose contents grow or shrink stays where it is instead of sliding. */
@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b311</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b312</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5860,6 +5860,7 @@ function renderAdmin(){
       {key:'books', items: coord ? [
         `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
         `<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`,
+        `<button class="btn" data-act="stockorder">⇅ Stock Title Order</button>`,
         CUR_LEVEL==='event' ? eventPricesBtn() : ''] : []}
     ]);
     return;
@@ -5909,6 +5910,7 @@ function renderAdmin(){
   // Books
   cols[2].push(`<button class="btn" data-act="addstock">＋ Add New Stock</button>`);
   cols[2].push(`<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`);
+  cols[2].push(`<button class="btn" data-act="stockorder">⇅ Stock Title Order</button>`);   // b312
   cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books</button>`);
   /* The books are arranged, hidden and shown on the shelf itself (⇅ Arrange),
      so Edit Book Display is no longer in the menu (practice b248, live b250). */
@@ -5994,7 +5996,7 @@ function snLevelLabel(){
 }
 /* What each action is called, and its icon, in the menu (the owner's names). */
 const SN_ITEMS = {
-  addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], partners:['🤝','Consignment Books'],
+  addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], stockorder:['⇅','Stock Title Order'], partners:['🤝','Consignment Books'],
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
   cash:['💵','Track Cash'], costs:['🧾','Record Expenses'], paytypes:['💳','Edit Payment Types'], prices:['💲','Change Prices'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
@@ -6019,7 +6021,7 @@ function snTopActivity(show){
   if(b) b.style.display = show ? '' : 'none';
 }
 const SN_SECTIONS = [
-  {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','partners','bookdisplay','eventprices']},
+  {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','stockorder','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','prices','expenses']},
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
@@ -6884,8 +6886,8 @@ function preNote(c){
   return c.pre ? `(${c.pre} pre-order${c.pre===1?'':'s'})` : '';
 }
 function giftNote(c, lines){
-  // On the totals bar only, "+N gifts = N" and then "distributed" on the next line (b311, Gita).
-  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} = <b class="dist-n">${c.sold+c.gift}${lines ? '<br>' : ' '}distributed</b>` : '';
+  // On the totals bar only, "+N gifts =" and then "N distributed" on the next line (b312, Gita).
+  return c.gift ? `+${c.gift} gift${c.gift===1?'':'s'} =${lines ? '<br>' : ' '}<b class="dist-n">${c.sold+c.gift} distributed</b>` : '';
 }
 /* The bottom half of a sales card (b264; b266): read across the card,
    "N sold + N gifts = N distributed", the pre-orders (counted in sold) beneath. */
@@ -10743,7 +10745,7 @@ function expDraw(){
           </div></div>
         ${f.kind==='reimburse' && f.lockPay && expPayLead() ? (()=>{ const L = expPayLead(), li = EXP.batch.indexOf(L);
           f.method = L.method; f.reimbCur = L.reimbCur; f.payTo = Object.assign({}, L.payTo);
-          return `<div class="exp-reimb exp-locked"><div>Paid back by <b>${esc(L.method)}</b> in <b>${esc(L.reimbCur)}</b>, like the first expense in this form: one way of paying back per form.</div>
+          return `<div class="exp-reimb exp-locked"><div class="no-edit">You will receive <b>${esc(L.method)}</b> in <b>${esc(L.reimbCur)}</b>. If you require re-payment by another method and/or currency, please fill out another form.</div>
             <button type="button" class="btn btn-ghost btn-xs" data-xb="edit" data-i="${li}">Change it on the first one</button></div>`; })()
         : f.kind==='reimburse' ? `
         <div class="exp-reimb">
@@ -10762,8 +10764,7 @@ function expDraw(){
         <div class="cost-acts">
           ${edit?`<button class="btn btn-ghost btn-sm" data-act="expnew">Cancel edit</button>`:''}
           ${!edit && FIN_ON ? `<button type="button" class="btn btn-ghost btn-sm" id="xMore">＋ Add another expense</button>` : ''}
-          <button class="btn btn-primary btn-sm" id="xSave">${(EXP.batch||[]).length ? 'Review all ' + ((EXP.batch||[]).length + 1) + ' expenses'
-            : P ? 'Send it in' : edit?'Save changes':'Save expense'}</button>
+          <button class="btn btn-primary btn-sm" id="xSave">${expSaveLabel(f, edit)}</button>
         </div>
       </div>
       ${edit || P ? '' : `<div class="cash-sub">Your expenses</div>
@@ -10991,6 +10992,19 @@ function expPubCheck(){
   if(P && !String(P.phone||'').trim() && !String(P.email||'').trim()) return 'Give a WhatsApp or phone number, or an email, so Finance can reach you.';
   return '';
 }
+/* The form's button (b312, Gita): "Submit"; with several, how many there
+   really are, a blank form after "Add another" not counted (it said 3 for two). */
+function expSaveLabel(f, edit){
+  const n = (EXP.batch||[]).length + (expBlank(f) ? 0 : 1);
+  return (EXP.batch||[]).length && n > 1 ? 'Review all ' + n + ' expenses' : edit ? 'Save changes' : 'Submit';
+}
+function expSaveLabelSync(){
+  const b = $('#xSave'); if(!b || b.disabled || !EXP.form) return;
+  const f = EXP.form, v = id => { const el = document.getElementById(id); return el ? el.value : null; };
+  const probe = Object.assign({}, f, {amt: v('xAmt') ?? f.amt, desc: v('xDesc') ?? f.desc});
+  b.textContent = expSaveLabel(probe, !!f.editing);
+}
+document.addEventListener('input', e=>{ const id = e.target && e.target.id; if(id==='xAmt' || id==='xDesc') expSaveLabelSync(); });
 // Nothing typed in it yet: a blank form after "Add another" is not an expense.
 const expBlank = f => !String(f.amt||'').trim() && !String(f.desc||'').trim() && !f.receipts.length;
 const expPlaceName = id => ((EXP.opt.places||[]).find(pl=>pl.id===id)||{}).label || (EXP.pub && EXP.pub.placeLabel) || '';
@@ -11064,7 +11078,7 @@ async function expSave(){
     const i = EXP.list.findIndex(x=>x.id===f.id);
     if(i>=0) EXP.list[i] = r.result; else EXP.list.unshift(r.result);
     expensesModal();
-  }catch(e){ err.textContent = e.message; btn.disabled = false; btn.textContent = 'Save expense'; }
+  }catch(e){ err.textContent = e.message; btn.disabled = false; btn.textContent = expSaveLabel(f, !!f.editing); }
 }
 // `more`: others follow in the same sending, so a one-time link stays open for them.
 async function expPost(f, more){
@@ -11154,7 +11168,7 @@ async function expReview(all){
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" id="xrBack">← Change something</button>
-      <button class="btn btn-primary" id="xrGo">${all.length===1 ? (P ? 'Send it in' : 'Save it') : P ? 'Send them in' : 'Save all ' + all.length}</button></div>`, true);
+      <button class="btn btn-primary" id="xrGo">Submit</button></div>`, true);
     $('#modal').classList.add('still');
     const ex = $('#xrExact');
     if(ex) ex.addEventListener('change', ()=>{ const b = $('#modal .m-body'), top = b ? b.scrollTop : 0; EXP.revExact = ex.checked; draw(); const b2 = $('#modal .m-body'); if(b2) b2.scrollTop = top;
@@ -13088,23 +13102,27 @@ function finConvModal(edit){
       <select class="cv-cur">${curs.map(c=>`<option ${c===x.cur?'selected':''}>${esc(c)}</option>`).join('')}</select>
       ${i ? `<button type="button" class="btn btn-ghost btn-xs cv-rm" title="Take this currency out">✕</button>` : ''}</div>`;
   const startRows = e.id ? partsOf(e) : [{amt:'', cur:curs[0]}];
+  // One exchange's form; the second and later have a heading and a ✕ (b312).
+  const blkHTML = (k, rows, shownAt, x) => `<div class="cv-blk" data-b="${k}">
+        ${k ? `<div class="cv-bh"><span class="cash-sub">Exchange ${k+1}</span><button type="button" class="btn btn-ghost btn-xs cv-brm" title="Take this one out">✕</button></div>` : ''}
+        <div class="field"><label>Where the money came from</label>${comboHTML('cvPlace' + k, shownAt, 'Search for an event, region or season')}</div>
+        <div class="row2">
+          <div class="field cost-amt"><label>Took</label><div class="cv-rows">${rows.map(rowHTML).join('')}</div>
+            <label class="exp-rb cv-all"><input type="checkbox" class="cv-allcb"> Total collections</label>
+            <div class="muted-note cv-alln"></div></div>
+          <div class="field"><label>Dollars received</label><input class="cv-usd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(x.usd||'')}" placeholder="$ 0.00"></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Date</label><input class="cv-date" type="date" value="${esc(x.date || new Date().toISOString().slice(0,10))}"></div>
+          <div class="field"><label>Note (optional)</label><input class="cv-note" type="text" maxlength="200" value="${esc(x.note||'')}" placeholder="e.g. Exchanged at the bank in Kraków"></div>
+        </div></div>`;
   openModal(`${mHead('Dollars received')}<div class="m-body">
       <div class="hint">When money in another currency is exchanged, write down what it fetched. That place's money in that currency then counts at this rate instead of the estimate. An event's own exchange wins over its region's, and a region's over its season's. Several currencies exchanged together can go in one entry: their dollars are shared out by what each was worth that day.</div>
       <!-- The list is on the Overview, not in here (b306; live b311). -->
       ${may ? `<div class="exp-form">
         <div class="cash-sub">${e.id ? 'Change this exchange' : 'Write one down'}</div>
-        <div class="field"><label>Where the money came from</label>${comboHTML('cvPlace', shown, 'Search for an event, region or season')}</div>
-        <div class="row2">
-          <div class="field cost-amt"><label>Took</label><div id="cvRows">${startRows.map(rowHTML).join('')}</div>
-            <button type="button" class="btn btn-ghost btn-xs" id="cvMore">＋ Add another currency</button>
-            <label class="exp-rb cv-all"><input type="checkbox" id="cvAll"> Total collections</label>
-            <div class="muted-note" id="cvAllN"></div></div>
-          <div class="field"><label>Dollars received</label><input id="cvUsd" type="number" min="0" step="0.01" inputmode="decimal" value="${esc(e.usd||'')}" placeholder="$ 0.00"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Date</label><input id="cvDate" type="date" value="${esc(e.date || new Date().toISOString().slice(0,10))}"></div>
-          <div class="field"><label>Note (optional)</label><input id="cvNote" type="text" maxlength="200" value="${esc(e.note||'')}" placeholder="e.g. Exchanged at the bank in Kraków"></div>
-        </div>
+        <div id="cvBlks">${blkHTML(0, startRows, shown, e)}</div>
+        ${e.id ? '' : `<button type="button" class="btn btn-ghost btn-xs" id="cvMore">＋ Add another currency</button>`}
         <div class="err" id="modalErr"></div>
         <div class="cost-acts">${e.id ? `<button type="button" class="btn btn-ghost btn-sm" id="cvCancel">Cancel</button>` : ''}
           <button type="button" class="btn btn-primary btn-sm" id="cvSave">${e.id ? 'Save changes' : 'Save'}</button></div>
@@ -13112,41 +13130,67 @@ function finConvModal(edit){
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
   if(!may) return;
-  let place = at0;
-  const rowsNow = () => [...document.querySelectorAll('#cvRows .cv-row')].map(r=>({amt:Number(r.querySelector('.cv-amt').value)||0, cur:r.querySelector('.cv-cur').value}));
-  const drawRows = rs => { $('#cvRows').innerHTML = (rs.length ? rs : [{amt:'', cur:curs[0]}]).map(rowHTML).join(''); };
+  /* Each exchange is a form of its own (b312, Gita: "add another" opens a
+     blank one, with its own date); the place starts as the one above it. */
+  const places = [at0];
+  const blkOf = el => el.closest('.cv-blk'), bi = el => Number(blkOf(el).dataset.b);
+  const rowsNow = blk => [...blk.querySelectorAll('.cv-rows .cv-row')].map(r=>({amt:Number(r.querySelector('.cv-amt').value)||0, cur:r.querySelector('.cv-cur').value}));
+  const drawRows = (blk, rs) => { blk.querySelector('.cv-rows').innerHTML = (rs.length ? rs : [{amt:'', cur:curs[0]}]).map(rowHTML).join(''); };
   /* "Total collections" (b297, Gita): everything collected at that place, in
      every currency it was collected in (b298), ready to be turned into dollars. */
   const totalsAt = at => { const t = {};
     finFiltered(finScopeF(at)).sales.filter(x=>!x.con).forEach(x=>Object.entries(x.cur||{}).forEach(([c,v])=>{ t[c] = (t[c]||0) + (v||0); }));
     return Object.keys(t).filter(c=>t[c] > 0.004).sort((a,b)=>(a==='USD')-(b==='USD') || a.localeCompare(b)).map(c=>({cur:c, amt:Math.round(t[c]*100)/100})); };
-  const fillAll = () => {
-    const on = $('#cvAll').checked;
-    $('#cvAllN').textContent = on && !place ? 'Choose where the money came from first.' : '';
-    if(on && place){ const t = totalsAt(place); drawRows(t); if(!t.length) $('#cvAllN').textContent = 'Nothing collected there yet.'; }
+  const fillAll = blk => {
+    const on = blk.querySelector('.cv-allcb').checked, place = places[Number(blk.dataset.b)], n = blk.querySelector('.cv-alln');
+    n.textContent = on && !place ? 'Choose where the money came from first.' : '';
+    if(on && place){ const t = totalsAt(place); drawRows(blk, t); if(!t.length) n.textContent = 'Nothing collected there yet.'; }
   };
-  comboBind('cvPlace', items, place, v=>{ place = v; fillAll(); });
-  $('#cvAll').addEventListener('change', fillAll);
-  $('#cvMore').addEventListener('click', ()=>{ const rs = rowsNow(); const used = new Set(rs.map(r=>r.cur));
-    rs.push({amt:'', cur:curs.find(c=>!used.has(c)) || curs[0]}); drawRows(rs); });
-  $('#cvRows').addEventListener('click', ev=>{ const b = ev.target.closest('.cv-rm'); if(!b) return;
-    const i = Number(b.closest('.cv-row').dataset.i); drawRows(rowsNow().filter((_,j)=>j!==i)); });
-  $('#cvRows').addEventListener('input', ()=>{ $('#cvAll').checked = false; $('#cvAllN').textContent = ''; });
+  const bindBlk = blk => { const k = Number(blk.dataset.b);
+    comboBind('cvPlace' + k, items, places[k], v=>{ places[k] = v; fillAll(blk); }); };
+  bindBlk(document.querySelector('#cvBlks .cv-blk'));
+  const more = $('#cvMore');
+  if(more) more.addEventListener('click', ()=>{
+    const k = places.length, prev = places[k-1] || '';
+    places.push(prev);
+    const w = document.createElement('div'); w.innerHTML = blkHTML(k, [{amt:'', cur:curs[0]}], (items.find(x=>x.v===prev)||{}).shown || '', {});
+    const blk = w.firstElementChild; $('#cvBlks').appendChild(blk); bindBlk(blk);
+    const a = blk.querySelector('.cv-amt'); if(a) a.focus();
+  });
+  $('#cvBlks').addEventListener('change', ev=>{ if(ev.target.classList.contains('cv-allcb')) fillAll(blkOf(ev.target)); });
+  $('#cvBlks').addEventListener('click', ev=>{
+    const rm = ev.target.closest('.cv-rm');
+    if(rm){ const blk = blkOf(rm), i = Number(rm.closest('.cv-row').dataset.i); drawRows(blk, rowsNow(blk).filter((_,j)=>j!==i)); return; }
+    const brm = ev.target.closest('.cv-brm');
+    if(brm){ const blk = blkOf(brm); places[Number(blk.dataset.b)] = null; blk.remove(); }
+  });
+  $('#cvBlks').addEventListener('input', ev=>{ if(!ev.target.closest('.cv-rows')) return;
+    const blk = blkOf(ev.target); blk.querySelector('.cv-allcb').checked = false; blk.querySelector('.cv-alln').textContent = ''; });
   const done = r => { FIN.D = r.result; finRender(); finConvModal(); };
   $('#cvSave').addEventListener('click', async ()=>{
     const b = $('#cvSave'); b.disabled = true;
-    const parts = rowsNow().filter(x=>x.amt > 0), usd = Number($('#cvUsd').value), day = $('#cvDate').value;
-    // A rate far from the day's usual one is almost always a typing slip (b296: 250.13 ден for $253 made Macedonia's dollars 55 times too big).
-    if(parts.length && usd > 0 && /^\d{4}-\d{2}-\d{2}$/.test(day)){
-      const rs = await Promise.all(parts.map(x=>x.cur==='USD' ? Promise.resolve({rate:1}) : fxOn(day, x.cur, 'USD').catch(()=>null)));
-      const usual = rs.every(r=>r && r.rate > 0) ? parts.reduce((t,x,i)=>t + x.amt * rs[i].rate, 0) : 0;
-      if(usual > 0 && (usd > usual * 2 || usd < usual / 2) && !await askSure(`Please check the numbers. ${parts.map(x=>cashFmt(x.amt, x.cur)).join(' + ')} is usually about ${finUsd(Math.round(usual * 100) / 100)}, not ${finUsd(usd)}.\n\nSave it anyway?`, 'Save anyway')){
-        b.disabled = false; return;
+    const blks = [...document.querySelectorAll('#cvBlks .cv-blk')];
+    const asks = blks.map(blk=>({blk, place:places[Number(blk.dataset.b)] || '', parts:rowsNow(blk).filter(x=>x.amt > 0),
+      usd:Number(blk.querySelector('.cv-usd').value), day:blk.querySelector('input[type="date"].cv-date').value, note:blk.querySelector('.cv-note').value}))
+      // A blank extra form is left out rather than refused.
+      .filter((x,i)=>i===0 || x.parts.length || x.usd > 0);
+    for(const x of asks){
+      // A rate far from the day's usual one is almost always a typing slip (b296: 250.13 ден for $253 made Macedonia's dollars 55 times too big).
+      if(x.parts.length && x.usd > 0 && /^\d{4}-\d{2}-\d{2}$/.test(x.day)){
+        const rs = await Promise.all(x.parts.map(p=>p.cur==='USD' ? Promise.resolve({rate:1}) : fxOn(x.day, p.cur, 'USD').catch(()=>null)));
+        const usual = rs.every(r=>r && r.rate > 0) ? x.parts.reduce((t,p,i)=>t + p.amt * rs[i].rate, 0) : 0;
+        if(usual > 0 && (x.usd > usual * 2 || x.usd < usual / 2) && !await askSure(`Please check the numbers. ${x.parts.map(p=>cashFmt(p.amt, p.cur)).join(' + ')} is usually about ${finUsd(Math.round(usual * 100) / 100)}, not ${finUsd(x.usd)}.\n\nSave it anyway?`, 'Save anyway')){
+          b.disabled = false; return;
+        }
       }
     }
-    try{ done(await post({action:'finConvSet', id:e.id||'', place, parts, usd, date:day, note:$('#cvNote').value}));
-      toast('Written down. Those dollars are used from now on.'); }
-    catch(err){ b.disabled = false; $('#modalErr').textContent = err.message; }
+    let last = null;
+    for(const x of asks){
+      try{ last = await post({action:'finConvSet', id:e.id||'', place:x.place, parts:x.parts, usd:x.usd, date:x.day, note:x.note}); x.blk.remove(); }
+      catch(err){ b.disabled = false; $('#modalErr').textContent = (asks.length > 1 ? 'Exchange ' + (Number(x.blk.dataset.b) + 1) + ': ' : '') + err.message;
+        if(last){ FIN.D = last.result; finRender(); } return; }
+    }
+    done(last); toast(asks.length > 1 ? asks.length + ' written down. Those dollars are used from now on.' : 'Written down. Those dollars are used from now on.');
   });
   const c = $('#cvCancel'); if(c) c.addEventListener('click', ()=>finConvModal());
   document.querySelectorAll('#modal [data-cvedit]').forEach(b=>b.addEventListener('click', ()=>finConvModal(list.find(x=>x.id===b.dataset.cvedit))));
@@ -14667,11 +14711,16 @@ function lblSelectPop(pen){
 
 /** Put your wording in place of the original, wherever it appears. */
 let LBL_BUSY = false;
+const LBL_RETIRED = {'Dialog: Expenses › Expenses':'Expenses and Reimbursements'};
 function applyLabels(root){
   lblBodyClass();   // pencils show only while editing (b291); the class follows the flag
   /* Looked up on the steady form of the key, so wording saved before — under a
      heading that has since changed — is still found. */
-  const raw = (STATE && STATE.labels) || {};
+  const raw = Object.assign({}, (STATE && STATE.labels) || {});
+  /* Wording taken back (b312, Gita: "everywhere that says Expenses and
+     Reimbursements, just have it say Expenses"): dropped while it is still
+     exactly what was saved; any new wording for it applies as usual. */
+  Object.keys(LBL_RETIRED).forEach(k=>{ if(raw[k]===LBL_RETIRED[k]) delete raw[k]; });
   const map = {}, byWords = {};
   Object.keys(raw).forEach(k=>{
     map[normLabelKey(k)] = raw[k];
@@ -14802,7 +14851,8 @@ function labelAsTyped(html){
   return e.textContent.replace(/\*\*\s*\*\*/g,'').replace(/[ \t]+/g,' ').replace(/ ?\n ?/g,'\n').trim();
 }
 function editLabelModal(key){
-  const labels = STATE.labels||{};
+  const labels = Object.assign({}, STATE.labels||{});
+  Object.keys(LBL_RETIRED).forEach(k=>{ if(labels[k]===LBL_RETIRED[k]) delete labels[k]; });
   const at = key.split(' › ')[0], words = key.split(' › ').slice(1).join(' › ');
   const byWords = Object.keys(labels).find(k=>k.split(' › ').slice(1).join(' › ')===words && labels[k]!=='\u0000hide');
   const cur = labels[key] || labels[normLabelKey(key)] || (byWords ? labels[byWords] : '');
@@ -17755,8 +17805,11 @@ function placeMetaSave(kind, id, meta){
 /* The titles-and-prices grid with its currency calculator (b306: shared by
    Edit region and, in practice, Change Prices). st: the season the region is
    in, when it is not the one open. */
-function priceGrid(edit, st){
+function priceGrid(edit, st, opts){
   const isEdit = !!edit;
+  /* Change Prices (b312, Gita): no tick boxes, only the titles this place
+     sells, sold out or not. */
+  const onlyHere = !!(opts && opts.onlyHere);
   const priceOf = (bookId,c)=>{
     if(!isEdit) return '';
     const pr=((st||STATE).prices||{})[edit.regionId];
@@ -17783,12 +17836,16 @@ function priceGrid(edit, st){
 
     // Most regions price every big book the same, so fill them in one go.
     const fill = (label,cat)=>`<div class="rp-row rp-fill"><div class="rp-name">${label}
-        <span class="muted-note">select relevant offerings</span></div>
+        ${onlyHere ? '' : '<span class="muted-note">select relevant offerings</span>'}</div>
       <div class="rp-cells">${curList.map((c,i)=>
         box(c, i, `class="rp rp-all" data-cat="${cat}" data-cur="${esc(c)}"`, '')).join('')}</div></div>`;
 
     const rowsFor = list => list.map(b=>{
       const on = !isEdit || !edit.books || !edit.books.length || edit.books.includes(b.id);
+      if(onlyHere){
+        return `<div class="rp-row bk-row" data-row="${esc(b.id)}"><div class="rp-name ${isAotm(b)?'aotm':''}"><span>${esc(b.name)}</span></div>
+                <div class="rp-cells">${curList.map((c,i)=>box(c, i, `class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}"${priceOf(b.id,c)!=='' ? ' data-hand="1"' : ''}`, priceOf(b.id,c))).join('')}</div></div>`;
+      }
       const cells=curList.map((c,i)=>
         box(c, i, `class="rp" data-book="${esc(b.id)}" data-cur="${esc(c)}"${priceOf(b.id,c)!=='' ? ' data-hand="1"' : ''}`, priceOf(b.id,c))
       ).join('');
@@ -17803,7 +17860,9 @@ function priceGrid(edit, st){
        "is it Adventures?" filed every Other title under Big Books, so the
        Other group never appeared here at all. */
     // Consignment titles only in the region whose group they belong to.
-    const all=(STATE.books||[]).filter(b=>bookBelongsIn(b, isEdit ? edit.regionId : ''));
+    const chosen = isEdit ? asIdList(edit.books) : [];
+    const all=(STATE.books||[]).filter(b=>bookBelongsIn(b, isEdit ? edit.regionId : '')
+      && (!onlyHere || !chosen.length || chosen.includes(b.id)));
     const big  = all.filter(b=>catOfBook(b)==='big');
     const other= all.filter(b=>catOfBook(b)==='other');
     const aotm = all.filter(b=>catOfBook(b)==='aotm');
@@ -18442,11 +18501,11 @@ function stockBooks(ctx){
     : (!chosen.length || chosen.includes(b.id) || ctx.extra.has(b.id) || ctx.qty(ctx.loc,b.id)>0));
   let order = asIdList(reg.bookOrder);
   if(!order.length) order = asIdList(st.seasonBookOrder);
-  /* Then your own order from ⇅ Arrange, as on the shelf, so the drop-downs
-     can be put in any order (b311, Gita). */
-  if(!order.length) return inMyOrder(list);
+  /* Then your own order for stock, set in ⇅ Stock Title Order, apart from the
+     shelf's (b312, Gita: "adding stock and selling are two different things"). */
+  if(!order.length) return inStockOrder(list);
   const rank = {}; order.forEach((id,i)=>{ rank[id]=i; });
-  return inMyOrder(byRank(list, rank));
+  return inStockOrder(byRank(list, rank));
 }
 function otherBooks(ctx){
   const on = new Set(stockBooks(ctx).map(b=>b.id));
@@ -18456,6 +18515,68 @@ function otherBooks(ctx){
    sharing a name before the brackets — Sri Radha (English), (Russian) and
    (Spanish) are one title in three languages — and, for consignment, one group. */
 function stockTitleKey(b){ return bookLang(b).base.trim().toLowerCase() + '|' + (b.partnerId||''); }
+/* The order of the titles in Add Stock, Transfer and Subtract Stock (b312,
+   Gita): its own, set in ⇅ Stock Title Order, never the shelf's. Kept with
+   your login (on a link, on this device), by title, so every language of a
+   title sits together. Titles never placed keep the region's order behind. */
+const STOCK_ORDER = {
+  get(){
+    if(typeof ME!=='undefined' && ME && ME.prefs){ const v = ME.prefs.stockOrder; return Array.isArray(v) ? v : []; }
+    try{ const v = JSON.parse(localStorage.getItem('tbs_stock_order')||'[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; }
+  },
+  async set(keys){
+    const v = keys && keys.length ? keys : null;
+    try{ v ? localStorage.setItem('tbs_stock_order', JSON.stringify(v)) : localStorage.removeItem('tbs_stock_order'); }catch(e){}
+    if(typeof ME!=='undefined' && ME){ ME.prefs = Object.assign({}, ME.prefs); if(v) ME.prefs.stockOrder = v; else delete ME.prefs.stockOrder; }
+    if(!signedInHere()) return true;
+    try{ const r = await post({action:'setMyPref', key:'stockOrder', value:v}); if(r && r.result) ME = r.result; return true; }
+    catch(e){ toast('Your order is on this device only for now: ' + e.message, true); return false; }
+  }
+};
+function inStockOrder(list){
+  const mine = STOCK_ORDER.get(); if(!mine.length) return list;
+  const rank = {}; mine.forEach((k,i)=>{ rank[k]=i; });
+  return list.map((b,i)=>({b,i,r:rank[stockTitleKey(b)]})).sort((x,y)=>{
+    const aH = x.r!==undefined, cH = y.r!==undefined;
+    if(aH && cH && x.r!==y.r) return x.r - y.r;
+    if(aH!==cH) return aH ? -1 : 1;
+    return x.i - y.i;
+  }).map(x=>x.b);
+}
+function stockOrderModal(){
+  const seen = new Map();
+  inStockOrder(inRegionOrder((STATE.books||[]).filter(b=>!b.partnerId))).forEach(b=>{
+    const k = stockTitleKey(b); if(!seen.has(k)) seen.set(k, {id:k, name:bookLang(b).base, cat:catOfBook(b)}); });
+  const CAT = [['big','Big Books'],['aotm','Adventures'],['other','Other']];
+  let list = [...seen.values()];
+  function draw(){
+    $('#soList').innerHTML = CAT.map(([cat,label])=>{
+      const mine = list.filter(x=>x.cat===cat); if(!mine.length) return '';
+      return `<div class="cash-sub">${label}</div><div class="so-grp" data-cat="${cat}">${mine.map((x,i)=>`
+        <div class="ro-row" data-id="${esc(x.id)}"><span class="ro-grip" title="Drag to move">⠿</span>
+          <span class="ro-name ${cat==='aotm'?'aotm':''}">${esc(x.name)}</span>
+          <span class="ro-btns"><button class="cash-mini" data-so-up="${esc(x.id)}" ${i===0?'disabled':''}>↑</button>
+            <button class="cash-mini" data-so-dn="${esc(x.id)}" ${i===mine.length-1?'disabled':''}>↓</button></span></div>`).join('')}</div>`;
+    }).join('');
+    const move = (id, d) => { const x = list.find(v=>v.id===id), mine = list.filter(v=>v.cat===x.cat), j = mine.indexOf(x) + d;
+      if(j<0 || j>=mine.length) return; const y = mine[j], a = list.indexOf(x), b = list.indexOf(y); [list[a], list[b]] = [list[b], list[a]]; draw(); };
+    document.querySelectorAll('#modal [data-so-up]').forEach(b=>b.onclick=()=>move(b.dataset.soUp, -1));
+    document.querySelectorAll('#modal [data-so-dn]').forEach(b=>b.onclick=()=>move(b.dataset.soDn, 1));
+    document.querySelectorAll('#soList .so-grp').forEach(g=>makeSortable(g, order=>{
+      const cat = g.dataset.cat, moved = order.map(id=>list.find(x=>x.id===id)).filter(Boolean);
+      let k = 0; list = list.map(x=>x.cat===cat ? moved[k++] : x); draw(); }));
+  }
+  openModal(`${mHead('Stock Title Order')}
+    <div class="m-body">
+      <div class="hint">The order of the titles in Add New Stock, Transfer Existing Stock and Subtract Stock. Drag a title, or use the arrows. The shelf keeps its own order.</div>
+      <div id="soList"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="soSave">Save</button></div>`, true);
+  draw();
+  $('#soSave').addEventListener('click', async ()=>{ await STOCK_ORDER.set(list.map(x=>x.id)); closeModal(); toast('Saved'); });
+}
 function stockTitles(ctx){
   const groups = new Set((ctx.st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
   const carried = stockBooks(ctx), seen = new Set(carried.map(b=>b.id));
@@ -18463,7 +18584,7 @@ function stockTitles(ctx){
   const rest = ctx.books.filter(b=>!seen.has(b.id) && (!b.partnerId || groups.has(b.partnerId)))
     .sort((a,c)=>a.name.localeCompare(c.name));
   const map = new Map();
-  carried.concat(rest).forEach(b=>{
+  inStockOrder(carried.concat(rest)).forEach(b=>{
     const k = stockTitleKey(b);
     if(!map.has(k)) map.set(k, {key:k, base:bookLang(b).base, cat:catOfBook(b), partnerId:b.partnerId||'', books:[]});
     map.get(k).books.push(b);
@@ -20460,18 +20581,18 @@ function pricesModal(){
   const kinds = placeKinds().filter(k=>k!=='season');
   let G = null;
   const regionOf = (p, st) => ((st||STATE).regions||[]).find(r=>r.regionId===p.regionId) || {};
-  const booksOf = (r, here) => (STATE.books||[]).filter(b=>here ? bookBelongsIn(b, r.regionId)
-    : (!b.partnerId && (!(r.books||[]).length || (r.books||[]).includes(b.id))));
+  // Only the titles sold there (b312, Gita).
+  const booksOf = (r, here) => { const ch = asIdList(r.books);
+    return (STATE.books||[]).filter(b=>b.partnerId ? here && bookBelongsIn(b, r.regionId) : (!ch.length || ch.includes(b.id))); };
   placePickModal({title:'Change Prices', kinds,
     drawBody(kind, p, st){
       if(kind==='region' || kind==='hq'){
-        G = priceGrid(p, st===STATE ? null : st);
+        G = priceGrid(p, st===STATE ? null : st, {onlyHere:true});
         $('#ppBody').innerHTML = `<div class="field"><label>Enter all accepted currencies by their official abbreviation. <span class="muted-note">(Separate currencies with a comma.)</span></label>
             <input id="rgCur" type="text" value="${esc((p.currencies||['USD']).join(', '))}"></div>
-          <div class="hint">1. Select books that will be available for sale in the region.<br>2. When entering currency, fill in the price by local currency first. The price in other currencies will automatically populate.<br>3. Set price in other currencies to a whole number (round down).</div>
+          <div class="hint">1. When entering currency, fill in the price by local currency first. The price in other currencies will automatically populate.<br>2. Set price in other currencies to a whole number (round down).</div>
           <div id="rgPrices">${G.rows(parseCurs((p.currencies||['USD']).join(',')))}</div>`;
         G.bind();
-        $('#rgPrices').addEventListener('change', e=>{ const cb = e.target.closest('.bk-cb'); if(cb) cb.closest('.bk-row').classList.toggle('off', !cb.checked); });
         $('#rgCur').addEventListener('change', ()=>{ curFieldClean($('#rgCur')); const k = G.keep(); $('#rgPrices').innerHTML = G.rows(parseCurs($('#rgCur').value)); G.put(k); });
         return;
       }
@@ -20523,9 +20644,11 @@ function pricesModal(){
       const here = sn===STATE.activeSeason;
       if(kind==='region' || kind==='hq'){
         const curList = parseCurs($('#rgCur').value);
-        const all = [...document.querySelectorAll('#modal .bk-cb')], picked = all.filter(c=>c.checked).map(c=>c.value);
-        if(!picked.length){ $('#modalErr').textContent = 'Keep at least one title.'; return; }
-        const books = picked.length===all.length ? '' : picked.join(','), prices = {};
+        // The titles it sells stay as they are (b312: no tick boxes here).
+        const books = asIdList(p.books).join(','), prices = {};
+        // Titles not sold here keep the prices they had.
+        const was = ((st||STATE).prices||{})[p.regionId] || {}, shown = new Set([...document.querySelectorAll('#modal .rp[data-book]')].map(i=>i.dataset.book));
+        Object.keys(was).forEach(b=>{ if(!shown.has(b)) prices[b] = Object.assign({}, was[b]); });
         document.querySelectorAll('#modal .rp[data-book]').forEach(i=>{ const v = Number(i.value);
           if(i.value==='' || isNaN(v)) return; (prices[i.dataset.book] = prices[i.dataset.book] || {})[i.dataset.cur] = v; });
         commit({action:'editRegion', regionId:p.regionId, name:p.name, currencies:curList.join(','), books, prices, season:sn},
@@ -23010,6 +23133,7 @@ document.addEventListener('click',e=>{
   }
   if(a==='shoutside'){ shipOutsideModal(); return; }
   if(a==='seasonxfer' || a==='xfer'){ transferStockModal(); return; }
+  if(a==='stockorder'){ stockOrderModal(); return; }
   if(a==='activity'){ activityModal(); return; }
   if(a==='viewmode'){ setViewMode(document.body.classList.contains('list-view') ? 'cards' : 'list'); return; }
   if(a==='rqfulfil'){ remoteFulfilModal((STATE.remote||[]).find(x=>x.saleId===t.dataset.id)); return; }
