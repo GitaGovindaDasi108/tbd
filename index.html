@@ -2490,7 +2490,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b308</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b309</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -16914,13 +16914,25 @@ function uncatAEst(x){ return x.aest === undefined || x.aest === null ? !!x.est 
 function uncatAnyEst(x){ return !!x.est || (Number(x.aqty) > 0 && uncatAEst(x)); }
 /* qty holds the Big Books, aqty the Adventures (b295). */
 function uncatBooks(list, cat){ return (list||[]).filter(isUncat).reduce((t,x)=>t+(Number(cat==='aotm' ? x.aqty : x.qty)||0), 0); }
-/* The usual price of a Big Book here, in that currency: the most common one on the shelf. */
+/* The usual price of a Big Book here, in that currency: the most common one
+   among every title of that kind priced here. It used to look only at the
+   titles on the shelf, so a place with no Adventures (or no books at all) in
+   stock had no price to work from and the calculator did nothing, or emptied
+   the other box (b309, Gita: "still broken"). With no price in that currency,
+   the price in the local currency is converted. */
 function uncatMsrp(cur, cat){
-  const n = {};
-  shelfBooks().filter(b=>catOfBook(b)===(cat || 'big') && !isPartnerBook(b.id)).forEach(b=>{
-    const p = Number(priceFor(b, cur)) || 0; if(p > 0) n[p] = (n[p]||0) + 1; });
-  const ps = Object.keys(n).map(Number).sort((a,b)=>n[b]-n[a] || b-a);
-  return ps[0] || 0;
+  const usual = c => {
+    const n = {}, seen = new Set();
+    shelfBooks().concat(STATE.books || []).forEach(b=>{
+      if(!b || seen.has(b.id) || catOfBook(b)!==(cat || 'big') || isPartnerBook(b.id)) return; seen.add(b.id);
+      const p = Number(priceFor(b, c)) || 0; if(p > 0) n[p] = (n[p]||0) + 1; });
+    const ps = Object.keys(n).map(Number).sort((a,b)=>n[b]-n[a] || b-a);
+    return ps[0] || 0;
+  };
+  const p = usual(cur); if(p) return p;
+  const home = defaultCur(); if(!home || home === cur) return 0;
+  const q = usual(home), v = q ? convertCur(q, home, cur) : 0;
+  return v > 0 ? Math.round(v * 100) / 100 : 0;
 }
 function uncatModal(edit){
   const L0 = edit ? legs(edit) : [];
