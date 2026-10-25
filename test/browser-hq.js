@@ -70,7 +70,7 @@ c({ action: 'setSeason', seasonId: SA });
     t.push(['seasonal warehouse overview: where books are, by season', /3\s*Europe Tour/.test(wo) && /5\s*Year-Round/.test(wo)]);
     t.push(['the top tiles add up every season (2 big books sold)', /2\s*SOLD/i.test(await text('#totals'))]);
     const adm = await text('#adminActions');
-    t.push(['admin offers "Edit Earthly HQ", nothing to close or delete', /Edit Earthly HQ/.test(adm) && !/Delete Region|Close Region|Event Order/.test(adm)]);
+    t.push(['admin offers "Edit Location" (b311), nothing to close or delete', /Edit Location/.test(adm) && !/Delete Region|Close Region|Event Order/.test(adm)]);
     await page.screenshot({ path: shot('1-hq'), fullPage: true });
 
     // Books from the printer, then a sale at HQ in rupees, through the app.

@@ -88,19 +88,19 @@ const qty = (loc, b, season) => { const r = (m.call({ action: 'getState', season
     // b250: Edit Book Display left the menu (⇅ Arrange on the shelf does its work).
     t.push(['Books: Add New Stock, Transfer Existing Stock, Consignment Books (no Edit Book Display)',
       ['Add New Stock', 'Transfer Existing Stock', 'Consignment Books'].every(n => has(cols, 'Books', new RegExp(n))) && !has(cols, 'Books', /Edit Book Display/)]);
-    t.push(['region: Change Location Order, Edit/Close/Delete Region',
-      ['Change Location Order', 'Edit Region', 'Close Region', 'Delete Region'].every(n => has(cols, 'Location', new RegExp(n)))]);
+    t.push(['region: Change Location Order, Edit Location/Close/Delete Region (b311)',
+      ['Change Location Order', 'Edit Location', 'Close Region', 'Delete Region'].every(n => has(cols, 'Location', new RegExp(n)))]);
     const all = cols.flatMap(c => c.buttons).join(' | ');
     t.push(['gone: Books in transit, Devotees storing books, Fulfill…for another region, Change book order, Titles offered here',
       !/Books in transit|Devotees storing|another region|Change book order|Titles offered here/.test(all)]);
     await page.evaluate(() => goTo('event', 'ev_fest')); await page.waitForTimeout(300);
     cols = await panel(page);
-    t.push(['event: order buttons plus Rename/Close/Delete Event',
-      ['Change Location Order', 'Rename Event', 'Close Event', 'Delete Event'].every(n => has(cols, 'Location', new RegExp(n)))]);
+    t.push(['event: order buttons plus Edit Location/Close/Delete Event (b311)',
+      ['Change Location Order', 'Edit Location', 'Close Event', 'Delete Event'].every(n => has(cols, 'Location', new RegExp(n)))]);
     await page.evaluate(() => goTo('season')); await page.waitForTimeout(300);
     cols = await panel(page);
-    t.push(['season: order buttons plus Edit/Close/Delete Season',
-      ['Change Location Order', 'Edit Season', 'Close Season', 'Delete Season'].every(n => has(cols, 'Location', new RegExp(n)))]);
+    t.push(['season: order buttons plus Edit Location/Close/Delete Season (b311)',
+      ['Change Location Order', 'Edit Location', 'Close Season', 'Delete Season'].every(n => has(cols, 'Location', new RegExp(n)))]);
     await (await page.$('#adminPanel')).screenshot({ path: shot('1-panel-season') });
 
     // 2. Edit Book Display.

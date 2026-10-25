@@ -57,11 +57,8 @@ c({ action: 'closeLocation', kind: 'region', id: 'rg_old' });
     t.push(['partial delivery: the number boxes start empty (' + pd.join(', ') + ')', pd.length > 0 && pd.every(v => v === '|0')]);
     await page.evaluate(() => closeModal());
     await page.evaluate(() => shipmentsModal()); await page.waitForTimeout(400);
-    const rb = await page.$('[data-act="shremain"][data-id="sh_b308"]');
-    t.push(['a partly delivered batch has "📋 Remaining to Be Delivered"', !!rb]);
-    if (rb) { await page.evaluate(() => document.querySelector('[data-act="shremain"][data-id="sh_b308"]').click()); await page.waitForTimeout(300); }
-    const rep = await page.$eval('#repText', e => e.value).catch(() => '');
-    t.push(['…its report lists what is still to come (' + rep.replace(/\n/g, ' / ') + ')', /REMAINING TO BE DELIVERED/.test(rep) && / - 3 \(2 of 5 arrived\)/.test(rep) && /Total - 3 of 5 still to come/.test(rep)]);
+    // b311 (Gita): the batch's own report button is gone; the Books in Transit report covers it.
+    t.push(['a partly delivered batch has no "Remaining to Be Delivered" button (b311)', !(await page.$('[data-act="shremain"]'))]);
     await page.evaluate(() => closeModal());
 
     /* 2. Earthly HQ's Net Sales by Season. */
