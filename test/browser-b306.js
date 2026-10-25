@@ -124,14 +124,15 @@ c({ action: 'sendShipment', shipId: 'sh_b306', mode: 'devotee', fromRegion: R0.r
     await page.fill('#ppName', R0.name + ' Renamed'); await page.click('#ppSave'); await page.waitForTimeout(1500);
     t.push(['…and saves the new name', state().regions.some(r => r.regionId === R0.regionId && r.name === R0.name + ' Renamed')]);
     await page.evaluate(() => pricesModal()); await page.waitForTimeout(400);
-    t.push(['Change Prices: Earthly HQ (b307), Region and Event tabs', (await page.$$eval('#ppTabs [data-pp-k]', b => b.map(x => x.dataset.ppK))).join() === 'hq,region,event']);
-    await page.evaluate(() => document.querySelector('#ppTabs [data-pp-k="region"]').click()); await page.waitForTimeout(200);
+    // b313 (Gita chose "Drop-downs only"): no tabs; Season (Earthly HQ first), Region, Event.
+    t.push(['Change Prices: no tabs, Season drop-down with Earthly HQ first (b313)', await page.evaluate(() => !document.querySelector('#ppTabs [data-pp-k]') && document.querySelector('#ppSn').options[0].value === '__hq')]);
+    await page.evaluate(() => { const s = document.querySelector('#ppSn'); if (s.value === '__hq') { s.value = s.options[1].value; s.onchange(); } }); await page.waitForTimeout(800);
     await page.selectOption('#ppReg', R0.regionId); await page.waitForTimeout(200);
     const cur0 = await page.$eval('#rgCur', i => i.value.split(',')[0].trim());
     await page.fill(`#modal .rp[data-book="${B}"][data-cur="${cur0}"]`, '33'); await page.click('#ppSave'); await page.waitForTimeout(1500);
     t.push(['…a region\'s price saves', Number(((state().prices || {})[R0.regionId] || {})[B] && state().prices[R0.regionId][B][cur0]) === 33]);
     await page.evaluate(() => pricesModal()); await page.waitForTimeout(400);
-    await page.evaluate(() => document.querySelector('#ppTabs [data-pp-k="event"]').click()); await page.waitForTimeout(200);
+    await page.evaluate(() => { const s = document.querySelector('#ppSn'); if (s.value === '__hq') { s.value = s.options[1].value; s.onchange(); } }); await page.waitForTimeout(800);
     await page.selectOption('#ppReg', R0.regionId); await page.waitForTimeout(200);
     await page.selectOption('#ppEv', 'ev_one'); await page.waitForTimeout(200);
     await page.fill(`#modal .ep[data-book="${B}"][data-cur="${cur0}"]`, '29'); await page.click('#ppSave'); await page.waitForTimeout(1500);

@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b312</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b313</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -20461,12 +20461,18 @@ function reorderModal(kind){
    the place chosen. Another season's places come from the copy on this
    device, then fresh from the server. drawBody(kind, place, st) fills
    #ppBody; save(kind, place, st) saves it. ---- */
-function placePickModal({title, kinds, drawBody, save, saveLabel}){
+function placePickModal({title, kinds, drawBody, save, saveLabel, dropdowns}){
   if(!kinds.length){ toast('That is not part of your role.', true); return; }
   const NM = {hq:'Earthly HQ', season:'Season', region:'Region', event:'Event'};
   /* Earthly HQ is a location too (b307, Gita: "include it in changes to
      locations unless otherwise specified"): its own tab, opened at HQ. */
   let kind = isHQ() && kinds.includes('hq') ? 'hq' : kinds.includes(CUR_LEVEL==='event' ? 'event' : CUR_LEVEL==='region' && !isHQ() ? 'region' : 'season') ? (CUR_LEVEL==='event' ? 'event' : CUR_LEVEL==='region' && !isHQ() ? 'region' : 'season') : kinds[0];
+  /* Drop-downs only (b313, Gita chose on a card for Change Prices): no tabs;
+     Season (Earthly HQ first), Region, then Event with "Whole region", the
+     same at every level and opened where you are. */
+  const dd = !!dropdowns;
+  if(dd) kind = isHQ() && kinds.includes('hq') ? 'hq' : CUR_LEVEL==='event' && kinds.includes('event') ? 'event'
+    : kinds.includes('region') ? 'region' : kinds.includes('event') ? 'event' : kinds[0];
   const pickSn = (ME && ME.universal) || actingRole()==='U';
   const snList = (STATE.seasons||[]).filter(x=>x.seasonId!==HQ_ID);
   let snSel = isHQ() ? ((snList.find(x=>!x.closedAt)||snList[0]||{}).seasonId || '') : STATE.activeSeason;
@@ -20508,7 +20514,31 @@ function placePickModal({title, kinds, drawBody, save, saveLabel}){
   const place = () => kind==='hq' ? (((hqState||{}).regions||[]).find(r=>r.regionId===HQ_REGION) || null)
     : kind==='season' ? (snList.find(x=>x.seasonId===snSel) || null)
     : kind==='region' ? (regsOf().find(r=>r.regionId===reg) || null) : (evsOf().find(e=>e.eventId===ev) || null);
+  function drawDD(){
+    $('#ppTabs').innerHTML = ''; $('#ppTabs').hidden = true;
+    const sel = (id, label, list, at, key) => `<div class="field"><label>${label}</label><select id="${id}">${
+      list.map(x=>`<option value="${esc(x[key])}"${x[key]===at?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`;
+    const hq = kind==='hq', seasons = closedSort(snList, x=>!!x.closedAt);
+    const snOpts = (kinds.includes('hq') ? [{seasonId:'__hq', name:'Earthly HQ'}] : []).concat(pickSn || kinds.includes('hq') ? seasons : []);
+    const evOpts = (kinds.includes('region') ? [{eventId:'', name:'Whole region'}] : []).concat(closedSort(evsOf(), x=>!!x.closedAt));
+    $('#ppPick').innerHTML = (snOpts.length ? sel('ppSn', 'Season', snOpts, hq ? '__hq' : snSel, 'seasonId') : '')
+      + (hq ? '' : sel('ppReg', 'Region', closedSort(regsOf(), x=>!!x.closedAt), reg, 'regionId'))
+      + (hq || !kinds.includes('event') ? '' : sel('ppEv', 'Event', evOpts, kind==='event' ? ev : '', 'eventId'));
+    const p = place(), busy = hq ? hqLoading : snLoading;
+    if(busy) $('#ppBody').innerHTML = `<div class="hint">Opening ${hq ? 'Earthly HQ' : 'that season'}…</div>`;
+    else if(!p) $('#ppBody').innerHTML = `<div class="hint">No ${kind==='event' ? 'events' : 'regions'} here yet.</div>`;
+    else drawBody(kind, p, stOf());
+    $('#ppSave').disabled = !p || busy;
+    $('#modalErr').textContent = '';
+    const ss = $('#ppSn'); if(ss) ss.onchange = ()=>{
+      if(ss.value==='__hq'){ kind = 'hq'; fetchHQ(); }
+      else { if(kind==='hq') kind = kinds.includes('region') ? 'region' : 'event'; snSel = ss.value; fetchSeason(); fix(); }
+      draw(); };
+    const rs = $('#ppReg'); if(rs) rs.onchange = ()=>{ reg = rs.value; fix(); draw(); };
+    const es = $('#ppEv'); if(es) es.onchange = ()=>{ if(es.value==='') kind = 'region'; else { kind = 'event'; ev = es.value; } draw(); };
+  }
   function draw(){
+    if(dd) return drawDD();
     $('#ppTabs').innerHTML = kinds.length > 1 ? kinds.map(k=>`<button type="button" class="seg-b${k===kind?' on':''}" data-pp-k="${k}">${NM[k]}</button>`).join('') : '';
     const sel = (id, label, list, at, key) => `<div class="field"><label>${label}</label><select id="${id}">${
       closedSort(list, x=>!!x.closedAt).map(x=>`<option value="${esc(x[key])}"${x[key]===at?' selected':''}>${esc(x.name)}</option>`).join('')}</select></div>`;
@@ -20584,7 +20614,7 @@ function pricesModal(){
   // Only the titles sold there (b312, Gita).
   const booksOf = (r, here) => { const ch = asIdList(r.books);
     return (STATE.books||[]).filter(b=>b.partnerId ? here && bookBelongsIn(b, r.regionId) : (!ch.length || ch.includes(b.id))); };
-  placePickModal({title:'Change Prices', kinds,
+  placePickModal({title:'Change Prices', kinds, dropdowns:true,
     drawBody(kind, p, st){
       if(kind==='region' || kind==='hq'){
         G = priceGrid(p, st===STATE ? null : st, {onlyHere:true});
