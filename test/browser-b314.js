@@ -59,6 +59,7 @@ c({ action: 'editRegion', regionId: R0.regionId, name: R0.name, currencies: (R0.
     const mo = await page.evaluate(async () => { menuOrderModal(); await new Promise(r => setTimeout(r, 300));
       const x = [...document.querySelectorAll('#moList .mo-row')].map(r => r.innerText.replace(/⠿\s*/, '').trim()); closeModal(); return x; });
     t.push(['Reorganize Menu says "Edit Location", not "Edit / Rename"', mo.some(x => /Edit Location/.test(x)) && !mo.some(x => /Rename/.test(x))]);
+    t.push(['b315: no Reimbursement Settings, in the menu or in Reorganize Menu', !mo.some(x => /Reimbursement Settings/.test(x)) && await page.evaluate(() => !document.querySelector('#sideNav [data-act="reimbset"]'))]);
     const menu = await page.evaluate(() => [...document.querySelectorAll('#sideNav .sn-group .sn-item .sn-t')].map(x => x.textContent.trim()));
     const odd = menu.filter(n => !mo.some(x => x.endsWith(n)) && !/^(Close|Reopen|Delete) /.test(n));
     t.push(['every menu item at this level is in Reorganize Menu by the same name' + (odd.length ? ' (missing: ' + odd.join(', ') + ')' : ''), !odd.length]);

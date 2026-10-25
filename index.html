@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b314</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b315</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -6084,7 +6084,7 @@ function menuOrderModal(){
   /* b303 (Gita): Specialty Reports and Report became WhatsApp Reports, and
      Go to Sales Portal became the top bar's portal button. Whenever a menu item
      is taken out of the app, it goes here too. */
-  const gone = a => a==='bookdisplay' || a==='fintodo' || a==='specreport' || a==='report' || a==='finleave' || (a==='costs' && FIN_ON) || (a==='viewas' && !PRACTICE)
+  const gone = a => a==='bookdisplay' || (a==='reimbset' && FIN_ON) || a==='fintodo' || a==='specreport' || a==='report' || a==='finleave' || (a==='costs' && FIN_ON) || (a==='viewas' && !PRACTICE)
     || (a==='fincarry' && PRACTICE) || (a==='subregions' && !SUBR_ON) || !(MO_NAMES[a] || SN_ITEMS[a])
     /* b310 (Gita: "still sections showing up that don't exist"): Event Prices is
        inside Change Prices; Profile sits at the foot of
@@ -14383,7 +14383,8 @@ function FIN_BTNS(fin){
   if(!fin) return [];
   const b = [`<button class="btn" data-act="finoverview">📈 Finance</button>`,
     `<button class="btn" data-act="finexpenses">🧾 Expenses</button>`, `<button class="btn" data-act="finreimb">💸 Reimbursements</button>`];
-  if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
+  // Reimbursement Settings is the ⚙️ Settings tab of Reimbursements; its own menu line is gone on live (b315, Gita chose on a card).
+  if((fin==='F' || fin==='U') && !FIN_ON) b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   // b288 (Gita): practice first.
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
   return b;

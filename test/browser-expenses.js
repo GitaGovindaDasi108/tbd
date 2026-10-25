@@ -226,7 +226,8 @@ const API = 'http://api.test/';
     const own = await open('owner@example.com', 'The Owner');
     const snText = () => own.evaluate(() => [...document.querySelectorAll('#sideNav [data-act]')].map(b => b.dataset.act).join('|'));
     const omenu = await snText();
-    t.push(['Universal has Expenses and Reimbursement Settings, and (b292) no Finance To do', /\bexpenses\b/.test(omenu) && !/fintodo/.test(omenu) && /reimbset/.test(omenu)]);
+    // b315 (Gita chose on a card): Reimbursement Settings is the Settings tab of Reimbursements, not a menu line.
+    t.push(['Universal has Expenses, and (b292) no Finance To do, (b315) no Reimbursement Settings line', /\bexpenses\b/.test(omenu) && !/fintodo/.test(omenu) && !/reimbset/.test(omenu)]);
     t.push(['…a Finance section: Overview (b259: no Reports or Compare for now)', /finoverview/.test(omenu) && !/finreport/.test(omenu) && !/fincompare/.test(omenu)]);
     t.push(['…View as in App Development', /viewas/.test(omenu)]);
     t.push(['…and no separate Record Costs (it is the Expenses form now)', !/\bcosts\b/.test(omenu)]);
