@@ -254,7 +254,7 @@ export const PERM_CAPS = [
   { group: "Stock", key: "transfer_between_the_regions", label: "Transfer between the region’s warehouse and its events", def: "noyvyvvvy" },
   { group: "Stock", key: "move_stock_between_warehouse", label: "Move stock between warehouses (regions, seasons, Earthly HQ)", def: "nnyvyvvvy" },
   { group: "Stock", key: "receive_books_in_transit", label: "Receive books in transit", def: "noyvyvvvy" },
-  { group: "Stock", key: "add_stock_from_outside_the_t", label: "Add Stock from outside the tour", def: "nnyvyvvvy" },
+  { group: "Stock", key: "add_stock_from_outside_the_t", label: "Add Stock from outside the system", def: "nnyvyvvvy" },
   { group: "Stock", key: "set_a_count_outright_correct", label: "Set a count outright; correct or delete a shipment", def: "nnnnnnnny" },
   { group: "Stock", key: "closing_counts", label: "Closing counts", def: "noyvyvvvy" },
   { group: "Stock", key: "devotee_storage_sub_warehous", label: "Devotee storage (sub-warehouses)", def: "noyvyvvvy" },

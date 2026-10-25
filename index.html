@@ -610,10 +610,15 @@ body.busy #busyBar{opacity:1}
 .cbr-tgb .nw{white-space:nowrap}
 /* Only Net Sales is blue here (b308, Gita); the other totals are plain. */
 .cbr-ns td.usd{color:var(--ink)} .cbr-ns td.usd.cbr-net{color:var(--net)}
+/* Donations are not bold (b310, Gita). */
+.cbr-ns td.usd.cbr-don, .cbr-ns tfoot td.usd.cbr-don{font-weight:400}
 /* The season names stay in view while the figures scroll sideways (b308, Gita),
    so that edge does not fade. */
 .cbr-ns tbody th,.cbr-ns tfoot th,.cbr-ns thead th:first-child{position:sticky;left:0;z-index:1;background:var(--paper)}
-.sx-l:has(> .cbr-ns){--sx-fl:0px}   /* two lines, the arrow with "Currencies" (b308, Gita) */
+.sx-l:has(> .cbr-ns){--sx-fl:0px}
+/* Books in Transit Report (b310): a partly delivered batch's two choices sit under it. */
+.tr-picks{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px}
+.tr-sub{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 0 26px}   /* two lines, the arrow with "Currencies" (b308, Gita) */
 .cbr-tgb{border:0;background:none;padding:0;font:inherit;color:var(--lvl);text-transform:inherit;letter-spacing:inherit;cursor:pointer;text-align:left}
 /* Season aggregator: each region as a heading row, its places indented beneath. */
 .cash-agg .cash-reg-row>th,.cash-agg .cash-reg-row>td{font-weight:800;border-top:1.5px solid var(--line-d);padding-top:9px}
@@ -2490,7 +2495,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b309</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b310</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2647,7 +2652,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
       <div class="body"><div class="log" id="remoteList"></div></div>
     </section>
     <section class="panel transit-panel" id="transitPanel" data-fold="transit" style="display:none">
-      <h2 class="sec-h2">Books in Transit</h2>
+      <h2 class="sec-h2">Books in Transit <button class="btn btn-gold btn-sm sec-rep" data-act="transitrep" hidden title="Copy the books in transit for WhatsApp">📋</button></h2>
       <div class="body"><div class="log" id="transitList"></div></div>
     </section>
     <section class="panel hand-panel" id="handPanel" data-fold="handovers" style="display:none">
@@ -3724,7 +3729,7 @@ function locName(loc){
     return 'In transit with '+who+(sp.origin?' from '+sp.origin:'');
   }
   if(loc==='BANK') return 'Bank';
-  if(loc==='OUTSIDE') return 'Outside the tour';
+  if(loc==='OUTSIDE') return 'Outside the system';
   /* A place in ANOTHER season — stock handed over from Europe Tour, say.
      STATE only holds the current season, so these showed as raw ids like
      "wh_35217d". Named with their season so it is clear where they are. */
@@ -3801,7 +3806,8 @@ const OUTSIDE_ORIGIN = 'OUTSIDE';
 function anyRegionName(id){
   const r = regionById(id) || (STATE.allRegions||[]).find(a=>a.regionId===id);
   if(!r) return id;
-  const other = r.seasonName && r.seasonId && r.seasonId!==STATE.activeSeason;
+  // Earthly HQ is its own place: never "Earthly HQ (Earthly HQ)" (b310).
+  const other = r.seasonName && r.seasonId && r.seasonId!==STATE.activeSeason && r.regionId!==HQ_REGION && r.seasonName!==r.name;
   return r.name + (other ? ' ('+r.seasonName+')' : '');
 }
 function shipLabel(x){
@@ -3811,7 +3817,7 @@ function shipLabel(x){
     to += ' › ' + locName(x.toLoc);
   // A batch from beyond the tour is named by where it actually came from.
   const from = x.fromRegion===OUTSIDE_ORIGIN
-    ? (x.origin || 'Outside the tour')
+    ? (x.origin || 'Outside the system')
     : anyRegionName(x.fromRegion);
   return from + ' → ' + to;
 }
@@ -5887,8 +5893,8 @@ function renderAdmin(){
     // No count on Record Costs or Consignment Books: the owner found it noise (b236).
     cols[1].push(`<button class="btn" data-act="costs">🧾 Record Expenses</button>`);
     if(!season) cols[1].push(`<button class="btn" data-act="paytypes">💳 Edit Payment Types</button>`);
-    // Prices in their own pop-up in Laksmi (practice, b306, Gita).
-    if(PRACTICE && placeKinds().some(k=>k!=='season')) cols[1].push(`<button class="btn" data-act="prices">💲 Change Prices</button>`);
+    // Prices in their own pop-up in Laksmi (practice b306; live since b310, Gita).
+    if(CHANGE_PRICES_ON && placeKinds().some(k=>k!=='season')) cols[1].push(`<button class="btn" data-act="prices">💲 Change Prices</button>`);
   }
   /* Expenses for everyone, one with Record Costs; Finance's own section (b238).
      The practice space only, for now: the owner tries it there first. */
@@ -5904,7 +5910,7 @@ function renderAdmin(){
   cols[2].push(`<button class="btn" data-act="partners">🤝 Consignment Books</button>`);
   /* The books are arranged, hidden and shown on the shelf itself (⇅ Arrange),
      so Edit Book Display is no longer in the menu (practice b248, live b250). */
-  if(CUR_LEVEL==='event' && !PRACTICE) cols[2].push(eventPricesBtn());   // practice: in Change Prices (b306)
+  if(CUR_LEVEL==='event' && !CHANGE_PRICES_ON) cols[2].push(eventPricesBtn());   // otherwise in Change Prices (b306)
 
   // Location
   if(isHQ()){
@@ -5973,6 +5979,8 @@ function drawAdmin(fams){
 /* Live for everyone since b235. CONFIG.CLASSIC_ADMIN brings back the old
    four-column panel — only the older browser tests use it, as they drive it. */
 const SIDE_NAV = !CONFIG.CLASSIC_ADMIN;
+/* Change Prices (practice b306) is live since b310 (Gita chose on a card); Event Prices is in it. */
+const CHANGE_PRICES_ON = true;
 /* The menu always starts closed, on phones and computers (b235), and so does
    every section in it (b236): opening one lasts until the page is left, as
    "Keep the menu open" does. Nothing about it is remembered on the device. */
@@ -6046,8 +6054,13 @@ function menuOrderModal(){
      Go to Sales Portal became the top bar's portal button. Whenever a menu item
      is taken out of the app, it goes here too. */
   const gone = a => a==='bookdisplay' || a==='fintodo' || a==='specreport' || a==='report' || a==='finleave' || (a==='costs' && FIN_ON) || (a==='viewas' && !PRACTICE)
-    || (a==='fincarry' && PRACTICE) || (a==='subregions' && !SUBR_ON) || !(MO_NAMES[a] || SN_ITEMS[a]);
-  const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.filter(a=>!gone(a))}));
+    || (a==='fincarry' && PRACTICE) || (a==='subregions' && !SUBR_ON) || !(MO_NAMES[a] || SN_ITEMS[a])
+    /* b310 (Gita: "still sections showing up that don't exist"): Event Prices is
+       inside Change Prices; Profile sits at the foot of
+       the menu (your name, above Sign Out), so Settings has nothing in it. A
+       section left with nothing is not listed. */
+    || (a==='prices' && !CHANGE_PRICES_ON) || (a==='eventprices' && CHANGE_PRICES_ON) || (a==='whoami' && SIDE_NAV);
+  const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.filter(a=>!gone(a))})).filter(x=>x.acts.length);
   const name = a => MO_NAMES[a] || SN_ITEMS[a] || ['•', a];
   openModal(`${mHead('Reorganize Menu')}<div class="m-body">
       <div class="hint">Drag a section by its heading, or an item by its row, to where it should go, into any section. The menu changes for everyone once you save. Each person still sees only the items their access allows.</div>
@@ -7027,7 +7040,7 @@ function renderNetBySeason(el){
   const cell = (o,c) => o[c] ? fmt(o[c]) : '<span class="zero">—</span>';
   const D = (v, e) => (Math.round(v*100) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usd2(Math.abs(v));
   const nums = x => `<td class="usd">${D(x.coll, x.eC)}</td><td class="usd">${x.exp ? D(-x.exp, x.eX) : '<span class="zero">—</span>'}</td>`
-    + `<td class="usd">${x.don ? D(x.don, x.eD) : '<span class="zero">—</span>'}</td><td class="usd cbr-net">${D(x.net, x.eN)}</td>`;
+    + `<td class="usd cbr-don">${x.don ? D(x.don, x.eD) : '<span class="zero">—</span>'}</td><td class="usd cbr-net">${D(x.net, x.eN)}</td>`;
   el.innerHTML = `
     <div class="ptg-scroll"><table class="cash-tbl cbr cbr-ns">
       <thead><tr><th>${UNIT.Word}</th><th class="cbr-tg"><button type="button" class="cbr-tgb" data-act="netcurs" aria-expanded="${NET_CURS}">${NET_CURS ? 'Hide <span class="nw">Currencies&nbsp;<span class="fin-caret">◂</span></span>' : 'Show <span class="nw">Currencies&nbsp;<span class="fin-caret">▸</span></span>'}</button></th>${curs.map(c=>`<th>${esc(CUR_SYM[c]||c)} ${esc(c)}</th>`).join('')}<th>Gross Collections</th><th>Expenses</th><th>Donations</th><th>Net Sales</th></tr></thead>
@@ -7919,6 +7932,7 @@ function renderBottom(){
   $('#remotePanel').style.display = asks.length?'':'none';
   if(asks.length) $('#remoteList').innerHTML = asks.map(remoteCardHTML).join('');
   $('#transitPanel').style.display = road.length?'':'none';
+  $('#transitPanel [data-act="transitrep"]').hidden = !TRANSIT_REP_ON;
   if(road.length) $('#transitList').innerHTML = road.map(r=>shipCardHTML(r.x, r.incoming)).join('');
   const hand = renderHandovers();
   const todo = renderTodo({pending:unpaid, pre:owed, change});
@@ -9737,16 +9751,22 @@ function transferLogModal(){
   const day = t => { try{ return t.toLocaleDateString(LOCALE, {month:'short', day:'numeric', year:'numeric'}); }catch(e){ return ''; } };
   const time = t => { try{ return t.toLocaleTimeString(LOCALE, {hour:'2-digit', minute:'2-digit'}); }catch(e){ return ''; } };
   const n = g => Object.values(g.items).reduce((a,b)=>a+b, 0);
-  // Books sent in transit name where the batch is going, or where it came from.
-  const where = g => { if(g.sub) return stockLocName(g.from) + ' → ' + stockLocName(g.to);
-    const sh = (STATE.shipments||[]).find(x=>x.shipId===g.other);
-    if(!sh) return /^sh_/.test(g.other) ? 'a batch in transit' : stockLocName(g.other);
-    return g.out ? stockLocName(sh.toLoc) + ' (in transit)' : (sh.origin || ((regionById(sh.fromRegion)||{}).name || 'outside the tour')) + ' (in transit)'; };
+  /* Every line says where the books went from and to, "Earthly HQ to
+     Vrindavana" (b310, Gita). A batch in transit names both ends of its
+     journey, whichever season they are in; only one that began beyond the
+     tour is "Outside the system". */
+  const where = g => {
+    const sh = !g.sub && (STATE.shipments||[]).find(x=>x.shipId===g.other);
+    if(!sh){
+      if(/^sh_/.test(g.other)) return g.out ? stockLocName(g.from) + ' to a batch in transit' : 'A batch in transit to ' + stockLocName(g.to);
+      return stockLocName(g.from) + ' to ' + stockLocName(g.to);
+    }
+    return shipLabel(sh).replace(' → ', ' to ') + (g.out ? ' (sent in transit)' : ''); };
   openModal(`${mHead('Transfer log — ' + esc(locName(CUR_LOC)))}
     <div class="m-body">
       <div class="tl-key"><span class="tl-in">⬇ In</span><span class="tl-out">⬆ Out</span>${mine.size > 1 ? '<span class="tl-sub">⇄ Sub-warehouse</span>' : ''}</div>
       ${list.length ? list.map(g=>`<details class="tl-row ${g.sub ? 'sub' : g.out ? 'out' : 'in'}">
-        <summary><span class="tl-d">${esc(day(g.ts))}</span><span class="tl-w">${g.sub ? '⇄' : g.out ? '⬆ To' : '⬇ From'} ${esc(where(g))}</span><span class="tl-n">${n(g)} book${n(g)===1?'':'s'}</span><span class="tl-car" aria-hidden="true">▸</span></summary>
+        <summary><span class="tl-d">${esc(day(g.ts))}</span><span class="tl-w">${g.sub ? '⇄' : g.out ? '⬆' : '⬇'} ${esc(where(g))}</span><span class="tl-n">${n(g)} book${n(g)===1?'':'s'}</span><span class="tl-car" aria-hidden="true">▸</span></summary>
         <div class="tl-det">${Object.keys(g.items).map(id=>`<div class="tl-it"><span>${esc((bookById(id)||{}).name || id)}</span><b>${g.items[id]}</b></div>`).join('')}
           <div class="muted-note">${esc(time(g.ts))}${g.notes.size ? ' · ' + esc([...g.notes].join(' · ')) : ''}</div></div>
       </details>`).join('') : '<div class="cash-empty">No transfers in or out yet.</div>'}
@@ -11282,9 +11302,10 @@ function finTotals(list, amt){
 function finDraw(){
   const T = finScopedTodo(), q = fold(EXP.q.trim());
   const hit = (...xs) => !q || xs.some(s=>String(s||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q));
-  const reimb = T.reimb.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method));
+  // The notes are searched too (b310, Gita), and the note left when it was paid or declined.
+  const reimb = T.reimb.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, x.notes, x.doneNote));
   const pend = T.pending.filter(p=>hit(p.name, p.phone, p.book, p.place, p.region, p.season, p.soldBy));
-  const all = T.all.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, EXP_STATUS[x.status]));
+  const all = T.all.filter(x=>hit(x.desc, x.byName, x.forName, x.placeLabel, x.method, EXP_STATUS[x.status], x.notes, x.doneNote));
   const tab = (k, label, n, col) => `<button type="button" class="fin-tab${EXP.tab===k?' on':''}" data-act="fintab" data-tab="${k}" style="--tc:${col}">
     ${esc(label)} <span class="fin-n">${n}</span></button>`;
   let body = '';
@@ -11613,7 +11634,10 @@ function finPlaces(){
       const subs = finSubsOf(r.id), done = new Set();
       // Sub-regions (b280), each with its events beneath it; then the region's other events.
       subs.forEach(sr=>{ out.push({kind:'event', sub:1, id:sr.id, name:sr.name, s:se.id, r:r.id, sName:se.name, rName:r.name});
-        D.events.filter(e=>e.regionId===r.id && subOfEvent(e.id)===sr.id).forEach(e=>{ done.add(e.id); evRow(e); }); });
+        /* Its old warehouse, "Barcelona (warehouse)", is the sub-region itself, so
+           it is not listed again (b310, Gita: "the same thing"). */
+        D.events.filter(e=>e.regionId===r.id && subOfEvent(e.id)===sr.id).forEach(e=>{ done.add(e.id);
+          if(!(/^wh_/.test(e.id) && e.name===sr.name + ' (warehouse)')) evRow(e); }); });
       D.events.filter(e=>e.regionId===r.id && !done.has(e.id)).forEach(evRow);
       fps.filter(x=>x.parent===r.id).forEach(x=>out.push({kind:'event', fin:1, id:x.id, name:x.name, s:se.id, r:r.id, sName:se.name, rName:r.name}));
     });
@@ -13245,7 +13269,7 @@ function finPaySplit(xs){
 function finExpShown(){
   const E = FIN.ex, q = fold(E.q.trim());
   const list = finExpList().filter(x=>(!E.types.size || E.types.has(x.type)) && (!E.sts.size || E.sts.has(x.status)) &&
-    (!q || [x.desc, x.who, x.type, x.placeLabel, x.notes, x.payType, EXP_STATUS[x.status]].some(v=>String(v||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q))));
+    (!q || [x.desc, x.who, x.type, x.placeLabel, x.notes, x.doneNote, x.payType, EXP_STATUS[x.status]].some(v=>String(v||'').toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q))));
   const key = {date: x=>x.date + (x.ts||''), name: x=>x.who.toLowerCase(), amount: x=>x.usd===null ? -1 : x.usd, type: x=>x.type.toLowerCase()}[E.sort];
   return list.sort((a,b)=>{ const va = key(a), vb = key(b);
     return (typeof va==='number' ? va - vb : String(va).localeCompare(String(vb))) * E.dir || String(b.date).localeCompare(String(a.date)); });
@@ -15621,7 +15645,9 @@ function waPlaces(states){
       const inReg = new Set(locsInRegion(r.regionId));
       subRegionsOf(r.regionId).forEach(su=>out.push({v:S+'s:'+r.regionId+':'+su.id, l:su.name, shown:su.name + ' · ' + r.name, kind:'event', up:[r.name, sName], upIds:[S+'r:'+r.regionId, S+'season'],
         tag:'Sub-region', sid, name:su.name, locs:eventsOfSub(r.regionId, su.id).map(e=>e.eventId), sale:y=>inReg.has(y.location) && saleSub(y)===su.id}));
-      eventsOfRegion(r.regionId).forEach(e=>out.push({v:S+'e:'+e.eventId, l:e.name, shown:e.name + ' · ' + r.name, kind:'event', up:[r.name, sName], upIds:[S+'r:'+r.regionId, S+'season'],
+      // A sub-region's old warehouse is the sub-region itself (b310, Gita).
+      const subWh = new Set(subRegionsOf(r.regionId).map(su=>(subWarehouse(r.regionId, su.id)||{}).eventId).filter(Boolean));
+      eventsOfRegion(r.regionId).filter(e=>!subWh.has(e.eventId)).forEach(e=>out.push({v:S+'e:'+e.eventId, l:e.name, shown:e.name + ' · ' + r.name, kind:'event', up:[r.name, sName], upIds:[S+'r:'+r.regionId, S+'season'],
         sid, name:e.name, locs:[e.eventId]}));
     });
   }));
@@ -17450,7 +17476,7 @@ function deliverModal(id, bundle){
             the sale stays here.</span>
         </button>`}
         <button class="opt" data-src="outside">
-          <b>From outside the tour</b>
+          <b>From outside the system</b>
           <span>Sourced from beyond this system entirely. Nothing comes off a shelf, and the
             ${members.length>1?'sales':'sale'} still count${members.length>1?'':'s'}.</span>
         </button>
@@ -17732,7 +17758,10 @@ function priceGrid(edit, st){
   const priceOf = (bookId,c)=>{
     if(!isEdit) return '';
     const pr=((st||STATE).prices||{})[edit.regionId];
-    return (pr&&pr[bookId]&&pr[bookId][c]!==undefined)?pr[bookId][c]:'';
+    /* No price, or 0 (what the server gives a currency nobody priced, e.g.
+       Earthly HQ's rupees), is an empty box the calculator fills (b310). */
+    const v = pr&&pr[bookId] ? pr[bookId][c] : undefined;
+    return v===undefined || v===null || v==='' || Number(v)===0 ? '' : v;
   };
 
   function priceRows(curList){
@@ -17823,11 +17852,17 @@ function priceGrid(edit, st){
     const id = cell.dataset.book, cur = cell.dataset.cur, loc = localCur();
     if(cur !== loc){
       const lb = document.querySelector(`#modal .rp[data-book="${id}"][data-cur="${loc}"]`);
-      if(lb && Number(lb.value) > 0) autoSet(cell, conv2(Number(lb.value), loc, cur));
-      return;
+      if(lb && Number(lb.value) > 0){ autoSet(cell, conv2(Number(lb.value), loc, cur)); return; }
+    }else{
+      const all = topBox(bookCat(id), cur);
+      if(all && all.value !== ''){ autoSet(cell, all.value); spreadFrom(id, cur, cell.value); return; }
     }
-    const all = topBox(bookCat(id), cur);
-    if(all && all.value !== ''){ autoSet(cell, all.value); spreadFrom(id, cur, cell.value); }
+    /* No local price for this title (b310, Gita: a new currency stayed blank
+       where the title was only priced in dollars): worked out from a price it
+       has in another currency, one typed or saved, never another worked-out one. */
+    const src = [...document.querySelectorAll(`#modal .rp[data-book="${id}"]`)]
+      .find(x=>x!==cell && x.dataset.hand && Number(x.value) > 0 && conv2(Number(x.value), x.dataset.cur, cur) !== '');
+    if(src) autoSet(cell, conv2(Number(src.value), src.dataset.cur, cur));
   }
   // The top row in another currency follows the top row's local price, unless typed by hand.
   function refillTop(box){
@@ -17848,8 +17883,10 @@ function priceGrid(edit, st){
   // Every empty box gets its calculation (on opening, and when a currency is added).
   function calcEmpty(){
     document.querySelectorAll('#modal .rp-all').forEach(i=>{ if(i.value==='' && !i.dataset.hand) refillTop(i); });
-    const loc = localCur();
-    document.querySelectorAll('#modal .rp[data-book]').forEach(i=>{ if(i.value==='' && !i.dataset.hand && i.dataset.cur!==loc) refill(i); });
+    const loc = localCur(), empty = i => i.value==='' && !i.dataset.hand;
+    // The local price first (from another currency when it has none), then the rest from it.
+    document.querySelectorAll(`#modal .rp[data-book][data-cur="${loc}"]`).forEach(i=>{ if(empty(i)) refill(i); });
+    document.querySelectorAll('#modal .rp[data-book]').forEach(i=>{ if(empty(i) && i.dataset.cur!==loc) refill(i); });
   }
 
   // Every box's figure, and whether it was typed by hand or worked out, across a redraw.
@@ -17979,6 +18016,7 @@ function regionModal(edit, after){
     }
   });
   $('#rgCur').addEventListener('change',()=>{
+    curFieldClean($('#rgCur'));
     const typed=rpKeep();
     const list=parseCurs($('#rgCur').value);
     $('#rgPrices').innerHTML=priceRows(list);
@@ -18030,9 +18068,28 @@ function regionModal(edit, after){
     }
   });
 }
+/* A real currency: one the exchange-rate list knows (about 160 of them). With
+   no rates on this device yet, any three letters are taken (b310, Gita: "when
+   you enter a currency that doesn't exist, don't allow it to populate"). */
+function curExists(c){
+  c = String(c||'').trim().toUpperCase(); if(!/^[A-Z]{3}$/.test(c)) return false;
+  const per = (STATE && STATE.rates && STATE.rates.perUsd) || {};
+  return c==='USD' || Number(per[c]) > 0 || Object.keys(per).length < 20;
+}
+/* The currency box: anything that is not a currency is taken out, with a note saying so. */
+function curFieldClean(el){
+  const parts = String(el.value||'').split(',').map(c=>c.trim()).filter(Boolean);
+  const bad = parts.filter(c=>!curExists(c));
+  const err = $('#modalErr');
+  if(bad.length){
+    el.value = parts.filter(c=>curExists(c)).map(c=>c.toUpperCase()).join(', ');
+    if(err) err.textContent = bad.map(c=>'"' + c + '"').join(', ') + (bad.length===1 ? ' is not a currency' : ' are not currencies') + '. Use the official three-letter code, like GBP or EUR.';
+  } else if(err && /not a currenc/.test(err.textContent)) err.textContent = '';
+  return bad;
+}
 function parseCurs(raw){
   const list=String(raw||'').split(',').map(c=>c.trim().toUpperCase())
-    .filter(c=>/^[A-Z]{3}$/.test(c));
+    .filter(c=>/^[A-Z]{3}$/.test(c) && curExists(c));
   if(!list.includes('USD')) list.push('USD');
   return [...new Set(list)];
 }
@@ -20413,7 +20470,7 @@ function pricesModal(){
           <div id="rgPrices">${G.rows(parseCurs((p.currencies||['USD']).join(',')))}</div>`;
         G.bind();
         $('#rgPrices').addEventListener('change', e=>{ const cb = e.target.closest('.bk-cb'); if(cb) cb.closest('.bk-row').classList.toggle('off', !cb.checked); });
-        $('#rgCur').addEventListener('change', ()=>{ const k = G.keep(); $('#rgPrices').innerHTML = G.rows(parseCurs($('#rgCur').value)); G.put(k); });
+        $('#rgCur').addEventListener('change', ()=>{ curFieldClean($('#rgCur')); const k = G.keep(); $('#rgPrices').innerHTML = G.rows(parseCurs($('#rgCur').value)); G.put(k); });
         return;
       }
       const r = regionOf(p, st), curs = parseCurs((r.currencies||['USD']).join(','));
@@ -20895,7 +20952,7 @@ function shipmentsModal(){
     ${mHead('Books in transit')}
     <div class="m-body">
       ${season?'':`<div class="rp-add">
-        <button type="button" class="btn btn-primary btn-sm" data-act="shoutside">＋ Books coming from outside the tour</button>
+        <button type="button" class="btn btn-primary btn-sm" data-act="shoutside">＋ Books coming from outside the system</button>
       </div>`}
       <div class="cash-sub">${season?'Books Currently Between Locations':'Coming to '+esc(reg.name)}</div>
       ${inb.length ? inb.map(x=>card(x,true)).join('')
@@ -21079,6 +21136,76 @@ function shipRemainReport(x){
   const left = rows.reduce((t,r)=>t+r.left,0), sent = shipBooks(x).reduce((t,r)=>t+r.sent,0);
   L.push('', 'Total - ' + left + ' of ' + sent + ' still to come');
   return L.join('\n');
+}
+/* Books in Transit for WhatsApp (b310, practice first; Gita). Tick the batches
+   to report on, named by who is bringing them; for one partly delivered, tick
+   "Books That Arrived", "Books Still in Transit" or both. */
+const TRANSIT_REP_ON = PRACTICE;
+function transitReport(list, pick, part){
+  const L = ['— BOOKS IN TRANSIT —', locName(CUR_LOC)];
+  const day = d => new Date(d).toLocaleDateString(LOCALE,{day:'numeric',month:'short'});
+  list.filter(x=>pick.has(x.shipId)).forEach(x=>{
+    const rows = shipBooks(x), sent = rows.reduce((t,r)=>t+r.sent,0);
+    L.push('', '*' + (x.carrier || (x.mode==='shipping' ? 'Courier' : 'A devotee')) + '*', shipLabel(x).replace(' → ', ' to '));
+    if(x.phone) L.push(x.phone);
+    if(x.mode==='shipping' && x.tracking) L.push('Tracking ' + x.tracking);
+    L.push(x.eta ? 'Expected ' + day(x.eta) : 'No arrival date yet');
+    const arr = rows.filter(r=>r.arrived>0), left = rows.filter(r=>r.left>0);
+    const nArr = arr.reduce((t,r)=>t+r.arrived,0), nLeft = left.reduce((t,r)=>t+r.left,0);
+    if(x.status==='PARTIAL'){
+      const P = part[x.shipId] || {arr:true, left:true};
+      L.push('Partly delivered');
+      if(P.arr){ L.push('', 'Books That Arrived:'); arr.forEach(r=>L.push(r.b.name + ' - ' + r.arrived + ' of ' + r.sent)); L.push('Arrived - ' + nArr + ' of ' + sent); }
+      if(P.left){ L.push('', 'Books Still in Transit:'); left.forEach(r=>L.push(r.b.name + ' - ' + r.left)); L.push('Still in transit - ' + nLeft + ' of ' + sent); }
+    }else{
+      L.push(''); left.forEach(r=>L.push(r.b.name + ' - ' + r.left));
+      L.push('Total - ' + nLeft + ' book' + (nLeft===1?'':'s'));
+    }
+  });
+  return L.join('\n');
+}
+function transitReportModal(){
+  const list = transitHere().map(r=>r.x);
+  if(!list.length){ toast('No books in transit here.'); return; }
+  const pick = new Set(list.map(x=>x.shipId)), part = {};
+  list.forEach(x=>{ if(x.status==='PARTIAL') part[x.shipId] = {arr:true, left:true}; });
+  const nm = x => x.carrier || (x.mode==='shipping' ? 'Courier' : 'A devotee');
+  const canShare = typeof navigator !== 'undefined' && !!navigator.share;
+  openModal(`${mHead('Books in Transit Report')}
+    <div class="m-body">
+      <div class="hint">Choose which to report on.</div>
+      <div class="tr-picks">${list.map(x=>`<div class="tr-pick">
+          <label class="rep-pick"><input type="checkbox" data-trs="${esc(x.shipId)}" checked>
+            <span><b>${esc(nm(x))}</b> <span class="muted-note">${esc(shipLabel(x).replace(' → ', ' to '))} · ${shipTotal(x)} book${shipTotal(x)===1?'':'s'}${x.status==='PARTIAL' ? ' still to come' : ''}</span></span></label>
+          ${x.status==='PARTIAL' ? `<div class="tr-sub">
+            <label class="rep-pick"><input type="checkbox" data-trp="${esc(x.shipId)}" data-k="arr" checked><span>Books That Arrived</span></label>
+            <label class="rep-pick"><input type="checkbox" data-trp="${esc(x.shipId)}" data-k="left" checked><span>Books Still in Transit</span></label></div>` : ''}
+        </div>`).join('')}</div>
+      <div class="hint">data reports designed for sending via text</div>
+      <textarea id="repText" class="rep-box" rows="14" readonly></textarea>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      ${canShare?`<button class="btn btn-teal" id="repShare">Send…</button>`:''}
+      <button class="btn btn-primary" id="repCopy">Copy</button>
+    </div>`, true);
+  const box = $('#repText');
+  const draw = () => { box.value = pick.size ? transitReport(list, pick, part) : '(nothing chosen)'; };
+  document.querySelectorAll('#modal [data-trs]').forEach(cb=>cb.onchange = ()=>{
+    cb.checked ? pick.add(cb.dataset.trs) : pick.delete(cb.dataset.trs);
+    const sub = cb.closest('.tr-pick').querySelector('.tr-sub'); if(sub) sub.hidden = !cb.checked;
+    draw(); });
+  document.querySelectorAll('#modal [data-trp]').forEach(cb=>cb.onchange = ()=>{ part[cb.dataset.trp][cb.dataset.k] = cb.checked; draw(); });
+  draw();
+  $('#repCopy').addEventListener('click', async ()=>{
+    try{ if(navigator.clipboard){ await navigator.clipboard.writeText(box.value); toast('Report copied'); return; } throw new Error('no clipboard'); }
+    catch(e){ box.focus(); box.select(); $('#modalErr').textContent = 'Copy it with Ctrl/Cmd+C — the text is selected.'; }
+  });
+  const sb = $('#repShare');
+  if(sb) sb.addEventListener('click', async ()=>{
+    try{ await navigator.share({ text: box.value }); }
+    catch(e){ if(e && e.name!=='AbortError') $('#modalErr').textContent='Sharing was not available — copy it instead.'; }
+  });
 }
 function shipReceiveModal(id, fromPanel){
   const x = (STATE.shipments||[]).find(v=>v.shipId===id);
@@ -22897,6 +23024,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='shremain'){ const x = (STATE.shipments||[]).find(v=>v.shipId===t.dataset.id); if(x) reportDialog({title:'Remaining to Be Delivered', make:()=>shipRemainReport(x)}); return; }
+  if(a==='transitrep'){ transitReportModal(); return; }
   if(a==='shreceive'){ shipReceiveModal(t.dataset.id, !!t.closest('#transitPanel')); return; }
   if(a==='sharriveall'){ shipArriveAll(t.dataset.id); return; }
   if(a==='holders'){ holdersModal(); return; }
