@@ -35,7 +35,7 @@
 const DAY = 24 * 3600 * 1000;
 export const SESSION_DAYS = 90;
 // The settings a person may keep with their login (b243): their book order on a computer, and on a phone (b244).
-const PREF_KEYS = ['bookOrder', 'bookOrderPhone', 'finSaved', 'contact'];   // contact (b304): { whatsapp, email } from their Profile
+const PREF_KEYS = ['bookOrder', 'bookOrderPhone', 'finSaved', 'contact', 'stockOrder'];   // stockOrder (b312): the titles' order in Add Stock and Transfer   // contact (b304): { whatsapp, email } from their Profile
 const GOOGLE_KEYS = 'https://www.googleapis.com/oauth2/v3/certs';
 const GOOGLE_ISSUERS = ['accounts.google.com', 'https://accounts.google.com'];
 
