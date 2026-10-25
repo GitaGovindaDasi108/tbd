@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b312**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b313**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,11 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b313
+
+Live app changes (Gita, 25 Oct, chose "Drop-downs only" on a card):
+- Change Prices picks the place with drop-downs only, the same at Earthly HQ, a season, a region and an event: Season (Earthly HQ first), Region, Event ("Whole region" = the region's prices). `placePickModal({dropdowns:true})` / `drawDD`; Edit Location keeps its tabs.
 
 ## Done in b312
 

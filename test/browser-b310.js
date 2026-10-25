@@ -114,8 +114,8 @@ c({ action: 'createEvent', eventId: 'wh_subold', name: 'Bcn (warehouse)', region
     await page.evaluate(() => closeModal());
     /* Change Prices on live (Gita chose on a card): opens where you are, with the tabs. */
     await page.evaluate(() => { goTo('region', 'rg_two'); pricesModal(); }); await page.waitForTimeout(400);
-    const cp = await page.evaluate(() => ({ tabs: [...document.querySelectorAll('#ppTabs .seg-b')].map(b => b.textContent), on: (document.querySelector('#ppTabs .on') || {}).textContent, reg: (document.querySelector('#ppReg') || {}).value }));
-    t.push(['live Change Prices: tabs ' + cp.tabs.join('/') + ', opened at the region you are in', cp.tabs.includes('Region') && cp.on === 'Region' && cp.reg === 'rg_two']);
+    const cp = await page.evaluate(() => ({ reg: (document.querySelector('#ppReg') || {}).value, ev: (document.querySelector('#ppEv') || {}).value }));
+    t.push(['live Change Prices: opened at the region you are in (b313: drop-downs)', cp.reg === 'rg_two' && cp.ev === '']);
     t.push(['live: the menu has Change Prices and no separate Event Prices', await page.evaluate(() => { goTo('event', (STATE.events.find(e => !e.closedAt) || {}).eventId); return !!document.querySelector('#sideNav [data-act="prices"]') && !document.querySelector('#sideNav [data-act="eventprices"]'); })]);
     await page.evaluate(() => closeModal());
 

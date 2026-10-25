@@ -52,7 +52,8 @@ c({ action: 'createEvent', eventId: 'ev_b311', name: 'Book Fair', regionId: R0.r
     /* 1. Edit Location / Change Prices from the season page: the Region tab finds the region. */
     for (const fn of ['placeEditModal', 'pricesModal']) {
       const r = await page.evaluate(async fn => { goTo('season'); window[fn](); await new Promise(r => setTimeout(r, 300));
-        document.querySelector('#ppTabs [data-pp-k="region"]').click(); await new Promise(r => setTimeout(r, 200));
+        const tab = document.querySelector('#ppTabs [data-pp-k="region"]'); if (tab) tab.click();   // Change Prices has drop-downs only (b313)
+        await new Promise(r => setTimeout(r, 200));
         const o = { reg: (document.querySelector('#ppReg') || {}).value, body: document.querySelector('#ppBody').innerText.slice(0, 40) }; closeModal(); return o; }, fn);
       t.push([fn + ' from the season page, Region tab: ' + r.reg + ' — ' + r.body.replace(/\n/g, ' '), r.reg === R0id && !/No regions/.test(r.body)]);
     }
@@ -84,7 +85,7 @@ c({ action: 'createEvent', eventId: 'ev_b311', name: 'Book Fair', regionId: R0.r
 
     /* 5. Change Prices for an event: a fill-all row and the calculator. */
     await page.evaluate(() => { goTo('event', 'ev_b311'); pricesModal(); }); await page.waitForTimeout(300);
-    await page.evaluate(() => document.querySelector('#ppTabs [data-pp-k="event"]').click()); await page.waitForTimeout(200);
+    // b313: opened at the event, Change Prices is already on it.
     const ep = await page.evaluate(() => {
       const top = document.querySelector('#ppBody .ep-all[data-cat="big"]'); if (!top) return { err: 'no fill-all row' };
       const loc = top.dataset.cur; top.value = '20'; top.dispatchEvent(new Event('input', { bubbles: true }));

@@ -157,14 +157,14 @@ c({ action: 'createRegion', regionId: 'rg_two', whLoc: 'wh_two', name: 'Second R
     await page.fill('#ppName', 'Earthly HQ Two'); await page.click('#ppSave'); await page.waitForTimeout(1500);
     t.push(['…and renames it', (state('HQ').regions || []).some(r => r.regionId === 'rg_hq' && r.name === 'Earthly HQ Two')]);
     await page.evaluate(() => pricesModal()); await page.waitForTimeout(500);
-    t.push(['Change Prices at Earthly HQ opens on Earthly HQ, with its currencies and prices', await page.evaluate(() => (document.querySelector('#ppTabs .on') || {}).dataset.ppK === 'hq' && !!document.querySelector('#modal #rgCur') && !!document.querySelector('#modal .rp[data-book]'))]);
+    t.push(['Change Prices at Earthly HQ opens on Earthly HQ, with its currencies and prices', await page.evaluate(() => (document.querySelector('#ppSn') || {}).value === '__hq' && !!document.querySelector('#modal #rgCur') && !!document.querySelector('#modal .rp[data-book]'))]);
     const hc = await page.$eval('#rgCur', i => i.value.split(',')[0].trim());
     await page.fill(`#modal .rp[data-book="${B}"][data-cur="${hc}"]`, '44'); await page.click('#ppSave'); await page.waitForTimeout(1500);
     t.push(['…and saves Earthly HQ\'s price', Number((((state('HQ').prices || {}).rg_hq || {})[B] || {})[hc]) === 44]);
     // From a season, the Earthly HQ tab still opens Earthly HQ (and a season's region saves in its own season).
     await page.evaluate(s => switchSeason(s), SA); await page.waitForTimeout(1500);
     await page.evaluate(() => pricesModal()); await page.waitForTimeout(400);
-    await page.evaluate(() => document.querySelector('#ppTabs [data-pp-k="hq"]').click()); await page.waitForTimeout(1200);
+    await page.evaluate(() => { const s = document.querySelector('#ppSn'); s.value = '__hq'; s.onchange(); }); await page.waitForTimeout(1200);   // b313: drop-downs
     t.push(['…from a season too', await page.evaluate(b => !!document.querySelector('#modal #rgCur') && document.querySelector(`#modal .rp[data-book="${b}"]`) && [...document.querySelectorAll(`#modal .rp[data-book="${b}"]`)].some(i => i.value === '44'), B)]);
     for (const w of [390, 1150]) { await page.setViewportSize({ width: w, height: 900 }); await page.waitForTimeout(200);
       t.push(['Change Prices (Earthly HQ): nothing sticks out at ' + w + 'px', await page.evaluate(() => { const W = document.documentElement.clientWidth;
