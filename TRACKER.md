@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b310**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b311**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,17 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b311
+
+Live app changes (Gita, 25 Oct):
+- placePickModal (Edit Location, Change Prices): regions and events always come from the chosen season (`snSt`), and switching tab re-runs `fix()`. Opening from Earthly HQ or the season page and choosing Region no longer says "No regions here yet".
+- Add Stock / Transfer drop-downs: `stockBooks` puts the titles in your own ⇅ Arrange order (`inMyOrder`) on top of the region's order.
+- Totals cards: Big Books number gold, AoTM blue (Gita chose "Gold and blue"); "+N gifts" and "= N distributed" on separate lines (`giftNote(c, true)`).
+- Transfer log: stock added from outside the system (ADJUST moves into this shelf, not closing-count or batch corrections) is listed as "⬇ Stock added from outside the system".
+- Change Prices, event tab: a "fill all" row per kind and the currency calculator (local = the region's first currency); only typed prices are worked out, blanks still mean the region's price.
+- In-transit card: "📋 Remaining to Be Delivered" button and `shipRemainReport` removed; Books in Transit WhatsApp report live (`TRANSIT_REP_ON = true`).
+- Live from practice: Edit Location (replaces Edit Earthly HQ / Edit Season / Edit Region / Rename Event; regionModal `lean`), Dollars Received on the Finance Overview + its WhatsApp lines (list no longer in the Dollars received pop-up), "▾ Hide table" on the Finance Overview table.
 
 ## Done in b310
 Live app changes (Gita, 2026-10-25 06:52 IST).

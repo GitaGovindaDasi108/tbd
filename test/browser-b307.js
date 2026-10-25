@@ -88,7 +88,8 @@ c({ action: 'createRegion', regionId: 'rg_two', whLoc: 'wh_two', name: 'Second R
 
     /* 4. The price calculator. */
     await page.evaluate(() => { goTo('region', 'rg_two'); }); await page.waitForTimeout(500);
-    await page.evaluate(() => regionModal(currentRegion())); await page.waitForTimeout(300);
+    // b311: Edit region is name and dates on live too; prices are in Change Prices.
+    await page.evaluate(() => pricesModal()); await page.waitForTimeout(300);
     const cal = await page.evaluate(([b, b2]) => {
       const fire = (el, ev) => el.dispatchEvent(new Event(ev, { bubbles: true }));
       const box = (id, c) => document.querySelector(`#modal .rp[data-book="${id}"][data-cur="${c}"]`);
@@ -113,7 +114,7 @@ c({ action: 'createRegion', regionId: 'rg_two', whLoc: 'wh_two', name: 'Second R
     t.push(['…the top row overwrites the prices below it, the saved one too (' + cal.over + ', ' + cal.overU + ')', cal.over === '25' && Number(cal.overU) > 0 && Number(cal.overU) !== Number(cal.wasU)]);
     t.push(['…its other currency follows the top row\'s local price (' + cal.topU + ')', Number(cal.topU) > 0]);
     t.push(['…and typed there, it overwrites that currency below (' + cal.topUhand + ')', cal.topUhand === '30']);
-    await page.click('#rgSave'); await page.waitForTimeout(1500);
+    await page.click('#ppSave'); await page.waitForTimeout(1500);
     const pr = (state().prices || {}).rg_two || {};
     t.push(['…and saves (' + JSON.stringify(pr[B]) + ')', pr[B] && Number(pr[B].EUR) === 25 && Number(pr[B].USD) === 30]);
 

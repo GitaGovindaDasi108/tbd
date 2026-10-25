@@ -68,7 +68,7 @@ c({ action: 'createEvent', eventId: 'wh_subold', name: 'Bcn (warehouse)', region
 
     /* 2. Books in Transit for WhatsApp (practice only). */
     await page.evaluate(() => goTo('region', 'rg_two')); await page.waitForTimeout(400);
-    t.push(['live: no Books in Transit report button yet', await page.evaluate(() => document.querySelector('#transitPanel [data-act="transitrep"]').hidden)]);
+    t.push(['live (b311): the Books in Transit report button shows', await page.evaluate(() => !document.querySelector('#transitPanel [data-act="transitrep"]').hidden)]);
     await page.evaluate(() => transitReportModal()); await page.waitForTimeout(300);
     const nb = await page.$$eval('#modal [data-trs]', a => a.length), ns = await page.$$eval('#modal [data-trp]', a => a.length);
     t.push(['one batch to choose, with Books That Arrived / Books Still in Transit under it', nb === 1 && ns === 2]);
@@ -95,7 +95,7 @@ c({ action: 'createEvent', eventId: 'wh_subold', name: 'Bcn (warehouse)', region
     /* 5. The calculator works from another currency, and made-up currencies are refused. */
     c({ action: 'editRegion', regionId: 'rg_two', name: 'Second Region', currencies: 'EUR,USD', books: '', prices: { [B]: { USD: 40, EUR: 0 } } });
     await page.evaluate(() => pull()); await page.waitForTimeout(1500); await rates();
-    await page.evaluate(() => { goTo('region', 'rg_two'); regionModal(regionById('rg_two')); }); await page.waitForTimeout(400);
+    await page.evaluate(() => { goTo('region', 'rg_two'); pricesModal(); }); await page.waitForTimeout(400);
     const eur = await page.$eval(`#modal .rp[data-book="${B}"][data-cur="EUR"]`, i => i.value);
     t.push(['priced only in dollars (EUR saved as 0): the local EUR box worked out (' + eur + ')', eur === '36']);
     await page.click('#rgCur'); await page.keyboard.press('End'); await page.keyboard.type(', GBP, LGB');
