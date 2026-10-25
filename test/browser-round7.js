@@ -10,6 +10,8 @@ const m = require(ROOT + '/test/mini.js');
 const shot = n => path.join(os.tmpdir(), 'tbs-r7-' + n + '.png');
 
 m.init();
+// b314: an empty title list no longer means every title, so the sample region ticks them all, as a new region does.
+m.run("dbUpdate_('_regions', { regionId: 'rg_poland' }, { books: BOOKS.map(b => b.id).join(',') }); cacheClear_(); bumpRev_();");
 const ok = (r, what) => { if (!r.ok) throw new Error(what + ': ' + r.error); return r; };
 let st = m.call({ action: 'getState' }).state;
 const SA = st.activeSeason;

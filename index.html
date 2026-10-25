@@ -1918,7 +1918,7 @@ body.has-va{padding-top:44px}
 .overlay{position:fixed;inset:0;background:rgba(43,34,48,.55);backdrop-filter:blur(2px);
   display:none;align-items:flex-start;justify-content:center;padding:20px;z-index:50;overflow:auto}
 .overlay.show{display:flex}
-.sure-ov{z-index:10001}.cv-rows{display:grid;gap:6px;margin-bottom:6px}.cv-blk + .cv-blk{border-top:1px solid var(--line);margin-top:10px;padding-top:8px}.cv-bh{display:flex;align-items:center;justify-content:space-between;gap:8px}.cv-row .cv-rm{flex:0 0 auto}.sure-ov .modal{max-width:380px}.sure-ov .m-body{white-space:pre-line}
+.sure-ov{z-index:10001}.cv-rows{display:grid;gap:6px;margin-bottom:6px}.cv-blk:not(.cv-folded) ~ .cv-blk:not(.cv-folded){border-top:1px solid var(--line);margin-top:10px;padding-top:8px}.cv-blk.cv-folded{display:none}.cv-bh{display:flex;align-items:center;justify-content:space-between;gap:8px}.cv-row .cv-rm{flex:0 0 auto}.sure-ov .modal{max-width:380px}.sure-ov .m-body{white-space:pre-line}
 .modal{background:var(--paper);border-radius:16px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.35);
   /* Pinned to the top, not centred (b278, Gita: "not squirrelly"): a window
      whose contents grow or shrink stays where it is instead of sliding. */
@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b313</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b314</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3287,11 +3287,38 @@ function bookBelongsIn(b, regionId){
   const p = partnerById(b.partnerId);
   return !!p && !!regionId && String(p.regionId)===String(regionId);
 }
+/* The titles a region carries when nobody ever ticked a list for it (b314).
+   An empty list used to mean "every title", so each title added at Earthly HQ
+   turned up in old regions such as Italy. Now it means the titles the region
+   has actually had: stocked, moved, shipped or sold there. A region with none
+   of those yet still offers every title. Returns null for "every title". */
+function carriedIds(r, st){
+  st = st || STATE;
+  const chosen = asIdList(r && r.books);
+  if(chosen.length) return new Set(chosen);
+  if(!r || r.regionId===HQ_REGION) return null;   // Earthly HQ holds every title
+  const key = r.regionId+'|'+(st.sales||[]).length+'|'+(st.stockMoves||[]).length+'|'+(st.inventory||[]).length;
+  if(CARRIED_MEMO.st===st && CARRIED_MEMO.by.has(key)) return CARRIED_MEMO.by.get(key);
+  if(CARRIED_MEMO.st!==st) CARRIED_MEMO = {st, by:new Map()};
+  const locs = new Set([r.whLoc].concat((st.events||[]).filter(e=>(e.regionId||'')===r.regionId).map(e=>e.eventId))
+    .concat((st.holders||[]).filter(h=>h.regionId===r.regionId).map(h=>h.holderId)).filter(Boolean));
+  // Not its prices: every title comes with a price list, sold there or not.
+  const out = new Set();
+  (st.inventory||[]).forEach(i=>{ if(locs.has(i.location)) out.add(i.bookId); });
+  (st.sales||[]).forEach(x=>{ if(locs.has(x.location)) out.add(x.bookId); });
+  (st.stockMoves||[]).forEach(m=>{ if(locs.has(m.toLoc)||locs.has(m.fromLoc)) out.add(m.bookId); });
+  (st.shipments||[]).forEach(sh=>{ if(sh.manifest && (sh.toRegion===r.regionId || locs.has(sh.toLoc))) Object.keys(sh.manifest).forEach(id=>out.add(id)); });
+  out.delete('');
+  const res = out.size ? out : null;
+  CARRIED_MEMO.by.set(key, res);
+  return res;
+}
+let CARRIED_MEMO = {st:null, by:new Map()};
 function regionBooks(regionId){
   const all = STATE.books||[];
   const r = regionById(regionId||CUR_REGION);
-  if(!r || !r.books || !r.books.length) return all;
-  const chosen = new Set(r.books);
+  const chosen = carriedIds(r);
+  if(!chosen) return all;
   const here = locsInRegion(r.regionId);
   /* A title pre-ordered here is carried here (b218): the server adds it to the
      region's list with the pre-order; this shows it the moment it is made. */
@@ -6007,7 +6034,7 @@ const SN_ITEMS = {
   whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations']
 };
 /* How Reorganize Menu names the items that read differently at each level (b292). */
-const MO_NAMES = {reorderevent:['↕','Change Location Order'], editplace:['✎','Edit / Rename (season, region or event)'],
+const MO_NAMES = {reorderevent:['↕','Change Location Order'], editplace:['✎','Edit Location'],
   subregions:['🗺','Sub-regions'], salesupload:['📤','Upload Sales Spreadsheet'], closeplace:['🔒','Close / Reopen (season, region or event)'], deleteplace:['🗑','Delete (season, region or event)']};
 if(PRACTICE) SN_ITEMS.practice = ['🧪','Leave Practice'];
 function snTopActivity(show){
@@ -6065,7 +6092,14 @@ function menuOrderModal(){
        section left with nothing is not listed. */
     || (a==='prices' && !CHANGE_PRICES_ON) || (a==='eventprices' && CHANGE_PRICES_ON) || (a==='whoami' && SIDE_NAV);
   const M = snOrdered().map(x=>({key:x.sec.key, label:x.sec.label(), icon:x.sec.icon, acts:x.acts.filter(a=>!gone(a))})).filter(x=>x.acts.length);
-  const name = a => MO_NAMES[a] || SN_ITEMS[a] || ['•', a];
+  /* Each item named as the menu itself shows it (b314, Gita: "Reorganize Menu
+     should always reflect the current menu offerings and nothing else"). A
+     place's own items read differently at each level, so they keep one name. */
+  const shownAs = {};
+  document.querySelectorAll('#sideNav .sn-group .sn-item').forEach(b=>{
+    const ic = b.querySelector('.sn-ic'), t = b.querySelector('.sn-t');
+    if(ic && t) shownAs[snKey(b.outerHTML)] = [ic.textContent, t.textContent.trim()]; });
+  const name = a => MO_NAMES[a] || shownAs[a] || SN_ITEMS[a] || ['•', a];
   openModal(`${mHead('Reorganize Menu')}<div class="m-body">
       <div class="hint">Drag a section by its heading, or an item by its row, to where it should go, into any section. The menu changes for everyone once you save. Each person still sees only the items their access allows.</div>
       <div id="moList" class="mo-list">${M.map(sec=>`<div class="mo-sec" data-sec="${esc(sec.key)}">
@@ -13121,6 +13155,7 @@ function finConvModal(edit){
       <!-- The list is on the Overview, not in here (b306; live b311). -->
       ${may ? `<div class="exp-form">
         <div class="cash-sub">${e.id ? 'Change this exchange' : 'Write one down'}</div>
+        <div id="cvSum"></div>
         <div id="cvBlks">${blkHTML(0, startRows, shown, e)}</div>
         ${e.id ? '' : `<button type="button" class="btn btn-ghost btn-xs" id="cvMore">＋ Add another currency</button>`}
         <div class="err" id="modalErr"></div>
@@ -13149,9 +13184,39 @@ function finConvModal(edit){
   const bindBlk = blk => { const k = Number(blk.dataset.b);
     comboBind('cvPlace' + k, items, places[k], v=>{ places[k] = v; fillAll(blk); }); };
   bindBlk(document.querySelector('#cvBlks .cv-blk'));
+  /* Each one already written gets a summary line above the next, with ✏️ Edit
+     and 🗑, as in Add an Expense (b314, Gita). Its form stays in the window,
+     folded away, so Save still writes it down. */
+  const blkFilled = blk => rowsNow(blk).some(x=>x.amt > 0) || Number(blk.querySelector('.cv-usd').value) > 0;
+  const drawSum = () => {
+    const done = [...document.querySelectorAll('#cvBlks .cv-blk.cv-folded')];
+    $('#cvSum').innerHTML = done.length ? `<div class="exp-batch"><div class="cash-sub">Added so far <span class="fin-n">${done.length}</span></div>
+      ${done.map(blk=>{ const k = Number(blk.dataset.b), pl = items.find(i=>i.v===places[k]);
+        const took = rowsNow(blk).filter(x=>x.amt > 0).map(x=>cashFmt(x.amt, x.cur)).join(' + ') || 'Nothing taken yet';
+        const usd = Number(blk.querySelector('.cv-usd').value) || 0, day = blk.querySelector('input[type="date"].cv-date').value;
+        return `<div class="exp-bi"><span class="exp-bi-t"><b class="no-edit">${esc(pl ? pl.l : 'No place chosen yet')}</b>
+          <span class="muted-note">${esc([dtShow(day), took].filter(Boolean).join(' · '))}</span></span>
+          <b class="exp-bi-a">${esc(finUsd(usd))}</b>
+          <span class="exp-bi-b"><button type="button" class="btn btn-ghost btn-xs" data-cvb="edit" data-b="${k}">✏️ Edit</button>
+            <button type="button" class="btn btn-ghost btn-xs" data-cvb="del" data-b="${k}" aria-label="Remove">🗑</button></span></div>`; }).join('')}
+      <div class="muted-note">Now the next one:</div></div>` : '';
+  };
+  const blkAt = k => document.querySelector(`#cvBlks .cv-blk[data-b="${k}"]`);
+  $('#cvSum').addEventListener('click', ev=>{
+    const b = ev.target.closest('[data-cvb]'); if(!b) return;
+    const blk = blkAt(b.dataset.b); if(!blk) return;
+    if(b.dataset.cvb==='del'){ places[Number(blk.dataset.b)] = null; blk.remove(); }
+    else { blk.classList.remove('cv-folded'); const a = blk.querySelector('.cv-amt'); if(a) a.focus(); }
+    drawSum();
+  });
   const more = $('#cvMore');
   if(more) more.addEventListener('click', ()=>{
-    const k = places.length, prev = places[k-1] || '';
+    const open = [...document.querySelectorAll('#cvBlks .cv-blk:not(.cv-folded)')];
+    // A blank form is not folded into a summary, and no second blank one opens under it.
+    if(open.length && !open.some(blkFilled)){ const a = open[0].querySelector('.cv-amt'); if(a) a.focus(); return; }
+    open.forEach(blk=>{ if(blkFilled(blk)) blk.classList.add('cv-folded'); else { places[Number(blk.dataset.b)] = null; blk.remove(); } });
+    drawSum();
+    const k = places.length, prev = places.filter(x=>x!==null).pop() || '';
     places.push(prev);
     const w = document.createElement('div'); w.innerHTML = blkHTML(k, [{amt:'', cur:curs[0]}], (items.find(x=>x.v===prev)||{}).shown || '', {});
     const blk = w.firstElementChild; $('#cvBlks').appendChild(blk); bindBlk(blk);
@@ -13162,7 +13227,7 @@ function finConvModal(edit){
     const rm = ev.target.closest('.cv-rm');
     if(rm){ const blk = blkOf(rm), i = Number(rm.closest('.cv-row').dataset.i); drawRows(blk, rowsNow(blk).filter((_,j)=>j!==i)); return; }
     const brm = ev.target.closest('.cv-brm');
-    if(brm){ const blk = blkOf(brm); places[Number(blk.dataset.b)] = null; blk.remove(); }
+    if(brm){ const blk = blkOf(brm); places[Number(blk.dataset.b)] = null; blk.remove(); drawSum(); }
   });
   $('#cvBlks').addEventListener('input', ev=>{ if(!ev.target.closest('.cv-rows')) return;
     const blk = blkOf(ev.target); blk.querySelector('.cv-allcb').checked = false; blk.querySelector('.cv-alln').textContent = ''; });
@@ -17860,9 +17925,9 @@ function priceGrid(edit, st, opts){
        "is it Adventures?" filed every Other title under Big Books, so the
        Other group never appeared here at all. */
     // Consignment titles only in the region whose group they belong to.
-    const chosen = isEdit ? asIdList(edit.books) : [];
+    const chosen = isEdit ? carriedIds(edit, st||STATE) : null;
     const all=(STATE.books||[]).filter(b=>bookBelongsIn(b, isEdit ? edit.regionId : '')
-      && (!onlyHere || !chosen.length || chosen.includes(b.id)));
+      && (!onlyHere || !chosen || chosen.has(b.id)));
     const big  = all.filter(b=>catOfBook(b)==='big');
     const other= all.filter(b=>catOfBook(b)==='other');
     const aotm = all.filter(b=>catOfBook(b)==='aotm');
@@ -18494,11 +18559,11 @@ const asIdList = v => Array.isArray(v) ? v : String(v||'').split(',').map(x=>x.t
    and anything picked from "Other Books" in this dialog. */
 function stockBooks(ctx){
   const st = ctx.st, reg = ctx.region;
-  const chosen = asIdList(reg.books);
+  const chosen = carriedIds(reg, st);
   const groups = new Set((st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
   const list = ctx.books.filter(b=> b.partnerId
     ? groups.has(b.partnerId)
-    : (!chosen.length || chosen.includes(b.id) || ctx.extra.has(b.id) || ctx.qty(ctx.loc,b.id)>0));
+    : (!chosen || chosen.has(b.id) || ctx.extra.has(b.id) || ctx.qty(ctx.loc,b.id)>0));
   let order = asIdList(reg.bookOrder);
   if(!order.length) order = asIdList(st.seasonBookOrder);
   /* Then your own order for stock, set in ⇅ Stock Title Order, apart from the
@@ -18866,8 +18931,8 @@ function addStockModal(opts){
   }
   function carriedHere(b){
     if(b.partnerId) return true;
-    const list = asIdList(ctx.region.books);
-    return !list.length || list.includes(b.id) || ctx.qty(ctx.loc,b.id)>0;
+    const list = carriedIds(ctx.region, ctx.st);
+    return !list || list.has(b.id) || ctx.qty(ctx.loc,b.id)>0;
   }
   function tidyLines(){
     lines = lines.filter((l,i)=>l.t || l.mode || i===lines.length-1);
@@ -20612,8 +20677,8 @@ function pricesModal(){
   let G = null;
   const regionOf = (p, st) => ((st||STATE).regions||[]).find(r=>r.regionId===p.regionId) || {};
   // Only the titles sold there (b312, Gita).
-  const booksOf = (r, here) => { const ch = asIdList(r.books);
-    return (STATE.books||[]).filter(b=>b.partnerId ? here && bookBelongsIn(b, r.regionId) : (!ch.length || ch.includes(b.id))); };
+  const booksOf = (r, here, st) => { const ch = carriedIds(r, st);
+    return (STATE.books||[]).filter(b=>b.partnerId ? here && bookBelongsIn(b, r.regionId) : (!ch || ch.has(b.id))); };
   placePickModal({title:'Change Prices', kinds, dropdowns:true,
     drawBody(kind, p, st){
       if(kind==='region' || kind==='hq'){
@@ -20630,7 +20695,7 @@ function pricesModal(){
       const ep = ((st.eventPrices||{})[p.eventId]) || {}, rp = ((st.prices||{})[r.regionId]) || {};
       const own = (b,c) => (ep[b.id] && ep[b.id][c]!=null) ? ep[b.id][c] : '';
       const regionP = (b,c) => (rp[b.id] && rp[b.id][c]!=null) ? rp[b.id][c] : '';
-      const books = inRegionOrder(booksOf(r, st===STATE));
+      const books = inRegionOrder(booksOf(r, st===STATE, st));
       /* A "fill all" row for each kind, and the currency calculator, as for a
          region (b311, Gita). Only what you type is worked out: a blank box
          still means the region's price. */
