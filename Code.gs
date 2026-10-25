@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b309';
+var SERVER_BUILD = 'b310';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -1912,7 +1912,7 @@ function doSendShipment(p) {
       var tB = getQty_(map, to.whLoc, it.bookId);
       addQty_(map, to.whLoc, it.bookId, it.qty);
       stockMoveAppend_({ kind: 'ADJUST', toLoc: to.whLoc, bookId: it.bookId, qty: it.qty,
-        note: 'Arrived from ' + (p.origin || 'outside the tour') + (p.note ? ' — ' + p.note : ''),
+        note: 'Arrived from ' + (p.origin || 'outside the system') + (p.note ? ' — ' + p.note : ''),
         toBefore: tB, toAfter: tB + it.qty });
     });
     saveInvMap_(map);
@@ -1963,7 +1963,7 @@ function doSendShipment(p) {
     addQty_(map, shipId, it.bookId, it.qty);
     if (fromOutside) {
       stockMoveAppend_({ kind: 'ADJUST', toLoc: shipId, bookId: it.bookId, qty: it.qty,
-        note: 'On its way from ' + (p.origin || 'outside the tour'),
+        note: 'On its way from ' + (p.origin || 'outside the system'),
         toBefore: 0, toAfter: it.qty });
       return;
     }
@@ -7890,7 +7890,7 @@ function locLabel_(loc) {
       ? (sp.tracking ? 'courier ' + sp.tracking : 'courier')
       : (sp.carrier || 'a devotee');
     return 'In transit with ' + who +
-      (sp.fromRegion === OUTSIDE_ORIGIN ? ' from ' + (sp.origin || 'outside the tour') : '');
+      (sp.fromRegion === OUTSIDE_ORIGIN ? ' from ' + (sp.origin || 'outside the system') : '');
   }
   /* A place in ANOTHER season — stock handed over from Europe Tour, say. The
      lookups above only know the current season, so these showed as raw ids
@@ -9308,7 +9308,7 @@ function describe_(action, p, result, moves, who) {
       var how = String(p.mode) === 'shipping' ? ('by shipping company' + (p.tracking ? ' (tracking ' + p.tracking + ')' : ''))
                                                : ('with ' + (p.carrier || 'a devotee'));
       d = { text: 'Put ' + plural_(total, 'book') + ' in transit (' + titlesText_(sent) + ') from ' +
-                  (String(p.fromRegion) === OUTSIDE_ORIGIN ? 'outside the tour' : reg(p.fromRegion)) + ' → ' +
+                  (String(p.fromRegion) === OUTSIDE_ORIGIN ? 'outside the system' : reg(p.fromRegion)) + ' → ' +
                   (p.toLoc ? locLabel_(p.toLoc) : reg(p.toRegion)) + ', ' + how + note,
             undo: { type: 'ship', shipId: String(result) } };
       break;

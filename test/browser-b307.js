@@ -96,7 +96,7 @@ c({ action: 'createRegion', regionId: 'rg_two', whLoc: 'wh_two', name: 'Second R
       const cur = document.querySelector('#rgCur'); cur.value = cur.value + ', PLN'; fire(cur, 'change');
       out.added = box(b, 'PLN').value; out.addedAuto = box(b, 'PLN').classList.contains('rp-auto');
       const u2 = box(b2, 'PLN'), e2 = box(b2, 'EUR'); e2.value = ''; fire(e2, 'input');
-      u2.focus(); out.emptyStays = u2.value; u2.blur();   // no local price: nothing to work out
+      u2.focus(); out.emptyStays = u2.value; u2.blur();   // no local price: worked out from another price it has (b310)
       e2.value = '10'; fire(e2, 'input');
       u2.value = ''; fire(u2, 'input'); u2.blur(); u2.focus(); out.onFocus = u2.value;
       const cat = document.querySelector(`#modal .rp[data-book="${b}"]`).closest('.bk-row');
@@ -108,7 +108,8 @@ c({ action: 'createRegion', regionId: 'rg_two', whLoc: 'wh_two', name: 'Second R
       return out; }, [B, B2]);
     t.push(['calculator: a saved price is kept on opening (' + cal.saved + ')', cal.saved === '20']);
     t.push(['…a currency added afterwards is worked out at once (' + cal.added + ')', Number(cal.added) > 0 && cal.addedAuto]);
-    t.push(['…an empty box holds the calculation from the local price when you go to fill it (' + cal.onFocus + ')', Number(cal.onFocus) > 0 && cal.emptyStays === '']);
+    t.push(['…an empty box holds the calculation from the local price when you go to fill it (' + cal.onFocus + ')', Number(cal.onFocus) > 0]);
+    t.push(['b310: with no local price, it is worked out from another price the title has (' + cal.emptyStays + ')', Number(cal.emptyStays) > 0]);
     t.push(['…the top row overwrites the prices below it, the saved one too (' + cal.over + ', ' + cal.overU + ')', cal.over === '25' && Number(cal.overU) > 0 && Number(cal.overU) !== Number(cal.wasU)]);
     t.push(['…its other currency follows the top row\'s local price (' + cal.topU + ')', Number(cal.topU) > 0]);
     t.push(['…and typed there, it overwrites that currency below (' + cal.topUhand + ')', cal.topUhand === '30']);

@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b309**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b310**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,19 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b310
+Live app changes (Gita, 2026-10-25 06:52 IST).
+- Transfer log: every line reads "<from> to <to>" (shipLabel for batches: "Earthly HQ to Vrindavana"; sent ones add "(sent in transit)"); "outside the tour" is "outside the system" everywhere it is shown (client, Code.gs notes, permission label). anyRegionName no longer says "Earthly HQ (Earthly HQ)".
+- Books in Transit WhatsApp report (practice, TRANSIT_REP_ON): 📋 by the panel title; transitReportModal ticks batches by carrier, and for a PARTIAL one "Books That Arrived" / "Books Still in Transit".
+- Net Sales by Season: Donations column not bold (td.cbr-don).
+- Searchable place lists (finPlaces, waPlaces): a sub-region's old warehouse event ("Barcelona (warehouse)") is not listed again; the Sub-region row stays.
+- Finance Expenses & Reimbursements search: notes (and the paid/declined note) searched too.
+- Price calculator: a title with no local price is worked out from a typed/saved price in another currency; a saved 0 (the server's "no price", e.g. Earthly HQ rupees) counts as empty.
+- Currencies: curExists (rates.perUsd) / curFieldClean refuse codes that don't exist with a note; parseCurs drops them.
+- Change Prices live (CHANGE_PRICES_ON; Gita chose on a card): Event Prices is inside it, as in practice.
+- Reorganize Menu: no Settings section (Profile is at the menu foot), no Event Prices; empty sections not listed.
+- Tests: test/browser-b310.js (21); b305/b307/sellers updated for the new wording and Change Prices.
 
 ## Done in b309
 Live app changes (Gita, 2026-10-24: "Uncategorized sales calculator is still broken").

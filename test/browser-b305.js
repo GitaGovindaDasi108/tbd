@@ -145,7 +145,7 @@ const SHIP = m.call({ action: 'getState', season: SA }).state.shipments.find(x =
     t.push(['practice: a small "Transfer log" button by the shelf\'s title', await page.evaluate(() => { const b = document.querySelector('#invHeading .tl-btn'); return !!b && !b.hidden; })]);
     await page.click('#invHeading .tl-btn'); await page.waitForTimeout(300);
     const rows = await page.$$eval('#modal .tl-row', rs => rs.map(r => ({ cls: r.className, s: r.querySelector('summary').innerText.replace(/\s+/g, ' ') })));
-    t.push(['…one line per transfer: date, where to, how many (' + rows.map(r => r.s).join(' | ') + ')', rows.some(r => /out/.test(r.cls) && /To Second Fair/.test(r.s) && /2 books/.test(r.s))]);
+    t.push(['…one line per transfer: date, where to, how many (' + rows.map(r => r.s).join(' | ') + ')', rows.some(r => /out/.test(r.cls) && / to Second Fair/.test(r.s) && /2 books/.test(r.s))]);
     const cols = await page.evaluate(() => { const o = document.querySelector('#modal .tl-row.out'), i = document.querySelector('#modal .tl-row.in');
       return [o && getComputedStyle(o).borderLeftColor, i && getComputedStyle(i).borderLeftColor]; });
     t.push(['…in and out in different colours', !!cols[0] && (!cols[1] || cols[0] !== cols[1])]);

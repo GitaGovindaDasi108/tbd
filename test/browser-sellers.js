@@ -306,16 +306,19 @@ const API = 'http://api.test/';
     await O({ action: 'saveConsignBook', partnerId: g.result, name: 'Friends Songbook', cat: 'small', regionId: 'rg_it', location: 'ev_yoga', stock: 3, season: SA });
     await refresh(own);
     await own.evaluate(() => goTo('event', 'ev_yoga')); await own.waitForTimeout(500);
-    await own.click('[data-act="eventprices"]'); await own.waitForTimeout(300);
+    // Event Prices is inside Change Prices since b310 (live), opened at this event.
+    await own.evaluate(() => document.querySelector('[data-act="prices"]').click()); await own.waitForTimeout(500);
     t.push(['Event Prices shows the region\'s price greyed in the blank box', await own.evaluate(b =>
       document.querySelector(`.ep[data-book="${b}"][data-cur="EUR"]`).placeholder === '15', B[1])]);
     await own.fill(`.ep[data-book="${B[1]}"][data-cur="EUR"]`, '12');
     await own.screenshot({ path: shot('6-prices') });
-    await own.click('#epSave'); await own.waitForTimeout(2000);
+    await own.click('#ppSave'); await own.waitForTimeout(2000);
     const ep = (await O({ action: 'getState', season: SA })).state.eventPrices;
     t.push(['saved on the server: 12 at Yoga Studio', ep && ep.ev_yoga[B[1]].EUR === 12]);
     t.push(['the shelf at Yoga Studio asks 12', await own.evaluate(b => priceFor(bookById(b), 'EUR'), B[1]) === 12]);
-    t.push(['…the button counts it: "Event Prices (1 set)"', /Event Prices \(1 set\)/.test(await own.evaluate(() => document.querySelector('[data-act="eventprices"]').innerText))]);
+    await own.evaluate(() => document.querySelector('[data-act="prices"]').click()); await own.waitForTimeout(500);
+    t.push(['…Change Prices opens at Yoga Studio with its 12 in the box', await own.evaluate(b => (document.querySelector(`.ep[data-book="${b}"][data-cur="EUR"]`) || {}).value, B[1]) === '12']);
+    await own.evaluate(() => closeModal());
     t.push(['…Yoga Friends\' title is on this shelf', await own.evaluate(() => shelfBooks().some(b => b.name === 'Friends Songbook'))]);
     await own.evaluate(() => goTo('event', 'ev_cafe')); await own.waitForTimeout(500);
     t.push(['at the Cafe it is still the region\'s 15', await own.evaluate(b => priceFor(bookById(b), 'EUR'), B[1]) === 15]);
