@@ -655,9 +655,12 @@ const API = 'http://api.test/';
     t.push(['b296: …OK saves it anyway', await convN() === n0 + 1 && (await own.evaluate(() => FIN.D.sales.find(x => x.id === 'eur1').gu)) > 40]);
     // b312 (Gita): "Add another" opens a blank exchange of its own, with its own date.
     await own.evaluate(() => finConvModal()); await own.waitForTimeout(300);
+    // b314: the one filled in becomes a summary line with ✏️ Edit; the new one is blank.
+    await own.fill('.cv-blk[data-b="0"] .cv-amt', '10'); await own.fill('.cv-blk[data-b="0"] .cv-usd', '11');
     await own.click('#cvMore'); await own.waitForTimeout(200);
-    const blks = await own.evaluate(() => [...document.querySelectorAll('#cvBlks .cv-blk')].map(b => !!b.querySelector('input[type="date"].cv-date') && !!b.querySelector('.cv-usd') && (b.querySelector('.cv-amt') || {}).value === ''));
-    t.push(['b312: "Add another" opens a second blank exchange with its own date and dollars', blks.length === 2 && blks.every(Boolean)]);
+    const blks = await own.evaluate(() => [...document.querySelectorAll('#cvBlks .cv-blk:not(.cv-folded)')].map(b => !!b.querySelector('input[type="date"].cv-date') && !!b.querySelector('.cv-usd') && (b.querySelector('.cv-amt') || {}).value === ''));
+    t.push(['b312: "Add another" opens a second blank exchange with its own date and dollars', blks.length === 1 && blks.every(Boolean)]);
+    t.push(['b314: …and the first is a summary line with Edit', await own.evaluate(() => /\$11/.test(document.querySelector('#cvSum').innerText) && !!document.querySelector('#cvSum [data-cvb="edit"]'))]);
     await own.evaluate(() => closeModal());
     await own.evaluate(() => closeModal());
     const slip = ((await O({ action: 'activity' })).result || []).find(e => /^Dollars received: 35 EUR .* fetched \$2000/.test(e.text));

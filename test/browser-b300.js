@@ -11,6 +11,8 @@ const fs = require('fs'), path = require('path');
 const ROOT = path.join(__dirname, '..');
 const m = require(ROOT + '/test/mini.js');
 m.init();
+// b314: an empty title list no longer means every title, so the sample region ticks them all, as a new region does.
+m.run("dbUpdate_('_regions', { regionId: 'rg_poland' }, { books: BOOKS.map(b => b.id).join(',') }); cacheClear_(); bumpRev_();");
 const st = m.call({ action: 'getState' }).state, SA = st.activeSeason;
 const c = (p, season) => { const r = m.call(Object.assign({ season: season || SA }, p)); if (!r.ok) throw new Error(p.action + ': ' + r.error); return r; };
 const R0 = st.regions[0];
