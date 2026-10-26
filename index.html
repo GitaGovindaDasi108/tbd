@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b315</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b316</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -18686,8 +18686,13 @@ function parseStockList(text, books){
   const found = new Map(), missing = [];
   String(text||'').split(/\r?\n/).forEach(raw=>{
     const line = raw.trim(); if(!line) return;
-    const cells = (line.includes('\t') ? line.split('\t') : line.split(/[,;]/))
+    let cells = (line.includes('\t') ? line.split('\t') : line.split(/[,;]/))
       .map(c=>c.trim().replace(/^"(.*)"$/,'$1').trim()).filter(Boolean);
+    /* Typed with spaces only (b316, Gita): "Sri Radha (English) 20", or "20 Sri Radha (English)". */
+    if(cells.length===1 && !/^[-+]?\d+$/.test(cells[0])){
+      const m = /^(.*?\S)\s+(?:[x×:=]\s*)?([-+]?\d+)$/.exec(cells[0]) || /^([-+]?\d+)\s*[x×]?\s+(.*\S)$/.exec(cells[0]);
+      if(m) cells = /^[-+]?\d+$/.test(m[1]) ? [m[2], m[1]] : [m[1], m[2]];
+    }
     const ni = cells.findIndex(c=>/^[-+]?\d+$/.test(c));
     if(ni<0) return;                                   // a heading or a note: no number, nothing to add
     const qty = Number(cells[ni]);

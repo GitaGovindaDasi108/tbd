@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b315**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b316**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,9 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b316
+Live app changes (Gita, 26 Oct): Add Stock / Subtract Stock "Add several titles at once" reads lines typed with spaces only ("Sri Radha (English) 20", "5 Volume 8 (English)", "Title x 3"); before, only tabs or commas split the number off, so typed lines gave "Nothing to add". parseStockList splits a lone cell on its last (or first) number. Folded into PR #116 with b315. Test: browser-small258.
 
 ## Done in b315
 Live app changes (Gita chose on a card, 25 Oct): the "⚙️ Reimbursement Settings" line is gone from the left menu and from Reorganize Menu on live (FIN_BTNS only adds it when !FIN_ON; menuOrderModal gone()). The settings stay as the ⚙️ Settings tab of Finance › Reimbursements. Tests: browser-expenses and browser-b314 check it is gone.
