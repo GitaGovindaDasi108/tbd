@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b314**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b316**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,12 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b316
+Live app changes (Gita, 26 Oct): Add Stock / Subtract Stock "Add several titles at once" reads lines typed with spaces only ("Sri Radha (English) 20", "5 Volume 8 (English)", "Title x 3"); before, only tabs or commas split the number off, so typed lines gave "Nothing to add". parseStockList splits a lone cell on its last (or first) number. Folded into PR #116 with b315. Test: browser-small258.
+
+## Done in b315
+Live app changes (Gita chose on a card, 25 Oct): the "⚙️ Reimbursement Settings" line is gone from the left menu and from Reorganize Menu on live (FIN_BTNS only adds it when !FIN_ON; menuOrderModal gone()). The settings stay as the ⚙️ Settings tab of Finance › Reimbursements. Tests: browser-expenses and browser-b314 check it is gone.
 
 ## Done in b314
 Live app changes (Gita, 25 Oct): carriedIds(r, st): a region with no chosen title list (old regions such as Italy, Poland) now shows the titles it has had (stock rows, sales, stock moves, shipments), not every title in the catalogue, so titles added at Earthly HQ no longer appear there; no history yet = every title; Earthly HQ always every title. Used by regionBooks, stockBooks, Add Stock carriedHere, priceGrid onlyHere and Change Prices event list. Region prices are not counted (the state gives every title a price). Dollars Received: "Add another" folds the one filled in into a summary line (#cvSum, .cv-folded) with ✏️ Edit and 🗑, as in Add an Expense; a blank form does not open a second blank. Reorganize Menu names each item as the side menu shows it (shownAs), and editplace reads "Edit Location". Tests: new browser-b314; browser-finance updated; b300, b311, round3, round7 give the sample region an explicit list.

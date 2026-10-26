@@ -142,6 +142,23 @@ c({ action: 'sell', location: pl.whLoc, bookId: B1, legs: [{ type: 'Zelle', cur:
       return f[a] === 5 && f[b] === 7 && r.missing.length === 1 && /No Such Book/.test(r.missing[0]);
     }, [B0, B1])]);
 
+    // b316 (Gita): typed with spaces only, "Sri Radha (English) 20".
+    t.push(['the list reader: typed with spaces, "Title (Language) 20" and "5 Title"', await page.evaluate(([a, b]) => {
+      const bk = Object.values(STATE.books);
+      const r = parseStockList(`${bookById(a).name} 20\n5 ${bookById(b).name}\n${bookById(a).name} x 2`, bk);
+      const f = Object.fromEntries(r.found.map(x => [x.book.id, x.qty]));
+      return f[a] === 22 && f[b] === 5 && !r.missing.length;
+    }, [B0, B1])]);
+    await page.evaluate(() => addStockModal()); await page.waitForTimeout(400);
+    await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
+    await page.click('#spBody [data-bulkopen]'); await page.waitForTimeout(150);
+    await page.fill('#spPaste', `${n0} 20\n${n1} 6`);
+    await page.click('#spBody [data-bulkuse]'); await page.waitForTimeout(300);
+    const typed = await page.evaluate(([a, b]) => [document.querySelector(`#spBody input.d-delta[data-book="${a}"]`)?.value,
+      document.querySelector(`#spBody input.d-delta[data-book="${b}"]`)?.value], [B0, B1]);
+    t.push(['Add Stock: lines typed with spaces fill their titles (' + typed.join(', ') + ')', typed[0] === '20' && typed[1] === '6']);
+    await page.evaluate(() => closeModal()); await page.waitForTimeout(200);
+
     await page.evaluate(() => addStockModal()); await page.waitForTimeout(400);
     await page.selectOption('#spWhere', 'there'); await page.waitForTimeout(200);
     await page.click('#spBody [data-bulkopen]'); await page.waitForTimeout(150);
