@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b316</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b317</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5724,6 +5724,30 @@ function renderTabs(){
   let h = `<div class="navbar">
     <span class="lvl-chip">${lvlWord}</span>
     <div class="crumbs">`;
+  /* A Season Lead (b317, practice first) moves around its own season: the
+     season, any of its regions, any event in that region. No Earthly HQ and no
+     other seasons. */
+  if(locked && STATE.seasonLead){
+    const sn = (STATE.seasons||[]).find(x=>x.seasonId===STATE.activeSeason);
+    h += `<button type="button" class="crumb-btn${CUR_LEVEL==='season'?' on':''}" data-act="slseason">${esc(sn ? sn.name : 'Season')}</button>`;
+    h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${CUR_LEVEL!=='season'?' on':''}" data-act="slregion">
+        ${opt('', 'Regions…', CUR_LEVEL==='season')}${regions.map(r=>opt(r.regionId, r.name + mark(regionClosure(r.regionId)), CUR_LEVEL!=='season' && r.regionId===CUR_REGION)).join('')}
+        ${opt('__new', '＋ New region…', false)}</select></span>`;
+    if(CUR_LEVEL!=='season' && reg){
+      h += `<span class="crumb-sep">›</span><span class="crumb-pick"><select class="crumb-sel${CUR_LEVEL==='event'?' on':''}" data-act="slevent">
+          ${opt(reg.whLoc, reg.name + ' Summary', CUR_LEVEL==='region')}${eventsOfRegion(reg.regionId).map(e=>opt(e.eventId, e.name + mark(closureOf(e.eventId)), CUR_LOC===e.eventId)).join('')}
+          ${opt('__new', '＋ New event…', false)}</select></span>`;
+    }
+    h += `</div></div>`;
+    $('#locTabs').innerHTML=h;
+    const b = $('#locTabs [data-act="slseason"]'); if(b) b.addEventListener('click', ()=>goTo('season'));
+    const rs = $('#locTabs [data-act="slregion"]');
+    if(rs) rs.addEventListener('change', ()=>{ const v = rs.value; if(v==='__new'){ renderTabs(); regionModal(); return; } if(v) goTo('region', v); else goTo('season'); });
+    const es = $('#locTabs [data-act="slevent"]');
+    if(es) es.addEventListener('change', ()=>{ const v = es.value; if(v==='__new'){ renderTabs(); eventModal(); return; }
+      if(v===reg.whLoc) goTo('region', reg.regionId); else goTo('event', v); });
+    return;
+  }
   if(locked){
     const where = reg ? reg.name : '';
     const mine = STATE.sellerEvents || [];

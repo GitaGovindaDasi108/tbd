@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b316';
+var SERVER_BUILD = 'b317';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -607,8 +607,7 @@ function handle(e) {
          found it incomplete — wording, Finance and menu changes are app-wide but
          were filed under whichever season the device was on, so most of them
          never showed). The app sorts out what belongs where you are standing. */
-      var sid = (who.role === 'admin') ? ''
-        : ((regionById_(String(who.regionId || '')) || {}).seasonId || activeSeasonId_());
+      var sid = (who.role === 'admin') ? '' : (whoSeason_(who) || activeSeasonId_());
       return raw(JSON.stringify({ ok: true, result: activityList_(who, sid) }));
     }
 
@@ -650,8 +649,8 @@ function handle(e) {
     // A link's writes belong to its own season, not whichever one the owner
     // happens to be looking at.
     if (who.role !== 'admin') {
-      var lr = regionById_(String(who.regionId || ''));
-      if (lr) setSeasonContext_(lr.seasonId);
+      var lsid = whoSeason_(who);
+      if (lsid) setSeasonContext_(lsid);
     }
 
     // Everything below writes. Refuse anything this link isn't entitled to,
@@ -863,8 +862,7 @@ function cacheClear_() {
    to uncover by poking at the browser. */
 function scopedState_(who) {
   /* Pin to the link's own season before anything is read. */
-  var mine = regionById_(String(who.regionId || ''));
-  setSeasonContext_(mine ? mine.seasonId : '');
+  setSeasonContext_(whoSeason_(who));
   try { return scopedStateFor_(who); }
   finally { setSeasonContext_(''); }
 }
@@ -874,7 +872,7 @@ function scopedStateFor_(who) {
   // otherwise every poll on a share link rebuilt the whole thing, which is what
   // made selling from a link feel sluggish.
   var rev = getRev_();
-  var tag = 'sc_' + (who.role === 'seller' ? (who.eventIds || [who.eventId]).join('.') : who.regionId);
+  var tag = 'sc_' + (who.role === 'seller' ? (who.eventIds || [who.eventId]).join('.') : (who.seasonLead ? 'sl_' + who.seasonId : who.regionId));
   var hit = cacheGet_(rev + '_' + tag);
   if (hit) { try { return JSON.parse(hit); } catch (e) { /* rebuild */ } }
   var out = scopedStateBuild_(who);
@@ -886,29 +884,34 @@ function scopedStateBuild_(who) {
   var full = JSON.parse(stateJson_());
   var isSeller = (who.role === 'seller');
   var regionId = who.regionId;
+  // Every region this person holds: one for a Regional Lead, the season's for a Season Lead (b317).
+  var myRegs = {}; whoRegions_(who).forEach(function (r) { myRegs[r] = 1; });
   var myEvents = isSeller ? (who.eventIds || [who.eventId]).filter(Boolean) : [];
-  var locs = isSeller ? myEvents : locsInRegion_(regionId);
+  var locs = isSeller ? myEvents : whoLocs_(who);
   var mine = {}; locs.forEach(function (l) { mine[l] = 1; });
   /* A regional link sees the batches coming to or leaving its region — and
      what is in them, since a batch's books are held under its own id. A sales
      link sees none. */
   full.shipments = isSeller ? [] : (full.shipments || []).filter(function (x) {
-    return String(x.toRegion) === String(regionId) || String(x.fromRegion) === String(regionId);
+    return myRegs[String(x.toRegion)] || myRegs[String(x.fromRegion)];
   });
   var shipLocs = {}; full.shipments.forEach(function (x) { shipLocs[x.shipId] = 1; });
 
   full.role = who.role;
-  full.lockedRegion = regionId;
+  // A Season Lead moves around its season like Universal does inside one season.
+  full.lockedRegion = who.seasonLead ? '' : regionId;
+  full.seasonLead = !!who.seasonLead;
+  if (who.seasonLead) full.lockedSeason = String(who.seasonId);
   // One event means the app can lock onto it; several means a chooser.
   full.lockedEvent = (isSeller && myEvents.length === 1) ? myEvents[0] : '';
   full.sellerEvents = myEvents;
 
-  full.regions = (full.regions || []).filter(function (r) { return r.regionId === regionId; });
+  full.regions = (full.regions || []).filter(function (r) { return isSeller ? r.regionId === regionId : !!myRegs[r.regionId]; });
   full.events  = (full.events  || []).filter(function (e) {
-    return isSeller ? myEvents.indexOf(e.eventId) >= 0 : String(e.regionId || '') === regionId;
+    return isSeller ? myEvents.indexOf(e.eventId) >= 0 : !!myRegs[String(e.regionId || '')];
   });
   full.inventory = (full.inventory || []).filter(function (i) { return mine[i.location] || shipLocs[i.location]; });
-  full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return String(x.fulfilBy) === String(regionId); });
+  full.remote = isSeller ? [] : (full.remote || []).filter(function (x) { return !!myRegs[String(x.fulfilBy)]; });
   full.sales     = (full.sales     || []).filter(function (x) { return mine[x.location]; });
   if (full.handovers) full.handovers = full.handovers.filter(function (h) { return mine[String(h.location)]; });
   if (full.mismatches) full.mismatches = full.mismatches.filter(function (m) { return mine[String(m.location)]; });
@@ -916,13 +919,13 @@ function scopedStateBuild_(who) {
   var drafts = {};
   Object.keys(full.closeDrafts || {}).forEach(function (k) {
     var id = k.split(':').slice(1).join(':');
-    if (!isSeller && (mine[id] || id === regionId)) drafts[k] = full.closeDrafts[k];
+    if (!isSeller && (mine[id] || myRegs[id])) drafts[k] = full.closeDrafts[k];
   });
   full.closeDrafts = drafts;
   full.costs     = isSeller ? [] : (full.costs || []).filter(function (c) { return mine[c.location]; });
   full.change    = isSeller ? [] : (full.change || []).filter(function (c) {
     // A link sees change at its own places or with its own coordinator.
-    return mine[String(c.loc)] || String(c.loc) === 'BANK_' + regionId;
+    return mine[String(c.loc)] || (String(c.loc).indexOf('BANK_') === 0 && !!myRegs[String(c.loc).slice(5)]);
   });
   delete full.driveFolder;     // an owner's setting, not for link holders
   delete full.everywhere;      // every season's figures are for the owner at HQ only
@@ -931,10 +934,10 @@ function scopedStateBuild_(who) {
   });
   full.org = (full.org || []).filter(function (r) {
     var sc = String(r.scope || '');
-    return sc === regionId || mine[sc];
+    return myRegs[sc] || mine[sc];
   });
   full.qr  = (full.qr  || []).filter(function (q) {
-    return q.scope === SEASON || q.scope === regionId;
+    return q.scope === SEASON || !!myRegs[q.scope];
   });
   // Money handling never travels down a share link.
   /* Cash: only movements that touch this link's own places. A transfer from
@@ -1553,7 +1556,7 @@ function doMismatchAnswer(p, who) {
   if (!m) throw new Error('That count is no longer listed.');
   if (m.status !== 'open') return m.status;                      // already answered (a resend)
   var mayAnswer = who.role === 'admin' ||
-    (who.role === 'coordinator' && m.kind === 'event' && locsInRegion_(who.regionId).indexOf(m.location) >= 0);
+    (who.role === 'coordinator' && (m.kind === 'event' || who.seasonLead) && whoLocs_(who).indexOf(m.location) >= 0);
   if (!mayAnswer) throw new Error(m.kind === 'event'
     ? 'Only the Regional Lead (or someone above) can settle this count.'
     : 'Only the Seasonal Lead (or someone above) can settle this count.');
@@ -2353,6 +2356,23 @@ function doSellerLink(p) {
   return made;
 }
 
+/* A coordinator holds one region; a Season Lead (b317) holds every region of
+   its season, so the region checks below ask about the whole set. */
+function whoRegions_(who) {
+  if (who && who.regionIds && who.regionIds.length) return who.regionIds.map(String);
+  return (who && who.regionId) ? [String(who.regionId)] : [];
+}
+function whoHasRegion_(who, regionId) { return whoRegions_(who).indexOf(String(regionId || '')) >= 0; }
+function whoLocs_(who) {
+  var out = [];
+  whoRegions_(who).forEach(function (r) { out = out.concat(locsInRegion_(r)); });
+  return out;
+}
+function whoSeason_(who) {
+  if (who && who.seasonId) return String(who.seasonId);
+  return ((regionById_(String(who && who.regionId || '')) || {}).seasonId) || '';
+}
+
 /** Throws unless this role may run this action against this location. */
 function assertAllowed_(who, action, params) {
   if (who.role === 'admin') return;
@@ -2360,13 +2380,20 @@ function assertAllowed_(who, action, params) {
     throw new Error('That link is no longer valid. Ask for a new one.');
   }
   var ok = SELLER_ACTIONS[action] ||
-           (who.role === 'coordinator' && COORD_EXTRA[action]);
+           (who.role === 'coordinator' && COORD_EXTRA[action]) ||
+           // A Season Lead may also add regions to its own season (b317).
+           (who.seasonLead && action === 'createRegion');
   if (!ok) throw new Error('That action is not available on this link.');
 
   // Confine writes to the places this link covers.
   var allowed = {};
   if (who.role === 'seller') (who.eventIds || [who.eventId]).forEach(function (id) { if (id) allowed[id] = 1; });
-  else locsInRegion_(who.regionId).forEach(function (l) { allowed[l] = 1; });
+  else whoLocs_(who).forEach(function (l) { allowed[l] = 1; });
+
+  if (action === 'createRegion') {
+    params.season = who.seasonId;               // never another season's
+    params.seasonId = who.seasonId;
+  }
 
   ['location', 'from', 'to', 'fromLoc'].forEach(function (f) {
     var v = params[f];
@@ -2376,23 +2403,24 @@ function assertAllowed_(who, action, params) {
   });
   // Closing (and its saved progress): only this link's own region or its events.
   if ((action === 'closeLocation' || action === 'saveCloseDraft') &&
-      (params.kind === 'region' ? String(params.id) !== String(who.regionId) : !allowed[String(params.id)])) {
+      (params.kind === 'region' ? !whoHasRegion_(who, params.id) : !allowed[String(params.id)])) {
     throw new Error('This link can only close places in its own region.');
   }
   if (action === 'createEvent' && who.role === 'coordinator') {
-    params.regionId = who.regionId;          // never another region's
+    // Never another region's; a Season Lead names one of its own.
+    if (!whoHasRegion_(who, params.regionId)) params.regionId = who.regionId;
   }
   /* A regional link may bring books in from outside, into its own region only.
      Sending its stock to another region is the owner's call. */
   if (action === 'sendShipment' &&
-      (String(params.fromRegion) !== OUTSIDE_ORIGIN || String(params.toRegion) !== String(who.regionId) ||
+      (String(params.fromRegion) !== OUTSIDE_ORIGIN || !whoHasRegion_(who, params.toRegion) ||
        (params.toLoc && !allowed[String(params.toLoc)]))) {
     throw new Error('This link can only bring books into its own region.');
   }
   /* Receiving: only a batch heading for this link's region, onto one of its own shelves. */
   if (action === 'receiveShipment') {
     var sh = shipmentById_(String(params.shipId || ''));
-    if (!sh || String(sh.toRegion) !== String(who.regionId) ||
+    if (!sh || !whoHasRegion_(who, sh.toRegion) ||
         (params.toLoc && !allowed[String(params.toLoc)])) {
       throw new Error('This link can only receive books arriving in its own region.');
     }
@@ -2407,13 +2435,13 @@ function assertAllowed_(who, action, params) {
   }
   /* A sub-warehouse (devotee storage) may be added or edited in its own region only. */
   if (action === 'saveHolder') {
-    var hOk = String(params.regionId) === String(who.regionId);
+    var hOk = whoHasRegion_(who, params.regionId);
     if (hOk && params.holderId) {
-      hOk = holdersOfRegion_(who.regionId).some(function (h) { return h.holderId === String(params.holderId); });
+      hOk = holdersOfRegion_(String(params.regionId)).some(function (h) { return h.holderId === String(params.holderId); });
     }
     if (!hOk) throw new Error('This link can only change storage in its own region.');
   }
-  if (action === 'regionAddBooks' && String(params.regionId) !== String(who.regionId)) {
+  if (action === 'regionAddBooks' && !whoHasRegion_(who, params.regionId)) {
     throw new Error('This link can only change its own region.');
   }
   if (action === 'orgSave') {
@@ -2422,7 +2450,7 @@ function assertAllowed_(who, action, params) {
     // A seller link may cover several events, so check the whole set.
     var mayEdit = (who.role === 'seller')
       ? ((who.eventIds || [who.eventId]).indexOf(sc) >= 0)
-      : (sc === who.regionId || allowed[sc]);
+      : (whoHasRegion_(who, sc) || allowed[sc]);
     if (!mayEdit) throw new Error('This link can only change its own contacts.');
   }
   // Editing or deleting someone else's sale is out of scope too.
@@ -3094,7 +3122,7 @@ function doSetEventPrices(p, who) {
   var eventId = String(p.eventId || '');
   var ev = eventById_(eventId);
   if (!ev) throw new Error('That event is no longer listed.');
-  if (who && who.role === 'coordinator' && String(ev.regionId) !== String(who.regionId))
+  if (who && who.role === 'coordinator' && !whoHasRegion_(who, ev.regionId))
     throw new Error('That event is in another region.');
   var incoming = p.prices || {};
   var rows = objectsOf_('_prices').map(function (r) {
@@ -7265,7 +7293,7 @@ function handoversAll_() {
 function whoCovers_(who, loc) {
   if (who.role === 'admin') return true;
   if (who.role === 'seller') return (who.eventIds || [who.eventId]).indexOf(String(loc)) >= 0;
-  return locsInRegion_(who.regionId).indexOf(String(loc)) >= 0;
+  return whoLocs_(who).indexOf(String(loc)) >= 0;
 }
 function doHandoverCash(p, who) {
   var id = String(p.id || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40);
@@ -9501,7 +9529,7 @@ function activityList_(who, seasonId) {
     var regions = String(r.regions || '').split(',').filter(Boolean);
     var mine = !seasonId || String(r.season) === seasonId || regions.some(function (x) { return seasonRegions[x]; });
     if (!mine) return;
-    if (who.role !== 'admin' && regions.indexOf(String(who.regionId)) < 0) return;
+    if (who.role !== 'admin' && !regions.some(function (x) { return whoHasRegion_(who, x); })) return;
     out.push({ id: String(r.id), ts: r.ts, who: String(r.who || ''), action: String(r.action || ''), season: String(r.season || ''),
       text: stockEntryText_(r), locs: String(r.locs || '').split(',').filter(Boolean), regions: regions,
       moves: String(r.moves || '').split(',').filter(Boolean),
@@ -9627,7 +9655,7 @@ function doUndoActivityPart(p, who) {
   if (gone.indexOf(part) >= 0) return 'already';
   if (who.role !== 'admin') {
     var regs = String(e.regions || '').split(',').filter(Boolean);
-    if (!regs.length || regs.some(function (r) { return r !== String(who.regionId); })) {
+    if (!regs.length || regs.some(function (r) { return !whoHasRegion_(who, r); })) {
       throw new Error('This link can only undo stock changes in its own region.');
     }
   }
@@ -9660,7 +9688,7 @@ function doUndoActivity(p, who) {
   if (!u) throw new Error('This one cannot be undone here.');
   if (who.role !== 'admin') {
     var regs = String(e.regions || '').split(',').filter(Boolean);
-    if (!regs.length || regs.some(function (r) { return r !== String(who.regionId); }) ||
+    if (!regs.length || regs.some(function (r) { return !whoHasRegion_(who, r); }) ||
         ['moves', 'ship', 'receive', 'holder', 'event', 'regionBooks', 'fulfill'].indexOf(u.type) < 0) {
       throw new Error('This link can only undo stock changes in its own region.');
     }
@@ -9794,13 +9822,12 @@ function doSetFulfilBy(p, who) {
   var home = regionOfAnyLoc_(hit.o.location);
   if (to) checkCanFulfill_(to, String(hit.o.bookId), hit.o.location);
   if (who.role !== 'admin') {
-    var mine = String(who.regionId);
-    var ok = (home === mine) || (!to && String(hit.o.fulfilBy) === mine);
+    var ok = whoHasRegion_(who, home) || (!to && whoHasRegion_(who, hit.o.fulfilBy));
     if (!ok) throw new Error('This link can only change its own region’s pre-orders.');
   }
   /* Declined by the region that was asked: remembered, so the region that took
      the pre-order sees it in red. A new request clears it. */
-  var declined = (!to && String(hit.o.fulfilBy) && (who.role === 'admin' ? !!p.declined : String(hit.o.fulfilBy) === String(who.regionId)))
+  var declined = (!to && String(hit.o.fulfilBy) && (who.role === 'admin' ? !!p.declined : whoHasRegion_(who, hit.o.fulfilBy)))
     ? String(hit.o.fulfilBy) : '';
   setSaleFields_(hit, { fulfilBy: to, fulfilDeclined: to ? '' : declined });
   markDirty_(hit.o.location);
@@ -9833,7 +9860,7 @@ function doFulfilRemote(p, who) {
   if (region === regionOfAnyLoc_(hit.o.location)) {
     throw new Error('That shelf is in the region it was ordered in — use Deliver there instead.');
   }
-  if (who.role !== 'admin' && region !== String(who.regionId)) {
+  if (who.role !== 'admin' && !whoHasRegion_(who, region)) {
     throw new Error('This link can only fulfill from its own region.');
   }
   var bookId = String(hit.o.bookId);
