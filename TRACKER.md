@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b316**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b317**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,9 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b317
+Season Lead works (practice first; Gita chose "Build it" on a card, 27 Oct). Before, only U, RL, EL and S could use the app; SL got "none of your roles can be used". server/src/people.js worksAs maps SL (when seasonLeadOn, set from makeServer's practice flag) to Code.gs's coordinator with regionIds = every region of its season, seasonId and seasonLead:true. Code.gs: whoRegions_/whoHasRegion_/whoLocs_/whoSeason_ replace the single who.regionId checks (assertAllowed_, scoped state, mismatch answers, event prices, cash cover, activity log and undo, remote pre-orders); a Season Lead may also createRegion (forced to its season) and settle region counts. Scoped state carries every region of the season, lockedRegion '' and seasonLead/lockedSeason. index.html renderTabs: a Season Lead's path is Season › Regions (＋ New region…) › region Summary/events (＋ New event…). Menu = Regional Lead's. Still off on live (seasonLeadOn(false)). SA and RA still not usable. Test: browser-b317.
 
 ## Done in b316
 Live app changes (Gita, 26 Oct): Add Stock / Subtract Stock "Add several titles at once" reads lines typed with spaces only ("Sri Radha (English) 20", "5 Volume 8 (English)", "Title x 3"); before, only tabs or commas split the number off, so typed lines gave "Nothing to add". parseStockList splits a lone cell on its last (or first) number. Folded into PR #116 with b315. Test: browser-small258.

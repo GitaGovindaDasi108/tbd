@@ -28,6 +28,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
 
   /* Expenses and their receipts (b238): kept and decided here, where the people are. */
+  // Season Lead works in the practice space first (b317).
+  people.seasonLeadOn(!!practice);
   const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv, practice: !!practice, rateNow: (f, t) => rateNow(f, t),
     // A cost kept for an expense is written by Code.gs's own saveCost/deleteCost, as the owner's app would.
     asOwner: (params, name) => {

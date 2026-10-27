@@ -144,7 +144,17 @@ export function giveChoices(P, myGrants, owner) {
 }
 
 /* What this grant works as, in the rules Code.gs already enforces, until Stage 2. */
+/* Season Lead (b317, Gita chose "Build it" on a card; the practice space
+   first): a Regional Lead in every region of its season, and may add regions
+   there. Code.gs knows it as a coordinator holding several regions. */
+let SEASON_LEAD_ON = false;
+export function seasonLeadOn(v) { SEASON_LEAD_ON = !!v; }
 export function worksAs(P, g) {
+  if (g.role === 'SL' && SEASON_LEAD_ON) {
+    if (!P.seasons[g.placeId]) return null;
+    const regionIds = Object.values(P.regions).filter(r => r.seasonId === g.placeId).map(r => r.id);
+    return { role: 'coordinator', seasonLead: true, seasonId: g.placeId, regionIds, regionId: regionIds[0] || '' };
+  }
   const as = WORKS_AS[g.role];
   if (!as) return null;
   if (as === 'admin') return { role: 'admin' };
