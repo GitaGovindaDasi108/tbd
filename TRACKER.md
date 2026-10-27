@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b317**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b318**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,11 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b318
+
+- **Season Lead goes live** (Gita, 27 Oct: "Make this live"). The practice-only switch from b317 (`people.seasonLeadOn`) is gone, so `worksAs` maps SL to a coordinator over every region of its season on the live server too.
+- test/browser-b317.js: the last check now starts a live (non-practice) server and confirms a Season Lead opens her own season and can add a region there.
 
 ## Done in b317
 Season Lead works (practice first; Gita chose "Build it" on a card, 27 Oct). Before, only U, RL, EL and S could use the app; SL got "none of your roles can be used". server/src/people.js worksAs maps SL (when seasonLeadOn, set from makeServer's practice flag) to Code.gs's coordinator with regionIds = every region of its season, seasonId and seasonLead:true. Code.gs: whoRegions_/whoHasRegion_/whoLocs_/whoSeason_ replace the single who.regionId checks (assertAllowed_, scoped state, mismatch answers, event prices, cash cover, activity log and undo, remote pre-orders); a Season Lead may also createRegion (forced to its season) and settle region counts. Scoped state carries every region of the season, lockedRegion '' and seasonLead/lockedSeason. index.html renderTabs: a Season Lead's path is Season › Regions (＋ New region…) › region Summary/events (＋ New event…). Menu = Regional Lead's. Still off on live (seasonLeadOn(false)). SA and RA still not usable. Test: browser-b317.
