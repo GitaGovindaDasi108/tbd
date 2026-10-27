@@ -127,11 +127,20 @@ const API = 'http://api.test/';
       await pg.screenshot({ path: shot('lead-' + w) });
       await pg.context().close();
     }
-    /* Last, since the switch is shared in this process: the live server keeps Season Lead off until Gita says. */
-    const people = await import(path.join(ROOT, 'server', 'src', 'people.js'));
-    people.seasonLeadOn(false);
-    const off = await asL({ action: 'getState' });
-    t.push(['the live app keeps Season Lead off until Gita says ("' + String(off.error || '').slice(0, 40) + '…")', !off.ok && off.noAccess === true]);
+    /* b318: Season Lead is live too: a live server (practice off) lets her in. */
+    const live = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com' });
+    await live.warm();
+    const lask = async p => JSON.parse(await live.request({ postData: { contents: JSON.stringify(p) } }));
+    const lsess = async (email, name) => (await lask({ action: 'signIn', idToken: await token(email, name) })).result.session;
+    const lo = await lsess('owner@example.com', 'The Owner');
+    await lask({ action: 'saveSeason', name: 'Live Kartika', s: lo });
+    const LS = (await lask({ action: 'getState', s: lo })).state.activeSeason;
+    await lask({ action: 'peopleAdd', email: 'live.lead@example.com', name: 'Live Lead', role: 'SL', placeId: LS, s: lo });
+    const ll = await lsess('live.lead@example.com', 'Live Lead');
+    const lv = await lask({ action: 'getState', s: ll });
+    t.push(['b318: on the live app a Season Lead opens her own season (' + String(lv.error || 'ok').slice(0, 40) + ')', lv.ok !== false && !lv.noAccess && lv.state && lv.state.lockedSeason === LS]);
+    const lr = await lask({ action: 'createRegion', regionId: 'rg_live', whLoc: 'wh_live', name: 'Radha Kunda', currencies: 'USD', season: LS, s: ll });
+    t.push(['b318: on the live app she can add a region to her season', lr.ok !== false && !lr.error]);
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));
     t.push(['test ran to the end', false]);
