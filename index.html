@@ -2497,7 +2497,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b318</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b319</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -5907,7 +5907,9 @@ function renderAdmin(){
         ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
         ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
       // Expenses, for every link and role (b238); Finance's To do for a Finance person working in another role.
-      {key:'money', items: FIN_ON ? [`<button class="btn" data-act="expenses">🧾 Add an Expense</button>`].concat(FIN_BTNS(financeMe())) : []},
+      // Track Cash for every lead: season, region, event (b319, Gita).
+      {key:'money', items: (coord || (STATE && STATE.eventLead) ? [`<button class="btn" data-act="cash">💵 Track Cash</button>`] : [])
+        .concat(FIN_ON ? [`<button class="btn" data-act="expenses">🧾 Add an Expense</button>`].concat(FIN_BTNS(financeMe())) : [])},
       {key:'books', items: coord ? [
         `<button class="btn" data-act="addstock">＋ Add New Stock</button>`,
         `<button class="btn" data-act="xfer">⇄ Transfer Existing Stock</button>`,
@@ -16234,7 +16236,12 @@ function bankLabel(acct){
 function cashAccounts(){
   const reg = currentRegion();
   const list = [];
-  if(reg){
+  if(reg && STATE && STATE.eventLead){
+    /* An Event Lead (b319) tracks its own event, and hands money on to the
+       region's coordinator or the global one. */
+    eventsOfRegion(reg.regionId).filter(e=>(STATE.sellerEvents||[]).includes(e.eventId)).forEach(e=>list.push({id:e.eventId,name:e.name}));
+    list.push({id:regionBankId(reg.regionId), name:bankLabel(regionBankId(reg.regionId))});
+  }else if(reg){
     list.push({id:reg.whLoc, name:reg.name+' — Warehouse'});
     eventsOfRegion(reg.regionId).forEach(e=>list.push({id:e.eventId,name:e.name}));
     holdersOf(reg.regionId).forEach(h=>list.push({id:h.holderId,name:h.name+' (storing books)'}));

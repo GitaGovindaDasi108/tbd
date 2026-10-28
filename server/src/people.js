@@ -159,7 +159,9 @@ export function worksAs(P, g) {
   if (as === 'coordinator') return { role: 'coordinator', regionId: g.placeId };
   const e = P.events[g.placeId];
   if (!e) return null;
-  return { role: 'seller', regionId: e.regionId, eventIds: [e.id], eventId: e.id };
+  // An Event Lead also tracks its event's cash (b319); a Seller does not.
+  return Object.assign({ role: 'seller', regionId: e.regionId, eventIds: [e.id], eventId: e.id },
+    g.role === 'EL' ? { eventLead: true } : {});
 }
 
 /* Pick the role a request acts in: the one asked for (by id) if it is theirs

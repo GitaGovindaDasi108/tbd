@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b318';
+var SERVER_BUILD = 'b319';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -872,7 +872,8 @@ function scopedStateFor_(who) {
   // otherwise every poll on a share link rebuilt the whole thing, which is what
   // made selling from a link feel sluggish.
   var rev = getRev_();
-  var tag = 'sc_' + (who.role === 'seller' ? (who.eventIds || [who.eventId]).join('.') : (who.seasonLead ? 'sl_' + who.seasonId : who.regionId));
+  // An Event Lead sees its event's cash and a Seller does not, so they keep apart (b319).
+  var tag = 'sc_' + (who.role === 'seller' ? (who.eventLead ? 'el_' : '') + (who.eventIds || [who.eventId]).join('.') : (who.seasonLead ? 'sl_' + who.seasonId : who.regionId));
   var hit = cacheGet_(rev + '_' + tag);
   if (hit) { try { return JSON.parse(hit); } catch (e) { /* rebuild */ } }
   var out = scopedStateBuild_(who);
@@ -904,6 +905,7 @@ function scopedStateBuild_(who) {
   if (who.seasonLead) full.lockedSeason = String(who.seasonId);
   // One event means the app can lock onto it; several means a chooser.
   full.lockedEvent = (isSeller && myEvents.length === 1) ? myEvents[0] : '';
+  full.eventLead = !!who.eventLead;
   full.sellerEvents = myEvents;
 
   full.regions = (full.regions || []).filter(function (r) { return isSeller ? r.regionId === regionId : !!myRegs[r.regionId]; });
@@ -923,7 +925,7 @@ function scopedStateBuild_(who) {
   });
   full.closeDrafts = drafts;
   full.costs     = isSeller ? [] : (full.costs || []).filter(function (c) { return mine[c.location]; });
-  full.change    = isSeller ? [] : (full.change || []).filter(function (c) {
+  full.change    = (isSeller && !who.eventLead) ? [] : (full.change || []).filter(function (c) {
     // A link sees change at its own places or with its own coordinator.
     return mine[String(c.loc)] || (String(c.loc).indexOf('BANK_') === 0 && !!myRegs[String(c.loc).slice(5)]);
   });
@@ -944,10 +946,16 @@ function scopedStateBuild_(who) {
      their warehouse to the bank is theirs to see — the bank's balance is not,
      since it belongs to the whole tour. Entries between two other places never
      leave the server, so the balance cannot be pieced together here either. */
+  /* A Season or Regional Lead also tracks its regions' coordinator accounts
+     (b319); the bank rows then show only what its own places sent them. */
+  var cashMine = function (a) {
+    a = String(a);
+    return mine[a] || (!isSeller && a.indexOf('BANK_') === 0 && !!myRegs[a.slice(5)]);
+  };
   full.cash = (full.cash || []).filter(function (c) {
-    return c && (mine[String(c.fromAcct)] || mine[String(c.toAcct)]);
+    return c && (cashMine(c.fromAcct) || cashMine(c.toAcct));
   });
-  full.hideBank = true;                  // no universal bank balance on a link
+  full.hideBank = isSeller && !who.eventLead;   // the leads track cash (b319); a seller sees no bank
   full.sheetLinks = { season: '', regions: {} };
   if (isSeller) full.hideMoney = true;   // sellers record payments but see no totals
   return full;
@@ -2373,6 +2381,41 @@ function whoSeason_(who) {
   return ((regionById_(String(who && who.regionId || '')) || {}).seasonId) || '';
 }
 
+/* Track Cash for the leads (b319, Gita): a Season Lead's season, a Regional
+   Lead's region, an Event Lead's event. Each may also hand money to its
+   regions' coordinator accounts and to the global bank (where takings go, and
+   where change comes from). An entry or a piece of change removed must
+   already sit with their own places. */
+var LEAD_CASH = { cashMove:1, cashMoveAll:1, cashFloat:1, cashDelete:1,
+                  changeWithdraw:1, changeReturn:1, changeDelete:1, changeMove:1 };
+function assertCashAllowed_(who, action, params, allowed) {
+  var acct = {}, banks = {};
+  Object.keys(allowed).forEach(function (l) { acct[l] = 1; });
+  whoRegions_(who).forEach(function (r) { banks['BANK_' + r] = 1; if (who.role === 'coordinator') acct['BANK_' + r] = 1; });
+  var own = function (a) { return !!acct[String(a)]; };            // theirs alone
+  var mayUse = function (a) { return own(a) || !!banks[String(a)] || String(a) === 'BANK'; };
+  var no = function () { throw new Error('Track Cash here covers only your own places.'); };
+  if (action === 'cashMove' || action === 'cashMoveAll') {
+    if (!mayUse(params.fromAcct) || !mayUse(params.toAcct)) no();
+    if (!own(params.fromAcct) && !own(params.toAcct)) no();
+  }
+  if (action === 'cashFloat' && !own(params.loc)) no();
+  if (action === 'cashDelete') {
+    var row = null;
+    objectsOf_('_cash').forEach(function (c) { if (String(c.id) === String(params.id)) row = c; });
+    if (row && !own(row.fromAcct) && !own(row.toAcct)) no();
+  }
+  if (action === 'changeWithdraw') {
+    if (!own(params.loc)) no();
+    if (String(params.source || '') !== 'OTHER' && !mayUse(params.source)) no();
+  }
+  if (action === 'changeReturn' || action === 'changeDelete' || action === 'changeMove') {
+    var ids = action === 'changeMove' ? (params.ids || []).map(String) : [String(params.id || '')];
+    objectsOf_('_change').forEach(function (r) { if (ids.indexOf(String(r.id)) >= 0 && !own(r.loc)) no(); });
+    if (action === 'changeMove' && !mayUse(params.toLoc)) no();
+  }
+}
+
 /** Throws unless this role may run this action against this location. */
 function assertAllowed_(who, action, params) {
   if (who.role === 'admin') return;
@@ -2382,13 +2425,17 @@ function assertAllowed_(who, action, params) {
   var ok = SELLER_ACTIONS[action] ||
            (who.role === 'coordinator' && COORD_EXTRA[action]) ||
            // A Season Lead may also add regions to its own season (b317).
-           (who.seasonLead && action === 'createRegion');
+           (who.seasonLead && action === 'createRegion') ||
+           // Track Cash for every lead: season, region, event (b319, Gita).
+           ((who.role === 'coordinator' || who.eventLead) && LEAD_CASH[action]);
   if (!ok) throw new Error('That action is not available on this link.');
 
   // Confine writes to the places this link covers.
   var allowed = {};
   if (who.role === 'seller') (who.eventIds || [who.eventId]).forEach(function (id) { if (id) allowed[id] = 1; });
   else whoLocs_(who).forEach(function (l) { allowed[l] = 1; });
+
+  if (LEAD_CASH[action]) assertCashAllowed_(who, action, params, allowed);
 
   if (action === 'createRegion') {
     params.season = who.seasonId;               // never another season's
