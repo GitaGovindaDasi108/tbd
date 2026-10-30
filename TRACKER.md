@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b318**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b319**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,13 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b319
+
+- **Track Cash for every lead** (Gita, 28 Oct: "Seasonal leads need access to the cash tracker" / "also for regional leads for their own region and event leads for their own event"). Code.gs `LEAD_CASH` + `assertCashAllowed_`: cashMove, cashMoveAll, cashFloat, cashDelete and the change actions for coordinators (Season and Regional Leads) and Event Leads (`worksAs` marks EL `eventLead`; a Seller is unchanged). One side of a move must be their own place (a Season/Regional Lead's own regions' coordinator accounts count as theirs); the other may also be their regions' coordinator account or the global bank. Resets stay Universal-only.
+- scopedStateBuild_: leads get `hideBank` false; cash entries touching their regions' coordinator accounts; an Event Lead gets its event's change. The cache tag keeps an Event Lead's state apart from a Seller's at the same event.
+- index.html: 💵 Track Cash in the non-admin menu for leads; `cashAccounts` for an Event Lead = its event, the regional coordinator, the global coordinator.
+- test/browser-b319.js (36 checks); browser-search now expects a regional link to find Track Cash.
 
 ## Done in b318
 
