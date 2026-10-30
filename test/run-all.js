@@ -13,7 +13,7 @@ const root = fs.existsSync(path.join(here, '..', 'index.html'))
 
 const SCRIPTS = ['simtest.js', 'bundle.js', 'chg2.js', 'verify.js',
                  'stale.js', 'createtest.js', 'dutchtest.js', 'reptest.js',
-                 'payusd.js', 'curtest.js', 'nodefault.js', 'fresh.js', 'hq.js', 'hqfrozen.js', 'truthusd.js', 'truthclient.js', 'hqsheet.js', 'seasondel.js', 'seasondelclient.js', 'labelsbuiltin.js', 'auth.js', 'people.js', 'bridge.js', 'cutover.js', 'transitwhere.js', 'paycur.js', 'seam.js', 'gbpsheet.js', 'countflag.js', 'eventprice.js', 'sharing.js', 'closedorder.js', 'practice.js', 'expenses.js'];
+                 'payusd.js', 'curtest.js', 'nodefault.js', 'fresh.js', 'hq.js', 'hqfrozen.js', 'truthusd.js', 'truthclient.js', 'hqsheet.js', 'seasondel.js', 'seasondelclient.js', 'labelsbuiltin.js', 'auth.js', 'people.js', 'bridge.js', 'cutover.js', 'transitwhere.js', 'paycur.js', 'seam.js', 'gbpsheet.js', 'countflag.js', 'eventprice.js', 'sharing.js', 'closedorder.js', 'practice.js', 'expenses.js', 'bookcost.js'];
 
 let bad = 0;
 
