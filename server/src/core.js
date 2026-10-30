@@ -26,6 +26,8 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   const auth = makeAuth({ exec, clientId: googleClientId, adminEmails: owners, fetchImpl, certsUrl: googleCertsUrl });
   const web = makeWebCache(kv, 6 * 3600 * 1000);
   const app = makeApp(Object.assign(makeGoogle({ store, kv, web, timeZone, uuid }), { reportsHere: false }));
+  // What each book cost (b320): worked out in the practice space only, until Gita says.
+  app.setBookCostOn_(!!practice);
 
   /* Expenses and their receipts (b238): kept and decided here, where the people are. */
   const expenses = makeExpenses({ exec, app, auth, people, places: () => places(), kv, practice: !!practice, rateNow: (f, t) => rateNow(f, t),

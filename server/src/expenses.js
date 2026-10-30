@@ -66,7 +66,9 @@ const COLS = ['id', 'ts', 'seasonId', 'regionId', 'location', 'placeLabel', 'dat
   'paidOn',
   // b265: the exact dollars, when given (they win over any rate), and the
   // dollars at the rate on the day of the expense, worked out by the server.
-  'usdAmt', 'usdDay'];
+  'usdAmt', 'usdDay',
+  // b320 (practice): the books this printing, shipping or postage cost is put on (Code.gs bookCostCalc_).
+  'bookLink'];
 const T = '_expenses';
 const PART = 900 * 1024;                    // characters of base64 per stored part
 const MAX_FILE = 8 * 1024 * 1024;           // bytes, after the phone has shrunk a photo
@@ -712,7 +714,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return String(r.byEmail) === w.email && String(r.forName) !== 'General';
   }
   const shown = r => Object.assign({}, r, { amt: Number(r.amt) || 0, payTo: parse(r.payTo, {}), receipts: parse(r.receipts, []), payAmt: parse(r.payAmt, null) || payGuess(r),
-    usdAmt: Number(r.usdAmt) > 0 ? Number(r.usdAmt) : null, usdDay: parse(r.usdDay, null) });
+    usdAmt: Number(r.usdAmt) > 0 ? Number(r.usdAmt) : null, usdDay: parse(r.usdDay, null), bookLink: parse(r.bookLink, null) });
   /* No rate came with it (b267): Finance still gets a figure and a total, at
      the latest rate the server has (marked as a fallback). */
   function payGuess(r) {
@@ -832,6 +834,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
         const o = parse(old.usdDay, null); return o && o.rate > 0 ? JSON.stringify({ usd: Math.round(amt * o.rate * 100) / 100, rate: o.rate, on: o.on }) : ''; })() : ''),
       payAmt: kind === 'reimburse' ? payAmtFor(p, old, { cur, reimbCur, amt, date, usdAmt }) || cleanPayAmt(p.payAmt || (old && old.cur === cur && old.reimbCur === reimbCur && old.date === date ? parse(old.payAmt, null) : null), cur, reimbCur, amt) : ''
     };
+    row.bookLink = bookLinkFor(w, p, old);
     if (!row.byName && !forName) throw new Error('Say who you are first.');
     app.dbCreate_(T, COLS); app.dbAddCols_(T, COLS);
     if (old) app.dbUpdate_(T, { id }, row); else app.dbInsert_(T, row);
@@ -844,6 +847,47 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       if (L[w.link] && L[w.link].once) { L[w.link].used = id; L[w.link].usedAt = new Date(now()).toISOString(); kv.setProp('reimbLinks', JSON.stringify(L)); }
     }
     return shown(row);
+  }
+  /* ---- Costs put on books (b320, practice first; Gita, 2026-10-29) ----
+     A printing, a shipment or one sale's postage. Finance only. Weights in
+     grams for a shipment's titles are kept with it (setting bookWeights). */
+  function bookLinkFor(w, p, old) {
+    if (p.bookLink === undefined) return old ? String(old.bookLink || '') : '';
+    if (!practice || !isFin(w) || !p.bookLink) return '';
+    const L = p.bookLink, k = String(L.k || '');
+    let out = null;
+    if (k === 'print' && /^(m|sh):[A-Za-z0-9_\-]{2,60}$/.test(String(L.src || ''))) {
+      const shares = {};
+      Object.keys(L.shares || {}).slice(0, 60).forEach(b => { const v = Math.round((Number(L.shares[b]) || 0) * 100) / 100; if (v > 0) shares[clip(b, 40)] = v; });
+      out = { k, src: String(L.src), shares };
+    } else if (k === 'ship' && /^sh_[A-Za-z0-9]{3,20}$/.test(String(L.sh || ''))) out = { k, sh: String(L.sh) };
+    else if (k === 'post' && L.sale) out = { k, sale: clip(L.sale, 60) };
+    if (!out) throw new Error('Choose which books this cost is for.');
+    if (p.weights && typeof p.weights === 'object') {
+      const W = parse(kv.getProp('bookWeights'), {}) || {};
+      Object.keys(p.weights).slice(0, 200).forEach(b => { const g = Math.round(Number(p.weights[b]) || 0); if (g > 0 && g < 100000) W[clip(b, 40)] = g; });
+      kv.setProp('bookWeights', JSON.stringify(W));
+    }
+    return JSON.stringify(out);
+  }
+  function bookCostOpts(w) {
+    if (!practice || !isFin(w)) throw new Error('This is for Finance, in the practice space.');
+    fresh();
+    return app.bookCostOptions_();
+  }
+  function bookCostSales(w) {
+    if (!practice || !isFin(w)) return { on: false, sales: {} };
+    fresh();
+    return app.bookCostSales_();
+  }
+  // Book weights in grams, all at once (Finance › Settings).
+  function bookWeightsSet(w, p) {
+    if (!practice || !mayPay(w)) throw new Error('Only Finance can change the book weights.');
+    const W = {};
+    Object.keys(p.weights || {}).slice(0, 500).forEach(b => { const g = Math.round(Number(p.weights[b]) || 0); if (g > 0 && g < 100000) W[clip(b, 40)] = g; });
+    kv.setProp('bookWeights', JSON.stringify(W));
+    actLog(w, {}, 'bookWeightsSet', 'Book weights changed (' + Object.keys(W).length + ' titles)', null);
+    return { weights: W };
   }
   function remove(w, p) {
     fresh();
@@ -1102,12 +1146,13 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return { words, set };
   }
 
-  const READS = { expLinkList: 1, expLinkInfo: 1, expOptions: 1, expList: 1, expTodo: 1, receiptGet: 1, finData: 1, expRulesGet: 1, placeMetaGet: 1, finCarryOut: 1 };
+  const READS = { bookCostOpts: 1, bookCostSales: 1, expLinkList: 1, expLinkInfo: 1, expOptions: 1, expList: 1, expTodo: 1, receiptGet: 1, finData: 1, expRulesGet: 1, placeMetaGet: 1, finCarryOut: 1 };
   const OPEN_ACTIONS = { expOptions: 1, expSave: 1, receiptPut: 1, expLinkInfo: 1, expLinkAsk: 1 };
 
   const ACTIONS = { expLinkList: linkList, expLinkMake: linkMake, expLinkOff: linkOff, expLinkDel: linkDel, expLinkInfo: linkInfo, expLinkAsk: () => ({ asked: false }), expOptions: options, expSave: save, expDelete: remove, expMark: mark, expList: list, expTodo: todo,
     expRulesGet: rulesGet, expRulesSet: rulesSet, expMethodGone: methodGone, expCatAdd: catAdd, expCatGone: catGone, expPayAdd: payAdd, expPayGone: payGone, finPlaceAdd, finPlaceEdit, receiptPut, receiptGet, finData, finSeriesSet: seriesSet,
-    placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn };
+    placeMetaGet, placeMetaSet, expUndo: undo, finConvSet: convSet, finConvDel: convDel, finCarryOut: carryOut, finCarryIn: carryIn,
+    bookCostOpts, bookCostSales, bookWeightsSet };
   /* One request: who is asking, then the action. */
   function handle(action, p, me, linkKey) {
     /* A closed link (b272, Gita): its page says so and offers "Request for

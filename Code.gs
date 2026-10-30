@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b318';
+var SERVER_BUILD = 'b320';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -377,6 +377,7 @@ function financeData_() {
     return rid ? { r: rid, e: ev ? ev.id : '', s: regs[rid].seasonId } : null;
   };
   var r2 = function (n) { return Math.round(n * 100) / 100; };
+  var BC = bookCostCalc_();                           // b320: what each book sold cost (practice)
   var sales = [], subTag = subRegionsGet_().sales;   // b289: warehouse sales' sub-regions
   objectsOf_('_sales').forEach(function (s) {
     if (!s || !s.saleId) return;
@@ -410,6 +411,8 @@ function financeData_() {
       u: w.e ? '' : String(subTag[String(s.bundle || '')] || subTag[String(s.saleId)] || '') });
     // b295: the Adventures among uncategorized sales' books.
     if (type === 'UNCAT' && Number(s.aqty) > 0) sales[sales.length - 1].qa = Number(s.aqty);
+    // b320: the book's cost, when every copy in it has a printing cost.
+    if (BC.sale[String(s.saleId)]) sales[sales.length - 1].cb = r2(BC.sale[String(s.saleId)].u);
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
@@ -421,9 +424,253 @@ function financeData_() {
       kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
       cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(expUsd_(x, loc)), usdExact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' ? 1 : 0 });
+    // b320: the part put onto books (and refunded), which Net takes off this expense.
+    var off = (BC.cap[String(x.id)] || 0) + (BC.ref[String(x.id)] || 0);
+    if (off > 0.004) expenses[expenses.length - 1].off = r2(Math.min(off, expenses[expenses.length - 1].usd));
   });
   var list = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
   return { seasons: seasons, regions: list(regs), events: list(evs), sales: sales, expenses: expenses };
+}
+
+/* ---- What each book cost (b320, practice first; Gita, 2026-10-29) ----
+   A printing's cost is shared over the copies it made, and every shipment's
+   cost over the copies that travelled on it, by each title's weight. The cost
+   rides on the copies wherever they go, so a sale knows what its book cost
+   and Net counts the books sold, not the bills.
+
+   The app counts copies per shelf, not single books, so the cost is kept as
+   batches per shelf ("142 at 1,097.92 ₹", "10 at 361.22 ₹"), the oldest used
+   first. Nothing is stored: the batches are worked out afresh from the stock
+   movement record and the sales, so an undo or a deleted sale puts the cost
+   back by itself.
+
+   The costs are ordinary expenses with a `bookLink` (expenses.js):
+     {k:'print', src:'m:<move id or prefix>' | 'sh:<shipId>', shares:{bookId: amount}}
+     {k:'ship', sh:<shipId>}          the shipment's copies, by weight
+     {k:'post', sale:<saleId>}        postage for one sale's books
+   The expense stays whole in Expenses. What was put onto books (`cap`) comes
+   off it in Net, and the books' cost counts instead when they are sold.
+   Copies with no printing cost (the books from before) stay "cost not known":
+   left out of profit, and a shipment's share on them stays an expense. A
+   returned shipment's share is never put on its books (they go back at the
+   cost they had), so it stays an expense, less the refund (`ref`). */
+var BOOKCOST_ON_ = false;
+function setBookCostOn_(v) { BOOKCOST_ON_ = !!v; }
+function bcList_(raw) {
+  if (!raw) return [];
+  try { var o = JSON.parse(String(raw)); return Array.isArray(o) ? o : []; } catch (e) { return []; }
+}
+function bcJson_(raw) {
+  if (!raw) return null;
+  if (typeof raw === 'object') return raw;
+  try { var o = JSON.parse(String(raw)); return o && typeof o === 'object' ? o : null; } catch (e) { return null; }
+}
+function bookWeights_() {
+  var o = bcJson_(propGet_('bookWeights')) || {}, out = {};
+  Object.keys(o).forEach(function (k) { var g = Number(o[k]); if (g > 0) out[k] = g; });
+  return out;
+}
+function bcTime_(v) { var t = (v instanceof Date ? v : new Date(v)).getTime(); return isNaN(t) ? 0 : t; }
+/* Does this stock movement belong to a printing's source? */
+function bcSrcHas_(src, m) {
+  src = String(src || '');
+  if (src.indexOf('sh:') === 0) return String(m.toLoc) === src.slice(3);
+  if (src.indexOf('m:') === 0) { var id = String(m.id), k = src.slice(2); return !!k && (id === k || id.indexOf(k + '_') === 0); }
+  return false;
+}
+function bookCostCalc_() {
+  var out = { sale: {}, cap: {}, ref: {}, on: false };
+  if (!BOOKCOST_ON_ || !dbHas_('_expenses')) return out;
+  var exps = objectsOf_('_expenses').filter(function (x) {
+    return x && x.id && x.bookLink && String(x.status || '') !== 'declined' && !x.partnerId;
+  }).map(function (x) {
+    var L = bcJson_(x.bookLink);
+    var loc = String(x.location || '');
+    return L ? { id: String(x.id), L: L, cur: String(x.cur || '').toUpperCase(), amt: Number(x.amt) || 0,
+                 usd: expUsd_(x, loc === HQ_REGION ? '' : loc), exact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' } : null;
+  }).filter(function (x) { return x && x.amt > 0; });
+  if (!exps.length) return out;
+  var prints = exps.filter(function (x) { return x.L.k === 'print' && x.L.src; });
+  if (!prints.length) return out;
+  out.on = true;
+  var moves = dbHas_('_stockmoves') ? objectsOf_('_stockmoves') : [];
+  // A printing's copies of each title, from its own movements.
+  prints.forEach(function (x) {
+    x.q = {};
+    moves.forEach(function (m) {
+      if (String(m.kind) === 'ADJUST' && Number(m.qty) > 0 && bcSrcHas_(x.L.src, m))
+        x.q[String(m.bookId)] = (x.q[String(m.bookId)] || 0) + Math.round(Number(m.qty));
+    });
+    var books = Object.keys(x.q), copies = 0, sh = x.L.shares || {}, given = 0;
+    books.forEach(function (b) { copies += x.q[b]; if (Number(sh[b]) > 0) given += Number(sh[b]); });
+    x.per = {};
+    books.forEach(function (b) {
+      // Each title's share as typed; with none typed, by copies (Gita's question 2).
+      var part = given > 0 ? (Number(sh[b]) || 0) / given : x.q[b] / copies;
+      x.per[b] = { usd: x.usd * part / x.q[b], amt: x.amt * part / x.q[b] };
+    });
+  });
+  var tracked = {};
+  prints.forEach(function (x) { Object.keys(x.q).forEach(function (b) { tracked[b] = 1; }); });
+  // Each shipment's cost per copy, title by title, by weight.
+  var W = bookWeights_(), wl = Object.keys(W).map(function (k) { return W[k]; });
+  var wAvg = wl.length ? wl.reduce(function (t, g) { return t + g; }, 0) / wl.length : 1;
+  var ships = {};
+  shipmentsAll_().forEach(function (s) { ships[s.shipId] = s; });
+  var shipLoad = {};
+  exps.forEach(function (x) {
+    if (x.L.k !== 'ship' || !ships[x.L.sh]) return;
+    var man = ships[x.L.sh].manifest || {}, den = 0;
+    Object.keys(man).forEach(function (b) { den += (Number(man[b]) || 0) * (W[b] || wAvg); });
+    if (!(den > 0)) return;
+    var per = shipLoad[x.L.sh] || (shipLoad[x.L.sh] = {});
+    Object.keys(man).forEach(function (b) {
+      var w = (W[b] || wAvg) / den;
+      (per[b] = per[b] || []).push({ id: x.id, usd: x.usd * w, amt: x.amt * w, cur: x.cur });
+    });
+  });
+  var posts = {};
+  exps.forEach(function (x) { if (x.L.k === 'post' && x.L.sale) (posts[String(x.L.sale)] = posts[String(x.L.sale)] || []).push(x); });
+
+  // Every movement and sale of a title that has a printing cost, in time order.
+  var ev = [];
+  moves.forEach(function (m, i) {
+    if (!tracked[String(m.bookId)]) return;
+    ev.push({ t: bcTime_(m.ts), i: i, m: m });
+  });
+  var sales = objectsOf_('_sales');
+  sales.forEach(function (s, i) {
+    if (!s || !s.saleId || String(s.type) !== 'SALE' || !tracked[String(s.bookId)]) return;
+    ev.push({ t: bcTime_(s.ts), i: moves.length + i, s: s });
+  });
+  ev.sort(function (a, b) { return a.t - b.t || a.i - b.i; });
+
+  var shelf = {}, loaded = {}, lost = {};
+  var key = function (loc, b) { return loc + '||' + b; };
+  var take = function (loc, b, n) {
+    var st = shelf[key(loc, b)] || [], got = [];
+    while (n > 0 && st.length) {
+      var top = st[0], k = Math.min(n, top.n);
+      got.push({ n: k, known: top.known, c: top.c, o: top.o });
+      top.n -= k; n -= k;
+      if (!top.n) st.shift();
+    }
+    if (n > 0) got.push({ n: n, known: false, c: {}, o: {} });   // copies the record never saw arrive
+    return got;
+  };
+  var put = function (loc, b, pieces) {
+    var st = shelf[key(loc, b)] || (shelf[key(loc, b)] = []);
+    pieces.forEach(function (p) { if (p.n > 0) st.push(p); });
+  };
+  var add = function (o, k, v) { o[k] = (o[k] || 0) + v; };
+  var drop = function (p) { if (p.known) Object.keys(p.c).forEach(function (id) { add(lost, id, p.c[id] * p.n); }); };
+  var copyOf = function (p, n) {
+    var c = {}, o = {};
+    Object.keys(p.c).forEach(function (k) { c[k] = p.c[k]; });
+    Object.keys(p.o).forEach(function (k) { o[k] = p.o[k]; });
+    return { n: n, known: p.known, c: c, o: o };
+  };
+  ev.forEach(function (e) {
+    if (e.s) {
+      var s = e.s, b = String(s.bookId), n = Math.max(1, Math.round(Number(s.qty) || 1)), from = restoreLocOf_(s);
+      if (!from) return;
+      var got = take(from, b, n);
+      if (!got.every(function (p) { return p.known; })) { got.forEach(drop); return; }
+      var usd = 0, o = {};
+      got.forEach(function (p) {
+        Object.keys(p.c).forEach(function (id) { usd += p.c[id] * p.n; });
+        Object.keys(p.o).forEach(function (c) { add(o, c, p.o[c] * p.n); });
+      });
+      (posts[String(s.saleId)] || []).forEach(function (x) { usd += x.usd; add(o, x.cur, x.amt); add(loaded, x.id, x.usd); });
+      out.sale[String(s.saleId)] = { u: usd, o: o };
+      return;
+    }
+    var m = e.m, b2 = String(m.bookId), q = Math.round(Number(m.qty) || 0), kind = String(m.kind);
+    if (kind === 'ADJUST') {
+      var to = String(m.toLoc);
+      if (q < 0) { take(to, b2, -q).forEach(drop); return; }
+      var c = {}, o2 = {}, known = false;
+      prints.forEach(function (x) {
+        if (!x.per[b2] || !bcSrcHas_(x.L.src, m)) return;
+        known = true; c[x.id] = (c[x.id] || 0) + x.per[b2].usd; add(o2, x.cur, x.per[b2].amt);
+        add(loaded, x.id, x.per[b2].usd * q);
+      });
+      put(to, b2, [{ n: q, known: known, c: c, o: o2 }]);
+      return;
+    }
+    if (q <= 0) return;
+    var fromL = String(m.fromLoc), toL = String(m.toLoc);
+    var pieces = take(fromL, b2, q).map(function (p) { return copyOf(p, p.n); });
+    var load = String(m.id).indexOf('RT_') === 0 ? null : (shipLoad[fromL] || {})[b2];
+    if (load) pieces.forEach(function (p) {
+      if (!p.known) return;
+      load.forEach(function (l) { add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(loaded, l.id, l.usd * p.n); });
+    });
+    put(toL, b2, pieces);
+  });
+  Object.keys(loaded).forEach(function (id) { out.cap[id] = Math.max(0, loaded[id] - (lost[id] || 0)); });
+  // Refunds for books sent back: against the shipment's (first) cost.
+  var firstShipExp = {};
+  exps.forEach(function (x) { if (x.L.k === 'ship' && !firstShipExp[x.L.sh]) firstShipExp[x.L.sh] = x; });
+  var moveIds = {};
+  moves.forEach(function (m) { moveIds[String(m.id)] = 1; });
+  Object.keys(ships).forEach(function (sid) {
+    var x = firstShipExp[sid];
+    if (!x) return;
+    (ships[sid].returns || []).forEach(function (r) {
+      // An undone return (its movements gone) refunds nothing.
+      if (!r || !r.mp || !Object.keys(moveIds).some(function (id) { return id.indexOf(r.mp) === 0; })) return;
+      var f = r.refund || {}, a = Number(f.amt) || 0, cur = String(f.cur || '').toUpperCase();
+      if (!(a > 0)) return;
+      var usd = cur === x.cur && x.amt > 0 ? x.usd * a / x.amt : toUSD_(a, cur);
+      add(out.ref, x.id, usd);
+    });
+  });
+  return out;
+}
+/* For Finance in the Sales Log: each sale's book cost, and what it made. */
+function bookCostSales_() {
+  var C = bookCostCalc_(), res = {};
+  if (!C.on) return { on: false, sales: res };
+  objectsOf_('_sales').forEach(function (s) {
+    var c = C.sale[String(s.saleId)];
+    if (!c) return;
+    var got = legsUsd_(s) + dueUsd_(s);
+    res[String(s.saleId)] = { u: Math.round(c.u * 100) / 100, o: c.o, g: Math.round(got * 100) / 100 };
+  });
+  return { on: true, sales: res };
+}
+/* What a printing or shipping cost can be put on, for the expense form:
+   books brought into the app (from Add Stock), and shipments. Newest first. */
+function bookCostOptions_() {
+  var ins = {}, order = [];
+  var name = function (b) { var x = bookById_(b); return x ? String(x.name || b) : b; };
+  var day = function (v) { var d = v instanceof Date ? v : new Date(v); return isNaN(d.getTime()) ? '' : Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd'); };
+  var ships = {};
+  shipmentsAll_().forEach(function (s) { ships[s.shipId] = s; });
+  (dbHas_('_stockmoves') ? objectsOf_('_stockmoves') : []).forEach(function (m) {
+    if (String(m.kind) !== 'ADJUST' || !(Number(m.qty) > 0)) return;
+    var to = String(m.toLoc), id = String(m.id), src;
+    if (ships[to]) src = 'sh:' + to;
+    else src = 'm:' + (/^M[a-z0-9]+_/.test(id) ? id.split('_')[0] : id);
+    var x = ins[src];
+    if (!x) { x = ins[src] = { id: src, d: day(m.ts), t: bcTime_(m.ts), at: ships[to] ? locLabel_(shipLandsAtSrv_(ships[to])) : locLabel_(to),
+      note: String(m.note || ''), books: {} }; order.push(src); }
+    x.books[String(m.bookId)] = (x.books[String(m.bookId)] || 0) + Math.round(Number(m.qty));
+  });
+  var bl = function (o) { return Object.keys(o).map(function (b) { return { id: b, name: name(b), q: o[b] }; }); };
+  var printings = order.map(function (k) { var x = ins[k]; return { id: x.id, d: x.d, t: x.t, at: x.at, note: x.note, books: bl(x.books) }; })
+    .sort(function (a, b) { return b.t - a.t; }).slice(0, 300);
+  var shipList = Object.keys(ships).map(function (k) {
+    var s = ships[k], from = s.fromRegion === OUTSIDE_ORIGIN ? (s.origin || 'Outside the system') : ((regionById_(s.fromRegion) || {}).name || '');
+    return { id: s.shipId, d: day(s.createdAt), t: bcTime_(s.createdAt), from: from, to: locLabel_(shipLandsAtSrv_(s)),
+      status: s.status, books: bl(s.manifest || {}) };
+  }).sort(function (a, b) { return b.t - a.t; }).slice(0, 300);
+  return { printings: printings, shipments: shipList, weights: bookWeights_() };
+}
+function shipLandsAtSrv_(s) {
+  var r = regionById_(s.toRegion);
+  return s.toLoc || (r ? r.whLoc : s.shipId);
 }
 
 /* Every spreadsheet the app keeps, and whose it is (b226): for the server, which
@@ -763,6 +1010,7 @@ function handle(e) {
         case 'deleteHolder':     result = doDeleteHolder(params);  break;
         case 'adjustShipment':   result = doAdjustShipment(params); break;
         case 'receiveShipment':  result = doReceiveShipment(params); break;
+        case 'returnShipment':   result = doReturnShipment(params); break;
         case 'reopenLocation':   doReopenLocation(params);   break;
         case 'saveCloseDraft':   doSaveCloseDraft(params);   break;
         default: throw new Error('Unknown action: ' + action);
@@ -2247,6 +2495,60 @@ function doReceiveShipment(p) {
   return { status: status, remaining: left };
 }
 
+/* A shipment sent back (b320, practice first; Gita, 2026-10-29): copies leave
+   the batch for the shelf they are returned to, by movements named RT_…, so
+   the shipment's cost is never put on them and they keep the cost they had.
+   What came back, where to, and any refund are kept with the shipment. */
+function doReturnShipment(p) {
+  if (!BOOKCOST_ON_) throw new Error('Returning a shipment is in the practice space only, for now.');
+  var id = String(p.shipId || '');
+  var ship = shipmentById_(id);
+  if (!ship) throw new Error('That shipment is no longer listed.');
+  var destLoc = String(p.toLoc || '');
+  var known = {};
+  allRegionsEverywhere_().forEach(function (r) { if (r.whLoc) known[r.whLoc] = 1; });
+  objectsOf_('_events').forEach(function (e) { if (e.eventId) known[String(e.eventId)] = 1; });
+  objectsOf_('_holders').forEach(function (h) { if (h.holderId && !truthyCell_(h.archived)) known[String(h.holderId)] = 1; });
+  if (!known[destLoc]) throw new Error('Choose where the books came back to.');
+  var map = loadInvMap_();
+  var items = (p.items || []).map(function (it) {
+    return { bookId: String(it.bookId), qty: Math.max(0, Math.round(Number(it.qty) || 0)) };
+  }).filter(function (it) { return it.qty > 0; });
+  var mp = 'RT_' + Utilities.getUuid().replace(/-/g, '').slice(0, 6) + '_';
+  var n = 0;
+  items.forEach(function (it, i) {
+    var have = getQty_(map, id, it.bookId), qty = Math.min(have, it.qty);
+    if (qty <= 0) return;
+    var tB = getQty_(map, destLoc, it.bookId);
+    addQty_(map, id, it.bookId, -qty);
+    addQty_(map, destLoc, it.bookId, qty);
+    stockMoveAppend_({ id: mp + i, kind: 'TRANSFER', fromLoc: id, toLoc: destLoc, bookId: it.bookId, qty: qty,
+      note: 'Shipment returned' + (p.note ? ' — ' + p.note : ''),
+      fromBefore: have, fromAfter: have - qty, toBefore: tB, toAfter: tB + qty });
+    n += qty;
+  });
+  if (!n) throw new Error('Enter how many books came back.');
+  saveInvMap_(map);
+  var refund = null, ra = Math.round((Number(p.refundAmt) || 0) * 100) / 100, rc = String(p.refundCur || '').toUpperCase();
+  if (ra > 0) {
+    if (!/^[A-Z]{3}$/.test(rc)) throw new Error('Choose the currency the refund came in.');
+    refund = { cur: rc, amt: ra };
+  }
+  var left = 0;
+  allBooks_().forEach(function (b) { left += getQty_(map, id, b.id); });
+  var status = left > 0 ? 'PARTIAL' : 'ARRIVED';
+  var rows = shipmentRows_().filter(function (x) { return String(x.shipId) === id; });
+  var list = bcList_(rows[0] && rows[0].returns);
+  list.push({ at: /^\d{4}-\d{2}-\d{2}$/.test(String(p.date || '')) ? String(p.date) : Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd'),
+              n: n, toLoc: destLoc, mp: mp, refund: refund, how: String(p.how || '') });
+  dbAddCols_('_shipments', ['returns']);
+  dbUpdate_('_shipments', { shipId: id },
+    status === 'ARRIVED' ? { status: status, arrivedAt: new Date(), returns: JSON.stringify(list) } : { status: status, returns: JSON.stringify(list) });
+  markDirty_(destLoc);
+  markDirtyRegions_([ship.fromRegion, ship.toRegion]);
+  return { status: status, remaining: left };
+}
+
 /* ---- Access without accounts ----------------------------------------------
    A share link carries a random key. No key means the full admin app, exactly
    as before. A key resolves to one event (a seller) or one region (a local
@@ -3269,7 +3571,9 @@ function shipmentsAll_() {
                toLoc: String(x.toLoc || ''),
                // Where a batch came from when it started outside the tour — a
                // printer, a temple, another country we don't track as a region.
-               origin: String(x.origin || '') };
+               origin: String(x.origin || ''),
+               // Copies sent back (b320, practice): [{at, n, toLoc, mp, refund:{cur, amt}}].
+               returns: bcList_(x.returns) };
     });
 }
 /** Shipments still on their way TO a region. */
@@ -9342,6 +9646,10 @@ function describe_(action, p, result, moves, who) {
       break;
     case 'receiveShipment':
       d = { text: 'Books arrived: ' + (mv || 'nothing') + note, undo: ids.length ? { type: 'receive', shipId: String(p.shipId), ids: ids } : null }; break;
+    case 'returnShipment': {
+      var rf = Number(p.refundAmt) > 0 ? ', refund ' + fmtMoney_(Number(p.refundAmt), String(p.refundCur || '')) : ', no refund';
+      d = { text: 'Shipment returned: ' + (mv || 'nothing') + rf + note, undo: ids.length ? { type: 'receive', shipId: String(p.shipId), ids: ids } : null }; break;
+    }
     case 'adjustShipment': d = { text: 'Corrected what a shipment holds: ' + (mv || 'no change') + note }; break;
     case 'deleteShipment': d = { text: 'Deleted a shipment' + (mv ? ': ' + mv : '') }; break;
     case 'setFulfilBy': {
