@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b320';
+var SERVER_BUILD = 'b321';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -411,8 +411,6 @@ function financeData_() {
       u: w.e ? '' : String(subTag[String(s.bundle || '')] || subTag[String(s.saleId)] || '') });
     // b295: the Adventures among uncategorized sales' books.
     if (type === 'UNCAT' && Number(s.aqty) > 0) sales[sales.length - 1].qa = Number(s.aqty);
-    // b320: the book's cost, when every copy in it has a printing cost.
-    if (BC.sale[String(s.saleId)]) sales[sales.length - 1].cb = r2(BC.sale[String(s.saleId)].u);
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
@@ -424,12 +422,57 @@ function financeData_() {
       kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
       cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(expUsd_(x, loc)), usdExact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' ? 1 : 0 });
-    // b320: the part put onto books (and refunded), which Net takes off this expense.
-    var off = (BC.cap[String(x.id)] || 0) + (BC.ref[String(x.id)] || 0);
-    if (off > 0.004) expenses[expenses.length - 1].off = r2(Math.min(off, expenses[expenses.length - 1].usd));
+    if (BC.al[String(x.id)]) bcSplit_(expenses, BC.al[String(x.id)], where, regs, evs, seasons);
   });
   var list = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
   return { seasons: seasons, regions: list(regs), events: list(evs), sales: sales, expenses: expenses };
+}
+
+/* A book cost's expense, shared out over the places holding its copies (b321):
+   its own row keeps the share where it was logged, and each other place gets
+   a row of its own (id "<expense>@<place>", `of` the expense) with its share.
+   Every row carries its History, signed for that place: `bw` the whole bill
+   on the expense's own row, `bh` [{d, k, n, w, u, a}], w the other place. */
+function bcSplit_(expenses, A, where, regs, evs, seasons) {
+  var row = expenses[expenses.length - 1], r2 = function (n) { return Math.round(n * 100) / 100; };
+  var fu = A.u0 > 0 ? row.usd / A.u0 : 0, fa = A.a0 > 0 ? row.amt / A.a0 : 0;
+  var sName = {}; seasons.forEach(function (x) { sName[x.id] = x.name; });
+  var name = function (p) {
+    if (p === HQ_WH) return 'Earthly HQ';
+    if (evs[p]) return evs[p].name;
+    var w = where(p);
+    return w && regs[w.r] ? regs[w.r].name : p;
+  };
+  var day = function (t) { return t ? Utilities.formatDate(new Date(t), Session.getScriptTimeZone(), 'yyyy-MM-dd') : row.d; };
+  var hist = function (p) {
+    var h = p === A.own ? [{ d: row.d, k: 'orig', n: 0, w: '', u: r2(A.u0 * fu), a: r2(A.a0 * fa) }] : [];
+    A.h.forEach(function (e) {
+      var sg = e.from === p ? -1 : e.to === p ? 1 : 0;
+      if (!sg) return;
+      h.push({ d: day(e.t), k: e.k, n: e.n, w: e.k === 'ref' ? '' : name(sg < 0 ? e.to : e.from), u: r2(sg * e.u * fu), a: r2(sg * e.a * fa) });
+    });
+    return h;
+  };
+  var own = A.at[A.own] || { u: 0, a: 0 };
+  row.bw = { u: row.usd, a: row.amt };
+  row.usd = r2(own.u * fu); row.amt = r2(own.a * fa); row.bh = hist(A.own);
+  Object.keys(A.at).forEach(function (p) {
+    if (p === A.own) return;
+    var c = A.at[p];
+    if (!(Math.abs(c.u) > 0.004 || Math.abs(c.a) > 0.004)) return;
+    var w = p === HQ_WH ? null : where(p), h = hist(p);
+    var r = {}; Object.keys(row).forEach(function (k) { r[k] = row[k]; });
+    delete r.bw;
+    r.id = row.id + '@' + p; r.of = row.id;
+    if (r.kind === 'reimburse') { r.kind = 'record'; r.st = 'recorded'; }   // a cost here, paid back once, on the bill itself
+    r.usd = r2(c.u * fu); r.amt = r2(c.a * fa); r.bh = h;
+    r.d = h.length ? h[0].d : row.d;
+    if (w) { r.s = w.s; r.r = w.r; r.e = w.e; } else { r.s = HQ_ID; r.r = ''; r.e = ''; }
+    // Where it sits, as the expenses list names places.
+    r.loc = w ? (w.e || w.r) : HQ_REGION; r.rg = w ? w.r : HQ_REGION;
+    r.pl = p === HQ_WH ? 'Earthly HQ' : [w && w.e ? evs[w.e].name : '', w ? regs[w.r].name : '', w ? sName[w.s] : ''].filter(String).join(' · ');
+    expenses.push(r);
+  });
 }
 
 /* ---- What each book cost (b320, practice first; Gita, 2026-10-29) ----
@@ -479,14 +522,14 @@ function bcSrcHas_(src, m) {
   return false;
 }
 function bookCostCalc_() {
-  var out = { sale: {}, cap: {}, ref: {}, on: false };
+  var out = { sale: {}, cap: {}, ref: {}, al: {}, on: false };
   if (!BOOKCOST_ON_ || !dbHas_('_expenses')) return out;
   var exps = objectsOf_('_expenses').filter(function (x) {
     return x && x.id && x.bookLink && String(x.status || '') !== 'declined' && !x.partnerId;
   }).map(function (x) {
     var L = bcJson_(x.bookLink);
     var loc = String(x.location || '');
-    return L ? { id: String(x.id), L: L, cur: String(x.cur || '').toUpperCase(), amt: Number(x.amt) || 0,
+    return L ? { id: String(x.id), L: L, location: loc, cur: String(x.cur || '').toUpperCase(), amt: Number(x.amt) || 0,
                  usd: expUsd_(x, loc === HQ_REGION ? '' : loc), exact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' } : null;
   }).filter(function (x) { return x && x.amt > 0; });
   if (!exps.length) return out;
@@ -517,6 +560,41 @@ function bookCostCalc_() {
   var wAvg = wl.length ? wl.reduce(function (t, g) { return t + g; }, 0) / wl.length : 1;
   var ships = {};
   shipmentsAll_().forEach(function (s) { ships[s.shipId] = s; });
+  /* b321 (Gita, 2026-10-30): the cost is an expense of whichever place holds
+     the copies. It starts whole where it was logged (Earthly HQ), and the
+     share of every copy sent on goes with it: 300 to Delhi takes 300 copies'
+     cost off HQ and onto Delhi; 20 on to Surat moves theirs from Delhi to
+     Surat. Copies on their way count at the place they are going to. A sold
+     or lost copy's cost stays where it was. `al` keeps each expense's share
+     per place and the journey, for its card's History. */
+  var placeOf = function (loc) {
+    loc = String(loc || '');
+    if (ships[loc]) loc = String(shipLandsAtSrv_(ships[loc]) || '');
+    if (!loc || loc === HQ_REGION || loc === HQ_WH) return HQ_WH;
+    var r = regionById_(loc);
+    if (r) return String(r.regionId) === HQ_REGION ? HQ_WH : String(r.whLoc || loc);
+    return loc;
+  };
+  var byId = {};
+  exps.forEach(function (x) { byId[x.id] = x; x.own = placeOf(x.location); });
+  var alOf = function (id) {
+    var A = out.al[id];
+    if (!A) { var x = byId[id]; A = out.al[id] = { own: x.own, u0: x.usd, a0: x.amt, at: {}, h: [] }; A.at[x.own] = { u: x.usd, a: x.amt }; }
+    return A;
+  };
+  var mv = function (id, from, to, n, u, a, k, t, key) {
+    if (from === to || !byId[id] || !(u > 0 || a > 0)) return;
+    var A = alOf(id);
+    [[from, -1], [to, 1]].forEach(function (pq) {
+      var c = A.at[pq[0]] || (A.at[pq[0]] = { u: 0, a: 0 });
+      c.u += pq[1] * u; c.a += pq[1] * a;
+    });
+    var last = A.h[A.h.length - 1];
+    if (last && last.key === key && last.from === from && last.to === to && last.k === k) { last.n += n; last.u += u; last.a += a; return; }
+    A.h.push({ t: t, k: k, n: n, from: from, to: to, u: u, a: a, key: key });
+  };
+  var moveKey = function (m) { return String(m.id).replace(/_\d+$/, ''); };
+  exps.forEach(function (x) { if (x.L.k === 'print' || x.L.k === 'ship') alOf(x.id); });
   var shipLoad = {};
   exps.forEach(function (x) {
     if (x.L.k !== 'ship' || !ships[x.L.sh]) return;
@@ -551,11 +629,11 @@ function bookCostCalc_() {
     var st = shelf[key(loc, b)] || [], got = [];
     while (n > 0 && st.length) {
       var top = st[0], k = Math.min(n, top.n);
-      got.push({ n: k, known: top.known, c: top.c, o: top.o });
+      got.push({ n: k, known: top.known, c: top.c, o: top.o, a: top.a || {} });
       top.n -= k; n -= k;
       if (!top.n) st.shift();
     }
-    if (n > 0) got.push({ n: n, known: false, c: {}, o: {} });   // copies the record never saw arrive
+    if (n > 0) got.push({ n: n, known: false, c: {}, o: {}, a: {} });   // copies the record never saw arrive
     return got;
   };
   var put = function (loc, b, pieces) {
@@ -565,10 +643,11 @@ function bookCostCalc_() {
   var add = function (o, k, v) { o[k] = (o[k] || 0) + v; };
   var drop = function (p) { if (p.known) Object.keys(p.c).forEach(function (id) { add(lost, id, p.c[id] * p.n); }); };
   var copyOf = function (p, n) {
-    var c = {}, o = {};
+    var c = {}, o = {}, a = {};
     Object.keys(p.c).forEach(function (k) { c[k] = p.c[k]; });
     Object.keys(p.o).forEach(function (k) { o[k] = p.o[k]; });
-    return { n: n, known: p.known, c: c, o: o };
+    Object.keys(p.a || {}).forEach(function (k) { a[k] = p.a[k]; });
+    return { n: n, known: p.known, c: c, o: o, a: a };
   };
   ev.forEach(function (e) {
     if (e.s) {
@@ -589,22 +668,37 @@ function bookCostCalc_() {
     if (kind === 'ADJUST') {
       var to = String(m.toLoc);
       if (q < 0) { take(to, b2, -q).forEach(drop); return; }
-      var c = {}, o2 = {}, known = false;
+      var c = {}, o2 = {}, a2 = {}, known = false;
       prints.forEach(function (x) {
         if (!x.per[b2] || !bcSrcHas_(x.L.src, m)) return;
-        known = true; c[x.id] = (c[x.id] || 0) + x.per[b2].usd; add(o2, x.cur, x.per[b2].amt);
+        known = true; c[x.id] = (c[x.id] || 0) + x.per[b2].usd; add(o2, x.cur, x.per[b2].amt); add(a2, x.id, x.per[b2].amt);
         add(loaded, x.id, x.per[b2].usd * q);
+        // Books brought in somewhere other than where the bill was logged: their share goes there.
+        mv(x.id, x.own, placeOf(to), q, x.per[b2].usd * q, x.per[b2].amt * q, 'move', e.t, moveKey(m));
       });
-      put(to, b2, [{ n: q, known: known, c: c, o: o2 }]);
+      put(to, b2, [{ n: q, known: known, c: c, o: o2, a: a2 }]);
       return;
     }
     if (q <= 0) return;
     var fromL = String(m.fromLoc), toL = String(m.toLoc);
     var pieces = take(fromL, b2, q).map(function (p) { return copyOf(p, p.n); });
-    var load = String(m.id).indexOf('RT_') === 0 ? null : (shipLoad[fromL] || {})[b2];
+    var isRet = String(m.id).indexOf('RT_') === 0, pf = placeOf(fromL), pt = placeOf(toL);
+    // The copies' costs go with them (b321).
+    pieces.forEach(function (p) {
+      if (!p.known) return;
+      Object.keys(p.c).forEach(function (id) { mv(id, pf, pt, p.n, p.c[id] * p.n, (p.a[id] || 0) * p.n, isRet ? 'ret' : 'move', e.t, moveKey(m)); });
+    });
+    var load = isRet ? null : (shipLoad[fromL] || {})[b2];
     if (load) pieces.forEach(function (p) {
       if (!p.known) return;
-      load.forEach(function (l) { add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(loaded, l.id, l.usd * p.n); });
+      load.forEach(function (l) {
+        add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(p.a, l.id, l.amt); add(loaded, l.id, l.usd * p.n);
+        mv(l.id, byId[l.id].own, pt, p.n, l.usd * p.n, l.amt * p.n, 'ship', e.t, moveKey(m));
+      });
+    });
+    // Sent back: what those copies' shipping cost goes to Earthly HQ (Gita, 2026-10-30), the region is not hurt.
+    if (isRet) ((shipLoad[fromL] || {})[b2] || []).forEach(function (l) {
+      mv(l.id, byId[l.id].own, HQ_WH, q, l.usd * q, l.amt * q, 'retship', e.t, moveKey(m));
     });
     put(toL, b2, pieces);
   });
@@ -624,6 +718,11 @@ function bookCostCalc_() {
       if (!(a > 0)) return;
       var usd = cur === x.cur && x.amt > 0 ? x.usd * a / x.amt : toUSD_(a, cur);
       add(out.ref, x.id, usd);
+      // The refund comes off Earthly HQ's share, where the returned books' shipping went.
+      var A = alOf(x.id), c = A.at[HQ_WH] || (A.at[HQ_WH] = { u: 0, a: 0 });
+      var am = cur === x.cur ? a : (x.usd > 0 ? x.amt * usd / x.usd : 0);
+      c.u -= usd; c.a -= am;
+      A.h.push({ t: bcTime_(r.at), k: 'ref', n: 0, from: HQ_WH, to: '', u: usd, a: am, key: 'ref' });
     });
   });
   return out;

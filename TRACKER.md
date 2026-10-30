@@ -2549,6 +2549,13 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b321 — book costs move with the books (practice)
+
+- **Gita (30 Oct 15:12 IST)**: Gross and Net were the same in practice. Replaces b320's Net rule (cost of books sold, `cb`/`off`): a printing or shipping cost is now an expense of whichever place holds the copies. It starts whole where it was logged (Earthly HQ); sending 300 to Delhi moves 300 copies' share from HQ to Delhi, 20 on to Surat moves theirs from Delhi to Surat. Copies on their way count at the place they are going to; a sold or lost copy's share stays where it was. Returned books' shipping goes to Earthly HQ, less the refund.
+- **Code.gs `bookCostCalc_`** now also returns `al` (per expense: share per place `at`, journey `h`), and **`bcSplit_`** turns it into Finance rows: the expense's own row keeps its share (`bw` = the whole bill, `bh` = History), each other place gets a row `<id>@<place>` with `of`, `loc`, `rg`, `pl`. A reimbursement is paid back whole on its own row; the other rows are plain costs.
+- **Page**: `finAgg` Net = Gross − Expenses again; `finExpList` adds the other places' cards from EXP.all; the card's drop-down has a **History** (`bcHistHTML`: Original Printing Costs, Transferred / Received N books, New Total). Edit and Delete on a place's card open the bill itself. The Sales Log's cost and profit per sale (b320) stay.
+- test/bookcost.js (28 checks), test/browser-b320.js (HQ card History, fits at 390px and 1150px).
+
 ## Done in b320 — what each book cost (practice first)
 
 - **Profit per book** (Gita, 29–30 Oct, thread "Track profit per book"; design doc https://claude.ai/artifact/UwnNyhhsddGJFzUifa4k6o). Practice only: Code.gs `BOOKCOST_ON_` is set by core.js `app.setBookCostOn_(practice)`; the page gates on `BC_ON = PRACTICE` and Finance people (`financeMe()`).
