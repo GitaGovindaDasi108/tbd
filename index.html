@@ -663,6 +663,13 @@ body.busy #busyBar{opacity:1}
 .cash-logamt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
 .cash-logamt.pos{color:#2E7D6B}
 .cash-logamt.neg{color:var(--clay)}
+.li-det .bc-neg{color:var(--clay);font-weight:700}
+.bc-box select{width:100%;max-width:100%;min-width:0;text-overflow:ellipsis}
+.bc-sub{display:block;margin:8px 0 4px}
+.bc-line{display:flex;gap:10px;align-items:center;margin:4px 0}
+.bc-line span{flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.bc-wbtn{margin:8px 0}
+.bc-line input{flex:0 0 120px;width:120px;min-width:0;box-sizing:border-box}
 /* The lower line of a movement row holds a date-and-note on one side and the
    before/after counts on the other. Held side by side on a phone, the note was
    squeezed into a one-word-wide column while the counts ran off the edge — so
@@ -2497,7 +2504,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b318</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b320</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -7716,6 +7723,9 @@ function logItemHTML(x, opts){
                         : esc(locName(restoreLocOf(x)||homeWarehouse(x.location))||'own stock'))]);
   }
 
+  // What the book cost and what it made (b320, practice, Finance only).
+  bcDetail(x, isDon).forEach(d=>det.push(d));
+
   const bAttr = x._bundle ? ` data-bundle="${x.bundle}"` : '';
   const idAttr = `data-id="${x.saleId}"${bAttr}`;
   return `<div class="log-item ${rowKind?'kind-'+rowKind:''} ${pending?'pending':''} ${awaiting&&!pending?'awaiting':''} ${open?'open':''} ${needsRow2?'two':''} ${x._bundle?'bundle':''}"
@@ -7745,6 +7755,59 @@ function logItemHTML(x, opts){
       ${det.map(d=>`<div><span class="k">${d[0]}</span> <span class="v">${d[1]}</span></div>`).join('')}
     </div>
   </div>`;
+}
+
+/* ---- What each book cost (b320, practice first; Gita, 2026-10-29) ----
+   Finance sees, in a sale's drop-down, what its book cost (printing plus every
+   shipment it travelled on, plus postage) and what it made. Worked out by the
+   server (Code.gs bookCostCalc_); a book with no printing cost shows nothing. */
+const BC_ON = PRACTICE;
+const BC = { sales:{}, at:0, busy:false };
+const bcMine = () => BC_ON && !!financeMe();
+function bcRefresh(force){
+  if(!bcMine() || BC.busy || (!force && Date.now() - BC.at < 60000)) return;
+  BC.busy = true;
+  post({action:'bookCostSales'}).then(d=>{ BC.sales = (d.result && d.result.sales) || {}; BC.at = Date.now();
+    try{ renderLog(); }catch(e){} }).catch(()=>{}).then(()=>{ BC.busy = false; });
+}
+function bcDetail(x, isDon){
+  if(!bcMine() || isDon || isUncat(x)) return [];
+  bcRefresh();
+  const ms = x._bundle ? (x._members||[]) : [x];
+  const cs = ms.map(m=>BC.sales[m.saleId]).filter(Boolean);
+  const out = [];
+  if(cs.length && cs.length===ms.filter(m=>m.type==='SALE').length){
+    const o = {}; let u = 0, g = 0;
+    cs.forEach(c=>{ u += c.u; g += c.g; Object.keys(c.o||{}).forEach(k=>{ o[k] = (o[k]||0) + c.o[k]; }); });
+    const cur = Object.keys(o).filter(k=>Math.abs(o[k]) > 0.004 && k!=='USD');
+    out.push(['Cost of book' + (ms.length > 1 ? 's' : ''), (cur.length ? esc(cur.map(k=>cashTrim(Math.round(o[k]*100)/100, k)).join(' + ')) + ' (' + finUsd(u, true) + ')' : finUsd(u, false))]);
+    const p = g - u;
+    out.push([p < -0.004 ? 'Loss' : 'Profit', `<span class="${p < -0.004 ? 'bc-neg' : ''}">${finUsd(p, true)}</span>`]);
+  }
+  if(!x._bundle && x.type==='SALE') out.push(['Postage', `<button class="btn btn-ghost btn-sm" data-act="bcpost" data-id="${esc(x.saleId)}">Add postage</button>`]);
+  return out;
+}
+
+/* Each title's weight in grams (b320): a shipment's cost is shared by weight
+   (Gita chose, 2026-10-30). Also asked for in the expense form when missing. */
+async function bcWeightsModal(){
+  openModal(`${mHead('Book Weights')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
+  let W = {};
+  try{ W = ((await post({action:'bookCostOpts'})).result || {}).weights || {}; }
+  catch(e){ $('#modal .m-body').innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  const books = (STATE.books||[]).filter(b=>!b.partnerId);
+  openModal(`${mHead('Book Weights')}
+    <div class="m-body">
+      <div class="hint">The weight of one copy, in grams. A shipment's cost is shared between its books by weight.</div>
+      ${books.map(b=>`<div class="bc-line"><span>${bookTitleHTML(b)}</span><input type="number" min="1" step="1" inputmode="numeric" data-bcw="${esc(b.id)}" value="${esc(W[b.id]||'')}" placeholder="grams"></div>`).join('')}
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="bcwGo">Save</button></div>`, true);
+  $('#bcwGo').addEventListener('click', async ()=>{
+    const w = {}; document.querySelectorAll('#modal [data-bcw]').forEach(i=>{ if(Number(i.value) > 0) w[i.dataset.bcw] = Math.round(Number(i.value)); });
+    try{ await post({action:'bookWeightsSet', weights:w}); EXP.bcOpt = null; closeModal(); toast('Book weights saved'); }
+    catch(e){ $('#modalErr').textContent = e.message; }
+  });
 }
 
 /* Sales log sort. 'key' is the field, 'dir' flips on a second tap of the same
@@ -10600,7 +10663,7 @@ function expPlaceItems(places){
   return out;
 }
 /* The Expenses window: the form, then the person's own expenses. */
-async function expensesModal(editId, presetPartner){
+async function expensesModal(editId, presetPartner, preset){
   EXP.revExact = false;
   openModal(`${mHead('Expenses')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
@@ -10627,8 +10690,84 @@ async function expensesModal(editId, presetPartner){
   // A "paid with" the place does not list is an Other, with its words kept.
   if(edit && edit.payType && !(EXP.opt.payTypes||[]).includes(edit.payType)){ EXP.form.payOther = edit.payType; EXP.form.payType = 'Other'; }
   if(edit && edit.location!==EXP.opt.location) await expReloadOptions();
+  // Books this cost is put on (b320, practice): kept from the expense, or as the button that opened the form says.
+  const bl = edit ? edit.bookLink : preset && preset.bookLink;
+  EXP.form.bc = bl ? {on:true, k:bl.k, src:bl.src||bl.sh||'', sale:bl.sale||'', shares:Object.assign({}, bl.shares||{}), weights:{}} : {on:false, k:'print', src:'', shares:{}, weights:{}};
+  if(preset && !edit){ if(preset.desc) EXP.form.desc = preset.desc; if(preset.category && (EXP.opt.categories||[]).includes(preset.category)) EXP.form.category = preset.category;
+    EXP.form.forEmail = '*general'; EXP.form.forName = 'General'; }
   EXP.batch = [];
+  if(EXP.form.bc.on && bcMine()) bcOpts();
   expDraw();
+}
+/* What a printing or shipping cost can be put on (b320): the books brought in
+   and the shipments, from the server, once per form. */
+function bcOpts(){
+  if(EXP.bcOpt || EXP.bcAsk) return;
+  EXP.bcAsk = post({action:'bookCostOpts'}).then(d=>{ EXP.bcOpt = d.result; }).catch(e=>{ EXP.bcOpt = {err:e.message}; })
+    .then(()=>{ EXP.bcAsk = null; if(EXP.form && $('#modal .exp-form')){ expRead(); expDraw(); } });
+}
+function bcFormHTML(f){
+  if(!bcMine() || EXP.pub) return '';
+  const b = f.bc || (f.bc = {on:false, k:'print', src:'', shares:{}, weights:{}});
+  const head = `<label class="exp-rb"><input type="checkbox" id="xBc" ${b.on?'checked':''}> This is the cost of printing or shipping books</label>`;
+  if(!b.on) return `<div class="bc-box">${head}</div>`;
+  const O = EXP.bcOpt, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
+  if(b.k==='post') return `<div class="bc-box">${head}<div class="hint">Postage for one sale: added to the cost of that sale's book.</div></div>`;
+  if(!O) return `<div class="bc-box">${head}<div class="hint sp-loading"><span class="spin-d"></span> Opening…</div></div>`;
+  if(O.err) return `<div class="bc-box">${head}<div class="err">${esc(O.err)}</div></div>`;
+  const list = b.k==='ship' ? O.shipments : O.printings;
+  const n = v => Number(v).toLocaleString(LOCALE);
+  const label = x => b.k==='ship'
+    ? [x.d, x.from + ' → ' + x.to, x.books.map(y=>y.name + ' ' + n(y.q)).join(', ')].filter(Boolean).join(' · ')
+    : [x.d, x.at, x.books.map(y=>y.name + ' ' + n(y.q)).join(', ')].filter(Boolean).join(' · ');
+  if(!list.some(x=>x.id===b.src)) b.src = '';
+  const pick = list.find(x=>x.id===b.src);
+  let more = '';
+  if(pick && b.k==='print' && pick.books.length > 1){
+    const tot = pick.books.reduce((t,y)=>t+y.q, 0), amt = Number(f.amt)||0;
+    more = `<div class="muted-note bc-sub">Each title's share of the bill (${esc(f.cur)}). Left empty, it is split by the number of copies.</div>
+      ${pick.books.map(y=>`<div class="bc-line"><span>${esc(y.name)} (${n(y.q)})</span><input type="number" min="0" step="0.01" inputmode="decimal" data-bcs="${esc(y.id)}"
+        value="${esc(b.shares[y.id]||'')}" placeholder="${amt ? esc(String(Math.round(amt * y.q / tot * 100) / 100)) : '0.00'}"></div>`).join('')}`;
+  }
+  if(pick && b.k==='ship'){
+    const W = O.weights || {};
+    more = `<div class="muted-note bc-sub">Weight of one copy of each title, in grams. The shipping is shared by weight.</div>
+      ${pick.books.map(y=>`<div class="bc-line"><span>${esc(y.name)}</span><input type="number" min="1" step="1" inputmode="numeric" data-bcw="${esc(y.id)}"
+        value="${esc(b.weights[y.id] || W[y.id] || '')}" placeholder="grams"></div>`).join('')}`;
+  }
+  return `<div class="bc-box">${head}
+    <div class="row2"><div class="field"><label>Put it on</label><select id="xBcK">${opt('print','A printing (books added to the app)',b.k==='print')}${opt('ship','A shipment',b.k==='ship')}</select></div></div>
+    <div class="field"><label>${b.k==='ship' ? 'Which shipment?' : 'Which printing?'}</label>
+      <select id="xBcSrc">${opt('', list.length ? 'Choose…' : 'None yet', !b.src)}${list.map(x=>opt(x.id, label(x), x.id===b.src)).join('')}</select></div>
+    ${more}</div>`;
+}
+function bcRead(f){
+  const b = f.bc; if(!b) return;
+  const k = $('#xBcK'), src = $('#xBcSrc');
+  if(k) b.k = k.value;
+  if(src) b.src = src.value;
+  document.querySelectorAll('#modal [data-bcs]').forEach(i=>{ b.shares[i.dataset.bcs] = i.value; });
+  document.querySelectorAll('#modal [data-bcw]').forEach(i=>{ b.weights[i.dataset.bcw] = i.value; });
+}
+/* What goes to the server with the expense: the link, and any weights typed. */
+function bcPayload(f){
+  const b = f.bc;
+  if(!bcMine() || EXP.pub || !b) return {};
+  if(!b.on) return {bookLink:null};
+  if(b.k==='post') return {bookLink:{k:'post', sale:b.sale}};
+  if(b.k==='ship'){ const w = {}; Object.keys(b.weights).forEach(id=>{ if(Number(b.weights[id]) > 0) w[id] = Number(b.weights[id]); });
+    return {bookLink:{k:'ship', sh:b.src}, weights:w}; }
+  const sh = {}; Object.keys(b.shares).forEach(id=>{ if(Number(b.shares[id]) > 0) sh[id] = Number(b.shares[id]); });
+  return {bookLink:{k:'print', src:b.src, shares:sh}};
+}
+function bcCheck(f){
+  const b = f.bc;
+  if(!bcMine() || EXP.pub || !b || !b.on || b.k==='post') return '';
+  if(!b.src) return b.k==='ship' ? 'Choose which shipment this cost is for.' : 'Choose which printing this cost is for.';
+  if(b.k==='ship' && EXP.bcOpt){ const pick = (EXP.bcOpt.shipments||[]).find(x=>x.id===b.src), W = EXP.bcOpt.weights || {};
+    const miss = pick ? pick.books.filter(y=>!(Number(b.weights[y.id]) > 0) && !(W[y.id] > 0)) : [];
+    if(miss.length) return 'Give the weight of ' + miss.map(y=>y.name).join(', ') + ' in grams.'; }
+  return '';
 }
 async function expReloadOptions(){
   try{ EXP.opt = (await post({action:'expOptions', location:EXP.form.location, forEmail:EXP.form.forEmail})).result; }
@@ -10786,6 +10925,7 @@ function expDraw(){
           <div class="field"><label>Paid with (optional)</label>
             <select id="xPay">${opt('','—',!f.payType)}${(o.payTypes||[]).map(t=>opt(t,t,t===f.payType)).join('')}</select></div>`}
         </div>
+        ${bcFormHTML(f)}
         ${(o.partners||[]).length && !P ? `<div class="field"><label>Belongs to</label>
           <select id="xOwner">${opt('','Our own sales',!f.partnerId)}${o.partners.map(g=>opt(g.id, g.name+' (consignment)', g.id===f.partnerId)).join('')}</select>
           <div class="muted-note">A consignment group's expense comes off what the group is owed, not off our own net.</div></div>` : ''}
@@ -10879,6 +11019,7 @@ function expRead(){
   if(v('xPayOther')!==null) f.payOther = v('xPayOther');
   if(v('xPubName')!==null && EXP.pub){ EXP.pub.name = v('xPubName'); EXP.pub.phone = v('xPubPhone'); EXP.pub.email = v('xPubEmail'); }
   if(v('xOwner')!==null) f.partnerId = v('xOwner');
+  bcRead(f);
   if(v('xMethod')!==null) f.method = v('xMethod');
   if(v('xRCur')!==null) f.reimbCur = v('xRCur');
   if(f.kind==='reimburse' && !f.otherCur && !f.lockPay && EXP.opt && EXP.opt.curs.includes(f.cur)) f.reimbCur = f.cur;
@@ -10894,6 +11035,8 @@ function expBind(){
     if(f.otherCur && f.reimbCur===f.cur){ const m = o.methods.find(x=>x.name===f.method); const alt = (m && m.cur && m.cur!==f.cur && o.curs.includes(m.cur)) ? m.cur : o.curs.find(c=>c!==f.cur); if(alt) f.reimbCur = alt; }
     expDraw(); expPrefetch(f); });
   const rbx = $('#xReimb'); if(rbx) rbx.addEventListener('change', ()=>{ expRead(); f.kind = rbx.checked ? 'reimburse' : 'record'; expDraw(); });
+  const bcx = $('#xBc'); if(bcx) bcx.addEventListener('change', ()=>{ expRead(); f.bc.on = bcx.checked; if(f.bc.on){ if(f.bc.k==='post' && !f.bc.sale) f.bc.k = 'print'; bcOpts(); } expDraw(); });
+  ['xBcK', 'xBcSrc'].forEach(id=>{ const el = $('#' + id); if(el) el.addEventListener('change', ()=>{ expRead(); expDraw(); }); });
   const placeChanged = async ()=>{ f.reimbCur = ''; await expReloadOptions();
     if(!EXP.opt.spendCurs.includes(f.cur) || !f.amt) f.cur = EXP.opt.defaultCur; expDraw(); };
   const loc = $('#xLoc');
@@ -11042,7 +11185,7 @@ function expCheck(f){
     if(fl) return fl.label + ' is needed for ' + f.method + '.';
   }
   if(FIN_ON && f.payType==='Other' && !String(f.payOther||'').trim()) return 'Say what it was paid with.';
-  return '';
+  return bcCheck(f);
 }
 function expPubCheck(){
   const P = EXP.pub;
@@ -11145,7 +11288,7 @@ async function expPost(f, more){
     amt:Number(f.amt), category:f.category, catOther:f.category==='Other' ? (f.catOther||'') : '',
     payType:f.payType==='Other' ? (String(f.payOther||'').trim() || 'Other') : f.payType, partnerId:f.partnerId, method:f.method, reimbCur:f.reimbCur, payTo:f.kind==='reimburse'?f.payTo:{}, notes:f.notes,
     receipts:f.receipts.map(x=>x.id), forEmail:f.forEmail, by: P ? P.name.trim() : whoAmI(),
-    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, payExact: expExactOf(f) || '', usdAmt: Number(f.usdAmt) > 0 ? Number(f.usdAmt) : '', more: !!more});
+    contactPhone: P ? P.phone : '', contactEmail: P ? P.email : '', payAmt: f.payAmt || null, payExact: expExactOf(f) || '', usdAmt: Number(f.usdAmt) > 0 ? Number(f.usdAmt) : '', more: !!more, ...bcPayload(f)});
   if(f.kind==='reimburse' && !f.forEmail) expKeepPayTo(f.method, f.payTo);
   return r;
 }
@@ -11512,6 +11655,7 @@ function rsDraw(){
       <div class="hint">Which ways of paying people back, and which currencies, are offered. Each place follows the one above it unless
         you set it here: switch PayPal off for everywhere, say, and on again for one region. A person's own setting wins over every place.</div>
       ${ro ? '<div class="muted-note">You can see these; only Finance can change them.</div>' : ''}
+      ${BC_ON && !ro ? `<div class="bc-wbtn"><button type="button" class="btn btn-ghost btn-sm" data-act="bcweights">Book Weights</button></div>` : ''}
       <div class="fin-tabs">
         <button type="button" class="fin-tab${RS.mode==='place'?' on':''}" data-act="rsmode" data-mode="place">By place</button>
         <button type="button" class="fin-tab${RS.mode==='person'?' on':''}" data-act="rsmode" data-mode="person">By person</button></div>
@@ -11618,7 +11762,8 @@ document.addEventListener('paste', e=>{
                    still to be paid back
      Net           Gross − Expenses; Expected Net = Expected Gross − Expected Expenses
      Margin        Net as a share of Gross
-   Book printing costs are not in the app, so the margin is after expenses only. */
+   Book printing costs: practice only so far (b320), where Net counts what each
+   book sold cost instead of the printing and shipping bills put on books. */
 const FIN = { D:null, tab:'overview', f:{s:'', r:'', e:'', from:'', to:''}, open:{}, rep:null, cmp:{kind:'seasons', series:''},
   ex:{sort:'date', dir:-1, types:new Set(), sts:new Set(), open:'', q:''}, rb:{tab:'pending'}, rbNo:new Set(), rbOpen:new Set(), exOpen:new Set(), viz:{form:'pie'} };
 const FIN_M = [
@@ -11635,6 +11780,9 @@ function finAgg(sales, exps){
   sales.forEach(x=>{
     if(!x.con) Object.keys(x.cur||{}).forEach(c=>{ addCur(a.cur.coll, c, x.cur[c]); if(x.k==='DONATION') addCur(a.cur.don, c, x.cur[c]); });
     // Which figures hold dollars worked out from a rate (~).
+    /* What the books sold cost (b320, practice): Net counts the cost of each
+       book sold, in place of the printing and shipping bills put on books. */
+    if(x.cb && !x.con){ a.cogs = (a.cogs||0) + x.cb; if(x.pu > 0.004 && x.gu < 0.004) a.cogsP = (a.cogsP||0) + x.cb; }
     if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(x.c==='other') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
     const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0)), qa = x.qa || 0;
@@ -11654,14 +11802,16 @@ function finAgg(sales, exps){
   a.gross = a.coll + a.pend;
   exps.forEach(x=>{
     if(x.st==='declined') return;
-    if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); if(!x.usdExact) a.eExp = 1; }
+    if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); if(!x.usdExact) a.eExp = 1; if(x.off) a.off = (a.off||0) + x.off; }
     if(x.kind==='reimburse' && x.st==='pending'){ a.reimb += x.usd; if(!x.usdExact) a.eReimb = 1; }
   });
   // What has actually been spent and kept (Gita, 2026-10-20); what is
   // expected once everything owed comes in and everyone is paid back.
   a.spent = a.exp - a.reimb;
-  a.net = a.coll - a.spent;
-  a.netExp = a.gross - a.exp;
+  // b320: the bills put on books come off; the books sold count instead (both 0 on live).
+  const bk = (a.off||0), sold = (a.cogs||0);
+  a.net = a.coll - a.spent + bk - (sold - (a.cogsP||0));
+  a.netExp = a.gross - a.exp + bk - sold;
   a.margin = a.coll > 0 ? a.net / a.coll * 100 : null;
   return a;
 }
@@ -11939,7 +12089,7 @@ function finOverviewHTML(){
   return `${finFiltersHTML(FIN.f)}
     <div class="fin-tiles">${tiles}</div>
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ≈ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
-      Consignment money belongs to the groups, so it is not in these figures. Book printing costs are not in the app.</div>
+      Consignment money belongs to the groups, so it is not in these figures. ${BC_ON ? 'Where a book has a printing cost, Net counts what each book sold cost (its printing and shipping) instead of those bills; Expenses still show the bills whole.' : 'Book printing costs are not in the app.'}</div>
 
     <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')} <button type="button" class="btn btn-ghost btn-xs fin-ovw-tg no-edit" data-act="finovwhide" aria-expanded="${FIN.ovwHide?'false':'true'}">${FIN.ovwHide ? '▸ Show table' : '▾ Hide table'}</button></h3>
     <div class="fin-scroll fin-ovw"${FIN.ovwHide ? ' hidden' : ''}><table class="cash-tbl fin-tbl${[...open].map(k=>' fo-' + k).join('')}"><thead>
@@ -14178,10 +14328,12 @@ function finChartsHTML(){
     /* Net beside Gross and Expenses in every Overview chart (Gita, 2026-10-21). */
     if(O.rows.length > 1) out.push(finChart(O.what.replace(/^By /, 'Gross, Expenses and Net by '), finPairsHTML(
       // ≈ where the dollars are estimates, as everywhere else (b306, Gita).
-      O.rows.map(r=>({k:r.label, a:r.a.coll, b:r.a.exp, n:r.a.coll - r.a.exp, aE:r.a.eColl, bE:r.a.eExp, nE:r.a.eColl || r.a.eExp})).filter(r=>r.a > 0.004 || r.b > 0.004),
+      O.rows.map(r=>({k:r.label, a:r.a.coll, b:r.a.exp, n:r.a.coll - r.a.exp + (r.a.off||0) - (r.a.cogs||0), aE:r.a.eColl, bE:r.a.eExp, nE:r.a.eColl || r.a.eExp})).filter(r=>r.a > 0.004 || r.b > 0.004),
       [{f:'a', l:'Gross', c:FIN_C.in}, {f:'b', l:'Expenses', c:FIN_C.out}, {f:'n', l:'Net', c:FIN_C.net}]), true));
     const gM = finByMonth(sales.filter(x=>!x.con), x=>x.d, x=>x.gu), eM = finByMonth(exps.filter(x=>x.st!=='declined' && !x.con), x=>x.d, x=>x.usd), nM = {};
-    [...new Set(Object.keys(gM).concat(Object.keys(eM)))].forEach(k=>{ nM[k] = (gM[k]||0) - (eM[k]||0); });
+    // b320: books' costs in the month they were sold, bills put on books taken off in theirs.
+    const cM = finByMonth(sales.filter(x=>!x.con && x.cb), x=>x.d, x=>x.cb), oM = finByMonth(exps.filter(x=>x.st!=='declined' && !x.con && x.off), x=>x.d, x=>x.off);
+    [...new Set(Object.keys(gM).concat(Object.keys(eM)))].forEach(k=>{ nM[k] = (gM[k]||0) - (eM[k]||0) + (oM[k]||0) - (cM[k]||0); });
     out.push(finChart('Month by month: Gross, Expenses and Net', finMonthsHTML([{l:'Gross', c:FIN_C.in, by:gM}, {l:'Expenses', c:FIN_C.out, by:eM}, {l:'Net', c:FIN_C.net, by:nM}]), true));
     out.push(finChart('Expenses by type', finDonutHTML(finVizData().rows.map(r=>({k:r.k, v:r.v})), 'Expenses by type', 'Expenses')));
   }
@@ -18754,6 +18906,11 @@ function addStockModal(opts){
       <div class="field"><label>Coming From</label>
         <div class="hint">Where are these books coming from? (For example: the printer, a temple, a devotee.)</div>
         <input id="spSource" type="text" placeholder="Source"></div>
+      ${bcMine() ? `<div class="bc-box"><label class="exp-rb"><input type="checkbox" id="spBc"> These books are a new printing: add the printing cost</label>
+        <div id="spBcBox" hidden><div class="field cost-amt"><label>Total printing cost</label><div class="cost-amt-row">
+          <input id="spBcAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+          <input id="spBcCur" type="text" maxlength="3" value="${esc(defaultCur())}" autocomplete="off" spellcheck="false"></div>
+          <div class="muted-note">Shared over the copies added here. Several titles share it by copies; change each title's share in Finance › Expenses.</div></div></div></div>` : ''}
       <div class="field"><label>Destination for Books</label>
         <div class="hint">Enter the <b>region</b> or <b>event</b> where you’d like to add inventory.</div>
         ${placePickerHTML('spPlace')}
@@ -18775,6 +18932,7 @@ function addStockModal(opts){
     </div>`, true);
 
   const picker = bindPlacePicker('spPlace', places, startLoc, p=>choose(p));
+  const spBc = $('#spBc'); if(spBc) spBc.addEventListener('change', ()=>{ $('#spBcBox').hidden = !spBc.checked; });
   warmSeasons();
   $('#spWhere').addEventListener('change', ()=>{ where = $('#spWhere').value; draw(); });
 
@@ -19222,6 +19380,18 @@ function addStockModal(opts){
   $('#spSave').addEventListener('click', async ()=>{
     if(!ctx || !where) return;
     const err = m=>{ $('#modalErr').textContent = m; };
+    // The printing's cost (b320, practice, Finance): a General expense put on these copies.
+    const pc = $('#spBc') && $('#spBc').checked ? {amt:Math.round((Number($('#spBcAmt').value)||0)*100)/100, cur:$('#spBcCur').value.trim().toUpperCase()} : null;
+    if(pc && !(pc.amt > 0)) return err('Give the total printing cost, or untick the printing box.');
+    if(pc && !curExists(pc.cur)) return err('Give the printing cost\'s currency as its three-letter code, like INR or EUR.');
+    const pcSave = (src, list) => { if(!pc) return;
+      const n = list.reduce((t,it)=>t+(Number(it.delta||it.qty)||0), 0);
+      const names = list.map(it=>(bookById(it.bookId)||{}).name || 'a new title').join(', ');
+      post({action:'expSave', id:expId('X'), kind:'record', location:'rg_hq', date:new Date().toISOString().slice(0,10),
+        desc:'Printing: ' + names + ' (' + n + ' copies)', cur:pc.cur, amt:pc.amt, category:'Printing and shipping', catOther:'Printing and shipping',
+        forEmail:'*general', bookLink:{k:'print', src, shares:{}}})
+        .then(()=>{ toast('Printing cost recorded'); BC.at = 0; try{ if(FINP.on) finQuietRefresh(); }catch(e){} })
+        .catch(e=>toast('The printing cost was not saved: ' + e.message, true)); };
     const place = ctx.place, season = ctx.seasonId, here = ctx.here;
     const books = chosen();
     const typedNote = ((document.querySelector('#spBody input[data-k="note"]')||{}).value||'').trim();
@@ -19260,6 +19430,7 @@ function addStockModal(opts){
         else if(d) deltaItems.push({bookId:b.id, delta:d});
       });
       if(!setItems.length && !deltaItems.length) return err('Enter a change or a count for at least one title.');
+      if(pc && (setItems.length || !deltaItems.some(it=>it.delta>0))) return err('A printing cost goes with copies added (＋), not with a count set or taken away.');
       const short = deltaItems.find(it=>it.delta<0 && ctx.qty(ctx.loc,it.bookId)+it.delta<0);
       if(short) return err('Cannot remove more '+((books.find(b=>b.id===short.bookId)||{}).name||'copies')+' than are in stock.');
       const lowers = deltaItems.some(it=>it.delta<0) || setItems.some(it=>it.qty<ctx.qty(ctx.loc,it.bookId));
@@ -19273,6 +19444,7 @@ function addStockModal(opts){
       if(switchOn()) commit(switchOn(), here?applyOn:()=>{}, null);
       if(deltaItems.length){
         const movePrefix = 'M'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+        pcSave('m:' + movePrefix, deltaItems.filter(it=>it.delta>0));
         commit({action:'adjustStockBulk', location:loc, items:deltaItems, note, override:true, movePrefix, season},
           here ? st=>deltaItems.forEach(it=>{
             invAdd(st,loc,it.bookId,it.delta);
@@ -19302,6 +19474,7 @@ function addStockModal(opts){
     if(!rid) return;
     if(rid!==true) items.forEach(it=>{ it.bookId = rid(it.bookId); });
     const shipId = 'sh_' + Math.random().toString(36).slice(2,10);
+    pcSave('sh:' + shipId, items);
     const payload = {action:'sendShipment', mode, fromRegion:OUTSIDE_ORIGIN, toRegion:ctx.regionId,
       toLoc:ctx.loc, shipId, season,
       carrier: mode==='devotee' ? v('carrier') : '', phone: mode==='devotee' ? v('phone') : '',
@@ -21170,6 +21343,7 @@ function shipCardHTML(x, incoming, readOnly){
       ${admin?`<button class="btn btn-ghost btn-sm" data-act="shedit" data-id="${esc(x.shipId)}">Edit Details</button>
       <button class="btn btn-ghost btn-sm" data-act="shcount" data-id="${esc(x.shipId)}">Correct Contents</button>
       <button class="btn btn-danger btn-sm" data-act="shdel" data-id="${esc(x.shipId)}">Delete</button>`:''}
+      ${admin && BC_ON ? `<button class="btn btn-ghost btn-sm" data-act="shreturn" data-id="${esc(x.shipId)}">Shipment Returned</button>` : ''}
     </div>
   </details>`;
 }
@@ -21538,6 +21712,64 @@ function shipReceiveModal(id, fromPanel){
         }
       }, 'Arrival recorded');
     if(!fromPanel) setTimeout(shipmentsModal, 0);      // straight back to the list, already updated
+  });
+}
+
+/* A shipment sent back (b320, practice first; Gita, 2026-10-29). The copies
+   go back on a shelf at the cost they had before the shipment; the shipping
+   stays a general expense, less any refund. Who paid it and how much was
+   refunded is kept with the shipment. */
+function shipReturnModal(id){
+  const x = (STATE.shipments||[]).find(v=>v.shipId===id);
+  if(!x) return;
+  const books = shipBooks(x).filter(r=>r.left>0);
+  const from = x.fromRegion!==OUTSIDE_ORIGIN ? regionById(x.fromRegion) || (STATE.allRegions||[]).find(r=>r.regionId===x.fromRegion) : null;
+  const whs = stockPlaces().filter(p=>p.kind==='region');
+  const dests = (from ? [{id:from.whLoc, name:from.name + ' — Warehouse'}].concat(holdersOf(from.regionId).map(h=>({id:h.holderId, name:h.name + ' (devotee storage)'}))) : [])
+    .concat(whs.filter(p=>!from || p.loc!==from.whLoc).map(p=>({id:p.loc, name:placeLabel(p)})));
+  const hq = whs.find(p=>p.seasonId===HQ_ID);
+  const aim = from ? from.whLoc : (hq ? hq.loc : (dests[0]||{}).id);
+  openModal(`
+    ${mHead('Shipment Returned')}
+    <div class="m-body">
+      <div class="hint">The books that came back go onto the shelf at the cost they had before this shipment. The shipping becomes a general expense, less any refund.</div>
+      <div class="field"><label>Came back to</label>
+        <select id="rtTo">${dests.map(d=>`<option value="${esc(d.id)}" ${d.id===aim?'selected':''}>${esc(d.name)}</option>`).join('')}</select></div>
+      ${books.length ? `<div class="cl-row cl-head"><div>Title</div><div class="cl-exp">In transit</div><div class="cl-hn"># Returned</div><div></div></div>` : ''}
+      ${books.map(r=>`<div class="cl-row">
+        <div class="cl-name ${isAotm(r.b)?'aotm':''}">${esc(r.b.name)}</div>
+        <div class="cl-exp">${r.left} in transit</div>
+        <input class="cl-in rt-q" type="number" min="0" max="${r.left}" inputmode="numeric" data-book="${esc(r.b.id)}" data-max="${r.left}" value="${r.left}">
+        <div></div>
+      </div>`).join('') || `<div class="cash-empty">Nothing in this batch is still in transit.</div>`}
+      <div class="row2">
+        <div class="field cost-amt"><label>Refund received</label><div class="cost-amt-row">
+          <input id="rtAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0.00">
+          <input id="rtCur" type="text" maxlength="3" value="${esc(defaultCur())}" autocomplete="off" spellcheck="false"></div>
+          <div class="muted-note">Leave it empty if there was no refund. In the currency the shipping was paid in.</div></div>
+        <div class="field"><label>Date</label><input id="rtDate" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+      </div>
+      <div class="field"><label>Note (optional)</label><input id="rtNote" type="text"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="rtGo">Confirm return</button>
+    </div>`, true);
+  $('#rtGo').addEventListener('click', ()=>{
+    const items = [...document.querySelectorAll('#modal .rt-q')]
+      .map(i=>({bookId:i.dataset.book, qty:Math.min(Number(i.dataset.max), Math.max(0, Math.round(Number(i.value)||0)))})).filter(v=>v.qty>0);
+    if(!items.length){ $('#modalErr').textContent = 'Enter how many books came back.'; return; }
+    const amt = Math.round((Number($('#rtAmt').value)||0)*100)/100, cur = $('#rtCur').value.trim().toUpperCase();
+    if(amt > 0 && !curExists(cur)){ $('#modalErr').textContent = 'Give the refund\'s currency as its three-letter code, like INR or EUR.'; return; }
+    const toLoc = $('#rtTo').value, n = items.reduce((t,v)=>t+v.qty, 0);
+    commit({action:'returnShipment', shipId:id, toLoc, items, refundAmt:amt, refundCur:amt > 0 ? cur : '', date:$('#rtDate').value, note:$('#rtNote').value.trim()},
+      st=>{
+        items.forEach(it=>{ invAdd(st, id, it.bookId, -it.qty); invAdd(st, toLoc, it.bookId, it.qty); });
+        const ship = (st.shipments||[]).find(v=>v.shipId===id);
+        if(ship){ const left = (st.books||[]).reduce((t,b)=>{ const r = (st.inventory||[]).find(i=>i.location===id && i.bookId===b.id); return t + (r ? r.qty : 0); }, 0);
+          ship.status = left > 0 ? 'PARTIAL' : 'ARRIVED'; }
+      }, 'Returned — ' + n + ' book' + (n===1?'':'s') + ' back at ' + locName(toLoc));
   });
 }
 
@@ -23297,6 +23529,8 @@ document.addEventListener('click',e=>{
   if(a==='transitrep'){ transitReportModal(); return; }
   if(a==='shreceive'){ shipReceiveModal(t.dataset.id, !!t.closest('#transitPanel')); return; }
   if(a==='sharriveall'){ shipArriveAll(t.dataset.id); return; }
+  if(a==='shreturn'){ shipReturnModal(t.dataset.id); return; }
+  if(a==='bcweights'){ bcWeightsModal(); return; }
   if(a==='holders'){ holdersModal(); return; }
   if(a==='holderedit'){ holderEditModal(t.dataset.id); return; }
   if(a==='sharelinks'){ shareLinksModal(); return; }
@@ -23446,6 +23680,8 @@ document.addEventListener('click',e=>{
   if(a==='expdecline'){ finMark(t.dataset.id, 'declined'); return; }
   if(a==='expreopen'){ finMark(t.dataset.id, 'pending'); return; }
   if(a==='finplaces'){ finPlacesModal(); return; }
+  if(a==='bcpost'){ const sx = (STATE.sales||[]).find(v=>v.saleId===t.dataset.id); if(sx) expensesModal(null, null, {bookLink:{k:'post', sale:sx.saleId}, category:'Printing and shipping',
+    desc:'Postage: ' + ((bookById(sx.bookId)||{}).name || 'a book') + (sx.name ? ' for ' + sx.name : '')}); return; }
   if(a==='reimbset'){ if(FIN_ON) finGo('settings'); else reimbSettingsModal(); return; }
   if(a==='rsmode'){ RS.mode = t.dataset.mode; rsDraw(); return; }
   if(a==='rspayadd' || a==='rspaygone'){ rsPay(a==='rspayadd' ? ($('#rsPayNew')||{}).value : t.dataset.c, a==='rspayadd'); return; }
