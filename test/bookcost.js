@@ -103,23 +103,47 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   await wait();
   const F = (await O({ action: 'finData' })).result;
   const ex = id => F.expenses.find(x => x.id === id) || {};
-  const per = ex('Xprint01').usd / 2500;
-  t.push(['Net leaves out the printing on books still here or sold, not the 10 lost', near(ex('Xprint01').off, per * 2490, 0.05)]);
-  t.push(['…the whole of Poland\'s shipping is on its books', near(ex('Xship001').off, ex('Xship001').usd, 0.05)]);
-  t.push(['…the postage is on its sale', near(ex('Xpost001').off, ex('Xpost001').usd, 0.05)]);
-  t.push(['…a returned shipment stays an expense, less the refund', near(ex('Xship002').off, ex('Xship002').usd / 2, 0.05)]);
-  t.push(['…books from before keep their share of a shared shipment as an expense', near(ex('Xship003').off, ex('Xship003').usd / 2, 0.05)]);
-  const sl = id => F.sales.find(x => x.id === id) || {};
-  t.push(['Finance sees each sale\'s cost', near(sl('sPL1').cb, C.sPL1.u, 0.02) && sl('sOLD').cb === undefined]);
-  t.push(['the expenses themselves stay whole', ex('Xprint01').amt === 903054 && ex('Xship001').amt === 104612]);
+  const sum = id => F.expenses.filter(x => x.id === id || x.of === id).reduce((n, x) => n + x.usd, 0);
+  const at = (id, r) => F.expenses.find(x => (x.id === id || x.of === id) && x.r === r) || {};
+  const hq = id => F.expenses.find(x => (x.id === id || x.of === id) && x.s === 'HQ') || {};
+  const whole = ex('Xprint01').bw ? ex('Xprint01').bw.u : 0, per = whole / 2500;
+  // b321: the cost is an expense of the place holding the copies.
+  t.push(['the printing moves with its books: 162 copies\' worth now in Poland', near(at('Xprint01', 'rg_pl').usd, per * 162, 0.05)]);
+  t.push(['…and the rest stays at Delhi, where it was logged', near(ex('Xprint01').usd, whole - per * 162, 0.05) && ex('Xprint01').r === 'rg_in']);
+  t.push(['…the parts add up to the whole bill', near(sum('Xprint01'), whole, 0.05)]);
+  t.push(['…Delhi\'s card shows the journey', (ex('Xprint01').bh || [])[0].k === 'orig' && ex('Xprint01').bh.some(h => h.k === 'move' && h.n === 142 && h.w === 'Poland' && h.u < 0)]);
+  t.push(['…and so does Poland\'s', (at('Xprint01', 'rg_pl').bh || []).some(h => h.n === 142 && h.w === 'Delhi' && h.u > 0) && at('Xprint01', 'rg_pl').of === 'Xprint01']);
+  t.push(['…books sent back count again at Delhi', (ex('Xprint01').bh || []).some(h => h.k === 'ret' && h.n === 50 && h.u > 0)]);
+  t.push(['Poland\'s shipping is all Poland\'s', near(at('Xship001', 'rg_pl').usd, ex('Xship001').bw.u, 0.05) && near(ex('Xship001').usd, 0, 0.05)]);
+  t.push(['…the postage stays where it was logged', ex('Xpost001').usd > 0 && !ex('Xpost001').bw]);
+  t.push(['…a returned shipment goes to Earthly HQ, less the refund', near(hq('Xship002').usd, ex('Xship002').bw.u / 2, 0.05) && near(ex('Xship002').usd, 0, 0.05)
+    && (hq('Xship002').bh || []).some(h => h.k === 'ref' && h.u < 0)]);
+  t.push(['…books from before keep their share of a shared shipment where it was logged', near(ex('Xship003').usd, ex('Xship003').bw.u / 2, 0.05)
+    && near(at('Xship003', 'rg_pl').usd, ex('Xship003').bw.u / 2, 0.05)]);
+  t.push(['the bill itself is still whole', ex('Xprint01').bw.a === 903054 && ex('Xship001').bw.a === 104612]);
 
+  // Gita's example: the printing logged at Earthly HQ, 300 to Delhi, then 20 on to Surat.
+  await O({ action: 'createRegion', regionId: 'rg_su', whLoc: 'wh_su', name: 'Surat', currencies: 'INR,USD', season: SA });
+  r = await O({ action: 'adjustStockBulk', location: 'wh_hq', items: [{ bookId: 'go_en', delta: 1000 }], override: true, movePrefix: 'Mprint2', season: SA });
+  await wait();
+  await X('Xprint02', 100000, { k: 'print', src: 'm:Mprint2' }, { location: 'rg_hq' });
+  r = await O({ action: 'transferBulk', from: 'wh_hq', to: 'wh_in', items: [{ bookId: 'go_en', qty: 300 }], movePrefix: 'Mtr1', override: true, season: SA });
+  await wait();
+  r = await O({ action: 'transferBulk', from: 'wh_in', to: 'wh_su', items: [{ bookId: 'go_en', qty: 20 }], movePrefix: 'Mtr2', override: true, season: SA });
+  await wait();
+  const G = (await O({ action: 'finData' })).result.expenses, g = r => G.find(x => (x.id === 'Xprint02' || x.of === 'Xprint02') && x.r === r) || {};
+  const gh = G.find(x => x.id === 'Xprint02') || {};
+  t.push(['Earthly HQ keeps 700 copies\' worth', near(gh.amt, 70000, 0.5) && gh.s === 'HQ']);
+  t.push(['…Delhi 280 and Surat 20', near(g('rg_in').amt, 28000, 0.5) && near(g('rg_su').amt, 2000, 0.5)]);
+  t.push(['…HQ\'s History: the bill, then 300 to Delhi', gh.bh && gh.bh.length === 2 && gh.bh[0].a === 100000 && gh.bh[1].n === 300 && gh.bh[1].w === 'Delhi' && near(gh.bh[1].a, -30000, 0.5)]);
+  t.push(['…Delhi\'s: 300 in from Earthly HQ, 20 on to Surat', (g('rg_in').bh || []).map(h => h.n + h.w + Math.round(h.a)).join() === '300Earthly HQ30000,20Surat-2000']);
   // Undo the return: the copies go back on the road and the refund no longer counts.
   const acts = (await O({ action: 'activity', season: SA })).result || [];
   const ent = acts.find(e => e.action === 'returnShipment');
   if (ent) {
     await O({ action: 'undoActivity', id: ent.id, season: SA });
     const F2 = (await O({ action: 'finData' })).result;
-    t.push(['undoing a return takes its refund away again', !(F2.expenses.find(x => x.id === 'Xship002') || {}).off]);
+    t.push(['undoing a return takes its refund away again', !F2.expenses.some(x => x.of === 'Xship002' && x.s === 'HQ')]);
   } else t.push(['the return is in the Activity Log', false]);
 
   // The live server works none of this out.
