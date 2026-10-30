@@ -2549,6 +2549,16 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b320 — what each book cost (practice first)
+
+- **Profit per book** (Gita, 29–30 Oct, thread "Track profit per book"; design doc https://claude.ai/artifact/UwnNyhhsddGJFzUifa4k6o). Practice only: Code.gs `BOOKCOST_ON_` is set by core.js `app.setBookCostOn_(practice)`; the page gates on `BC_ON = PRACTICE` and Finance people (`financeMe()`).
+- **The costs are expenses** with a `bookLink` column (expenses.js `bookLinkFor`, Finance only): `{k:'print', src:'m:<move prefix>'|'sh:<shipId>', shares}`, `{k:'ship', sh}`, `{k:'post', sale}`. Expenses still show them whole.
+- **Code.gs `bookCostCalc_`** works the batches out afresh from `_stockmoves` and `_sales` (nothing stored, so undo and deleted sales just work): printing cost per copy (each title's share as typed, else by copies), each shipment's cost added per copy by title weight (prop `bookWeights`, grams; Gita chose weight on a card 30 Oct), oldest copies used first, postage on its sale. Copies with no printing cost stay "cost not known": out of profit, and their share of a shipment stays an expense. Lost/subtracted copies' cost is not put on books (stays an expense). Moves named `RT_…` (a return) add no shipping.
+- **Returned shipments**: Code.gs `doReturnShipment` (admin) moves copies back by `RT_` moves, keeps `{at, n, toLoc, mp, refund}` in `_shipments.returns`; undo via the Activity Log (type `receive`) takes the refund away (its moves are gone). Books in Transit card: "Shipment Returned" (`shipReturnModal`).
+- **Finance**: `financeData_` adds `cb` (cost of the books in a sale) and `off` (what was put on books, plus refunds) per expense; `finAgg` Net = Gross − Expenses + off − cost of books sold (Expected Net likewise); the Overview charts follow. Overview note says so in practice.
+- **Screens**: Sales Log drop-down "Cost of book" / "Profit" / "Add postage" (`bcDetail`, `bookCostSales`); expense form "This is the cost of printing or shipping books" → a printing or a shipment, each title's share, weights (`bcFormHTML`, `bookCostOpts`); Add Stock "These books are a new printing" → total cost and currency, saved as a General expense at Earthly HQ; Reimbursement Settings "Book Weights" (`bcWeightsModal`, `bookWeightsSet`).
+- test/bookcost.js (20 checks, in run-all), test/browser-b320.js (28 checks, 390px and 1150px overflow).
+
 ## Done in b319
 
 - **Track Cash for every lead** (Gita, 28 Oct: "Seasonal leads need access to the cash tracker" / "also for regional leads for their own region and event leads for their own event"). Code.gs `LEAD_CASH` + `assertCashAllowed_`: cashMove, cashMoveAll, cashFloat, cashDelete and the change actions for coordinators (Season and Regional Leads) and Event Leads (`worksAs` marks EL `eventLead`; a Seller is unchanged). One side of a move must be their own place (a Season/Regional Lead's own regions' coordinator accounts count as theirs); the other may also be their regions' coordinator account or the global bank. Resets stay Universal-only.

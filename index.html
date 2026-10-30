@@ -7801,7 +7801,7 @@ async function bcWeightsModal(){
   openModal(`${mHead('Book Weights')}
     <div class="m-body">
       <div class="hint">The weight of one copy, in grams. A shipment's cost is shared between its books by weight.</div>
-      ${books.map(b=>`<div class="bc-line"><span>${bookTitleHTML(b)}</span><input type="number" min="1" step="1" inputmode="numeric" data-bcw="${esc(b.id)}" value="${esc(W[b.id]||'')}" placeholder="grams"></div>`).join('')}
+      <div class="field">${books.map(b=>`<div class="bc-line"><span>${bookTitleHTML(b)}</span><input type="number" min="1" step="1" inputmode="numeric" data-bcw="${esc(b.id)}" value="${esc(W[b.id]||'')}" placeholder="grams"></div>`).join('')}</div>
       <div class="err" id="modalErr"></div>
     </div>
     <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="bcwGo">Save</button></div>`, true);
@@ -10741,7 +10741,7 @@ function bcFormHTML(f){
     <div class="row2"><div class="field"><label>Put it on</label><select id="xBcK">${opt('print','A printing (books added to the app)',b.k==='print')}${opt('ship','A shipment',b.k==='ship')}</select></div></div>
     <div class="field"><label>${b.k==='ship' ? 'Which shipment?' : 'Which printing?'}</label>
       <select id="xBcSrc">${opt('', list.length ? 'Choose…' : 'None yet', !b.src)}${list.map(x=>opt(x.id, label(x), x.id===b.src)).join('')}</select></div>
-    ${more}</div>`;
+    ${more ? `<div class="field">${more}</div>` : ''}</div>`;
 }
 function bcRead(f){
   const b = f.bc; if(!b) return;
