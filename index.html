@@ -663,7 +663,13 @@ body.busy #busyBar{opacity:1}
 .cash-logamt{font-weight:700;font-size:13px;color:var(--plum);white-space:nowrap}
 .cash-logamt.pos{color:#2E7D6B}
 .cash-logamt.neg{color:var(--clay)}
-.li-det .bc-neg{color:var(--clay);font-weight:700}
+.li-det .bc-hist{margin-top:6px}
+.bc-hist summary{cursor:pointer;font-weight:600}
+.bc-hl{display:flex;gap:10px;justify-content:space-between;padding:2px 0}
+.bc-hw{min-width:0;overflow-wrap:anywhere}
+.bc-ha{white-space:nowrap;text-align:right}
+.bc-ht{border-top:1px solid var(--line);font-weight:700;margin-top:2px;padding-top:4px}
+.bc-neg{color:var(--clay);font-weight:700}
 .bc-box select{width:100%;max-width:100%;min-width:0;text-overflow:ellipsis}
 .bc-sub{display:block;margin:8px 0 4px}
 .bc-line{display:flex;gap:10px;align-items:center;margin:4px 0}
@@ -1591,6 +1597,28 @@ body.has-na .overlay{z-index:10000}
 .todo-scroll .log{overflow:visible;flex:none;padding-right:0;max-height:none}
 .tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
 .tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
+/* Earthly HQ's To Do Summary (b323, practice): one line per place, opens to the items. */
+.tt-transit{--tc:#2B8A9A}
+.htd-sec{--tc:var(--plum);margin-top:10px}
+.htd-sec.k-pending{--tc:#C0392B} .htd-sec.k-pre{--tc:#2F6FB5} .htd-sec.k-change{--tc:#B7841C} .htd-sec.k-transit{--tc:#2B8A9A}
+.htd-grp{border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:8px;background:#fff;margin:5px 0}
+.htd-grp > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 10px;flex-wrap:wrap}
+.htd-grp > summary::-webkit-details-marker{display:none}
+.htd-grp > summary::before{content:'▸';color:var(--muted);font-size:11px}
+.htd-grp[open] > summary::before{content:'▾'}
+.htd-place{font-weight:700;font-size:13px;flex:1 1 180px;min-width:0;overflow-wrap:anywhere}
+.htd-place .htd-up{font-weight:500;color:var(--muted)}
+.htd-n{font-size:12px;color:var(--tc);font-weight:700;white-space:nowrap}
+.htd-amt{font-size:12.5px;font-weight:700;white-space:nowrap}
+.htd-go{margin-left:auto}
+.htd-items{border-top:1px solid var(--line);padding:4px 10px 8px 24px}
+.htd-it{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.htd-it:last-child{border-bottom:0}
+.htd-it .htd-when{color:var(--muted);white-space:nowrap}
+.htd-it .htd-who{font-weight:600}
+.htd-it .htd-what{flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.htd-it .htd-due{font-weight:700;white-space:nowrap;margin-left:auto}
+.htd-empty{color:var(--muted);font-style:italic;font-size:13px;padding:6px 2px}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
 /* Permissions (b234) */
 .pm-wrap{overflow-x:auto;margin:8px 0}
@@ -1958,6 +1986,9 @@ body.has-va{padding-top:44px}
 .warn-detail{margin-top:5px;font-weight:500;font-size:12px;line-height:1.5;opacity:.95}
 .warn-detail b{font-weight:700}
 .note{background:#EAF1F9;border:1px solid #C7D6E8;color:var(--blue);border-radius:9px;padding:10px 12px;font-size:13px}
+/* Edit notes at a closed place (b322): what the sale was, read only. */
+.sn-sum{margin:10px 0 4px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.sn-sum .k{display:inline-block;min-width:72px;color:var(--muted);font-weight:600}
 .leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
 .spec{margin:0;border:1px solid var(--line-d);border-radius:10px;background:var(--paper2)}
 .spec > summary{cursor:pointer;list-style:none;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
@@ -2504,7 +2535,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b320</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b324</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2574,6 +2605,11 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="portal on" id="summaryPortal" data-fold="summaryPortal" style="display:none">
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
     <div class="flow" id="summaryFlow">
+    <!-- To Do Summary (b323, practice): what is waiting, every season, by place. -->
+    <section class="panel hqtodo-panel" id="hqTodoPanel" data-fold="sumTodo" style="display:none">
+      <h2 class="sec-h2">To Do Summary <span class="hint">what is waiting, every season, by place</span> <button class="btn btn-gold btn-sm sec-rep" data-act="hqtodoreport" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body" id="hqTodoBody"></div>
+    </section>
     <div class="cols-2">
       <section class="panel" id="hqTitlePanel" data-fold="sumTitles">
         <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
@@ -2729,6 +2765,8 @@ const CONFIG = Object.assign({
    — the saved state, the queue of unsent saves, the sign-in — is kept apart
    under "practice:", so practice and live can never mix. */
 const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
+/* Transfer Sales to an Event (b324): practice only, for now. */
+const WHMOVE_ON = PRACTICE;
 /* Finance, Expenses & Reimbursements and Dates & Repeats were tried in the
    practice space first and are now on in the live app too (b274, Gita,
    2026-10-21). Set to PRACTICE to send them back to practice only. */
@@ -5411,7 +5449,12 @@ function renderAll(){
   const hq = isHQ();
   if(hq && STATE.everywhere) withRollup(renderTotals); else renderTotals();
   $('#salesPortal').classList.toggle('on', hq);
+  /* Earthly HQ never sells directly (b323, practice; Gita): no Sales Portal
+     there, just the summaries, with a To Do Summary on top. */
+  $('#salesPortal').style.display = (hq && HQ_SUMMARY_ONLY) ? 'none' : '';
+  $('#hqTodoPanel').style.display = (hq && STATE.everywhere && HQ_SUMMARY_ONLY) ? '' : 'none';
   $('#summaryPortal').style.display = (hq && STATE.everywhere) ? '' : 'none';
+  if(hq && STATE.everywhere && HQ_SUMMARY_ONLY){ const ev = STATE.everywhere; withRollup(()=>renderHqTodo(ev)); }
   if(hq && STATE.everywhere) withRollup(()=>{
     renderTitleList('#hqTitleList');
     renderCollectionsByRegion('#hqCollBy');
@@ -5857,8 +5900,10 @@ function renderTabs(){
         ? '✓ Closed and settled — everything here is final.'
         : '• Closed, but still has payments or pre-orders outstanding.'}
       <span class="cn-sub">${shut==='complete'
-        ? 'Records stay visible; nothing can be changed until it is reopened.'
-        : 'You can still deliver pre-orders and mark payments received. It becomes fully closed once nothing is outstanding.'}</span></div>`;
+        ? (PRACTICE ? 'Records stay visible. Sales and money can’t change until it is reopened; names, phones and notes still can (Edit).'
+                    : 'Records stay visible; nothing can be changed until it is reopened.')
+        : (PRACTICE ? 'You can still deliver pre-orders, mark payments received, and edit names, phones and notes. It becomes fully closed once nothing is outstanding.'
+                    : 'You can still deliver pre-orders and mark payments received. It becomes fully closed once nothing is outstanding.')}</span></div>`;
   }
   $('#locTabs').innerHTML=h;
 
@@ -6062,6 +6107,7 @@ const SN_ITEMS = {
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   salesupload:['📤','Upload Sales Spreadsheet'],
+  whmove:['⇢','Transfer Sales to an Event'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], wareports:['💬','WhatsApp Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations']
@@ -6087,7 +6133,7 @@ const SN_SECTIONS = [
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
   // The place's own actions (b292: arranged like the rest; anything new of its own still shows, after these).
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','editplace','subregions','salesupload','closeplace','deleteplace']},
-  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','wareports','specreport','sharelinks','people','report']},
+  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','whmove','drivefolder','wareports','specreport','sharelinks','people','report']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
@@ -6275,6 +6321,8 @@ function renderSideNav(fams){
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
   // Subtract Stock (b258; live since b275): wherever Add Stock is offered.
   if(byKey.addstock && !byKey.substock) byKey.substock = `<button class="btn" data-act="substock">− Subtract Stock</button>`;
+  // Transfer Sales to an Event (b324, practice): Universal, under Advanced, at every level.
+  if(WHMOVE_ON && isAdmin() && ME && !byKey.whmove) byKey.whmove = `<button class="btn" data-act="whmove">⇢ Transfer Sales to an Event</button>`;
   // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
   if(FIN_ON && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   // Finance's launch (b274): Universal, on the live app, brings over what was set up in practice.
@@ -8116,6 +8164,156 @@ function renderTodo(lists){
   if(on('counts')) renderMismatches(newestFirst(counts));
   if(!shown.length) $('#todoSort').innerHTML = '<span class="muted-note">Everything is hidden — tap a kind above to show it.</span>';
   return 1;
+}
+/* ---- Earthly HQ's To Do Summary (b323, practice) ----
+   Gita: "We will never actually sell directly from Earthly HQ ... remove the
+   sales log ... Have it just be a summary, but with a to-do list summary that
+   is usable." Everything still waiting, in every season and at HQ itself:
+   payments owed, pre-orders to deliver, change we owe, books in transit. One
+   line per place, with how many and how much; it opens to the items, and
+   "Go ›" takes you to that place, where its own To Do can act on them.
+   Drawn inside withRollup, so STATE.sales/inventory/shipments are every
+   season's; the real places come from STATE.everywhere. */
+const HQ_SUMMARY_ONLY = PRACTICE;
+const HQTODO_KINDS = [
+  {key:'pending', label:'Pending Payments', title:'PAYMENTS PENDING'},
+  {key:'pre',     label:'Pre-Orders',       title:'PRE-ORDERS PENDING'},
+  {key:'change',  label:'Change We Owe',    title:'CHANGE WE OWE'},
+  {key:'transit', label:'Books in Transit', title:'BOOKS IN TRANSIT'}
+];
+let HQTODO = { off:{} };
+try{ const v = JSON.parse(localStorage.getItem('tbs_hqtodo')||'{}'); if(v && v.off) HQTODO.off = v.off; }catch(e){}
+let HQTODO_DATA = null, HQTODO_EV = {};
+function hqTodoPlaces(ev){
+  ev = ev || {};
+  const seasons = ev.seasons || [], regs = ev.regions || [];
+  const sName = sid => sid===HQ_ID ? 'Earthly HQ' : ((seasons.find(x=>x.seasonId===sid)||{}).name || 'Season');
+  const sIdx = sid => { const i = seasons.findIndex(x=>x.seasonId===sid); return sid===HQ_ID ? 9999 : (i<0 ? 9998 : i); };
+  const reg = id => regs.find(r=>r.regionId===id);
+  const at = {};
+  const put = (loc, r, extra) => {
+    if(!r) return;
+    const hq = r.regionId===HQ_REGION || r.seasonId===HQ_ID;
+    const up = hq ? [] : [sName(r.seasonId)];
+    if(extra) up.push(r.name);
+    at[loc] = {key:extra ? loc : r.regionId, hq, season:r.seasonId, region:r.regionId, event:extra && extra.event ? loc : '',
+      up, name:hq && !extra ? 'Earthly HQ' : extra ? extra.name : r.name,
+      order:[sIdx(r.seasonId), regs.indexOf(r), extra ? 1 : 0]};
+  };
+  regs.forEach(r=>{ if(r.whLoc) put(r.whLoc, r); });
+  (ev.events||[]).forEach(e=>put(e.eventId, reg(e.regionId), {name:e.name, event:true}));
+  (ev.holders||[]).forEach(h=>{ const r = reg(h.regionId); if(r && h.holderId) put(h.holderId, r, {name:h.name || 'Devotee'}); });
+  if(!at[HQ_WH]) at[HQ_WH] = {key:HQ_REGION, hq:true, season:HQ_ID, region:HQ_REGION, event:'', up:[], name:'Earthly HQ', order:[9999,0,0]};
+  return {at, reg, sName, sIdx};
+}
+function hqTodoGather(ev){
+  const P = hqTodoPlaces(ev);
+  const g = groupBundles(STATE.sales||[]);
+  const out = {pending:[], pre:[], change:[], transit:[]};
+  g.forEach(x=>{
+    if(x.type!=='DONATION' && !isPaid(x)) out.pending.push(x);
+    if((x.type==='PREORDER' && !x.delivered) || (x._bundle && x._preCount>0)) out.pre.push(x);
+    if(changeOwed(x)>0) out.change.push(x);
+  });
+  (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').forEach(x=>{ if(shipTotal(x)>0) out.transit.push(x); });
+  const placeOf = (k, x) => {
+    if(k==='transit'){
+      const p = P.at[x.toLoc];
+      if(p) return p;
+      const r = P.reg(x.toRegion);
+      if(r){ return P.at[r.whLoc] || {key:r.regionId, season:r.seasonId, region:r.regionId, event:'', up:[P.sName(r.seasonId)], name:r.name, order:[P.sIdx(r.seasonId),0,0]}; }
+      return {key:'?', season:'', region:'', event:'', up:[], name:'Somewhere outside the system', order:[99999,0,0]};
+    }
+    return P.at[x.location] || {key:'?'+x.location, season:'', region:'', event:'', up:[], name:locNameFull(x.location) || 'Unknown place', order:[99999,0,0]};
+  };
+  const groups = {};
+  Object.keys(out).forEach(k=>{
+    const by = {};
+    out[k].forEach(x=>{ const p = placeOf(k, x); (by[p.key] = by[p.key] || {p, items:[]}).items.push(x); });
+    groups[k] = Object.values(by).sort((a,b)=>{
+      for(let i=0;i<3;i++){ if(a.p.order[i]!==b.p.order[i]) return a.p.order[i]-b.p.order[i]; }
+      return String(a.p.name).localeCompare(String(b.p.name));
+    });
+    groups[k].forEach(gr=>{ gr.items = newestFirst(gr.items); });
+  });
+  return {out, groups};
+}
+// How many: copies for pre-orders and books in transit, entries for the rest.
+function hqTodoCount(k, x){
+  if(k==='pre') return x._bundle ? (x._preCount||0) : (Number(x.qty)||1);
+  if(k==='transit') return shipTotal(x);
+  return 1;
+}
+function hqTodoMoney(k, items){
+  const by = {};
+  items.forEach(x=>{
+    const parts = k==='pending' ? dueParts(x) : k==='change' ? [{amt:changeOwed(x), cur:changeCur(x)}] : [];
+    parts.forEach(d=>{ if(d.amt) by[d.cur] = (by[d.cur]||0) + d.amt; });
+  });
+  return Object.keys(by).map(c=>`${fmt(by[c])} ${CUR_SYM[c]||c}`).join(' + ');
+}
+function hqTodoItemHTML(k, x){
+  if(k==='transit'){
+    const from = x.fromRegion==='OUTSIDE' ? (x.origin || 'outside the system') : ((HQTODO_EV.regions||[]).find(r=>r.regionId===x.fromRegion)||{}).name || 'another place';
+    const titles = shipBooks(x).filter(r=>r.left>0).map(r=>`${esc(r.b.name)} — ${r.left}`).join(' · ');
+    const when = x.eta ? 'Expected ' + new Date(x.eta).toLocaleDateString(LOCALE, {month:'short', day:'numeric'}) : '';
+    return `<div class="htd-it">${when ? `<span class="htd-when">${esc(when)}</span>` : ''}<span class="htd-who">From ${esc(from)}</span>
+      <span class="htd-what">${titles}</span><span class="htd-due">${esc(shipWho(x))}</span></div>`;
+  }
+  const when = x.ts ? new Date(x.ts).toLocaleDateString(LOCALE, {month:'short', day:'numeric'}) : '';
+  let what;
+  if(x._bundle){
+    if(k==='pre'){ const c = {}; x._members.forEach(m=>{ if(m.type==='PREORDER' && !m.delivered){ const nm = bookById(m.bookId).name; c[nm] = (c[nm]||0)+1; } });
+      what = Object.keys(c).map(n=>esc(n)+' — '+c[n]).join(' · ') || (x._count+' Books'); }
+    else what = x._count + ' Books';
+  } else what = x.type==='DONATION' ? 'Donation' : isUncat(x) ? 'Uncategorized sales' : esc(bookById(x.bookId).name);
+  const due = k==='pending' ? dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ')
+    : k==='change' ? cashFmt(changeOwed(x), changeCur(x)) : (hqTodoCount(k,x) + (hqTodoCount(k,x)===1 ? ' copy' : ' copies'));
+  const who = [x.name, x.phone].filter(Boolean).join(' · ');
+  return `<div class="htd-it"><span class="htd-when">${esc(when)}</span>${who ? `<span class="htd-who">${esc(who)}</span>` : ''}
+    <span class="htd-what">${what}</span><span class="htd-due">${esc(due)}</span></div>`;
+}
+function renderHqTodo(ev){
+  const body = $('#hqTodoBody'); if(!body) return;
+  HQTODO_EV = ev || {};
+  const D = HQTODO_DATA = hqTodoGather(ev);
+  const live = HQTODO_KINDS.filter(x=>D.out[x.key].length);
+  if(!live.length){ body.innerHTML = '<div class="htd-empty">Nothing waiting anywhere. 🙏</div>'; return; }
+  const total = (k, list) => list.reduce((t,x)=>t+hqTodoCount(k,x),0);
+  let h = '<div class="todo-tabs"><span class="todo-show">Show</span>' + live.map(x=>`<button type="button" class="todo-tab tt-${x.key}${HQTODO.off[x.key]?'':' on'}"
+      aria-pressed="${!HQTODO.off[x.key]}" data-act="hqtodofilter" data-tab="${x.key}">${esc(x.label)} <span class="todo-n">${total(x.key, D.out[x.key])}</span></button>`).join('') + '</div>';
+  const shown = live.filter(x=>!HQTODO.off[x.key]);
+  if(!shown.length) h += '<div class="htd-empty">Everything is hidden — tap a kind above to show it.</div>';
+  shown.forEach(kind=>{
+    const k = kind.key;
+    h += `<div class="htd-sec k-${k}"><div class="todo-h">${esc(kind.label)}</div>`;
+    D.groups[k].forEach(gr=>{
+      const p = gr.p, n = total(k, gr.items);
+      const unit = k==='pre' || k==='transit' ? (n===1 ? 'book' : 'books') : k==='pending' ? (n===1 ? 'payment' : 'payments') : (n===1 ? 'sale' : 'sales');
+      const money = hqTodoMoney(k, gr.items);
+      const go = p.hq ? 'data-hq="1"' : p.season ? `data-season="${esc(p.season)}" data-region="${esc(p.region)}" data-event="${esc(p.event||'')}"` : '';
+      h += `<details class="htd-grp"><summary>
+          <span class="htd-place">${p.up.length ? `<span class="htd-up">${p.up.map(esc).join(' › ')} › </span>` : ''}${esc(p.name)}</span>
+          <span class="htd-n">${n} ${unit}</span>${money ? `<span class="htd-amt">${esc(money)}</span>` : ''}
+          ${go ? `<button type="button" class="btn btn-ghost btn-xs htd-go" data-act="gotoship" ${go}>Go ›</button>` : ''}
+        </summary><div class="htd-items">${gr.items.map(x=>hqTodoItemHTML(k, x)).join('')}</div></details>`;
+    });
+    h += '</div>';
+  });
+  body.innerHTML = h;
+}
+function hqTodoReport(){
+  const D = HQTODO_DATA; if(!D){ toast('Nothing waiting anywhere.'); return; }
+  const out = ['*TO DO SUMMARY — EARTHLY HQ*'];
+  HQTODO_KINDS.filter(x=>!HQTODO.off[x.key] && D.out[x.key].length).forEach(kind=>{
+    out.push('', '*' + kind.title + '*');
+    D.groups[kind.key].forEach(gr=>{
+      const n = gr.items.reduce((t,x)=>t+hqTodoCount(kind.key,x),0), money = hqTodoMoney(kind.key, gr.items);
+      out.push('• ' + gr.p.up.concat([gr.p.name]).join(' › ') + ': ' + n + (money ? ' · ' + money : ''));
+    });
+  });
+  if(out.length===1){ toast('Nothing waiting anywhere.'); return; }
+  reportDialog({ title:'To Do Summary', make: () => out.join('\n') });
 }
 /* The To do report: kind by kind, in the panel's order, only the kinds ticked.
    Pre-orders can go as the counts per title, the people waiting, or both. */
@@ -10089,6 +10287,57 @@ function closedSay(){
   const name = CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'This place');
   toast(name + ' is closed. If you wish to enter information here, it must be re-opened.', true);
 }
+/* Edit at a closed place (b322, practice): the name, phone and notes on a sale
+   (pre-orders, payments still owed, any sale). The book, date, place and money
+   are shown but stay as they are; the server's editSaleNotes changes nothing else. */
+function saleNotesModal(s, bundle){
+  const members = bundle ? (STATE.sales||[]).filter(x=>x.bundle===bundle) : [s];
+  const uc = isUncat(s), don = s.type==='DONATION';
+  const what = bundle ? members.length+' books'
+    : don ? 'Donation' : uc ? 'Uncategorized sales' : ((bookById(s.bookId)||{}).name || 'Sale');
+  const kind = bundle ? 'Multiple book sale' : s.type==='PREORDER' && !s.delivered ? 'Pre-order' : '';
+  const when = fmtWhen(s.ts);
+  let paidNote = '';
+  const paid = bundle ? members.map(payLabel).filter((v,i,a)=>a.indexOf(v)===i).join(' · ') : payLabel(s);
+  const whOf = (STATE.regions||[]).find(r=>r.whLoc===s.location);
+  const place = (whOf ? whOf.name : locName(s.location)) || 'This place';
+  const owed = bundle ? 0 : dueAmt(s);
+  if(!bundle && s.pending) paidNote = 'payment pending';
+  const row = (k,v) => v ? `<div class="sn-line"><span class="k">${esc(k)}</span> <span class="v">${esc(v)}</span></div>` : '';
+  openModal(`
+    ${mHead('Edit notes — '+what)}
+    <div class="m-body">
+      <div class="note">${esc(place)} is closed, so the sale and its money stay as they are.
+        You can still change the name, phone and comments.</div>
+      <div class="sn-sum">
+        ${row('Sale', kind ? kind+' · '+what : what)}${row('When', when)}${row('Paid with', paid)}${row('Still owed', owed>0 ? fmt(owed)+' '+(CUR_SYM[dueCur(s)]||dueCur(s)) : paidNote)}
+      </div>
+      ${uc ? '' : `<div class="row2">
+        <div class="field"><label>Name (optional)</label><input id="snName" type="text"></div>
+        <div class="field"><label>Phone (optional)</label><input id="snPhone" type="tel" inputmode="tel" placeholder="+48 123 456 789 (include the +)"></div>
+      </div>`}
+      <div class="field"><label>Comments (optional)</label><textarea id="snCom"></textarea></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="snSave">Save changes</button>
+    </div>`);
+  if($('#snName')) $('#snName').value = s.name || '';
+  if($('#snPhone')) $('#snPhone').value = s.phone || '';
+  $('#snCom').value = s.comments || '';
+  $('#snSave').onclick = ()=>{
+    const v = { comments: $('#snCom').value.trim() };
+    if(!uc){ v.name = $('#snName').value.trim(); v.phone = cleanPhone($('#snPhone').value); }
+    // A pre-order or a payment still owed needs a name to be traced, as when it was recorded.
+    const needName = members.some(m=>(m.type==='PREORDER' && !m.delivered) || m.pending || Number(m.dueamt)>0);
+    if(!uc && needName && !v.name){ $('#modalErr').textContent = 'Add a name so this can still be traced to the person.'; return; }
+    const payload = Object.assign({action:'editSaleNotes'}, bundle ? {bundle} : {saleId:s.saleId}, v);
+    commit(payload, st=>{
+      (st.sales||[]).forEach(x=>{ if(bundle ? x.bundle===bundle : x.saleId===s.saleId) Object.assign(x, v); });
+    }, 'Notes saved');
+  };
+}
 function isClosedHere(){
   return CUR_LEVEL==='event' ? !!closureOf(CUR_LOC)
        : CUR_LEVEL==='region' ? !!regionClosure(CUR_REGION) : false;
@@ -11782,9 +12031,6 @@ function finAgg(sales, exps){
   sales.forEach(x=>{
     if(!x.con) Object.keys(x.cur||{}).forEach(c=>{ addCur(a.cur.coll, c, x.cur[c]); if(x.k==='DONATION') addCur(a.cur.don, c, x.cur[c]); });
     // Which figures hold dollars worked out from a rate (~).
-    /* What the books sold cost (b320, practice): Net counts the cost of each
-       book sold, in place of the printing and shipping bills put on books. */
-    if(x.cb && !x.con){ a.cogs = (a.cogs||0) + x.cb; if(x.pu > 0.004 && x.gu < 0.004) a.cogsP = (a.cogsP||0) + x.cb; }
     if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(x.c==='other') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
     const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0)), qa = x.qa || 0;
@@ -11804,16 +12050,16 @@ function finAgg(sales, exps){
   a.gross = a.coll + a.pend;
   exps.forEach(x=>{
     if(x.st==='declined') return;
-    if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); if(!x.usdExact) a.eExp = 1; if(x.off) a.off = (a.off||0) + x.off; }
+    if(!x.con){ a.exp += x.usd; addCur(a.cur.exp, String(x.cur||'').toUpperCase(), Number(x.amt)||0); if(!x.usdExact) a.eExp = 1; }
     if(x.kind==='reimburse' && x.st==='pending'){ a.reimb += x.usd; if(!x.usdExact) a.eReimb = 1; }
   });
   // What has actually been spent and kept (Gita, 2026-10-20); what is
   // expected once everything owed comes in and everyone is paid back.
   a.spent = a.exp - a.reimb;
-  // b320: the bills put on books come off; the books sold count instead (both 0 on live).
-  const bk = (a.off||0), sold = (a.cogs||0);
-  a.net = a.coll - a.spent + bk - (sold - (a.cogsP||0));
-  a.netExp = a.gross - a.exp + bk - sold;
+  /* b321 (Gita): a book's printing and shipping are an expense of the place
+     holding its copies (the server shares them out), so Net is as ever. */
+  a.net = a.coll - a.spent;
+  a.netExp = a.gross - a.exp;
   a.margin = a.coll > 0 ? a.net / a.coll * 100 : null;
   return a;
 }
@@ -12091,7 +12337,7 @@ function finOverviewHTML(){
   return `${finFiltersHTML(FIN.f)}
     <div class="fin-tiles">${tiles}</div>
     <div class="muted-note">In dollars, at each place's own rates, or at what an exchange actually fetched where Finance has written it down. ≈ marks dollars worked out from an exchange rate. Net is Gross less Expenses; the margin is Net as a share of Gross.
-      Consignment money belongs to the groups, so it is not in these figures. ${BC_ON ? 'Where a book has a printing cost, Net counts what each book sold cost (its printing and shipping) instead of those bills; Expenses still show the bills whole.' : 'Book printing costs are not in the app.'}</div>
+      Consignment money belongs to the groups, so it is not in these figures. ${BC_ON ? 'A book\'s printing and shipping costs start at Earthly HQ and move to each place as its books are sent there.' : 'Book printing costs are not in the app.'}</div>
 
     <h3 class="fin-h3">${esc(O.what)} ${finRepBtn('rows')} <button type="button" class="btn btn-ghost btn-xs fin-ovw-tg no-edit" data-act="finovwhide" aria-expanded="${FIN.ovwHide?'false':'true'}">${FIN.ovwHide ? '▸ Show table' : '▾ Hide table'}</button></h3>
     <div class="fin-scroll fin-ovw"${FIN.ovwHide ? ' hidden' : ''}><table class="cash-tbl fin-tbl${[...open].map(k=>' fo-' + k).join('')}"><thead>
@@ -13266,8 +13512,16 @@ function finRender0(){
    expense at all, so neither is counted. */
 function finExpList(){
   const f = finScopeF(), usd = {}, ff = FIN.f;
-  const ux = {}; ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; ux[x.id] = x.usdExact; });
-  return (EXP.all || []).filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e) && (!f.f || x.location===f.f)
+  const ux = {}, fx = {}; ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; ux[x.id] = x.usdExact; fx[x.id] = x; });
+  /* b321: a book cost's expense at each place holding its copies, with its
+     share there and its History (the server's bcSplit_). */
+  const all = (EXP.all || []).map(x=>{ const d = fx[x.id]; return d && d.bw ? Object.assign({}, x, {amt:d.amt, bh:d.bh, bw:d.bw}) : x; });
+  const byId = {}; all.forEach(x=>{ byId[x.id] = x; });
+  ((FIN.D && FIN.D.expenses) || []).forEach(d=>{ const x = d.of && byId[d.of]; if(!x) return;
+    // Its share here is a cost of this place, never a second thing to pay back.
+    all.push(Object.assign({}, x, {id:d.id, of:d.of, amt:d.amt, bh:d.bh, bw:null, date:d.d, location:d.loc, regionId:d.rg, seasonId:d.s, placeLabel:d.pl, receipts:[],
+      kind: x.kind==='reimburse' ? 'record' : x.kind, status: x.kind==='reimburse' ? 'recorded' : x.status})); });
+  return all.filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e) && (!f.f || x.location===f.f)
       && (!f.uE || f.uE.includes(x.location)) && (!ff.from || x.date >= ff.from) && (!ff.to || x.date <= ff.to))
     .map(x=>Object.assign({}, x, { usd: usd[x.id]===undefined ? null : usd[x.id], usdExact: ux[x.id], who: x.forName || x.byName || '',
       type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other') }));
@@ -13446,9 +13700,10 @@ function finConvModal(edit){
    dollar in it was logged rather than worked out from a rate. */
 function finPayOut(xs){
   const by = {}; let usd = 0, est = false, unknown = false;
-  const row = x => (FIN.D && FIN.D.expenses || []).find(y=>y.id===x.id) || {};
+  // A book cost shared out over places (b321) is paid back whole.
+  const row = x => { const y = (FIN.D && FIN.D.expenses || []).find(y=>y.id===x.id) || {}; return y.bw ? Object.assign({}, y, {usd:y.bw.u}) : y; };
   xs.forEach(x=>{
-    const o = expPayOut(x), r = row(x), u = x.usd!=null ? x.usd : r.usd, exact = x.usdExact!=null ? x.usdExact : r.usdExact;
+    const o = expPayOut(x), r = row(x), u = x.bw ? x.bw.u : x.usd!=null ? x.usd : r.usd, exact = x.usdExact!=null ? x.usdExact : r.usdExact;
     if(!o){ est = true; if(u!=null){ by.USD = (by.USD||0) + u; usd += u; } return; }
     by[o[1]] = (by[o[1]]||0) + Number(o[0]||0);
     if(String(o[1]).toUpperCase()==='USD'){ usd += Number(o[0]||0); if(!(String(x.cur).toUpperCase()==='USD' || (x.payAmt && x.payAmt.exact))) est = true; }
@@ -13551,6 +13806,27 @@ function finPaySplit(xs){
   return {o: ks.map(c=>cashFmt(P.by[c], c)).join(' + '), d: d || '—'};
 }
 
+/* A book cost's journey, on its expense card (b321, Gita): the bill where it
+   was logged, every lot of books sent on or arriving, and the New Total. */
+function bcHistText(h, x){
+  const n = h.n + (h.n===1 ? ' book' : ' books'), out = h.u < 0 || h.a < 0;
+  const ship = x.bookLink && x.bookLink.k==='ship';
+  if(h.k==='orig') return ship ? 'Original Shipping Costs' : 'Original Printing Costs';
+  if(h.k==='ref') return 'Refund for books sent back';
+  if(h.k==='ship') return out ? 'Shipping of ' + n + ' to ' + h.w : 'Shipping of ' + n + ' from ' + h.w;
+  if(h.k==='retship') return out ? 'Shipping of ' + n + ' sent back, to ' + h.w : 'Shipping of ' + n + ' sent back from ' + h.w;
+  if(h.k==='ret') return out ? 'Sent back ' + n + ' to ' + h.w : n + ' sent back from ' + h.w;
+  return out ? 'Transferred ' + n + ' to ' + h.w : 'Received ' + n + ' from ' + h.w;
+}
+function bcHistHTML(x){
+  // As every amount in Finance, "(500 ден) $9.08"; a minus on both halves of what went out.
+  const amt = (a, u) => { const neg = a < -0.004 || u < -0.004, m = neg ? '−' : '';
+    if(String(x.cur).toUpperCase()==='USD' || x.usd==null) return m + cashFmt(Math.abs(a), x.cur);
+    return '(' + m + cashFmt(Math.abs(a), x.cur) + ') ' + finUsd(neg ? -Math.abs(u) : Math.abs(u), !x.usdExact); };
+  return `<details class="bc-hist"><summary>History</summary>
+    ${x.bh.map(h=>`<div class="bc-hl"><span class="bc-hw">${esc(h.d)}. ${esc(bcHistText(h, x))}</span><span class="bc-ha">${esc(amt(h.a, h.u))}</span></div>`).join('')}
+    <div class="bc-hl bc-ht"><span class="bc-hw">New Total</span><span class="bc-ha">${esc(amt(x.amt, x.usd||0))}</span></div></details>`;
+}
 /* Expenses: sort by date, name, amount or type; filter with checklists that
    drop down, as the sales log's do (Gita, 2026-10-20). */
 function finExpShown(){
@@ -13594,10 +13870,11 @@ function finExpSecHTML(){
         ${x.kind==='reimburse' ? `<div><span class="k">Pay back</span> <span class="v">${esc(x.method || '')}${x.reimbCur ? ' in ' + esc(x.reimbCur) : ''}${expPayAmtLine(x) ? ' · ' + esc(expPayAmtLine(x)) : ''}</span></div>` : ''}
         ${x.payType ? `<div><span class="k">Paid with</span> <span class="v">${esc(x.payType)}</span></div>` : ''}
         ${x.notes ? `<div><span class="k">Notes</span> <span class="v no-edit">${esc(x.notes)}</span></div>` : ''}
+        ${x.bh && x.bh.length ? bcHistHTML(x) : ''}
         ${x.doneAt && x.status!=='pending' ? `<div><span class="k">${esc(EXP_STATUS[x.status]||x.status)}</span> <span class="v">${esc(x.status==='paid' && x.paidOn ? x.paidOn : String(x.doneAt).slice(0,10))}${x.doneBy ? ' by ' + esc(x.doneBy) : ''}${x.doneNote ? ' · ' + esc(x.doneNote) : ''}</span></div>` : ''}
         <div class="fx-btns">${rc.map((r,i)=>`<button type="button" class="btn btn-ghost btn-xs" data-act="rcptopen" data-id="${esc(r.id)}">🧾 Receipt${rc.length>1?' '+(i+1):''}</button>`).join('')}
-          <span class="exp-gap"></span>${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.id)}">✏️ Edit</button>
-          <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.id)}" title="Delete">🗑 Delete</button>` : ''}</div>
+          <span class="exp-gap"></span>${may || x.status!=='paid' ? `<button type="button" class="btn btn-ghost btn-xs" data-act="expedit" data-id="${esc(x.of || x.id)}">✏️ Edit</button>
+          <button type="button" class="btn btn-ghost btn-xs" data-act="expdel" data-id="${esc(x.of || x.id)}" title="Delete">🗑 Delete</button>` : ''}</div>
       </div></div>`; };
   /* b291 (Gita): Add an Expense sits at the top of every Finance screen now, and
      Dollars received is reached by tapping a ~ figure (practice), not a button here. */
@@ -14330,12 +14607,10 @@ function finChartsHTML(){
     /* Net beside Gross and Expenses in every Overview chart (Gita, 2026-10-21). */
     if(O.rows.length > 1) out.push(finChart(O.what.replace(/^By /, 'Gross, Expenses and Net by '), finPairsHTML(
       // ≈ where the dollars are estimates, as everywhere else (b306, Gita).
-      O.rows.map(r=>({k:r.label, a:r.a.coll, b:r.a.exp, n:r.a.coll - r.a.exp + (r.a.off||0) - (r.a.cogs||0), aE:r.a.eColl, bE:r.a.eExp, nE:r.a.eColl || r.a.eExp})).filter(r=>r.a > 0.004 || r.b > 0.004),
+      O.rows.map(r=>({k:r.label, a:r.a.coll, b:r.a.exp, n:r.a.coll - r.a.exp, aE:r.a.eColl, bE:r.a.eExp, nE:r.a.eColl || r.a.eExp})).filter(r=>r.a > 0.004 || r.b > 0.004),
       [{f:'a', l:'Gross', c:FIN_C.in}, {f:'b', l:'Expenses', c:FIN_C.out}, {f:'n', l:'Net', c:FIN_C.net}]), true));
     const gM = finByMonth(sales.filter(x=>!x.con), x=>x.d, x=>x.gu), eM = finByMonth(exps.filter(x=>x.st!=='declined' && !x.con), x=>x.d, x=>x.usd), nM = {};
-    // b320: books' costs in the month they were sold, bills put on books taken off in theirs.
-    const cM = finByMonth(sales.filter(x=>!x.con && x.cb), x=>x.d, x=>x.cb), oM = finByMonth(exps.filter(x=>x.st!=='declined' && !x.con && x.off), x=>x.d, x=>x.off);
-    [...new Set(Object.keys(gM).concat(Object.keys(eM)))].forEach(k=>{ nM[k] = (gM[k]||0) - (eM[k]||0) + (oM[k]||0) - (cM[k]||0); });
+    [...new Set(Object.keys(gM).concat(Object.keys(eM)))].forEach(k=>{ nM[k] = (gM[k]||0) - (eM[k]||0); });
     out.push(finChart('Month by month: Gross, Expenses and Net', finMonthsHTML([{l:'Gross', c:FIN_C.in, by:gM}, {l:'Expenses', c:FIN_C.out, by:eM}, {l:'Net', c:FIN_C.net, by:nM}]), true));
     out.push(finChart('Expenses by type', finDonutHTML(finVizData().rows.map(r=>({k:r.k, v:r.v})), 'Expenses by type', 'Expenses')));
   }
@@ -14374,7 +14649,7 @@ function finChartsHTML(){
     FIN.D.sales.filter(x=>x.pu > 0.004 && !x.con && (!f.s || x.s===f.s) && (!f.r || x.r===f.r) && (!f.e || x.e===f.e) && (!f.uE || f.uE.includes(x.e) || (f.u && !x.e && x.u===f.u)))
       .forEach(x=>{ const k = x.e ? (I.e[x.e]||{}).name || 'An event' : ((I.r[x.r]||{}).name || 'Region') + ' Warehouse'; byE[k] = (byE[k]||0) + x.pu; });
     out.push(finChart('Pending Payments, by place', finDonutHTML(finTop(byE), 'Pending Payments, by place', 'Owed to the tour')));
-    const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', u = (FIN.D.expenses.find(y=>y.id===x.id)||{}).usd || 0; byP[k] = (byP[k]||0) + u; });
+    const byP = {}; finScopedTodo().reimb.forEach(x=>{ const k = x.forName || x.byName || '(no name)', y0 = FIN.D.expenses.find(y=>y.id===x.id)||{}, u = (y0.bw ? y0.bw.u : y0.usd) || 0; byP[k] = (byP[k]||0) + u; });
     out.push(finChart('Pending Reimbursements, by person', finDonutHTML(finTop(byP), 'Pending Reimbursements, by person', 'To pay back')));
   }
   const boxes = out.filter(Boolean);
@@ -14449,7 +14724,7 @@ function finCsvDownload(part){
     const T = finScopedTodo();
     if(EXP.tab==='pay') return finCsvSave('Pending Payments', [['Date', 'Name', 'Phone', 'Book', 'How many', 'Where', 'Region', 'Season', 'Sold by', 'Owed']]
       .concat(T.pending.map(p=>[String(p.ts).slice(0,10), p.name, p.phone, p.book, p.qty, p.place, p.region, p.season, p.soldBy, finOwed(p)])));
-    const usd = {}; (FIN.D.expenses||[]).forEach(x=>{ usd[x.id] = x.usd; });
+    const usd = {}; (FIN.D.expenses||[]).forEach(x=>{ usd[x.id] = x.bw ? x.bw.u : x.usd; });
     const list = (EXP.tab==='all' ? T.all : T.reimb).map(x=>Object.assign({}, x, {usd:usd[x.id], who:x.forName || x.byName || '',
       type: x.category==='Other' && x.catOther ? 'Other: ' + x.catOther : (x.category || 'Other')}));
     return finCsvSave(EXP.tab==='all' ? 'Every expense' : 'Pending Reimbursements', [expHead].concat(list.map(expRow)));
@@ -18523,6 +18798,80 @@ function mergeRegionModal(rid){
       ()=>!regionById(fromRegion));
     if(ok!==false) goTo('region', rid);
   });
+}
+/* Transfer Sales to an Event (b324, practice, Gita: "she's been selling out
+   of the warehouse as if it is Parikrama"). A region's warehouse sales (all,
+   or one seller's) go to one of its events, or a new one. The server writes
+   the books they took off the shelf as sent to the event first, so the
+   warehouse keeps its count; cash records follow. The Activity Log undoes it. */
+function whMoveModal(){
+  if(!WHMOVE_ON || !isAdmin()) return;
+  let pickEv = '', pickWho = '';
+  const sellerKey = x => x.soldById || ('name:' + (x.soldBy || ''));
+  placePickModal({title:'Transfer Sales to an Event', kinds:['region'], dropdowns:true, saveLabel:'Transfer sales',
+    drawBody(kind, r, st){
+      const all = (st.sales||[]).filter(x=>x.location===r.whLoc);
+      const who = new Map();
+      all.forEach(x=>{ const k = sellerKey(x), w = who.get(k) || {n:0, name:x.soldBy || 'A sales link'}; w.n++; who.set(k, w); });
+      if(pickWho && !who.has(pickWho)) pickWho = '';
+      const evs = (st.events||[]).filter(e=>e.regionId===r.regionId && !(st===STATE && closureOf(e.eventId)));
+      if(pickEv!=='__new' && !evs.some(e=>e.eventId===pickEv)) pickEv = evs.length ? evs[0].eventId : '__new';
+      const subs = ((((st.subRegions)||{}).regions||{})[r.regionId] || []).filter(x=>x && x.id && x.name);
+      if(!all.length){
+        $('#ppBody').innerHTML = `<div class="hint">Nothing has been sold at ${esc(r.name)}'s warehouse, so there is nothing to transfer.</div>`;
+        $('#ppSave').disabled = true; return;
+      }
+      $('#ppBody').innerHTML = `
+        <div class="field"><label>Whose sales</label><select id="wmWho">
+          <option value="">Everyone (${all.length})</option>
+          ${[...who].map(([k,w])=>`<option value="${esc(k)}"${k===pickWho?' selected':''}>${esc(w.name)} (${w.n})</option>`).join('')}</select></div>
+        <div class="field"><label>Transfer them to</label><select id="wmEv">
+          ${evs.map(e=>`<option value="${esc(e.eventId)}"${e.eventId===pickEv?' selected':''}>${esc(e.name)}</option>`).join('')}
+          <option value="__new"${pickEv==='__new'?' selected':''}>＋ A new event…</option></select></div>
+        <div id="wmNew" ${pickEv==='__new'?'':'hidden'}>
+          <div class="field"><label>New event's name</label><input id="wmName" type="text" maxlength="80" placeholder="e.g. Parikrama"></div>
+          ${subs.length ? `<div class="field"><label>Sub-region</label><select id="wmSub"><option value="">${esc(r.name)}, general</option>
+            ${subs.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>` : ''}
+        </div>
+        <div class="hint" id="wmWhat"></div>`;
+      const what = ()=>{
+        const mine = all.filter(x=>!pickWho || sellerKey(x)===pickWho);
+        const books = mine.filter(x=>x.type==='SALE').reduce((t,x)=>t+(Number(x.qty)||0), 0);
+        const pre = mine.filter(x=>x.type==='PREORDER').length, don = mine.filter(x=>x.type==='DONATION').length,
+              unc = mine.filter(x=>x.type==='UNCAT').length;
+        const parts = [books ? `${books} book${books===1?'':'s'} sold or gifted` : '', pre ? `${pre} pre-order${pre===1?'':'s'}` : '',
+          don ? `${don} donation${don===1?'':'s'}` : '', unc ? `${unc} uncategorized sale${unc===1?'':'s'}` : ''].filter(Boolean);
+        const to = pickEv==='__new' ? (($('#wmName')||{}).value||'').trim() || 'the new event' : ((evs.find(e=>e.eventId===pickEv)||{}).name || 'the event');
+        $('#wmWhat').innerHTML = `<b>${parts.join(', ')}</b> go from ${esc(r.name)}'s warehouse to ${esc(to)}, with every payment, name and note.
+          The books they took off the shelf show as sent to ${esc(to)} first, so the warehouse keeps the count it has now.
+          Cash records made at the warehouse${pickWho ? ' by ' + esc((who.get(pickWho)||{}).name||'') : ''} go too. The Activity Log can undo this.`;
+      };
+      what();
+      $('#wmWho').onchange = e=>{ pickWho = e.target.value; what(); };
+      $('#wmEv').onchange = e=>{ pickEv = e.target.value; $('#wmNew').hidden = pickEv!=='__new'; what();
+        if(pickEv==='__new') $('#wmName').focus(); };
+      $('#wmName').oninput = what;
+    },
+    async save(kind, r, st, sn){
+      const newName = pickEv==='__new' ? $('#wmName').value.replace(/\s+/g,' ').trim() : '';
+      if(pickEv==='__new' && !newName){ $('#modalErr').textContent = 'Give the new event a name.'; return; }
+      if(newName && (st.events||[]).some(e=>e.regionId===r.regionId && String(e.name).toLowerCase()===newName.toLowerCase())){
+        $('#modalErr').textContent = 'An event called "' + newName + '" is already in ' + r.name + '. Pick it from the list instead.'; return; }
+      const eventId = pickEv==='__new' ? 'ev_' + Math.random().toString(36).slice(2,8) : pickEv;
+      const payload = {action:'moveWhSales', regionId:r.regionId, eventId, newName, seller:pickWho,
+        subRegion: newName && $('#wmSub') ? $('#wmSub').value : '', moveId:'wm_' + Math.random().toString(36).slice(2,10), season:sn};
+      const to = newName || ((st.events||[]).find(e=>e.eventId===eventId)||{}).name || 'the event';
+      if(sn===STATE.activeSeason){
+        const ok = await commitSync(payload, 'Sales transferred to ' + to,
+          ()=>!(STATE.sales||[]).some(x=>x.location===r.whLoc && (!pickWho || sellerKey(x)===pickWho)));
+        if(ok!==false && STATE.events.some(e=>e.eventId===eventId)) goTo('event', eventId);
+        return;
+      }
+      // Another season's: saved there, without leaving this one.
+      $('#ppSave').disabled = true;
+      try{ await post(payload); try{ localStorage.removeItem(SEASON_CACHE + sn); }catch(e){} closeModal(); toast('Sales transferred to ' + to); }
+      catch(err){ $('#ppSave').disabled = false; $('#modalErr').textContent = err.message; }
+    }});
 }
 function eventModal(edit, after){
   openModal(`
@@ -23311,6 +23660,15 @@ document.addEventListener('click',e=>{
   const a=t.dataset.act;
   /* A closed place is read-only: stopped before any form opens (b301, Gita).
      Settling up (delivering, marking paid) is still allowed. */
+  /* At a closed place a sale's words can still change (b322, practice, Gita:
+     "You should be able to edit everything except for the money"): Edit opens
+     the name, phone and notes only. Checked by the sale's own place, so a
+     closed event's sale seen from an open page is caught too. */
+  if(PRACTICE && (a==='editsale' || a==='editbundle')){
+    const rec = a==='editbundle' ? (STATE.sales||[]).find(x=>x.bundle===t.dataset.bundle)
+                                 : (STATE.sales||[]).find(x=>x.saleId===t.dataset.id);
+    if(rec && closureOf(rec.location)){ saleNotesModal(rec, a==='editbundle' ? t.dataset.bundle : ''); return; }
+  }
   if(isClosedHere() && CLOSED_STOP.has(a)){ closedSay(); return; }
   if(a==='logfilter'){
     // One panel open at a time.
@@ -23363,6 +23721,9 @@ document.addEventListener('click',e=>{
   if(a==='permissions'){ permissionsModal(); return; }
   if(a==='todofilter'){ const k = t.dataset.tab; if(TODO.off[k]) delete TODO.off[k]; else TODO.off[k] = 1; todoSave(); renderBottom(); return; }
   if(a==='todoreport'){ todoReport(); return; }
+  if(a==='hqtodofilter'){ const k = t.dataset.tab; if(HQTODO.off[k]) delete HQTODO.off[k]; else HQTODO.off[k] = 1;
+    try{ localStorage.setItem('tbs_hqtodo', JSON.stringify({off:HQTODO.off})); }catch(e){} const ev = STATE.everywhere; if(ev) withRollup(()=>renderHqTodo(ev)); return; }
+  if(a==='hqtodoreport'){ hqTodoReport(); return; }
   if(a==='practicereset'){ practiceReset(); return; }
   if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }
@@ -23743,6 +24104,7 @@ document.addEventListener('click',e=>{
   if(a==='salesupload'){ salesUploadModal(); return; }
   if(a==='stock' || a==='addstock'){ addStockModal(); return; }
   if(a==='substock'){ subtractStockModal(); return; }
+  if(a==='whmove'){ whMoveModal(); return; }
   if(a==='addnewplace'){ addNewPlaceModal(t.dataset.then); return; }
   if(a==='transfer' || a==='externaltransfer'){ transferStockModal(); return; }
   // A closed place is read-only: refuse before anything is attempted, so the

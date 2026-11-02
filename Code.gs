@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b320';
+var SERVER_BUILD = 'b324';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -411,8 +411,6 @@ function financeData_() {
       u: w.e ? '' : String(subTag[String(s.bundle || '')] || subTag[String(s.saleId)] || '') });
     // b295: the Adventures among uncategorized sales' books.
     if (type === 'UNCAT' && Number(s.aqty) > 0) sales[sales.length - 1].qa = Number(s.aqty);
-    // b320: the book's cost, when every copy in it has a printing cost.
-    if (BC.sale[String(s.saleId)]) sales[sales.length - 1].cb = r2(BC.sale[String(s.saleId)].u);
   });
   var expenses = [];
   objectsOf_('_expenses').forEach(function (x) {
@@ -424,12 +422,57 @@ function financeData_() {
       kind: String(x.kind || 'record'), st: String(x.status || ''),
       who: String(x.forName || x.byName || ''), con: x.partnerId ? (partners[String(x.partnerId)] || 'Consignment') : '',
       cur: String(x.cur || ''), amt: Number(x.amt) || 0, usd: r2(expUsd_(x, loc)), usdExact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' ? 1 : 0 });
-    // b320: the part put onto books (and refunded), which Net takes off this expense.
-    var off = (BC.cap[String(x.id)] || 0) + (BC.ref[String(x.id)] || 0);
-    if (off > 0.004) expenses[expenses.length - 1].off = r2(Math.min(off, expenses[expenses.length - 1].usd));
+    if (BC.al[String(x.id)]) bcSplit_(expenses, BC.al[String(x.id)], where, regs, evs, seasons);
   });
   var list = function (o) { return Object.keys(o).map(function (k) { return o[k]; }); };
   return { seasons: seasons, regions: list(regs), events: list(evs), sales: sales, expenses: expenses };
+}
+
+/* A book cost's expense, shared out over the places holding its copies (b321):
+   its own row keeps the share where it was logged, and each other place gets
+   a row of its own (id "<expense>@<place>", `of` the expense) with its share.
+   Every row carries its History, signed for that place: `bw` the whole bill
+   on the expense's own row, `bh` [{d, k, n, w, u, a}], w the other place. */
+function bcSplit_(expenses, A, where, regs, evs, seasons) {
+  var row = expenses[expenses.length - 1], r2 = function (n) { return Math.round(n * 100) / 100; };
+  var fu = A.u0 > 0 ? row.usd / A.u0 : 0, fa = A.a0 > 0 ? row.amt / A.a0 : 0;
+  var sName = {}; seasons.forEach(function (x) { sName[x.id] = x.name; });
+  var name = function (p) {
+    if (p === HQ_WH) return 'Earthly HQ';
+    if (evs[p]) return evs[p].name;
+    var w = where(p);
+    return w && regs[w.r] ? regs[w.r].name : p;
+  };
+  var day = function (t) { return t ? Utilities.formatDate(new Date(t), Session.getScriptTimeZone(), 'yyyy-MM-dd') : row.d; };
+  var hist = function (p) {
+    var h = p === A.own ? [{ d: row.d, k: 'orig', n: 0, w: '', u: r2(A.u0 * fu), a: r2(A.a0 * fa) }] : [];
+    A.h.forEach(function (e) {
+      var sg = e.from === p ? -1 : e.to === p ? 1 : 0;
+      if (!sg) return;
+      h.push({ d: day(e.t), k: e.k, n: e.n, w: e.k === 'ref' ? '' : name(sg < 0 ? e.to : e.from), u: r2(sg * e.u * fu), a: r2(sg * e.a * fa) });
+    });
+    return h;
+  };
+  var own = A.at[A.own] || { u: 0, a: 0 };
+  row.bw = { u: row.usd, a: row.amt };
+  row.usd = r2(own.u * fu); row.amt = r2(own.a * fa); row.bh = hist(A.own);
+  Object.keys(A.at).forEach(function (p) {
+    if (p === A.own) return;
+    var c = A.at[p];
+    if (!(Math.abs(c.u) > 0.004 || Math.abs(c.a) > 0.004)) return;
+    var w = p === HQ_WH ? null : where(p), h = hist(p);
+    var r = {}; Object.keys(row).forEach(function (k) { r[k] = row[k]; });
+    delete r.bw;
+    r.id = row.id + '@' + p; r.of = row.id;
+    if (r.kind === 'reimburse') { r.kind = 'record'; r.st = 'recorded'; }   // a cost here, paid back once, on the bill itself
+    r.usd = r2(c.u * fu); r.amt = r2(c.a * fa); r.bh = h;
+    r.d = h.length ? h[0].d : row.d;
+    if (w) { r.s = w.s; r.r = w.r; r.e = w.e; } else { r.s = HQ_ID; r.r = ''; r.e = ''; }
+    // Where it sits, as the expenses list names places.
+    r.loc = w ? (w.e || w.r) : HQ_REGION; r.rg = w ? w.r : HQ_REGION;
+    r.pl = p === HQ_WH ? 'Earthly HQ' : [w && w.e ? evs[w.e].name : '', w ? regs[w.r].name : '', w ? sName[w.s] : ''].filter(String).join(' · ');
+    expenses.push(r);
+  });
 }
 
 /* ---- What each book cost (b320, practice first; Gita, 2026-10-29) ----
@@ -455,7 +498,8 @@ function financeData_() {
    returned shipment's share is never put on its books (they go back at the
    cost they had), so it stays an expense, less the refund (`ref`). */
 var BOOKCOST_ON_ = false;
-function setBookCostOn_(v) { BOOKCOST_ON_ = !!v; }
+var WHMOVE_ON_ = false;   // b324: moving a warehouse's sales into an event, practice only for now
+function setBookCostOn_(v) { BOOKCOST_ON_ = !!v; WHMOVE_ON_ = !!v; }
 function bcList_(raw) {
   if (!raw) return [];
   try { var o = JSON.parse(String(raw)); return Array.isArray(o) ? o : []; } catch (e) { return []; }
@@ -479,14 +523,14 @@ function bcSrcHas_(src, m) {
   return false;
 }
 function bookCostCalc_() {
-  var out = { sale: {}, cap: {}, ref: {}, on: false };
+  var out = { sale: {}, cap: {}, ref: {}, al: {}, on: false };
   if (!BOOKCOST_ON_ || !dbHas_('_expenses')) return out;
   var exps = objectsOf_('_expenses').filter(function (x) {
     return x && x.id && x.bookLink && String(x.status || '') !== 'declined' && !x.partnerId;
   }).map(function (x) {
     var L = bcJson_(x.bookLink);
     var loc = String(x.location || '');
-    return L ? { id: String(x.id), L: L, cur: String(x.cur || '').toUpperCase(), amt: Number(x.amt) || 0,
+    return L ? { id: String(x.id), L: L, location: loc, cur: String(x.cur || '').toUpperCase(), amt: Number(x.amt) || 0,
                  usd: expUsd_(x, loc === HQ_REGION ? '' : loc), exact: Number(x.usdAmt) > 0 || String(x.cur || '').toUpperCase() === 'USD' } : null;
   }).filter(function (x) { return x && x.amt > 0; });
   if (!exps.length) return out;
@@ -517,6 +561,41 @@ function bookCostCalc_() {
   var wAvg = wl.length ? wl.reduce(function (t, g) { return t + g; }, 0) / wl.length : 1;
   var ships = {};
   shipmentsAll_().forEach(function (s) { ships[s.shipId] = s; });
+  /* b321 (Gita, 2026-10-30): the cost is an expense of whichever place holds
+     the copies. It starts whole where it was logged (Earthly HQ), and the
+     share of every copy sent on goes with it: 300 to Delhi takes 300 copies'
+     cost off HQ and onto Delhi; 20 on to Surat moves theirs from Delhi to
+     Surat. Copies on their way count at the place they are going to. A sold
+     or lost copy's cost stays where it was. `al` keeps each expense's share
+     per place and the journey, for its card's History. */
+  var placeOf = function (loc) {
+    loc = String(loc || '');
+    if (ships[loc]) loc = String(shipLandsAtSrv_(ships[loc]) || '');
+    if (!loc || loc === HQ_REGION || loc === HQ_WH) return HQ_WH;
+    var r = regionById_(loc);
+    if (r) return String(r.regionId) === HQ_REGION ? HQ_WH : String(r.whLoc || loc);
+    return loc;
+  };
+  var byId = {};
+  exps.forEach(function (x) { byId[x.id] = x; x.own = placeOf(x.location); });
+  var alOf = function (id) {
+    var A = out.al[id];
+    if (!A) { var x = byId[id]; A = out.al[id] = { own: x.own, u0: x.usd, a0: x.amt, at: {}, h: [] }; A.at[x.own] = { u: x.usd, a: x.amt }; }
+    return A;
+  };
+  var mv = function (id, from, to, n, u, a, k, t, key) {
+    if (from === to || !byId[id] || !(u > 0 || a > 0)) return;
+    var A = alOf(id);
+    [[from, -1], [to, 1]].forEach(function (pq) {
+      var c = A.at[pq[0]] || (A.at[pq[0]] = { u: 0, a: 0 });
+      c.u += pq[1] * u; c.a += pq[1] * a;
+    });
+    var last = A.h[A.h.length - 1];
+    if (last && last.key === key && last.from === from && last.to === to && last.k === k) { last.n += n; last.u += u; last.a += a; return; }
+    A.h.push({ t: t, k: k, n: n, from: from, to: to, u: u, a: a, key: key });
+  };
+  var moveKey = function (m) { return String(m.id).replace(/_\d+$/, ''); };
+  exps.forEach(function (x) { if (x.L.k === 'print' || x.L.k === 'ship') alOf(x.id); });
   var shipLoad = {};
   exps.forEach(function (x) {
     if (x.L.k !== 'ship' || !ships[x.L.sh]) return;
@@ -551,11 +630,11 @@ function bookCostCalc_() {
     var st = shelf[key(loc, b)] || [], got = [];
     while (n > 0 && st.length) {
       var top = st[0], k = Math.min(n, top.n);
-      got.push({ n: k, known: top.known, c: top.c, o: top.o });
+      got.push({ n: k, known: top.known, c: top.c, o: top.o, a: top.a || {} });
       top.n -= k; n -= k;
       if (!top.n) st.shift();
     }
-    if (n > 0) got.push({ n: n, known: false, c: {}, o: {} });   // copies the record never saw arrive
+    if (n > 0) got.push({ n: n, known: false, c: {}, o: {}, a: {} });   // copies the record never saw arrive
     return got;
   };
   var put = function (loc, b, pieces) {
@@ -565,10 +644,11 @@ function bookCostCalc_() {
   var add = function (o, k, v) { o[k] = (o[k] || 0) + v; };
   var drop = function (p) { if (p.known) Object.keys(p.c).forEach(function (id) { add(lost, id, p.c[id] * p.n); }); };
   var copyOf = function (p, n) {
-    var c = {}, o = {};
+    var c = {}, o = {}, a = {};
     Object.keys(p.c).forEach(function (k) { c[k] = p.c[k]; });
     Object.keys(p.o).forEach(function (k) { o[k] = p.o[k]; });
-    return { n: n, known: p.known, c: c, o: o };
+    Object.keys(p.a || {}).forEach(function (k) { a[k] = p.a[k]; });
+    return { n: n, known: p.known, c: c, o: o, a: a };
   };
   ev.forEach(function (e) {
     if (e.s) {
@@ -589,22 +669,37 @@ function bookCostCalc_() {
     if (kind === 'ADJUST') {
       var to = String(m.toLoc);
       if (q < 0) { take(to, b2, -q).forEach(drop); return; }
-      var c = {}, o2 = {}, known = false;
+      var c = {}, o2 = {}, a2 = {}, known = false;
       prints.forEach(function (x) {
         if (!x.per[b2] || !bcSrcHas_(x.L.src, m)) return;
-        known = true; c[x.id] = (c[x.id] || 0) + x.per[b2].usd; add(o2, x.cur, x.per[b2].amt);
+        known = true; c[x.id] = (c[x.id] || 0) + x.per[b2].usd; add(o2, x.cur, x.per[b2].amt); add(a2, x.id, x.per[b2].amt);
         add(loaded, x.id, x.per[b2].usd * q);
+        // Books brought in somewhere other than where the bill was logged: their share goes there.
+        mv(x.id, x.own, placeOf(to), q, x.per[b2].usd * q, x.per[b2].amt * q, 'move', e.t, moveKey(m));
       });
-      put(to, b2, [{ n: q, known: known, c: c, o: o2 }]);
+      put(to, b2, [{ n: q, known: known, c: c, o: o2, a: a2 }]);
       return;
     }
     if (q <= 0) return;
     var fromL = String(m.fromLoc), toL = String(m.toLoc);
     var pieces = take(fromL, b2, q).map(function (p) { return copyOf(p, p.n); });
-    var load = String(m.id).indexOf('RT_') === 0 ? null : (shipLoad[fromL] || {})[b2];
+    var isRet = String(m.id).indexOf('RT_') === 0, pf = placeOf(fromL), pt = placeOf(toL);
+    // The copies' costs go with them (b321).
+    pieces.forEach(function (p) {
+      if (!p.known) return;
+      Object.keys(p.c).forEach(function (id) { mv(id, pf, pt, p.n, p.c[id] * p.n, (p.a[id] || 0) * p.n, isRet ? 'ret' : 'move', e.t, moveKey(m)); });
+    });
+    var load = isRet ? null : (shipLoad[fromL] || {})[b2];
     if (load) pieces.forEach(function (p) {
       if (!p.known) return;
-      load.forEach(function (l) { add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(loaded, l.id, l.usd * p.n); });
+      load.forEach(function (l) {
+        add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(p.a, l.id, l.amt); add(loaded, l.id, l.usd * p.n);
+        mv(l.id, byId[l.id].own, pt, p.n, l.usd * p.n, l.amt * p.n, 'ship', e.t, moveKey(m));
+      });
+    });
+    // Sent back: what those copies' shipping cost goes to Earthly HQ (Gita, 2026-10-30), the region is not hurt.
+    if (isRet) ((shipLoad[fromL] || {})[b2] || []).forEach(function (l) {
+      mv(l.id, byId[l.id].own, HQ_WH, q, l.usd * q, l.amt * q, 'retship', e.t, moveKey(m));
     });
     put(toL, b2, pieces);
   });
@@ -624,6 +719,11 @@ function bookCostCalc_() {
       if (!(a > 0)) return;
       var usd = cur === x.cur && x.amt > 0 ? x.usd * a / x.amt : toUSD_(a, cur);
       add(out.ref, x.id, usd);
+      // The refund comes off Earthly HQ's share, where the returned books' shipping went.
+      var A = alOf(x.id), c = A.at[HQ_WH] || (A.at[HQ_WH] = { u: 0, a: 0 });
+      var am = cur === x.cur ? a : (x.usd > 0 ? x.amt * usd / x.usd : 0);
+      c.u -= usd; c.a -= am;
+      A.h.push({ t: bcTime_(r.at), k: 'ref', n: 0, from: HQ_WH, to: '', u: usd, a: am, key: 'ref' });
     });
   });
   return out;
@@ -940,6 +1040,7 @@ function handle(e) {
         case 'setSeasonHidden':  result = doSetSeasonHidden(params); break;
         case 'setSubRegions':    result = doSetSubRegions(params); break;
         case 'mergeRegion':      result = doMergeRegion(params); break;
+        case 'moveWhSales':      result = doMoveWhSales(params); break;
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
@@ -948,6 +1049,7 @@ function handle(e) {
         case 'fulfilRemote':     result = doFulfilRemote(params, who); break;
         case 'transferExternal':  doTransferExternal(params);  break;
         case 'editSale':         doEditSale(params);         break;
+        case 'editSaleNotes':    doEditSaleNotes(params);    break;
         case 'deleteSale':       doDeleteSale(params);       break;
         case 'markPaid':         doMarkPaid(params);         break;
         case 'giveChange':       doGiveChange(params);       break;
@@ -2570,6 +2672,8 @@ var SELLER_ACTIONS = {
   handoverCash:1, handoverAnswer:1,
   sell:1, sellBundle:1, donate:1,
   editSale:1, editBundle:1, deleteSale:1,
+  // The name, phone and notes on a sale, even at a closed place (b322).
+  editSaleNotes:1,
   settle:1, deliver:1, markPaid:1
 };
 var COORD_EXTRA = {
@@ -2801,6 +2905,14 @@ function assertAllowed_(who, action, params) {
       ? ((who.eventIds || [who.eventId]).indexOf(sc) >= 0)
       : (whoHasRegion_(who, sc) || allowed[sc]);
     if (!mayEdit) throw new Error('This link can only change its own contacts.');
+  }
+  // A multi-book transaction's notes (b322): only one of this link's own.
+  if (action === 'editSaleNotes' && params.bundle) {
+    objectsOf_('_sales').forEach(function (r) {
+      if (String(r.bundle) === String(params.bundle) && !allowed[String(r.location)]) {
+        throw new Error('That sale belongs to another location.');
+      }
+    });
   }
   // Editing or deleting someone else's sale is out of scope too.
   if (params.saleId) {
@@ -7243,6 +7355,128 @@ function undoMerge_(fromId) {
   markDirtyAll_();
 }
 
+/* ---- Moving a warehouse's sales into an event (b324, practice, Gita:
+   "she's been selling out of the warehouse as if it is Parikrama") ----
+   Every sale, pre-order, donation and uncategorized sale written at a
+   region's warehouse (or only one seller's) goes to an event of the same
+   region, a new one if a name is given. The books those sales took off the
+   warehouse shelf are written down as having gone to the event first (one
+   transfer per title), so the warehouse still holds what it holds, and the
+   event shows them arriving and selling. The cash records made at the
+   warehouse (by everyone, or by that seller) follow the money. Written
+   down under 'whMoveUndo:<id>' so the Activity Log can put it all back. */
+function doMoveWhSales(p) {
+  if (!WHMOVE_ON_) throw new Error('Moving sales into an event is in the practice space only, for now.');
+  var r = regionById_(String(p.regionId || ''));
+  if (!r || !r.whLoc) throw new Error('That region is no longer listed.');
+  if (r.regionId === HQ_REGION) throw new Error('Earthly HQ has no events.');
+  var wh = r.whLoc;
+  if (isClosedLoc_(wh)) throw new Error(r.name + ' is closed. Reopen it first if something needs changing.');
+  var id = String(p.moveId || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40) || ('wm_' + Utilities.getUuid().slice(0, 8));
+  if (String(getMeta_('whMoveUndo:' + id, '') || '')) return { moveId: id };      // a resend
+  var seller = String(p.seller || '');
+  var mine = function (s) { return !seller || String(s.soldById || '') === seller || (!s.soldById && 'name:' + String(s.soldBy || '') === seller); };
+  var sales = objectsOf_('_sales').filter(function (s) { return String(s.location) === wh && mine(s); });
+  if (!sales.length) throw new Error('There are no sales at ' + r.name + "'s warehouse to move.");
+
+  // Where they go: an event of this region, or a new one.
+  var evId = String(p.eventId || ''), created = false, ev = evId ? eventById_(evId) : null;
+  if (p.newName) {
+    var nm = String(p.newName).trim().slice(0, 80);
+    evId = doCreateEvent({ name: nm, regionId: r.regionId, eventId: evId });
+    ev = eventById_(evId); created = true;
+  }
+  if (!ev || String(ev.regionId) !== r.regionId) throw new Error('Pick an event in ' + r.name + '.');
+  if (isClosedLoc_(evId)) throw new Error(ev.name + ' is closed. Reopen it first if something needs changing.');
+
+  var U = { id: id, regionId: r.regionId, wh: wh, ev: evId, created: created, sales: [], cash: [], change: [], hand: [], moves: [], tags: {}, evSub: null };
+  // The books that came off the warehouse shelf for these sales.
+  var took = {}, first = {};
+  sales.forEach(function (s) {
+    U.sales.push(String(s.saleId));
+    if (restoreLocOf_(s) === wh && !isDelivery_(s)) {
+      var b = String(s.bookId), q = Math.round(Number(s.qty) || 0);
+      took[b] = (took[b] || 0) + q;
+      var t = new Date(s.ts).getTime();
+      if (!isNaN(t) && (!first[b] || t < first[b])) first[b] = t;
+    }
+  });
+  var ids = {}; U.sales.forEach(function (x) { ids[x] = 1; });
+  dbUpdate_('_sales', function (o) { return !!ids[String(o.saleId)]; }, { location: evId });
+  Object.keys(took).forEach(function (b) {
+    var mid = 'M' + Utilities.getUuid().slice(0, 7);
+    stockMoveAppend_({ id: mid, kind: 'TRANSFER', fromLoc: wh, toLoc: evId, bookId: b, qty: took[b],
+                       ts: first[b] ? new Date(first[b] - 1000) : new Date(),
+                       note: 'Sold at the warehouse, moved to ' + ev.name });
+    U.moves.push(mid);
+  });
+  // The money follows: cash records written at the warehouse (that seller's only, when one is picked).
+  var sellerName = seller ? String((sales[0] || {}).soldBy || '') : '';
+  var byOk = function (o) { return !seller || (sellerName && String(o.by || o.fromName || '') === sellerName); };
+  if (dbHas_('_cash')) objectsOf_('_cash').forEach(function (c) {
+    if ((String(c.fromAcct) === wh || String(c.toAcct) === wh) && byOk(c)) U.cash.push(String(c.id));
+  });
+  if (U.cash.length) {
+    var cids = {}; U.cash.forEach(function (x) { cids[x] = 1; });
+    dbUpdate_('_cash', function (o) { return !!cids[String(o.id)]; }, function (o) {
+      var f = {}; if (String(o.fromAcct) === wh) f.fromAcct = evId; if (String(o.toAcct) === wh) f.toAcct = evId; return f; });
+  }
+  if (dbHas_('_change')) objectsOf_('_change').forEach(function (c) { if (String(c.loc) === wh && byOk(c)) U.change.push(String(c.id)); });
+  if (U.change.length) { var gids = {}; U.change.forEach(function (x) { gids[x] = 1; });
+    dbUpdate_('_change', function (o) { return !!gids[String(o.id)]; }, { loc: evId }); }
+  if (dbHas_('_handovers')) objectsOf_('_handovers').forEach(function (h) { if (String(h.location) === wh && byOk(h)) U.hand.push(String(h.id)); });
+  if (U.hand.length) { var hids = {}; U.hand.forEach(function (x) { hids[x] = 1; });
+    dbUpdate_('_handovers', function (o) { return !!hids[String(o.id)]; }, { location: evId }); }
+
+  // Sub-regions: a sale at an event counts for the event's sub-region, so the sales' own tags go.
+  var v = subRegionsGet_(), subs = v.regions[r.regionId] || [];
+  sales.forEach(function (s) {
+    [String(s.saleId), String(s.bundle || '')].forEach(function (k) {
+      if (k && v.sales[k] && U.tags[k] === undefined) { U.tags[k] = v.sales[k]; delete v.sales[k]; }
+    });
+  });
+  var sr = String(p.subRegion || '');
+  if (created && sr && subs.some(function (x) { return x.id === sr; })) { U.evSub = ''; v.events[evId] = sr; }
+  setMeta_('subRegions', JSON.stringify(v));
+
+  setMeta_('whMoveUndo:' + id, JSON.stringify(U));
+  markDirty_(wh); markDirty_(evId); markDirtyAll_();
+  return { moveId: id, eventId: evId, sales: U.sales.length, books: Object.keys(took).reduce(function (t, b) { return t + took[b]; }, 0),
+           cash: U.cash.length + U.change.length + U.hand.length, eventName: ev.name, regionName: r.name };
+}
+
+/* Put a move back (from the Activity Log): the sales and cash records go back
+   to the warehouse, the transfers written for them go, and a new event made
+   for them goes too if nothing else has happened there since. */
+function undoWhMove_(id) {
+  var U = null;
+  try { U = JSON.parse(String(getMeta_('whMoveUndo:' + id, '') || '')); } catch (e) { U = null; }
+  if (!U || !U.id) throw new Error('This move can no longer be undone.');
+  var wh = U.wh, ev = U.ev, set = function (a) { var m = {}; (a || []).forEach(function (x) { m[x] = 1; }); return m; };
+  var S = set(U.sales), C = set(U.cash), G = set(U.change), H = set(U.hand), M = set(U.moves);
+  dbUpdate_('_sales', function (o) { return !!S[String(o.saleId)] && String(o.location) === ev; }, { location: wh });
+  if (dbHas_('_cash')) dbUpdate_('_cash', function (o) { return !!C[String(o.id)]; }, function (o) {
+    var f = {}; if (String(o.fromAcct) === ev) f.fromAcct = wh; if (String(o.toAcct) === ev) f.toAcct = wh; return f; });
+  if (dbHas_('_change')) dbUpdate_('_change', function (o) { return !!G[String(o.id)] && String(o.loc) === ev; }, { loc: wh });
+  if (dbHas_('_handovers')) dbUpdate_('_handovers', function (o) { return !!H[String(o.id)] && String(o.location) === ev; }, { location: wh });
+  flushStockMoves_();
+  if (dbHas_('_stockmoves')) dbDelete_('_stockmoves', function (m) { return !!M[String(m.id)]; });
+  var v = subRegionsGet_();
+  Object.keys(U.tags || {}).forEach(function (k) { v.sales[k] = U.tags[k]; });
+  // The event made for the move goes, if it is empty again.
+  if (U.created) {
+    var busy = objectsOf_('_sales').some(function (s) { return String(s.location) === ev; }) ||
+      (dbHas_('_stockmoves') && objectsOf_('_stockmoves').some(function (m) { return String(m.fromLoc) === ev || String(m.toLoc) === ev; })) ||
+      (dbHas_('_cash') && objectsOf_('_cash').some(function (c) { return String(c.fromAcct) === ev || String(c.toAcct) === ev; }));
+    var map = loadInvMap_(), held = 0;
+    allBooks_().forEach(function (b) { held += getQty_(map, ev, b.id); });
+    if (!busy && !held) { dbDelete_('_events', function (e) { return String(e.eventId) === ev; }); delete v.events[ev]; }
+  }
+  setMeta_('subRegions', JSON.stringify(v));
+  setMeta_('whMoveUndo:' + id, '');
+  markDirty_(wh); markDirtyAll_();
+}
+
 function doCreateEvent(p) {
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Enter an event name.');
@@ -7560,6 +7794,34 @@ function doEditSale(p) {
 
   markDirty_(String(old.location));
   if (newLoc !== String(old.location)) markDirty_(newLoc);
+}
+
+/* The words on a sale, and nothing else (b322, Gita: "Closing a region closes
+   the sales and the money, but things like notes you can still have access to
+   for pending things"). Only the buyer's name, phone and the comments change:
+   the book, the date, the place and every amount stay exactly as they are. So
+   it is not in MUTATING_ACTIONS, and works at a closed place too. A
+   multi-book transaction (bundle) changes on every one of its books. */
+function doEditSaleNotes(p) {
+  var bundle = String(p.bundle || ''), saleId = String(p.saleId || '');
+  var rows = objectsOf_('_sales').filter(function (r) {
+    return bundle ? String(r.bundle) === bundle : String(r.saleId) === saleId;
+  });
+  if (!bundle && !saleId || !rows.length) throw new Error('That sale is no longer in the log.');
+  var set = {};
+  if (p.name !== undefined) set.name = String(p.name).trim().slice(0, 200);
+  if (p.phone !== undefined) set.phone = String(p.phone).trim().slice(0, 60);
+  if (p.comments !== undefined) set.comments = String(p.comments).trim().slice(0, 2000);
+  if (!Object.keys(set).length) return;
+  dbAddCols_('_sales', SALES_HEADERS);
+  var o = rows[0];
+  set.editedBy = editedByNote_(p.by, { by: String(o.soldBy || ''), id: String(o.soldById || '') }, String(o.editedBy || ''));
+  var locs = {};
+  rows.forEach(function (r) {
+    dbUpdate_('_sales', firstOnly_({ saleId: String(r.saleId) }), set);
+    locs[String(r.location)] = 1;
+  });
+  Object.keys(locs).forEach(function (l) { markDirty_(l); });
 }
 
 /* Handing the book over: the pre-order becomes an ordinary sale. Payment state
@@ -9718,6 +9980,13 @@ function describe_(action, p, result, moves, who) {
       break;
     }
     case 'editShipment':   d = { text: 'Changed a shipment’s details' }; break;
+    case 'editSaleNotes': {
+      var sn = saleSnap_(p.bundle ? 'editBundle' : 'editSale', p);
+      if (!sn) return null;
+      d = { text: 'Edited the name, phone or notes on a sale: ' + sn.what + ' at ' + locLabel_(sn.loc) };
+      locs[sn.loc] = 1;
+      break;
+    }
     case 'editSale': case 'editBundle': case 'markPaid': case 'markPaidBundle': case 'uncatSale': {
       var sb = _activityBefore && _activityBefore.sale, sa = saleSnap_(action, p) || sb;
       if (!sa) return null;
@@ -9749,6 +10018,12 @@ function describe_(action, p, result, moves, who) {
     case 'setSubRegions': d = { text: 'Changed the sub-regions of ' + reg(p.regionId) }; break;
     case 'mergeRegion': d = { text: 'Merged ' + String(p.confirmName || 'a region') + ' into ' + String((result && result.name) || reg(p.intoRegion)) + ' as a sub-region',
       undo: { type: 'merge', fromRegion: String(p.fromRegion) } }; regions[String(p.intoRegion)] = 1; break;
+    case 'moveWhSales': d = { text: 'Moved ' + plural_((result && result.sales) || 0, 'sale') + ' from ' + String((result && result.regionName) || reg(p.regionId)) +
+        "'s warehouse to " + String((result && result.eventName) || p.newName || 'an event') +
+        ((result && result.books) ? ' (' + plural_(result.books, 'book') + ' counted as sent there first)' : '') +
+        ((result && result.cash) ? ', with ' + plural_(result.cash, 'cash record') : ''),
+      undo: result && result.moveId ? { type: 'whmove', id: String(result.moveId) } : null }; regions[String(p.regionId)] = 1;
+      if (result && result.eventId) locs[String(result.eventId)] = 1; break;
     case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
     case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
     case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;
@@ -10087,6 +10362,7 @@ function doUndoActivity(p, who) {
   }
   else if (u.type === 'change') doChangeDelete({ id: u.id });
   else if (u.type === 'merge') undoMerge_(String(u.fromRegion));
+  else if (u.type === 'whmove') undoWhMove_(String(u.id));
   else if (u.type === 'label') doSaveLabel({ key: u.key, text: u.text || '' });
   else if (u.type === 'regionBooks') {
     dbUpdate_('_regions', { regionId: String(u.regionId) }, function (row) {

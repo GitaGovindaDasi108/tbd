@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b319**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b323**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,34 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b324 — Transfer Sales to an Event (practice first)
+
+- **Gita, 2 Nov** (thread "Transfer region sales to event"): her Vrindavana seller sold out of the warehouse as if it were Parikrama; the sales should belong to an event "Parikrama" (and later "Night time sales").
+- **Advanced > ⇢ Transfer Sales to an Event** (`whMoveModal`, `WHMOVE_ON = PRACTICE`, Universal only): picked like Change Prices (Season + Region drop-downs, any season, opens where you are); Whose sales (Everyone or one seller, by `soldById` or `name:<soldBy>`), Transfer them to (an open event of the region, or ＋ A new event with a name and, if the region has sub-regions, a sub-region); a line saying what moves.
+- **Code.gs `doMoveWhSales`** (action `moveWhSales`, admin only, practice server only via `WHMOVE_ON_`, set beside `BOOKCOST_ON_`): every `_sales` row at the warehouse (sales, gifts, pre-orders, donations, uncategorized) gets `location` = the event; books a direct shelf sale took off the warehouse are written as one TRANSFER per title warehouse → event (timed just before the first sale), with no stock change, so the warehouse keeps its count and the event shows them arriving and selling; `_cash` (fromAcct/toAcct), `_change` (loc) and `_handovers` (location) at the warehouse follow (only that seller's when one is picked); warehouse-sale sub-region tags drop (the event's sub-region applies). Refuses a closed warehouse or event. Expenses are not moved.
+- **Undo**: `whMoveUndo:<id>` meta; Activity Log type `whmove` → `undoWhMove_` puts sales and cash back, deletes the transfers, restores the tags, and deletes a new event if it is empty again.
+- test/browser-whmove.js (21 checks, 390px and 1150px overflow, live has no menu item).
+## Done in b323 — Earthly HQ is a summary (practice first)
+
+- Gita, 2 Nov: "We will never actually sell directly from Earthly HQ ... remove the sales log from earthly HQ. Have it just be a summary, but with a to-do list summary that is usable. Roll this out in practice first."
+- index.html, `HQ_SUMMARY_ONLY = PRACTICE`: at Earthly HQ the Sales Portal (`#salesPortal`: HQ's shelf with Sell/Pre-order, Sales Log, its own To Do, Distribution and Totals by Payment) is hidden. The live app is unchanged.
+- New `#hqTodoPanel` "To Do Summary", first in the Summaries Portal: Pending Payments, Pre-Orders (copies), Change We Owe, Books in Transit, every season and HQ itself. Chips filter the kinds (device pref `tbs_hqtodo`). One line per place ("Season › Region › Event"), with how many and how much in its currencies; it opens to the items (date, name/phone, title, amount); "Go ›" opens the place (`gotoship` → `gsGoPlace`), where its own To Do acts on them. 📋 = WhatsApp report by kind and place (`hqTodoReport`).
+- `renderHqTodo(ev)` runs inside `withRollup` (every season's sales, inventory, shipments) and takes the real places from the pre-rollup `STATE.everywhere` (`hqTodoPlaces`), since the rollup state drops `everywhere`.
+- Counts to Look Into are not in the HQ summary: the everywhere payload carries no closing counts.
+- test/browser-b323.js (19 checks, 1150px and 390px, overflow).
+## Done in b322 — edit notes at a closed place (practice first)
+
+- Gita, 2 Nov: "When a location is closed, you still should be able to edit comments on the things that you can still work with (pre-orders, pending payments, etc.) … everything except for the money."
+- Code.gs `doEditSaleNotes` (action `editSaleNotes`, `{saleId}` or `{bundle}` + name/phone/comments): changes only those three (and the "Edited by" note). Not in `MUTATING_ACTIONS`, so it works at a closed place; in `SELLER_ACTIONS`, with a bundle's members checked against the link's places. Activity Log: "Edited the name, phone or notes on a sale".
+- index.html (practice only, `PRACTICE`): Edit on a sale whose own place is closed opens `saleNotesModal` (what the sale was, read only, then Name / Phone / Comments; a pre-order or money still owed must keep a name). Delete and every money change stay refused. The closed note under the place's name says names, phones and notes can still be edited. Live is unchanged until Gita says.
+- test/closednotes.js (7 checks, in run-all), test/browser-b322.js (10 checks at 390px and 1150px, overflow included).
+## Done in b321 — book costs move with the books (practice)
+
+- **Gita (30 Oct 15:12 IST)**: Gross and Net were the same in practice. Replaces b320's Net rule (cost of books sold, `cb`/`off`): a printing or shipping cost is now an expense of whichever place holds the copies. It starts whole where it was logged (Earthly HQ); sending 300 to Delhi moves 300 copies' share from HQ to Delhi, 20 on to Surat moves theirs from Delhi to Surat. Copies on their way count at the place they are going to; a sold or lost copy's share stays where it was. Returned books' shipping goes to Earthly HQ, less the refund.
+- **Code.gs `bookCostCalc_`** now also returns `al` (per expense: share per place `at`, journey `h`), and **`bcSplit_`** turns it into Finance rows: the expense's own row keeps its share (`bw` = the whole bill, `bh` = History), each other place gets a row `<id>@<place>` with `of`, `loc`, `rg`, `pl`. A reimbursement is paid back whole on its own row; the other rows are plain costs.
+- **Page**: `finAgg` Net = Gross − Expenses again; `finExpList` adds the other places' cards from EXP.all; the card's drop-down has a **History** (`bcHistHTML`: Original Printing Costs, Transferred / Received N books, New Total). Edit and Delete on a place's card open the bill itself. The Sales Log's cost and profit per sale (b320) stay.
+- test/bookcost.js (28 checks), test/browser-b320.js (HQ card History, fits at 390px and 1150px).
 
 ## Done in b320 — what each book cost (practice first)
 
