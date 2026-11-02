@@ -2549,6 +2549,13 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b324 — Transfer Sales to an Event (practice first)
+
+- **Gita, 2 Nov** (thread "Transfer region sales to event"): her Vrindavana seller sold out of the warehouse as if it were Parikrama; the sales should belong to an event "Parikrama" (and later "Night time sales").
+- **Advanced > ⇢ Transfer Sales to an Event** (`whMoveModal`, `WHMOVE_ON = PRACTICE`, Universal only): picked like Change Prices (Season + Region drop-downs, any season, opens where you are); Whose sales (Everyone or one seller, by `soldById` or `name:<soldBy>`), Transfer them to (an open event of the region, or ＋ A new event with a name and, if the region has sub-regions, a sub-region); a line saying what moves.
+- **Code.gs `doMoveWhSales`** (action `moveWhSales`, admin only, practice server only via `WHMOVE_ON_`, set beside `BOOKCOST_ON_`): every `_sales` row at the warehouse (sales, gifts, pre-orders, donations, uncategorized) gets `location` = the event; books a direct shelf sale took off the warehouse are written as one TRANSFER per title warehouse → event (timed just before the first sale), with no stock change, so the warehouse keeps its count and the event shows them arriving and selling; `_cash` (fromAcct/toAcct), `_change` (loc) and `_handovers` (location) at the warehouse follow (only that seller's when one is picked); warehouse-sale sub-region tags drop (the event's sub-region applies). Refuses a closed warehouse or event. Expenses are not moved.
+- **Undo**: `whMoveUndo:<id>` meta; Activity Log type `whmove` → `undoWhMove_` puts sales and cash back, deletes the transfers, restores the tags, and deletes a new event if it is empty again.
+- test/browser-whmove.js (21 checks, 390px and 1150px overflow, live has no menu item).
 ## Done in b323 — Earthly HQ is a summary (practice first)
 
 - Gita, 2 Nov: "We will never actually sell directly from Earthly HQ ... remove the sales log from earthly HQ. Have it just be a summary, but with a to-do list summary that is usable. Roll this out in practice first."
