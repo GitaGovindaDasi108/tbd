@@ -1597,6 +1597,28 @@ body.has-na .overlay{z-index:10000}
 .todo-scroll .log{overflow:visible;flex:none;padding-right:0;max-height:none}
 .tp-pending{--tc:#C0392B} .tp-pre{--tc:#2F6FB5} .tp-change{--tc:#B7841C} .tp-counts{--tc:#7A4FA0}
 .tp-counts .ho-row{border-left:4px solid var(--tc);padding-left:8px}
+/* Earthly HQ's To Do Summary (b323, practice): one line per place, opens to the items. */
+.tt-transit{--tc:#2B8A9A}
+.htd-sec{--tc:var(--plum);margin-top:10px}
+.htd-sec.k-pending{--tc:#C0392B} .htd-sec.k-pre{--tc:#2F6FB5} .htd-sec.k-change{--tc:#B7841C} .htd-sec.k-transit{--tc:#2B8A9A}
+.htd-grp{border:1px solid var(--line);border-left:4px solid var(--tc);border-radius:8px;background:#fff;margin:5px 0}
+.htd-grp > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:8px;padding:7px 10px;flex-wrap:wrap}
+.htd-grp > summary::-webkit-details-marker{display:none}
+.htd-grp > summary::before{content:'▸';color:var(--muted);font-size:11px}
+.htd-grp[open] > summary::before{content:'▾'}
+.htd-place{font-weight:700;font-size:13px;flex:1 1 180px;min-width:0;overflow-wrap:anywhere}
+.htd-place .htd-up{font-weight:500;color:var(--muted)}
+.htd-n{font-size:12px;color:var(--tc);font-weight:700;white-space:nowrap}
+.htd-amt{font-size:12.5px;font-weight:700;white-space:nowrap}
+.htd-go{margin-left:auto}
+.htd-items{border-top:1px solid var(--line);padding:4px 10px 8px 24px}
+.htd-it{display:flex;gap:8px;flex-wrap:wrap;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line)}
+.htd-it:last-child{border-bottom:0}
+.htd-it .htd-when{color:var(--muted);white-space:nowrap}
+.htd-it .htd-who{font-weight:600}
+.htd-it .htd-what{flex:1 1 160px;min-width:0;overflow-wrap:anywhere}
+.htd-it .htd-due{font-weight:700;white-space:nowrap;margin-left:auto}
+.htd-empty{color:var(--muted);font-style:italic;font-size:13px;padding:6px 2px}
 a.btn{text-decoration:none;display:inline-flex;align-items:center}
 /* Permissions (b234) */
 .pm-wrap{overflow-x:auto;margin:8px 0}
@@ -2513,7 +2535,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b322</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b323</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2583,6 +2605,11 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="portal on" id="summaryPortal" data-fold="summaryPortal" style="display:none">
     <h2 class="portal-h">Summaries Portal <span class="hint">(every season added up)</span></h2>
     <div class="flow" id="summaryFlow">
+    <!-- To Do Summary (b323, practice): what is waiting, every season, by place. -->
+    <section class="panel hqtodo-panel" id="hqTodoPanel" data-fold="sumTodo" style="display:none">
+      <h2 class="sec-h2">To Do Summary <span class="hint">what is waiting, every season, by place</span> <button class="btn btn-gold btn-sm sec-rep" data-act="hqtodoreport" title="Copy just this section for WhatsApp">📋</button></h2>
+      <div class="body" id="hqTodoBody"></div>
+    </section>
     <div class="cols-2">
       <section class="panel" id="hqTitlePanel" data-fold="sumTitles">
         <h2 class="sec-h2">Distribution by Title <span class="hint">sold / pre-ordered / gifted, every season</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="books" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
@@ -5420,7 +5447,12 @@ function renderAll(){
   const hq = isHQ();
   if(hq && STATE.everywhere) withRollup(renderTotals); else renderTotals();
   $('#salesPortal').classList.toggle('on', hq);
+  /* Earthly HQ never sells directly (b323, practice; Gita): no Sales Portal
+     there, just the summaries, with a To Do Summary on top. */
+  $('#salesPortal').style.display = (hq && HQ_SUMMARY_ONLY) ? 'none' : '';
+  $('#hqTodoPanel').style.display = (hq && STATE.everywhere && HQ_SUMMARY_ONLY) ? '' : 'none';
   $('#summaryPortal').style.display = (hq && STATE.everywhere) ? '' : 'none';
+  if(hq && STATE.everywhere && HQ_SUMMARY_ONLY){ const ev = STATE.everywhere; withRollup(()=>renderHqTodo(ev)); }
   if(hq && STATE.everywhere) withRollup(()=>{
     renderTitleList('#hqTitleList');
     renderCollectionsByRegion('#hqCollBy');
@@ -8127,6 +8159,156 @@ function renderTodo(lists){
   if(on('counts')) renderMismatches(newestFirst(counts));
   if(!shown.length) $('#todoSort').innerHTML = '<span class="muted-note">Everything is hidden — tap a kind above to show it.</span>';
   return 1;
+}
+/* ---- Earthly HQ's To Do Summary (b323, practice) ----
+   Gita: "We will never actually sell directly from Earthly HQ ... remove the
+   sales log ... Have it just be a summary, but with a to-do list summary that
+   is usable." Everything still waiting, in every season and at HQ itself:
+   payments owed, pre-orders to deliver, change we owe, books in transit. One
+   line per place, with how many and how much; it opens to the items, and
+   "Go ›" takes you to that place, where its own To Do can act on them.
+   Drawn inside withRollup, so STATE.sales/inventory/shipments are every
+   season's; the real places come from STATE.everywhere. */
+const HQ_SUMMARY_ONLY = PRACTICE;
+const HQTODO_KINDS = [
+  {key:'pending', label:'Pending Payments', title:'PAYMENTS PENDING'},
+  {key:'pre',     label:'Pre-Orders',       title:'PRE-ORDERS PENDING'},
+  {key:'change',  label:'Change We Owe',    title:'CHANGE WE OWE'},
+  {key:'transit', label:'Books in Transit', title:'BOOKS IN TRANSIT'}
+];
+let HQTODO = { off:{} };
+try{ const v = JSON.parse(localStorage.getItem('tbs_hqtodo')||'{}'); if(v && v.off) HQTODO.off = v.off; }catch(e){}
+let HQTODO_DATA = null, HQTODO_EV = {};
+function hqTodoPlaces(ev){
+  ev = ev || {};
+  const seasons = ev.seasons || [], regs = ev.regions || [];
+  const sName = sid => sid===HQ_ID ? 'Earthly HQ' : ((seasons.find(x=>x.seasonId===sid)||{}).name || 'Season');
+  const sIdx = sid => { const i = seasons.findIndex(x=>x.seasonId===sid); return sid===HQ_ID ? 9999 : (i<0 ? 9998 : i); };
+  const reg = id => regs.find(r=>r.regionId===id);
+  const at = {};
+  const put = (loc, r, extra) => {
+    if(!r) return;
+    const hq = r.regionId===HQ_REGION || r.seasonId===HQ_ID;
+    const up = hq ? [] : [sName(r.seasonId)];
+    if(extra) up.push(r.name);
+    at[loc] = {key:extra ? loc : r.regionId, hq, season:r.seasonId, region:r.regionId, event:extra && extra.event ? loc : '',
+      up, name:hq && !extra ? 'Earthly HQ' : extra ? extra.name : r.name,
+      order:[sIdx(r.seasonId), regs.indexOf(r), extra ? 1 : 0]};
+  };
+  regs.forEach(r=>{ if(r.whLoc) put(r.whLoc, r); });
+  (ev.events||[]).forEach(e=>put(e.eventId, reg(e.regionId), {name:e.name, event:true}));
+  (ev.holders||[]).forEach(h=>{ const r = reg(h.regionId); if(r && h.holderId) put(h.holderId, r, {name:h.name || 'Devotee'}); });
+  if(!at[HQ_WH]) at[HQ_WH] = {key:HQ_REGION, hq:true, season:HQ_ID, region:HQ_REGION, event:'', up:[], name:'Earthly HQ', order:[9999,0,0]};
+  return {at, reg, sName, sIdx};
+}
+function hqTodoGather(ev){
+  const P = hqTodoPlaces(ev);
+  const g = groupBundles(STATE.sales||[]);
+  const out = {pending:[], pre:[], change:[], transit:[]};
+  g.forEach(x=>{
+    if(x.type!=='DONATION' && !isPaid(x)) out.pending.push(x);
+    if((x.type==='PREORDER' && !x.delivered) || (x._bundle && x._preCount>0)) out.pre.push(x);
+    if(changeOwed(x)>0) out.change.push(x);
+  });
+  (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED').forEach(x=>{ if(shipTotal(x)>0) out.transit.push(x); });
+  const placeOf = (k, x) => {
+    if(k==='transit'){
+      const p = P.at[x.toLoc];
+      if(p) return p;
+      const r = P.reg(x.toRegion);
+      if(r){ return P.at[r.whLoc] || {key:r.regionId, season:r.seasonId, region:r.regionId, event:'', up:[P.sName(r.seasonId)], name:r.name, order:[P.sIdx(r.seasonId),0,0]}; }
+      return {key:'?', season:'', region:'', event:'', up:[], name:'Somewhere outside the system', order:[99999,0,0]};
+    }
+    return P.at[x.location] || {key:'?'+x.location, season:'', region:'', event:'', up:[], name:locNameFull(x.location) || 'Unknown place', order:[99999,0,0]};
+  };
+  const groups = {};
+  Object.keys(out).forEach(k=>{
+    const by = {};
+    out[k].forEach(x=>{ const p = placeOf(k, x); (by[p.key] = by[p.key] || {p, items:[]}).items.push(x); });
+    groups[k] = Object.values(by).sort((a,b)=>{
+      for(let i=0;i<3;i++){ if(a.p.order[i]!==b.p.order[i]) return a.p.order[i]-b.p.order[i]; }
+      return String(a.p.name).localeCompare(String(b.p.name));
+    });
+    groups[k].forEach(gr=>{ gr.items = newestFirst(gr.items); });
+  });
+  return {out, groups};
+}
+// How many: copies for pre-orders and books in transit, entries for the rest.
+function hqTodoCount(k, x){
+  if(k==='pre') return x._bundle ? (x._preCount||0) : (Number(x.qty)||1);
+  if(k==='transit') return shipTotal(x);
+  return 1;
+}
+function hqTodoMoney(k, items){
+  const by = {};
+  items.forEach(x=>{
+    const parts = k==='pending' ? dueParts(x) : k==='change' ? [{amt:changeOwed(x), cur:changeCur(x)}] : [];
+    parts.forEach(d=>{ if(d.amt) by[d.cur] = (by[d.cur]||0) + d.amt; });
+  });
+  return Object.keys(by).map(c=>`${fmt(by[c])} ${CUR_SYM[c]||c}`).join(' + ');
+}
+function hqTodoItemHTML(k, x){
+  if(k==='transit'){
+    const from = x.fromRegion==='OUTSIDE' ? (x.origin || 'outside the system') : ((HQTODO_EV.regions||[]).find(r=>r.regionId===x.fromRegion)||{}).name || 'another place';
+    const titles = shipBooks(x).filter(r=>r.left>0).map(r=>`${esc(r.b.name)} — ${r.left}`).join(' · ');
+    const when = x.eta ? 'Expected ' + new Date(x.eta).toLocaleDateString(LOCALE, {month:'short', day:'numeric'}) : '';
+    return `<div class="htd-it">${when ? `<span class="htd-when">${esc(when)}</span>` : ''}<span class="htd-who">From ${esc(from)}</span>
+      <span class="htd-what">${titles}</span><span class="htd-due">${esc(shipWho(x))}</span></div>`;
+  }
+  const when = x.ts ? new Date(x.ts).toLocaleDateString(LOCALE, {month:'short', day:'numeric'}) : '';
+  let what;
+  if(x._bundle){
+    if(k==='pre'){ const c = {}; x._members.forEach(m=>{ if(m.type==='PREORDER' && !m.delivered){ const nm = bookById(m.bookId).name; c[nm] = (c[nm]||0)+1; } });
+      what = Object.keys(c).map(n=>esc(n)+' — '+c[n]).join(' · ') || (x._count+' Books'); }
+    else what = x._count + ' Books';
+  } else what = x.type==='DONATION' ? 'Donation' : isUncat(x) ? 'Uncategorized sales' : esc(bookById(x.bookId).name);
+  const due = k==='pending' ? dueParts(x).map(d=>`${fmt(d.amt)} ${CUR_SYM[d.cur]||d.cur}`).join(' + ')
+    : k==='change' ? cashFmt(changeOwed(x), changeCur(x)) : (hqTodoCount(k,x) + (hqTodoCount(k,x)===1 ? ' copy' : ' copies'));
+  const who = [x.name, x.phone].filter(Boolean).join(' · ');
+  return `<div class="htd-it"><span class="htd-when">${esc(when)}</span>${who ? `<span class="htd-who">${esc(who)}</span>` : ''}
+    <span class="htd-what">${what}</span><span class="htd-due">${esc(due)}</span></div>`;
+}
+function renderHqTodo(ev){
+  const body = $('#hqTodoBody'); if(!body) return;
+  HQTODO_EV = ev || {};
+  const D = HQTODO_DATA = hqTodoGather(ev);
+  const live = HQTODO_KINDS.filter(x=>D.out[x.key].length);
+  if(!live.length){ body.innerHTML = '<div class="htd-empty">Nothing waiting anywhere. 🙏</div>'; return; }
+  const total = (k, list) => list.reduce((t,x)=>t+hqTodoCount(k,x),0);
+  let h = '<div class="todo-tabs"><span class="todo-show">Show</span>' + live.map(x=>`<button type="button" class="todo-tab tt-${x.key}${HQTODO.off[x.key]?'':' on'}"
+      aria-pressed="${!HQTODO.off[x.key]}" data-act="hqtodofilter" data-tab="${x.key}">${esc(x.label)} <span class="todo-n">${total(x.key, D.out[x.key])}</span></button>`).join('') + '</div>';
+  const shown = live.filter(x=>!HQTODO.off[x.key]);
+  if(!shown.length) h += '<div class="htd-empty">Everything is hidden — tap a kind above to show it.</div>';
+  shown.forEach(kind=>{
+    const k = kind.key;
+    h += `<div class="htd-sec k-${k}"><div class="todo-h">${esc(kind.label)}</div>`;
+    D.groups[k].forEach(gr=>{
+      const p = gr.p, n = total(k, gr.items);
+      const unit = k==='pre' || k==='transit' ? (n===1 ? 'book' : 'books') : k==='pending' ? (n===1 ? 'payment' : 'payments') : (n===1 ? 'sale' : 'sales');
+      const money = hqTodoMoney(k, gr.items);
+      const go = p.hq ? 'data-hq="1"' : p.season ? `data-season="${esc(p.season)}" data-region="${esc(p.region)}" data-event="${esc(p.event||'')}"` : '';
+      h += `<details class="htd-grp"><summary>
+          <span class="htd-place">${p.up.length ? `<span class="htd-up">${p.up.map(esc).join(' › ')} › </span>` : ''}${esc(p.name)}</span>
+          <span class="htd-n">${n} ${unit}</span>${money ? `<span class="htd-amt">${esc(money)}</span>` : ''}
+          ${go ? `<button type="button" class="btn btn-ghost btn-xs htd-go" data-act="gotoship" ${go}>Go ›</button>` : ''}
+        </summary><div class="htd-items">${gr.items.map(x=>hqTodoItemHTML(k, x)).join('')}</div></details>`;
+    });
+    h += '</div>';
+  });
+  body.innerHTML = h;
+}
+function hqTodoReport(){
+  const D = HQTODO_DATA; if(!D){ toast('Nothing waiting anywhere.'); return; }
+  const out = ['*TO DO SUMMARY — EARTHLY HQ*'];
+  HQTODO_KINDS.filter(x=>!HQTODO.off[x.key] && D.out[x.key].length).forEach(kind=>{
+    out.push('', '*' + kind.title + '*');
+    D.groups[kind.key].forEach(gr=>{
+      const n = gr.items.reduce((t,x)=>t+hqTodoCount(kind.key,x),0), money = hqTodoMoney(kind.key, gr.items);
+      out.push('• ' + gr.p.up.concat([gr.p.name]).join(' › ') + ': ' + n + (money ? ' · ' + money : ''));
+    });
+  });
+  if(out.length===1){ toast('Nothing waiting anywhere.'); return; }
+  reportDialog({ title:'To Do Summary', make: () => out.join('\n') });
 }
 /* The To do report: kind by kind, in the panel's order, only the kinds ticked.
    Pre-orders can go as the counts per title, the people waiting, or both. */
@@ -23460,6 +23642,9 @@ document.addEventListener('click',e=>{
   if(a==='permissions'){ permissionsModal(); return; }
   if(a==='todofilter'){ const k = t.dataset.tab; if(TODO.off[k]) delete TODO.off[k]; else TODO.off[k] = 1; todoSave(); renderBottom(); return; }
   if(a==='todoreport'){ todoReport(); return; }
+  if(a==='hqtodofilter'){ const k = t.dataset.tab; if(HQTODO.off[k]) delete HQTODO.off[k]; else HQTODO.off[k] = 1;
+    try{ localStorage.setItem('tbs_hqtodo', JSON.stringify({off:HQTODO.off})); }catch(e){} const ev = STATE.everywhere; if(ev) withRollup(()=>renderHqTodo(ev)); return; }
+  if(a==='hqtodoreport'){ hqTodoReport(); return; }
   if(a==='practicereset'){ practiceReset(); return; }
   if(a==='syncsheet'){ closeModal(); syncSheet(); return; }
   if(a==='newevent'){ eventModal(); return; }

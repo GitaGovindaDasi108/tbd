@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b319**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b323**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2549,6 +2549,14 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b323 — Earthly HQ is a summary (practice first)
+
+- Gita, 2 Nov: "We will never actually sell directly from Earthly HQ ... remove the sales log from earthly HQ. Have it just be a summary, but with a to-do list summary that is usable. Roll this out in practice first."
+- index.html, `HQ_SUMMARY_ONLY = PRACTICE`: at Earthly HQ the Sales Portal (`#salesPortal`: HQ's shelf with Sell/Pre-order, Sales Log, its own To Do, Distribution and Totals by Payment) is hidden. The live app is unchanged.
+- New `#hqTodoPanel` "To Do Summary", first in the Summaries Portal: Pending Payments, Pre-Orders (copies), Change We Owe, Books in Transit, every season and HQ itself. Chips filter the kinds (device pref `tbs_hqtodo`). One line per place ("Season › Region › Event"), with how many and how much in its currencies; it opens to the items (date, name/phone, title, amount); "Go ›" opens the place (`gotoship` → `gsGoPlace`), where its own To Do acts on them. 📋 = WhatsApp report by kind and place (`hqTodoReport`).
+- `renderHqTodo(ev)` runs inside `withRollup` (every season's sales, inventory, shipments) and takes the real places from the pre-rollup `STATE.everywhere` (`hqTodoPlaces`), since the rollup state drops `everywhere`.
+- Counts to Look Into are not in the HQ summary: the everywhere payload carries no closing counts.
+- test/browser-b323.js (19 checks, 1150px and 390px, overflow).
 ## Done in b322 — edit notes at a closed place (practice first)
 
 - Gita, 2 Nov: "When a location is closed, you still should be able to edit comments on the things that you can still work with (pre-orders, pending payments, etc.) … everything except for the money."
