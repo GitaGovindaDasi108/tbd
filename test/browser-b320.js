@@ -162,11 +162,25 @@ const API = 'http://api.test/';
       t.push([w + 'px: …and fits (' + (await fits(pg)).join('; ') + ')', !(await fits(pg)).length]);
       await pg.screenshot({ path: shot('addstock-' + w) });
       await pg.evaluate(() => closeModal());
-      // Finance: Net counts the books sold, not the bills on books.
+      // Finance (b321): the book costs are expenses of the places holding the copies.
       await pg.evaluate(() => finGo('overview')); await pg.waitForTimeout(2500);
-      const fin = await pg.evaluate(() => { const a = finAgg(FIN.D.sales, FIN.D.expenses); return { net: a.net, coll: a.coll, spent: a.spent, off: a.off || 0, cogs: a.cogs || 0 }; });
-      t.push([w + 'px: Finance Net = Gross − Expenses + bills on books − books sold (' + JSON.stringify(fin) + ')',
-        fin.off > 0 && fin.cogs > 0 && Math.abs(fin.net - (fin.coll - fin.spent + fin.off - fin.cogs)) < 0.01]);
+      const fin = await pg.evaluate(() => { const a = finAgg(FIN.D.sales, FIN.D.expenses), pl = finAgg(FIN.D.sales.filter(x=>x.r==='rg_pl'), FIN.D.expenses.filter(x=>x.r==='rg_pl'));
+        return { net: a.net, coll: a.coll, spent: a.spent, pl: pl.exp, plNet: pl.net }; });
+      t.push([w + 'px: Finance Net = Gross − Expenses, and Poland carries its books\' costs (' + JSON.stringify(fin) + ')',
+        Math.abs(fin.net - (fin.coll - fin.spent)) < 0.01 && fin.pl > 1000 && fin.plNet < 0]);
+      t.push([w + 'px: Finance fits (' + (await fits(pg)).join('; ') + ')', !(await fits(pg)).length]);
+      await pg.evaluate(() => { FINP.scope = ''; finGo('expenses'); }); await pg.waitForTimeout(1500);
+      const cards = await pg.evaluate(() => finExpList().filter(x=>/Xprint01/.test(x.id)).map(x=>({id:x.id, amt:x.amt, at:x.placeLabel})));
+      t.push([w + 'px: the printing has a card at Earthly HQ, Delhi and Poland (' + JSON.stringify(cards) + ')', cards.length === 3]);
+      const hist = await pg.evaluate(() => { const it = document.querySelector('.log-item[data-xid="Xprint01"]'); if(!it) return null;
+        it.querySelector('.fx-row').click(); const d = it.querySelector('details.bc-hist'); if(!d) return null; d.open = true;
+        return { row: it.querySelector('.fx-o').textContent, lines: [...d.querySelectorAll('.bc-hl')].map(x=>x.textContent.replace(/\s+/g, ' ').trim()) }; });
+      t.push([w + 'px: HQ\'s card: New Total on the line, the journey in History (' + JSON.stringify(hist) + ')',
+        !!hist && /^₹0\.00$/.test(hist.row.trim()) && /Original Printing Costs/.test(hist.lines[0]) && hist.lines.some(l=>/Transferred 2500 books to Delhi\(−/.test(l)) && /New Total/.test(hist.lines[hist.lines.length-1])]);
+      await pg.waitForTimeout(300);
+      t.push([w + 'px: the History fits (' + (await fits(pg)).join('; ') + ')', !(await fits(pg)).length]);
+      await pg.screenshot({ path: shot('expenses-' + w), fullPage: true });
+      await pg.evaluate(() => finGo('overview')); await pg.waitForTimeout(800);
       t.push([w + 'px: Finance fits (' + (await fits(pg)).join('; ') + ')', !(await fits(pg)).length]);
       await pg.screenshot({ path: shot('finance-' + w), fullPage: true });
       await pg.context().close();
