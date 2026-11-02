@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b320';
+var SERVER_BUILD = 'b322';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -948,6 +948,7 @@ function handle(e) {
         case 'fulfilRemote':     result = doFulfilRemote(params, who); break;
         case 'transferExternal':  doTransferExternal(params);  break;
         case 'editSale':         doEditSale(params);         break;
+        case 'editSaleNotes':    doEditSaleNotes(params);    break;
         case 'deleteSale':       doDeleteSale(params);       break;
         case 'markPaid':         doMarkPaid(params);         break;
         case 'giveChange':       doGiveChange(params);       break;
@@ -2570,6 +2571,8 @@ var SELLER_ACTIONS = {
   handoverCash:1, handoverAnswer:1,
   sell:1, sellBundle:1, donate:1,
   editSale:1, editBundle:1, deleteSale:1,
+  // The name, phone and notes on a sale, even at a closed place (b322).
+  editSaleNotes:1,
   settle:1, deliver:1, markPaid:1
 };
 var COORD_EXTRA = {
@@ -2801,6 +2804,14 @@ function assertAllowed_(who, action, params) {
       ? ((who.eventIds || [who.eventId]).indexOf(sc) >= 0)
       : (whoHasRegion_(who, sc) || allowed[sc]);
     if (!mayEdit) throw new Error('This link can only change its own contacts.');
+  }
+  // A multi-book transaction's notes (b322): only one of this link's own.
+  if (action === 'editSaleNotes' && params.bundle) {
+    objectsOf_('_sales').forEach(function (r) {
+      if (String(r.bundle) === String(params.bundle) && !allowed[String(r.location)]) {
+        throw new Error('That sale belongs to another location.');
+      }
+    });
   }
   // Editing or deleting someone else's sale is out of scope too.
   if (params.saleId) {
@@ -7562,6 +7573,34 @@ function doEditSale(p) {
   if (newLoc !== String(old.location)) markDirty_(newLoc);
 }
 
+/* The words on a sale, and nothing else (b322, Gita: "Closing a region closes
+   the sales and the money, but things like notes you can still have access to
+   for pending things"). Only the buyer's name, phone and the comments change:
+   the book, the date, the place and every amount stay exactly as they are. So
+   it is not in MUTATING_ACTIONS, and works at a closed place too. A
+   multi-book transaction (bundle) changes on every one of its books. */
+function doEditSaleNotes(p) {
+  var bundle = String(p.bundle || ''), saleId = String(p.saleId || '');
+  var rows = objectsOf_('_sales').filter(function (r) {
+    return bundle ? String(r.bundle) === bundle : String(r.saleId) === saleId;
+  });
+  if (!bundle && !saleId || !rows.length) throw new Error('That sale is no longer in the log.');
+  var set = {};
+  if (p.name !== undefined) set.name = String(p.name).trim().slice(0, 200);
+  if (p.phone !== undefined) set.phone = String(p.phone).trim().slice(0, 60);
+  if (p.comments !== undefined) set.comments = String(p.comments).trim().slice(0, 2000);
+  if (!Object.keys(set).length) return;
+  dbAddCols_('_sales', SALES_HEADERS);
+  var o = rows[0];
+  set.editedBy = editedByNote_(p.by, { by: String(o.soldBy || ''), id: String(o.soldById || '') }, String(o.editedBy || ''));
+  var locs = {};
+  rows.forEach(function (r) {
+    dbUpdate_('_sales', firstOnly_({ saleId: String(r.saleId) }), set);
+    locs[String(r.location)] = 1;
+  });
+  Object.keys(locs).forEach(function (l) { markDirty_(l); });
+}
+
 /* Handing the book over: the pre-order becomes an ordinary sale. Payment state
    is untouched — a pre-order can be delivered before it is paid, and paid
    before it is delivered, in either order.
@@ -9718,6 +9757,13 @@ function describe_(action, p, result, moves, who) {
       break;
     }
     case 'editShipment':   d = { text: 'Changed a shipment’s details' }; break;
+    case 'editSaleNotes': {
+      var sn = saleSnap_(p.bundle ? 'editBundle' : 'editSale', p);
+      if (!sn) return null;
+      d = { text: 'Edited the name, phone or notes on a sale: ' + sn.what + ' at ' + locLabel_(sn.loc) };
+      locs[sn.loc] = 1;
+      break;
+    }
     case 'editSale': case 'editBundle': case 'markPaid': case 'markPaidBundle': case 'uncatSale': {
       var sb = _activityBefore && _activityBefore.sale, sa = saleSnap_(action, p) || sb;
       if (!sa) return null;

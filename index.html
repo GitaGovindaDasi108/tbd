@@ -1958,6 +1958,9 @@ body.has-va{padding-top:44px}
 .warn-detail{margin-top:5px;font-weight:500;font-size:12px;line-height:1.5;opacity:.95}
 .warn-detail b{font-weight:700}
 .note{background:#EAF1F9;border:1px solid #C7D6E8;color:var(--blue);border-radius:9px;padding:10px 12px;font-size:13px}
+/* Edit notes at a closed place (b322): what the sale was, read only. */
+.sn-sum{margin:10px 0 4px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.sn-sum .k{display:inline-block;min-width:72px;color:var(--muted);font-weight:600}
 .leg-box{border:1px dashed var(--line-d);border-radius:10px;padding:10px;background:var(--paper2)}
 .spec{margin:0;border:1px solid var(--line-d);border-radius:10px;background:var(--paper2)}
 .spec > summary{cursor:pointer;list-style:none;padding:10px 12px;display:flex;flex-direction:column;gap:2px}
@@ -5857,8 +5860,10 @@ function renderTabs(){
         ? '✓ Closed and settled — everything here is final.'
         : '• Closed, but still has payments or pre-orders outstanding.'}
       <span class="cn-sub">${shut==='complete'
-        ? 'Records stay visible; nothing can be changed until it is reopened.'
-        : 'You can still deliver pre-orders and mark payments received. It becomes fully closed once nothing is outstanding.'}</span></div>`;
+        ? (PRACTICE ? 'Records stay visible. Sales and money can’t change until it is reopened; names, phones and notes still can (Edit).'
+                    : 'Records stay visible; nothing can be changed until it is reopened.')
+        : (PRACTICE ? 'You can still deliver pre-orders, mark payments received, and edit names, phones and notes. It becomes fully closed once nothing is outstanding.'
+                    : 'You can still deliver pre-orders and mark payments received. It becomes fully closed once nothing is outstanding.')}</span></div>`;
   }
   $('#locTabs').innerHTML=h;
 
@@ -10088,6 +10093,57 @@ const CLOSED_STOP = new Set(['sell','preorder','bundle','multi','donation','unca
 function closedSay(){
   const name = CUR_LEVEL==='event' ? locName(CUR_LOC) : ((currentRegion()||{}).name || 'This place');
   toast(name + ' is closed. If you wish to enter information here, it must be re-opened.', true);
+}
+/* Edit at a closed place (b322, practice): the name, phone and notes on a sale
+   (pre-orders, payments still owed, any sale). The book, date, place and money
+   are shown but stay as they are; the server's editSaleNotes changes nothing else. */
+function saleNotesModal(s, bundle){
+  const members = bundle ? (STATE.sales||[]).filter(x=>x.bundle===bundle) : [s];
+  const uc = isUncat(s), don = s.type==='DONATION';
+  const what = bundle ? members.length+' books'
+    : don ? 'Donation' : uc ? 'Uncategorized sales' : ((bookById(s.bookId)||{}).name || 'Sale');
+  const kind = bundle ? 'Multiple book sale' : s.type==='PREORDER' && !s.delivered ? 'Pre-order' : '';
+  const when = fmtWhen(s.ts);
+  let paidNote = '';
+  const paid = bundle ? members.map(payLabel).filter((v,i,a)=>a.indexOf(v)===i).join(' · ') : payLabel(s);
+  const whOf = (STATE.regions||[]).find(r=>r.whLoc===s.location);
+  const place = (whOf ? whOf.name : locName(s.location)) || 'This place';
+  const owed = bundle ? 0 : dueAmt(s);
+  if(!bundle && s.pending) paidNote = 'payment pending';
+  const row = (k,v) => v ? `<div class="sn-line"><span class="k">${esc(k)}</span> <span class="v">${esc(v)}</span></div>` : '';
+  openModal(`
+    ${mHead('Edit notes — '+what)}
+    <div class="m-body">
+      <div class="note">${esc(place)} is closed, so the sale and its money stay as they are.
+        You can still change the name, phone and comments.</div>
+      <div class="sn-sum">
+        ${row('Sale', kind ? kind+' · '+what : what)}${row('When', when)}${row('Paid with', paid)}${row('Still owed', owed>0 ? fmt(owed)+' '+(CUR_SYM[dueCur(s)]||dueCur(s)) : paidNote)}
+      </div>
+      ${uc ? '' : `<div class="row2">
+        <div class="field"><label>Name (optional)</label><input id="snName" type="text"></div>
+        <div class="field"><label>Phone (optional)</label><input id="snPhone" type="tel" inputmode="tel" placeholder="+48 123 456 789 (include the +)"></div>
+      </div>`}
+      <div class="field"><label>Comments (optional)</label><textarea id="snCom"></textarea></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="snSave">Save changes</button>
+    </div>`);
+  if($('#snName')) $('#snName').value = s.name || '';
+  if($('#snPhone')) $('#snPhone').value = s.phone || '';
+  $('#snCom').value = s.comments || '';
+  $('#snSave').onclick = ()=>{
+    const v = { comments: $('#snCom').value.trim() };
+    if(!uc){ v.name = $('#snName').value.trim(); v.phone = cleanPhone($('#snPhone').value); }
+    // A pre-order or a payment still owed needs a name to be traced, as when it was recorded.
+    const needName = members.some(m=>(m.type==='PREORDER' && !m.delivered) || m.pending || Number(m.dueamt)>0);
+    if(!uc && needName && !v.name){ $('#modalErr').textContent = 'Add a name so this can still be traced to the person.'; return; }
+    const payload = Object.assign({action:'editSaleNotes'}, bundle ? {bundle} : {saleId:s.saleId}, v);
+    commit(payload, st=>{
+      (st.sales||[]).forEach(x=>{ if(bundle ? x.bundle===bundle : x.saleId===s.saleId) Object.assign(x, v); });
+    }, 'Notes saved');
+  };
 }
 function isClosedHere(){
   return CUR_LEVEL==='event' ? !!closureOf(CUR_LOC)
@@ -23311,6 +23367,15 @@ document.addEventListener('click',e=>{
   const a=t.dataset.act;
   /* A closed place is read-only: stopped before any form opens (b301, Gita).
      Settling up (delivering, marking paid) is still allowed. */
+  /* At a closed place a sale's words can still change (b322, practice, Gita:
+     "You should be able to edit everything except for the money"): Edit opens
+     the name, phone and notes only. Checked by the sale's own place, so a
+     closed event's sale seen from an open page is caught too. */
+  if(PRACTICE && (a==='editsale' || a==='editbundle')){
+    const rec = a==='editbundle' ? (STATE.sales||[]).find(x=>x.bundle===t.dataset.bundle)
+                                 : (STATE.sales||[]).find(x=>x.saleId===t.dataset.id);
+    if(rec && closureOf(rec.location)){ saleNotesModal(rec, a==='editbundle' ? t.dataset.bundle : ''); return; }
+  }
   if(isClosedHere() && CLOSED_STOP.has(a)){ closedSay(); return; }
   if(a==='logfilter'){
     // One panel open at a time.

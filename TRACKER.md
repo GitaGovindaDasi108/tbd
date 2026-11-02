@@ -2549,6 +2549,13 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b322 — edit notes at a closed place (practice first)
+
+- Gita, 2 Nov: "When a location is closed, you still should be able to edit comments on the things that you can still work with (pre-orders, pending payments, etc.) … everything except for the money."
+- Code.gs `doEditSaleNotes` (action `editSaleNotes`, `{saleId}` or `{bundle}` + name/phone/comments): changes only those three (and the "Edited by" note). Not in `MUTATING_ACTIONS`, so it works at a closed place; in `SELLER_ACTIONS`, with a bundle's members checked against the link's places. Activity Log: "Edited the name, phone or notes on a sale".
+- index.html (practice only, `PRACTICE`): Edit on a sale whose own place is closed opens `saleNotesModal` (what the sale was, read only, then Name / Phone / Comments; a pre-order or money still owed must keep a name). Delete and every money change stay refused. The closed note under the place's name says names, phones and notes can still be edited. Live is unchanged until Gita says.
+- test/closednotes.js (7 checks, in run-all), test/browser-b322.js (10 checks at 390px and 1150px, overflow included).
+
 ## Done in b320 — what each book cost (practice first)
 
 - **Profit per book** (Gita, 29–30 Oct, thread "Track profit per book"; design doc https://claude.ai/artifact/UwnNyhhsddGJFzUifa4k6o). Practice only: Code.gs `BOOKCOST_ON_` is set by core.js `app.setBookCostOn_(practice)`; the page gates on `BC_ON = PRACTICE` and Finance people (`financeMe()`).
