@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b323**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b325**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,12 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b325 — Earthly HQ order, payment table's frozen column
+
+- Gita, 2 Nov: "Warehouse needs to be the first item in the portal, then distribution, then to-do. For earthly HQ only, it should say 'Warehouse Overview'." Practice (`HQ_SUMMARY_ONLY`): `hqSummaryOrder()` moves #hqWhPanel, #hqTitlePanel, #hqTodoPanel to the start of #summaryFlow and renames the heading to "Warehouse Overview"; the rest keep their order. Live unchanged.
+- "Total collections by payment needs to have a frozen first column": the payment grid's `.ptg-first` cells are sticky (left:0, panel background), the left fade is off (`.sx-l:has(> .ptg)`) and the ‹ arrow sits past the column (sxCue). Shared renderPayments, so every Totals by Payment Type table, live and practice.
+- test/browser-b325.js (9 checks); browser-b323 expects the To Do Summary third.
 
 ## Done in b324 — Transfer Sales to an Event (practice first)
 

@@ -68,8 +68,9 @@ c({ action: 'setSeason', seasonId: SA });
     for (const w of [1150, 390]) {
       const page = await open(w, true);
       t.push([w + ': practice: no Sales Portal, no Sales Log at HQ', !(await visible(page, '#salesPortal')) && !(await visible(page, '#log'))]);
-      t.push([w + ': To Do Summary is first in the Summaries Portal', await visible(page, '#hqTodoPanel')
-        && await page.evaluate(() => document.querySelector('#summaryFlow .panel').id === 'hqTodoPanel')]);
+      // b325: Warehouse Overview, then Distribution by Title, then the To Do Summary.
+      t.push([w + ': To Do Summary is third in the Summaries Portal', await visible(page, '#hqTodoPanel')
+        && await page.evaluate(() => document.querySelectorAll('#summaryFlow .panel')[2].id === 'hqTodoPanel')]);
       const tabs = await text(page, '#hqTodoBody .todo-tabs');
       console.log('   tabs: ' + tabs.replace(/\s+/g, ' '));
       t.push([w + ': four kinds with counts', /Pending Payments\s*1/.test(tabs) && /Pre-Orders\s*1/.test(tabs) && /Change We Owe\s*1/.test(tabs) && /Books in Transit\s*3/.test(tabs)]);
