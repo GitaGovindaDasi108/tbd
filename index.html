@@ -616,6 +616,13 @@ body.busy #busyBar{opacity:1}
    so that edge does not fade. */
 .cbr-ns tbody th,.cbr-ns tfoot th,.cbr-ns thead th:first-child{position:sticky;left:0;z-index:1;background:var(--paper)}
 .sx-l:has(> .cbr-ns){--sx-fl:0px}
+/* Totals by Payment Type keeps its Type column in view while the currencies
+   scroll sideways (b325, Gita: "a frozen first column so that you scroll you
+   can still see the categories"), so that edge does not fade either. */
+.ptg > div.ptg-first, .ptg-inner > div.ptg-first{position:sticky;left:0;z-index:1;background:var(--paper)}
+.ptg > div.ptg-first.ptg-empty{position:static}
+.ptg > div.ptg-s.ptg-first, .ptg-inner > div.ptg-s.ptg-first, .ptg > div.ptg-r.ptg-first:hover{background:var(--paper2)}
+.sx-l:has(> .ptg){--sx-fl:0px}
 /* Books in Transit Report (b310): a partly delivered batch's two choices sit under it. */
 .tr-picks{display:flex;flex-direction:column;gap:6px;margin:4px 0 10px}
 .tr-sub{display:flex;flex-wrap:wrap;gap:4px 14px;margin:2px 0 0 26px}   /* two lines, the arrow with "Currencies" (b308, Gita) */
@@ -2535,7 +2542,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b324</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b325</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2630,7 +2637,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
         <div class="body" id="hqPayBody"></div>
       </section>
     </div>
-    <section class="panel" data-fold="sumWarehouses">
+    <section class="panel" id="hqWhPanel" data-fold="sumWarehouses">
       <h2 class="sec-h2">Seasonal Warehouse Overview <span class="hint">(where every title sits, season by season)</span> <button class="btn btn-gold btn-sm sec-rep" data-act="report" data-part="stock" data-rollup="1" title="Copy just this section for WhatsApp">📋</button></h2>
       <div class="body"><div id="hqWhOverview"></div></div>
     </section>
@@ -5455,6 +5462,7 @@ function renderAll(){
   $('#hqTodoPanel').style.display = (hq && STATE.everywhere && HQ_SUMMARY_ONLY) ? '' : 'none';
   $('#summaryPortal').style.display = (hq && STATE.everywhere) ? '' : 'none';
   if(hq && STATE.everywhere && HQ_SUMMARY_ONLY){ const ev = STATE.everywhere; withRollup(()=>renderHqTodo(ev)); }
+  if(hq && HQ_SUMMARY_ONLY) hqSummaryOrder();
   if(hq && STATE.everywhere) withRollup(()=>{
     renderTitleList('#hqTitleList');
     renderCollectionsByRegion('#hqCollBy');
@@ -6837,7 +6845,7 @@ function sxCue(el){
   bar.classList.toggle('on-l', l); bar.classList.toggle('on-r', r);
   bar.style.setProperty('--sx-h', el.offsetHeight + 'px');
   // A column that stays in view (b308): the ‹ sits just past it, not over the names.
-  const st = el.querySelector(':scope > table thead tr:last-child th:first-child, :scope > table thead th:first-child');
+  const st = el.querySelector(':scope > table thead tr:last-child th:first-child, :scope > table thead th:first-child, :scope > .ptg > .ptg-h.ptg-first');
   const stick = st && getComputedStyle(st).position==='sticky' ? st.offsetWidth : 0;
   if(stick) bar.style.setProperty('--sx-lx', (stick + 4) + 'px'); else bar.style.removeProperty('--sx-lx');
 }
@@ -8175,6 +8183,17 @@ function renderTodo(lists){
    Drawn inside withRollup, so STATE.sales/inventory/shipments are every
    season's; the real places come from STATE.everywhere. */
 const HQ_SUMMARY_ONLY = PRACTICE;
+/* Gita (2 Nov): "Warehouse needs to be the first item in the portal, then
+   distribution, then to-do"; at Earthly HQ it reads "Warehouse Overview". The
+   rest keep their order after them. */
+function hqSummaryOrder(){
+  const flow = $('#summaryFlow'); if(!flow) return;
+  const want = ['#hqWhPanel', '#hqTitlePanel', '#hqTodoPanel'].map(q=>$(q)).filter(Boolean);
+  if(want.every((el,i)=>flow.children[i]===el)) return;
+  want.slice().reverse().forEach(el=>flow.prepend(el));
+  const h = $('#hqWhPanel > h2'); if(h && h.firstChild && h.firstChild.nodeType===3) h.firstChild.textContent = 'Warehouse Overview ';
+  try{ foldRows(); }catch(e){}
+}
 const HQTODO_KINDS = [
   {key:'pending', label:'Pending Payments', title:'PAYMENTS PENDING'},
   {key:'pre',     label:'Pre-Orders',       title:'PRE-ORDERS PENDING'},
