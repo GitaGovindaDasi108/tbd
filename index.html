@@ -2504,7 +2504,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b320</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b324</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2729,6 +2729,8 @@ const CONFIG = Object.assign({
    — the saved state, the queue of unsent saves, the sign-in — is kept apart
    under "practice:", so practice and live can never mix. */
 const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
+/* Transfer Sales to an Event (b324): practice only, for now. */
+const WHMOVE_ON = PRACTICE;
 /* Finance, Expenses & Reimbursements and Dates & Repeats were tried in the
    practice space first and are now on in the live app too (b274, Gita,
    2026-10-21). Set to PRACTICE to send them back to practice only. */
@@ -6062,6 +6064,7 @@ const SN_ITEMS = {
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
   finleave:['🏠','Go to Sales Portal'], finoverview:['📈','Overview'], finexpenses:['🧾','Expenses'], finreimb:['💸','Reimbursements'], viewas:['👁','View as'], placedates:['📅','Dates & Repeats'], fincarry:['📥','Bring Wording & Settings from Practice'],
   salesupload:['📤','Upload Sales Spreadsheet'],
+  whmove:['⇢','Transfer Sales to an Event'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], wareports:['💬','WhatsApp Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
   whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations']
@@ -6087,7 +6090,7 @@ const SN_SECTIONS = [
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
   // The place's own actions (b292: arranged like the rest; anything new of its own still shows, after these).
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','editplace','subregions','salesupload','closeplace','deleteplace']},
-  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','drivefolder','wareports','specreport','sharelinks','people','report']},
+  {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','whmove','drivefolder','wareports','specreport','sharelinks','people','report']},
   {key:'dev',      icon:'🛠', label:()=>'App Development', acts:['editwording','menuorder','practice','permissions','viewas','placedates','fincarry']},
   {key:'settings', icon:'⚙️', label:()=>'Settings',        acts:['whoami']}
 ];
@@ -6275,6 +6278,8 @@ function renderSideNav(fams){
   if(PRACTICE && isAdmin() && ME && !byKey.viewas) byKey.viewas = `<button class="btn" data-act="viewas">👁 View as</button>`;
   // Subtract Stock (b258; live since b275): wherever Add Stock is offered.
   if(byKey.addstock && !byKey.substock) byKey.substock = `<button class="btn" data-act="substock">− Subtract Stock</button>`;
+  // Transfer Sales to an Event (b324, practice): Universal, under Advanced, at every level.
+  if(WHMOVE_ON && isAdmin() && ME && !byKey.whmove) byKey.whmove = `<button class="btn" data-act="whmove">⇢ Transfer Sales to an Event</button>`;
   // Dates & Repeats (b255): for now, to fill in the places made before dates were asked.
   if(FIN_ON && isAdmin() && ME && !byKey.placedates) byKey.placedates = `<button class="btn" data-act="placedates">📅 Dates &amp; Repeats</button>`;
   // Finance's launch (b274): Universal, on the live app, brings over what was set up in practice.
@@ -18524,6 +18529,80 @@ function mergeRegionModal(rid){
     if(ok!==false) goTo('region', rid);
   });
 }
+/* Transfer Sales to an Event (b324, practice, Gita: "she's been selling out
+   of the warehouse as if it is Parikrama"). A region's warehouse sales (all,
+   or one seller's) go to one of its events, or a new one. The server writes
+   the books they took off the shelf as sent to the event first, so the
+   warehouse keeps its count; cash records follow. The Activity Log undoes it. */
+function whMoveModal(){
+  if(!WHMOVE_ON || !isAdmin()) return;
+  let pickEv = '', pickWho = '';
+  const sellerKey = x => x.soldById || ('name:' + (x.soldBy || ''));
+  placePickModal({title:'Transfer Sales to an Event', kinds:['region'], dropdowns:true, saveLabel:'Transfer sales',
+    drawBody(kind, r, st){
+      const all = (st.sales||[]).filter(x=>x.location===r.whLoc);
+      const who = new Map();
+      all.forEach(x=>{ const k = sellerKey(x), w = who.get(k) || {n:0, name:x.soldBy || 'A sales link'}; w.n++; who.set(k, w); });
+      if(pickWho && !who.has(pickWho)) pickWho = '';
+      const evs = (st.events||[]).filter(e=>e.regionId===r.regionId && !(st===STATE && closureOf(e.eventId)));
+      if(pickEv!=='__new' && !evs.some(e=>e.eventId===pickEv)) pickEv = evs.length ? evs[0].eventId : '__new';
+      const subs = ((((st.subRegions)||{}).regions||{})[r.regionId] || []).filter(x=>x && x.id && x.name);
+      if(!all.length){
+        $('#ppBody').innerHTML = `<div class="hint">Nothing has been sold at ${esc(r.name)}'s warehouse, so there is nothing to transfer.</div>`;
+        $('#ppSave').disabled = true; return;
+      }
+      $('#ppBody').innerHTML = `
+        <div class="field"><label>Whose sales</label><select id="wmWho">
+          <option value="">Everyone (${all.length})</option>
+          ${[...who].map(([k,w])=>`<option value="${esc(k)}"${k===pickWho?' selected':''}>${esc(w.name)} (${w.n})</option>`).join('')}</select></div>
+        <div class="field"><label>Transfer them to</label><select id="wmEv">
+          ${evs.map(e=>`<option value="${esc(e.eventId)}"${e.eventId===pickEv?' selected':''}>${esc(e.name)}</option>`).join('')}
+          <option value="__new"${pickEv==='__new'?' selected':''}>＋ A new event…</option></select></div>
+        <div id="wmNew" ${pickEv==='__new'?'':'hidden'}>
+          <div class="field"><label>New event's name</label><input id="wmName" type="text" maxlength="80" placeholder="e.g. Parikrama"></div>
+          ${subs.length ? `<div class="field"><label>Sub-region</label><select id="wmSub"><option value="">${esc(r.name)}, general</option>
+            ${subs.map(x=>`<option value="${esc(x.id)}">${esc(x.name)}</option>`).join('')}</select></div>` : ''}
+        </div>
+        <div class="hint" id="wmWhat"></div>`;
+      const what = ()=>{
+        const mine = all.filter(x=>!pickWho || sellerKey(x)===pickWho);
+        const books = mine.filter(x=>x.type==='SALE').reduce((t,x)=>t+(Number(x.qty)||0), 0);
+        const pre = mine.filter(x=>x.type==='PREORDER').length, don = mine.filter(x=>x.type==='DONATION').length,
+              unc = mine.filter(x=>x.type==='UNCAT').length;
+        const parts = [books ? `${books} book${books===1?'':'s'} sold or gifted` : '', pre ? `${pre} pre-order${pre===1?'':'s'}` : '',
+          don ? `${don} donation${don===1?'':'s'}` : '', unc ? `${unc} uncategorized sale${unc===1?'':'s'}` : ''].filter(Boolean);
+        const to = pickEv==='__new' ? (($('#wmName')||{}).value||'').trim() || 'the new event' : ((evs.find(e=>e.eventId===pickEv)||{}).name || 'the event');
+        $('#wmWhat').innerHTML = `<b>${parts.join(', ')}</b> go from ${esc(r.name)}'s warehouse to ${esc(to)}, with every payment, name and note.
+          The books they took off the shelf show as sent to ${esc(to)} first, so the warehouse keeps the count it has now.
+          Cash records made at the warehouse${pickWho ? ' by ' + esc((who.get(pickWho)||{}).name||'') : ''} go too. The Activity Log can undo this.`;
+      };
+      what();
+      $('#wmWho').onchange = e=>{ pickWho = e.target.value; what(); };
+      $('#wmEv').onchange = e=>{ pickEv = e.target.value; $('#wmNew').hidden = pickEv!=='__new'; what();
+        if(pickEv==='__new') $('#wmName').focus(); };
+      $('#wmName').oninput = what;
+    },
+    async save(kind, r, st, sn){
+      const newName = pickEv==='__new' ? $('#wmName').value.replace(/\s+/g,' ').trim() : '';
+      if(pickEv==='__new' && !newName){ $('#modalErr').textContent = 'Give the new event a name.'; return; }
+      if(newName && (st.events||[]).some(e=>e.regionId===r.regionId && String(e.name).toLowerCase()===newName.toLowerCase())){
+        $('#modalErr').textContent = 'An event called "' + newName + '" is already in ' + r.name + '. Pick it from the list instead.'; return; }
+      const eventId = pickEv==='__new' ? 'ev_' + Math.random().toString(36).slice(2,8) : pickEv;
+      const payload = {action:'moveWhSales', regionId:r.regionId, eventId, newName, seller:pickWho,
+        subRegion: newName && $('#wmSub') ? $('#wmSub').value : '', moveId:'wm_' + Math.random().toString(36).slice(2,10), season:sn};
+      const to = newName || ((st.events||[]).find(e=>e.eventId===eventId)||{}).name || 'the event';
+      if(sn===STATE.activeSeason){
+        const ok = await commitSync(payload, 'Sales transferred to ' + to,
+          ()=>!(STATE.sales||[]).some(x=>x.location===r.whLoc && (!pickWho || sellerKey(x)===pickWho)));
+        if(ok!==false && STATE.events.some(e=>e.eventId===eventId)) goTo('event', eventId);
+        return;
+      }
+      // Another season's: saved there, without leaving this one.
+      $('#ppSave').disabled = true;
+      try{ await post(payload); try{ localStorage.removeItem(SEASON_CACHE + sn); }catch(e){} closeModal(); toast('Sales transferred to ' + to); }
+      catch(err){ $('#ppSave').disabled = false; $('#modalErr').textContent = err.message; }
+    }});
+}
 function eventModal(edit, after){
   openModal(`
     ${mHead(edit?(FIN_ON?'Edit event':'Rename event'):'New event')}
@@ -23743,6 +23822,7 @@ document.addEventListener('click',e=>{
   if(a==='salesupload'){ salesUploadModal(); return; }
   if(a==='stock' || a==='addstock'){ addStockModal(); return; }
   if(a==='substock'){ subtractStockModal(); return; }
+  if(a==='whmove'){ whMoveModal(); return; }
   if(a==='addnewplace'){ addNewPlaceModal(t.dataset.then); return; }
   if(a==='transfer' || a==='externaltransfer'){ transferStockModal(); return; }
   // A closed place is read-only: refuse before anything is attempted, so the

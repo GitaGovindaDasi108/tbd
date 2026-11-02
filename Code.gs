@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b320';
+var SERVER_BUILD = 'b324';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -455,7 +455,8 @@ function financeData_() {
    returned shipment's share is never put on its books (they go back at the
    cost they had), so it stays an expense, less the refund (`ref`). */
 var BOOKCOST_ON_ = false;
-function setBookCostOn_(v) { BOOKCOST_ON_ = !!v; }
+var WHMOVE_ON_ = false;   // b324: moving a warehouse's sales into an event, practice only for now
+function setBookCostOn_(v) { BOOKCOST_ON_ = !!v; WHMOVE_ON_ = !!v; }
 function bcList_(raw) {
   if (!raw) return [];
   try { var o = JSON.parse(String(raw)); return Array.isArray(o) ? o : []; } catch (e) { return []; }
@@ -940,6 +941,7 @@ function handle(e) {
         case 'setSeasonHidden':  result = doSetSeasonHidden(params); break;
         case 'setSubRegions':    result = doSetSubRegions(params); break;
         case 'mergeRegion':      result = doMergeRegion(params); break;
+        case 'moveWhSales':      result = doMoveWhSales(params); break;
         case 'renameEvent':      doRenameEvent(params);      break;
         case 'deleteEvent':      doDeleteEvent(params);      break;
         case 'transferBulk':     doTransferBulk(params);     break;
@@ -7243,6 +7245,128 @@ function undoMerge_(fromId) {
   markDirtyAll_();
 }
 
+/* ---- Moving a warehouse's sales into an event (b324, practice, Gita:
+   "she's been selling out of the warehouse as if it is Parikrama") ----
+   Every sale, pre-order, donation and uncategorized sale written at a
+   region's warehouse (or only one seller's) goes to an event of the same
+   region, a new one if a name is given. The books those sales took off the
+   warehouse shelf are written down as having gone to the event first (one
+   transfer per title), so the warehouse still holds what it holds, and the
+   event shows them arriving and selling. The cash records made at the
+   warehouse (by everyone, or by that seller) follow the money. Written
+   down under 'whMoveUndo:<id>' so the Activity Log can put it all back. */
+function doMoveWhSales(p) {
+  if (!WHMOVE_ON_) throw new Error('Moving sales into an event is in the practice space only, for now.');
+  var r = regionById_(String(p.regionId || ''));
+  if (!r || !r.whLoc) throw new Error('That region is no longer listed.');
+  if (r.regionId === HQ_REGION) throw new Error('Earthly HQ has no events.');
+  var wh = r.whLoc;
+  if (isClosedLoc_(wh)) throw new Error(r.name + ' is closed. Reopen it first if something needs changing.');
+  var id = String(p.moveId || '').replace(/[^A-Za-z0-9_\-]/g, '').slice(0, 40) || ('wm_' + Utilities.getUuid().slice(0, 8));
+  if (String(getMeta_('whMoveUndo:' + id, '') || '')) return { moveId: id };      // a resend
+  var seller = String(p.seller || '');
+  var mine = function (s) { return !seller || String(s.soldById || '') === seller || (!s.soldById && 'name:' + String(s.soldBy || '') === seller); };
+  var sales = objectsOf_('_sales').filter(function (s) { return String(s.location) === wh && mine(s); });
+  if (!sales.length) throw new Error('There are no sales at ' + r.name + "'s warehouse to move.");
+
+  // Where they go: an event of this region, or a new one.
+  var evId = String(p.eventId || ''), created = false, ev = evId ? eventById_(evId) : null;
+  if (p.newName) {
+    var nm = String(p.newName).trim().slice(0, 80);
+    evId = doCreateEvent({ name: nm, regionId: r.regionId, eventId: evId });
+    ev = eventById_(evId); created = true;
+  }
+  if (!ev || String(ev.regionId) !== r.regionId) throw new Error('Pick an event in ' + r.name + '.');
+  if (isClosedLoc_(evId)) throw new Error(ev.name + ' is closed. Reopen it first if something needs changing.');
+
+  var U = { id: id, regionId: r.regionId, wh: wh, ev: evId, created: created, sales: [], cash: [], change: [], hand: [], moves: [], tags: {}, evSub: null };
+  // The books that came off the warehouse shelf for these sales.
+  var took = {}, first = {};
+  sales.forEach(function (s) {
+    U.sales.push(String(s.saleId));
+    if (restoreLocOf_(s) === wh && !isDelivery_(s)) {
+      var b = String(s.bookId), q = Math.round(Number(s.qty) || 0);
+      took[b] = (took[b] || 0) + q;
+      var t = new Date(s.ts).getTime();
+      if (!isNaN(t) && (!first[b] || t < first[b])) first[b] = t;
+    }
+  });
+  var ids = {}; U.sales.forEach(function (x) { ids[x] = 1; });
+  dbUpdate_('_sales', function (o) { return !!ids[String(o.saleId)]; }, { location: evId });
+  Object.keys(took).forEach(function (b) {
+    var mid = 'M' + Utilities.getUuid().slice(0, 7);
+    stockMoveAppend_({ id: mid, kind: 'TRANSFER', fromLoc: wh, toLoc: evId, bookId: b, qty: took[b],
+                       ts: first[b] ? new Date(first[b] - 1000) : new Date(),
+                       note: 'Sold at the warehouse, moved to ' + ev.name });
+    U.moves.push(mid);
+  });
+  // The money follows: cash records written at the warehouse (that seller's only, when one is picked).
+  var sellerName = seller ? String((sales[0] || {}).soldBy || '') : '';
+  var byOk = function (o) { return !seller || (sellerName && String(o.by || o.fromName || '') === sellerName); };
+  if (dbHas_('_cash')) objectsOf_('_cash').forEach(function (c) {
+    if ((String(c.fromAcct) === wh || String(c.toAcct) === wh) && byOk(c)) U.cash.push(String(c.id));
+  });
+  if (U.cash.length) {
+    var cids = {}; U.cash.forEach(function (x) { cids[x] = 1; });
+    dbUpdate_('_cash', function (o) { return !!cids[String(o.id)]; }, function (o) {
+      var f = {}; if (String(o.fromAcct) === wh) f.fromAcct = evId; if (String(o.toAcct) === wh) f.toAcct = evId; return f; });
+  }
+  if (dbHas_('_change')) objectsOf_('_change').forEach(function (c) { if (String(c.loc) === wh && byOk(c)) U.change.push(String(c.id)); });
+  if (U.change.length) { var gids = {}; U.change.forEach(function (x) { gids[x] = 1; });
+    dbUpdate_('_change', function (o) { return !!gids[String(o.id)]; }, { loc: evId }); }
+  if (dbHas_('_handovers')) objectsOf_('_handovers').forEach(function (h) { if (String(h.location) === wh && byOk(h)) U.hand.push(String(h.id)); });
+  if (U.hand.length) { var hids = {}; U.hand.forEach(function (x) { hids[x] = 1; });
+    dbUpdate_('_handovers', function (o) { return !!hids[String(o.id)]; }, { location: evId }); }
+
+  // Sub-regions: a sale at an event counts for the event's sub-region, so the sales' own tags go.
+  var v = subRegionsGet_(), subs = v.regions[r.regionId] || [];
+  sales.forEach(function (s) {
+    [String(s.saleId), String(s.bundle || '')].forEach(function (k) {
+      if (k && v.sales[k] && U.tags[k] === undefined) { U.tags[k] = v.sales[k]; delete v.sales[k]; }
+    });
+  });
+  var sr = String(p.subRegion || '');
+  if (created && sr && subs.some(function (x) { return x.id === sr; })) { U.evSub = ''; v.events[evId] = sr; }
+  setMeta_('subRegions', JSON.stringify(v));
+
+  setMeta_('whMoveUndo:' + id, JSON.stringify(U));
+  markDirty_(wh); markDirty_(evId); markDirtyAll_();
+  return { moveId: id, eventId: evId, sales: U.sales.length, books: Object.keys(took).reduce(function (t, b) { return t + took[b]; }, 0),
+           cash: U.cash.length + U.change.length + U.hand.length, eventName: ev.name, regionName: r.name };
+}
+
+/* Put a move back (from the Activity Log): the sales and cash records go back
+   to the warehouse, the transfers written for them go, and a new event made
+   for them goes too if nothing else has happened there since. */
+function undoWhMove_(id) {
+  var U = null;
+  try { U = JSON.parse(String(getMeta_('whMoveUndo:' + id, '') || '')); } catch (e) { U = null; }
+  if (!U || !U.id) throw new Error('This move can no longer be undone.');
+  var wh = U.wh, ev = U.ev, set = function (a) { var m = {}; (a || []).forEach(function (x) { m[x] = 1; }); return m; };
+  var S = set(U.sales), C = set(U.cash), G = set(U.change), H = set(U.hand), M = set(U.moves);
+  dbUpdate_('_sales', function (o) { return !!S[String(o.saleId)] && String(o.location) === ev; }, { location: wh });
+  if (dbHas_('_cash')) dbUpdate_('_cash', function (o) { return !!C[String(o.id)]; }, function (o) {
+    var f = {}; if (String(o.fromAcct) === ev) f.fromAcct = wh; if (String(o.toAcct) === ev) f.toAcct = wh; return f; });
+  if (dbHas_('_change')) dbUpdate_('_change', function (o) { return !!G[String(o.id)] && String(o.loc) === ev; }, { loc: wh });
+  if (dbHas_('_handovers')) dbUpdate_('_handovers', function (o) { return !!H[String(o.id)] && String(o.location) === ev; }, { location: wh });
+  flushStockMoves_();
+  if (dbHas_('_stockmoves')) dbDelete_('_stockmoves', function (m) { return !!M[String(m.id)]; });
+  var v = subRegionsGet_();
+  Object.keys(U.tags || {}).forEach(function (k) { v.sales[k] = U.tags[k]; });
+  // The event made for the move goes, if it is empty again.
+  if (U.created) {
+    var busy = objectsOf_('_sales').some(function (s) { return String(s.location) === ev; }) ||
+      (dbHas_('_stockmoves') && objectsOf_('_stockmoves').some(function (m) { return String(m.fromLoc) === ev || String(m.toLoc) === ev; })) ||
+      (dbHas_('_cash') && objectsOf_('_cash').some(function (c) { return String(c.fromAcct) === ev || String(c.toAcct) === ev; }));
+    var map = loadInvMap_(), held = 0;
+    allBooks_().forEach(function (b) { held += getQty_(map, ev, b.id); });
+    if (!busy && !held) { dbDelete_('_events', function (e) { return String(e.eventId) === ev; }); delete v.events[ev]; }
+  }
+  setMeta_('subRegions', JSON.stringify(v));
+  setMeta_('whMoveUndo:' + id, '');
+  markDirty_(wh); markDirtyAll_();
+}
+
 function doCreateEvent(p) {
   var name = String(p.name || '').trim();
   if (!name) throw new Error('Enter an event name.');
@@ -9749,6 +9873,12 @@ function describe_(action, p, result, moves, who) {
     case 'setSubRegions': d = { text: 'Changed the sub-regions of ' + reg(p.regionId) }; break;
     case 'mergeRegion': d = { text: 'Merged ' + String(p.confirmName || 'a region') + ' into ' + String((result && result.name) || reg(p.intoRegion)) + ' as a sub-region',
       undo: { type: 'merge', fromRegion: String(p.fromRegion) } }; regions[String(p.intoRegion)] = 1; break;
+    case 'moveWhSales': d = { text: 'Moved ' + plural_((result && result.sales) || 0, 'sale') + ' from ' + String((result && result.regionName) || reg(p.regionId)) +
+        "'s warehouse to " + String((result && result.eventName) || p.newName || 'an event') +
+        ((result && result.books) ? ' (' + plural_(result.books, 'book') + ' counted as sent there first)' : '') +
+        ((result && result.cash) ? ', with ' + plural_(result.cash, 'cash record') : ''),
+      undo: result && result.moveId ? { type: 'whmove', id: String(result.moveId) } : null }; regions[String(p.regionId)] = 1;
+      if (result && result.eventId) locs[String(result.eventId)] = 1; break;
     case 'createRegion': d = { text: 'Created region “' + p.name + '”' }; regions[String(result || p.regionId)] = 1; break;
     case 'editRegion':   d = { text: 'Changed the settings of ' + (p.name || reg(p.regionId)) + ' (name, currencies, titles or prices)' }; break;
     case 'deleteRegion': d = { text: 'Deleted a region' + (mv ? ': ' + mv : '') }; break;
@@ -10087,6 +10217,7 @@ function doUndoActivity(p, who) {
   }
   else if (u.type === 'change') doChangeDelete({ id: u.id });
   else if (u.type === 'merge') undoMerge_(String(u.fromRegion));
+  else if (u.type === 'whmove') undoWhMove_(String(u.id));
   else if (u.type === 'label') doSaveLabel({ key: u.key, text: u.text || '' });
   else if (u.type === 'regionBooks') {
     dbUpdate_('_regions', { regionId: String(u.regionId) }, function (row) {
