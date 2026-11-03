@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b328';
+var SERVER_BUILD = 'b329';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -445,7 +445,7 @@ function bcSplit_(expenses, A, where, regs, evs, seasons) {
   };
   var day = function (t) { return t ? Utilities.formatDate(new Date(t), Session.getScriptTimeZone(), 'yyyy-MM-dd') : row.d; };
   var hist = function (p) {
-    var h = p === A.own ? [{ d: row.d, k: 'orig', n: 0, w: '', u: r2(A.u0 * fu), a: r2(A.a0 * fa) }] : [];
+    var h = p === A.own ? [{ d: row.d, k: 'orig', n: A.n0 || 0, w: '', u: r2(A.u0 * fu), a: r2(A.a0 * fa) }] : [];
     A.h.forEach(function (e) {
       var sg = e.from === p ? -1 : e.to === p ? 1 : 0;
       if (!sg) return;
@@ -456,6 +456,8 @@ function bcSplit_(expenses, A, where, regs, evs, seasons) {
   var own = A.at[A.own] || { u: 0, a: 0 };
   row.bw = { u: row.usd, a: row.amt };
   row.usd = r2(own.u * fu); row.amt = r2(own.a * fa); row.bh = hist(A.own);
+  // b329: the copies each card's share is for (bn), of the bn0 printed, and the place's own name (pn).
+  row.bn = Math.max(0, Math.round(own.n || 0)); row.bn0 = A.n0 || 0; row.pn = name(A.own);
   Object.keys(A.at).forEach(function (p) {
     if (p === A.own) return;
     var c = A.at[p];
@@ -465,7 +467,7 @@ function bcSplit_(expenses, A, where, regs, evs, seasons) {
     delete r.bw;
     r.id = row.id + '@' + p; r.of = row.id;
     if (r.kind === 'reimburse') { r.kind = 'record'; r.st = 'recorded'; }   // a cost here, paid back once, on the bill itself
-    r.usd = r2(c.u * fu); r.amt = r2(c.a * fa); r.bh = h;
+    r.usd = r2(c.u * fu); r.amt = r2(c.a * fa); r.bh = h; r.bn = Math.max(0, Math.round(c.n || 0)); r.pn = name(p);
     r.d = h.length ? h[0].d : row.d;
     if (w) { r.s = w.s; r.r = w.r; r.e = w.e; } else { r.s = HQ_ID; r.r = ''; r.e = ''; }
     // Where it sits, as the expenses list names places.
@@ -580,15 +582,18 @@ function bookCostCalc_() {
   exps.forEach(function (x) { byId[x.id] = x; x.own = placeOf(x.location); });
   var alOf = function (id) {
     var A = out.al[id];
-    if (!A) { var x = byId[id]; A = out.al[id] = { own: x.own, u0: x.usd, a0: x.amt, at: {}, h: [] }; A.at[x.own] = { u: x.usd, a: x.amt }; }
+    if (!A) { var x = byId[id], n0 = 0;
+      // b329: a printing's copies, so each card can say how many books its share is for.
+      if (x.q) Object.keys(x.q).forEach(function (b) { n0 += x.q[b]; });
+      A = out.al[id] = { own: x.own, u0: x.usd, a0: x.amt, n0: n0, at: {}, h: [] }; A.at[x.own] = { u: x.usd, a: x.amt, n: n0 }; }
     return A;
   };
   var mv = function (id, from, to, n, u, a, k, t, key) {
     if (from === to || !byId[id] || !(u > 0 || a > 0)) return;
     var A = alOf(id);
     [[from, -1], [to, 1]].forEach(function (pq) {
-      var c = A.at[pq[0]] || (A.at[pq[0]] = { u: 0, a: 0 });
-      c.u += pq[1] * u; c.a += pq[1] * a;
+      var c = A.at[pq[0]] || (A.at[pq[0]] = { u: 0, a: 0, n: 0 });
+      c.u += pq[1] * u; c.a += pq[1] * a; c.n = (c.n || 0) + pq[1] * n;
     });
     var last = A.h[A.h.length - 1];
     if (last && last.key === key && last.from === from && last.to === to && last.k === k) { last.n += n; last.u += u; last.a += a; return; }
@@ -709,11 +714,14 @@ function bookCostCalc_() {
      [copies, dollars]}}. Copies on their way sit at the shipment's id. */
   out.held = {};
   Object.keys(shelf).forEach(function (k) {
-    var bits = k.split('||'), n = 0, u = 0;
-    shelf[k].forEach(function (p) { if (!p.known || !(p.n > 0)) return; n += p.n; Object.keys(p.c).forEach(function (id) { u += p.c[id] * p.n; }); });
+    var bits = k.split('||'), n = 0, u = 0, o = {};
+    shelf[k].forEach(function (p) { if (!p.known || !(p.n > 0)) return; n += p.n; Object.keys(p.c).forEach(function (id) { u += p.c[id] * p.n; });
+      Object.keys(p.o).forEach(function (c) { add(o, c, p.o[c] * p.n); }); });
     if (!n) return;
     var at = out.held[bits[0]] || (out.held[bits[0]] = {});
-    at[bits[1]] = [n, Math.round(u * 100) / 100];
+    // b329: and what they cost in the currencies the bills were paid in, for the local price.
+    Object.keys(o).forEach(function (c) { o[c] = Math.round(o[c] * 100) / 100; });
+    at[bits[1]] = [n, Math.round(u * 100) / 100, o];
   });
   // Refunds for books sent back: against the shipment's (first) cost.
   var firstShipExp = {};
