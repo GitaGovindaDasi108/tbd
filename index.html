@@ -2544,7 +2544,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b326</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b327</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2779,8 +2779,8 @@ const CONFIG = Object.assign({
    — the saved state, the queue of unsent saves, the sign-in — is kept apart
    under "practice:", so practice and live can never mix. */
 const PRACTICE = /[?&]practice(=|&|$)/.test(location.search);
-/* Transfer Sales to an Event (b324): practice only, for now. */
-const WHMOVE_ON = PRACTICE;
+/* Transfer Sales to an Event (b324 practice; live since b327, Gita 3 Nov). */
+const WHMOVE_ON = true;
 /* Finance, Expenses & Reimbursements and Dates & Repeats were tried in the
    practice space first and are now on in the live app too (b274, Gita,
    2026-10-21). Set to PRACTICE to send them back to practice only. */
