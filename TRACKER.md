@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b325**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b326**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -3093,3 +3093,15 @@ and leave the old Madrid/Barcelona data as it is (she will bring Madrid in herse
 - SERVER_BUILD b289.
 - Tests: browser-subregions 58 (+11: the question, refusing without an answer, the server tag,
   page/report/Collections/Finance counting it, preselect, donation, events don't ask, live on).
+
+## Done in b326 — "Sign in with Google" on shared link pages (live)
+
+- Gita's Season Lead for Kartika saw only Vrindavana: her role was right, but she
+  was opening the Vrindavana coordinator link (?k=…), and a link page never offers
+  Google sign-in. Gita chose "Add it on live" on a card.
+- `#linkSignIn` under the path on every ?k= page, and the same line in the
+  "Who is recording sales?" window: "Have your own login? Sign in with Google ›",
+  opening `plainAppUrl()` (the app without `k`, keeping `?practice`).
+- test/browser-b326.js (17 checks): line on link pages at 390/1150, live and
+  practice, gone when signed in; tapping it reaches sign-in and the Season Lead
+  then has every region of her season.
