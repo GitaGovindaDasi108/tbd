@@ -42,7 +42,7 @@ const API = 'http://api.test/';
     if (/open\.er-api/.test(url)) return { ok: true, status: 200, text: async () => JSON.stringify({ rates: { USD: 1, INR: 80, PLN: 4 }, time_last_update_utc: 'today' }) };
     throw new Error('offline');
   };
-  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com', practice: true });
+  const srv = makeServer({ exec, timeZone: 'UTC', fetchImpl, googleClientId: 'client-123', adminEmails: 'owner@example.com', practice: false });   // b327: the live server does it too
   await srv.warm();
   console.log = quiet;
   const ask = async p => JSON.parse(await srv.request({ postData: { contents: JSON.stringify(p) } }));
@@ -173,10 +173,14 @@ const API = 'http://api.test/';
     const r3 = await O({ action: 'moveWhSales', regionId: 'rg_vr', eventId: 'ev_nt', moveId: 'wm_t3', season: SA });
     t.push(['server: nothing left to move says so', !r3.ok && /no sales at Vrindavana/.test(r3.error || '')]);
     t.push(['no overflow (window, event page; phone and computer)' + (spills.length ? ' — ' + spills.slice(0, 4).join(' | ') : ''), !spills.length]);
-    // Not in the live app yet.
+    // b327: live too.
     const lv = await open('owner@example.com', 'The Owner', 1150, true);
     await lv.evaluate(() => goTo('region', 'rg_vr')); await lv.waitForTimeout(400);
-    t.push(['live: not in the menu', await lv.evaluate(() => !document.querySelector('#sideNav [data-act="whmove"]'))]);
+    t.push(['b327 live: in the Advanced menu', await lv.evaluate(() => !!document.querySelector('#sideNav [data-act="whmove"]'))]);
+    await lv.evaluate(() => whMoveModal()); await lv.waitForTimeout(400);
+    const lsp = [];
+    for (const w of [1150, 390]) { await lv.setViewportSize({ width: w, height: 900 }); await lv.waitForTimeout(250); (await spill(lv)).forEach(x => lsp.push(w + ': ' + x)); }
+    t.push(['b327 live: the window opens on Vrindavana, no overflow' + (lsp.length ? ' — ' + lsp.join(' | ') : ''), await lv.$eval('#ppReg', e => e.value) === 'rg_vr' && !lsp.length]);
   } catch (e) { errors.push('test: ' + e.stack); }
   await browser.close();
   let bad = 0;

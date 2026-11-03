@@ -2549,6 +2549,10 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b327 — Transfer Sales to an Event goes live
+
+- Gita, 3 Nov: "Push Transfer sales to an event to live". `WHMOVE_ON = true` (page) and `WHMOVE_ON_ = true` (Code.gs, no longer tied to `setBookCostOn_`). Universal only, as in practice. test/browser-whmove.js now runs on a live (non-practice) server and checks the live menu and window (22 checks).
+
 ## Done in b326 — "Sign in with Google" on shared link pages (live)
 
 - Gita's Season Lead for Kartika saw only Vrindavana: her role was right, but she
