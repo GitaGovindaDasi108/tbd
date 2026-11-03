@@ -1,6 +1,6 @@
 # Hare Krishna Europe Tour — Book Sales Tracker
 
-Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b326**.
+Tracker: what was built, build by build, and how it works (was HANDOVER.md). Current build: **b328**.
 
 Live app: https://gitagovindadasi108.github.io/tbd/
 
@@ -2548,6 +2548,27 @@ Live app changes (Gita, 2026-10-22):
   Finance group). It is shown only while in Finance (`body:not(.fin-mode)` hides it).
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
+
+## Done in b328 — Gita's 3 Nov round (live fixes, shipping and book costs in practice)
+
+- **Live**
+  - Totals cards: "N distributed" never breaks between the number and the word (`.dist-n` nowrap); the card takes the room (layoutTotals measures it).
+  - New region: **Select all / Deselect all** for every title, and for each kind on its Big Books / Other / Adventures row (`priceGrid`, `.rp-sel-b`).
+  - Transfer Existing Stock: **Clear everything** beside Transfer everything (`#xfClear`).
+  - Titles transferred, shipped or added as stock to a region with a narrowed title list are added to it (Code.gs `offerTitlesAt_`, from `doTransferMulti`, `doSendShipment`, `doAdjustStockBulk`), so they show in Change Prices; the page also counts any title that has been there (`carriedIds`).
+  - A new title (or one arriving in a region without a price) takes its kind's price where every priced title of that kind has one price, per region and currency (Code.gs `fillCatPrices_`). A price already set is never changed.
+  - Net Sales on the sales side only for Universal, Finance, and anyone given "See cost totals and money after costs" in Permissions (core.js `seesNet` → `ME.netSales`; page `seesNet()`): totals card, payment table's Net Sales row (Gross Sales always shown instead), WhatsApp Net Sales line, HQ's Net Sales by Season. With no sign-in configured, the admin view still sees it.
+  - Expenses red everywhere: Finance Overview tile and table column, Expenses tile (was Net blue), expense list and card amounts, Net Sales by Season, chart colour `FIN_C.out`.
+  - **Fix**: Edit Location sent the region's id for an event (and the season's for a region), so a rename reached nothing and saving dates said "That event is no longer listed" (`placeIdOf`).
+- **Practice** (`SHIP_ON = PRACTICE`, `BC_ON`, `HQ_SUMMARY_ONLY`)
+  - Earthly HQ: no "Summaries Portal" box; its windows sit on the page like everywhere else (`#summaryPortal` without `.on`; folds ignore a box-less portal).
+  - Deliver: "Did this require shipping costs?" → cost and currency → "Do you require reimbursement?". No: delivered, and the cost saved as a Shipping expense with `bookLink {k:'post', sale}` at the place that made the sale (any region; expenses.js `saleAt`, `postFor`). Yes: the reimbursement form opens filled in; its Submit records the expense and request, then delivers (`EXP.after`).
+  - Transfer: the same questions, plus "I don't know the cost yet" → a **Pending Expense** on the person's own To Do (pref `pendExp`, To Do tab "Pending Expenses", Add cost / ✕, in the To Do WhatsApp report). A shipment's cost gets `bookLink {k:'ship', sh}`; books that arrive at once get a Shipping expense at the destination.
+  - Anyone may save `post`/`ship` book links (expenses.js `bookLinkFor`); printings stay Finance's. "Shipping" is always a kind of expense in practice. The expense form no longer offers "cost of printing or shipping books" on a new expense (an existing one keeps its box).
+  - Net Sales follows the per-book cost on the sales side for Finance: book-linked bills are left out and each sale carries its copies' cost as "Cost of books" (`salesCosts`, server `bookCostSales_` returns `ex`, `held`, and each sale's `b`/`n`); the totals card shows a red "Cost of Books Sold" line. Postage on a sale whose book has no known cost stays an ordinary expense.
+  - **Cost per Book** (Finance menu, `costPerBookModal`): for the place you are at, each title's copies on hand and cost per copy, and copies sold with cost and profit per copy (Code.gs `bookCostCalc_` now returns `held`).
+  - Finance › Expenses: a printing cost's card has its own background (`--print-l` sea-green).
+- test/browser-b328.js (50 checks, 390px and 1150px, overflow); expenses.js expects Shipping in practice's kinds; clientsim gains `setMe`.
 
 ## Done in b327 — Transfer Sales to an Event goes live
 

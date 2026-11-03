@@ -288,12 +288,27 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       active: true, why: '', usable: true, owner: true });
     return Object.assign(auth.person(me), {
       universal: auth.isAdmin(me), grants,
+      netSales: seesNet(me, mine),
       prefs: me ? auth.prefsOf(me) : {},
       seesPeople: people.seesPeople(mine, owner),
       givesLogins: people.givesAny(P, mine, owner),
       // Events they may hand an emergency link for.
       linkEvents: P.raw.events.filter(ev => mayLink(P, me, ev.id)).map(ev => ({ id: ev.id, label: people.placeLabel(P, 'S', ev.id) }))
     });
+  }
+  /* Net Sales on the sales side (b328, Gita): Universal and Finance, and anyone
+     the Permissions table gives "See cost totals and money after costs" (a
+     person's own setting wins over their roles). */
+  function seesNet(me, mine) {
+    if (!me) return false;
+    if (auth.isAdmin(me)) return true;
+    const KEY = 'see_cost_totals_and_money_af';
+    const parse = (k) => { try { return JSON.parse(kv.getProp(k) || '') || {}; } catch (e) { return {}; } };
+    const own = (parse('permPeople')[String(me).toLowerCase()] || {})[KEY];
+    if (own) return own !== 'n';
+    const table = parse('permTable'), defs = people.permDefaults();
+    return (mine || []).some(g => { const v = (table[KEY] && table[KEY][g.role]) || (defs[KEY] || {})[g.role];
+      return v && v !== 'n'; });
   }
   /* An emergency link (Seller permissions, one event): Event Leads and above. */
   function mayLink(P, me, eventId) {

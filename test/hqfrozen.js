@@ -1,6 +1,7 @@
 /* At Earthly HQ a closed season's dollars stay at the rates it was frozen at,
    so HQ adds up to exactly what each season shows for itself (b196). */
 const { T, store } = require(__dirname + '/clientsim.js');
+T.setMe({ universal: true, grants: [], prefs: {} });   // b328: Net Sales is for Universal and Finance
 const sale = (id, loc, cur, amt) => ({ saleId: id, ts: 't', location: loc, type: 'SALE', bookId: 'b', qty: 1,
   p1type: 'Cash', p1cur: cur, p1amt: amt, p2type: '', p2cur: '', p2amt: 0, pending: false, paid: true,
   dueamt: 0, duecur: '', delivered: true, name: '', phone: '', comments: '' });

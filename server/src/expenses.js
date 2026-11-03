@@ -282,7 +282,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      just "Card machine fee" and added to as they go. "Other" (with its own words)
      is always there last. Expenses keep the kind they were saved with. */
   const getCats = () => { const a = parse(kv.getProp('expCats'), null); return Array.isArray(a) ? a.map(x => String(x)).filter(Boolean) : ['Card machine fee']; };
-  const catList = () => getCats().filter(c => c.toLowerCase() !== 'other').concat(['Other']);
+  /* "Shipping" is always a kind in practice (b328, Gita): general shipping is
+     entered as a type; shipping for particular books comes with the books. */
+  const catList = () => { const c = getCats().filter(c => c.toLowerCase() !== 'other');
+    if (practice && !c.some(x => x.toLowerCase() === 'shipping')) c.push('Shipping');
+    return c.concat(['Other']); };
   function catAdd(w, p) {
     if (!mayPay(w)) throw new Error('Only Finance can add kinds of expense.');
     const name = clip(p.name, 60).replace(/\s+/g, ' ').trim();
@@ -382,6 +386,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       if (lp) list.unshift(Object.assign(lp, { closed: false, label: labelOf(w.P, lp) }));
     }
     const want = String(p.location || '') || (w.open ? w.linkPlace || '' : '');
+    // Shipping on a delivery (b328): the place that made the sale, even another region's.
+    if (practice && p.forSale && want && !list.some(x => x.id === want) && saleAt(p.forSale) === want) {
+      const sp = placeOf(w.P, want);
+      if (sp) list.unshift(Object.assign(sp, { closed: false, label: labelOf(w.P, sp) }));
+    }
     /* A new expense starts where you are (b302, Gita: every searchable menu
        starts where you are); at Earthly HQ, or anywhere not in the list, it
        starts at Earthly HQ for whoever reaches it (2026-10-20). Anyone else
@@ -764,7 +773,10 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     if (old && !(isFin(w) && mayPay(w)) && !mine(w, old)) throw new Error('That expense is not yours to change.');
     if (old && old.status === 'paid' && !mayPay(w)) throw new Error('That expense has been paid back, so it cannot be changed. Ask Finance.');
     const pl = placeOf(w.P, clip(p.location, 60));
-    if (!pl || !inReach(w, pl)) throw new Error('Choose where the expense belongs.');
+    /* Shipping for a pre-order delivered from elsewhere (b328, Gita): it is the
+       expense of the place that made the sale, which may be another region's. */
+    const postFor = practice && !old && p.bookLink && p.bookLink.k === 'post' && pl && saleAt(p.bookLink.sale) === pl.id;
+    if (!pl || (!inReach(w, pl) && !postFor)) throw new Error('Choose where the expense belongs.');
     const kind = p.kind === 'reimburse' || w.open ? 'reimburse' : 'record';
     if (w.open && !w.name) throw new Error('Please give your name.');
     const contactPhone = clip(p.contactPhone, 40), contactEmail = clip(p.contactEmail, 120).toLowerCase();
@@ -853,8 +865,11 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      grams for a shipment's titles are kept with it (setting bookWeights). */
   function bookLinkFor(w, p, old) {
     if (p.bookLink === undefined) return old ? String(old.bookLink || '') : '';
-    if (!practice || !isFin(w) || !p.bookLink) return '';
+    if (!practice || !p.bookLink) return '';
     const L = p.bookLink, k = String(L.k || '');
+    /* Anyone may put shipping on what they deliver or send (b328, Gita): one
+       sale's postage, or a shipment's cost. Printings stay Finance's. */
+    if (!isFin(w) && k !== 'post' && k !== 'ship') return '';
     let out = null;
     if (k === 'print' && /^(m|sh):[A-Za-z0-9_\-]{2,60}$/.test(String(L.src || ''))) {
       const shares = {};
@@ -869,6 +884,17 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
       kv.setProp('bookWeights', JSON.stringify(W));
     }
     return JSON.stringify(out);
+  }
+  // The place a sale belongs to, as expenses name places: its event, or its region for a warehouse sale.
+  function saleAt(saleId) {
+    saleId = String(saleId || ''); if (!saleId) return '';
+    app.setSeasonContext_('');
+    const x = app.objectsOf_('_sales').find(r => String(r.saleId) === saleId);
+    if (!x) return '';
+    const loc = String(x.location || ''), F = app.financeFacts_();
+    if (F.events[loc]) return loc;
+    const r = Object.values(F.regions).find(r => r.whLoc === loc);
+    return r ? r.id : '';
   }
   function bookCostOpts(w) {
     if (!practice || !isFin(w)) throw new Error('This is for Finance, in the practice space.');

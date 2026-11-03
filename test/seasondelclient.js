@@ -2,6 +2,7 @@
    name is confirmed — the season list, Earthly HQ's summaries and its books
    in transit — with the save sent behind it. */
 const { T } = require(__dirname + '/clientsim.js');
+T.setMe({ universal: true, grants: [], prefs: {} });   // b328: Net Sales is for Universal and Finance
 const sale = (id, loc) => ({ saleId: id, ts: 't', location: loc, type: 'SALE', bookId: 'b', qty: 1, p1type: 'Cash', p1cur: 'USD', p1amt: 10,
   p2type: '', p2cur: '', p2amt: 0, pending: false, paid: true, dueamt: 0, duecur: '', delivered: true });
 const ship = (id, from, to) => ({ shipId: id, fromRegion: from, toRegion: to, status: 'IN_TRANSIT', mode: 'devotee', manifest: [] });
