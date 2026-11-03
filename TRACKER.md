@@ -2549,6 +2549,18 @@ Live app changes (Gita, 2026-10-22):
 - Tests: browser-finance covers the long note staying hidden at another place and after a refresh,
   plus the menu row and where it goes.
 
+## Done in b326 — "Sign in with Google" on shared link pages (live)
+
+- Gita's Season Lead for Kartika saw only Vrindavana: her role was right, but she
+  was opening the Vrindavana coordinator link (?k=…), and a link page never offers
+  Google sign-in. Gita chose "Add it on live" on a card.
+- `#linkSignIn` under the path on every ?k= page, and the same line in the
+  "Who is recording sales?" window: "Have your own login? Sign in with Google ›",
+  opening `plainAppUrl()` (the app without `k`, keeping `?practice`).
+- test/browser-b326.js (17 checks): line on link pages at 390/1150, live and
+  practice, gone when signed in; tapping it reaches sign-in and the Season Lead
+  then has every region of her season.
+
 ## Done in b325 — Earthly HQ order, payment table's frozen column
 
 - Gita, 2 Nov: "Warehouse needs to be the first item in the portal, then distribution, then to-do. For earthly HQ only, it should say 'Warehouse Overview'." Practice (`HQ_SUMMARY_ONLY`): `hqSummaryOrder()` moves #hqWhPanel, #hqTitlePanel, #hqTodoPanel to the start of #summaryFlow and renames the heading to "Warehouse Overview"; the rest keep their order. Live unchanged.
@@ -3094,14 +3106,3 @@ and leave the old Madrid/Barcelona data as it is (she will bring Madrid in herse
 - Tests: browser-subregions 58 (+11: the question, refusing without an answer, the server tag,
   page/report/Collections/Finance counting it, preselect, donation, events don't ask, live on).
 
-## Done in b326 — "Sign in with Google" on shared link pages (live)
-
-- Gita's Season Lead for Kartika saw only Vrindavana: her role was right, but she
-  was opening the Vrindavana coordinator link (?k=…), and a link page never offers
-  Google sign-in. Gita chose "Add it on live" on a card.
-- `#linkSignIn` under the path on every ?k= page, and the same line in the
-  "Who is recording sales?" window: "Have your own login? Sign in with Google ›",
-  opening `plainAppUrl()` (the app without `k`, keeping `?practice`).
-- test/browser-b326.js (17 checks): line on link pages at 390/1150, live and
-  practice, gone when signed in; tapping it reaches sign-in and the Season Lead
-  then has every region of her season.
