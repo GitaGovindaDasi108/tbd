@@ -142,18 +142,10 @@ const API = 'http://api.test/';
         await pg.screenshot({ path: shot('return-' + w) });
         await pg.evaluate(() => closeModal());
       }
-      // The expense form: put a cost on a shipment, with its weights.
+      /* The expense form (b328, Gita): a new expense no longer offers "cost of
+         printing or shipping books"; those come with Add Stock, Transfer and Deliver. */
       await pg.evaluate(() => expensesModal()); await pg.waitForTimeout(800);
-      await pg.check('#xBc'); await pg.waitForTimeout(800);
-      await pg.selectOption('#xBcK', 'ship'); await pg.waitForTimeout(300);
-      await pg.selectOption('#xBcSrc', 'sh_pol001'); await pg.waitForTimeout(300);
-      const wv = await pg.evaluate(() => (document.querySelector('#modal [data-bcw="bk_seasons"]') || {}).value);
-      t.push([w + 'px: the expense form puts a cost on a shipment, with the weight kept (' + wv + ' g)', wv === '900']);
-      t.push([w + 'px: …and fits (' + (await fits(pg)).join('; ') + ')', !(await fits(pg)).length]);
-      await pg.screenshot({ path: shot('expense-' + w) });
-      await pg.selectOption('#xBcK', 'print'); await pg.waitForTimeout(300);
-      const opts = await pg.evaluate(() => [...document.querySelectorAll('#xBcSrc option')].map(o => o.textContent));
-      t.push([w + 'px: …or on a printing (' + (opts[1] || '') + ')', opts.some(x => /Seasons \(English\) 2,500/.test(x))]);
+      t.push([w + 'px: a new expense has no printing-or-shipping box (b328)', await pg.evaluate(() => !document.querySelector('#xBc'))]);
       await pg.evaluate(() => closeModal());
       // Add Stock: the printing cost box.
       await pg.evaluate(() => addStockModal()); await pg.waitForTimeout(500);
