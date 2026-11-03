@@ -201,13 +201,13 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   r = await S({ action: 'expOptions' });
   t.push(['the form offers the kinds of cost and the payment types', r.ok && r.result.payTypes.includes('Card')]);
   // b277 (Gita): the kinds start as just Card machine fee (and Other), and Finance adds as they go.
-  t.push(['the kinds of expense start as just Card machine fee, then Other', JSON.stringify(r.result.categories) === JSON.stringify(['Card machine fee', 'Other'])]);
+  t.push(['the kinds of expense start as just Card machine fee, then Other', JSON.stringify(r.result.categories) === JSON.stringify(['Card machine fee', 'Shipping', 'Other'])]);   // b328: Shipping is always a kind in practice
   r = await S({ action: 'expCatAdd', name: 'Hall hire' });
   t.push(['…a Seller cannot add one', !r.ok]);
   r = await O({ action: 'expCatAdd', name: '  Hall   hire ' });
-  t.push(['…Finance can, and it goes before Other', r.ok && JSON.stringify(r.result) === JSON.stringify(['Card machine fee', 'Hall hire', 'Other'])]);
+  t.push(['…Finance can, and it goes before Other', r.ok && JSON.stringify(r.result) === JSON.stringify(['Card machine fee', 'Hall hire', 'Shipping', 'Other'])]);
   r = await O({ action: 'expCatAdd', name: 'hall hire' });
-  t.push(['…the same kind twice is kept once', r.ok && r.result.length === 3]);
+  t.push(['…the same kind twice is kept once', r.ok && r.result.length === 4]);
   r = await S({ action: 'expSave', id: 'Xcat0001', kind: 'record', location: 'ev_cp', desc: 'Hall', cur: 'INR', amt: 5, category: 'Hall hire' });
   t.push(['…and anyone can then choose it', r.ok && r.result.category === 'Hall hire']);
   r = await O({ action: 'expCatGone', name: 'Hall hire' });

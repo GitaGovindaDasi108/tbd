@@ -48,6 +48,7 @@ setTimeout(function(){ document.documentElement.classList.remove('app-boot'); },
      A warm rose keeps it in the family while telling them apart. */
   --donate:#9B3B6A; --donate-l:#F7E7EF; --donate-b:#E0BCCE;
   --aotm-l:#FAF0DA; --aotm-b:#E3C98C;
+  --print-l:#E3F1EE; --print-b:#A8CFC5;   /* printing cost cards (b328) */
   --line:#EBDFC8; --line-d:#DCCBA8;
   --shadow:0 1px 2px rgba(59,42,70,.06), 0 8px 24px rgba(59,42,70,.08);
   --radius:14px;
@@ -408,6 +409,23 @@ button.sc-transit:hover{color:#1F4F86}
   text-transform:uppercase;color:var(--muted)}
 .rp-fill{background:var(--paper2);border-radius:8px;padding:5px 6px;margin:3px 0}
 .rp-fill .rp-name{font-weight:800;font-size:12px;color:var(--saffron-d)}
+.cpb-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.cpb-row{border:1px solid var(--line);border-radius:10px;padding:7px 10px;background:var(--paper)}
+.cpb-t{font-weight:700;margin-bottom:2px}
+.cpb-l{font-size:13px;color:var(--ink);overflow-wrap:anywhere}
+.cpb-k{display:inline-block;min-width:64px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+.pe-item .li-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pe-item .li-book{flex:1 1 180px;min-width:0;white-space:normal}
+.pe-btns{display:flex;gap:6px;margin-left:auto}
+.ship-ask{border:1px solid var(--line);border-radius:10px;padding:8px 10px;margin:8px 0;background:var(--paper2)}
+.ship-ask > .field{margin:0}
+.ship-yn{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+.ship-yn label{display:flex;align-items:center;gap:6px;font-weight:600;cursor:pointer}
+.ship-more{margin-top:8px}
+.rp-selall{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:2px 0 6px;font-size:12px;color:var(--muted);font-weight:600}
+.rp-sel{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.rp-sel-b{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:999px;font:inherit;font-size:11px;font-weight:600;padding:1px 8px;cursor:pointer}
+.rp-selall .rp-sel-b{font-size:12px;padding:3px 10px}
 .rp-all{border-style:dashed !important}
 /* Worked out from the local price — still yours to change. */
 .rp-auto, .field input.rp-auto{background:#F4F8F4;color:#2E6B4F}
@@ -997,7 +1015,7 @@ body.has-na .overlay{z-index:10000}
 .tcard.tc-book .value{color:var(--gold)} .tcard.tc-book.aotm .value{color:var(--blue)} .tcard.tc-book.other .value{color:var(--teal)}
 .tcard .sub{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 .tcard .sub b{color:var(--plum);font-weight:700}
-.dist-n, .tcard .sub b.dist-n{color:inherit;font-weight:800}   /* the distributed total stands out (b270) */
+.dist-n, .tcard .sub b.dist-n{color:inherit;font-weight:800;white-space:nowrap}   /* the distributed total stands out (b270) */
 
 /* ---------- Panels ---------- */
 .cols{display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:stretch}
@@ -1743,6 +1761,11 @@ body.fin-mode.has-na .util-bar .status{display:none}   /* the rest of the app re
 .fin-tile{border:1px solid var(--line-d,#ddd);border-radius:10px;padding:8px 10px;background:var(--cream,#fff)}
 .fin-tile.fin-net{border-width:2px}
 .fin-net .fin-tv, .fin-tbl td.fin-netc{color:var(--net)}
+/* Expenses are red everywhere (b328, Gita). */
+.fin-exp .fin-tv, .fin-tbl td.fin-expc, table.cbr td.cbr-exp, .exp-red, .exp-red .exp-fx{color:var(--clay)}
+/* A printing cost moves with its books, so its card has its own colour in the
+   Expenses log, as Adventures and donation cards do (b328, Gita). */
+.fin-ex .fx-item.fx-print{background:var(--print-l);border-color:var(--print-b)}
 .fin-tl{font-size:12px;opacity:.75}.fin-tv{font-size:18px;font-weight:600;margin-top:2px}
 .fin-ts{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.3}
 .fin-ex-l{color:#2F6FB0 !important;font-weight:600}
@@ -2210,7 +2233,7 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
   border:1.5px solid var(--line-d);border-radius:8px;background:#fff;font-size:14px;font-weight:600;color:var(--ink);
   -moz-appearance:textfield;appearance:textfield}
 .xf-in::-webkit-outer-spin-button,.xf-in::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.xf-all{display:flex;justify-content:flex-end}
+.xf-all{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:6px}
 .xf-cards{display:flex;flex-direction:column;gap:8px}
 .xf-cards .bulk-sec{border-bottom:none;padding-bottom:0}
 .xf-card{border:1px solid var(--line-d);border-radius:10px;padding:8px 9px;display:flex;flex-direction:column;gap:5px;background:var(--paper)}
@@ -2544,7 +2567,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b327</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b328</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2702,6 +2725,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
         <div class="todo-pane tp-pre" id="prePanel" data-tab="pre"><div class="log" id="preList"></div></div>
         <div class="todo-pane tp-change" id="changePanel" data-tab="change"><div class="log" id="changeList"></div></div>
         <div class="todo-pane tp-counts" id="countPanel" data-tab="counts"><div class="log" id="countList"></div></div>
+        <div class="todo-pane tp-pexp" id="pexpPanel" data-tab="pexp"><div class="log" id="pexpList"></div></div>
         </div>
       </div>
     </section>
@@ -3354,9 +3378,8 @@ function bookBelongsIn(b, regionId){
 function carriedIds(r, st){
   st = st || STATE;
   const chosen = asIdList(r && r.books);
-  if(chosen.length) return new Set(chosen);
-  if(!r || r.regionId===HQ_REGION) return null;   // Earthly HQ holds every title
-  const key = r.regionId+'|'+(st.sales||[]).length+'|'+(st.stockMoves||[]).length+'|'+(st.inventory||[]).length;
+  if(!r || (!chosen.length && r.regionId===HQ_REGION)) return chosen.length ? new Set(chosen) : null;   // Earthly HQ holds every title
+  const key = r.regionId+'|'+chosen.join(',')+'|'+(st.sales||[]).length+'|'+(st.stockMoves||[]).length+'|'+(st.inventory||[]).length;
   if(CARRIED_MEMO.st===st && CARRIED_MEMO.by.has(key)) return CARRIED_MEMO.by.get(key);
   if(CARRIED_MEMO.st!==st) CARRIED_MEMO = {st, by:new Map()};
   const locs = new Set([r.whLoc].concat((st.events||[]).filter(e=>(e.regionId||'')===r.regionId).map(e=>e.eventId))
@@ -3368,6 +3391,11 @@ function carriedIds(r, st){
   (st.stockMoves||[]).forEach(m=>{ if(locs.has(m.toLoc)||locs.has(m.fromLoc)) out.add(m.bookId); });
   (st.shipments||[]).forEach(sh=>{ if(sh.manifest && (sh.toRegion===r.regionId || locs.has(sh.toLoc))) Object.keys(sh.manifest).forEach(id=>out.add(id)); });
   out.delete('');
+  /* A narrowed list also takes every title that has been there (b328, Gita:
+     books transferred in show up in Change Book Prices). */
+  if(chosen.length){ const books = st.books||[];
+    out.forEach(id=>{ const b = books.find(x=>x.id===id); if(!b || b.partnerId) out.delete(id); });
+    chosen.forEach(id=>out.add(id)); }
   const res = out.size ? out : null;
   CARRIED_MEMO.by.set(key, res);
   return res;
@@ -5477,11 +5505,17 @@ function renderAll(){
   $('#salesPortal').style.display = (hq && HQ_SUMMARY_ONLY) ? 'none' : '';
   $('#hqTodoPanel').style.display = (hq && STATE.everywhere && HQ_SUMMARY_ONLY) ? '' : 'none';
   $('#summaryPortal').style.display = (hq && STATE.everywhere) ? '' : 'none';
+  /* b328 (Gita, 3 Nov): with no Sales Portal at Earthly HQ, no "Summaries
+     Portal" box either; its windows sit on the page like everywhere else. */
+  const sumBox = !(hq && HQ_SUMMARY_ONLY);
+  $('#summaryPortal').classList.toggle('on', sumBox);
+  if(!sumBox) $('#summaryPortal').classList.remove('folded');
   if(hq && STATE.everywhere && HQ_SUMMARY_ONLY){ const ev = STATE.everywhere; withRollup(()=>renderHqTodo(ev)); }
   if(hq && HQ_SUMMARY_ONLY) hqSummaryOrder();
   if(hq && STATE.everywhere) withRollup(()=>{
     renderTitleList('#hqTitleList');
     renderCollectionsByRegion('#hqCollBy');
+    try{ const nsp = $('#hqCollBy').closest('section'); if(nsp) nsp.style.display = seesNet() ? '' : 'none'; }catch(e){}   // b328
     $('#hqSalesBy').innerHTML  = renderSalesByRegion();
     renderPayments('#hqPayBody');
     $('#hqWhOverview').innerHTML = renderWarehouseOverview($('#hqWhOverview'));
@@ -5654,7 +5688,8 @@ function setFolded(name, on){
 }
 function applyFolds(){
   document.querySelectorAll('.panel[data-fold], .portal[data-fold]').forEach(p=>{
-    p.classList.toggle('folded', isFolded(p.dataset.fold));
+    // A portal with no box (not .on) has no heading to unfold it by (b328).
+    p.classList.toggle('folded', (!p.classList.contains('portal') || p.classList.contains('on')) && isFolded(p.dataset.fold));
   });
   const inv = document.querySelector('#regionCols > .panel[data-fold="inventory"]');
   const cols = $('#regionCols');
@@ -6134,7 +6169,7 @@ const SN_ITEMS = {
   whmove:['⇢','Transfer Sales to an Event'],
   substock:['−','Subtract Stock'], drivefolder:['📁','Spreadsheets'], specreport:['📊','Specialty Reports'], wareports:['💬','WhatsApp Reports'], sharelinks:['🔗','Sales Links'], people:['👥','App Access'],
   editwording:['✏️','Edit Wording'], menuorder:['↕','Reorganize Menu'], practice:['🧪','Practice'], permissions:['🔐','Permissions'],
-  whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations']
+  whoami:['👤','Profile'], finplaces:['📍','Edit Finance-Only Locations'], bccost:['📚','Cost per Book']
 };
 /* How Reorganize Menu names the items that read differently at each level (b292). */
 const MO_NAMES = {reorderevent:['↕','Change Location Order'], editplace:['✎','Edit Location'],
@@ -6154,7 +6189,7 @@ const SN_SECTIONS = [
   {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','stockorder','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','prices','expenses']},
-  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces']},
+  {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces','bccost']},
   // The place's own actions (b292: arranged like the rest; anything new of its own still shows, after these).
   {key:'level',    icon:'📍', label:snLevelLabel,          fam:'location', acts:['reorderevent','editplace','subregions','salesupload','closeplace','deleteplace']},
   {key:'advanced', icon:'🧰', label:()=>'Advanced',        acts:['substock','whmove','drivefolder','wareports','specreport','sharelinks','people','report']},
@@ -6708,28 +6743,30 @@ function renderTotals(){
          left, costs and donations top right, the currencies bottom left and Net
          Sales bottom right; on a phone total, currencies, costs and donations
          with their words (b302, Gita), then Net Sales. */
-      const cs = scopedCosts(), cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
+      const cs0 = scopedCosts(), cs = cs0.filter(c=>!c.bc), cu = cs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0);
       const du = s.filter(x=>x.type==='DONATION' && received(x)).reduce((t,x)=>t+saleUsd(x), 0);
+      const bk = cs0.filter(c=>c.bc).reduce((t,c)=>t+(Number(c.amt)||0), 0), net0 = seesNet();
       /* At Earthly HQ only (b298, Gita): Net Sales alone top left, Expenses
          and Donations top right, Total Collections bottom left and the
          collections by currency bottom right. */
-      const net = totUsd-cu-du;
+      const net = totUsd-cu-du-bk;
       /* ~ on dollars worked out from an exchange rate, as in Finance (b299, Gita);
          none where every currency counts at what it actually fetched. */
       const eC = s.some(x=>received(x) && !usdExact(x)), eX = cs.some(c=>!usdCostExact(c)), eN = eC || eX;
       const D = (v, e) => (Math.round(v*100) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usdT(Math.abs(v));
-      if(isHQ()) return `<div class="tcard usd tc-coll tc-hq">
+      const bkLine = bk > 0.004 ? `<div class="sub-cost sub-bk"><span class="tc-w">Cost of Books Sold </span>${D(-bk, true)}</div>` : '';
+      if(isHQ() && net0) return `<div class="tcard usd tc-coll tc-hq">
       <div class="tc-q1"><div class="label">Net Sales</div><div class="value tc-net">${D(net, eN)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${bkLine}${
         du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
       <div class="tc-q3"><div class="label">Total Collections</div><div class="tc-sm">${D(totUsd, eC)}</div></div>
       <div class="tc-q4"><div class="label">Collections by Currency</div><div class="sub tc-bal">${moneyBal(got)||'nothing collected yet'}</div></div></div>`;
       return `<div class="tcard usd tc-coll">
       <div class="tc-q1"><div class="label">Total Collections</div><div class="value">${D(totUsd, eC)}</div></div>
-      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${
+      <div class="tc-q2 sub">${cu ? `<div class="sub-cost"><span class="tc-w">Expenses </span>${D(-cu, eX)}</div>` : ''}${net0 ? bkLine : ''}${
         du ? `<div class="sub-don"><span class="tc-w">Donations </span>${D(du, s.some(x=>x.type==='DONATION' && received(x) && !usdExact(x)))}</div>` : ''}</div>
       <div class="tc-q3 sub tc-bal">${moneyBal(got)||'nothing collected yet'}</div>
-      <div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">${D(totUsd-cu-du, eN)}</div></div></div>`;
+      ${net0 ? `<div class="tc-q4"><div class="label">Net Sales</div><div class="tc-net">${D(net, eN || bk > 0.004)}</div></div>` : ''}</div>`;
     })()}
 `}`;
   try{ layoutTotals(); }catch(e){}
@@ -7136,10 +7173,25 @@ function renderTitleList(target){
    Opening a type just unhides its rows; nothing reflows.                     */
 /** OUR costs at the place being looked at — a consignment group's costs come
     off what the group is owed, never off our own net. */
+/* The sales side's costs (b328, practice, for Finance): a printing or shipping
+   bill put on books is not counted whole; instead each sale carries what its
+   copies cost ("Cost of books", Code.gs bookCostCalc_), so Net Sales follows
+   the per-book cost everywhere it is shown: the totals card, the payment
+   table, Net Sales by Season and the WhatsApp reports. */
+function salesCosts(){
+  const all = STATE.costs || [];
+  if(!bcMine() || !BC.at){ bcRefresh(); return all; }
+  bcRefresh();
+  const out = all.filter(c=>!BC.ex.has(String(c.id)));
+  (STATE.sales||[]).forEach(x=>{ const c = x && BC.sales[x.saleId];
+    if(c && Number(c.u) > 0.004) out.push({id:'bc_' + x.saleId, ts:x.ts, location:x.location, cur:'USD', amt:Math.round(Number(c.u)*100)/100,
+      category:'Cost of books', note:'Cost of the books sold', partnerId:'', bc:true}); });
+  return out;
+}
 function scopedCosts(){ return scopedAllCosts().filter(c=>!c.partnerId); }
 /** Every cost at the place being looked at, a group's included (for the list). */
 function scopedAllCosts(){
-  const all = STATE.costs || [];
+  const all = salesCosts();
   if(CUR_LEVEL==='season') return all;
   const sw = subWhHere();
   if(sw){ const locs = new Set(eventsOfSub(sw.rid, sw.sid).map(e=>e.eventId)); return all.filter(c=>locs.has(c.location)); }
@@ -7163,7 +7215,7 @@ function seasonNetRows(){
     const L = new Set(locs), got = {};
     const ours = (STATE.sales||[]).filter(x=>x && L.has(x.location) && received(x) && !isPartnerSale(x));
     ours.forEach(x=>legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; }));
-    const costs = (STATE.costs||[]).filter(c=>c && !c.partnerId && L.has(c.location));
+    const costs = salesCosts().filter(c=>c && !c.partnerId && L.has(c.location));
     const dons = ours.filter(x=>x.type==='DONATION');
     const coll = ours.reduce((t,x)=>t+saleUsd(x), 0), exp = costs.reduce((t,c)=>t+toUSDAt(Number(c.amt)||0, c.cur, c.location), 0),
       don = dons.reduce((t,x)=>t+saleUsd(x), 0);
@@ -7183,7 +7235,7 @@ function renderNetBySeason(el){
   const curs = NET_CURS ? curAllCurrencies() : [], {rows, tot} = seasonNetRows();
   const cell = (o,c) => o[c] ? fmt(o[c]) : '<span class="zero">—</span>';
   const D = (v, e) => (Math.round(v*100) < 0 ? '−' : '') + (e ? '≈' : '') + '$' + usd2(Math.abs(v));
-  const nums = x => `<td class="usd">${D(x.coll, x.eC)}</td><td class="usd">${x.exp ? D(-x.exp, x.eX) : '<span class="zero">—</span>'}</td>`
+  const nums = x => `<td class="usd">${D(x.coll, x.eC)}</td><td class="usd cbr-exp">${x.exp ? D(-x.exp, x.eX) : '<span class="zero">—</span>'}</td>`
     + `<td class="usd cbr-don">${x.don ? D(x.don, x.eD) : '<span class="zero">—</span>'}</td><td class="usd cbr-net">${D(x.net, x.eN)}</td>`;
   el.innerHTML = `
     <div class="ptg-scroll"><table class="cash-tbl cbr cbr-ns">
@@ -7210,7 +7262,7 @@ function renderCollectionsByRegion(target){
     });
     /* What the region actually brings in: its own takings, less what it spent
        to make them. Consignment is already out — that money is the groups'. */
-    (STATE.costs||[]).forEach(c=>{
+    salesCosts().forEach(c=>{
       if(!c || c.partnerId) return;                        // a group's cost, not ours
       if(!locs.includes(c.location)) return;
       got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
@@ -7513,7 +7565,7 @@ function renderPayments(target){
         ${body || `<div class="ptg-first ptg-empty" style="grid-column:1/-1">Nothing collected yet</div>`}
         ${/* With nothing to take off, a "gross" line is just the same figure
               twice, so only the net is shown. */''}
-        ${(conBody || costTotal) ? `<div class="ptg-t ptg-first">Gross Sales</div>
+        ${(conBody || costTotal || !seesNet()) ? `<div class="ptg-t ptg-first">Gross Sales</div>
         ${curs.map(c=>`<div class="ptg-t">${num(grand,c)}</div>`).join('')}
         <div class="ptg-t usd">${E('*')}$${usd2(usdWhole(grand))}</div>` : ''}
 
@@ -7529,9 +7581,9 @@ function renderPayments(target){
         ${curs.map(c=>`<div class="ptg-t ptg-cost ptg-sub">${minus(costByCur,c)}</div>`).join('')}
         <div class="ptg-t usd ptg-cost ptg-sub">−${eCost}$${usd2(costUsd)}</div>` : ''}
 
-        <div class="ptg-t ptg-first ptg-net">Net Sales</div>
+        ${seesNet() ? `<div class="ptg-t ptg-first ptg-net">Net Sales</div>
         ${curs.map(c=>`<div class="ptg-t ptg-net">${num(netOf(netOf(grand,conGrand),costByCur),c)}</div>`).join('')}
-        <div class="ptg-t usd ptg-net">${(E('*')||eCost)}$${usd2(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>
+        <div class="ptg-t usd ptg-net">${(E('*')||eCost)}$${usd2(usdWhole(grand) - usdCon(conGrand) - costUsd)}</div>` : ''}
       </div>
     </div>`;
 }
@@ -7836,13 +7888,23 @@ function logItemHTML(x, opts){
    shipment it travelled on, plus postage) and what it made. Worked out by the
    server (Code.gs bookCostCalc_); a book with no printing cost shows nothing. */
 const BC_ON = PRACTICE;
-const BC = { sales:{}, at:0, busy:false };
+const BC = { sales:{}, ex:new Set(), at:0, busy:false };
 const bcMine = () => BC_ON && !!financeMe();
 function bcRefresh(force){
   if(!bcMine() || BC.busy || (!force && Date.now() - BC.at < 60000)) return;
   BC.busy = true;
-  post({action:'bookCostSales'}).then(d=>{ BC.sales = (d.result && d.result.sales) || {}; BC.at = Date.now();
-    try{ renderLog(); }catch(e){} }).catch(()=>{}).then(()=>{ BC.busy = false; });
+  post({action:'bookCostSales'}).then(d=>{ BC.sales = (d.result && d.result.sales) || {}; BC.ex = new Set((d.result && d.result.ex) || []); BC.at = Date.now();
+    try{ renderAll(); }catch(e){} }).catch(()=>{}).then(()=>{ BC.busy = false; });
+}
+/* Who sees Net Sales on the sales side (b328, Gita: "Net sales is only
+   important for people at the universal level and the finance level. No one
+   else needs to see net sales unless given specific permissions"): Universal,
+   Finance, and anyone given "See cost totals and money after costs" in
+   Permissions (the server works that out: ME.netSales). */
+function seesNet(){
+  // With no sign-in at all (the app's old way, no Google client), the admin view sees everything.
+  if(!CONFIG.GOOGLE_CLIENT_ID) return isAdmin();
+  return !!(ME && (ME.universal || financeMe() || ME.netSales));
 }
 function bcDetail(x, isDon){
   if(!bcMine() || isDon || isUncat(x)) return [];
@@ -7860,6 +7922,49 @@ function bcDetail(x, isDon){
   }
   if(!x._bundle && x.type==='SALE') out.push(['Postage', `<button class="btn btn-ghost btn-sm" data-act="bcpost" data-id="${esc(x.saleId)}">Add postage</button>`]);
   return out;
+}
+
+/* ---- Cost per Book (b328, practice; Gita: "a simple way for finances to see
+   the cost per book at any level of the app") ----
+   For the place you are at (an event, a region with its events and
+   sub-warehouses, a season, or Earthly HQ for everything): each title's
+   copies on hand whose cost is known and what one copy cost (printing plus
+   its shipping), and the copies sold with what one cost and made. Titles with
+   no printing cost recorded are left out. */
+async function costPerBookModal(){
+  openModal(`${mHead('Cost per Book')}<div class="m-body"><div class="cash-empty sp-loading"><span class="spin-d"></span> Working out the costs…</div></div>`, true);
+  let d;
+  try{ d = (await post({action:'bookCostSales'})).result || {}; }
+  catch(e){ const b = $('#modal .m-body'); if(b) b.innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  BC.sales = d.sales || {}; BC.ex = new Set(d.ex || []); BC.at = Date.now();
+  const hq = isHQ(), held = d.held || {};
+  const where = hq ? 'Earthly HQ (everywhere)' : CUR_LEVEL==='season' ? (STATE.seasonName || 'Season')
+    : CUR_LEVEL==='region' ? ((currentRegion()||{}).name || 'Region') : locName(CUR_LOC);
+  let locs = null;
+  if(!hq){
+    if(CUR_LEVEL==='event') locs = [CUR_LOC];
+    else if(CUR_LEVEL==='region') locs = locsInRegion(CUR_REGION);
+    else locs = regionsList().flatMap(r=>locsInRegion(r.regionId));
+    // Copies on their way to a place here count with it.
+    (STATE.shipments||[]).filter(x=>x.status!=='ARRIVED' && (locs.includes(x.toLoc) || regionsList().some(r=>r.regionId===x.toRegion && locs.includes(r.whLoc)))).forEach(x=>locs.push(x.shipId));
+  }
+  const T = {}, row = b => T[b] || (T[b] = {hn:0, hu:0, sn:0, su:0, sg:0});
+  Object.keys(held).forEach(loc=>{ if(locs && !locs.includes(loc)) return;
+    Object.keys(held[loc]).forEach(b=>{ const r = row(b); r.hn += held[loc][b][0]; r.hu += held[loc][b][1]; }); });
+  const ids = hq ? null : new Set(scopedSales().map(x=>x.saleId));
+  Object.keys(BC.sales).forEach(id=>{ if(ids && !ids.has(id)) return; const c = BC.sales[id]; if(!c.b) return;
+    const r = row(c.b); r.sn += c.n || 1; r.su += Number(c.u)||0; r.sg += Number(c.g)||0; });
+  const books = Object.keys(T).map(b=>({b, name:(bookById(b)||{}).name || b, ...T[b]})).sort((a,b)=>a.name.localeCompare(b.name));
+  const per = (u, n) => n ? finUsd(u / n, true) : '—';
+  const body = !books.length ? `<div class="cash-empty">No book here has a printing cost recorded yet.</div>`
+    : `<div class="cpb-list">${books.map(r=>`<div class="cpb-row"><div class="cpb-t">${esc(r.name)}</div>
+        <div class="cpb-l"><span class="cpb-k">On hand</span> ${r.hn ? fmt(r.hn) + ' · <b>' + per(r.hu, r.hn) + '</b> a copy' : 'none'}</div>
+        <div class="cpb-l"><span class="cpb-k">Sold</span> ${r.sn ? fmt(r.sn) + ' · cost <b>' + per(r.su, r.sn) + '</b> a copy · ' + (r.sg - r.su < -0.004 ? 'loss' : 'profit')
+          + ' <b class="' + (r.sg - r.su < -0.004 ? 'fin-neg' : '') + '">' + finUsd(Math.abs(r.sg - r.su) / r.sn, true) + '</b> a copy' : 'none'}</div></div>`).join('')}</div>`;
+  openModal(`${mHead('Cost per Book')}
+    <div class="m-body"><div class="hint">${esc(where)}: what one copy cost, its printing plus the shipping it travelled on${hq ? '' : ', for the copies here and on their way here'}. Titles with no printing cost recorded are not listed.</div>
+      ${body}</div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Close</button></div>`, true);
 }
 
 /* Each title's weight in grams (b320): a shipment's cost is shared by weight
@@ -8153,7 +8258,8 @@ const TODO_TABS = [
   {key:'pending', label:'Pending Payments',    title:'PAYMENTS PENDING'},
   {key:'pre',     label:'Pre-Orders',          title:'PRE-ORDERS PENDING'},
   {key:'change',  label:'Change We Owe',       title:'CHANGE WE OWE'},
-  {key:'counts',  label:'Counts to Look Into', title:'COUNTS TO LOOK INTO'}
+  {key:'counts',  label:'Counts to Look Into', title:'COUNTS TO LOOK INTO'},
+  {key:'pexp',    label:'Pending Expenses',    title:'PENDING EXPENSES'}
 ];
 let TODO = { off:{}, rep:null };
 try{ const v = JSON.parse(localStorage.getItem('tbs_todo')||'{}'); if(v && v.off) TODO.off = v.off; if(v && Array.isArray(v.rep)) TODO.rep = v.rep; }catch(e){}
@@ -8163,7 +8269,7 @@ let TODO_LISTS = null;
 function renderTodo(lists){
   const panel = $('#todoPanel'); if(!panel) return 0;
   const counts = plainSeller() ? [] : mismatchesHere().filter(m=>m.status==='open');
-  const all = TODO_LISTS = {pending:lists.pending, pre:lists.pre, change:lists.change, counts};
+  const all = TODO_LISTS = {pending:lists.pending, pre:lists.pre, change:lists.change, counts, pexp: SHIP_ON ? pendExps() : []};
   const live = TODO_TABS.filter(x=>all[x.key].length);
   panel.style.display = live.length ? '' : 'none';
   if(!live.length) return 0;
@@ -8186,6 +8292,7 @@ function renderTodo(lists){
   if(on('pre')) $('#preList').innerHTML = newestFirst(lists.pre).map(x=>logItemHTML(x,{context:'pre'})).join('');
   if(on('change')) $('#changeList').innerHTML = newestFirst(lists.change).map(x=>logItemHTML(x,{context:'change'})).join('');
   if(on('counts')) renderMismatches(newestFirst(counts));
+  if(on('pexp')) $('#pexpList').innerHTML = newestFirst(all.pexp).map(pendExpItemHTML).join('');
   if(!shown.length) $('#todoSort').innerHTML = '<span class="muted-note">Everything is hidden — tap a kind above to show it.</span>';
   return 1;
 }
@@ -8360,18 +8467,20 @@ function todoReport(){
   if(has('pre')){ offered.push(['preorders','Pre-orders — counts']); offered.push(['prepeople','Pre-orders — who is waiting']); }
   if(has('change')) offered.push(['change','Change we owe']);
   if(has('counts')) offered.push(['counts','Counts to look into']);
+  if(has('pexp')) offered.push(['pexp','Pending expenses']);
   if(!offered.length){ toast('Nothing waiting here.'); return; }
   const keys = offered.map(x=>x[0]);
   // Ticked: what was ticked last time, or else what the panel is showing now.
   const shownNow = k => !TODO.off[k==='preorders'||k==='prepeople' ? 'pre' : k];
   const picks = new Set((TODO.rep && TODO.rep.some(k=>keys.includes(k))) ? TODO.rep.filter(k=>keys.includes(k)) : keys.filter(shownNow));
   const TITLE = {pending:'PAYMENTS PENDING', preorders:'PRE-ORDERS PENDING', prepeople:'PRE-ORDERS — WHO IS WAITING',
-    change:'CHANGE WE OWE', counts:'COUNTS TO LOOK INTO'};
+    change:'CHANGE WE OWE', counts:'COUNTS TO LOOK INTO', pexp:'PENDING EXPENSES'};
   const make = () => {
     const out = [];
     keys.filter(k=>picks.has(k)).forEach(k=>{
       const body = k==='counts'
         ? newestFirst(all.counts).map(m=>`${locName(m.location)} · ${(bookById(m.bookId)||{}).name||m.bookId}: expected ${m.expected}, counted ${m.counted} (${m.counted>m.expected?'+':''}${m.counted-m.expected})`).join('\n')
+        : k==='pexp' ? newestFirst(all.pexp).map(x=>`${String(x.ts||'').slice(0,10)} · ${x.desc}: cost not known yet`).join('\n')
         : buildReport(k);
       if(body) out.push('*' + TITLE[k] + '*', body, '');
     });
@@ -10878,7 +10987,7 @@ function expCardHTML(x, fin){
   }
   const contact = fin ? expContactHTML(x) : '';
   return `<div class="exp-card exp-k-${esc(x.kind)}">
-      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt">${esc(fin && x.usd!==undefined ? finDual(x.amt, x.cur, x.usd, !x.usdExact) : cashFmt(x.amt, x.cur))}</span></div>
+      <div class="exp-top"><b>${esc(x.desc)}</b><span class="exp-amt exp-red">${esc(fin && x.usd!==undefined ? finDual(x.amt, x.cur, x.usd, !x.usdExact) : cashFmt(x.amt, x.cur))}</span></div>
       <div class="exp-meta">${esc(x.date)} · ${who} · ${esc(x.placeLabel)}</div>
       ${String(x.cur).toUpperCase()!=='USD' && (Number(x.usdAmt) > 0 || (x.usdDay && x.usdDay.rate)) ? `<div class="exp-meta">${Number(x.usdAmt) > 0
         ? 'In dollars: ' + esc(finUsd(Number(x.usdAmt))) + ', the exact amount given'
@@ -10951,10 +11060,13 @@ function expPlaceItems(places){
 /* The Expenses window: the form, then the person's own expenses. */
 async function expensesModal(editId, presetPartner, preset){
   EXP.revExact = false;
+  // What to do once this form is sent (b328: deliver the book, send the books).
+  EXP.after = (preset && preset.after) || null;
   openModal(`${mHead('Expenses')}<div class="m-body"><div class="cash-empty">Opening…</div></div>`, true);
   try{
     const [opt, list] = await Promise.all([
-      post({action:'expOptions', location: expHere(), start: editId ? '' : 1}),
+      post({action:'expOptions', location: (preset && preset.location) || expHere(), start: editId ? '' : 1,
+        forSale: preset && preset.bookLink && preset.bookLink.k==='post' ? preset.bookLink.sale : ''}),
       post({action:'expList'})]);
     EXP.opt = opt.result; EXP.list = list.result || [];
   }catch(e){
@@ -10979,8 +11091,15 @@ async function expensesModal(editId, presetPartner, preset){
   // Books this cost is put on (b320, practice): kept from the expense, or as the button that opened the form says.
   const bl = edit ? edit.bookLink : preset && preset.bookLink;
   EXP.form.bc = bl ? {on:true, k:bl.k, src:bl.src||bl.sh||'', sale:bl.sale||'', shares:Object.assign({}, bl.shares||{}), weights:{}} : {on:false, k:'print', src:'', shares:{}, weights:{}};
+  EXP.form.bcHad = !!(edit && edit.bookLink);
   if(preset && !edit){ if(preset.desc) EXP.form.desc = preset.desc; if(preset.category && (EXP.opt.categories||[]).includes(preset.category)) EXP.form.category = preset.category;
-    EXP.form.forEmail = '*general'; EXP.form.forName = 'General'; }
+    if(preset.mine){
+      // b328: the person's own cost, to be paid back (shipping on a delivery or a transfer).
+      if(preset.kind) EXP.form.kind = preset.kind;
+      if(preset.amt) EXP.form.amt = preset.amt;
+      if(preset.cur) EXP.form.cur = preset.cur;
+      if(preset.location) EXP.form.location = preset.location;   // the place that made the sale, even another region's
+    } else { EXP.form.forEmail = '*general'; EXP.form.forName = 'General'; } }
   EXP.batch = [];
   if(EXP.form.bc.on && bcMine()) bcOpts();
   expDraw();
@@ -10995,6 +11114,11 @@ function bcOpts(){
 function bcFormHTML(f){
   if(!bcMine() || EXP.pub) return '';
   const b = f.bc || (f.bc = {on:false, k:'print', src:'', shares:{}, weights:{}});
+  /* b328 (Gita): printing and shipping costs for particular books come with
+     the books (Add Stock, Transfer, Deliver, a sale's Add postage), not from
+     this form; general shipping is the kind "Shipping". A cost already put on
+     books keeps its box here, so it can still be changed. */
+  if(!b.on && !f.bcHad) return '';
   const head = `<label class="exp-rb"><input type="checkbox" id="xBc" ${b.on?'checked':''}> This is the cost of printing or shipping books</label>`;
   if(!b.on) return `<div class="bc-box">${head}</div>`;
   const O = EXP.bcOpt, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
@@ -11038,7 +11162,9 @@ function bcRead(f){
 /* What goes to the server with the expense: the link, and any weights typed. */
 function bcPayload(f){
   const b = f.bc;
-  if(!bcMine() || EXP.pub || !b) return {};
+  // Shipping on a delivery or a transfer is sent for anyone (b328); the rest is Finance's.
+  const own = BC_ON && b && b.on && (b.k==='post' || b.k==='ship');
+  if((!bcMine() && !own) || EXP.pub || !b) return {};
   if(!b.on) return {bookLink:null};
   if(b.k==='post') return {bookLink:{k:'post', sale:b.sale}};
   if(b.k==='ship'){ const w = {}; Object.keys(b.weights).forEach(id=>{ if(Number(b.weights[id]) > 0) w[id] = Number(b.weights[id]); });
@@ -11558,6 +11684,7 @@ async function expSave(){
   const btn = $('#xSave'); btn.disabled = true; btn.textContent = 'Saving…';
   try{
     const r = await expPost(f, false);
+    if(EXP.after){ const after = EXP.after; EXP.after = null; closeModal(); after([f]); return; }
     if(EXP.pub){ reimbPublicDone([f]); return; }
     // On the Finance page (b254), its lists and totals take the change at once.
     if(FINP.on){ toast(f.editing ? 'Expense saved' : 'Expense recorded'); closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
@@ -11684,6 +11811,7 @@ async function expReview(all){
       }
     }
     EXP.batch = [];
+    if(EXP.after){ const after = EXP.after; EXP.after = null; closeModal(); after(done); return; }
     if(P){ reimbPublicDone(done); return; }
     toast(done.length===1 ? (done[0].kind==='reimburse' && !done[0].forEmail ? 'Saved. Finance will pay you back.' : 'Expense recorded') : done.length + ' expenses saved');
     if(FINP.on){ closeModal(); finGo(FINP.sec, undefined, {reload:true}); return; }
@@ -12290,7 +12418,7 @@ function finOvwCols(){
     {l:'Total Gross', cls:'fin-big', f:a=>finGrossParts(a)},
     {l:'Donations', f:a=>({v:finUsd(a.don, a.eDon)})},
     {l:'Pending', f:a=>({v:finUsd(a.pend, a.ePend)})},
-    {l:'Expenses', f:a=>finExpParts(a)},
+    {l:'Expenses', cls:'fin-expc', f:a=>finExpParts(a)},
     {l:'Net', cls:'fin-big fin-netc', f:a=>Object.assign(finNetParts(a), {neg: a.net < -0.004})},
     {l:'Margin', cls:'fin-mg', f:a=>({v: a.margin===null ? '—' : finVal({pct:true}, a.margin), neg: a.margin!==null && a.margin < 0})}];
 }
@@ -12354,7 +12482,7 @@ function finOverviewRows(){
 const finRepBtn = (part, title) => `<button type="button" class="btn btn-gold btn-sm sec-rep" data-act="finrep" data-part="${part}" title="${esc(title || 'Copy just this section for WhatsApp')}">📋</button>`;
 function finOverviewHTML(){
   const O = finOverviewRows(), a = O.total, figs = finOverviewFigs(a);
-  const tiles = figs.map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
+  const tiles = figs.map(m=>`<div class="fin-tile${m.k==='net'?' fin-net':''}${m.k==='exp'?' fin-exp':''}"><div class="fin-tl">${esc(m.l)}</div>
     <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${finSubH(m.sub)}</div>` : ''}${m.cur ? `<div class="fin-ts fin-cur">${esc(m.cur)}</div>` : ''}${finExHTML(m, 'fin-ts')}</div>`).join('');
   /* The table under the totals (b297, Gita): for Big Books, Adventures and
      Other each Sold, Gifted, Distributed and Gross; then Total Gross, the
@@ -13765,7 +13893,7 @@ function finExpFigs(T){
 }
 function finExpBarHTML(T, only){
   const figs = finExpFigs(T).filter((m,i)=>only===undefined || i===only);
-  return `<div class="fin-tiles ${only===undefined ? 'fin-tiles2' : 'fin-tiles1'}">${figs.map((m,i)=>`<div class="fin-tile${i===0?' fin-net':''}"><div class="fin-tl">${esc(m.l)}</div>
+  return `<div class="fin-tiles ${only===undefined ? 'fin-tiles2' : 'fin-tiles1'}">${figs.map((m,i)=>`<div class="fin-tile${i===0?' fin-exp':''}"><div class="fin-tl">${esc(m.l)}</div>
     <div class="fin-tv">${m.v}</div>${m.sub ? `<div class="fin-ts">${finSubH(m.sub)}</div>` : ''}${finExHTML(m, 'fin-ts')}</div>`).join('')}</div>`;
 }
 /* Send Reimbursements Link: a small button by the heading opens it (Gita, 2026-10-20). */
@@ -13892,10 +14020,10 @@ function finExpSecHTML(){
   /* A row each, like the sales log (Gita, 2026-10-20): the date, what it was
      for and what it cost; tapping it opens the rest. */
   const row = x => { const open = FIN.exOpen.has(x.id), rc = x.receipts || [];
-    return `<div class="log-item fx-item${x.status==='declined'?' fin-dim':''}${x.kind==='reimburse' && x.status==='pending' ? ' pending' : ''}${open?' open':''}" data-xid="${esc(x.id)}">
+    return `<div class="log-item fx-item${x.bookLink && x.bookLink.k==='print' ? ' fx-print' : ''}${x.status==='declined'?' fin-dim':''}${x.kind==='reimburse' && x.status==='pending' ? ' pending' : ''}${open?' open':''}" data-xid="${esc(x.id)}">
       <div class="fx-row" data-act="exopen" data-id="${esc(x.id)}"><span class="fx-d"><span class="fx-dl">${esc(x.date)}</span><span class="fx-ds">${esc(finShortDate(x.date))}</span></span>
         <span class="fx-w no-edit">${esc(x.desc)}</span>
-        <span class="fx-o">${esc(finExpOrig(x))}</span><span class="fx-a">${esc(finExpUsd(x))}</span><span class="li-chev">▶</span></div>
+        <span class="fx-o">${esc(finExpOrig(x))}</span><span class="fx-a exp-red">${esc(finExpUsd(x))}</span><span class="li-chev">▶</span></div>
       <div class="li-det fx-det">
         ${x.forEmail==='*general' || x.who==='General' ? '' /* b291: a General cost is nobody's */ : `<div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>`}
         <div><span class="k">Type</span> <span class="v">${esc(x.type)}</span></div>
@@ -14107,7 +14235,7 @@ function expGroupHTML(xs){
     return `<div class="exp-gi${off?' exp-off':''}">
       <div class="exp-top"><span><b>${esc(y.desc)}</b> <span class="exp-meta">${esc(y.date)} · ${esc(y.placeLabel)}${y.category ? ' · ' + esc(y.category==='Other' && y.catOther ? 'Other: ' + y.catOther : y.category) : ''}${
         ways.length > 1 ? ' · by ' + esc(y.method) + ' in ' + esc(y.reimbCur) : ''}</span></span>
-        <span class="exp-amt">${expOtherCur(y) && out && String(out[1]).toUpperCase()==='USD' ? esc(finDual(y.amt, y.cur, out[0]))
+        <span class="exp-amt exp-red">${expOtherCur(y) && out && String(out[1]).toUpperCase()==='USD' ? esc(finDual(y.amt, y.cur, out[0]))
           : esc(cashFmt(y.amt, y.cur)) + (expOtherCur(y) ? `<span class="exp-fx">${out ? '→ ' + esc(cashFmt(out[0], out[1])) : 'rate not found'}</span>` : '')}</span></div>
       ${expPayAmtLine(y) ? `<div class="exp-meta">${esc(expPayAmtLine(y))}</div>` : ''}${expOver(y) ? `<span class="exp-flag">${esc(expOver(y))}</span>` : ''}
       ${y.notes ? `<div class="exp-note">💬 ${esc(y.notes)}</div>` : ''}${expReceiptsHTML(y)}
@@ -14475,7 +14603,7 @@ function finWaVisual(L){
    Visualize is no longer a section of its own: under all the figures and
    lists, each screen draws what it shows as pictures. Everything comes from
    the same figures the screen uses, in dollars at each place's own rates. */
-const FIN_C = { in:'#1baf7a', out:'#eb6834', net:'#2a78d6' /* = --net */, pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', ot:'#17a2a2', don:'#eda100' };
+const FIN_C = { in:'#1baf7a', out:'#C0392B' /* Expenses red everywhere (b328, Gita) */, net:'#2a78d6' /* = --net */, pend:'#b9c3cf', bb:'#2a78d6', av:'#e87ba4', ot:'#17a2a2', don:'#eda100' };
 function finShare(rows){
   const total = rows.reduce((t,r)=>t+r.v, 0);
   rows.forEach((r,i)=>{ r.c = r.c || VIZ_COLORS[i % VIZ_COLORS.length]; r.p = total ? r.v/total*100 : 0; });
@@ -14875,6 +15003,8 @@ function FIN_BTNS(fin){
   if((fin==='F' || fin==='U') && !FIN_ON) b.push(`<button class="btn" data-act="reimbset">⚙️ Reimbursement Settings</button>`);
   // b288 (Gita): practice first.
   if(fin==='F' || fin==='U') b.push(`<button class="btn" data-act="finplaces">📍 Edit Finance-Only Locations</button>`);
+  // b328 (practice): what each copy cost, wherever you are.
+  if(BC_ON) b.push(`<button class="btn" data-act="bccost">📚 Cost per Book</button>`);
   return b;
 }
 
@@ -16054,7 +16184,7 @@ function buildReport(part, opts){
           mine.push(x);
           legs(x).forEach(l=>{ if(l.type && l.type!=='Gift' && l.amt) got[l.cur]=(got[l.cur]||0)+l.amt; });
         });
-        (STATE.costs||[]).forEach(c=>{
+        salesCosts().forEach(c=>{
           if(!c || c.partnerId || !locs.includes(c.location)) return;
           got[c.cur] = (got[c.cur]||0) - (Number(c.amt)||0);
           spent.push(c);
@@ -16069,7 +16199,7 @@ function buildReport(part, opts){
     }
 
     // Costs come off our own takings; a group's costs come off what it is owed.
-    const costs = combo ? (STATE.costs||[]).filter(c=>c && !c.partnerId && combo.has(c.location)) : scopedCosts();
+    const costs = combo ? salesCosts().filter(c=>c && !c.partnerId && combo.has(c.location)) : scopedCosts();
     /* Then Expenses, Donations and Net Sales, as on the totals card:
        Net Sales = Total Collections − Expenses − Donations. */
     const cost = {}, dons = {};
@@ -16089,7 +16219,7 @@ function buildReport(part, opts){
       const netText = Object.keys(net).filter(c=>Math.abs(net[c])>0.005).sort()
         .map(c=>cashFmt(net[c],c)).join(' + ') || '0';
       const nu = totUsd - costUsd - donUsd;
-      line('Net Sales', netText + eq(eTot || eCost, nu));
+      if(seesNet()) line('Net Sales', netText + eq(eTot || eCost, nu));
     }
 
     if(curs(conGrand).length){
@@ -17950,6 +18080,51 @@ function supUpload(){
    drop-down of every place (each region's warehouse, anyone storing books, its
    open events), starting at wherever you are in the app; each says how many
    copies it has. Then Deliver. Another region, or outside the tour, below. */
+/* ---- Shipping costs where books move (b328, practice; Gita, 3 Nov) ----
+   "Printing/Shipping costs should only be able to be added when adding stock,
+   transferring stock or when selling individual books." One block of
+   questions, used by Deliver and by Transfer: Did this require shipping
+   costs? How much? (Transfer: "I don't know yet" makes a Pending Expense on
+   your To Do.) Do you require reimbursement? */
+const SHIP_ON = PRACTICE;
+function shipAskHTML(p, curs, opts){
+  if(!SHIP_ON) return '';
+  opts = opts || {};
+  const yn = (name, extra) => `<div class="ship-yn"><label><input type="radio" name="${p}${name}" value="" checked> No</label><label><input type="radio" name="${p}${name}" value="1"> Yes</label>${extra||''}</div>`;
+  return `<div class="ship-ask" id="${p}Ship">
+    <div class="field"><label>Did this require shipping costs?</label>${yn('ShipQ')}</div>
+    <div class="ship-more" id="${p}ShipMore" hidden>
+      <div class="row2"><div class="field"><label>Shipping cost</label><input type="number" min="0" step="0.01" inputmode="decimal" id="${p}ShipAmt" placeholder="0.00"></div>
+        <div class="field"><label>Currency</label><select id="${p}ShipCur">${curs.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select></div></div>
+      ${opts.unknown ? `<label class="exp-rb"><input type="checkbox" id="${p}ShipUnk"> I don't know the cost yet: put it on my To Do as a Pending Expense</label>` : ''}
+      <div class="field" id="${p}ShipRbF"><label>Do you require reimbursement for these shipping costs?</label>${yn('ShipRb')}</div>
+    </div></div>`;
+}
+function shipAskBind(p){
+  const box = $('#' + p + 'Ship'); if(!box) return;
+  const sync = () => {
+    const on = !!(box.querySelector(`input[name="${p}ShipQ"]:checked`)||{}).value, unk = $('#' + p + 'ShipUnk');
+    $('#' + p + 'ShipMore').hidden = !on;
+    const u = !!(unk && unk.checked);
+    $('#' + p + 'ShipAmt').disabled = u; $('#' + p + 'ShipRbF').hidden = u;
+  };
+  box.addEventListener('change', sync); sync();
+}
+function shipAskRead(p){
+  const box = $('#' + p + 'Ship'); if(!box) return {on:false};
+  const on = !!(box.querySelector(`input[name="${p}ShipQ"]:checked`)||{}).value;
+  if(!on) return {on:false};
+  const unk = $('#' + p + 'ShipUnk');
+  if(unk && unk.checked) return {on:true, unknown:true, cur:$('#' + p + 'ShipCur').value};
+  const amt = Math.round((Number($('#' + p + 'ShipAmt').value)||0)*100)/100;
+  if(!(amt > 0)) return {on:true, err:'Enter what the shipping cost' + ($('#' + p + 'ShipUnk') ? ', or tick that you don\'t know it yet.' : '.')};
+  return {on:true, amt, cur:$('#' + p + 'ShipCur').value, reimb:!!(box.querySelector(`input[name="${p}ShipRb"]:checked`)||{}).value};
+}
+/* Where a sale's expense belongs, as Expenses names places: its event, or its region for a warehouse sale. */
+function saleExpPlace(x){
+  const loc = String(x.location||'');
+  return (STATE.events||[]).some(e=>e.eventId===loc) ? loc : regionOfLoc(loc) || loc;
+}
 async function deliverPickModal(id, bundle){
   const members = bundle
     ? (STATE.sales||[]).filter(s=>s.bundle===bundle && s.type==='PREORDER' && !s.delivered)
@@ -17994,6 +18169,9 @@ async function deliverPickModal(id, bundle){
   const home = (regionById(regionOfLoc(x.location))||{}).whLoc;
   const here = items.some(i=>i.v===CUR_LOC) ? CUR_LOC : items.some(i=>i.v===home) ? home : (items[0]||{}).v || '';
   let src = here;
+  /* Shipping (b328, practice; Gita): the currencies of the place that made the
+     sale and of where you are, then dollars and euros. */
+  const shipCurs = [...new Set([...((regionById(regionOfLoc(x.location))||{}).currencies||[]), ...((currentRegion()||{}).currencies||[]), 'USD', 'EUR'])];
   openModal(`
     ${mHead(bundle ? 'Deliver — ' + n + ' books' : 'Deliver — ' + bookById(x.bookId).name)}
     <div class="m-body">
@@ -18001,6 +18179,7 @@ async function deliverPickModal(id, bundle){
       ${bundle?`<div class="hint">The whole ${n}-book pre-order is delivered together.</div>`:''}
       <div class="field"><label>Fulfilled from</label>${comboHTML('dvFrom', (items.find(i=>i.v===src)||{}).l || '', 'Search for a warehouse, event or person')}
         <div class="hint" id="dvHave"></div></div>
+      ${shipAskHTML('dv', shipCurs)}
       <div class="err" id="modalErr"></div>
       <div class="cash-sub">Or</div>
       <div class="opts">
@@ -18018,7 +18197,8 @@ async function deliverPickModal(id, bundle){
   };
   comboBind('dvFrom', items, src, v=>{ src = v; $('#modalErr').textContent = ''; show(); });
   show();
-  const send = fromStock => {
+  shipAskBind('dv');
+  const send0 = fromStock => {
     if(fromStock && !covers(src)){ $('#modalErr').textContent = 'Stock has changed — not enough there any more. Choose another place.'; return; }
     const from = fromStock ? src : '';
     commit(bundle ? {action:'markDeliveredBundle', bundle, fromStock, fromLoc:from} : {action:'markDelivered', saleId:id, fromStock, fromLoc:from}, st=>{
@@ -18029,6 +18209,28 @@ async function deliverPickModal(id, bundle){
         if(fromStock && (holderById(from) || regionsList().some(r=>r.whLoc===from || r.regionId===regionOfLoc(from)))) invAdd(st, from, mm.bookId, -1);
       });
     }, 'Delivered');
+  };
+  /* b328 (Gita): "Did this require shipping costs?" Yes puts the cost on this
+     book (a postage cost, Code.gs bookCostCalc_), or, with no cost known for
+     the book, on the place that made the sale, wherever it was delivered from.
+     "Do you require reimbursement?" Yes opens the reimbursement form, filled
+     in; its Submit delivers the book, records the cost and sends Finance the
+     request. */
+  const send = fromStock => {
+    if(fromStock && !covers(src)){ $('#modalErr').textContent = 'Stock has changed — not enough there any more. Choose another place.'; return; }
+    const sh = shipAskRead('dv');
+    if(sh.err){ $('#modalErr').textContent = sh.err; return; }
+    if(!sh.on) return send0(fromStock);
+    const book = (bookById(x.bookId)||{}).name || 'a book';
+    const exp = {amt:sh.amt, cur:sh.cur, location: saleExpPlace(x), category:'Shipping', bookLink:{k:'post', sale:x.saleId},
+      desc:'Shipping: ' + (n > 1 ? n + ' books' : book) + (x.name ? ' for ' + x.name : '')};
+    if(sh.reimb){
+      expensesModal(null, null, Object.assign({kind:'reimburse', mine:true, after:()=>send0(fromStock)}, exp));
+      return;
+    }
+    send0(fromStock);
+    post({action:'expSave', id:expId('X'), kind:'record', date:new Date().toISOString().slice(0,10), receipts:[], payTo:{}, by:whoAmI(), ...exp})
+      .then(()=>toast('Delivered, with its shipping cost')).catch(e=>alert('Delivered, but the shipping cost was not saved: ' + e.message + '\nAdd it in Expenses.'));
   };
   $('#dvGo').addEventListener('click', ()=>send(true));
   $('#modal').querySelector('[data-out]').addEventListener('click', ()=>send(false));
@@ -18395,7 +18597,8 @@ function priceGrid(edit, st, opts){
 
     // Most regions price every big book the same, so fill them in one go.
     const fill = (label,cat)=>`<div class="rp-row rp-fill"><div class="rp-name">${label}
-        ${onlyHere ? '' : '<span class="muted-note">select relevant offerings</span>'}</div>
+        ${onlyHere ? '' : `<span class="muted-note">select relevant offerings</span>
+          <span class="rp-sel"><button type="button" class="rp-sel-b" data-sel="${cat}" data-on="1">Select all</button><button type="button" class="rp-sel-b" data-sel="${cat}" data-on="0">Deselect all</button></span>`}</div>
       <div class="rp-cells">${curList.map((c,i)=>
         box(c, i, `class="rp rp-all" data-cat="${cat}" data-cur="${esc(c)}"`, '')).join('')}</div></div>`;
 
@@ -18425,7 +18628,10 @@ function priceGrid(edit, st, opts){
     const big  = all.filter(b=>catOfBook(b)==='big');
     const other= all.filter(b=>catOfBook(b)==='other');
     const aotm = all.filter(b=>catOfBook(b)==='aotm');
-    return head
+    /* b328 (Gita, 3 Nov): tick or untick every title in one go, or one kind
+       at a time from its own row below. */
+    const selAll = onlyHere ? '' : `<div class="rp-selall"><span>All titles:</span><button type="button" class="btn btn-ghost btn-sm rp-sel-b" data-sel="*" data-on="1">Select all</button><button type="button" class="btn btn-ghost btn-sm rp-sel-b" data-sel="*" data-on="0">Deselect all</button></div>`;
+    return selAll + head
       + (big.length   ? fill('Big Books','big')   + rowsFor(big)   : '')
       + (other.length ? fill('Other','other')     + rowsFor(other) : '')
       + (aotm.length  ? fill('Adventures','aotm') + rowsFor(aotm)  : '');
@@ -18552,6 +18758,17 @@ function priceGrid(edit, st, opts){
     $('#rgPrices').addEventListener('change',e=>{
       const cb=e.target.closest('.bk-cb'); if(!cb) return;
       cb.closest('.bk-row').classList.toggle('off', !cb.checked);
+    });
+    // Select all / Deselect all, for every title or for one kind (b328).
+    $('#rgPrices').addEventListener('click',e=>{
+      const b=e.target.closest('.rp-sel-b'); if(!b) return;
+      e.preventDefault();
+      const on = b.dataset.on==='1', kind = b.dataset.sel;
+      [...document.querySelectorAll('#rgPrices .bk-cb')].forEach(cb=>{
+        const bk = (STATE.books||[]).find(x=>x.id===cb.value);
+        if(kind!=='*' && (!bk || catOfBook(bk)!==kind)) return;
+        cb.checked = on; cb.closest('.bk-row').classList.toggle('off', !on);
+      });
     });
     calcEmpty();
   }
@@ -21230,6 +21447,10 @@ function placePickModal({title, kinds, drawBody, save, saveLabel, dropdowns}){
 const placeKinds = () => { const r = (ME && ME.universal) ? 'U' : actingRole();
   return r==='U' ? ['hq','season','region','event'] : r==='SL' ? ['region','event'] : r==='RL' ? ['event'] : []; };
 
+/* The id of the place picked, by its kind (b328 fix, Gita: "That event is no
+   longer listed"). An event also carries its region's id, and taking the first
+   id found renamed the region's id instead of the event and failed its dates. */
+const placeIdOf = (kind, p) => kind==='event' ? p.eventId : kind==='season' ? p.seasonId : p.regionId;
 /* Edit Location (practice, b306, Gita: "edit region should just be name and
    dates", picked like Change Location Order). */
 function placeEditModal(){
@@ -21237,13 +21458,13 @@ function placeEditModal(){
   const K = {season:'seasons', region:'regions', event:'events'};
   placePickModal({title:'Edit Location', kinds:placeKinds(),
     drawBody(kind, p){
-      const id = p.seasonId || p.regionId || p.eventId;
+      const id = placeIdOf(kind, p);
       // Earthly HQ has a name and no dates, as in Edit Earthly HQ (b307).
       $('#ppBody').innerHTML = `<div class="field"><label>Name</label><input id="ppName" type="text" value="${esc(p.name||'')}"></div>${kind==='hq' ? '' : placeMetaHTML(K[kind])}`;
       pm = kind==='hq' ? null : placeMetaBind(K[kind], '#ppName', id, ()=>'');
     },
     async save(kind, p, st, sn){
-      const id = p.seasonId || p.regionId || p.eventId, name = $('#ppName').value.trim();
+      const id = placeIdOf(kind, p), name = $('#ppName').value.trim();
       if(!name){ $('#modalErr').textContent = 'Give it a name.'; return; }
       const meta = pm ? pm.read() : {};
       if(meta.err){ $('#modalErr').textContent = meta.err; return; }
@@ -22306,6 +22527,62 @@ function placeCtx(place, cb){
 }
 
 /* Which of the four transfers this is. */
+/* The shipping on a transfer (b328, practice; Gita). Books that travel as a
+   shipment: the cost is put on that shipment's books (a book cost, shared by
+   weight, Code.gs bookCostCalc_). Books that arrive at once: a Shipping
+   expense of the place they went to. Cost not known yet: a Pending Expense
+   on your own To Do, to fill in later. Paid yourself: the reimbursement form,
+   filled in. */
+function xfShipCost(ship, f, t, n, shipId){
+  if(!ship || !ship.on) return;
+  const place = t.kind==='event' ? t.loc : (t.seasonId===HQ_ID ? HQ_REGION : t.regionId);
+  const what = 'Shipping: ' + n + ' book' + (n===1?'':'s') + ' from ' + placeLabel(f) + ' to ' + placeLabel(t);
+  const exp = {location:place, category:'Shipping', desc:what, cur:ship.cur};
+  if(shipId) exp.bookLink = {k:'ship', sh:shipId};
+  if(ship.unknown){ pendExpAdd(Object.assign({id:'pe' + Date.now().toString(36), ts:new Date().toISOString()}, exp)); return; }
+  exp.amt = ship.amt;
+  if(ship.reimb){ setTimeout(()=>expensesModal(null, null, Object.assign({kind:'reimburse', mine:true}, exp)), 0); return; }
+  post({action:'expSave', id:expId('X'), kind:'record', date:new Date().toISOString().slice(0,10), receipts:[], payTo:{}, by:whoAmI(), ...exp})
+    .then(()=>toast('Shipping cost recorded')).catch(e=>alert('The books were sent, but the shipping cost was not saved: ' + e.message + '\nAdd it in Expenses.'));
+}
+/* Pending Expenses (b328): costs not known yet, kept with the person (pref pendExp). */
+const pendExps = () => (ME && ME.prefs && Array.isArray(ME.prefs.pendExp)) ? ME.prefs.pendExp : [];
+async function pendExpSet(list){
+  ME.prefs = Object.assign({}, ME.prefs, {pendExp:list});
+  try{ const r = await post({action:'setMyPref', key:'pendExp', value:list.length ? list : null}); if(r && r.result) ME = r.result; }
+  catch(e){ toast('Could not keep that on your To Do: ' + e.message, true); }
+  try{ renderBottom(); }catch(e){ try{ renderAll(); }catch(e2){} }
+}
+function pendExpAdd(x){ pendExpSet(pendExps().concat([x])); toast('Added to your To Do as a Pending Expense'); }
+function pendExpItemHTML(x){
+  return `<div class="log-item pe-item"><div class="li-row"><span class="li-book no-edit">${esc(x.desc)}</span>
+    <span class="li-who">${esc(String(x.ts||'').slice(0,10))}</span>
+    <span class="pe-btns"><button type="button" class="btn btn-primary btn-xs" data-act="pexadd" data-id="${esc(x.id)}">Add cost</button>
+    <button type="button" class="btn btn-ghost btn-xs" data-act="pexdrop" data-id="${esc(x.id)}" title="No cost after all">✕</button></span></div></div>`;
+}
+function pendExpModal(id){
+  const x = pendExps().find(y=>y.id===id); if(!x) return;
+  const curs = [...new Set([x.cur, ...((currentRegion()||{}).currencies||[]), 'USD', 'EUR'].filter(Boolean))];
+  openModal(`${mHead('Pending Expense')}
+    <div class="m-body"><div class="note">${esc(x.desc)}</div>
+      ${shipAskHTML('pe', curs)}
+      <div class="err" id="modalErr"></div></div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="peGo">Save</button></div>`);
+  // Here the answer to "did it cost anything" is already yes.
+  const yes = document.querySelector('#modal input[name="peShipQ"][value="1"]'); if(yes){ yes.checked = true; yes.closest('.field').hidden = true; }
+  shipAskBind('pe');
+  $('#peGo').addEventListener('click', async ()=>{
+    const sh = shipAskRead('pe');
+    if(sh.err){ $('#modalErr').textContent = sh.err; return; }
+    const exp = {location:x.location, category:x.category||'Shipping', desc:x.desc, cur:sh.cur, amt:sh.amt};
+    if(x.bookLink) exp.bookLink = x.bookLink;
+    const drop = () => pendExpSet(pendExps().filter(y=>y.id!==id));
+    if(sh.reimb){ expensesModal(null, null, Object.assign({kind:'reimburse', mine:true, after:drop}, exp)); return; }
+    try{ await post({action:'expSave', id:expId('X'), kind:'record', date:new Date().toISOString().slice(0,10), receipts:[], payTo:{}, by:whoAmI(), ...exp});
+      closeModal(); toast('Expense recorded'); drop(); }
+    catch(e){ $('#modalErr').textContent = e.message; }
+  });
+}
 function transferKind(from, to){
   if(!from || !to) return '';
   if(from.loc===to.loc) return 'same';
@@ -22478,13 +22755,16 @@ function transferStockModal(opts){
       if(travel==='travel') h += courierHTML();
     }
     h += tableHTML();
-    h += `<div class="xf-all"><button type="button" class="btn btn-ghost btn-sm" id="xfAll">Transfer everything</button></div>
+    h += `<div class="xf-all"><button type="button" class="btn btn-ghost btn-sm" id="xfAll">Transfer everything</button> <button type="button" class="btn btn-ghost btn-sm" id="xfClear">Clear everything</button></div>
       <div id="preWarn"></div>`;
+    // b328 (practice): "When transferring stock, there should also be a Shipping yes/no field."
+    h += shipAskHTML('xf', [...new Set([...((regionById(toPick.value.regionId)||{}).currencies||[]), ...((regionById(fromPick.value.regionId)||{}).currencies||[]), 'USD', 'EUR'])], {unknown: !!ME});
     if(k!=='store' || storage!=='multi')
       h += `<div class="field"><label>Note (optional)</label><input type="text" data-k="note"></div>`;
     body.innerHTML = h;
     restoreTyped();
     bindTop();
+    shipAskBind('xf');
     if(travel==='travel' && (k==='region'||k==='season')) syncCourier();
     if(returnAll && (k==='store' || k==='season') && document.querySelector('#xfBody .xf-in[data-src]')){
       returnAll = false;
@@ -22687,6 +22967,11 @@ function transferStockModal(opts){
       });
       recalc(); return;
     }
+    // b328 (Gita): undo a "Transfer everything" pressed by mistake.
+    if(e.target.closest('#xfClear')){
+      document.querySelectorAll('#xfBody .xf-in').forEach(i=>{ i.value = ''; });
+      recalc(); return;
+    }
     if(e.target.closest('#xfAddSw')){ keepTyped(); sws.push(newSw()); draw(); return; }
     const drop = e.target.closest('[data-swdrop]');
     if(drop){ keepTyped(); sws = sws.filter(s=>s.key!==drop.dataset.swdrop); draw(); }
@@ -22707,6 +22992,8 @@ function transferStockModal(opts){
     }
     if(travel==='travel' && (k==='region'||k==='season') && v('courier')!=='shipping' && !v('carrier'))
       return err('Who is bringing them? Enter the devotee’s name.');
+    const ship = shipAskRead('xf');
+    if(ship.err) return err(ship.err);
     // The count reminder already came with "Transfer everything"; this is the last check.
     const msg = (LEAVING_MSG[k] ? LEAVING_MSG[k]+'\n\n' : '') + 'Are you 108% sure you’ve counted everything correctly?';
     if(!confirm(msg)) return;
@@ -22735,6 +23022,7 @@ function transferStockModal(opts){
           items.forEach(it=>invAdd(st, shipId, it.bookId, it.qty));
         }
       } : ()=>{}, 'In transit to '+placeLabel(t));
+      xfShipCost(ship, f, t, items.reduce((n,it)=>n+it.qty, 0), shipId);
       return;
     }
 
@@ -22767,6 +23055,7 @@ function transferStockModal(opts){
           fromBefore:fB, fromAfter:fB-m.qty, toBefore:tB, toAfter:tB+m.qty});
       });
     } : ()=>{}, done);
+    xfShipCost(ship, f, t, moves.reduce((n,m)=>n+m.qty, 0), '');
   });
 
   if(fromPick.value) loadFrom(fromPick.value); else draw();
@@ -23756,6 +24045,8 @@ document.addEventListener('click',e=>{
   if(a==='permissions'){ permissionsModal(); return; }
   if(a==='todofilter'){ const k = t.dataset.tab; if(TODO.off[k]) delete TODO.off[k]; else TODO.off[k] = 1; todoSave(); renderBottom(); return; }
   if(a==='todoreport'){ todoReport(); return; }
+  if(a==='pexadd'){ pendExpModal(t.dataset.id); return; }
+  if(a==='pexdrop'){ if(confirm('Take this off your To Do? No expense is recorded.')) pendExpSet(pendExps().filter(y=>y.id!==t.dataset.id)); return; }
   if(a==='hqtodofilter'){ const k = t.dataset.tab; if(HQTODO.off[k]) delete HQTODO.off[k]; else HQTODO.off[k] = 1;
     try{ localStorage.setItem('tbs_hqtodo', JSON.stringify({off:HQTODO.off})); }catch(e){} const ev = STATE.everywhere; if(ev) withRollup(()=>renderHqTodo(ev)); return; }
   if(a==='hqtodoreport'){ hqTodoReport(); return; }
@@ -23934,6 +24225,7 @@ document.addEventListener('click',e=>{
   if(a==='sharriveall'){ shipArriveAll(t.dataset.id); return; }
   if(a==='shreturn'){ shipReturnModal(t.dataset.id); return; }
   if(a==='bcweights'){ bcWeightsModal(); return; }
+  if(a==='bccost'){ costPerBookModal(); return; }
   if(a==='holders'){ holdersModal(); return; }
   if(a==='holderedit'){ holderEditModal(t.dataset.id); return; }
   if(a==='sharelinks'){ shareLinksModal(); return; }

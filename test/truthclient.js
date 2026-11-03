@@ -2,6 +2,7 @@
    closed region's frozen rates, then a closed season's, then today's — in the
    tiles, the collections table, the payments table, the report, and at HQ. */
 const { T, store } = require(__dirname + '/clientsim.js');
+T.setMe({ universal: true, grants: [], prefs: {} });   // b328: Net Sales is for Universal and Finance
 let k = 0;
 const sale = (loc, cur, amt, o) => Object.assign({ saleId: 's' + (k++), ts: 't', location: loc, type: 'SALE', bookId: 'b', qty: 1,
   p1type: 'Cash', p1cur: cur, p1amt: amt, p2type: '', p2cur: '', p2amt: 0, pending: false, paid: true,

@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b327';
+var SERVER_BUILD = 'b328';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -704,6 +704,17 @@ function bookCostCalc_() {
     put(toL, b2, pieces);
   });
   Object.keys(loaded).forEach(function (id) { out.cap[id] = Math.max(0, loaded[id] - (lost[id] || 0)); });
+  /* The copies still on each shelf whose cost is known (b328, Gita: "a simple
+     way for finances to see the cost per book at any level"): {loc: {book:
+     [copies, dollars]}}. Copies on their way sit at the shipment's id. */
+  out.held = {};
+  Object.keys(shelf).forEach(function (k) {
+    var bits = k.split('||'), n = 0, u = 0;
+    shelf[k].forEach(function (p) { if (!p.known || !(p.n > 0)) return; n += p.n; Object.keys(p.c).forEach(function (id) { u += p.c[id] * p.n; }); });
+    if (!n) return;
+    var at = out.held[bits[0]] || (out.held[bits[0]] = {});
+    at[bits[1]] = [n, Math.round(u * 100) / 100];
+  });
   // Refunds for books sent back: against the shipment's (first) cost.
   var firstShipExp = {};
   exps.forEach(function (x) { if (x.L.k === 'ship' && !firstShipExp[x.L.sh]) firstShipExp[x.L.sh] = x; });
@@ -736,9 +747,18 @@ function bookCostSales_() {
     var c = C.sale[String(s.saleId)];
     if (!c) return;
     var got = legsUsd_(s) + dueUsd_(s);
-    res[String(s.saleId)] = { u: Math.round(c.u * 100) / 100, o: c.o, g: Math.round(got * 100) / 100 };
+    res[String(s.saleId)] = { u: Math.round(c.u * 100) / 100, o: c.o, g: Math.round(got * 100) / 100, b: String(s.bookId || ''), n: Math.max(1, Math.round(Number(s.qty) || 1)) };
   });
-  return { on: true, sales: res };
+  /* The printing and shipping bills themselves (b328): the sales side counts
+     what the books sold cost instead of these, so it does not count them twice. */
+  /* Postage on a sale whose book has no known cost is not on any book, so it
+     stays an ordinary expense of the place that made the sale. */
+  var ex = dbHas_('_expenses') ? objectsOf_('_expenses').filter(function (x) {
+    if (!x || !x.id || !x.bookLink) return false;
+    var L = bcJson_(x.bookLink);
+    return !(L && L.k === 'post' && !res[String(L.sale || '')]);
+  }).map(function (x) { return String(x.id); }) : [];
+  return { on: true, sales: res, ex: ex, held: C.held || {} };
 }
 /* What a printing or shipping cost can be put on, for the expense form:
    books brought into the app (from Add Stock), and shipments. Newest first. */
@@ -2105,6 +2125,9 @@ function doTransferMulti(p) {
   });
   saveInvMap_(map);
   Object.keys(touched).forEach(function (l) { markDirty_(l); });
+  var byTo = {};
+  moves.forEach(function (m) { (byTo[m.to] = byTo[m.to] || []).push(m.bookId); });
+  Object.keys(byTo).forEach(function (l) { offerTitlesAt_(l, byTo[l]); });
 }
 
 function doSaveHolder(p) {
@@ -2266,6 +2289,7 @@ function doSendShipment(p) {
       }
     });
   }
+  offerTitlesAt_(toRegion, items.map(function (it) { return it.bookId; }));
 
   if (fromOutside && mode === 'direct') {
     // Straight onto the destination shelf: this is new stock entering the tour.
@@ -6064,6 +6088,25 @@ function offerTitleInRegion_(loc, bookId) {
   doRegionAddBooks({ regionId: regionId, bookIds: bookId });
 }
 
+/* b328 (Gita, 3 Nov): books transferred to a place are carried there from
+   then on, so they appear in its Change Book Prices even when the region had
+   narrowed its list ("Seasons" from Vrindavana to Mayapur). Any season; an
+   event or a sub-warehouse counts as its region. */
+function offerTitlesAt_(loc, bookIds) {
+  loc = String(loc || '');
+  var regionId = '';
+  objectsOf_('_regions').some(function (r) { if (String(r.whLoc || '') === loc) { regionId = String(r.regionId); return true; } });
+  if (!regionId) objectsOf_('_events').some(function (e) { if (String(e.eventId) === loc) { regionId = String(e.regionId || ''); return true; } });
+  if (!regionId) objectsOf_('_holders').some(function (h) { if (String(h.holderId) === loc) { regionId = String(h.regionId || ''); return true; } });
+  if (!regionId && regionById_(loc)) regionId = loc;
+  if (!regionId) return;
+  var reg = regionById_(regionId);
+  if (!reg || !reg.books || !reg.books.length) return;   // blank = every title already
+  var add = (bookIds || []).filter(function (id) { var b = bookById_(id); return b && !b.partnerId && reg.books.indexOf(id) < 0; });
+  if (add.length) doRegionAddBooks({ regionId: regionId, bookIds: add.join(',') });
+  add.forEach(function (id) { fillCatPrices_(id, [regionId]); });
+}
+
 function doRegionAddBooks(p) {
   var regionId = String(p.regionId || '');
   if (!regionById_(regionId)) throw new Error('That region no longer exists.');
@@ -6401,6 +6444,9 @@ function doAdjustStockBulk(p) {
   if (!changed) throw new Error('Nothing to change — enter at least one amount.');
   saveInvMap_(map);
   markDirty_(loc);
+  // Stock added here is carried here, and priced like its kind (b328).
+  offerTitlesAt_(loc, items.filter(function (it) { return Math.round(Number(it.delta) || 0) > 0; })
+    .map(function (it) { return String(it.bookId); }));
 }
 
 function doSell(p) {
@@ -8450,8 +8496,48 @@ function doAddBook(p) {
                partnerId: String(p.partnerId || ''), sort: '' };
   dbInsert_('_custombooks', rowB);
   bookMemoClear_();
+  if (!rowB.partnerId) fillCatPrices_(id, null);
   markDirtyRegions_(regionsTouchedByBook_(p.partnerId));
   return id;
+}
+
+/* b328 (Gita, 3 Nov): "when a book is added in any place, it should
+   automatically take up the price of the books in the similar category." In
+   each region (every season), each currency where every priced title of the
+   same kind has one and the same price, the new title gets that price. Where
+   the kind's prices differ, or nothing is priced, it is left for a person.
+   A price already set is never changed. regionIds null = every region. */
+function fillCatPrices_(bookId, regionIds) {
+  var book = bookById_(bookId);
+  if (!book || book.partnerId || !dbHas_('_prices')) return;
+  var cat = book.cat, isReg = {}, only = null;
+  objectsOf_('_regions').forEach(function (r) { if (r.regionId) isReg[String(r.regionId)] = 1; });
+  if (regionIds) { only = {}; regionIds.forEach(function (r) { only[String(r)] = 1; }); }
+  var seen = {}, has = {};
+  objectsOf_('_prices').forEach(function (r) {
+    var rid = String(r.regionId || ''), bid = String(r.bookId || ''), cur = String(r.cur || '').toUpperCase();
+    if (!isReg[rid] || (only && !only[rid]) || !cur) return;
+    var amt = Number(r.price);
+    if (bid === String(bookId)) { has[rid + '|' + cur] = 1; return; }
+    var b = bookById_(bid);
+    if (!b || b.partnerId || b.cat !== cat || isNaN(amt) || amt <= 0) return;
+    var k = rid + '|' + cur;
+    if (!seen[k]) seen[k] = {};
+    seen[k][String(amt)] = 1;
+  });
+  var rows = [], dirty = {};
+  Object.keys(seen).forEach(function (k) {
+    if (has[k]) return;
+    var vals = Object.keys(seen[k]);
+    if (vals.length !== 1) return;
+    var bits = k.split('|');
+    rows.push({ regionId: bits[0], bookId: String(bookId), cur: bits[1], price: Number(vals[0]) });
+    dirty[bits[0]] = 1;
+  });
+  if (!rows.length) return;
+  dbInsert_('_prices', rows);
+  _priceMemo = null;
+  markDirtyRegions_(Object.keys(dirty));
 }
 
 function bookById_(id) { return bookIndex_()[id] || null; }
