@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b329';
+var SERVER_BUILD = 'b330';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -600,7 +600,7 @@ function bookCostCalc_() {
     A.h.push({ t: t, k: k, n: n, from: from, to: to, u: u, a: a, key: key });
   };
   var moveKey = function (m) { return String(m.id).replace(/_\d+$/, ''); };
-  exps.forEach(function (x) { if (x.L.k === 'print' || x.L.k === 'ship') alOf(x.id); });
+  exps.forEach(function (x) { if (x.L.k === 'print' || x.L.k === 'ship' || x.L.k === 'tx') alOf(x.id); });
   var shipLoad = {};
   exps.forEach(function (x) {
     if (x.L.k !== 'ship' || !ships[x.L.sh]) return;
@@ -611,6 +611,21 @@ function bookCostCalc_() {
     Object.keys(man).forEach(function (b) {
       var w = (W[b] || wAvg) / den;
       (per[b] = per[b] || []).push({ id: x.id, usd: x.usd * w, amt: x.amt * w, cur: x.cur });
+    });
+  });
+  /* Shipping on a transfer whose books arrive at once (b330, Gita: "Shipping
+     costs should raise the per-book price for that shipment"): shared over
+     that transfer's copies by weight, as a shipment's is. {move id: [per copy]} */
+  var txLoad = {};
+  exps.forEach(function (x) {
+    if (x.L.k !== 'tx') return;
+    var ms = moves.filter(function (m) { return String(m.kind) === 'TRANSFER' && Number(m.qty) > 0 && bcSrcHas_(x.L.src, m); });
+    var den = 0;
+    ms.forEach(function (m) { den += Number(m.qty) * (W[String(m.bookId)] || wAvg); });
+    if (!(den > 0)) return;
+    ms.forEach(function (m) {
+      var w = (W[String(m.bookId)] || wAvg) / den;
+      (txLoad[String(m.id)] = txLoad[String(m.id)] || []).push({ id: x.id, usd: x.usd * w, amt: x.amt * w, cur: x.cur });
     });
   });
   var posts = {};
@@ -698,6 +713,14 @@ function bookCostCalc_() {
     if (load) pieces.forEach(function (p) {
       if (!p.known) return;
       load.forEach(function (l) {
+        add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(p.a, l.id, l.amt); add(loaded, l.id, l.usd * p.n);
+        mv(l.id, byId[l.id].own, pt, p.n, l.usd * p.n, l.amt * p.n, 'ship', e.t, moveKey(m));
+      });
+    });
+    var tl = isRet ? null : txLoad[String(m.id)];
+    if (tl) pieces.forEach(function (p) {
+      if (!p.known) return;
+      tl.forEach(function (l) {
         add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(p.a, l.id, l.amt); add(loaded, l.id, l.usd * p.n);
         mv(l.id, byId[l.id].own, pt, p.n, l.usd * p.n, l.amt * p.n, 'ship', e.t, moveKey(m));
       });

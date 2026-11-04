@@ -2571,7 +2571,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b329</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b330</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -11196,11 +11196,12 @@ function bcFormHTML(f){
      so a plain line says so, with no tick box. The box stays only when a cost
      already put on books is edited. */
   if(!f.bcHad) return `<div class="bc-box"><div class="hint">${b.k==='post' ? 'Postage for one sale: added to the cost of that sale\'s book.'
-    : b.k==='ship' ? 'Shipping for the books on this transfer: shared over the copies it carried.' : 'A cost on the books it came with.'}</div></div>`;
+    : b.k==='ship' || b.k==='tx' ? 'Shipping for the books on this transfer: shared over the copies it carried.' : 'A cost on the books it came with.'}</div></div>`;
   const head = `<label class="exp-rb"><input type="checkbox" id="xBc" ${b.on?'checked':''}> This is the cost of printing or shipping books</label>`;
   if(!b.on) return `<div class="bc-box">${head}</div>`;
   const O = EXP.bcOpt, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
   if(b.k==='post') return `<div class="bc-box">${head}<div class="hint">Postage for one sale: added to the cost of that sale's book.</div></div>`;
+  if(b.k==='tx') return `<div class="bc-box">${head}<div class="hint">Shipping for the books on one transfer: shared over the copies it carried, by weight.</div></div>`;
   if(!O) return `<div class="bc-box">${head}<div class="hint sp-loading"><span class="spin-d"></span> Opening…</div></div>`;
   if(O.err) return `<div class="bc-box">${head}<div class="err">${esc(O.err)}</div></div>`;
   const list = b.k==='ship' ? O.shipments : O.printings;
@@ -11241,10 +11242,11 @@ function bcRead(f){
 function bcPayload(f){
   const b = f.bc;
   // Shipping on a delivery or a transfer is sent for anyone (b328); the rest is Finance's.
-  const own = BC_ON && b && b.on && (b.k==='post' || b.k==='ship' || (b.k==='print' && b.ship));
+  const own = BC_ON && b && b.on && (b.k==='post' || b.k==='ship' || b.k==='tx' || (b.k==='print' && b.ship));
   if((!bcMine() && !own) || EXP.pub || !b) return {};
   if(!b.on) return {bookLink:null};
   if(b.k==='post') return {bookLink:{k:'post', sale:b.sale}};
+  if(b.k==='tx') return {bookLink:{k:'tx', src:b.src}};
   if(b.k==='ship'){ const w = {}; Object.keys(b.weights).forEach(id=>{ if(Number(b.weights[id]) > 0) w[id] = Number(b.weights[id]); });
     return {bookLink:{k:'ship', sh:b.src}, weights:w}; }
   const sh = {}; Object.keys(b.shares).forEach(id=>{ if(Number(b.shares[id]) > 0) sh[id] = Number(b.shares[id]); });
@@ -14061,7 +14063,7 @@ function finPaySplit(xs){
    was logged, every lot of books sent on or arriving, and the New Total. */
 function bcHistText(h, x){
   const n = h.n + (h.n===1 ? ' book' : ' books'), out = h.u < 0 || h.a < 0;
-  const ship = x.bookLink && x.bookLink.k==='ship';
+  const ship = x.bookLink && (x.bookLink.k==='ship' || x.bookLink.k==='tx');
   if(h.k==='orig') return ship ? 'Original Shipping Costs' : x.bookLink && x.bookLink.ship ? 'Shipping Costs' : h.n > 0 ? 'Original Printing (' + bcBooks(h.n) + ')' : 'Original Printing Costs';
   if(h.k==='ref') return 'Refund for books sent back';
   if(h.k==='ship') return out ? 'Shipping of ' + n + ' to ' + h.w : 'Shipping of ' + n + ' from ' + h.w;
@@ -22646,12 +22648,25 @@ function placeCtx(place, cb){
    expense of the place they went to. Cost not known yet: a Pending Expense
    on your own To Do, to fill in later. Paid yourself: the reimbursement form,
    filled in. */
-function xfShipCost(ship, f, t, n, shipId){
+/* Every currency in the app (b329+, Gita: "all currencies in the system
+   should be available to list shipping costs"): the ones given first (the
+   places involved), then every other one any place or the app knows, A to Z. */
+function allCurList(first){
+  const rest = new Set(Object.keys(CUR_SYM));
+  (STATE.regions||[]).forEach(r=>(r.currencies||[]).forEach(c=>rest.add(String(c).toUpperCase())));
+  const lead = [...new Set((first||[]).map(c=>String(c).toUpperCase()).filter(Boolean))];
+  return lead.concat([...rest].filter(c=>!lead.includes(c)).sort());
+}
+function xfShipCost(ship, f, t, n, shipId, movePrefix){
   if(!ship || !ship.on) return;
   const place = t.kind==='event' ? t.loc : (t.seasonId===HQ_ID ? HQ_REGION : t.regionId);
   const what = 'Shipping: ' + n + ' book' + (n===1?'':'s') + ' from ' + placeLabel(f) + ' to ' + placeLabel(t);
   const exp = {location:place, category:'Shipping', desc:what, cur:ship.cur};
   if(shipId) exp.bookLink = {k:'ship', sh:shipId};
+  /* Books that arrive at once (b330, Gita: "Shipping costs should raise the
+     per-book price for that shipment"): the cost goes on the copies moved
+     in this transfer, shared by weight (Code.gs bookCostCalc_, k 'tx'). */
+  else if(movePrefix) exp.bookLink = {k:'tx', src:'m:' + movePrefix};
   if(ship.unknown){ pendExpAdd(Object.assign({id:'pe' + Date.now().toString(36), ts:new Date().toISOString()}, exp)); return; }
   exp.amt = ship.amt;
   if(ship.reimb){ setTimeout(()=>expensesModal(null, null, Object.assign({kind:'reimburse', mine:true}, exp)), 0); return; }
@@ -22675,7 +22690,7 @@ function pendExpItemHTML(x){
 }
 function pendExpModal(id){
   const x = pendExps().find(y=>y.id===id); if(!x) return;
-  const curs = [...new Set([x.cur, ...((currentRegion()||{}).currencies||[]), 'USD', 'EUR'].filter(Boolean))];
+  const curs = allCurList([x.cur, ...((currentRegion()||{}).currencies||[])]);
   openModal(`${mHead('Pending Expense')}
     <div class="m-body"><div class="note">${esc(x.desc)}</div>
       ${shipAskHTML('pe', curs)}
@@ -22871,7 +22886,7 @@ function transferStockModal(opts){
     h += `<div class="xf-all"><button type="button" class="btn btn-ghost btn-sm" id="xfAll">Transfer everything</button> <button type="button" class="btn btn-ghost btn-sm" id="xfClear">Clear everything</button></div>
       <div id="preWarn"></div>`;
     // b328 (practice): "When transferring stock, there should also be a Shipping yes/no field."
-    h += shipAskHTML('xf', [...new Set([...((regionById(toPick.value.regionId)||{}).currencies||[]), ...((regionById(fromPick.value.regionId)||{}).currencies||[]), 'USD', 'EUR'])], {unknown: !!ME});
+    h += shipAskHTML('xf', allCurList([...((regionById(toPick.value.regionId)||{}).currencies||[]), ...((regionById(fromPick.value.regionId)||{}).currencies||[])]), {unknown: !!ME});
     if(k!=='store' || storage!=='multi')
       h += `<div class="field"><label>Note (optional)</label><input type="text" data-k="note"></div>`;
     body.innerHTML = h;
@@ -23168,7 +23183,7 @@ function transferStockModal(opts){
           fromBefore:fB, fromAfter:fB-m.qty, toBefore:tB, toAfter:tB+m.qty});
       });
     } : ()=>{}, done);
-    xfShipCost(ship, f, t, moves.reduce((n,m)=>n+m.qty, 0), '');
+    xfShipCost(ship, f, t, moves.reduce((n,m)=>n+m.qty, 0), '', movePrefix);
   });
 
   if(fromPick.value) loadFrom(fromPick.value); else draw();
