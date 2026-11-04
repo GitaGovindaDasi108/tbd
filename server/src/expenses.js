@@ -869,12 +869,13 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const L = p.bookLink, k = String(L.k || '');
     /* Anyone may put shipping on what they deliver or send (b328, Gita): one
        sale's postage, or a shipment's cost. Printings stay Finance's. */
-    if (!isFin(w) && k !== 'post' && k !== 'ship') return '';
+    // b329: so may the shipping of books added in Add Stock, shared over those copies as a printing is.
+    if (!isFin(w) && k !== 'post' && k !== 'ship' && !(k === 'print' && L.ship)) return '';
     let out = null;
     if (k === 'print' && /^(m|sh):[A-Za-z0-9_\-]{2,60}$/.test(String(L.src || ''))) {
       const shares = {};
       Object.keys(L.shares || {}).slice(0, 60).forEach(b => { const v = Math.round((Number(L.shares[b]) || 0) * 100) / 100; if (v > 0) shares[clip(b, 40)] = v; });
-      out = { k, src: String(L.src), shares };
+      out = { k, src: String(L.src), shares }; if (L.ship) out.ship = 1;
     } else if (k === 'ship' && /^sh_[A-Za-z0-9]{3,20}$/.test(String(L.sh || ''))) out = { k, sh: String(L.sh) };
     else if (k === 'post' && L.sale) out = { k, sale: clip(L.sale, 60) };
     if (!out) throw new Error('Choose which books this cost is for.');
