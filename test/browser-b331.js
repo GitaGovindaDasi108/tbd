@@ -135,6 +135,11 @@ const API = 'http://api.test/';
       await pg.evaluate(() => closeModal());
       const wa = await pg.evaluate(() => { try { return buildReport('books'); } catch (e) { return String(e); } });
       t.push([w + 'px: the WhatsApp report names Diaries', /Diaries/.test(String(wa))]);
+      await pg.evaluate(() => finGo('overview', '')); await pg.waitForTimeout(2500);
+      const fin = await pg.evaluate(() => { const a = finOverviewRows().total; return { fig: finOverviewFigs(a).map(f => f.l + ' ' + f.v + ' ' + (f.sub||'')), head: document.body.textContent.includes('Diaries') }; });
+      t.push([w + 'px: Finance Overview has a Diaries line (' + fin.fig.filter(x => /Diaries|Big Books/.test(x)).join(' | ') + ')', fin.fig.some(x => /^Diaries Sold \S*\$7\.50 2 Sold/.test(x)) && fin.head]);
+      t.push([w + 'px: Finance fits', await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)]);
+      await pg.screenshot({ path: shot('finance-' + w), fullPage: true });
       await pg.context().close();
     }
   } catch (e) {

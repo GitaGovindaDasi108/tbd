@@ -2583,7 +2583,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b330</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b331</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -3019,6 +3019,10 @@ function secSync(st){
 }
 /* [[id, label], …] in section order: plural ("Big Books") or one title's kind ("Big Book"). */
 const secPairs = one => CATS.map(k=>[k, one && k==='big' && CAT_SHORT.big==='Big Books' ? 'Big Book' : CAT_SHORT[k]]);
+/* The sections made in Edit Sections (not Big Books, Adventures or Other). */
+const secExtra = () => SECTIONS_ON ? CATS.filter(k=>k!=='big' && k!=='aotm' && k!=='other') : [];
+/* Finance's "worked out from a rate" flag for a figure: eBb, eAv, eOt, eS_xxx. */
+const finEK = k => 'e' + k[0].toUpperCase() + k.slice(1);
 const secRank = b => { const i = CATS.indexOf(catOfBook(b)); return i < 0 ? 0 : i; };
 
 /* ---- Languages (b221) ----
@@ -12308,11 +12312,13 @@ const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
 function finAgg(sales, exps){
   const a = {bb:0, bbg:0, bbu:0, av:0, avg:0, avu:0, ot:0, otg:0, otu:0, books:0, gifts:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0,
     cur:{coll:{}, don:{}, exp:{}}};
+  // b331: each section made in Edit Sections has its own figures, keyed by its id.
+  const xs = new Set(secExtra()); xs.forEach(k=>{ a[k] = 0; a[k+'g'] = 0; a[k+'u'] = 0; });
   const addCur = (o, c, v) => { if(c && v) o[c] = (o[c]||0) + v; };
   sales.forEach(x=>{
     if(!x.con) Object.keys(x.cur||{}).forEach(c=>{ addCur(a.cur.coll, c, x.cur[c]); if(x.k==='DONATION') addCur(a.cur.don, c, x.cur[c]); });
     // Which figures hold dollars worked out from a rate (~).
-    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(x.c && x.c!=='big') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
+    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(xs.has(x.c)) a[finEK(x.c)] = 1; else if(x.c==='other') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
     const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0)), qa = x.qa || 0;
     if(x.g) a.gifts += n + qa; else a.books += n + qa;
@@ -12325,7 +12331,8 @@ function finAgg(sales, exps){
     if(qa){ const sh = qa / (n + qa); a.av += qa; a.avu += x.gu * sh; a.bb += n; a.bbu += x.gu * (1 - sh);
       if(x.ue && x.gu > 0.004) a.eAv = 1; return; }
     if(x.c==='aotm'){ if(x.g) a.avg += n; else { a.av += n; a.avu += x.gu; } }
-    else if(x.c && x.c!=='big'){ if(x.g) a.otg += n; else { a.ot += n; a.otu += x.gu; } }   // b331: Other, and sections made in Edit Sections, for now
+    else if(xs.has(x.c)){ if(x.g) a[x.c+'g'] += n; else { a[x.c] += n; a[x.c+'u'] += x.gu; } }   // b331: a section of its own
+    else if(x.c==='other'){ if(x.g) a.otg += n; else { a.ot += n; a.otu += x.gu; } }
     else { if(x.g) a.bbg += n; else { a.bb += n; a.bbu += x.gu; } }
   });
   a.gross = a.coll + a.pend;
@@ -12531,8 +12538,8 @@ function finCurs(o){
 function finOvwCols(){
   const n = v => ({v: fmt(v)}), cat = (g, k) => [
     {g, k, l:'Sold', cls:'fin-sold', f:a=>n(a[k])}, {g, k, l:'Gifted', cls:'fin-more', f:a=>n(a[k+'g'])}, {g, k, l:'Distributed', cls:'fin-more', f:a=>n(a[k] + a[k+'g'])},
-    {g, k, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u'], a['e' + k[0].toUpperCase() + k[1]])})}];
-  return [...cat('Big Books', 'bb'), ...cat('Adventures', 'av'), ...cat('Other', 'ot'),
+    {g, k, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u']||0, a[finEK(k)])})}];
+  return [...cat('Big Books', 'bb'), ...cat('Adventures', 'av'), ...cat('Other', 'ot'), ...secExtra().flatMap(k=>cat(CAT_SHORT[k], k)),
     {l:'Total Gross', cls:'fin-big', f:a=>finGrossParts(a)},
     {l:'Donations', f:a=>({v:finUsd(a.don, a.eDon)})},
     {l:'Pending', f:a=>({v:finUsd(a.pend, a.ePend)})},
@@ -12546,6 +12553,7 @@ function finOverviewFigs(a){
     {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu, a.eBb), sub:finDist(a.bb, a.bbg)},
     {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu, a.eAv), sub:finDist(a.av, a.avg)},
     ...(a.ot || a.otg ? [{k:'ot', l:'Other Sold', v:finUsd(a.otu, a.eOt), sub:finDist(a.ot, a.otg)}] : []),
+    ...secExtra().filter(k=>a[k] || a[k+'g']).map(k=>({k, l:CAT_SHORT[k] + ' Sold', v:finUsd(a[k+'u'], a[finEK(k)]), sub:finDist(a[k], a[k+'g'])})),
     {k:'don',  l:'Donations',         v:finUsd(a.don, a.eDon), sub:'', cur:finCurs(a.cur.don)},
     {k:'pend', l:'Pending Payments',  v:finUsd(a.pend, a.ePend), sub:''},
     {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
@@ -14885,7 +14893,8 @@ function finChartsHTML(){
     /* Income by Source (b284, Gita): one ring of what has come in, called
        Gross. While payments are pending, a second ring beside it with them
        added, called Expected Gross — never "Expected" when nothing is owed. */
-    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Other', v:a.otu, c:FIN_C.ot, e:a.eOt}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
+    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Other', v:a.otu, c:FIN_C.ot, e:a.eOt},
+      ...secExtra().map(k=>({k:CAT_SHORT[k], v:a[k+'u']||0, c:SEC_COLOR[k] || FIN_C.ot, e:a[finEK(k)]})), {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
     const pend = finPending(a), owe = finToRepay(a);
     if(pend){
       out.push(finChart('Income by Source (Actual)', finDonutHTML(src.map(r=>Object.assign({}, r)).filter(r=>r.v > 0.004), 'Income by Source (Actual)', 'Gross')));
@@ -14996,7 +15005,7 @@ function finCsvDownload(part){
   if(part==='overview'){
     const O = finOverviewRows();
     // The same columns as the table on screen (b297).
-    const kinds = [['Big Books', 'bb'], ['Adventures', 'av'], ['Other', 'ot']];
+    const kinds = [['Big Books', 'bb'], ['Adventures', 'av'], ['Other', 'ot'], ...secExtra().map(k=>[CAT_SHORT[k], k])];
     const head = [''].concat(...kinds.map(([g])=>[g + ' Sold', g + ' Gifted', g + ' Distributed', g + ' Gross (USD)']), ['Donations (USD)',
       'Pending (USD)', 'Total Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)']);
     const line = (l, a) => [l].concat(...kinds.map(([, k])=>[a[k], a[k+'g'], a[k] + a[k+'g'], finMoney(a[k+'u'])]), [finMoney(a.don), finMoney(a.pend), finMoney(a.coll), finMoney(a.gross),
