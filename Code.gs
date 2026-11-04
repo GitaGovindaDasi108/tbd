@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b329';
+var SERVER_BUILD = 'b331';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -600,7 +600,7 @@ function bookCostCalc_() {
     A.h.push({ t: t, k: k, n: n, from: from, to: to, u: u, a: a, key: key });
   };
   var moveKey = function (m) { return String(m.id).replace(/_\d+$/, ''); };
-  exps.forEach(function (x) { if (x.L.k === 'print' || x.L.k === 'ship') alOf(x.id); });
+  exps.forEach(function (x) { if (x.L.k === 'print' || x.L.k === 'ship' || x.L.k === 'tx') alOf(x.id); });
   var shipLoad = {};
   exps.forEach(function (x) {
     if (x.L.k !== 'ship' || !ships[x.L.sh]) return;
@@ -611,6 +611,21 @@ function bookCostCalc_() {
     Object.keys(man).forEach(function (b) {
       var w = (W[b] || wAvg) / den;
       (per[b] = per[b] || []).push({ id: x.id, usd: x.usd * w, amt: x.amt * w, cur: x.cur });
+    });
+  });
+  /* Shipping on a transfer whose books arrive at once (b330, Gita: "Shipping
+     costs should raise the per-book price for that shipment"): shared over
+     that transfer's copies by weight, as a shipment's is. {move id: [per copy]} */
+  var txLoad = {};
+  exps.forEach(function (x) {
+    if (x.L.k !== 'tx') return;
+    var ms = moves.filter(function (m) { return String(m.kind) === 'TRANSFER' && Number(m.qty) > 0 && bcSrcHas_(x.L.src, m); });
+    var den = 0;
+    ms.forEach(function (m) { den += Number(m.qty) * (W[String(m.bookId)] || wAvg); });
+    if (!(den > 0)) return;
+    ms.forEach(function (m) {
+      var w = (W[String(m.bookId)] || wAvg) / den;
+      (txLoad[String(m.id)] = txLoad[String(m.id)] || []).push({ id: x.id, usd: x.usd * w, amt: x.amt * w, cur: x.cur });
     });
   });
   var posts = {};
@@ -698,6 +713,14 @@ function bookCostCalc_() {
     if (load) pieces.forEach(function (p) {
       if (!p.known) return;
       load.forEach(function (l) {
+        add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(p.a, l.id, l.amt); add(loaded, l.id, l.usd * p.n);
+        mv(l.id, byId[l.id].own, pt, p.n, l.usd * p.n, l.amt * p.n, 'ship', e.t, moveKey(m));
+      });
+    });
+    var tl = isRet ? null : txLoad[String(m.id)];
+    if (tl) pieces.forEach(function (p) {
+      if (!p.known) return;
+      tl.forEach(function (l) {
         add(p.c, l.id, l.usd); add(p.o, l.cur, l.amt); add(p.a, l.id, l.amt); add(loaded, l.id, l.usd * p.n);
         mv(l.id, byId[l.id].own, pt, p.n, l.usd * p.n, l.amt * p.n, 'ship', e.t, moveKey(m));
       });
@@ -1061,6 +1084,7 @@ function handle(e) {
         case 'setPayTypes':      doSetPayTypes(params);      break;
         case 'addPayType':       result = doAddPayType(params); break;
         case 'setMenuOrder':     result = doSetMenuOrder(params); break;
+        case 'setSections':      result = doSetSections(params); break;
         case 'setPayTypeCurrency': result = doSetPayTypeCurrency(params); break;
         case 'createEvent':      result = doCreateEvent(params);  break;
         case 'setEventHidden':   result = doSetEventHidden(params); break;
@@ -1470,6 +1494,8 @@ function stateJson_() {
   // The left-hand menu as Universal arranged it (b283, Reorganize Menu).
   var mo = menuOrder_();
   if (mo) st.menuOrder = mo;
+  st.sections = sections_();   // b331
+  if (propGet_('sections')) st.sectionsSet = true;   // once Edit Sections has been saved
   st.payTop = payTop_();
   /* Who made each sale, by sign-in, and the cash handed to Event Leads (b223) —
      sent only once there are any, so nothing changes for a tour without them. */
@@ -8457,7 +8483,59 @@ function doDeleteBook(p) {
    it appeared to do nothing. */
 function normCat_(v) {
   v = String(v || '').toLowerCase();
-  return (v === 'aotm' || v === 'other') ? v : 'big';
+  if (v === 'aotm' || v === 'other') return v;
+  // b331: a section made in Edit Sections.
+  if (/^s_[a-z0-9]{3,20}$/.test(v) && sections_().some(function (x) { return x.id === v; })) return v;
+  return 'big';
+}
+
+/* ---- Sections (b331, practice first; Gita, 3 Nov) ----
+   The kinds of book, in order: Big Books, Adventures and Other always, and any
+   Gita makes (Diaries…), each counted on its own. Kept for the whole app (not
+   per season), as the catalogue is: [{id, name, color}]. */
+var SEC_BUILTIN_ = [{ id: 'big', name: 'Big Books', color: '' }, { id: 'aotm', name: 'Adventures', color: '' }, { id: 'other', name: 'Other', color: '' }];
+function sections_() {
+  var raw = null;
+  try { raw = JSON.parse(String(propGet_('sections') || 'null')); } catch (e) { raw = null; }
+  var out = [], seen = {};
+  (Array.isArray(raw) ? raw : []).forEach(function (x) {
+    if (!x || seen[x.id]) return;
+    var id = String(x.id || '');
+    if (!(id === 'big' || id === 'aotm' || id === 'other' || /^s_[a-z0-9]{3,20}$/.test(id))) return;
+    seen[id] = 1;
+    out.push({ id: id, name: String(x.name || '').slice(0, 40) || id, color: /^#[0-9a-fA-F]{6}$/.test(String(x.color || '')) ? String(x.color) : '' });
+  });
+  SEC_BUILTIN_.forEach(function (b) { if (!seen[b.id]) out.push({ id: b.id, name: b.name, color: '' }); });
+  return out;
+}
+/* The sections as set in Edit Sections: names, colours and order. A section
+   left out is gone, and its titles go to Other. */
+function doSetSections(p) {
+  var old = sections_(), list = Array.isArray(p.sections) ? p.sections.slice(0, 30) : [];
+  var out = [], seen = {};
+  list.forEach(function (x) {
+    if (!x) return;
+    var id = String(x.id || '').toLowerCase();
+    if (!id || id === 'new') id = 's_' + Math.random().toString(36).slice(2, 10);
+    if (!(id === 'big' || id === 'aotm' || id === 'other' || /^s_[a-z0-9]{3,20}$/.test(id)) || seen[id]) return;
+    var name = String(x.name || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+    if (!name) throw new Error('Every section needs a name.');
+    seen[id] = 1;
+    out.push({ id: id, name: name, color: /^#[0-9a-fA-F]{6}$/.test(String(x.color || '')) ? String(x.color) : '' });
+  });
+  SEC_BUILTIN_.forEach(function (b) { if (!seen[b.id]) out.push({ id: b.id, name: b.name, color: '' }); });
+  propSet_('sections', JSON.stringify(out));
+  // A section taken away: its titles become Other.
+  var gone = {};
+  old.forEach(function (x) { if (!out.some(function (y) { return y.id === x.id; })) gone[x.id] = 1; });
+  if (Object.keys(gone).length) {
+    objectsOf_('_custombooks').forEach(function (b) {
+      if (b && b.id && gone[String(b.cat || '')]) dbUpdate_('_custombooks', { id: b.id }, { cat: 'other' });
+    });
+    bookMemoClear_();
+  }
+  markDirtyAll_();
+  return out;
 }
 
 /* Which regions a title actually affects.
@@ -10173,6 +10251,7 @@ function describe_(action, p, result, moves, who) {
             undo: (!(_activityBefore && _activityBefore.existed) && (result || p.id)) ? { type: 'cost', id: String(result || p.id) } : null }; break;
     case 'deleteCost':   d = { text: 'Deleted a cost' }; break;
     case 'setPayTypes':  d = { text: 'Changed the payment types taken' + (p.location ? ' at ' + locLabel_(p.location) : '') }; break;
+    case 'setSections': d = { text: 'Changed the sections of books' }; break;
     case 'setMenuOrder': d = { text: p.order ? 'Rearranged the left-hand menu' : 'Put the left-hand menu back to the app\'s own order' }; break;
     case 'addPayType':   d = { text: 'Added “' + String(p.name || '').trim() + '” as a payment type' + (p.location ? ' at ' + locLabel_(p.location) : '') }; break;
     case 'setPayTypeCurrency':

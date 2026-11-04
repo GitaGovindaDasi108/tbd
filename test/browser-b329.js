@@ -66,6 +66,13 @@ const API = 'http://api.test/';
     category: 'Other', receipts: [], payTo: { phone: '+91 1' }, method: 'Cash', reimbCur: 'INR', by: 'The Owner' });
   await O({ action: 'expSave', id: 'Xmine2', kind: 'reimburse', location: 'ev_k', date: '2026-11-03', desc: 'Taxi', cur: 'INR', amt: 200,
     category: 'Other', receipts: [], payTo: { phone: '+91 1' }, method: 'Cash', reimbCur: 'INR', by: 'The Owner' });
+  // b330: shipping on a transfer whose books arrive at once goes on those copies.
+  const tx = await O({ action: 'transferMulti', moves: [{ from: 'wh_in', to: 'wh_my', bookId: BIG[0], qty: 5 }], movePrefix: 'Mtx01', season: SA });
+  const txe = await O({ action: 'expSave', id: 'Xtx1', kind: 'record', location: 'rg_my', date: '2026-11-03', desc: 'Shipping: 5 books', cur: 'USD', amt: 15,
+    category: 'Shipping', receipts: [], payTo: {}, forEmail: '*general', by: 'The Owner', bookLink: { k: 'tx', src: 'm:Mtx01' } });
+  const held = ((await O({ action: 'bookCostSales' })).result.held || {}).wh_my || {};
+  const hm = held[BIG[0]];
+  t.push(['b330: $15 shipping on 5 books raises each copy from $2.50 to $5.50 at Mayapur (' + (tx.ok && txe.ok ? JSON.stringify(hm) : (tx.error || txe.error)) + ')', !!hm && hm[0] === 5 && Math.abs(hm[1] / hm[0] - 5.5) < 0.01]);
   const mk = await O({ action: 'expMark', id: 'Xmine1', status: 'paid', note: '', paidOn: '2026-11-03' });
   t.push(['a reimbursement is paid back (' + (mk.ok ? 'ok' : mk.error) + ')', mk.ok]);
 
@@ -175,7 +182,7 @@ const API = 'http://api.test/';
       // Finance › Expenses: the printing's cards.
       await pg.evaluate(() => finGo('expenses', '')); await pg.waitForTimeout(2500);
       const cards = await pg.evaluate(() => [...document.querySelectorAll('.fin-ex .fx-item.fx-print .fx-w')].map(e => e.textContent));
-      t.push([w + 'px: printing cards ' + JSON.stringify(cards), cards.includes('Original Printing (32 Books)') && cards.includes('Printing Costs transferred to Kirtan Mela (5 Books)')]);
+      t.push([w + 'px: printing cards ' + JSON.stringify(cards), cards.includes('Original Printing (27 Books)') && cards.includes('Printing Costs transferred to Kirtan Mela (5 Books)') && cards.includes('Printing Costs transferred to Mayapur (8 Books)')]);
       await pg.evaluate(() => { const r = document.querySelector('.fin-ex .fx-item.fx-print .fx-row'); if (r) r.click(); }); await pg.waitForTimeout(300);
       await pg.evaluate(() => { const d = document.querySelector('.fin-ex .fx-item.open .bc-hist'); if (d) d.open = true; }); await pg.waitForTimeout(200);
       t.push([w + 'px: …its History starts "Original Printing (40 Books)"', await pg.evaluate(() => [...document.querySelectorAll('.bc-hw')].some(e => /Original Printing \(40 Books\)/.test(e.textContent)))]);

@@ -1000,6 +1000,18 @@ body.has-na .overlay{z-index:10000}
   padding:8px 12px 9px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-width:0}
 .tcard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--saffron-d)}
 .tcard.other::before{background:var(--teal)}
+.tcard.tc-sec::before{background:var(--sec)}
+/* b331: a section's small heading over its book cards. */
+.sec-h{grid-column:1/-1;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:4px 0 -3px}
+.sec-h:first-child{margin-top:0}
+.sec-row{display:grid;grid-template-columns:auto minmax(0,1fr) 34px 30px;gap:6px;align-items:center;margin:5px 0}
+.sec-row input[type=text]{min-width:0;width:100%;box-sizing:border-box}
+.sec-mv{display:flex;gap:2px}
+.sec-sw{width:34px;height:30px;padding:0;border:1px solid var(--line);border-radius:6px;background:none}
+span.sec-sw{border:0}
+.sec-bk{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:4px 0}
+.sec-bt{min-width:0;flex:1 1 auto;overflow-wrap:anywhere}
+.sec-bk select{flex:0 0 auto;max-width:48%}
 .tcard.other .value{color:var(--teal)}
 .tcard.aotm::before{background:var(--blue)}
 .tcard.usd::before{background:var(--green)}
@@ -2571,7 +2583,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b329</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b331</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -2987,6 +2999,31 @@ const CAT_SHORT = {big:'Big Books', aotm:'Adventures', other:'Other'};
 /* Titles A to Z, then by language (b329). */
 const bookAZ = (a, b) => String(a.name||'').localeCompare(String(b.name||''), undefined, {sensitivity:'base', numeric:true}) || String(a.lang||'').localeCompare(String(b.lang||''));
 function catOfBook(b){ const c=(b&&b.cat)||'big'; return CATS.includes(c) ? c : 'big'; }
+/* ---- Sections (b331, practice first; Gita, 3 Nov) ----
+   Big Books, Adventures and Other always, and any made in Edit Sections
+   (Diaries…), each counted on its own, in the order set there. CATS,
+   CAT_SHORT and CAT_LABEL follow the server's list (state.sections), kept in
+   place so everything holding them sees the change. */
+const SECTIONS_ON = PRACTICE;
+const SEC_COLOR = {};
+function secSync(st){
+  const list = SECTIONS_ON && st && Array.isArray(st.sections) && st.sections.length ? st.sections : null;
+  const want = list ? list.map(x=>x.id) : ['big','aotm','other'];
+  if(want.join()===CATS.join() && !list) return;
+  CATS.splice(0, CATS.length, ...want);
+  (list || []).forEach(x=>{
+    if(x.id==='big' || x.id==='aotm' || x.id==='other'){ if(x.name){ CAT_SHORT[x.id] = x.name; CAT_LABEL[x.id] = x.id==='aotm' && x.name==='Adventures' ? 'AoTM — Adventures' : x.name; } }
+    else { CAT_SHORT[x.id] = x.name; CAT_LABEL[x.id] = x.name; }
+    SEC_COLOR[x.id] = x.color || '';
+  });
+}
+/* [[id, label], …] in section order: plural ("Big Books") or one title's kind ("Big Book"). */
+const secPairs = one => CATS.map(k=>[k, one && k==='big' && CAT_SHORT.big==='Big Books' ? 'Big Book' : CAT_SHORT[k]]);
+/* The sections made in Edit Sections (not Big Books, Adventures or Other). */
+const secExtra = () => SECTIONS_ON ? CATS.filter(k=>k!=='big' && k!=='aotm' && k!=='other') : [];
+/* Finance's "worked out from a rate" flag for a figure: eBb, eAv, eOt, eS_xxx. */
+const finEK = k => 'e' + k[0].toUpperCase() + k.slice(1);
+const secRank = b => { const i = CATS.indexOf(catOfBook(b)); return i < 0 ? 0 : i; };
 
 /* ---- Languages (b221) ----
    The same title comes in several languages: Sri Radha in English, Russian,
@@ -4618,6 +4655,7 @@ async function postWrite(payload){
 function derive(){
   if(!BASE) return null;
   const st = JSON.parse(JSON.stringify(BASE));
+  try{ secSync(st); }catch(e){}
   // These arrays are assumed to exist all over the app; a missing one used to
   // make an unsaved change throw and vanish without a word.
   ['sales','inventory','events','regions','holders','shipments','partners',
@@ -6166,7 +6204,7 @@ function snLevelLabel(){
 }
 /* What each action is called, and its icon, in the menu (the owner's names). */
 const SN_ITEMS = {
-  addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], stockorder:['⇅','Stock Title Order'], partners:['🤝','Consignment Books'],
+  addstock:['＋','Add New Stock'], xfer:['⇄','Transfer Existing Stock'], stockorder:['⇅','Stock Title Order'], sections:['🗂','Edit Sections'], partners:['🤝','Consignment Books'],
   bookdisplay:['👁','Edit Book Display'], eventprices:['💲','Event Prices'], subregions:['🗺','Sub-regions'],
   cash:['💵','Track Cash'], costs:['🧾','Record Expenses'], paytypes:['💳','Edit Payment Types'], prices:['💲','Change Prices'],
   expenses:['🧾','Add an Expense'], fintodo:['💼','Finance To do'], reimbset:['⚙️','Reimbursement Settings'],
@@ -6192,7 +6230,7 @@ function snTopActivity(show){
   if(b) b.style.display = show ? '' : 'none';
 }
 const SN_SECTIONS = [
-  {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','stockorder','partners','bookdisplay','eventprices']},
+  {key:'books',    icon:'📚', label:()=>'Books',           acts:['addstock','xfer','stockorder','sections','partners','bookdisplay','eventprices']},
   // "Laksmi" (Gita, 2026-10-21).
   {key:'money',    icon:'💵', label:()=>FIN_ON ? 'Laksmi' : 'Money',           acts:['cash','costs','paytypes','prices','expenses']},
   {key:'finance',  icon:'📈', label:()=>'Finance',         acts:['finleave','finoverview','finexpenses','finreimb','reimbset','finplaces','bccost']},
@@ -6393,6 +6431,7 @@ function renderSideNav(fams){
   // Finance's launch (b274): Universal, on the live app, brings over what was set up in practice.
   if(!PRACTICE && isAdmin() && ME && !byKey.fincarry) byKey.fincarry = `<button class="btn" data-act="fincarry">📥 Bring Wording &amp; Settings from Practice</button>`;
   // Reorganize Menu (b283): Universal, in App Development.
+  if(SECTIONS_ON && isAdmin() && !byKey.sections) byKey.sections = `<button class="btn" data-act="sections">🗂 Edit Sections</button>`;   // b331
   if(isAdmin() && !byKey.menuorder) byKey.menuorder = `<button class="btn" data-act="menuorder">↕ Reorganize Menu</button>`;
   /* The top bar keeps only the portal button and the Activity Log (b299 in
      practice, live since b301, Gita); Report moves to Advanced and your name
@@ -6665,7 +6704,7 @@ function renderSalesByRegion(){
                 c.pre?` <span class="muted">${preNote(c)}</span>`:''}${
                 c.gift?` <span class="muted">· ${giftNote(c)}</span>`:''}</span>`;
             };
-            return line('Big Books','big') + line('AoTM','aotm') + line('Other','other');
+            return line('Big Books','big') + line('AoTM','aotm') + line('Other','other') + CATS.filter(k=>k!=='big' && k!=='aotm' && k!=='other').map(k=>line(esc(CAT_SHORT[k]), k)).join('');
           })()}
           ${(function(){
             // Consignment shown per region too, so it reads the same at every level.
@@ -6744,9 +6783,13 @@ function renderTotals(){
       big.est = uncatBooks(unc.filter(x=>x.est)); aotm.est = uncatBooks(unc.filter(uncatAEst), 'aotm');
       // AoTM first (b297, Gita); Other only when there is some.
       // Big Books, Adventures, Other, Pending Payments, then the totals (b303, Gita).
-      return tile('', 'Big Books', big)
-        + tile('aotm', 'AoTM', aotm)
-        + ((oth.sold||oth.gift) ? tile('other', 'Other', oth) : '');
+      /* b331: each section made in Edit Sections has its own card, after
+         Other, in their order, with its own colour; shown when it has any. */
+      const extra = CATS.filter(k=>k!=='big' && k!=='aotm' && k!=='other').map(k=>{ const c = cnt(k);
+        return (c.sold||c.gift) ? tile('tc-sec', esc(CAT_SHORT[k]), c).replace('<div class="tcard', `<div style="--sec:${SEC_COLOR[k]||'var(--teal)'}" class="tcard`) : ''; }).join('');
+      return tile('', SECTIONS_ON ? esc(CAT_SHORT.big) : 'Big Books', big)
+        + tile('aotm', SECTIONS_ON && CAT_SHORT.aotm!=='Adventures' ? esc(CAT_SHORT.aotm) : 'AoTM', aotm)
+        + ((oth.sold||oth.gift) ? tile('other', SECTIONS_ON ? esc(CAT_SHORT.other) : 'Other', oth) : '') + extra;
     })()}
     ${hideMoney() ? '' : `
     ${pendUsd > 0.004 ? `<div class="tcard pend"><div class="label">Pending Payments</div><div class="value">${(s.some(x=>dueUSD(x) > 0 && !usdExact(x)) ? '≈' : '') + '$' + usdT(pendUsd)}</div>
@@ -10008,7 +10051,7 @@ function bundleModal(edit){
     const mbl = [];
     bundleBooks().forEach(b=>{ const c = counts[b.id]; if(c && c.buy + c.pre) mbl.push({t:bookLang(b).base, b:b.id, buy:c.buy, pre:c.pre}); });
     if(!mbl.length) mbl.push({t:'', b:'', buy:0, pre:0});
-    const CAT_NM = [['big','Big Books'],['aotm','Adventures'],['other','Other']];
+    const CAT_NM = secPairs();
     const titles = () => { const seen = new Map(); bundleBooks().forEach(b=>{ const k = bookLang(b).base; if(!seen.has(k)) seen.set(k, {base:k, cat:catOfBook(b), books:[]}); seen.get(k).books.push(b); }); return [...seen.values()]; };
     const sync = () => {
       Object.keys(counts).forEach(id=>{ counts[id].buy = 0; counts[id].pre = 0; });
@@ -11196,11 +11239,12 @@ function bcFormHTML(f){
      so a plain line says so, with no tick box. The box stays only when a cost
      already put on books is edited. */
   if(!f.bcHad) return `<div class="bc-box"><div class="hint">${b.k==='post' ? 'Postage for one sale: added to the cost of that sale\'s book.'
-    : b.k==='ship' ? 'Shipping for the books on this transfer: shared over the copies it carried.' : 'A cost on the books it came with.'}</div></div>`;
+    : b.k==='ship' || b.k==='tx' ? 'Shipping for the books on this transfer: shared over the copies it carried.' : 'A cost on the books it came with.'}</div></div>`;
   const head = `<label class="exp-rb"><input type="checkbox" id="xBc" ${b.on?'checked':''}> This is the cost of printing or shipping books</label>`;
   if(!b.on) return `<div class="bc-box">${head}</div>`;
   const O = EXP.bcOpt, opt = (v,l,sel) => `<option value="${esc(v)}" ${sel?'selected':''}>${esc(l)}</option>`;
   if(b.k==='post') return `<div class="bc-box">${head}<div class="hint">Postage for one sale: added to the cost of that sale's book.</div></div>`;
+  if(b.k==='tx') return `<div class="bc-box">${head}<div class="hint">Shipping for the books on one transfer: shared over the copies it carried, by weight.</div></div>`;
   if(!O) return `<div class="bc-box">${head}<div class="hint sp-loading"><span class="spin-d"></span> Opening…</div></div>`;
   if(O.err) return `<div class="bc-box">${head}<div class="err">${esc(O.err)}</div></div>`;
   const list = b.k==='ship' ? O.shipments : O.printings;
@@ -11241,10 +11285,11 @@ function bcRead(f){
 function bcPayload(f){
   const b = f.bc;
   // Shipping on a delivery or a transfer is sent for anyone (b328); the rest is Finance's.
-  const own = BC_ON && b && b.on && (b.k==='post' || b.k==='ship' || (b.k==='print' && b.ship));
+  const own = BC_ON && b && b.on && (b.k==='post' || b.k==='ship' || b.k==='tx' || (b.k==='print' && b.ship));
   if((!bcMine() && !own) || EXP.pub || !b) return {};
   if(!b.on) return {bookLink:null};
   if(b.k==='post') return {bookLink:{k:'post', sale:b.sale}};
+  if(b.k==='tx') return {bookLink:{k:'tx', src:b.src}};
   if(b.k==='ship'){ const w = {}; Object.keys(b.weights).forEach(id=>{ if(Number(b.weights[id]) > 0) w[id] = Number(b.weights[id]); });
     return {bookLink:{k:'ship', sh:b.src}, weights:w}; }
   const sh = {}; Object.keys(b.shares).forEach(id=>{ if(Number(b.shares[id]) > 0) sh[id] = Number(b.shares[id]); });
@@ -12267,11 +12312,13 @@ const FIN_EXP_KEYS = {exp:1, net:1, margin:1, reimb:1};
 function finAgg(sales, exps){
   const a = {bb:0, bbg:0, bbu:0, av:0, avg:0, avu:0, ot:0, otg:0, otu:0, books:0, gifts:0, sales:0, gross:0, coll:0, don:0, pend:0, con:0, exp:0, reimb:0,
     cur:{coll:{}, don:{}, exp:{}}};
+  // b331: each section made in Edit Sections has its own figures, keyed by its id.
+  const xs = new Set(secExtra()); xs.forEach(k=>{ a[k] = 0; a[k+'g'] = 0; a[k+'u'] = 0; });
   const addCur = (o, c, v) => { if(c && v) o[c] = (o[c]||0) + v; };
   sales.forEach(x=>{
     if(!x.con) Object.keys(x.cur||{}).forEach(c=>{ addCur(a.cur.coll, c, x.cur[c]); if(x.k==='DONATION') addCur(a.cur.don, c, x.cur[c]); });
     // Which figures hold dollars worked out from a rate (~).
-    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(x.c==='other') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
+    if(x.ue && !x.con){ if(x.gu > 0.004){ a.eColl = 1; if(x.k==='DONATION') a.eDon = 1; else if(x.b){ if(x.c==='aotm') a.eAv = 1; else if(xs.has(x.c)) a[finEK(x.c)] = 1; else if(x.c==='other') a.eOt = 1; else a.eBb = 1; } } if(x.pu > 0.004) a.ePend = 1; }
     if(x.k!=='DONATION') a.sales++;
     const n = x.k==='UNCAT' ? (x.q||0) : (x.q || (x.b ? 1 : 0)), qa = x.qa || 0;
     if(x.g) a.gifts += n + qa; else a.books += n + qa;
@@ -12284,6 +12331,7 @@ function finAgg(sales, exps){
     if(qa){ const sh = qa / (n + qa); a.av += qa; a.avu += x.gu * sh; a.bb += n; a.bbu += x.gu * (1 - sh);
       if(x.ue && x.gu > 0.004) a.eAv = 1; return; }
     if(x.c==='aotm'){ if(x.g) a.avg += n; else { a.av += n; a.avu += x.gu; } }
+    else if(xs.has(x.c)){ if(x.g) a[x.c+'g'] += n; else { a[x.c] += n; a[x.c+'u'] += x.gu; } }   // b331: a section of its own
     else if(x.c==='other'){ if(x.g) a.otg += n; else { a.ot += n; a.otu += x.gu; } }
     else { if(x.g) a.bbg += n; else { a.bb += n; a.bbu += x.gu; } }
   });
@@ -12490,8 +12538,8 @@ function finCurs(o){
 function finOvwCols(){
   const n = v => ({v: fmt(v)}), cat = (g, k) => [
     {g, k, l:'Sold', cls:'fin-sold', f:a=>n(a[k])}, {g, k, l:'Gifted', cls:'fin-more', f:a=>n(a[k+'g'])}, {g, k, l:'Distributed', cls:'fin-more', f:a=>n(a[k] + a[k+'g'])},
-    {g, k, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u'], a['e' + k[0].toUpperCase() + k[1]])})}];
-  return [...cat('Big Books', 'bb'), ...cat('Adventures', 'av'), ...cat('Other', 'ot'),
+    {g, k, l:'Gross', cls:'fin-gend', f:a=>({v:finUsd(a[k+'u']||0, a[finEK(k)])})}];
+  return [...cat('Big Books', 'bb'), ...cat('Adventures', 'av'), ...cat('Other', 'ot'), ...secExtra().flatMap(k=>cat(CAT_SHORT[k], k)),
     {l:'Total Gross', cls:'fin-big', f:a=>finGrossParts(a)},
     {l:'Donations', f:a=>({v:finUsd(a.don, a.eDon)})},
     {l:'Pending', f:a=>({v:finUsd(a.pend, a.ePend)})},
@@ -12505,6 +12553,7 @@ function finOverviewFigs(a){
     {k:'bb',   l:'Big Books Sold',    v:finUsd(a.bbu, a.eBb), sub:finDist(a.bb, a.bbg)},
     {k:'av',   l:'Adventures Sold',   v:finUsd(a.avu, a.eAv), sub:finDist(a.av, a.avg)},
     ...(a.ot || a.otg ? [{k:'ot', l:'Other Sold', v:finUsd(a.otu, a.eOt), sub:finDist(a.ot, a.otg)}] : []),
+    ...secExtra().filter(k=>a[k] || a[k+'g']).map(k=>({k, l:CAT_SHORT[k] + ' Sold', v:finUsd(a[k+'u'], a[finEK(k)]), sub:finDist(a[k], a[k+'g'])})),
     {k:'don',  l:'Donations',         v:finUsd(a.don, a.eDon), sub:'', cur:finCurs(a.cur.don)},
     {k:'pend', l:'Pending Payments',  v:finUsd(a.pend, a.ePend), sub:''},
     {k:'gross', l:g.l,                v:g.v, sub:'', ex:g.ex, cur:finCurs(a.cur.coll)},
@@ -14061,7 +14110,7 @@ function finPaySplit(xs){
    was logged, every lot of books sent on or arriving, and the New Total. */
 function bcHistText(h, x){
   const n = h.n + (h.n===1 ? ' book' : ' books'), out = h.u < 0 || h.a < 0;
-  const ship = x.bookLink && x.bookLink.k==='ship';
+  const ship = x.bookLink && (x.bookLink.k==='ship' || x.bookLink.k==='tx');
   if(h.k==='orig') return ship ? 'Original Shipping Costs' : x.bookLink && x.bookLink.ship ? 'Shipping Costs' : h.n > 0 ? 'Original Printing (' + bcBooks(h.n) + ')' : 'Original Printing Costs';
   if(h.k==='ref') return 'Refund for books sent back';
   if(h.k==='ship') return out ? 'Shipping of ' + n + ' to ' + h.w : 'Shipping of ' + n + ' from ' + h.w;
@@ -14844,7 +14893,8 @@ function finChartsHTML(){
     /* Income by Source (b284, Gita): one ring of what has come in, called
        Gross. While payments are pending, a second ring beside it with them
        added, called Expected Gross — never "Expected" when nothing is owed. */
-    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Other', v:a.otu, c:FIN_C.ot, e:a.eOt}, {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
+    const src = [{k:'Big Books', v:a.bbu, c:FIN_C.bb, e:a.eBb}, {k:'Adventures', v:a.avu, c:FIN_C.av, e:a.eAv}, {k:'Other', v:a.otu, c:FIN_C.ot, e:a.eOt},
+      ...secExtra().map(k=>({k:CAT_SHORT[k], v:a[k+'u']||0, c:SEC_COLOR[k] || FIN_C.ot, e:a[finEK(k)]})), {k:'Donations', v:a.don, c:FIN_C.don, e:a.eDon}];
     const pend = finPending(a), owe = finToRepay(a);
     if(pend){
       out.push(finChart('Income by Source (Actual)', finDonutHTML(src.map(r=>Object.assign({}, r)).filter(r=>r.v > 0.004), 'Income by Source (Actual)', 'Gross')));
@@ -14955,7 +15005,7 @@ function finCsvDownload(part){
   if(part==='overview'){
     const O = finOverviewRows();
     // The same columns as the table on screen (b297).
-    const kinds = [['Big Books', 'bb'], ['Adventures', 'av'], ['Other', 'ot']];
+    const kinds = [['Big Books', 'bb'], ['Adventures', 'av'], ['Other', 'ot'], ...secExtra().map(k=>[CAT_SHORT[k], k])];
     const head = [''].concat(...kinds.map(([g])=>[g + ' Sold', g + ' Gifted', g + ' Distributed', g + ' Gross (USD)']), ['Donations (USD)',
       'Pending (USD)', 'Total Gross (USD)', 'Expected Gross (USD)', 'Expenses (USD)', 'Expected Expenses (USD)', 'Net (USD)', 'Expected Net (USD)', 'Margin (%)']);
     const line = (l, a) => [l].concat(...kinds.map(([, k])=>[a[k], a[k+'g'], a[k] + a[k+'g'], finMoney(a[k+'u'])]), [finMoney(a.don), finMoney(a.pend), finMoney(a.coll), finMoney(a.gross),
@@ -18716,16 +18766,12 @@ function priceGrid(edit, st, opts){
     /* b329 (Gita, 3 Nov): A to Z within each kind, and the kinds in the
        app's order, Big Books, Adventures, Other. */
     const az = l => l.slice().sort(bookAZ);
-    const big  = az(all.filter(b=>catOfBook(b)==='big'));
-    const other= az(all.filter(b=>catOfBook(b)==='other'));
-    const aotm = az(all.filter(b=>catOfBook(b)==='aotm'));
     /* b328 (Gita, 3 Nov): tick or untick every title in one go, or one kind
        at a time from its own row below. */
     const selAll = onlyHere ? '' : `<div class="rp-selall"><span>All titles:</span><button type="button" class="btn btn-ghost btn-sm rp-sel-b" data-sel="*" data-on="1">Select all</button><button type="button" class="btn btn-ghost btn-sm rp-sel-b" data-sel="*" data-on="0">Deselect all</button></div>`;
     return selAll + head
-      + (big.length   ? fill('Big Books','big')   + rowsFor(big)   : '')
-      + (aotm.length  ? fill('Adventures','aotm') + rowsFor(aotm)  : '')
-      + (other.length ? fill('Other','other')     + rowsFor(other) : '');
+      + secPairs().map(([cat, label])=>{ const mine = az(all.filter(b=>catOfBook(b)===cat));   /* b331: every section, in its order */
+          return mine.length ? fill(esc(label), cat) + rowsFor(mine) : ''; }).join('');
   }
 
   // Re-draw the price grid whenever the currency list changes, keeping anything typed.
@@ -18888,10 +18934,7 @@ function regionModal(edit, after){
       <div id="rgPrices">${priceRows(parseCurs(cur))}</div>
       <div class="rp-add">
         <input id="rgNewBook" type="text" placeholder="Add a title — e.g. Sri Radha (Spanish)">
-        <select id="rgNewCat">
-          <option value="big">Big Book</option>
-          <option value="aotm">Adventures</option>
-        </select>
+        <select id="rgNewCat">${secPairs(1).map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select>
         <button type="button" class="btn btn-ghost btn-sm" id="rgAddBook">Add</button>
       </div>
       </div>
@@ -19488,7 +19531,7 @@ function stockOrderModal(){
   const seen = new Map();
   inStockOrder(inRegionOrder((STATE.books||[]).filter(b=>!b.partnerId))).forEach(b=>{
     const k = stockTitleKey(b); if(!seen.has(k)) seen.set(k, {id:k, name:bookLang(b).base, cat:catOfBook(b)}); });
-  const CAT = [['big','Big Books'],['aotm','Adventures'],['other','Other']];
+  const CAT = secPairs();
   let list = [...seen.values()];
   function draw(){
     $('#soList').innerHTML = CAT.map(([cat,label])=>{
@@ -19517,6 +19560,87 @@ function stockOrderModal(){
       <button class="btn btn-primary" id="soSave">Save</button></div>`, true);
   draw();
   $('#soSave').addEventListener('click', async ()=>{ await STOCK_ORDER.set(list.map(x=>x.id)); closeModal(); toast('Saved'); });
+}
+/* ---- Edit Sections (b331, practice; Gita, 3 Nov: "I need a simple way to
+   edit the organization of sections ... a Diaries section, and an Other
+   section") ----
+   Add a section, rename one, give it a colour, put them in order. Big Books,
+   Adventures and Other are always there (they can be renamed and moved). A
+   section taken away gives its titles to Other. Below, every title with the
+   section it is in, to move it to another. */
+const SEC_PALETTE = ['#8E5BA8', '#2E8B57', '#C2185B', '#1F5F8B', '#B8860B', '#6D4C41'];
+function sectionsModal(){
+  if(!SECTIONS_ON || !isAdmin()) return;
+  let list = CATS.map(k=>({id:k, name:CAT_SHORT[k], color:SEC_COLOR[k]||''}));
+  const builtIn = id => id==='big' || id==='aotm' || id==='other';
+  const books = (STATE.books||[]).filter(b=>!b.partnerId).slice().sort(bookAZ);
+  const moved = {};
+  openModal(`${mHead('Edit Sections')}
+    <div class="m-body">
+      <div class="hint">The sections books are grouped and counted in, everywhere in the app, in this order. Big Books, Adventures and Other are always there.</div>
+      <div id="secList" class="sec-list"></div>
+      <div class="rp-add"><input id="secNew" type="text" maxlength="40" placeholder="New section, e.g. Diaries"><button type="button" class="btn btn-ghost btn-sm" id="secAdd">＋ Add</button></div>
+      <div class="cash-sub">Which section each title is in</div>
+      <div id="secBooks" class="sec-books"></div>
+      <div class="err" id="modalErr"></div>
+    </div>
+    <div class="m-foot"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="secSave">Save</button></div>`, true);
+  const read = () => document.querySelectorAll('#secList [data-sn]').forEach(i=>{ const x = list[Number(i.dataset.sn)]; if(x) x.name = i.value; });
+  const draw = () => {
+    $('#secList').innerHTML = list.map((x,i)=>`<div class="sec-row">
+        <span class="sec-mv"><button type="button" class="btn btn-ghost btn-xs" data-sup="${i}" ${i?'':'disabled'} title="Move up">▲</button><button type="button" class="btn btn-ghost btn-xs" data-sdn="${i}" ${i<list.length-1?'':'disabled'} title="Move down">▼</button></span>
+        <input type="text" maxlength="40" data-sn="${i}" value="${esc(x.name)}" aria-label="Section name">
+        ${builtIn(x.id) ? '<span class="sec-sw"></span>' : `<input type="color" class="sec-sw" data-sc="${i}" value="${esc(x.color || SEC_PALETTE[0])}" title="Colour of its card">`}
+        ${builtIn(x.id) ? '<span class="sec-x"></span>' : `<button type="button" class="btn btn-ghost btn-xs sec-x" data-sdel="${i}" title="Take this section away">✕</button>`}</div>`).join('');
+    const opts = cur => list.map(x=>`<option value="${esc(x.id)}" ${x.id===cur?'selected':''}>${esc(x.name || '(no name)')}</option>`).join('');
+    $('#secBooks').innerHTML = books.map(b=>{ const cur = moved[b.id] || catOfBook(b);
+      return `<div class="sec-bk"><span class="sec-bt">${bookTitleHTML(b)}</span><select data-sb="${esc(b.id)}" aria-label="Section">${opts(list.some(x=>x.id===cur) ? cur : 'other')}</select></div>`; }).join('');
+  };
+  draw();
+  $('#modal').addEventListener('click', e=>{
+    const up = e.target.closest('[data-sup]'), dn = e.target.closest('[data-sdn]'), del = e.target.closest('[data-sdel]');
+    if(!up && !dn && !del) return;
+    read();
+    if(up){ const i = Number(up.dataset.sup); [list[i-1], list[i]] = [list[i], list[i-1]]; }
+    if(dn){ const i = Number(dn.dataset.sdn); [list[i+1], list[i]] = [list[i], list[i+1]]; }
+    if(del){ const i = Number(del.dataset.sdel), x = list[i]; list.splice(i, 1); Object.keys(moved).forEach(id=>{ if(moved[id]===x.id) moved[id] = 'other'; }); }
+    draw();
+  });
+  $('#modal').addEventListener('change', e=>{
+    const c = e.target.closest('[data-sc]'); if(c){ list[Number(c.dataset.sc)].color = c.value; return; }
+    const b = e.target.closest('[data-sb]'); if(b){ moved[b.dataset.sb] = b.value; }
+  });
+  $('#secAdd').addEventListener('click', ()=>{
+    read(); const n = $('#secNew').value.replace(/\s+/g, ' ').trim(); if(!n) return;
+    if(list.some(x=>x.name.toLowerCase()===n.toLowerCase())){ $('#modalErr').textContent = 'There is a section called ' + n + ' already.'; return; }
+    const used = new Set(list.map(x=>x.color));
+    list.push({id:'new:' + Date.now().toString(36), name:n, color:SEC_PALETTE.find(c=>!used.has(c)) || SEC_PALETTE[0]});
+    $('#secNew').value = ''; $('#modalErr').textContent = ''; draw();
+  });
+  $('#secSave').addEventListener('click', async ()=>{
+    read();
+    if(list.some(x=>!x.name.trim())) return $('#modalErr').textContent = 'Every section needs a name.';
+    const btn = $('#secSave'); btn.disabled = true; btn.textContent = 'Saving…';
+    try{
+      // New sections first get their ids, so titles can be moved into them.
+      const sent = list.map(x=>({id: x.id.startsWith('new:') ? 'new' : x.id, name:x.name.trim(), color:x.color||''}));
+      const saved = (await post({action:'setSections', sections:sent})).result || [];
+      const idOf = {}; list.forEach((x,i)=>{ idOf[x.id] = (saved[i]||{}).id || x.id; });
+      const stuck = [];
+      for(const id of Object.keys(moved)){
+        const b = bookById(id); if(!b) continue;
+        const to = idOf[moved[id]] || moved[id];
+        if(to===catOfBook(b)){ delete moved[id]; continue; }
+        // The app's own standard titles keep their kind.
+        try{ await post({action:'renameBook', bookId:id, name:b.name, cat:to}); }catch(e){ stuck.push(b.name); delete moved[id]; }
+      }
+      if(stuck.length) alert('Saved. These are standard titles and stay in their own section: ' + stuck.join(', '));
+      BASE.sections = saved; BASE.sectionsSet = true; (STATE.books||[]).forEach(b=>{ if(moved[b.id]) b.cat = idOf[moved[b.id]] || moved[b.id]; });
+      (BASE.books||[]).forEach(b=>{ if(moved[b.id]) b.cat = idOf[moved[b.id]] || moved[b.id]; });
+      STATE = derive(); renderAll(); closeModal(); toast('Sections saved');
+      try{ await poll(); }catch(e){}
+    }catch(e){ $('#modalErr').textContent = e.message; btn.disabled = false; btn.textContent = 'Save'; }
+  });
 }
 function stockTitles(ctx){
   const groups = new Set((ctx.st.partners||[]).filter(p=>String(p.regionId)===String(ctx.regionId)).map(p=>p.partnerId));
@@ -19832,7 +19956,7 @@ function addStockModal(opts){
     const titles = stockTitles(ctx), byKey = new Map(titles.map(x=>[x.key, x]));
     const used = new Set(lines.map(l=>l.b).filter(Boolean));
     const admin = isAdmin();
-    const groupsOf = [['big','Big Books'],['aotm','Adventures'],['other','Other']];
+    const groupsOf = secPairs();
     const titleOpts = cur => `<option value="">Choose a title…</option>` + groupsOf.map(([cat,label])=>{
         const mine = titles.filter(x=>!x.partnerId && x.cat===cat);
         return mine.length ? `<optgroup label="${label}">${mine.map(x=>
@@ -19854,7 +19978,7 @@ function addStockModal(opts){
         </select>`;
       /* The kind first (b305, Gita): Adventures needs only its language. */
       if(l.mode==='newbook') pick += `<div class="ln-new">
-          <select class="ln-nbcat" data-i="${i}" aria-label="Kind of book">${[['big','Big Book'],['aotm','Adventures'],['other','Other']].map(([v,t])=>`<option value="${v}"${(l.nbcat||'big')===v?' selected':''}>${t}</option>`).join('')}</select>
+          <select class="ln-nbcat" data-i="${i}" aria-label="Kind of book">${secPairs(1).map(([v,t])=>`<option value="${v}"${(l.nbcat||'big')===v?' selected':''}>${esc(t)}</option>`).join('')}</select>
           ${(l.nbcat||'big')==='aotm' ? '' : '<input type="text" class="ln-nbname" placeholder="Title, e.g. Bhagavad Gita">'}
           <input type="text" class="ln-nblang" placeholder="Language, e.g. Spanish">
           <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="book">Add this book</button></div>`;
@@ -19863,7 +19987,7 @@ function addStockModal(opts){
           <button type="button" class="btn btn-ghost btn-sm ln-add" data-i="${i}" data-kind="lang">Add ${esc(g?g.base:'')} in this language</button></div>`;
       // Its kind shows on the line, as a drop-down to change it (b304, b305 Gita).
       if(b && b.staged) pick += `<select class="ln-cat" data-i="${i}" aria-label="Kind of book" title="Not in the catalogue yet: Save adds it. Take the line off (✕) and it is never added.">${
-          [['big','Big Book'],['aotm','Adventures'],['other','Other']].map(([v,t])=>`<option value="${v}"${b.cat===v?' selected':''}>${t}</option>`).join('')}</select>`;
+          secPairs(1).map(([v,t])=>`<option value="${v}"${catOfBook(b)===v?' selected':''}>${esc(t)}</option>`).join('')}</select>`;
       else if(b && !carriedHere(b)) pick += ` <span class="sp-new-tag" title="Saving switches it on for ${esc(ctx.region.name||'the region')}">new here</span>`;
       const x = (l.t || l.mode) ? `<button type="button" class="sp-x" data-unline="${i}" title="Take this line off">✕</button>` : '';
       const c = b ? cols(b) : null;
@@ -19926,7 +20050,7 @@ function addStockModal(opts){
       const cell = document.querySelector(`#spBody [data-next="${b.id}"]`);
       if(cell){ cell.textContent = shown; cell.classList.toggle('zero', where==='there' && shown===0); }
       const c = catOfBook(b);
-      if(c==='aotm') aotm+=count; else if(c==='other') other+=count; else big+=count;
+      if(c==='aotm') aotm+=count; else if(c==='big') big+=count; else other+=count;   // b331: a made section counts with Other here
     });
     $('#footValue').textContent = big+aotm+other;
     $('#footBig').textContent = big; $('#footAotm').textContent = aotm; $('#footOther').textContent = other;
@@ -21110,6 +21234,10 @@ function invFilterApply(){
     const ok = (!q || (bl.base + ' ' + bl.lang).toLowerCase().normalize('NFD').replace(FOLD_RE,'').includes(q)) && (!lang || bl.lang===lang);
     c.hidden = !ok; if(ok) shown++;
   });
+  // A section heading with none of its titles showing goes too (b331).
+  let head = null, any = false;
+  [...grid.children].forEach(c=>{ if(c.classList.contains('sec-h')){ if(head) head.hidden = !any; head = c; any = false; } else if(c.dataset.id && c.dataset.id!==DONATION_ID && !c.hidden) any = true; });
+  if(head) head.hidden = !any;
   let none = grid.querySelector(':scope > .inv-none');
   if((q || lang) && !shown){ if(!none){ none = document.createElement('div'); none.className = 'cash-empty inv-none'; none.textContent = 'No titles match.'; grid.prepend(none); } }
   else if(none) none.remove();
@@ -21134,8 +21262,33 @@ const arrOn = el => !!ARRANGE && arrKey(el)===ARRANGE;
 var SHELF_DRAG = { on:false, redraw:false };
 function dragging(){ return typeof SHELF_DRAG!=='undefined' && !!SHELF_DRAG && SHELF_DRAG.on; }
 const bookGrids = () => [...document.querySelectorAll('#invGrid, .stat-grid[data-books]')];
+/* Section headings over the book cards (b331, practice; Gita, 3 Nov: "if I
+   have a Big Books section then all the requisite displays in the whole
+   portal should read 'Big Books' and then have only big books there"): each
+   panel of book cards is grouped by section, in the sections' order, your own
+   order kept inside each, under a small heading. The donation card stays last.
+   Only where two or more sections have cards. */
+function secHeads(g){
+  g.querySelectorAll(':scope > .sec-h').forEach(h=>h.remove());
+  /* Once the sections have been set in Edit Sections; not while arranging,
+     where the books are moved in your own order across the whole shelf. */
+  if(!SECTIONS_ON || !STATE || !STATE.sectionsSet || arrOn(g)) return;
+  const cards = [...g.querySelectorAll(':scope > [data-id]')];
+  const books = cards.filter(c=>c.dataset.id!==DONATION_ID);
+  const rank = c => secRank(bookById(c.dataset.id));
+  if(new Set(books.map(rank)).size < 2) return;
+  const sorted = books.map((c,i)=>({c,i,r:rank(c)})).sort((a,b)=>a.r-b.r || a.i-b.i).map(x=>x.c);
+  cards.filter(c=>c.dataset.id===DONATION_ID).forEach(c=>sorted.push(c));
+  let last = -1;
+  sorted.forEach(c=>{
+    if(c.dataset.id!==DONATION_ID){ const r = rank(c);
+      if(r!==last){ const h = document.createElement('div'); h.className = 'sec-h no-edit'; h.textContent = CAT_SHORT[CATS[r]] || ''; g.appendChild(h); last = r; } }
+    g.appendChild(c);
+  });
+}
 function arrangeUI(){
   const grids = bookGrids();
+  grids.forEach(g=>{ try{ secHeads(g); }catch(e){} });
   grids.forEach(g=>{
     const on = arrOn(g);
     g.classList.toggle('arranging', on);
@@ -21633,7 +21786,7 @@ function pricesModal(){
       const fill = (label, cat) => `<div class="rp-row rp-fill"><div class="rp-name">${label}</div>
           <div class="rp-cells">${curs.map(c=>`<input class="rp rp-all ep-all" type="number" step="0.01" min="0" inputmode="decimal"
             data-cat="${cat}" data-cur="${esc(c)}" placeholder="${esc(c)}">`).join('')}</div></div>`;
-      const grp = [['big','Big Books'],['aotm','Adventures'],['other','Other']].map(([cat,label])=>{
+      const grp = secPairs().map(([cat,label])=>{
         const mine = books.filter(b=>catOfBook(b)===cat).sort(bookAZ); /* b329: A to Z within each kind */ return mine.length ? fill(label, cat) + mine.map(row).join('') : ''; }).join('');
       $('#ppBody').innerHTML = `<div class="hint">Type a price only where this event asks something different. A blank box uses ${esc(r.name||'the region')}'s price, shown in grey. A price in ${esc(curs[0]||'')} works out the other currencies.</div>
         <div class="rp-row rp-head"><div class="rp-name"></div><div class="rp-cells">${curs.map((c,i)=>`<span class="rp-cur ${i===0?'rp-local':''}">${esc(CUR_SYM[c]||'')} ${esc(c)}${
@@ -22201,7 +22354,7 @@ function shipCountModal(id){
       </div>`).join('')}
       <div id="scNewRows"></div>
       <div class="sc-new" id="scNewBox" hidden>
-        <select id="scNcat" aria-label="Kind of book"><option value="big">Big Book</option><option value="aotm">Adventures</option><option value="other">Other</option></select>
+        <select id="scNcat" aria-label="Kind of book">${secPairs(1).map(([v,t])=>`<option value="${v}">${esc(t)}</option>`).join('')}</select>
         <input id="scNname" type="text" placeholder="Title, e.g. Bhagavad Gita">
         <input id="scNlang" type="text" placeholder="Language, e.g. Spanish">
         <button type="button" class="btn btn-ghost btn-sm" id="scNadd">Add this book</button>
@@ -22646,12 +22799,25 @@ function placeCtx(place, cb){
    expense of the place they went to. Cost not known yet: a Pending Expense
    on your own To Do, to fill in later. Paid yourself: the reimbursement form,
    filled in. */
-function xfShipCost(ship, f, t, n, shipId){
+/* Every currency in the app (b329+, Gita: "all currencies in the system
+   should be available to list shipping costs"): the ones given first (the
+   places involved), then every other one any place or the app knows, A to Z. */
+function allCurList(first){
+  const rest = new Set(Object.keys(CUR_SYM));
+  (STATE.regions||[]).forEach(r=>(r.currencies||[]).forEach(c=>rest.add(String(c).toUpperCase())));
+  const lead = [...new Set((first||[]).map(c=>String(c).toUpperCase()).filter(Boolean))];
+  return lead.concat([...rest].filter(c=>!lead.includes(c)).sort());
+}
+function xfShipCost(ship, f, t, n, shipId, movePrefix){
   if(!ship || !ship.on) return;
   const place = t.kind==='event' ? t.loc : (t.seasonId===HQ_ID ? HQ_REGION : t.regionId);
   const what = 'Shipping: ' + n + ' book' + (n===1?'':'s') + ' from ' + placeLabel(f) + ' to ' + placeLabel(t);
   const exp = {location:place, category:'Shipping', desc:what, cur:ship.cur};
   if(shipId) exp.bookLink = {k:'ship', sh:shipId};
+  /* Books that arrive at once (b330, Gita: "Shipping costs should raise the
+     per-book price for that shipment"): the cost goes on the copies moved
+     in this transfer, shared by weight (Code.gs bookCostCalc_, k 'tx'). */
+  else if(movePrefix) exp.bookLink = {k:'tx', src:'m:' + movePrefix};
   if(ship.unknown){ pendExpAdd(Object.assign({id:'pe' + Date.now().toString(36), ts:new Date().toISOString()}, exp)); return; }
   exp.amt = ship.amt;
   if(ship.reimb){ setTimeout(()=>expensesModal(null, null, Object.assign({kind:'reimburse', mine:true}, exp)), 0); return; }
@@ -22675,7 +22841,7 @@ function pendExpItemHTML(x){
 }
 function pendExpModal(id){
   const x = pendExps().find(y=>y.id===id); if(!x) return;
-  const curs = [...new Set([x.cur, ...((currentRegion()||{}).currencies||[]), 'USD', 'EUR'].filter(Boolean))];
+  const curs = allCurList([x.cur, ...((currentRegion()||{}).currencies||[])]);
   openModal(`${mHead('Pending Expense')}
     <div class="m-body"><div class="note">${esc(x.desc)}</div>
       ${shipAskHTML('pe', curs)}
@@ -22871,7 +23037,7 @@ function transferStockModal(opts){
     h += `<div class="xf-all"><button type="button" class="btn btn-ghost btn-sm" id="xfAll">Transfer everything</button> <button type="button" class="btn btn-ghost btn-sm" id="xfClear">Clear everything</button></div>
       <div id="preWarn"></div>`;
     // b328 (practice): "When transferring stock, there should also be a Shipping yes/no field."
-    h += shipAskHTML('xf', [...new Set([...((regionById(toPick.value.regionId)||{}).currencies||[]), ...((regionById(fromPick.value.regionId)||{}).currencies||[]), 'USD', 'EUR'])], {unknown: !!ME});
+    h += shipAskHTML('xf', allCurList([...((regionById(toPick.value.regionId)||{}).currencies||[]), ...((regionById(fromPick.value.regionId)||{}).currencies||[])]), {unknown: !!ME});
     if(k!=='store' || storage!=='multi')
       h += `<div class="field"><label>Note (optional)</label><input type="text" data-k="note"></div>`;
     body.innerHTML = h;
@@ -22992,7 +23158,7 @@ function transferStockModal(opts){
         <div class="bn ${isAotm(b)?'aotm':''}">${bookTitleHTML(b)}</div>${cells}
         <div class="num next" data-left="${esc(b.id)}" data-total="${total}">${total}</div></div>`;
     };
-    const groups = [['big','Big Books'],['aotm','AoTM — Adventures'],['other','Other']];
+    const groups = CATS.map(k=>[k, CAT_LABEL[k]]);
     const grouped = fn => groups.map(([cat,label])=>{
       const mine = list.filter(b=>catOfBook(b)===cat);
       return mine.length ? `<div class="bulk-sec">${label}</div>` + mine.map(fn).join('') : '';
@@ -23025,7 +23191,7 @@ function transferStockModal(opts){
       document.querySelectorAll(`#xfBody .xf-in[data-book="${id}"][data-src]`).forEach(i=>{
         if(val(i) > fromCtx.qty(i.dataset.src, id)) over = true; });
       const c = catOfBook(bookById(id) || (fromCtx.st.books||[]).find(b=>b.id===id));
-      if(c==='aotm') aotm+=moved; else if(c==='other') other+=moved; else big+=moved;
+      if(c==='aotm') aotm+=moved; else if(c==='big') big+=moved; else other+=moved;
     });
     if($('#footValue')){
       $('#footValue').textContent = big+aotm+other;
@@ -23168,7 +23334,7 @@ function transferStockModal(opts){
           fromBefore:fB, fromAfter:fB-m.qty, toBefore:tB, toAfter:tB+m.qty});
       });
     } : ()=>{}, done);
-    xfShipCost(ship, f, t, moves.reduce((n,m)=>n+m.qty, 0), '');
+    xfShipCost(ship, f, t, moves.reduce((n,m)=>n+m.qty, 0), '', movePrefix);
   });
 
   if(fromPick.value) loadFrom(fromPick.value); else draw();
@@ -23860,7 +24026,7 @@ const GS_ALSO = {
   activity:'log history undo changes', org:'support help contacts phone',
   sharelinks:'links share sellers', eventorder:'order sort arrange events',
   specreport:'report whatsapp', report:'report whatsapp summary', wareports:'report reports whatsapp specialty speciality summary',
-  drivefolder:'spreadsheets sheets google drive files', editwording:'wording labels text words', menuorder:'menu order arrange organize reorganise sidebar',
+  drivefolder:'spreadsheets sheets google drive files', editwording:'wording labels text words', menuorder:'menu order arrange organize reorganise sidebar', sections:'sections kinds categories diaries big books adventures other',
   admins:'admin access users people permissions', signout:'log out logout',
   cash:'cash money tracker tracking track', costs:'costs expenses spending bills', paytypes:'payment types upi zelle paypal', prices:'prices price pricing currency currencies exchange',
   addstock:'add stock books printer new', xfer:'transfer move stock books send',
@@ -24407,6 +24573,7 @@ document.addEventListener('click',e=>{
     return;
   }
   if(a==='menuorder'){ menuOrderModal(); return; }
+  if(a==='sections'){ sectionsModal(); return; }
   if(a==='editwording'){
     EDIT_WORDING = !EDIT_WORDING; lblBodyClass(); if(!EDIT_WORDING) labelInlineEnd(true);
     // Every pencil goes when editing ends (b291, Gita: they stayed on words with nothing rewritten).
