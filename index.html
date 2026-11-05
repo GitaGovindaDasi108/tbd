@@ -2584,7 +2584,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b332</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b333</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -19885,7 +19885,36 @@ function addStockModal(opts){
     draw();
   }
 
-  function draw(){
+  /* b333 (Gita: "the menus on mobile when adding stock are shifty"): the
+     line or question just changed stays exactly where it was on the screen
+     while the form below it is redrawn, as the expense form does. */
+  function spKey(el){
+    if(!el || !el.closest) return '';
+    const row = el.closest('.ln-row[data-i]');
+    if(row) return `#spBody .ln-row[data-i="${row.dataset.i}"]`;
+    const pp = el.closest('.pp'); if(pp && pp.querySelector('.pp-in')) el = pp.querySelector('.pp-in');
+    const box = el.id ? el : el.closest('[id]');
+    return box && box.id !== 'modal' ? '#' + box.id : '';
+  }
+  function spHold(){
+    const ov = $('#overlay'), m = $('#modal'), b = m && m.querySelector('.m-body');
+    if(!b || !m.querySelector('#spBody')) return ()=>{};
+    const act = document.activeElement && m.contains(document.activeElement) ? document.activeElement : null;
+    const trig = _expTrig && Date.now() - _expTrig.t < 1500 && m.contains(_expTrig.el) ? _expTrig.el : null;   // the field just changed (kept for every form)
+    const key = spKey(trig || act), a = key && m.querySelector(key), top = a ? a.getBoundingClientRect().top : 0;
+    const st = b.scrollTop, ost = ov.scrollTop;
+    return ()=>{
+      m.classList.add('still');
+      b.scrollTop = st; ov.scrollTop = ost;
+      const a2 = key && m.querySelector(key);
+      if(!a2) return;
+      let d = a2.getBoundingClientRect().top - top;
+      if(Math.abs(d) > 1){ const was = b.scrollTop; b.scrollTop = was + d; d -= b.scrollTop - was; }
+      if(Math.abs(d) > 1) ov.scrollTop += d;
+    };
+  }
+  function draw(){ const keep = spHold(); draw0(); keep(); }
+  function draw0(){
     keepTyped();
     const save = $('#spSave');
     $('#spWhereWrap').hidden = !picker.value;
@@ -20166,10 +20195,12 @@ function addStockModal(opts){
     }
   });
   // After choosing, the cursor goes to that line's number box.
+  /* On a phone the keyboard would jump up and push the form about (b333), so
+     the box waits for a tap there; on a computer the cursor goes straight to it. */
   function focusLine(l){
-    if(!l.b) return;
+    if(!l.b || EXP_TOUCH) return;
     const inp = document.querySelector(`#spBody input[data-book="${l.b}"]`);
-    if(inp) inp.focus();
+    if(inp) try{ inp.focus({preventScroll:true}); }catch(e){ inp.focus(); }
   }
 
   /* A new book, or a new language of a title, straight from the line (Universal). */
