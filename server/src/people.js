@@ -258,7 +258,7 @@ export const PERM_CAPS = [
   { group: "Money", key: "change_owed_and_pending_paym", label: "Change owed and Pending Payments lists", def: "oyyvyvvvy" },
   { group: "Money", key: "received_the_dollars_that_ac", label: "“$ Received”: the dollars that actually arrived", def: "nyyyyyyyy" },
   { group: "Money", key: "record_a_cost", label: "Record a cost", def: "yyyyyyyyy" },
-  { group: "Money", key: "see_cost_totals_and_money_af", label: "See cost totals and money after costs", def: "nnnnnnyvy" },
+  { group: "Money", key: "see_cost_totals_and_money_af", label: "See cost totals and money after costs", def: "nnnnnnyvy", now: true },
   { group: "Stock", key: "see_stock_in_their_region", label: "See stock in their region", def: "nvvvvvvvv" },
   { group: "Stock", key: "see_stock_in_every_warehouse", label: "See stock in every warehouse, everywhere", def: "nnvvvvvvv" },
   { group: "Stock", key: "transfer_between_the_regions", label: "Transfer between the region’s warehouse and its events", def: "noyvyvvvy" },
@@ -278,6 +278,8 @@ export const PERM_CAPS = [
   { group: "Setup", key: "consignment_groups_books_pri", label: "Consignment: groups, books, prices, payouts", def: "noyvyvvvy" },
   { group: "Setup", key: "sell_consignment_books", label: "Sell consignment books", def: "yyyvyvvvy" },
   { group: "Setup", key: "edit_wording", label: "Edit Wording", def: "nnnnnnnny" },
+  // b332 (Gita): who may come into the practice space. Decided by the live app's table, at once.
+  { group: "Setup", key: "use_the_practice_space", label: "Use the practice space", def: "nnnnnnnny", now: true, live: true },
   { group: "People", key: "give_logins", label: "Give logins", def: "nyyvyvnny" },
   { group: "People", key: "emergency_sales_links", label: "Emergency sales links", def: "nyynynnny" },
   { group: "People", key: "remove_someones_access", label: "Remove someone’s access", def: "noyvyvnny" },

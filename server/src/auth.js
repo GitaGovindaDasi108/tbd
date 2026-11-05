@@ -264,6 +264,21 @@ export function makeAuth({ exec, clientId, adminEmails, fetchImpl, now, certsUrl
       (rows.grants || []).forEach(r => exec('INSERT INTO grant_ (id, email, role, placeId, addedBy, addedAt) VALUES (?, ?, ?, ?, ?, ?)',
         String(r.id), String(r.email), String(r.role), String(r.placeId || ''), String(r.addedBy || ''), Number(r.addedAt) || 0));
     },
+    /* One person from the live rows (b332, practice): added with their roles
+       when this copy has none for them yet. */
+    importPerson(rows, email) {
+      email = String(email || '').toLowerCase();
+      const pr = (rows.person || []).find(r => String(r.email).toLowerCase() === email);
+      if (pr && !exec('SELECT email FROM person WHERE email = ?', email).length)
+        exec('INSERT INTO person (email, name, googleName, addedBy, addedAt) VALUES (?, ?, ?, ?, ?)',
+          email, String(pr.name || ''), String(pr.googleName || ''), String(pr.addedBy || ''), Number(pr.addedAt) || 0);
+      (rows.grants || []).filter(r => String(r.email).toLowerCase() === email).forEach(r => {
+        if (!exec('SELECT id FROM grant_ WHERE id = ?', String(r.id)).length)
+          exec('INSERT INTO grant_ (id, email, role, placeId, addedBy, addedAt) VALUES (?, ?, ?, ?, ?, ?)',
+            String(r.id), email, String(r.role), String(r.placeId || ''), String(r.addedBy || ''), Number(r.addedAt) || 0);
+      });
+      exec('DELETE FROM access_request WHERE email = ?', email);
+    },
     allGrants() {
       return exec('SELECT g.id, g.email, g.role, g.placeId, g.addedBy, g.addedAt, p.name, p.googleName FROM grant_ g LEFT JOIN person p ON p.email = g.email ORDER BY g.addedAt');
     },

@@ -93,6 +93,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     const action = String(p.action || 'getState');
     // The live server, asked for a copy by the practice server (b231).
     if (action === 'practiceExport') return reply(practiceExport(p));
+    if (action === 'practiceAccess') return reply(practiceAccess(p));
     // Reading the records with the read-only key (b253): never a change.
     if (action === 'readOnly') return reply(readOnly(p));
     // The practice server fills itself from live the first time it is used.
@@ -103,7 +104,17 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     if (action === 'signIn') {
       if (!googleClientId) return reply({ ok: false, error: 'Sign-in is not set up on this server yet.' });
       try {
-        const r = await auth.signIn(p.idToken);
+        let r = await auth.signIn(p.idToken);
+        /* Practice (b332): someone given a role on live since the last copy, and
+           the practice space, comes in with their live roles. */
+        if (practice && r.pending && liveUrl && liveSecret) {
+          const d = await liveAccess(true);
+          if (d && d.rows && await mayPractice(r.email)) { auth.importPerson(d.rows, r.email); r = await auth.signIn(p.idToken); }
+        }
+        if (practice && r.session && !(await mayPractice(r.email))) {
+          auth.signOut(r.session);
+          return reply({ ok: false, noPractice: true, email: r.email, error: NO_PRACTICE });
+        }
         if (r.pending) return reply({ ok: false, pending: true, email: r.email, name: r.name || '',
           error: 'Your request has been sent to the admins. You can come in once one of them approves it.' });
         if (r.declined) return reply({ ok: false, declined: true, email: r.email,
@@ -118,6 +129,9 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     if (action === 'relay') return relay(p);
     const linkKey = String(p.k || '').trim();
     let me = linkKey ? null : auth.check(p.s);
+    // The practice space, for those given it (b332).
+    if (practice && me && !(await mayPractice(me)))
+      return reply({ ok: false, noPractice: true, error: NO_PRACTICE, me: auth.person(me) });
     // View as someone else (practice only, Universal only).
     if (me && p.va && typeof p.va === 'object') me = viewAs(me, p.va);
     // The people Universal may view the app as (practice only).
@@ -152,14 +166,31 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
       if (!auth.isAdmin(me)) return reply({ ok: false, error: 'Only Universal can change permissions.' });
       const parse = (k, d) => { try { return JSON.parse(kv.getProp(k) || '') || d; } catch (e) { return d; } };
       if (action === 'permSet') {
-        kv.setProp('permTable', JSON.stringify(people.cleanPermTable(p.table)));
-        kv.setProp('permPeople', JSON.stringify(people.cleanPermPeople(p.people)));
+        const t = people.cleanPermTable(p.table), pp = people.cleanPermPeople(p.people);
+        /* In practice, who may use the practice space is the live app's to say
+           (b332): this copy keeps its own, untouched. */
+        if (practice) {
+          const ot = parse('permTable', {}), op = parse('permPeople', {});
+          delete t[PRACTICE_KEY]; if (ot[PRACTICE_KEY]) t[PRACTICE_KEY] = ot[PRACTICE_KEY];
+          Object.keys(pp).forEach(m => { delete pp[m][PRACTICE_KEY]; if (!Object.keys(pp[m]).length) delete pp[m]; });
+          Object.keys(op).forEach(m => { if (op[m][PRACTICE_KEY]) (pp[m] = pp[m] || {})[PRACTICE_KEY] = op[m][PRACTICE_KEY]; });
+        }
+        kv.setProp('permTable', JSON.stringify(t));
+        kv.setProp('permPeople', JSON.stringify(pp));
       }
       const persons = {};
       auth.allGrants().forEach(g => { const x = persons[g.email] || (persons[g.email] = { email: g.email, name: g.name || g.googleName || g.email, roles: [] });
         if (x.roles.indexOf(g.role) < 0) x.roles.push(g.role); });
+      const table = parse('permTable', {}), ppl = parse('permPeople', {});
+      // In practice, the live app's answer for the practice space is shown (b332).
+      const live = practice ? await liveAccess(true) : null;
+      if (live) {
+        delete table[PRACTICE_KEY]; if ((live.table || {})[PRACTICE_KEY]) table[PRACTICE_KEY] = live.table[PRACTICE_KEY];
+        Object.keys(ppl).forEach(m => { delete ppl[m][PRACTICE_KEY]; if (!Object.keys(ppl[m]).length) delete ppl[m]; });
+        Object.keys(live.people || {}).forEach(m => { const v = (live.people[m] || {})[PRACTICE_KEY]; if (v) (ppl[m] = ppl[m] || {})[PRACTICE_KEY] = v; });
+      }
       return reply({ ok: true, result: { caps: people.PERM_CAPS, roles: people.PERM_ROLES, names: Object.fromEntries(people.PERM_ROLES.map(r => [r, people.ROLES[r].name])),
-        defaults: people.permDefaults(), table: parse('permTable', {}), people: parse('permPeople', {}), persons: Object.values(persons) } });
+        defaults: people.permDefaults(), table, people: ppl, persons: Object.values(persons), practice: !!practice } });
     }
     /* Expenses (b238): anyone signed in, in any role (even one the rest of the
        app cannot use yet), and any link. expenses.js decides who may do what. */
@@ -289,6 +320,7 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
     return Object.assign(auth.person(me), {
       universal: auth.isAdmin(me), grants,
       netSales: seesNet(me, mine),
+      practiceOk: !practice && !!me && (auth.isAdmin(me) || permAllows(me, mine.map(g => g.role), PRACTICE_KEY, propJSON('permTable'), propJSON('permPeople'))),
       prefs: me ? auth.prefsOf(me) : {},
       seesPeople: people.seesPeople(mine, owner),
       givesLogins: people.givesAny(P, mine, owner),
@@ -302,13 +334,69 @@ export function makeServer({ exec, timeZone, fetchImpl, uuid, googleClientId, ad
   function seesNet(me, mine) {
     if (!me) return false;
     if (auth.isAdmin(me)) return true;
-    const KEY = 'see_cost_totals_and_money_af';
     const parse = (k) => { try { return JSON.parse(kv.getProp(k) || '') || {}; } catch (e) { return {}; } };
-    const own = (parse('permPeople')[String(me).toLowerCase()] || {})[KEY];
+    return permAllows(me, (mine || []).map(g => g.role), 'see_cost_totals_and_money_af', parse('permTable'), parse('permPeople'));
+  }
+  /* One row of the Permissions table for one person: their own setting wins,
+     else the most any of their roles gives (anything but "no" allows). */
+  function propJSON(k) { try { return JSON.parse(kv.getProp(k) || '') || {}; } catch (e) { return {}; } }
+  function permAllows(me, roles, KEY, table, ppl) {
+    const own = ((ppl || {})[String(me).toLowerCase()] || {})[KEY];
     if (own) return own !== 'n';
-    const table = parse('permTable'), defs = people.permDefaults();
-    return (mine || []).some(g => { const v = (table[KEY] && table[KEY][g.role]) || (defs[KEY] || {})[g.role];
+    const defs = people.permDefaults();
+    return (roles || []).some(r => { const v = ((table || {})[KEY] && table[KEY][r]) || (defs[KEY] || {})[r];
       return v && v !== 'n'; });
+  }
+  /* The practice space (b332, Gita): Universal, and whoever the LIVE app's
+     Permissions give "Use the practice space" (by their live roles, or for
+     them by name). Asked of the live app at most once a minute; when it cannot
+     be reached, the last answer it gave (or, never asked, this copy's own). */
+  const PRACTICE_KEY = 'use_the_practice_space';
+  let ACCESS = null;
+  async function liveAccess(fresh) {
+    if (!practice || !liveUrl || !liveSecret) return null;
+    if (!fresh && ACCESS && Date.now() - ACCESS.at < 60000) return ACCESS.d;
+    try {
+      const res = await fetchImpl(liveUrl, { method: 'POST', body: JSON.stringify({ action: 'practiceAccess', secret: liveSecret }) });
+      const r = JSON.parse(await res.text());
+      if (r && r.ok && r.result) {
+        ACCESS = { at: Date.now(), d: r.result };
+        const keep = JSON.stringify({ table: r.result.table, people: r.result.people, grants: r.result.grants, owners: r.result.owners });
+        if (kv.getProp('liveAccess') !== keep) kv.setProp('liveAccess', keep);
+        return ACCESS.d;
+      }
+    } catch (err) { /* the live app is out of reach for now */ }
+    if (ACCESS) return ACCESS.d;
+    try { return JSON.parse(kv.getProp('liveAccess') || '') || null; } catch (e) { return null; }
+  }
+  async function mayPractice(email) {
+    // A practice server not joined to a live app (a test copy) is open as before.
+    if (!practice || !email || !liveUrl || !liveSecret) return true;
+    email = String(email).toLowerCase();
+    if (realAuth.isAdmin(email)) return true;
+    // A "no" is asked again of live straight away, so a box just ticked there works at once.
+    return practiceBy(email, await liveAccess()) || practiceBy(email, await liveAccess(true));
+  }
+  function practiceBy(email, d) {
+    if (!d) {
+      const parse = (k) => { try { return JSON.parse(kv.getProp(k) || '') || {}; } catch (e) { return {}; } };
+      return permAllows(email, realAuth.grantsOf(email).map(g => g.role), PRACTICE_KEY, parse('permTable'), parse('permPeople'));
+    }
+    if ((d.owners || []).indexOf(email) >= 0) return true;
+    const roles = (d.grants || []).filter(g => String(g.email).toLowerCase() === email).map(g => g.role);
+    if (roles.indexOf('U') >= 0) return true;
+    return permAllows(email, roles, PRACTICE_KEY, d.table, d.people);
+  }
+  const NO_PRACTICE = 'The practice space is only for the people who have been given it. ' +
+    'Ask Universal to give you "Use the practice space" in Permissions. The real app is open to you as always.';
+  /* The live side of that question: the Permissions table and who holds which
+     role, for the practice server (with the practice phrase, as practiceExport). */
+  function practiceAccess(p) {
+    if (!practiceSecret || String(p.secret || '') !== practiceSecret) return { ok: false, error: 'Not allowed.' };
+    const parse = (k) => { try { return JSON.parse(kv.getProp(k) || '') || {}; } catch (e) { return {}; } };
+    const rows = auth.peopleRows();
+    return { ok: true, result: { table: parse('permTable'), people: parse('permPeople'), owners: auth.ownerList(),
+      grants: rows.grants.map(g => ({ email: g.email, role: g.role })), rows } };
   }
   /* An emergency link (Seller permissions, one event): Event Leads and above. */
   function mayLink(P, me, eventId) {

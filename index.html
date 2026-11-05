@@ -1667,6 +1667,7 @@ a.btn{text-decoration:none;display:inline-flex;align-items:center}
 .pm-grp td{font-size:10.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--plum);padding-top:10px;border-bottom:1px solid var(--line-d)}
 .pm-sel{font:inherit;font-size:11.5px;padding:3px 2px;border:1px solid var(--line-d);border-radius:6px;background:#fff;width:100%;min-width:62px}
 .pm-y{color:#1F6B45} .pm-o{color:#9A6A12} .pm-v{color:#2F6FB5} .pm-n{color:#9B9B9B}
+.pm-now{display:inline-block;margin-left:4px;padding:0 6px;border-radius:8px;background:#E3F1E6;color:#2F6B3A;font-size:11px;font-weight:600;white-space:nowrap}
 .pm-changed .pm-sel{background:#FFF1C9;border-color:#E2B33F}
 .pm-person{min-width:420px} .pm-base{color:var(--muted)}
 .view-tg{border:1px solid var(--line-d);background:var(--paper);color:var(--muted);border-radius:7px;font-size:13px;line-height:1;
@@ -2583,7 +2584,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b331</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b332</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -4200,6 +4201,13 @@ async function post(payload, opts){
   }
   /* Signed in, but none of their roles can be used now (b222): said plainly, and
      kept like a save with no signal — nothing is lost. */
+  /* The practice space is only for those given it in Permissions (b332). */
+  if(!d.ok && d.noPractice){
+    showNoPractice(d.me);
+    const err = new Error(d.error || 'The practice space is not open to you.');
+    err.network = true;
+    throw err;
+  }
   if(!d.ok && d.noAccess){
     showNoAccess(d.me);
     const err = new Error(d.error || 'None of your roles can be used right now.');
@@ -4399,6 +4407,23 @@ function showNoAccess(me){
   $('#naOut').addEventListener('click', async ()=>{ try{ await post({action:'signOut'}); }catch(e){} SESSION.clear(); ACTING.set(''); location.reload(); });
 }
 
+/* Signed in to practice without "Use the practice space" (b332): said plainly, with the way back to the real app. */
+function showNoPractice(me){
+  if($('#noAccess')) return;
+  const box = document.createElement('div');
+  box.id = 'noAccess'; box.className = 'signin-wrap';
+  box.innerHTML = `<div class="signin">
+      <h2>🧪 Practice space</h2>
+      <div class="hint">You are signed in${me ? ` as <b>${esc(me.name)}</b> (${esc(me.email)})` : ''}, but the practice space is only for the
+        people who have been given it. Ask Universal to give you “Use the practice space” in Permissions.</div>
+      <div class="hint">The real app is open to you as always.</div>
+      <div class="btn-row"><button class="btn btn-ghost" id="naOut">Sign out</button>
+        <a class="btn btn-primary" href="${esc(practiceLink(false))}">Go to the real app</a></div>
+    </div>`;
+  document.body.appendChild(box);
+  $('#naOut').addEventListener('click', async ()=>{ try{ await post({action:'signOut'}); }catch(e){} SESSION.clear(); ACTING.set(''); location.reload(); });
+}
+
 /* "You": your name as others see it, the role you are working in, signing out. */
 function youModal(){
   if(!ME) return;
@@ -4467,12 +4492,17 @@ async function permissionsModal(){
     (withRole ? `<option value="" ${!cur?'selected':''}>As their roles</option>` : '') +
     ['y','o','v','n'].map(v=>`<option value="${v}" ${cur===v?'selected':''}>${PERM_WORD[v]}</option>`).join('')}</select>`;
   const groups = [...new Set(d.caps.map(c=>c.group))];
+  /* Rows the app already follows say so (b332); in practice, the practice
+     space's own row is the live app's to set, so it is shown, not changed. */
+  const liveOnly = c => d.practice && c.live;
+  const capLabel = c => esc(c.label) + (c.now ? ' <span class="pm-now">in use now</span>' : '')
+    + (liveOnly(c) ? '<div class="muted-note">Set this in the live app.</div>' : '');
   function draw(){
     const body = $('#modal .m-body'); if(!body) return;
     const levelHTML = `<div class="pm-wrap"><table class="pm-table"><thead><tr><th></th>${d.roles.map(r=>`<th title="${esc(d.names[r])}">${esc(r)}</th>`).join('')}</tr></thead>
-      <tbody>${groups.map(g=>`<tr class="pm-grp"><td colspan="${d.roles.length+1}">${esc(g)}</td></tr>` + d.caps.filter(c=>c.group===g).map(c=>`<tr><td class="pm-cap">${esc(c.label)}</td>${
+      <tbody>${groups.map(g=>`<tr class="pm-grp"><td colspan="${d.roles.length+1}">${esc(g)}</td></tr>` + d.caps.filter(c=>c.group===g).map(c=>`<tr><td class="pm-cap">${capLabel(c)}</td>${
         d.roles.map(r=>{ const v = val(c.key, r), changed = v !== d.defaults[c.key][r];
-          return `<td class="${changed?'pm-changed':''}">${sel('pm-lv', v, `data-cap="${c.key}" data-role="${r}" title="${esc(d.names[r])}: ${esc(c.label)}"`)}</td>`; }).join('')}</tr>`).join('')).join('')}</tbody></table></div>
+          return `<td class="${changed?'pm-changed':''}">${sel('pm-lv', v, `data-cap="${c.key}" data-role="${r}" title="${esc(d.names[r])}: ${esc(c.label)}"${liveOnly(c)?' disabled':''}`)}</td>`; }).join('')}</tr>`).join('')).join('')}</tbody></table></div>
       <div class="hint">${d.roles.map(r=>`<b>${esc(r)}</b> ${esc(d.names[r])}`).join(' · ')}. A highlighted box differs from the standard table.</div>`;
     const person = d.persons.find(x=>x.email===who);
     const mine = ppl[who] || {};
@@ -4481,11 +4511,11 @@ async function permissionsModal(){
       <div class="pm-wrap"><table class="pm-table pm-person"><thead><tr><th></th><th>From their roles</th><th>For ${esc(person ? person.name : '')}</th></tr></thead>
       <tbody>${groups.map(g=>`<tr class="pm-grp"><td colspan="3">${esc(g)}</td></tr>` + d.caps.filter(c=>c.group===g).map(c=>{
         const base = person ? fromRoles(c.key, person.roles) : 'n';
-        return `<tr><td class="pm-cap">${esc(c.label)}</td><td class="pm-base">${PERM_WORD[base]}</td>
-          <td class="${mine[c.key]?'pm-changed':''}">${sel('pm-pv', mine[c.key]||'', `data-cap="${c.key}"`, true)}</td></tr>`; }).join('')).join('')}</tbody></table></div>`
+        return `<tr><td class="pm-cap">${capLabel(c)}</td><td class="pm-base">${PERM_WORD[base]}</td>
+          <td class="${mine[c.key]?'pm-changed':''}">${sel('pm-pv', mine[c.key]||'', `data-cap="${c.key}"${liveOnly(c)?' disabled':''}`, true)}</td></tr>`; }).join('')).join('')}</tbody></table></div>`
       : '<div class="cash-empty">No one has a role yet. Give roles in App Access first.</div>';
     body.innerHTML = `
-      <div class="pm-note">Saved now. The app starts following these when the full rules (Stage 2) are switched on — until then each role works as it does today.</div>
+      <div class="pm-note">Saved now. Rows marked “in use now” work at once. The app starts following the rest when the full rules (Stage 2) are switched on — until then each role works as it does today.</div>
       <div class="todo-tabs"><button type="button" class="todo-tab${tab==='level'?' on':''}" data-pmtab="level">By level</button>
         <button type="button" class="todo-tab${tab==='person'?' on':''}" data-pmtab="person">By person</button></div>
       ${tab==='level' ? levelHTML : personHTML}
@@ -6060,6 +6090,9 @@ function renderAdmin(){
         coord && ME ? `<button class="btn" data-act="drivefolder">📁 Spreadsheet Links</button>` : '',
         `<button class="btn" data-act="org">👥 App and Sales Support</button>`,
         ME && ME.seesPeople ? `<button class="btn" data-act="people">👥 People${ADMIN_REQUESTS?` <span class="req-badge">${ADMIN_REQUESTS} waiting</span>`:''}</button>` : '',
+        // The practice space, for those Permissions give it (b332).
+        ME && PRACTICE ? `<a class="btn" href="${esc(practiceLink(false))}">🧪 Leave Practice Space</a>`
+          : ME && ME.practiceOk ? `<a class="btn" href="${esc(practiceLink(true))}" target="_blank" rel="noopener">🧪 Practice Space</a>` : '',
         ME ? `<button class="btn" data-act="signout">🚪 Sign Out</button>` : '']},
       // Expenses, for every link and role (b238); Finance's To do for a Finance person working in another role.
       // Track Cash for every lead: season, region, event (b319, Gita).
