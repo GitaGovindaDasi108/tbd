@@ -45,8 +45,28 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   let st = (await P({ action: 'getState', season: SA })).state;
   t.push(['the practice space starts as a copy of the live app (Italy, its sale)', !!st && st.regions.some(r => r.regionId === 'rg_it') && st.sales.some(x => x.saleId === 'LIVE1')]);
   t.push(['…with the live people and roles: the owner is Universal there too (from live)', !!st && st.role === 'admin']);
+  /* b332: the practice space is for those the LIVE Permissions give it. */
+  const rita0 = await ask(practice, { s: 'Prita', action: 'getState', season: SA });
+  t.push(['b332: a Regional Lead without "Use the practice space" is kept out of practice', !rita0.ok && rita0.noPractice === true && /Use the practice space/.test(rita0.error)]);
+  t.push(['b332: live says Rita may not open practice (no menu link)', (await ask(live, { s: 'Lown', action: 'me' })).result.practiceOk === true
+    && (session(liveDb, 'Lrita', 'rita@example.com'), (await ask(live, { s: 'Lrita', action: 'me' })).result.practiceOk === false)]);
+  const pg = (await L({ action: 'permGet' })).result;
+  t.push(['b332: Permissions has the row, Universal only as standard', pg.caps.some(c => c.key === 'use_the_practice_space' && c.def === 'nnnnnnnny')]);
+  await L({ action: 'permSet', table: { use_the_practice_space: { RL: 'y' } }, people: {} });
   const rita = await ask(practice, { s: 'Prita', action: 'me' });
+  t.push(['b332: ticked for Regional Leads on live, Rita comes into practice at once', rita.ok]);
   t.push(['…and Rita is Regional Lead for Italy there too', rita.ok && (rita.result.grants || []).some(g => g.role === 'RL' && g.placeId === 'rg_it')]);
+  t.push(['b332: …and live now shows her the Practice Space link', (await ask(live, { s: 'Lrita', action: 'me' })).result.practiceOk === true]);
+  // Practice's own Permissions show live's answer for that row and cannot change it.
+  const ppg = (await P({ action: 'permGet' })).result;
+  t.push(['b332: practice Permissions show the live answer for the practice row', ppg.practice === true && ppg.table.use_the_practice_space && ppg.table.use_the_practice_space.RL === 'y']);
+  await P({ action: 'permSet', table: { use_the_practice_space: { RL: 'n' } }, people: { 'rita@example.com': { use_the_practice_space: 'n' } } });
+  t.push(['b332: changing that row in practice does nothing', (await ask(practice, { s: 'Prita', action: 'me' })).ok]);
+  // A person's own "no" on live wins over their role.
+  await L({ action: 'permSet', table: { use_the_practice_space: { RL: 'y' } }, people: { 'rita@example.com': { use_the_practice_space: 'n' } } });
+  await P({ action: 'permGet' });     // a "no" reaches practice within a minute; this asks live at once
+  t.push(['b332: a "no" for Rita by name on live keeps her out', (await ask(practice, { s: 'Prita', action: 'getState', season: SA })).noPractice === true]);
+  await L({ action: 'permSet', table: { use_the_practice_space: { RL: 'y' } }, people: {} });
   t.push(['practiceInfo says it is practice, and when it was copied', (await ask(practice, { action: 'practiceInfo' })).result.copiedAt > 0
     && (await ask(live, { action: 'practiceInfo' })).result.practice === false]);
 
