@@ -18258,6 +18258,8 @@ function supUpload(){
    costs? How much? (Transfer: "I don't know yet" makes a Pending Expense on
    your To Do.) Do you require reimbursement? */
 const SHIP_ON = PRACTICE;
+/* b334 (Gita): Transfer Existing Stock takes a pasted list or a CSV too, as Add Stock does. Practice first. */
+const XF_BULK_ON = PRACTICE;
 function shipAskHTML(p, curs, opts){
   if(!SHIP_ON) return '';
   opts = opts || {};
@@ -22947,6 +22949,7 @@ function transferStockModal(opts){
   let sws = null;                      // sub-warehouses chosen for an event's books
   let newN = 0;
   const typed = {};
+  const bulk = {open:false, msg:''};
 
   openModal(`
     ${mHead('Transfer Existing Stock')}
@@ -23067,8 +23070,8 @@ function transferStockModal(opts){
     document.querySelectorAll('#xfBody [data-k]').forEach(i=>{ if(typed[i.dataset.k]!==undefined) i.value = typed[i.dataset.k]; });
   }
 
-  function draw(){
-    keepTyped();
+  function draw(kept){
+    if(kept!==true) keepTyped();      // true: typed already holds what to show (the bulk box just filled it)
     const body = $('#xfBody'), go = $('#xfGo'), k = kind();
     $('#modalErr').textContent = '';
     go.disabled = true; go.textContent = 'Transfer';
@@ -23097,6 +23100,7 @@ function transferStockModal(opts){
       if(!travel){ body.innerHTML = h; bindTop(); return; }
       if(travel==='travel') h += courierHTML();
     }
+    if(XF_BULK_ON && books(sources()).length) h += xfBulkHTML();
     h += tableHTML();
     h += `<div class="xf-all"><button type="button" class="btn btn-ghost btn-sm" id="xfAll">Transfer everything</button> <button type="button" class="btn btn-ghost btn-sm" id="xfClear">Clear everything</button></div>
       <div id="preWarn"></div>`;
@@ -23143,6 +23147,62 @@ function transferStockModal(opts){
     const c = $('#xfCourier'); if(!c) return;
     $('#xfDevotee').hidden = c.value!=='devotee';
     $('#xfShipping').hidden = c.value!=='shipping';
+  }
+
+  /* Several titles at once (b334, Gita): the same box as Add Stock's, with
+     the same reader (parseStockList). Each title found gets its number in the
+     Move column. Books taken from several shelves come off the warehouse
+     shelf first, then SW1, SW2…; books going into several sub-warehouses all
+     go into the first one, to be moved across by hand if needed. */
+  function xfBulkHTML(){
+    return `<div class="sp-bulkadd">
+        <button type="button" class="btn btn-ghost btn-sm" data-xfbulkopen>${bulk.open?'▾':'▸'} Add several titles at once</button>
+        <div class="sp-bulkbox"${bulk.open?'':' hidden'}>
+          <div class="hint">Paste from a spreadsheet: one title per line with the number to move beside it,
+            for example <b>Sri Radha (English)&nbsp;&nbsp;20</b>. Or upload a CSV file with the same two columns.</div>
+          <textarea id="xfPaste" data-k="bulkText" rows="6" placeholder="Sri Radha (English)&#9;20&#10;Bhagavad Gita (Russian)&#9;12"></textarea>
+          <div class="sp-bulkacts">
+            <button type="button" class="btn btn-plum btn-sm" data-xfbulkuse>Put these in the table</button>
+            <label class="btn btn-ghost btn-sm sp-csv">Upload CSV<input type="file" id="xfCsv" accept=".csv,.tsv,.txt,text/csv,text/plain" hidden></label>
+          </div>
+          <div id="xfBulkMsg">${bulk.msg}</div>
+        </div>
+      </div>`;
+  }
+  function xfBulkUse(text){
+    const srcs = sources(), list = books(srcs), here = new Set(list.map(b=>b.id));
+    const multiDst = kind()==='store' && storage==='multi';
+    const {found, missing} = parseStockList(text, fromCtx.st.books||[]);
+    const none = [], short = [], put = [];
+    const nm = b => { const {base, lang} = bookLang(b); return base + (lang ? ' (' + lang + ')' : ''); };
+    found.forEach(({book, qty})=>{
+      if(!here.has(book.id)){ none.push(nm(book)); return; }
+      let want = Math.max(0, qty);
+      if(!want) return;
+      if(multiDst){
+        sws.forEach((s,i)=>{ typed['d:'+s.key+':'+book.id] = i===0 ? String(want) : ''; });
+      }else{
+        const total = srcs.reduce((t,s)=>t+fromCtx.qty(s.loc,book.id),0);
+        let left = want;
+        srcs.forEach(s=>{
+          const have = fromCtx.qty(s.loc,book.id);
+          const take = srcs.length>1 ? Math.min(have, left) : left;
+          typed['m:'+s.loc+':'+book.id] = take>0 ? String(take) : '';
+          left -= take;
+        });
+        if(want > total) short.push(esc(nm(book)) + ': ' + want + ' asked, ' + total + ' there');
+        if(srcs.length>1 && left>0) typed['m:'+srcs[srcs.length-1].loc+':'+book.id] = String(Number(typed['m:'+srcs[srcs.length-1].loc+':'+book.id]||0) + left);
+      }
+      put.push(book.id);
+    });
+    const from = esc(placeLabel(fromPick.value));
+    bulk.msg = (put.length ? `<div class="hint">✓ ${put.length} title${put.length===1?'':'s'} put in the table below${multiDst && sws.length>1 ? ', all going to '+esc(sws[0].label) : ''}. Check the numbers, then transfer.</div>` : '')
+      + (short.length ? `<div class="warn">More than there is at ${from}:<br>${short.join('<br>')}</div>` : '')
+      + (none.length ? `<div class="warn">None of these at ${from}, so left out:<br>${none.map(esc).join('<br>')}</div>` : '')
+      + (missing.length ? `<div class="warn">Not recognised, so left out (check the spelling):<br>${missing.map(esc).join('<br>')}</div>` : '')
+      + (!found.length && !missing.length ? `<div class="hint">Nothing to add: each line needs a title and a number.</div>` : '');
+    if(put.length && !missing.length && !none.length) typed.bulkText = '';
+    draw(true);
   }
 
   function swEditorHTML(){
@@ -23293,7 +23353,15 @@ function transferStockModal(opts){
 
   const body = $('#xfBody');
   body.addEventListener('input', e=>{ if(e.target.closest('.xf-in')) recalc(); });
-  body.addEventListener('change', e=>{ if(e.target.id==='xfCourier') syncCourier(); });
+  body.addEventListener('change', e=>{
+    if(e.target.id==='xfCourier') syncCourier();
+    if(e.target.id==='xfCsv'){
+      const f = e.target.files && e.target.files[0]; if(!f) return;
+      const rd = new FileReader();
+      rd.onload = ()=>{ keepTyped(); typed.bulkText = String(rd.result||''); xfBulkUse(typed.bulkText); };
+      rd.readAsText(f);
+    }
+  });
   body.addEventListener('click', e=>{
     if(e.target.closest('#xfAll')){
       alert(COUNT_MSG);
@@ -23316,6 +23384,8 @@ function transferStockModal(opts){
       recalc(); return;
     }
     if(e.target.closest('#xfAddSw')){ keepTyped(); sws.push(newSw()); draw(); return; }
+    if(e.target.closest('[data-xfbulkopen]')){ keepTyped(); bulk.open = !bulk.open; bulk.msg = ''; draw(); return; }
+    if(e.target.closest('[data-xfbulkuse]')){ keepTyped(); xfBulkUse(typed.bulkText||''); return; }
     const drop = e.target.closest('[data-swdrop]');
     if(drop){ keepTyped(); sws = sws.filter(s=>s.key!==drop.dataset.swdrop); draw(); }
   });
