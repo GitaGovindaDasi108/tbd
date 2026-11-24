@@ -233,7 +233,7 @@ function doGet(e)  { return handle(e); }
    version until you make a NEW VERSION. The app shows this next to its own
    build number, so a half-finished deployment is visible at a glance instead
    of looking like a bug. */
-var SERVER_BUILD = 'b332';
+var SERVER_BUILD = 'b335';
 
 /* Are the readable spreadsheets made HERE? Yes on Google. On the Cloudflare
    server (server/, Phase 2) the records live in its database and the
@@ -499,7 +499,7 @@ function bcSplit_(expenses, A, where, regs, evs, seasons) {
    left out of profit, and a shipment's share on them stays an expense. A
    returned shipment's share is never put on its books (they go back at the
    cost they had), so it stays an expense, less the refund (`ref`). */
-var BOOKCOST_ON_ = false;
+var BOOKCOST_ON_ = true;  // b320 practice; live since b335 (Gita, 24 Nov)
 var WHMOVE_ON_ = true;    // b324 practice; live since b327 (Gita, 3 Nov)
 function setBookCostOn_(v) { BOOKCOST_ON_ = !!v; }
 function bcList_(raw) {

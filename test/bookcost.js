@@ -86,7 +86,7 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
   await X('Xship002', 10000, { k: 'ship', sh: 'sh_ret001' });
   const lo = (await askLive({ action: 'signIn', idToken: await token('owner@example.com', 'The Owner') })).result.session;
   r = await askLive({ s: lo, action: 'returnShipment', shipId: 'sh_ret001', toLoc: 'wh_in', items: [{ bookId: 'bk_seasons', qty: 1 }] });
-  t.push(['the live app does not return shipments yet', !r.ok && /practice/.test(r.error || '')]);
+  t.push(['the live app returns shipments too (b335): no "practice only" refusal', !/practice/.test(r.error || '')]);
   r = await O({ action: 'returnShipment', shipId: 'sh_ret001', toLoc: 'wh_in', items: [{ bookId: 'bk_seasons', qty: 50 }], refundCur: 'INR', refundAmt: 5000, date: '2026-10-29', season: SA });
   t.push(['a shipment comes back to the warehouse', r.ok && r.result.status === 'ARRIVED']);
   const st2 = (await O({ action: 'getState' })).state;
@@ -146,9 +146,11 @@ require('child_process').execFileSync(process.execPath, [path.join(ROOT, 'server
     t.push(['undoing a return takes its refund away again', !F2.expenses.some(x => x.of === 'Xship002' && x.s === 'HQ')]);
   } else t.push(['the return is in the Activity Log', false]);
 
-  // The live server works none of this out.
+  // The live server works it out too (b335, Gita: "I need the per-book expenses to go live").
   r = await askLive({ s: lo, action: 'bookCostSales' });
-  t.push(['the live server keeps no book costs', r.ok && !r.result.on]);
+  t.push(['the live server answers for book costs too', r.ok]);
+  r = await askLive({ s: lo, action: 'bookCostOpts' });
+  t.push(['…and offers them to Finance on live', r.ok]);
 
   let bad = 0;
   t.forEach(([n, ok]) => { if (!ok) bad++; console.log((ok ? '  ok  ' : '  FAIL ') + n); });
