@@ -1878,7 +1878,7 @@ body.mo-dragging, body.mo-dragging *{cursor:grabbing !important}
 .fx-det>div{margin:2px 0}
 .fx-btns{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}
 .fin-ex .fx-head{padding:0 11px 0 14px}
-.fx-odet{display:none}
+.fx-odet{display:none} .fx-odet.fx-bc{display:block}
 /* Phone (b295, Gita): one amount, the dollars, so the description has room; the original is in the row's details. */
 @media (max-width:560px){ .fx-row{grid-template-columns:56px minmax(0,1fr) auto 10px;gap:6px;font-size:12.5px} .fx-row > .fx-o{display:none} .fx-odet{display:block} .fin-ex .fx-item{padding:6px} .fin-ex .fx-head{padding:0 7px 0 10px} .fx-d{font-size:11px} }
 .rb-item{margin:6px 0}
@@ -2584,7 +2584,7 @@ body.hdr2 #whoBtn, body.hdr2 #reportBtn, body.hdr2 .util-bar [data-act="refresh"
   <div class="util-bar">
     <div class="status"><span class="dot load" id="dot"></span><span id="statusText">Starting…</span>
       <span class="spin" aria-hidden="true"></span></div>
-    <span class="build-tag" id="bld" title="Which version of the page is loaded">b336</span>
+    <span class="build-tag" id="bld" title="Which version of the page is loaded">b337</span>
     <button class="btn-refresh" data-act="whoami" id="whoBtn" style="display:none"></button>
     <button class="btn-refresh" data-act="report" id="reportBtn" title="Copy a summary to send on WhatsApp">📋 Report</button>
     <button class="btn-refresh" data-act="viewmode" id="viewBtn" title="Show everything as cards or as a compact list">☰ List view</button>
@@ -13848,11 +13848,11 @@ function finExpList(){
   const ux = {}, fx = {}; ((FIN.D && FIN.D.expenses) || []).forEach(x=>{ usd[x.id] = x.usd; ux[x.id] = x.usdExact; fx[x.id] = x; });
   /* b321: a book cost's expense at each place holding its copies, with its
      share there and its History (the server's bcSplit_). */
-  const all = (EXP.all || []).map(x=>{ const d = fx[x.id]; return d && d.bw ? Object.assign({}, x, {amt:d.amt, bh:d.bh, bw:d.bw, bn:d.bn, bn0:d.bn0, pn:d.pn}) : x; });
+  const all = (EXP.all || []).map(x=>{ const d = fx[x.id]; return d && d.bw ? Object.assign({}, x, {amt0:x.amt, amt:d.amt, bh:d.bh, bw:d.bw, bn:d.bn, bn0:d.bn0, pn:d.pn}) : x; });
   const byId = {}; all.forEach(x=>{ byId[x.id] = x; });
   ((FIN.D && FIN.D.expenses) || []).forEach(d=>{ const x = d.of && byId[d.of]; if(!x) return;
     // Its share here is a cost of this place, never a second thing to pay back.
-    all.push(Object.assign({}, x, {id:d.id, of:d.of, amt:d.amt, bh:d.bh, bw:null, bn:d.bn, pn:d.pn, date:d.d, location:d.loc, regionId:d.rg, seasonId:d.s, placeLabel:d.pl, receipts:[],
+    all.push(Object.assign({}, x, {id:d.id, of:d.of, amt0:x.amt0!=null ? x.amt0 : x.amt, amt:d.amt, bh:d.bh, bw:null, bn:d.bn, pn:d.pn, date:d.d, location:d.loc, regionId:d.rg, seasonId:d.s, placeLabel:d.pl, receipts:[],
       kind: x.kind==='reimburse' ? 'record' : x.kind, status: x.kind==='reimburse' ? 'recorded' : x.status})); });
   return all.filter(x=>(!f.s || x.seasonId===f.s) && (!f.r || x.regionId===f.r) && (!f.e || x.location===f.e) && (!f.f || x.location===f.f)
       && (!f.uE || f.uE.includes(x.location)) && (!ff.from || x.date >= ff.from) && (!ff.to || x.date <= ff.to))
@@ -14197,7 +14197,12 @@ function finExpSecHTML(){
       <div class="li-det fx-det">
         ${x.forEmail==='*general' || x.who==='General' ? '' /* b291: a General cost is nobody's */ : `<div><span class="k">Who</span> <span class="v no-edit">${esc(x.who)}</span></div>`}
         <div><span class="k">Type</span> <span class="v">${esc(x.type)}</span></div>
-        ${finExpOrig(x) ? `<div class="fx-odet"><span class="k">Original</span> <span class="v">${esc(finExpOrig(x))}</span></div>` : ''}
+        ${x.bh && x.bh.length && x.amt0!=null
+          /* b337 (Gita): a printing or shipping cost on books shows the bill as it was
+             logged (Original) and what is on the books here now (Current), each labelled. */
+          ? `<div class="fx-odet fx-bc"><span class="k">Original</span> <span class="v">${esc(cashFmt(x.amt0, x.cur))}</span></div>
+             <div class="fx-odet fx-bc"><span class="k">Current</span> <span class="v">${esc(cashFmt(x.amt, x.cur))}</span></div>`
+          : finExpOrig(x) ? `<div class="fx-odet"><span class="k">Original</span> <span class="v">${esc(finExpOrig(x))}</span></div>` : ''}
         <div><span class="k">Where</span> <span class="v no-edit">${esc(x.placeLabel)}</span></div>
         <div><span class="k">Status</span> ${expStatusHTML(x)}</div>
         ${x.kind==='reimburse' ? `<div><span class="k">Pay back</span> <span class="v">${esc(x.method || '')}${x.reimbCur ? ' in ' + esc(x.reimbCur) : ''}${expPayAmtLine(x) ? ' · ' + esc(expPayAmtLine(x)) : ''}</span></div>` : ''}
@@ -18259,7 +18264,7 @@ function supUpload(){
    your To Do.) Do you require reimbursement? */
 const SHIP_ON = true;    // live since b335 (Gita, 24 Nov), with the book costs
 /* b334 (Gita): Transfer Existing Stock takes a pasted list or a CSV too, as Add Stock does. Practice first. */
-const XF_BULK_ON = PRACTICE;
+const XF_BULK_ON = true;   // live since b337 (Gita, 24 Nov: "make bulk add for transfer live")
 function shipAskHTML(p, curs, opts){
   if(!SHIP_ON) return '';
   opts = opts || {};

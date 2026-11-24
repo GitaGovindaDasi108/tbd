@@ -149,12 +149,13 @@ const qty = (loc, b) => { const r = inv().find(i => i.location === loc && i.book
     t.push(['transfer done: Yoga Studio 2, Italy 4', qty('ev_yoga', B0) === 2 && qty('wh_it', B0) === 4]);
     await page.close();
 
-    // 3. Live: Transfer has no box yet; Add Stock keeps paste + CSV.
+    // 3. Live (since b337): Transfer has the box too; Add Stock keeps paste + CSV.
     page = await open('');
     await page.evaluate(r => goTo('region', r), pl.regionId); await page.waitForTimeout(400);
     await openXfer(page);
     await pick(page, 'xfTo', 'Festival', 'Festival');
-    t.push(['live: Transfer has no bulk box (practice first)', !(await page.$('#xfBody [data-xfbulkopen]'))]);
+    t.push(['live: Transfer has the bulk box (b337)', !!(await page.$('#xfBody [data-xfbulkopen]'))]);
+    t.push(['live: the Transfer window fits', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1 && [...document.querySelectorAll('#modal .m-body')].every(e => e.scrollWidth <= e.clientWidth + 1))]);
     await page.click('#modal .m-foot button:has-text("Cancel")'); await page.waitForTimeout(300);
     await page.click('#adminActions button:has-text("Add New Stock")'); await page.waitForTimeout(300);
     await page.click('#spPlace .pp-in'); await page.fill('#spPlace .pp-in', 'Poland'); await page.click('#spPlace .pp-row >> nth=0'); await page.waitForTimeout(500);
