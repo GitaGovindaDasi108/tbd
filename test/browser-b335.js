@@ -148,6 +148,14 @@ const API = 'http://api.test/';
       t.push([w + 'px: Finance › Expenses shows the printing', await pg.evaluate(() => /Printing/.test(document.body.textContent))]);
       t.push([w + 'px: Finance › Expenses fits', await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1
         && [...document.querySelectorAll('.fin-card, .log-item, .fx-item')].every(e => e.scrollWidth <= e.clientWidth + 1))]);
+      // b337: a book cost's drop-down shows Original (the bill) and Current (on the books here).
+      const oc = await pg.evaluate(async () => { const r = document.querySelector('.fx-item.fx-print .fx-row') || [...document.querySelectorAll('.fx-item .fx-row')].find(e => /Printing/.test(e.textContent));
+        if (!r) return null; r.click(); await new Promise(z => setTimeout(z, 400));
+        const it = r.closest('.fx-item'); const ls = [...it.querySelectorAll('.fx-bc')].filter(e => getComputedStyle(e).display !== 'none').map(e => e.textContent.replace(/\s+/g, ' ').trim());
+        return ls; });
+      t.push([w + 'px: printing drop-down shows Original and Current (' + JSON.stringify(oc) + ')', !!oc && oc.length === 2 && /^Original/.test(oc[0]) && /^Current/.test(oc[1])]);
+      t.push([w + 'px: …and still fits', await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1
+        && [...document.querySelectorAll('.fx-item')].every(e => e.scrollWidth <= e.clientWidth + 1))]);
       await pg.screenshot({ path: shot('finexp-' + w), fullPage: true });
       await pg.context().close();
     }
