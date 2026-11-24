@@ -2,7 +2,7 @@
    b320 (Track profit per book, practice first): the screens for book costs.
    Cost and profit in a sale's drop-down (Finance), the expense form's "put this
    cost on books", Add Stock's printing cost, Shipment Returned, Net in Finance,
-   and none of it on the live app. Checked for overflow at 390px and 1150px. */
+   and the same on the live app (since b335). Checked for overflow at 390px and 1150px. */
 const { chromium } = (()=>{ try{ return require('playwright'); }catch(e){
   return require(require('child_process').execSync('npm root -g').toString().trim()+'/playwright'); } })();
 const fs = require('fs'), path = require('path'), os = require('os');
@@ -177,12 +177,12 @@ const API = 'http://api.test/';
       await pg.screenshot({ path: shot('finance-' + w), fullPage: true });
       await pg.context().close();
     }
-    // Live: none of it.
+    // Live too since b335 (Gita, 24 Nov).
     const lp = await open('owner@example.com', 'The Owner', 1150, { live: true });
     await lp.evaluate(() => addStockModal()); await lp.waitForTimeout(400);
-    t.push(['live: no printing cost in Add Stock', await lp.evaluate(() => !document.querySelector('#spBc'))]);
+    t.push(['live: printing cost in Add Stock', await lp.evaluate(() => !!document.querySelector('#spBc'))]);
     await lp.evaluate(() => closeModal());
-    t.push(['live: no Shipment Returned, no cost in the Sales Log', await lp.evaluate(() => !BC_ON && !document.querySelector('[data-act="shreturn"]'))]);
+    t.push(['live: book costs on', await lp.evaluate(() => BC_ON && SHIP_ON)]);
     await lp.context().close();
   } catch (e) {
     console.log('STOPPED:', e.message.split('\n').slice(0, 14).join('\n'));

@@ -7979,7 +7979,7 @@ function logItemHTML(x, opts){
    Finance sees, in a sale's drop-down, what its book cost (printing plus every
    shipment it travelled on, plus postage) and what it made. Worked out by the
    server (Code.gs bookCostCalc_); a book with no printing cost shows nothing. */
-const BC_ON = PRACTICE;
+const BC_ON = true;      // live since b335 (Gita, 24 Nov: "I need the per-book expenses to go live")
 const BC = { sales:{}, ex:new Set(), at:0, busy:false };
 const bcMine = () => BC_ON && !!financeMe();
 function bcRefresh(force){
@@ -18257,7 +18257,7 @@ function supUpload(){
    questions, used by Deliver and by Transfer: Did this require shipping
    costs? How much? (Transfer: "I don't know yet" makes a Pending Expense on
    your To Do.) Do you require reimbursement? */
-const SHIP_ON = PRACTICE;
+const SHIP_ON = true;    // live since b335 (Gita, 24 Nov), with the book costs
 /* b334 (Gita): Transfer Existing Stock takes a pasted list or a CSV too, as Add Stock does. Practice first. */
 const XF_BULK_ON = PRACTICE;
 function shipAskHTML(p, curs, opts){

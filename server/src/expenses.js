@@ -282,10 +282,10 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      just "Card machine fee" and added to as they go. "Other" (with its own words)
      is always there last. Expenses keep the kind they were saved with. */
   const getCats = () => { const a = parse(kv.getProp('expCats'), null); return Array.isArray(a) ? a.map(x => String(x)).filter(Boolean) : ['Card machine fee']; };
-  /* "Shipping" is always a kind in practice (b328, Gita): general shipping is
+  /* "Shipping" is always a kind (b328, Gita; live since b335): general shipping is
      entered as a type; shipping for particular books comes with the books. */
   const catList = () => { const c = getCats().filter(c => c.toLowerCase() !== 'other');
-    if (practice && !c.some(x => x.toLowerCase() === 'shipping')) c.push('Shipping');
+    if (!c.some(x => x.toLowerCase() === 'shipping')) c.push('Shipping');
     return c.concat(['Other']); };
   function catAdd(w, p) {
     if (!mayPay(w)) throw new Error('Only Finance can add kinds of expense.');
@@ -387,7 +387,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     }
     const want = String(p.location || '') || (w.open ? w.linkPlace || '' : '');
     // Shipping on a delivery (b328): the place that made the sale, even another region's.
-    if (practice && p.forSale && want && !list.some(x => x.id === want) && saleAt(p.forSale) === want) {
+    if (p.forSale && want && !list.some(x => x.id === want) && saleAt(p.forSale) === want) {
       const sp = placeOf(w.P, want);
       if (sp) list.unshift(Object.assign(sp, { closed: false, label: labelOf(w.P, sp) }));
     }
@@ -775,7 +775,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     const pl = placeOf(w.P, clip(p.location, 60));
     /* Shipping for a pre-order delivered from elsewhere (b328, Gita): it is the
        expense of the place that made the sale, which may be another region's. */
-    const postFor = practice && !old && p.bookLink && p.bookLink.k === 'post' && pl && saleAt(p.bookLink.sale) === pl.id;
+    const postFor = !old && p.bookLink && p.bookLink.k === 'post' && pl && saleAt(p.bookLink.sale) === pl.id;
     if (!pl || (!inReach(w, pl) && !postFor)) throw new Error('Choose where the expense belongs.');
     const kind = p.kind === 'reimburse' || w.open ? 'reimburse' : 'record';
     if (w.open && !w.name) throw new Error('Please give your name.');
@@ -865,7 +865,7 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
      grams for a shipment's titles are kept with it (setting bookWeights). */
   function bookLinkFor(w, p, old) {
     if (p.bookLink === undefined) return old ? String(old.bookLink || '') : '';
-    if (!practice || !p.bookLink) return '';
+    if (!p.bookLink) return '';
     const L = p.bookLink, k = String(L.k || '');
     /* Anyone may put shipping on what they deliver or send (b328, Gita): one
        sale's postage, or a shipment's cost. Printings stay Finance's. */
@@ -900,18 +900,18 @@ export function makeExpenses({ exec, app, auth, people, places, kv, now, practic
     return r ? r.id : '';
   }
   function bookCostOpts(w) {
-    if (!practice || !isFin(w)) throw new Error('This is for Finance, in the practice space.');
+    if (!isFin(w)) throw new Error('This is for Finance.');
     fresh();
     return app.bookCostOptions_();
   }
   function bookCostSales(w) {
-    if (!practice || !isFin(w)) return { on: false, sales: {} };
+    if (!isFin(w)) return { on: false, sales: {} };
     fresh();
     return app.bookCostSales_();
   }
   // Book weights in grams, all at once (Finance › Settings).
   function bookWeightsSet(w, p) {
-    if (!practice || !mayPay(w)) throw new Error('Only Finance can change the book weights.');
+    if (!mayPay(w)) throw new Error('Only Finance can change the book weights.');
     const W = {};
     Object.keys(p.weights || {}).slice(0, 500).forEach(b => { const g = Math.round(Number(p.weights[b]) || 0); if (g > 0 && g < 100000) W[clip(b, 40)] = g; });
     kv.setProp('bookWeights', JSON.stringify(W));
